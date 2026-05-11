@@ -96,6 +96,8 @@ import {
 } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
 import {
+  CHAT_RUNTIME_PRESENTATION,
+  formatChatRuntimeToolApprovalFailureMessage,
   getFollowUpInputPresentation,
   getSessionPresentation,
 } from "@dotagents/shared/session-presentation"
@@ -685,12 +687,6 @@ function normalizeProgressVariant(variant: string): "default" | "overlay" | "til
   return variant === "overlay" || variant === "tile" ? variant : "default"
 }
 
-function getActionErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) return error.message.trim()
-  if (typeof error === "string" && error.trim()) return error.trim()
-  return fallback
-}
-
 function hasActiveTextSelection(container?: HTMLElement | null): boolean {
   if (typeof window === "undefined") return false
 
@@ -812,13 +808,13 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       if (branched) {
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
         navigate(`/${branched.id}`)
-        toast.success("Conversation branched")
+        toast.success(CHAT_RUNTIME_PRESENTATION.branch.successToast)
       } else {
-        toast.error("Failed to branch conversation")
+        toast.error(CHAT_RUNTIME_PRESENTATION.branch.failedMessage)
       }
     } catch (err) {
-      console.error("Failed to branch conversation:", err)
-      toast.error("Failed to branch conversation")
+      console.error(`${CHAT_RUNTIME_PRESENTATION.branch.failedMessage}:`, err)
+      toast.error(CHAT_RUNTIME_PRESENTATION.branch.failedMessage)
     }
   }, [branchMessageIndex, conversationId, navigate])
 
@@ -1399,8 +1395,8 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             <button
               onClick={handleBranchFromMessage}
               className="p-1 rounded hover:bg-muted/30 transition-colors"
-              title="Branch from here"
-              aria-label="Branch conversation from this message"
+              title={CHAT_RUNTIME_PRESENTATION.branch.buttonTitle}
+              aria-label={CHAT_RUNTIME_PRESENTATION.branch.buttonAccessibilityLabel}
             >
               <GitBranch className="h-3 w-3 opacity-60 hover:opacity-100" />
             </button>
@@ -3613,9 +3609,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to approve tool call:", error)
-      toast.error(
-        `Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`,
-      )
+      toast.error(formatChatRuntimeToolApprovalFailureMessage("approve", error))
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
@@ -3648,9 +3642,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to deny tool call:", error)
-      toast.error(
-        `Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`,
-      )
+      toast.error(formatChatRuntimeToolApprovalFailureMessage("deny", error))
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)

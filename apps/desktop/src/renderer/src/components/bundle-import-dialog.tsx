@@ -16,6 +16,14 @@ import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain } 
 import { desktopBundleClient, type DesktopBundlePreview } from "@renderer/lib/desktop-bundle-client"
 import { toast } from "sonner"
 import {
+  APP_SHELL_BUNDLE_IMPORT_PRESENTATION,
+  formatAppShellBundleConflictCount,
+  formatAppShellBundleCreatedDateLabel,
+  formatAppShellBundleImportSuccessToast,
+  getAppShellBundleActionLabel,
+  getAppShellBundleComponentLabel,
+} from "@dotagents/shared/app-shell"
+import {
   BUNDLE_COMPONENT_OPTIONS,
   BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
   getAvailableBundleComponentSelection,
@@ -50,11 +58,11 @@ const COMPONENT_ROW_DETAILS: Record<BundleComponentKey, {
   icon: React.ComponentType<{ className?: string }>
   label: string
 }> = {
-  agentProfiles: { icon: Bot, label: "Agent Profiles" },
-  mcpServers: { icon: Server, label: "MCP Servers" },
-  skills: { icon: Sparkles, label: "Skills" },
-  repeatTasks: { icon: Clock, label: "Repeat Tasks" },
-  knowledgeNotes: { icon: Brain, label: "Knowledge notes" },
+  agentProfiles: { icon: Bot, label: getAppShellBundleComponentLabel("agentProfiles", "detailed") },
+  mcpServers: { icon: Server, label: getAppShellBundleComponentLabel("mcpServers", "detailed") },
+  skills: { icon: Sparkles, label: getAppShellBundleComponentLabel("skills", "detailed") },
+  repeatTasks: { icon: Clock, label: getAppShellBundleComponentLabel("repeatTasks", "detailed") },
+  knowledgeNotes: { icon: Brain, label: getAppShellBundleComponentLabel("knowledgeNotes", "detailed") },
 }
 
 export function BundleImportDialog({
@@ -64,8 +72,8 @@ export function BundleImportDialog({
   initialFilePath,
   initialComponents,
   availableComponents,
-  title = "Import Bundle",
-  description = "Preview and import a .dotagents bundle file.",
+  title = APP_SHELL_BUNDLE_IMPORT_PRESENTATION.title,
+  description = APP_SHELL_BUNDLE_IMPORT_PRESENTATION.description,
 }: BundleImportDialogProps) {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -122,7 +130,7 @@ export function BundleImportDialog({
     } catch (error) {
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(`Failed to preview bundle: ${errorMessage}`)
+      toast.error(`${APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.previewFailed}: ${errorMessage}`)
       onOpenChange(false)
     } finally {
       if (previewRequestIdRef.current === requestId && isOpenRef.current) {
@@ -139,7 +147,7 @@ export function BundleImportDialog({
     } catch (error) {
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(`Failed to preview bundle: ${errorMessage}`)
+      toast.error(`${APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.previewFailed}: ${errorMessage}`)
       onOpenChange(false)
     } finally {
       if (previewRequestIdRef.current === requestId && isOpenRef.current) {
@@ -159,15 +167,15 @@ export function BundleImportDialog({
       })
       if (result.success) {
         const imported = getBundleImportChangedItemCount(result)
-        toast.success(`Successfully imported ${imported} item(s)`)
+        toast.success(formatAppShellBundleImportSuccessToast(imported))
         onImportComplete()
         handleClose()
       } else {
-        toast.error(result.errors.join(", ") || "Import failed")
+        toast.error(result.errors.join(", ") || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.importFailed)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(`Import failed: ${errorMessage}`)
+      toast.error(`${APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.importFailed}: ${errorMessage}`)
     } finally {
       setImporting(false)
     }
@@ -225,13 +233,13 @@ export function BundleImportDialog({
                 <p className="text-sm text-muted-foreground mt-1">{manifest.description}</p>
               )}
               <p className="text-xs text-muted-foreground mt-2">
-                Created: {new Date(manifest.createdAt).toLocaleDateString()}
+                {formatAppShellBundleCreatedDateLabel(new Date(manifest.createdAt).toLocaleDateString())}
               </p>
             </div>
 
             {/* Component selection */}
             <div className="space-y-2">
-              <Label>Components to import</Label>
+              <Label>{APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.componentsToImport}</Label>
               <div className="space-y-2 rounded-lg border p-3">
                 {BUNDLE_COMPONENT_OPTIONS.map((component) => {
                   if (!isComponentAvailable(component.key)) return null
@@ -256,7 +264,7 @@ export function BundleImportDialog({
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <Label>Handle conflicts</Label>
+                  <Label>{APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.conflicts.label}</Label>
                 </div>
                 <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as BundleImportConflictStrategy)}>
                   <SelectTrigger>
@@ -269,7 +277,7 @@ export function BundleImportDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Some items already exist in your configuration.
+                  {APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.conflicts.helper}
                 </p>
               </div>
             )}
@@ -278,11 +286,11 @@ export function BundleImportDialog({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={handleClose} disabled={importing}>
-            Cancel
+            {getAppShellBundleActionLabel("cancel")}
           </Button>
           <Button onClick={handleImport} disabled={!preview?.filePath || importing || loading}>
             {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import
+            {getAppShellBundleActionLabel("import")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -310,7 +318,7 @@ function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }
         <Badge variant="secondary" className="text-xs">{count}</Badge>
         {conflicts > 0 && (
           <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-            {conflicts} conflict{conflicts > 1 ? "s" : ""}
+            {formatAppShellBundleConflictCount(conflicts)}
           </Badge>
         )}
       </div>

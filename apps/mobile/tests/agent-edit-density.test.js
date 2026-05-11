@@ -10,12 +10,13 @@ const screenSource = fs.readFileSync(
 
 test('avoids decorative warning emoji chrome in the mobile agent edit screen', () => {
   assert.doesNotMatch(screenSource, /⚠️/);
-  assert.match(screenSource, /<Text style=\{styles\.warningText\}>Built-in agents have limited editing options<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.warningText\}>\{APP_SHELL_AGENT_EDITOR_PRESENTATION\.builtInWarning\}<\/Text>/);
 });
 
 test('keeps mobile agent edit errors text-first after removing banner emoji', () => {
   assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{error\}<\/Text>/);
-  assert.match(screenSource, /setError\(err\.message \|\| 'Failed to (load|save) agent'\);/);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.errors\.loadFailed/);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.errors\.saveFailed/);
 });
 
 test('uses shared per-agent model field helpers in the mobile agent editor', () => {

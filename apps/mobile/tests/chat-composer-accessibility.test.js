@@ -9,9 +9,18 @@ const screenSource = fs.readFileSync(
 );
 
 test('exposes the chat composer send control as an accessible button', () => {
-  assert.match(screenSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Send message'\)\}/);
-  assert.match(screenSource, /accessibilityHint="Sends your typed text and any attached images to the selected agent\."/);
-  assert.match(screenSource, /accessibilityState=\{\{ disabled: !composerHasContent \}\}/);
+  assert.match(screenSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\(composerSubmitAccessibilityLabel\)\}/);
+  assert.match(screenSource, /accessibilityHint=\{composerSubmitAccessibilityHint\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ disabled: isComposerSubmitDisabled \}\}/);
+});
+
+test('uses shared session presentation for mobile composer copy and disabled state', () => {
+  assert.match(screenSource, /getFollowUpInputPresentation/);
+  assert.match(screenSource, /conversationState: conversationState \?\? \(responding \? 'running' : 'complete'\)/);
+  assert.match(screenSource, /composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
+  assert.match(screenSource, /composerPresentation\.submitAriaLabel/);
+  assert.match(screenSource, /composerPresentation\.submitHint/);
+  assert.match(screenSource, /composerPresentation\.isDisabled/);
 });
 
 test('exposes the handsfree queue control as an accessible button', () => {

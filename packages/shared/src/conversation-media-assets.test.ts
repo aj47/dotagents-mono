@@ -10,6 +10,7 @@ import {
   buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
   buildConversationVideoAssetStoragePlan,
+  CHAT_IMAGE_ATTACHMENT_PRESENTATION,
   createConversationImageAssetFileService,
   createConversationImageAssetRouteActions,
   createConversationVideoAssetFileService,
@@ -33,6 +34,17 @@ import {
   getConversationVideoMimeTypeFromFileName,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
+  formatChatImageAttachmentErrorMessage,
+  formatChatImageAttachmentLimitMessage,
+  formatChatImageBudgetExceededMessage,
+  formatChatImageBudgetReachedMessage,
+  formatChatImageFileTooLargeMessage,
+  formatChatImageMissingDataMessage,
+  formatChatImageNotImageFileMessage,
+  formatChatImageSelectionTooLargeMessage,
+  formatChatImageSlotsRemainingMessage,
+  formatChatImageTryFewerOrSmallerMessage,
+  formatChatImageUnsupportedFormatMessage,
   getRenderableVideoMimeTypeFromFileName,
   getUtf8ByteLength,
   formatMediaBytesMb,
@@ -305,6 +317,28 @@ describe('conversation video asset utilities', () => {
     expect(MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES).toBe(900 * 1024);
     expect(MAX_RESPOND_TO_USER_IMAGES).toBe(4);
     expect(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES).toBe(12 * 1024 * 1024);
+  });
+
+  it('centralizes chat image attachment feedback copy', () => {
+    expect(CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.limitReached).toBe('Image limit reached');
+    expect(formatChatImageAttachmentLimitMessage()).toBe('You can attach up to 4 images per message.');
+    expect(formatChatImageBudgetReachedMessage()).toBe('This message already reached the image budget (0.88MB).');
+    expect(formatChatImageMissingDataMessage(['one.png'])).toBe('one.png could not be attached. Please try again.');
+    expect(formatChatImageSelectionTooLargeMessage(['large.png'])).toBe('large.png exceed the 4MB limit.');
+    expect(formatChatImageFileTooLargeMessage('large.png')).toBe('large.png is larger than 4MB.');
+    expect(formatChatImageUnsupportedFormatMessage(['unknown.heic'])).toBe(
+      'unknown.heic could not be attached because the image type could not be determined.',
+    );
+    expect(formatChatImageBudgetExceededMessage(['budget.png'])).toBe(
+      'budget.png exceed the per-message image budget (0.88MB).',
+    );
+    expect(formatChatImageNotImageFileMessage('notes.txt')).toBe('notes.txt is not an image file.');
+    expect(formatChatImageSlotsRemainingMessage(2)).toBe('Only 2 image slot(s) remaining for this message.');
+    expect(formatChatImageTryFewerOrSmallerMessage()).toBe(
+      'Try fewer or smaller images. Total embedded image budget is 0.88MB.',
+    );
+    expect(formatChatImageAttachmentErrorMessage(new Error('No access'))).toBe('No access');
+    expect(formatChatImageAttachmentErrorMessage(null)).toBe('Failed to attach image.');
   });
 
   it('builds markdown image references with escaped alt text', () => {

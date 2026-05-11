@@ -23,11 +23,11 @@ test('lets mobile verify external agent setup through the shared settings client
 });
 
 test('keeps the mobile verify setup control compact and accessible', () => {
-  assert.match(screenSource, /<Text style=\{styles\.verifyButtonText\}>Verify Setup<\/Text>/);
-  assert.match(screenSource, /createButtonAccessibilityLabel\('Verify external agent setup'\)/);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.externalSetup\.verifyActionLabel/);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.externalSetup\.verifyAccessibilityLabel/);
   assert.match(screenSource, /disabled=\{!formData\.connectionCommand\.trim\(\) \|\| isVerifyingCommand \|\| isBuiltInAgent\}/);
-  assert.match(screenSource, /Verification passed/);
-  assert.match(screenSource, /Verification needs attention/);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.externalSetup\.verificationPassed/);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.externalSetup\.verificationNeedsAttention/);
   assert.match(screenSource, /minSize:\s*44/);
 });
 

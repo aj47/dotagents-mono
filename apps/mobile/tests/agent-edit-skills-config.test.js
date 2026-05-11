@@ -22,7 +22,7 @@ test('lets mobile edit per-agent skill capability config through the shared clie
 });
 
 test('keeps agent skill controls compact and accessible on mobile', () => {
-  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>Skills<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>\{APP_SHELL_AGENT_EDITOR_PRESENTATION\.capabilities\.skillsTitle\}<\/Text>/);
   assert.match(screenSource, /createButtonAccessibilityLabel\('Enable all agent skills'\)/);
   assert.match(screenSource, /createButtonAccessibilityLabel\('Disable all agent skills'\)/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`\$\{enabled \? 'Disable' : 'Enable'\} \$\{skill\.name\} for this agent`\)/);
@@ -74,7 +74,7 @@ test('lets mobile edit per-agent model overrides through the shared profile conf
 });
 
 test('keeps model override controls compact and accessible', () => {
-  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>Model<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>\{APP_SHELL_AGENT_EDITOR_PRESENTATION\.model\.sectionTitle\}<\/Text>/);
   assert.match(screenSource, /formData\.connectionType === 'internal'/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`Use \$\{provider\.label\} model for this agent`\)/);
   assert.match(screenSource, /accessibilityState=\{\{ selected, disabled: isBuiltInAgent \}\}/);

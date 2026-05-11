@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, Switch, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
 import { spacing, radius } from '../ui/theme';
 import type {
   ApiAgentProfileFull as AgentProfileFull,
@@ -85,6 +85,12 @@ import {
   type AgentProfileModelConfigUpdateLike,
   type AgentProfileSkillsConfigUpdateLike,
 } from '@dotagents/shared/agent-profile-config-updates';
+import {
+  APP_SHELL_AGENT_EDITOR_PRESENTATION,
+  APP_SHELL_SETTINGS_FEEDBACK_LABELS,
+  getAppShellEditorActionLabel,
+  getAppShellEditorTitle,
+} from '@dotagents/shared/app-shell';
 
 const RUNTIME_TOOLS = dotagentsRuntimeToolDefinitions;
 interface AgentFormData extends AgentConnectionFormFields {
@@ -114,7 +120,6 @@ const defaultFormData: AgentFormData = {
 };
 
 export default function AgentEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
   const agentId = route.params?.agentId as string | undefined;
@@ -194,7 +199,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         })
         .catch(err => {
           console.error('[AgentEdit] Failed to fetch profile:', err);
-          setError(err.message || 'Failed to load agent');
+          setError(err.message || APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.loadFailed);
         })
         .finally(() => setIsLoading(false));
     }
@@ -213,7 +218,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       })
       .catch((err) => {
         console.error('[AgentEdit] Failed to fetch skills:', err);
-        setError(err.message || 'Failed to load skills');
+        setError(err.message || APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.loadSkillsFailed);
       })
       .finally(() => setIsSkillsLoading(false));
   }, [settingsClient]);
@@ -232,7 +237,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       })
       .catch((err) => {
         console.error('[AgentEdit] Failed to fetch MCP servers:', err);
-        setError(err.message || 'Failed to load MCP servers');
+        setError(err.message || APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.loadMcpServersFailed);
       })
       .finally(() => setIsMcpServersLoading(false));
   }, [settingsClient]);
@@ -277,7 +282,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
   // Set navigation title
   useEffect(() => {
     navigation.setOptions({
-      title: isEditing ? 'Edit Agent' : 'Create Agent',
+      title: getAppShellEditorTitle('agent', isEditing),
     });
   }, [navigation, isEditing]);
 
@@ -288,12 +293,15 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const handleSave = useCallback(async () => {
     if (!settingsClient) return;
     if (!formData.displayName.trim()) {
-      Alert.alert('Error', 'Display name is required');
+      Alert.alert(
+        APP_SHELL_SETTINGS_FEEDBACK_LABELS.error,
+        APP_SHELL_AGENT_EDITOR_PRESENTATION.validation.displayNameRequired,
+      );
       return;
     }
     const connectionError = getAgentConnectionFormValidationError(formData);
     if (connectionError) {
-      Alert.alert('Error', connectionError);
+      Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, connectionError);
       return;
     }
 
@@ -345,7 +353,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       navigation.goBack();
     } catch (err: any) {
       console.error('[AgentEdit] Failed to save:', err);
-      setError(err.message || 'Failed to save agent');
+      setError(err.message || APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -372,7 +380,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
       const asset = result.assets[0];
       const base64 = asset.base64;
       if (!base64) {
-        Alert.alert('Photo unavailable', 'Could not read the selected photo.');
+        Alert.alert(
+          APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.unavailableTitle,
+          APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.missingDataError,
+        );
         return;
       }
 
@@ -382,7 +393,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         : inferredBytes;
       const fileSizeError = getAgentProfileAvatarFileSizeError(fileSizeBytes);
       if (fileSizeError) {
-        Alert.alert('Photo too large', fileSizeError);
+        Alert.alert(APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.tooLargeTitle, fileSizeError);
         return;
       }
 
@@ -393,7 +404,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
       }));
     } catch (err: any) {
       console.error('[AgentEdit] Failed to pick avatar:', err);
-      Alert.alert('Photo unavailable', err.message || 'Could not select a photo.');
+      Alert.alert(
+        APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.unavailableTitle,
+        err.message || APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.selectionFailed,
+      );
     }
   }, [isBuiltInAgent]);
 
@@ -426,7 +440,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       console.error('[AgentEdit] Failed to verify external agent command:', err);
       setCommandVerification({
         ok: false,
-        error: err.message || 'Failed to verify setup',
+        error: err.message || APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.verifySetupFailed,
       });
     } finally {
       setIsVerifyingCommand(false);
@@ -567,22 +581,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading agent...</Text>
+        <Text style={styles.loadingText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.loadingLabel}</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppShellEditorLayout title={getAppShellEditorTitle('agent', isEditing)}>
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
@@ -591,7 +596,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       {isBuiltInAgent && (
         <View style={styles.warningContainer}>
-          <Text style={styles.warningText}>Built-in agents have limited editing options</Text>
+          <Text style={styles.warningText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.builtInWarning}</Text>
         </View>
       )}
 
@@ -608,7 +613,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           )}
         </View>
         <View style={styles.avatarControls}>
-          <Text style={styles.avatarLabel}>Photo</Text>
+          <Text style={styles.avatarLabel}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.label}</Text>
           <View style={styles.avatarButtonRow}>
             <TouchableOpacity
               style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
@@ -616,9 +621,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
               disabled={isBuiltInAgent}
               accessibilityRole="button"
               accessibilityState={{ disabled: isBuiltInAgent }}
-              accessibilityLabel={createButtonAccessibilityLabel('Choose agent photo')}
+              accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.chooseAccessibilityLabel)}
             >
-              <Text style={styles.chipButtonText}>Choose Photo</Text>
+              <Text style={styles.chipButtonText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.uploadActionLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.chipButton, (!formData.avatarDataUrl || isBuiltInAgent) && styles.chipButtonDisabled]}
@@ -626,9 +631,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
               disabled={!formData.avatarDataUrl || isBuiltInAgent}
               accessibilityRole="button"
               accessibilityState={{ disabled: !formData.avatarDataUrl || isBuiltInAgent }}
-              accessibilityLabel={createButtonAccessibilityLabel('Remove agent photo')}
+              accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.removeAccessibilityLabel)}
             >
-              <Text style={styles.chipButtonText}>Remove</Text>
+              <Text style={styles.chipButtonText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.removeActionLabel}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -638,7 +643,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <View style={styles.capabilitySection}>
           <View style={styles.capabilityHeader}>
             <View style={styles.capabilityTitleBlock}>
-              <Text style={styles.sectionTitle}>Quick Setup</Text>
+              <Text style={styles.sectionTitle}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.quickSetup.title}</Text>
             </View>
           </View>
           <View style={styles.providerChipGrid}>
@@ -665,29 +670,29 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
       )}
 
-      <Text style={styles.label}>Display Name *</Text>
+      <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.displayName.label}</Text>
       <TextInput
         style={styles.input}
         value={formData.displayName}
         onChangeText={v => updateField('displayName', v)}
-        placeholder="My Agent"
+        placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.displayName.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
         editable={!isBuiltInAgent}
       />
 
-      <Text style={styles.label}>Description</Text>
+      <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.description.label}</Text>
       <TextInput
         style={styles.input}
         value={formData.description}
         onChangeText={v => updateField('description', v)}
-        placeholder="What this agent does..."
+        placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.description.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
         editable={!isBuiltInAgent}
       />
 
-      <Text style={styles.label}>Connection Type</Text>
-      <Text style={styles.sectionHelperText}>Choose how DotAgents should reach this agent. The setup fields below change based on this choice.</Text>
+      <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.connectionType.label}</Text>
+      <Text style={styles.sectionHelperText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.connectionType.helper}</Text>
       <View style={styles.connectionTypeOptions}>
         {AGENT_EDIT_CONNECTION_TYPE_OPTIONS.map(ct => (
           <TouchableOpacity
@@ -724,42 +729,42 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       {showCommandFields && (
         <>
-          <Text style={styles.label}>Command</Text>
+          <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.command.label}</Text>
           <TextInput
             style={styles.input}
             value={formData.connectionCommand}
             onChangeText={v => updateField('connectionCommand', v)}
-            placeholder="node"
+            placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.command.placeholder}
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
             editable={!isBuiltInAgent}
           />
-          <Text style={styles.label}>Arguments</Text>
+          <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.args.label}</Text>
           <TextInput
             style={styles.input}
             value={formData.connectionArgs}
             onChangeText={v => updateField('connectionArgs', v)}
-            placeholder="agent.js --port 3000"
+            placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.args.placeholder}
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
             editable={!isBuiltInAgent}
           />
-          <Text style={styles.label}>Working Directory</Text>
+          <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.cwd.label}</Text>
           <TextInput
             style={styles.input}
             value={formData.connectionCwd}
             onChangeText={v => updateField('connectionCwd', v)}
-            placeholder="/path/to/agent"
+            placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.cwd.placeholder}
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
             editable={!isBuiltInAgent}
           />
           {selectedPreset && (
             <View style={styles.presetHintList}>
-              <Text style={styles.skillDescription}>{selectedPreset.displayName} setup</Text>
-              {selectedPreset.installCommand ? <Text style={styles.presetHintText}>Install: {selectedPreset.installCommand}</Text> : null}
-              {selectedPreset.authHint ? <Text style={styles.presetHintText}>Auth: {selectedPreset.authHint}</Text> : null}
-              {selectedPreset.cwdHint ? <Text style={styles.presetHintText}>Working directory: {selectedPreset.cwdHint}</Text> : null}
+              <Text style={styles.skillDescription}>{selectedPreset.displayName} Setup</Text>
+              {selectedPreset.installCommand ? <Text style={styles.presetHintText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.installLabel}: {selectedPreset.installCommand}</Text> : null}
+              {selectedPreset.authHint ? <Text style={styles.presetHintText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.authLabel}: {selectedPreset.authHint}</Text> : null}
+              {selectedPreset.cwdHint ? <Text style={styles.presetHintText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.workingDirectoryLabel}: {selectedPreset.cwdHint}</Text> : null}
             </View>
           )}
           <View style={styles.verificationContainer}>
@@ -771,12 +776,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
               onPress={handleVerifyExternalAgentCommand}
               disabled={!formData.connectionCommand.trim() || isVerifyingCommand || isBuiltInAgent}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Verify external agent setup')}
+              accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verifyAccessibilityLabel)}
             >
               {isVerifyingCommand ? (
                 <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
               ) : (
-                <Text style={styles.verifyButtonText}>Verify Setup</Text>
+                <Text style={styles.verifyButtonText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verifyActionLabel}</Text>
               )}
             </TouchableOpacity>
             {commandVerification && (
@@ -785,13 +790,15 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 commandVerification.ok ? styles.verificationResultSuccess : styles.verificationResultWarning,
               ]}>
                 <Text style={styles.verificationTitle}>
-                  {commandVerification.ok ? 'Verification passed' : 'Verification needs attention'}
+                  {commandVerification.ok
+                    ? APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verificationPassed
+                    : APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verificationNeedsAttention}
                 </Text>
                 <Text style={styles.verificationText}>
                   {commandVerification.details || commandVerification.error}
                 </Text>
                 {commandVerification.resolvedCommand ? (
-                  <Text style={styles.verificationMetaText}>Resolved: {commandVerification.resolvedCommand}</Text>
+                  <Text style={styles.verificationMetaText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.resolvedCommandLabel}: {commandVerification.resolvedCommand}</Text>
                 ) : null}
                 {commandVerification.warnings?.map((warning, index) => (
                   <Text key={`${warning}-${index}`} style={styles.verificationMetaText}>{warning}</Text>
@@ -804,12 +811,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       {showRemoteBaseUrlField && (
         <>
-          <Text style={styles.label}>Base URL</Text>
+          <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.baseUrl.label}</Text>
           <TextInput
             style={styles.input}
             value={formData.connectionBaseUrl}
             onChangeText={v => updateField('connectionBaseUrl', v)}
-            placeholder="http://localhost:3000"
+            placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.baseUrl.placeholder}
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
             keyboardType="url"
@@ -835,12 +842,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
       )}
 
-      <Text style={styles.label}>System Prompt</Text>
+      <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.systemPrompt.label}</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         value={formData.systemPrompt}
         onChangeText={v => updateField('systemPrompt', v)}
-        placeholder="You are a helpful assistant..."
+        placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.systemPrompt.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
         numberOfLines={4}
@@ -848,12 +855,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
         editable={!isBuiltInAgent}
       />
 
-      <Text style={styles.label}>Guidelines</Text>
+      <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.guidelines.label}</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         value={formData.guidelines}
         onChangeText={v => updateField('guidelines', v)}
-        placeholder="Additional instructions for the agent..."
+        placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.guidelines.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
         numberOfLines={3}
@@ -864,8 +871,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <View style={styles.capabilitySection}>
           <View style={styles.capabilityHeader}>
             <View style={styles.capabilityTitleBlock}>
-              <Text style={styles.sectionTitle}>Model</Text>
-              <Text style={styles.sectionHelperText}>{selectedModelProvider ?? 'Global default'}</Text>
+              <Text style={styles.sectionTitle}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.model.sectionTitle}</Text>
+              <Text style={styles.sectionHelperText}>{selectedModelProvider ?? APP_SHELL_AGENT_EDITOR_PRESENTATION.model.globalDefaultHelper}</Text>
             </View>
           </View>
           <View style={styles.providerChipGrid}>
@@ -893,7 +900,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           </View>
           {selectedModelProvider && (
             <>
-              <Text style={styles.label}>Agent Model</Text>
+              <Text style={styles.label}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.model.agentModelLabel}</Text>
               <TextInput
                 style={styles.input}
                 value={getAgentProfileAgentModelValue(formData.modelConfig, selectedModelProvider)}
@@ -911,7 +918,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       <View style={styles.capabilitySection}>
         <View style={styles.capabilityHeader}>
           <View style={styles.capabilityTitleBlock}>
-            <Text style={styles.sectionTitle}>Skills</Text>
+            <Text style={styles.sectionTitle}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.skillsTitle}</Text>
             <Text style={styles.sectionHelperText}>{enabledSkillCount} of {displaySkills.length} enabled</Text>
           </View>
           <View style={styles.skillBulkActions}>
@@ -922,7 +929,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Enable all agent skills')}
             >
-              <Text style={styles.chipButtonText}>All</Text>
+              <Text style={styles.chipButtonText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.allLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
@@ -931,17 +938,17 @@ export default function AgentEditScreen({ navigation, route }: any) {
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Disable all agent skills')}
             >
-              <Text style={styles.chipButtonText}>None</Text>
+              <Text style={styles.chipButtonText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.noneLabel}</Text>
             </TouchableOpacity>
           </View>
         </View>
         {isSkillsLoading ? (
           <View style={styles.inlineLoadingRow}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.sectionHelperText}>Loading skills...</Text>
+            <Text style={styles.sectionHelperText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.loadingSkillsLabel}</Text>
           </View>
         ) : displaySkills.length === 0 ? (
-          <Text style={styles.sectionHelperText}>No skills available.</Text>
+          <Text style={styles.sectionHelperText}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.noSkillsLabel}</Text>
         ) : displaySkills.map(skill => {
           const enabled = isAgentProfileSkillEnabled(formData.skillsConfig, skill.id);
           return (
@@ -1208,11 +1215,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
         {isSaving ? (
           <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
         ) : (
-          <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Create Agent'}</Text>
+          <Text style={styles.saveButtonText}>{getAppShellEditorActionLabel('agent', isEditing)}</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

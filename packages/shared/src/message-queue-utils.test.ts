@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MESSAGE_QUEUE_PANEL_PRESENTATION,
   buildQueuedMessage,
   buildOperatorMessageQueuesResponse,
   clearOperatorMessageQueueSummary,
@@ -8,11 +9,17 @@ import {
   enqueueQueuedMessage,
   canEditQueuedMessage,
   canMutateQueuedMessage,
+  formatMessageQueueCompactLabel,
+  formatMessageQueuePanelTitle,
+  formatQueuedMessageError,
   formatQueuedMessageSummary,
   getAllMessageQueues,
+  getMessageQueueListToggleLabel,
   getOperatorMessageQueueTotalMessageCount,
+  getQueuedMessageItemPresentation,
   getQueuedMessages,
   getQueuedMessageStatusLabel,
+  getQueuedMessageExpansionLabel,
   hasProcessingQueuedMessage,
   hasQueuedMessages,
   isQueuedMessageCancelled,
@@ -180,6 +187,36 @@ describe('message-queue-utils', () => {
     expect(getQueuedMessageStatusLabel(failedMessage)).toBe('Failed');
     expect(getQueuedMessageStatusLabel(cancelledMessage)).toBe('Cancelled');
     expect(formatQueuedMessageSummary(failedMessage)).toBe('Failed: msg-2');
+  });
+
+  it('formats queue panel presentation copy for desktop and mobile surfaces', () => {
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.longMessagePreviewCharacterLimit).toBe(100);
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel).toBe('Retry queued message');
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel).toBe('Send Next');
+    expect(formatMessageQueuePanelTitle(2)).toBe('Queued Messages (2)');
+    expect(formatMessageQueuePanelTitle(1, true)).toBe('Paused Messages (1)');
+    expect(formatMessageQueueCompactLabel(1)).toBe('1 queued message');
+    expect(formatMessageQueueCompactLabel(2, true)).toBe('2 queued messages (paused)');
+    expect(formatQueuedMessageError('timeout')).toBe('Error: timeout');
+    expect(getQueuedMessageExpansionLabel(false)).toBe('More');
+    expect(getQueuedMessageExpansionLabel(true)).toBe('Less');
+    expect(getMessageQueueListToggleLabel(true)).toBe('Expand queue');
+    expect(getMessageQueueListToggleLabel(false)).toBe('Collapse queue');
+
+    expect(getQueuedMessageItemPresentation(makeMessage('msg-1', {
+      status: 'failed',
+      text: 'x'.repeat(101),
+      errorMessage: 'timeout',
+    }), false)).toMatchObject({
+      isLongMessage: true,
+      isFailed: true,
+      isProcessing: false,
+      canMutateMessage: true,
+      canEditMessage: true,
+      statusLabel: 'Failed',
+      expansionLabel: 'More',
+      errorText: 'Error: timeout',
+    });
   });
 
   it('updates failed message text by resetting it to pending', () => {

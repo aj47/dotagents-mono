@@ -54,6 +54,7 @@ export {
 } from './sidebar-sessions';
 export * from './conversation-progress';
 export * from './conversation-list-search';
+export * from './conversation-list-presentation';
 export * from './agent-progress';
 export * from './agent-user-response-store';
 export * from './agent-avatar-colors';
@@ -75,6 +76,7 @@ export * from './resizable-persistence';
 export * from './sidebar-persistence';
 export * from './selected-agent-persistence';
 export * from './theme-preference';
+export * from './app-shell';
 export * from './split-pane-selection';
 export * from './tool-activity-grouping';
 export * from './tool-execution-display';

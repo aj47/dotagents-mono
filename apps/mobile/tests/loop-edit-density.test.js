@@ -16,7 +16,7 @@ test('keeps mobile loop edit errors text-first without decorative warning emoji'
 test('preserves the inline settings helper when loop editing is unavailable', () => {
   assert.match(
     screenSource,
-    /Configure Base URL and API key in Settings to save changes\./
+    /APP_SHELL_LOOP_EDITOR_PRESENTATION\.unavailableSaveHelper/
   );
 });
 

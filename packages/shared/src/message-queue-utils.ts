@@ -118,6 +118,96 @@ export function formatQueuedMessageSummary(message: Pick<QueuedMessage, 'status'
   return `${getQueuedMessageStatusLabel(message)}: ${message.text}`;
 }
 
+export const MESSAGE_QUEUE_PANEL_PRESENTATION = {
+  longMessagePreviewCharacterLimit: 100,
+  errorPrefix: 'Error',
+  pausedNotice: 'Paused. Click Resume to continue.',
+  actions: {
+    cancelLabel: 'Cancel',
+    saveLabel: 'Save',
+    retryLabel: 'Retry',
+    retryAccessibilityLabel: 'Retry queued message',
+    retryPendingAccessibilityLabel: 'Retrying queued message',
+    editLabel: 'Edit',
+    editAccessibilityLabel: 'Edit queued message',
+    removeLabel: 'Remove',
+    removeAccessibilityLabel: 'Remove queued message',
+    removeFromQueueTitle: 'Remove from queue',
+    clearAllLabel: 'Clear All',
+    clearQueueTitle: 'Clear queue',
+    clearWhileProcessingTitle: 'Cannot clear while processing',
+    pauseLabel: 'Pause',
+    pauseTitle: 'Pause queue',
+    resumeLabel: 'Resume',
+    resumeTitle: 'Resume queue execution',
+    sendNextLabel: 'Send Next',
+    sendNextAccessibilityLabel: 'Send next queued message',
+  },
+  expansion: {
+    moreLabel: 'More',
+    lessLabel: 'Less',
+    expandQueueLabel: 'Expand queue',
+    collapseQueueLabel: 'Collapse queue',
+  },
+} as const;
+
+export function formatMessageQueuePanelTitle(messageCount: number, isPaused = false): string {
+  const stateLabel = isPaused ? 'Paused' : 'Queued';
+  return `${stateLabel} Messages (${messageCount})`;
+}
+
+export function formatMessageQueueCompactLabel(messageCount: number, isPaused = false): string {
+  const messageLabel = messageCount === 1 ? 'message' : 'messages';
+  return `${messageCount} queued ${messageLabel}${isPaused ? ' (paused)' : ''}`;
+}
+
+export function formatQueuedMessageError(errorMessage: string): string {
+  return `${MESSAGE_QUEUE_PANEL_PRESENTATION.errorPrefix}: ${errorMessage}`;
+}
+
+export function getQueuedMessageExpansionLabel(isExpanded: boolean): string {
+  return isExpanded
+    ? MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.lessLabel
+    : MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.moreLabel;
+}
+
+export function getMessageQueueListToggleLabel(isListCollapsed: boolean): string {
+  return isListCollapsed
+    ? MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.expandQueueLabel
+    : MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.collapseQueueLabel;
+}
+
+export type QueuedMessageItemPresentation = {
+  isLongMessage: boolean;
+  isFailed: boolean;
+  isProcessing: boolean;
+  canMutateMessage: boolean;
+  canEditMessage: boolean;
+  statusLabel: string;
+  expansionLabel: string;
+  errorText?: string;
+}
+
+export function getQueuedMessageItemPresentation(
+  message: Pick<QueuedMessage, 'status' | 'addedToHistory' | 'text' | 'errorMessage'>,
+  isExpanded: boolean,
+): QueuedMessageItemPresentation {
+  const isFailed = isQueuedMessageFailed(message);
+  const isProcessing = isQueuedMessageProcessing(message);
+  return {
+    isLongMessage: message.text.length > MESSAGE_QUEUE_PANEL_PRESENTATION.longMessagePreviewCharacterLimit,
+    isFailed,
+    isProcessing,
+    canMutateMessage: canMutateQueuedMessage(message),
+    canEditMessage: canEditQueuedMessage(message),
+    statusLabel: getQueuedMessageStatusLabel(message),
+    expansionLabel: getQueuedMessageExpansionLabel(isExpanded),
+    errorText: isFailed && message.errorMessage
+      ? formatQueuedMessageError(message.errorMessage)
+      : undefined,
+  };
+}
+
 function setConversationQueue(
   queues: MessageQueueMap,
   conversationId: string,

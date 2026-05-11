@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
 import { spacing, radius } from '../ui/theme';
 import type {
   Skill,
@@ -16,9 +16,13 @@ import {
   formatSkillEditFormData,
   type SkillEditFormData,
 } from '@dotagents/shared/skills-api';
+import {
+  APP_SHELL_SKILL_EDITOR_PRESENTATION,
+  getAppShellEditorActionLabel,
+  getAppShellEditorTitle,
+} from '@dotagents/shared/app-shell';
 
 export default function SkillEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
@@ -44,13 +48,13 @@ export default function SkillEditScreen({ navigation, route }: any) {
   }, [config.baseUrl, config.apiKey]);
 
   useEffect(() => {
-    navigation.setOptions({ title: isEditing ? 'Edit Skill' : 'Create Skill' });
+    navigation.setOptions({ title: getAppShellEditorTitle('skill', isEditing) });
   }, [isEditing, navigation]);
 
   useEffect(() => {
     if (isEditing && !skillFromRoute && !settingsClient) {
       setIsLoading(false);
-      setError('Configure Base URL and API key to load and save skills');
+      setError(APP_SHELL_SKILL_EDITOR_PRESENTATION.unavailableLoadSaveError);
     }
   }, [isEditing, skillFromRoute, settingsClient]);
 
@@ -70,7 +74,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setError(err.message || 'Failed to load skill');
+          setError(err.message || APP_SHELL_SKILL_EDITOR_PRESENTATION.errors.loadFailed);
         }
       })
       .finally(() => {
@@ -86,7 +90,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
-      setError('Configure Base URL and API key in Settings before saving this skill');
+      setError(APP_SHELL_SKILL_EDITOR_PRESENTATION.unavailableSaveError);
       return;
     }
 
@@ -95,7 +99,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
     const instructions = formData.instructions.trim();
 
     if (!name || !instructions) {
-      setError('Name and instructions are required');
+      setError(APP_SHELL_SKILL_EDITOR_PRESENTATION.validation.nameAndInstructionsRequired);
       return;
     }
 
@@ -121,7 +125,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
 
       navigation.goBack();
     } catch (err: any) {
-      setError(err.message || 'Failed to save skill');
+      setError(err.message || APP_SHELL_SKILL_EDITOR_PRESENTATION.errors.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -133,88 +137,78 @@ export default function SkillEditScreen({ navigation, route }: any) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading skill...</Text>
+        <Text style={styles.loadingText}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.loadingLabel}</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppShellEditorLayout title={getAppShellEditorTitle('skill', isEditing)}>
         {error && <Text style={styles.errorText}>{error}</Text>}
         {!settingsClient && (
-          <Text style={styles.helperText}>Configure Base URL and API key in Settings to save skill changes.</Text>
+          <Text style={styles.helperText}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.unavailableSaveHelper}</Text>
         )}
 
         {isEditing && effectiveSkillId && (
           <>
-            <Text style={styles.label}>Skill ID</Text>
+            <Text style={styles.label}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.id.label}</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
               value={effectiveSkillId}
               editable={false}
               autoCapitalize="none"
             />
-            <Text style={styles.sectionHelperText}>Skill IDs are fixed after creation.</Text>
+            <Text style={styles.sectionHelperText}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.id.helper}</Text>
           </>
         )}
 
-        <Text style={styles.label}>Name *</Text>
+        <Text style={styles.label}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.requiredLabel}</Text>
         <TextInput
           style={styles.input}
           value={formData.name}
           onChangeText={value => updateField('name', value)}
-          placeholder="Code review expert"
+          placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
         />
 
-        <Text style={styles.label}>Description</Text>
+        <Text style={styles.label}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.description.label}</Text>
         <TextInput
           style={styles.input}
           value={formData.description}
           onChangeText={value => updateField('description', value)}
-          placeholder="Brief description of what this skill does"
+          placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.description.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           multiline
         />
 
-        <Text style={styles.label}>Instructions *</Text>
+        <Text style={styles.label}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.requiredLabel}</Text>
         <TextInput
           style={[styles.input, styles.instructionsInput]}
           value={formData.instructions}
           onChangeText={value => updateField('instructions', value)}
-          placeholder="Enter the instructions for this skill in markdown format..."
+          placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           multiline
           numberOfLines={14}
           textAlignVertical="top"
           autoCapitalize="sentences"
         />
-        <Text style={styles.sectionHelperText}>Skill files are saved by the desktop server under .agents/skills.</Text>
+        <Text style={styles.sectionHelperText}>{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.helper}</Text>
 
         <TouchableOpacity
           style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isSaveDisabled}
           accessibilityRole="button"
-          accessibilityLabel={createButtonAccessibilityLabel(isEditing ? 'Save skill' : 'Create skill')}
+          accessibilityLabel={createButtonAccessibilityLabel(getAppShellEditorActionLabel('skill', isEditing))}
         >
           {isSaving ? (
             <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
           ) : (
-            <Text style={styles.saveButtonText}>{isEditing ? 'Save Skill' : 'Create Skill'}</Text>
+            <Text style={styles.saveButtonText}>{getAppShellEditorActionLabel('skill', isEditing)}</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

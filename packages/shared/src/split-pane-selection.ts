@@ -1,3 +1,5 @@
+import { APP_SHELL_BREAKPOINTS } from "./app-shell"
+
 export type SplitOrientationPreference = "auto" | "horizontal" | "vertical"
 export type SplitPane = "primary" | "secondary"
 
@@ -69,5 +71,8 @@ export function resolveSplitOrientation(
   height: number,
 ): "horizontal" | "vertical" {
   if (preference !== "auto") return preference
-  return width >= 960 || width > height ? "vertical" : "horizontal"
+  return width >= APP_SHELL_BREAKPOINTS.splitPaneSideBySideMinWidth ||
+    width > height
+    ? "vertical"
+    : "horizontal"
 }

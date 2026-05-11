@@ -28,6 +28,181 @@ export type PromptLibraryTaskLike = {
 }
 
 export type PromptLibraryCommandItemType = "prompt" | "skill" | "loop"
+export type PromptLibraryShortcutSource =
+  | PromptLibraryCommandItemType
+  | "saved-prompt"
+  | "command"
+  | "task"
+  | "action"
+
+export const PROMPT_LIBRARY_PRESENTATION = {
+  triggerTitle: "Predefined prompts",
+  triggerAccessibilityLabel: "Open predefined prompts",
+  search: {
+    placeholder: "Search prompts, skills, tasks...",
+    accessibilityLabel: "Search prompts, skills, and tasks",
+  },
+  sections: {
+    prompts: "Predefined Prompts",
+    skills: "Skills",
+    tasks: "Tasks",
+  },
+  empty: {
+    noSavedPrompts: "No saved prompts yet",
+    noMatchingPrompts: "No matching prompts",
+    noSkills: "No skills available",
+    noMatchingSkills: "No matching skills",
+    noTasks: "No tasks available",
+    noMatchingTasks: "No matching tasks",
+    mobileLibrary:
+      "No prompts, skills, or tasks available from your connected desktop app.",
+  },
+  actions: {
+    addNewPrompt: "Add new prompt",
+    addPrompt: "Add Prompt",
+    cancel: "Cancel",
+    delete: "Delete",
+    edit: "Edit",
+    saveChanges: "Save Changes",
+    saving: "Saving...",
+  },
+  editor: {
+    addTitle: "Add New Prompt",
+    editTitle: "Edit Prompt",
+    description: "Save a frequently used prompt for quick access.",
+    nameLabel: "Name",
+    namePlaceholder: "e.g., Code Review Request",
+    contentLabel: "Prompt Content",
+    contentPlaceholder: "Enter your prompt text...",
+  },
+  mobile: {
+    addPromptTitle: "+ Add Prompt",
+    addPromptDescription:
+      "Create a predefined prompt and save it back to desktop.",
+    addPromptHint: "Create a predefined prompt and save it to desktop.",
+    insertItemHint: "Inserts this desktop library item into the composer.",
+    taskHint: "Runs this desktop task now.",
+    taskDescriptionFallback: "Run this desktop task now.",
+  },
+  feedback: {
+    successTitle: "Success",
+    errorTitle: "Error",
+    deletePromptTitle: "Delete Prompt",
+    taskStartedTitle: "Task started",
+    promptSaved: "Prompt saved to your desktop prompt library.",
+    promptUpdated: "Prompt updated in your desktop prompt library.",
+    promptSaveFailed: "Failed to save prompt.",
+    promptDeleteFailed: "Failed to delete prompt.",
+    taskRunFailed: "Failed to run task.",
+    taskTriggerFailed: "Failed to trigger task",
+  },
+  sourceLabels: {
+    action: "action",
+    command: "command",
+    loop: "task",
+    prompt: "prompt",
+    "saved-prompt": "prompt",
+    skill: "skill",
+    task: "task",
+  },
+} as const
+
+export function getPromptLibraryEditorTitle(isEditing: boolean): string {
+  return isEditing
+    ? PROMPT_LIBRARY_PRESENTATION.editor.editTitle
+    : PROMPT_LIBRARY_PRESENTATION.editor.addTitle
+}
+
+export function getPromptLibraryEditorSaveActionLabel(
+  isEditing: boolean,
+  isSaving = false,
+): string {
+  if (isSaving) return PROMPT_LIBRARY_PRESENTATION.actions.saving
+  return isEditing
+    ? PROMPT_LIBRARY_PRESENTATION.actions.saveChanges
+    : PROMPT_LIBRARY_PRESENTATION.actions.addPrompt
+}
+
+export function getPromptLibrarySaveSuccessMessage(isEditing: boolean): string {
+  return isEditing
+    ? PROMPT_LIBRARY_PRESENTATION.feedback.promptUpdated
+    : PROMPT_LIBRARY_PRESENTATION.feedback.promptSaved
+}
+
+export function getPromptLibraryEmptyPromptLabel(hasPrompts: boolean): string {
+  return hasPrompts
+    ? PROMPT_LIBRARY_PRESENTATION.empty.noMatchingPrompts
+    : PROMPT_LIBRARY_PRESENTATION.empty.noSavedPrompts
+}
+
+export function getPromptLibraryEmptySkillLabel(hasSkills: boolean): string {
+  return hasSkills
+    ? PROMPT_LIBRARY_PRESENTATION.empty.noMatchingSkills
+    : PROMPT_LIBRARY_PRESENTATION.empty.noSkills
+}
+
+export function getPromptLibraryEmptyTaskLabel(hasTasks: boolean): string {
+  return hasTasks
+    ? PROMPT_LIBRARY_PRESENTATION.empty.noMatchingTasks
+    : PROMPT_LIBRARY_PRESENTATION.empty.noTasks
+}
+
+export function getPromptLibraryEditPromptAccessibilityLabel(
+  promptName: string,
+): string {
+  return `Edit predefined prompt ${promptName}`
+}
+
+export function getPromptLibraryDeletePromptAccessibilityLabel(
+  promptName: string,
+): string {
+  return `Delete predefined prompt ${promptName}`
+}
+
+export function getPromptLibraryShortcutAccessibilityLabel(
+  source: PromptLibraryShortcutSource,
+  title: string,
+  action?: "add-prompt",
+): string {
+  if (action === "add-prompt") return PROMPT_LIBRARY_PRESENTATION.actions.addNewPrompt
+  if (source === "task" || source === "loop") return `Run task ${title}`
+  return `Insert ${PROMPT_LIBRARY_PRESENTATION.sourceLabels[source]} ${title}`
+}
+
+export function getPromptLibraryShortcutAccessibilityHint(
+  source: PromptLibraryShortcutSource,
+  action?: "add-prompt",
+): string {
+  if (action === "add-prompt") return PROMPT_LIBRARY_PRESENTATION.mobile.addPromptHint
+  if (source === "task" || source === "loop") return PROMPT_LIBRARY_PRESENTATION.mobile.taskHint
+  return PROMPT_LIBRARY_PRESENTATION.mobile.insertItemHint
+}
+
+export function formatPromptLibraryDeletePromptWebConfirmMessage(
+  promptName: string,
+): string {
+  return `Delete prompt "${promptName}"?`
+}
+
+export function formatPromptLibraryDeletePromptConfirmMessage(
+  promptName: string,
+): string {
+  return `Delete "${promptName}" from your desktop prompt library?`
+}
+
+export function formatPromptLibraryTaskUnavailableMessage(
+  taskName: string,
+): string {
+  return `Could not trigger "${taskName}" right now`
+}
+
+export function formatPromptLibraryTaskRunningToast(taskName: string): string {
+  return `Running "${taskName}"...`
+}
+
+export function formatPromptLibraryTaskStartedMessage(taskName: string): string {
+  return `Running "${taskName}" on desktop.`
+}
 
 export interface PromptLibraryCommandItem {
   id: string

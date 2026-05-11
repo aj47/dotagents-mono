@@ -30,7 +30,7 @@ const profileMutationsSource = fs.readFileSync(
 
 test('mobile agent editor can pick and persist avatar data URLs', () => {
   assert.match(editScreenSource, /import \* as ImagePicker from 'expo-image-picker'/);
-  assert.match(editScreenSource, /Image \} from 'react-native'/);
+  assert.match(editScreenSource, /import \{[^;]*\bImage\b[^;]*\} from 'react-native'/);
   assert.match(editScreenSource, /avatarDataUrl: string \| null/);
   assert.match(editScreenSource, /avatarDataUrl: profile\.avatarDataUrl \?\? null/);
   assert.match(editScreenSource, /avatarDataUrl: formData\.avatarDataUrl \?\? null/);
@@ -47,15 +47,17 @@ test('mobile agent editor can pick and persist avatar data URLs', () => {
 
 test('mobile agent avatar controls are compact and accessible', () => {
   assert.match(editScreenSource, /<Image\s+source=\{\{ uri: formData\.avatarDataUrl \}\}/);
-  assert.match(editScreenSource, /createButtonAccessibilityLabel\('Choose agent photo'\)/);
-  assert.match(editScreenSource, /createButtonAccessibilityLabel\('Remove agent photo'\)/);
+  assert.match(editScreenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.avatar\.chooseAccessibilityLabel/);
+  assert.match(editScreenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.avatar\.removeAccessibilityLabel/);
+  assert.match(editScreenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.avatar\.uploadActionLabel/);
+  assert.match(editScreenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.avatar\.removeActionLabel/);
   assert.doesNotMatch(editScreenSource, /MAX_AGENT_AVATAR_FILE_SIZE_BYTES = 2 \* 1024 \* 1024/);
   assert.match(profileMutationsSource, /MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES = 2 \* 1024 \* 1024/);
   assert.match(editScreenSource, /disabled=\{!formData\.avatarDataUrl \|\| isBuiltInAgent\}/);
 });
 
 test('mobile agent list renders shared avatar summaries', () => {
-  assert.match(settingsScreenSource, /Image \} from 'react-native'/);
+  assert.match(settingsScreenSource, /import \{[^;]*\bImage\b[^;]*\} from 'react-native'/);
   assert.match(settingsScreenSource, /profile\.avatarDataUrl/);
   assert.match(settingsScreenSource, /source=\{\{ uri: profile\.avatarDataUrl \}\}/);
   assert.match(settingsScreenSource, /agentListAvatar/);

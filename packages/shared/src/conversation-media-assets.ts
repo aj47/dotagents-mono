@@ -81,6 +81,93 @@ export const MAX_CHAT_IMAGE_ATTACHMENTS = 4;
 export const MAX_CHAT_IMAGE_FILE_BYTES = 4 * 1024 * 1024;
 export const MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES = 900 * 1024;
 
+export const CHAT_IMAGE_ATTACHMENT_PRESENTATION = {
+  titles: {
+    limitReached: 'Image limit reached',
+    budgetReached: 'Image budget reached',
+    skipped: 'Some images were skipped',
+    tooLarge: 'Image too large',
+    unsupportedFormat: 'Unsupported image format',
+    pickerError: 'Image picker error',
+  },
+  errors: {
+    attachFailed: 'Failed to attach image.',
+    pickerFailed: 'Unable to select images right now.',
+  },
+} as const;
+
+function formatChatImageNameList(names: readonly string[]): string {
+  return names.join(', ');
+}
+
+function formatChatImageMegabyteLimit(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))}MB`;
+}
+
+export function formatChatImageAttachmentLimitMessage(
+  maxImages = MAX_CHAT_IMAGE_ATTACHMENTS,
+): string {
+  return `You can attach up to ${maxImages} images per message.`;
+}
+
+export function formatChatImageBudgetReachedMessage(
+  maxBytes = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+): string {
+  return `This message already reached the image budget (${formatMediaBytesMb(maxBytes)}).`;
+}
+
+export function formatChatImageMissingDataMessage(names: readonly string[]): string {
+  return `${formatChatImageNameList(names)} could not be attached. Please try again.`;
+}
+
+export function formatChatImageSelectionTooLargeMessage(
+  names: readonly string[],
+  maxBytes = MAX_CHAT_IMAGE_FILE_BYTES,
+): string {
+  return `${formatChatImageNameList(names)} exceed the ${formatChatImageMegabyteLimit(maxBytes)} limit.`;
+}
+
+export function formatChatImageFileTooLargeMessage(
+  fileName: string,
+  maxBytes = MAX_CHAT_IMAGE_FILE_BYTES,
+): string {
+  return `${fileName} is larger than ${formatChatImageMegabyteLimit(maxBytes)}.`;
+}
+
+export function formatChatImageUnsupportedFormatMessage(names: readonly string[]): string {
+  return `${formatChatImageNameList(names)} could not be attached because the image type could not be determined.`;
+}
+
+export function formatChatImageBudgetExceededMessage(
+  names: readonly string[],
+  maxBytes = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+): string {
+  return `${formatChatImageNameList(names)} exceed the per-message image budget (${formatMediaBytesMb(maxBytes)}).`;
+}
+
+export function formatChatImageNotImageFileMessage(fileName: string): string {
+  return `${fileName} is not an image file.`;
+}
+
+export function formatChatImageSlotsRemainingMessage(slotsRemaining: number): string {
+  return `Only ${slotsRemaining} image slot(s) remaining for this message.`;
+}
+
+export function formatChatImageTryFewerOrSmallerMessage(
+  maxBytes = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+): string {
+  return `Try fewer or smaller images. Total embedded image budget is ${formatMediaBytesMb(maxBytes)}.`;
+}
+
+export function formatChatImageAttachmentErrorMessage(
+  error: unknown,
+  fallback: string = CHAT_IMAGE_ATTACHMENT_PRESENTATION.errors.attachFailed,
+): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  return fallback;
+}
+
 export interface ConversationVideoAssetRef {
   conversationId: string;
   fileName: string;

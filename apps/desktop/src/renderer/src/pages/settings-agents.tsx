@@ -78,6 +78,17 @@ import { getAgentAvatarColors } from "@dotagents/shared/agent-avatar-colors"
 import {
   sortAgentProfilesWithDefaultFirst as sortAgentsWithDefaultFirst,
 } from "@dotagents/shared/agent-selector-options"
+import {
+  APP_SHELL_AGENT_EDITOR_PRESENTATION,
+  getAppShellAgentActionLabel,
+  getAppShellAgentDeleteConfirmMessage,
+  getAppShellAgentListBadges,
+  getAppShellAgentListConnectionType,
+  getAppShellAgentListDescription,
+  APP_SHELL_AGENT_LIST_PRESENTATION,
+  getAppShellBundleActionLabel,
+  getAppShellEditorTitle,
+} from "@dotagents/shared/app-shell"
 import { toggleSetValue } from "@dotagents/shared/collection-state"
 import {
   desktopAgentProfilesClient,
@@ -141,7 +152,7 @@ function getAgentCardSummaryItems(
   availableSkillIds: readonly string[],
   runtimeToolNames: readonly string[],
 ): string[] {
-  const items: string[] = [agent.connection.type]
+  const items: string[] = [getAppShellAgentListConnectionType(agent)]
 
   const agentProviderId = agent.modelConfig?.agentProviderId || agent.modelConfig?.mcpToolsProviderId
   if (agentProviderId) {
@@ -334,8 +345,8 @@ export function SettingsAgents() {
     refreshAgentProfileQueries()
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this agent?")) return
+  const handleDelete = async (id: string, name?: string) => {
+    if (!confirm(getAppShellAgentDeleteConfirmMessage(name))) return
     await desktopAgentProfilesClient.deleteAgentProfile(id); loadAgents()
     refreshAgentProfileQueries()
   }
@@ -532,18 +543,18 @@ export function SettingsAgents() {
       {!editing && (
         <div className="mb-3 flex flex-wrap items-center justify-end gap-1.5">
           <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => handleImportDialogOpenChange(true)}>
-            <Upload className="h-4 w-4" />Import Bundle
+            <Upload className="h-4 w-4" />{getAppShellBundleActionLabel("importBundle")}
           </Button>
           <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => setIsExportDialogOpen(true)}>
-            <Download className="h-4 w-4" />Export Bundle
+            <Download className="h-4 w-4" />{getAppShellBundleActionLabel("exportBundle")}
           </Button>
           <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => setIsPublishDialogOpen(true)}>
-            <Globe className="h-4 w-4" />Export for Hub
+            <Globe className="h-4 w-4" />{getAppShellBundleActionLabel("exportForHub")}
           </Button>
           <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={async () => { await desktopAgentProfilesClient.reloadAgentProfiles(); loadAgents(); refreshAgentProfileQueries() }}>
-            <RefreshCw className="h-4 w-4" />Rescan Files
+            <RefreshCw className="h-4 w-4" />{getAppShellAgentActionLabel("rescanFiles")}
           </Button>
-          <Button size="sm" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
+          <Button size="sm" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={handleCreate}><Plus className="h-4 w-4" />{getAppShellAgentActionLabel("addAgent")}</Button>
         </div>
       )}
       {!editing && (
@@ -557,7 +568,7 @@ export function SettingsAgents() {
         onOpenChange={handleImportDialogOpenChange}
         onImportComplete={handleImportComplete}
         initialFilePath={prefilledImportFilePath || undefined}
-        title={prefilledImportFilePath ? "Install Hub Bundle" : undefined}
+        title={prefilledImportFilePath ? getAppShellBundleActionLabel("installHubBundle") : undefined}
         description={prefilledImportFilePath
           ? "Preview and import the downloaded Hub .dotagents bundle using the existing conflict-aware flow."
           : undefined}
@@ -583,7 +594,7 @@ export function SettingsAgents() {
             skillIds,
             runtimeToolNames,
           )
-          const customSystemPromptActive = hasCustomSystemPrompt(agent.systemPrompt)
+          const badges = getAppShellAgentListBadges(agent)
 
           return (
             <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
@@ -599,18 +610,33 @@ export function SettingsAgents() {
                     {agent.displayName}
                   </CardTitle>
                   <CardDescription className="line-clamp-2 mt-1 text-[11px] leading-tight min-h-[1.75rem]">
-                    {agent.description || agent.guidelines?.slice(0, 100) || "No description provided."}
+                    {getAppShellAgentListDescription(agent)}
                   </CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
                 <div className="space-y-1.5 mb-2">
-                  {(agent.isBuiltIn || agent.isDefault || !agent.enabled || customSystemPromptActive) && (
+                  {badges.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
-                      {agent.isBuiltIn && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
-                      {agent.isDefault && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
-                      {!agent.enabled && <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
-                      {customSystemPromptActive && <Badge variant="outline" className="h-3.5 border-amber-500/50 bg-amber-500/10 px-1 py-0 text-[10px] font-medium text-amber-700 shadow-sm dark:text-amber-300">Custom prompt</Badge>}
+                      {badges.map((badge) => {
+                        const isDisabledBadge = badge === APP_SHELL_AGENT_LIST_PRESENTATION.badges.disabled
+                        const isCustomPromptBadge = badge === APP_SHELL_AGENT_LIST_PRESENTATION.badges.customPrompt
+                        return (
+                          <Badge
+                            key={badge}
+                            variant={isDisabledBadge || isCustomPromptBadge ? "outline" : "secondary"}
+                            className={`text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium ${
+                              isDisabledBadge
+                                ? "bg-background/50"
+                                : isCustomPromptBadge
+                                  ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                  : ""
+                            }`}
+                          >
+                            {badge}
+                          </Badge>
+                        )
+                      })}
                     </div>
                   )}
                   <p className="text-[11px] leading-tight text-muted-foreground">
@@ -624,8 +650,8 @@ export function SettingsAgents() {
                   {!agent.isBuiltIn && !agent.isDefault && (
                     <>
                       <div className="w-[1px] h-3 bg-border"></div>
-                      <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 px-0" onClick={() => handleDelete(agent.id)}>
-                        <Trash2 className="h-3 w-3 mr-1" /> Delete
+                      <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 px-0" onClick={() => handleDelete(agent.id, agent.displayName)}>
+                        <Trash2 className="h-3 w-3 mr-1" /> {getAppShellAgentActionLabel("delete")}
                       </Button>
                     </>
                   )}
@@ -636,8 +662,8 @@ export function SettingsAgents() {
         })}
         {sortedAgents.length === 0 && (
           <div className="col-span-full rounded-lg border border-dashed bg-muted/20 px-4 py-7 text-center">
-            <p className="text-sm font-medium text-foreground">No agents yet.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Create one with Add Agent or import an existing bundle.</p>
+            <p className="text-sm font-medium text-foreground">{APP_SHELL_AGENT_LIST_PRESENTATION.emptyTitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{APP_SHELL_AGENT_LIST_PRESENTATION.emptyDescription}</p>
           </div>
         )}
       </div>
@@ -653,23 +679,23 @@ export function SettingsAgents() {
     return (
       <Card className="max-w-5xl">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">{isCreating ? "Create Agent" : `Edit: ${editing.displayName}`}</CardTitle>
-          <CardDescription>Configure agent identity, behavior, model, and capabilities.</CardDescription>
+          <CardTitle className="text-lg">{isCreating ? getAppShellEditorTitle("agent", false) : `Edit: ${editing.displayName}`}</CardTitle>
+          <CardDescription>{APP_SHELL_AGENT_EDITOR_PRESENTATION.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Tabs defaultValue="general" className="w-full">
             <TabsList className="mb-3 h-auto flex-wrap gap-1">
-              <TabsTrigger value="general" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />General</TabsTrigger>
-              {isInternal && <TabsTrigger value="model" className="gap-1.5"><Brain className="h-3.5 w-3.5" />Model</TabsTrigger>}
-              <TabsTrigger value="capabilities" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />Capabilities</TabsTrigger>
-              <TabsTrigger value="properties" className="gap-1.5">Properties</TabsTrigger>
+              <TabsTrigger value="general" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.generalTitle}</TabsTrigger>
+              {isInternal && <TabsTrigger value="model" className="gap-1.5"><Brain className="h-3.5 w-3.5" />{APP_SHELL_AGENT_EDITOR_PRESENTATION.model.sectionTitle}</TabsTrigger>}
+              <TabsTrigger value="capabilities" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.sectionTitle}</TabsTrigger>
+              <TabsTrigger value="properties" className="gap-1.5">{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.propertiesTitle}</TabsTrigger>
             </TabsList>
 
             {/* ── General Tab ── */}
             <TabsContent value="general" className="space-y-4">
               {/* Avatar upload */}
               <div className="space-y-2">
-                <Label>Avatar</Label>
+                <Label>{APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.label}</Label>
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-xl border-2 border-border overflow-hidden flex items-center justify-center bg-muted/40 flex-shrink-0">
                     {editing.avatarDataUrl
@@ -680,12 +706,12 @@ export function SettingsAgents() {
                   <div className="flex flex-col gap-2">
                     <input ref={avatarFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFileChange} />
                     <Button type="button" variant="outline" size="sm" onClick={() => avatarFileInputRef.current?.click()}>
-                      Upload photo
+                      {APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.uploadActionLabel}
                     </Button>
                     {editing.avatarDataUrl && (
                       <Button type="button" variant="ghost" size="sm" className="text-destructive/80 hover:text-destructive hover:bg-destructive/10"
                         onClick={() => setEditing({ ...editing, avatarDataUrl: null })}>
-                        Remove photo
+                        {APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.removeActionLabel}
                       </Button>
                     )}
                   </div>
@@ -694,8 +720,8 @@ export function SettingsAgents() {
               {isCreating && (
                 <div className="space-y-2 rounded-lg border border-dashed bg-muted/20 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-1.5">
-                    <Label>Quick Setup</Label>
-                    <p className="text-[11px] text-muted-foreground">Start with a preset, or configure manually below.</p>
+                    <Label>{APP_SHELL_AGENT_EDITOR_PRESENTATION.quickSetup.title}</Label>
+                    <p className="text-[11px] text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.quickSetup.description}</p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(AGENT_PROFILE_PRESETS).map(([key, preset]) => (
@@ -707,13 +733,13 @@ export function SettingsAgents() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="displayName">Name</Label>
-                <Input id="displayName" value={editing.displayName} onChange={e => setEditing({ ...editing, displayName: e.target.value })} placeholder="My Agent" />
+                <Label htmlFor="displayName">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.displayName.label}</Label>
+                <Input id="displayName" value={editing.displayName} onChange={e => setEditing({ ...editing, displayName: e.target.value })} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.displayName.placeholder} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input id="description" value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} placeholder="What this agent does..." />
-                <p className="text-[11px] text-muted-foreground">Shown only in the UI. Not visible to the agent—use Guidelines for instructions.</p>
+                <Label htmlFor="description">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.description.label}</Label>
+                <Input id="description" value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.description.placeholder} />
+                <p className="text-[11px] text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.description.helper}</p>
               </div>
               {customSystemPromptActive && (
                 <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
@@ -734,10 +760,10 @@ export function SettingsAgents() {
               {isInternal && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="guidelines">Guidelines</Label>
-                    <Textarea id="guidelines" value={editing.guidelines} onChange={e => setEditing({ ...editing, guidelines: e.target.value })} rows={4} placeholder="e.g. You are an expert in React. Always check types before writing code..." className="font-mono text-sm" />
+                    <Label htmlFor="guidelines">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.guidelines.label}</Label>
+                    <Textarea id="guidelines" value={editing.guidelines} onChange={e => setEditing({ ...editing, guidelines: e.target.value })} rows={4} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.guidelines.placeholder} className="font-mono text-sm" />
                     <p className="text-xs text-muted-foreground">
-                      Additional instructions for this agent. These are appended to the core tool-calling system prompt.
+                      {APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.guidelines.helper}
                     </p>
                   </div>
                   <div className="space-y-2 pt-2 border-t">
@@ -746,17 +772,17 @@ export function SettingsAgents() {
                       onClick={() => setShowSystemPrompt(!showSystemPrompt)}
                     >
                       {showSystemPrompt ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                      <Label className="cursor-pointer font-semibold">Base System Prompt (Advanced)</Label>
+                      <Label className="cursor-pointer font-semibold">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.systemPrompt.label}</Label>
                       {customSystemPromptActive && <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300">Custom prompt active</Badge>}
                     </div>
                     {showSystemPrompt && (
                       <div className="space-y-3 pt-2">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <p className="text-xs text-muted-foreground text-amber-600 dark:text-amber-500">
-                            Not recommended to change. A custom base prompt replaces core tool-calling instructions and blocks future default prompt updates. Leave empty to use the default.
+                            {APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.systemPrompt.helper}
                           </p>
                           <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setEditing({ ...editing, systemPrompt: "" })} disabled={!editing.systemPrompt}>
-                            Reset to Default
+                            {APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.systemPrompt.resetActionLabel}
                           </Button>
                         </div>
                         <Textarea
@@ -772,7 +798,7 @@ export function SettingsAgents() {
                 </>
               )}
               <div className="space-y-2">
-                <Label htmlFor="connectionType">Connection Type</Label>
+                <Label htmlFor="connectionType">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.connectionType.label}</Label>
                 <Select value={editing.connectionType} onValueChange={(v: ConnectionType) => setEditing(applyConnectionTypeChange(editing, v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -785,30 +811,30 @@ export function SettingsAgents() {
               {editing.connectionType === 'acpx' && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="command">Command</Label>
-                    <Input id="command" value={editing.connectionCommand ?? ""} onChange={e => setEditing({ ...editing, connectionCommand: e.target.value })} placeholder="e.g., claude-code-acp" />
+                    <Label htmlFor="command">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.command.label}</Label>
+                    <Input id="command" value={editing.connectionCommand ?? ""} onChange={e => setEditing({ ...editing, connectionCommand: e.target.value })} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.command.placeholder} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="args">Arguments (space-separated)</Label>
-                    <Input id="args" value={editing.connectionArgs ?? ""} onChange={e => setEditing({ ...editing, connectionArgs: e.target.value })} placeholder="e.g., --acp" />
+                    <Label htmlFor="args">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.args.label}</Label>
+                    <Input id="args" value={editing.connectionArgs ?? ""} onChange={e => setEditing({ ...editing, connectionArgs: e.target.value })} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.args.placeholder} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cwd">Working Directory (optional)</Label>
-                    <Input id="cwd" value={editing.connectionCwd ?? ""} onChange={e => setEditing({ ...editing, connectionCwd: e.target.value })} placeholder="e.g., /path/to/project or leave empty" />
+                    <Label htmlFor="cwd">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.cwd.label}</Label>
+                    <Input id="cwd" value={editing.connectionCwd ?? ""} onChange={e => setEditing({ ...editing, connectionCwd: e.target.value })} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.cwd.placeholder} />
                   </div>
                   <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <Label>{selectedPreset ? `${selectedPreset.displayName} Setup` : "External Agent Setup"}</Label>
-                          {selectedPresetKey && <Badge variant="secondary" className="text-[10px] uppercase">Preset</Badge>}
+                          <Label>{selectedPreset ? `${selectedPreset.displayName} Setup` : APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.fallbackTitle}</Label>
+                          {selectedPresetKey && <Badge variant="secondary" className="text-[10px] uppercase">{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.presetBadge}</Badge>}
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          {selectedPreset?.description || "Verify that DotAgents can resolve your command and working directory before saving."}
+                          {selectedPreset?.description || APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.fallbackDescription}
                         </p>
                       </div>
                       {selectedPreset?.docsUrl && (
-                        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" onClick={() => window.open(selectedPreset.docsUrl, "_blank")}>Open docs<ExternalLink className="h-3.5 w-3.5" /></Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" onClick={() => window.open(selectedPreset.docsUrl, "_blank")}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.openDocsActionLabel}<ExternalLink className="h-3.5 w-3.5" /></Button>
                       )}
                     </div>
 
@@ -816,19 +842,19 @@ export function SettingsAgents() {
                       <div className="grid gap-2 sm:grid-cols-3">
                         {selectedPreset?.installCommand && (
                           <div className="space-y-1 rounded-md border bg-background/80 px-2.5 py-2">
-                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Install</p>
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.installLabel}</p>
                             <p className="font-mono text-[11px] leading-relaxed">{selectedPreset.installCommand}</p>
                           </div>
                         )}
                         {selectedPreset?.authHint && (
                           <div className="space-y-1 rounded-md border bg-background/80 px-2.5 py-2">
-                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Auth</p>
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.authLabel}</p>
                             <p className="text-[11px] leading-relaxed text-muted-foreground">{selectedPreset.authHint}</p>
                           </div>
                         )}
                         {selectedPreset?.cwdHint && (
                           <div className="space-y-1 rounded-md border bg-background/80 px-2.5 py-2">
-                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Working Directory</p>
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.workingDirectoryLabel}</p>
                             <p className="text-[11px] leading-relaxed text-muted-foreground">{selectedPreset.cwdHint}</p>
                           </div>
                         )}
@@ -837,7 +863,7 @@ export function SettingsAgents() {
 
                     <div className="flex flex-wrap items-center gap-2">
                       <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs" disabled={isVerifyingCommand} onClick={handleVerifyExternalAgent}>
-                        <RefreshCw className={`h-3.5 w-3.5 ${isVerifyingCommand ? "animate-spin" : ""}`} />Verify Setup
+                        <RefreshCw className={`h-3.5 w-3.5 ${isVerifyingCommand ? "animate-spin" : ""}`} />{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verifyActionLabel}
                       </Button>
                       <p className="text-[11px] text-muted-foreground">
                         {selectedPreset?.verifyArgs?.length
@@ -845,19 +871,19 @@ export function SettingsAgents() {
                             ...normalizeAgentConnectionArgs(editing.connectionArgs),
                             ...selectedPreset.verifyArgs,
                           ])} to confirm the command is runnable.`
-                          : "Checks the command path and working directory before you save."}
+                          : APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.defaultVerifyDescription}
                       </p>
                     </div>
 
                     {commandVerification && (
                       <div className={`space-y-1 rounded-md border px-2.5 py-2 text-[11px] ${commandVerification.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5"}`}>
-                        <p className="font-medium">{commandVerification.ok ? "Verification passed" : "Verification needs attention"}</p>
+                        <p className="font-medium">{commandVerification.ok ? APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verificationPassed : APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verificationNeedsAttention}</p>
                         <p className="text-muted-foreground">{commandVerification.details || commandVerification.error}</p>
                         {commandVerification.resolvedCommand && (
-                          <p className="font-mono text-[10px] text-muted-foreground">Resolved command: {commandVerification.resolvedCommand}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.resolvedCommandLabel}: {commandVerification.resolvedCommand}</p>
                         )}
                         {externalCommandPreview && (
-                          <p className="font-mono text-[10px] text-muted-foreground">Configured command: {externalCommandPreview}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground">{APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.configuredCommandLabel}: {externalCommandPreview}</p>
                         )}
                         {commandVerification.warnings?.map((warning, index) => (
                           <p key={`${warning}-${index}`} className="text-[10px] text-muted-foreground">{warning}</p>
@@ -869,19 +895,19 @@ export function SettingsAgents() {
               )}
               {editing.connectionType === "remote" && (
                 <div className="space-y-2">
-                  <Label htmlFor="baseUrl">Base URL</Label>
-                  <Input id="baseUrl" value={editing.connectionBaseUrl ?? ""} onChange={e => setEditing({ ...editing, connectionBaseUrl: e.target.value })} placeholder="e.g., http://localhost:8000" />
+                  <Label htmlFor="baseUrl">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.baseUrl.label}</Label>
+                  <Input id="baseUrl" value={editing.connectionBaseUrl ?? ""} onChange={e => setEditing({ ...editing, connectionBaseUrl: e.target.value })} placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.baseUrl.placeholder} />
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
                 <div className="flex items-center space-x-2">
                   <Switch id="enabled" checked={editing.enabled} onCheckedChange={v => setEditing({ ...editing, enabled: v })} />
-                  <Label htmlFor="enabled">Enabled</Label>
+                  <Label htmlFor="enabled">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.enabled.label}</Label>
                 </div>
                 {editing.connectionType === 'acpx' && (
                   <div className="flex items-center space-x-2">
                     <Switch id="autoSpawn" checked={editing.autoSpawn ?? DEFAULT_AGENT_PROFILE_AUTO_SPAWN} onCheckedChange={v => setEditing({ ...editing, autoSpawn: v })} />
-                    <Label htmlFor="autoSpawn">Auto-spawn on startup</Label>
+                    <Label htmlFor="autoSpawn">{APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.autoSpawn.label}</Label>
                   </div>
                 )}
               </div>
@@ -892,10 +918,10 @@ export function SettingsAgents() {
             {isInternal && (
               <TabsContent value="model" className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Choose which LLM provider and model this agent uses. Leave unset to use global defaults.
+                  {APP_SHELL_AGENT_EDITOR_PRESENTATION.model.providerDescription}
                 </p>
                 <div className="space-y-2">
-                  <Label>LLM Provider</Label>
+                  <Label>{APP_SHELL_AGENT_EDITOR_PRESENTATION.model.providerLabel}</Label>
                   <Select
                     value={getAgentProfileAgentModelProviderOptionValue(selectedAgentModelProvider)}
                     onValueChange={v => {
@@ -907,7 +933,7 @@ export function SettingsAgents() {
                     <SelectContent>
                       {AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS.map(option => (
                         <SelectItem key={option.value} value={option.value}>
-                          {option.value === "global" ? "Use global default" : option.label}
+                          {option.value === "global" ? APP_SHELL_AGENT_EDITOR_PRESENTATION.model.globalDefaultLabel : option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -920,28 +946,28 @@ export function SettingsAgents() {
                     onValueChange={model => {
                       updateModelConfig(buildAgentProfileAgentModelUpdate(selectedAgentModelProvider, model))
                     }}
-                    label="Agent Model"
-                    placeholder="Select model for this agent"
+                    label={APP_SHELL_AGENT_EDITOR_PRESENTATION.model.agentModelLabel}
+                    placeholder={APP_SHELL_AGENT_EDITOR_PRESENTATION.model.agentModelPlaceholder}
                   />
                 )}
               </TabsContent>
             )}
 
             {/* ── Capabilities Tab ── */}
-            <TabsContent value="capabilities" className="space-y-4">
+              <TabsContent value="capabilities" className="space-y-4">
               {/* ── Skills Section ── */}
               <div className="rounded-lg border">
                 <div className="flex items-center justify-between w-full px-4 py-3">
                   <button type="button" className="flex items-center gap-2 hover:bg-muted/50 transition-colors rounded-md px-1 py-0.5 -mx-1" onClick={() => toggleSection("skills")}>
                     {isSectionCollapsed("skills") ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     <Sparkles className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm">Skills</span>
+                    <span className="font-semibold text-sm">{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.skillsTitle}</span>
                   </button>
                   <div className="flex items-center gap-2">
                     {skills.length > 0 && (
                       <div className="flex items-center gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsEnabled} onClick={(e) => { e.stopPropagation(); enableAllSkills() }}>Enable All</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>Disable All</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsEnabled} onClick={(e) => { e.stopPropagation(); enableAllSkills() }}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.enableAllLabel}</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.disableAllLabel}</Button>
                       </div>
                     )}
                     <Badge variant="secondary" className="text-xs">{countEnabledAgentProfileSkills(editing?.skillsConfig, skillIds)} of {skills.length} enabled</Badge>
@@ -950,7 +976,7 @@ export function SettingsAgents() {
                 {!isSectionCollapsed("skills") && (
                   <div className="border-t px-2 py-2 space-y-0.5">
                     {skills.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-3 text-center">No skills available.</p>
+                      <p className="text-sm text-muted-foreground py-3 text-center">{APP_SHELL_AGENT_EDITOR_PRESENTATION.capabilities.noSkillsLabel}</p>
                     ) : skills.map(skill => (
                       <div key={skill.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/30">
                         <Switch checked={isSkillEnabled(skill.id)} onCheckedChange={() => toggleSkill(skill.id)} />
@@ -1120,8 +1146,8 @@ export function SettingsAgents() {
           </Tabs>
 
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <Button variant="outline" className="gap-2" onClick={handleCancel}><X className="h-4 w-4" />Cancel</Button>
-            <Button className="gap-2" onClick={handleSave}><Save className="h-4 w-4" />Save</Button>
+            <Button variant="outline" className="gap-2" onClick={handleCancel}><X className="h-4 w-4" />{getAppShellAgentActionLabel("cancel")}</Button>
+            <Button className="gap-2" onClick={handleSave}><Save className="h-4 w-4" />{getAppShellAgentActionLabel("save")}</Button>
           </div>
         </CardContent>
       </Card>

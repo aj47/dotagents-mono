@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, Image, useWindowDimensions } from 'react-native';
 import {
   DEFAULT_MOBILE_APP_CONFIG as DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
@@ -8,13 +7,11 @@ import {
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
   type MobileAppConfig as AppConfig,
 } from '@dotagents/shared/mobile-app-config';
-import {
-  saveConfig,
-  useConfigContext,
-} from '../store/config';
+import { saveConfig, useConfigContext } from '../store/config';
 import { useSessionContext } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellSettingsLayout } from '../ui/AppShellSettingsLayout';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
@@ -25,11 +22,130 @@ import {
   createSwitchAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
 import {
-  getVisibleSelectedValues,
-  removeSetValue,
-  removeSetValues,
-  toggleSetValue,
-} from '@dotagents/shared/collection-state';
+  APP_SHELL_AGENT_DELETE_PRESENTATION,
+  APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION,
+  APP_SHELL_SETTINGS_FEEDBACK_LABELS,
+  APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION,
+  APP_SHELL_LOOP_DELETE_PRESENTATION,
+  APP_SHELL_LOOP_FEEDBACK_PRESENTATION,
+  APP_SHELL_MCP_SERVER_DELETE_PRESENTATION,
+  APP_SHELL_SKILL_DELETE_PRESENTATION,
+  formatAppShellKnowledgeNoteDeleteConfirmMessage,
+  formatAppShellKnowledgeNoteBulkActionLabel,
+  formatAppShellSkillBulkActionLabel,
+  formatAppShellSkillDeleteSelectedConfirmMessage,
+  formatAppShellSkillPartialDeleteMessage,
+  getAppShellEditorActionLabel,
+  getAppShellAgentDeleteConfirmMessage,
+  getAppShellKnowledgeNoteActionLabel,
+  getAppShellKnowledgeNoteDeleteAccessibilityLabel,
+  getAppShellKnowledgeNoteDeleteAllAccessibilityLabel,
+  getAppShellKnowledgeNoteDeleteSelectedAccessibilityLabel,
+  getAppShellKnowledgeNoteDeleteConfirmTitle,
+  getAppShellKnowledgeNoteSelectionAccessibilityLabel,
+  getAppShellKnowledgeNoteSelectionLabel,
+  getAppShellLoopActionLabel,
+  getAppShellLoopDeleteConfirmMessage,
+  getAppShellLoopDeleteAccessibilityLabel,
+  getAppShellLoopExportActionLabel,
+  getAppShellLoopExportMarkdownAccessibilityLabel,
+  getAppShellLoopFeatureLabels,
+  getAppShellLoopImportMarkdownAccessibilityLabel,
+  getAppShellLoopRunNowAccessibilityLabel,
+  getAppShellLoopStartActionLabel,
+  getAppShellLoopStartAllAccessibilityLabel,
+  getAppShellLoopStartAllActionLabel,
+  getAppShellLoopStartScheduleAccessibilityLabel,
+  getAppShellLoopStopActionLabel,
+  getAppShellLoopStopAllAccessibilityLabel,
+  getAppShellLoopStopAllActionLabel,
+  getAppShellLoopStopScheduleAccessibilityLabel,
+  getAppShellLoopToggleAccessibilityLabel,
+  APP_SHELL_LOOP_LIST_PRESENTATION,
+  formatAppShellLoopBulkStartedStatus,
+  formatAppShellLoopBulkStoppedStatus,
+  formatAppShellLoopExportedStatus,
+  formatAppShellLoopImportCompleteMessage,
+  formatAppShellLoopImportedStatus,
+  formatAppShellLoopLastRunLabel,
+  formatAppShellLoopRunningMessage,
+  formatAppShellLoopStartedStatus,
+  formatAppShellLoopStoppedStatus,
+  getAppShellDesktopSettingsNavItemIdForMobileSection,
+  getAppShellMobileSettingsSectionIdsForDesktopNavItem,
+  getAppShellMcpServerActionLabel,
+  getAppShellMcpServerCreateAccessibilityLabel,
+  APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION,
+  APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION,
+  getAppShellMcpServerDeleteConfirmMessage,
+  getAppShellMcpServerEditorSaveActionLabel,
+  getAppShellMcpServerEditorTitle,
+  getAppShellMcpServerExportActionLabel,
+  getAppShellMcpServerExportJsonAccessibilityLabel,
+  formatAppShellMcpServerExportStatus,
+  formatAppShellMcpServerImportCompleteMessage,
+  formatAppShellMcpServerImportStatus,
+  getAppShellMcpServerImportActionLabel,
+  getAppShellMcpServerImportJsonAccessibilityLabel,
+  getAppShellMcpServerImportServersAccessibilityLabel,
+  getAppShellMcpServerItemActionAccessibilityLabel,
+  getAppShellMcpServerRevokeOAuthActionLabel,
+  getAppShellMcpServerSaveAccessibilityLabel,
+  getAppShellMcpServerStartOAuthActionLabel,
+  getAppShellMobileSettingsInitialExpandedState,
+  getAppShellMobileSettingsSectionTitle,
+  APP_SHELL_MODEL_PRESET_PRESENTATION,
+  APP_SHELL_PROVIDER_SETUP_PRESENTATION,
+  APP_SHELL_BUNDLE_IMPORT_PRESENTATION,
+  formatAppShellBundleComponentSummary,
+  formatAppShellBundleExportedFromLabel,
+  formatAppShellBundleExportStatus,
+  formatAppShellBundleImportCompleteMessage,
+  formatAppShellBundleImportStatus,
+  formatAppShellBundlePreviewStatus,
+  formatAppShellModelPresetCount,
+  getAppShellChatGptWebConnectionLabel,
+  getAppShellBundleComponentLabel,
+  getAppShellModelPresetDeleteConfirmMessage,
+  getAppShellModelPresetEditorTitle,
+  getAppShellSkillActionLabel,
+  getAppShellSkillDeleteConfirmMessage,
+  getAppShellSkillDeleteConfirmTitle,
+  APP_SHELL_SKILL_FEEDBACK_PRESENTATION,
+  getAppShellSkillExportMarkdownAccessibilityLabel,
+  formatAppShellSkillExportedStatus,
+  formatAppShellSkillGitHubImportCompleteMessage,
+  formatAppShellSkillGitHubImportedStatus,
+  formatAppShellSkillImportedStatus,
+  formatAppShellSkillImportCompleteMessage,
+  getAppShellSkillImportGitHubAccessibilityLabel,
+  getAppShellSkillImportMarkdownAccessibilityLabel,
+  getAppShellSkillItemActionAccessibilityLabel,
+  getAppShellSkillSelectionAccessibilityLabel,
+  getAppShellSkillSelectionLabel,
+  isAppShellMobileSettingsSectionId,
+  getAppShellAgentActionLabel,
+  getAppShellAgentDeleteAccessibilityLabel,
+  getAppShellAgentListDescription,
+  getAppShellAgentListInitial,
+  getAppShellAgentListMetadata,
+  formatAppShellAgentProfileImportSuccessMessage,
+  APP_SHELL_AGENT_LIST_PRESENTATION,
+  getAppShellAgentRescanAccessibilityLabel,
+  getAppShellAgentRescanActionLabel,
+  getAppShellBundleActionLabel,
+  getAppShellBundleExportActionLabel,
+  getAppShellBundleExportJsonAccessibilityLabel,
+  getAppShellBundleImportActionLabel,
+  getAppShellBundleImportJsonAccessibilityLabel,
+  getAppShellBundlePreviewActionLabel,
+  getAppShellBundlePreviewJsonAccessibilityLabel,
+  getDesktopSettingsNavItems,
+  resolveAppShellLayout,
+  type AppShellMobileSettingsSectionId,
+  type AppShellSettingsNavItemId,
+} from '@dotagents/shared/app-shell';
+import { getVisibleSelectedValues, removeSetValue, removeSetValues, toggleSetValue } from '@dotagents/shared/collection-state';
 import {
   DEFAULT_AUTO_SAVE_CONVERSATIONS,
   DEFAULT_CONVERSATIONS_ENABLED,
@@ -64,16 +180,9 @@ import {
   KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
   KNOWLEDGE_NOTE_SORT_OPTIONS,
 } from '@dotagents/shared/knowledge-note-grouping';
-import {
-  removeKnowledgeNoteFromList,
-  removeKnowledgeNotesFromList,
-  setKnowledgeNoteContextInList,
-} from '@dotagents/shared/knowledge-note-domain';
+import { removeKnowledgeNoteFromList, removeKnowledgeNotesFromList, setKnowledgeNoteContextInList } from '@dotagents/shared/knowledge-note-domain';
 import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
-import {
-  removeAgentProfileFromList,
-  setAgentProfileEnabledInList,
-} from '@dotagents/shared/agent-profile-mutations';
+import { removeAgentProfileFromList, setAgentProfileEnabledInList } from '@dotagents/shared/agent-profile-mutations';
 import { getAcpxMainAgentOptions } from '@dotagents/shared/main-agent-selection';
 import {
   buildModelPresetDraftFromSummary,
@@ -110,7 +219,7 @@ import {
   DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER,
   describeLoopCadence,
   describeRepeatTaskRuntime,
-  formatRepeatTaskRuntimeTimestamp,
+  formatRepeatTaskRuntimeTimestampOrFallback,
   removeRepeatTaskFromList,
   setRepeatTaskEnabledInList,
 } from '@dotagents/shared/repeat-task-utils';
@@ -123,10 +232,7 @@ import {
   PARAKEET_NUM_THREAD_OPTIONS,
   getDefaultSttModel,
 } from '@dotagents/shared/stt-models';
-import {
-  DEFAULT_MAIN_AGENT_MODE,
-  MAIN_AGENT_MODE_DISPLAY_OPTIONS,
-} from '@dotagents/shared/main-agent-selection';
+import { DEFAULT_MAIN_AGENT_MODE, MAIN_AGENT_MODE_DISPLAY_OPTIONS } from '@dotagents/shared/main-agent-selection';
 import {
   CODEX_TEXT_VERBOSITY_OPTIONS,
   DEFAULT_CODEX_REASONING_EFFORT,
@@ -144,11 +250,7 @@ import {
   DISCORD_LIST_SETTING_SECTIONS,
   type DiscordListSettingKey,
 } from '@dotagents/shared/discord-config';
-import {
-  DEFAULT_WHATSAPP_AUTO_REPLY,
-  DEFAULT_WHATSAPP_ENABLED,
-  DEFAULT_WHATSAPP_LOG_MESSAGES,
-} from '@dotagents/shared/whatsapp-config';
+import { DEFAULT_WHATSAPP_AUTO_REPLY, DEFAULT_WHATSAPP_ENABLED, DEFAULT_WHATSAPP_LOG_MESSAGES } from '@dotagents/shared/whatsapp-config';
 import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
@@ -205,10 +307,7 @@ import {
   setSkillEnabledForProfileInList,
   sortSkillsByProfileEnablement,
 } from '@dotagents/shared/skills-api';
-import {
-  REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
-  buildRemoteSettingsInputDrafts,
-} from '@dotagents/shared/remote-settings-input-drafts';
+import { REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK, buildRemoteSettingsInputDrafts } from '@dotagents/shared/remote-settings-input-drafts';
 import { DEFAULT_STREAMER_MODE_ENABLED } from '@dotagents/shared/remote-pairing';
 import { THEME_PREFERENCE_OPTIONS } from '@dotagents/shared/theme-preference';
 import {
@@ -251,14 +350,12 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export default function SettingsScreen({ navigation }: any) {
-  const insets = useSafeAreaInsets();
+export default function SettingsScreen({ navigation, route }: any) {
+  const { width } = useWindowDimensions();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
   const [draft, setDraft] = useState<AppConfig>(config);
-  const [handsFreeDebounceInput, setHandsFreeDebounceInput] = useState(
-    String(config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS),
-  );
+  const [handsFreeDebounceInput, setHandsFreeDebounceInput] = useState(String(config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS));
   const [hasPendingLocalSave, setHasPendingLocalSave] = useState(false);
   const [pendingRemoteSaveKeys, setPendingRemoteSaveKeys] = useState<string[]>([]);
   const [isSavingAllSettings, setIsSavingAllSettings] = useState(false);
@@ -326,42 +423,27 @@ export default function SettingsScreen({ navigation }: any) {
   const [showLoopImportModal, setShowLoopImportModal] = useState(false);
   const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
   const displaySkills = useMemo(() => sortSkillsByProfileEnablement(skills), [skills]);
-  const displayedSkillIds = useMemo(
-    () => new Set(displaySkills.map((skill) => skill.id)),
-    [displaySkills]
-  );
-  const visibleSelectedSkillIds = useMemo(
-    () => getVisibleSelectedValues(selectedSkillIds, displayedSkillIds),
-    [selectedSkillIds, displayedSkillIds]
-  );
-  const sortedAgentProfiles = useMemo(
-    () => sortAgentProfilesWithDefaultFirst(agentProfiles),
-    [agentProfiles]
-  );
+  const displayedSkillIds = useMemo(() => new Set(displaySkills.map((skill) => skill.id)), [displaySkills]);
+  const visibleSelectedSkillIds = useMemo(() => getVisibleSelectedValues(selectedSkillIds, displayedSkillIds), [selectedSkillIds, displayedSkillIds]);
+  const sortedAgentProfiles = useMemo(() => sortAgentProfilesWithDefaultFirst(agentProfiles), [agentProfiles]);
   const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
-  const knowledgeNoteFilterRequest = useMemo(() => ({
-    context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
-    dateFilter: knowledgeNoteDateFilter,
-    sort: knowledgeNoteSortOption,
-    limit: 1000,
-  }), [knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
-  const displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery ? knowledgeNoteSearchResults : knowledgeNotes;
-  const displayedKnowledgeNoteIds = useMemo(
-    () => new Set(displayedKnowledgeNotes.map((note) => note.id)),
-    [displayedKnowledgeNotes]
+  const knowledgeNoteFilterRequest = useMemo(
+    () => ({
+      context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
+      dateFilter: knowledgeNoteDateFilter,
+      sort: knowledgeNoteSortOption,
+      limit: 1000,
+    }),
+    [knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption],
   );
+  const displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery ? knowledgeNoteSearchResults : knowledgeNotes;
+  const displayedKnowledgeNoteIds = useMemo(() => new Set(displayedKnowledgeNotes.map((note) => note.id)), [displayedKnowledgeNotes]);
   const visibleSelectedKnowledgeNoteIds = useMemo(
     () => getVisibleSelectedValues(selectedKnowledgeNoteIds, displayedKnowledgeNoteIds),
-    [selectedKnowledgeNoteIds, displayedKnowledgeNoteIds]
+    [selectedKnowledgeNoteIds, displayedKnowledgeNoteIds],
   );
-  const knowledgeNoteSections = useMemo(
-    () => buildKnowledgeNoteSections(displayedKnowledgeNotes),
-    [displayedKnowledgeNotes]
-  );
-  const availableAcpMainAgents = useMemo(
-    () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
-    [remoteSettings, agentProfiles]
-  );
+  const knowledgeNoteSections = useMemo(() => buildKnowledgeNoteSections(displayedKnowledgeNotes), [displayedKnowledgeNotes]);
+  const availableAcpMainAgents = useMemo(() => getAcpxMainAgentOptions(remoteSettings, agentProfiles), [remoteSettings, agentProfiles]);
   const remoteTtsProviderId = remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID;
   const remoteTtsSpeedSetting = getRemoteTtsSpeedSetting(remoteTtsProviderId);
 
@@ -411,26 +493,29 @@ export default function SettingsScreen({ navigation }: any) {
   const [customModelDraft, setCustomModelDraft] = useState('');
   const modelUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Collapsible section state - all new sections start collapsed
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    providerSelection: false, // Provider selection section
-    profileModel: true,  // Keep profile/model expanded by default since it was already visible
-    bundles: false,
-    mcpServers: true,    // Keep MCP servers expanded by default since it was already visible
-    streamerMode: false,
-    speechToText: false,
-    textToSpeech: true,
-    agentSettings: false,
-    summarization: false,
-    toolExecution: false,
-    whatsapp: false,
-    langfuse: false,
-    skills: false,
-    knowledgeNotes: false,
-    agents: false,
-    agentLoops: false,
-    discord: false,
-  });
+  const routeInitialSettingsSection = isAppShellMobileSettingsSectionId(route?.params?.initialSection)
+    ? route.params.initialSection
+    : null;
+  const isDesktopSettingsLayout = resolveAppShellLayout(width) === 'desktop';
+  const [activeDesktopSettingsNavItemId, setActiveDesktopSettingsNavItemId] = useState<AppShellSettingsNavItemId>(
+    routeInitialSettingsSection
+      ? getAppShellDesktopSettingsNavItemIdForMobileSection(routeInitialSettingsSection)
+      : 'general',
+  );
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => getAppShellMobileSettingsInitialExpandedState());
+  const activeDesktopSettingsSectionIds = useMemo(
+    () => new Set(getAppShellMobileSettingsSectionIdsForDesktopNavItem(activeDesktopSettingsNavItemId)),
+    [activeDesktopSettingsNavItemId],
+  );
+
+  useEffect(() => {
+    if (!routeInitialSettingsSection) {
+      return;
+    }
+
+    setActiveDesktopSettingsNavItemId(getAppShellDesktopSettingsNavItemIdForMobileSection(routeInitialSettingsSection));
+    setExpandedSections((prev) => ({ ...prev, [routeInitialSettingsSection]: true }));
+  }, [routeInitialSettingsSection]);
 
   // Debounced input state for string/number fields
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
@@ -440,9 +525,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   useEffect(() => {
     setDraft(config);
-    setHandsFreeDebounceInput(
-      String(config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS),
-    );
+    setHandsFreeDebounceInput(String(config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS));
     setHasPendingLocalSave(false);
   }, [ready, config]);
 
@@ -482,15 +565,18 @@ export default function SettingsScreen({ navigation }: any) {
     draftRef.current = draft;
   }, [draft]);
 
-  const updateLocalConfig = useCallback((patch: Partial<AppConfig>) => {
-    const next = { ...draftRef.current, ...patch };
-    draftRef.current = next;
-    setDraft(next);
-    setConfig(next);
-    void saveConfig(next);
-    setHasPendingLocalSave(false);
-    setSaveStatusMessage('Saved');
-  }, [setConfig]);
+  const updateLocalConfig = useCallback(
+    (patch: Partial<AppConfig>) => {
+      const next = { ...draftRef.current, ...patch };
+      draftRef.current = next;
+      setDraft(next);
+      setConfig(next);
+      void saveConfig(next);
+      setHasPendingLocalSave(false);
+      setSaveStatusMessage('Saved');
+    },
+    [setConfig],
+  );
 
   const draftHandsFreeForegroundOnly = draft.handsFreeForegroundOnly ?? DEFAULT_APP_CONFIG.handsFreeForegroundOnly ?? true;
   const draftTtsEnabled = draft.ttsEnabled ?? DEFAULT_APP_CONFIG.ttsEnabled ?? true;
@@ -498,13 +584,16 @@ export default function SettingsScreen({ navigation }: any) {
   const draftHandsFreeWakePhrase = draft.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
   const draftHandsFreeSleepPhrase = draft.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
 
-  const handleHandsFreeDebounceInputChange = useCallback((value: string) => {
-    const sanitized = value.replace(/[^0-9]/g, '');
-    setHandsFreeDebounceInput(sanitized);
-    updateDraftField({
-      handsFreeMessageDebounceMs: sanitized ? Number(sanitized) : undefined,
-    });
-  }, [updateDraftField]);
+  const handleHandsFreeDebounceInputChange = useCallback(
+    (value: string) => {
+      const sanitized = value.replace(/[^0-9]/g, '');
+      setHandsFreeDebounceInput(sanitized);
+      updateDraftField({
+        handsFreeMessageDebounceMs: sanitized ? Number(sanitized) : undefined,
+      });
+    },
+    [updateDraftField],
+  );
 
   const commitHandsFreeDebounceInput = useCallback(() => {
     const trimmed = handsFreeDebounceInput.trim();
@@ -512,7 +601,9 @@ export default function SettingsScreen({ navigation }: any) {
 
     if (!trimmed) {
       setHandsFreeDebounceInput(String(DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS));
-      updateLocalConfig({ handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS });
+      updateLocalConfig({
+        handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+      });
       return;
     }
 
@@ -539,25 +630,33 @@ export default function SettingsScreen({ navigation }: any) {
     return null;
   }, [config.baseUrl, config.apiKey]);
 
-  const refreshMcpOAuthStatuses = useCallback(async (servers: MCPServer[]) => {
-    if (!settingsClient || servers.length === 0) {
-      setMcpOAuthStatus({});
-      return;
-    }
-
-    const entries = await Promise.all(servers.map(async (server) => {
-      try {
-        return [server.name, await settingsClient.getMcpOAuthStatus(server.name)] as const;
-      } catch (error: any) {
-        return [server.name, {
-          configured: false,
-          authenticated: false,
-          error: error?.message || 'Failed to load OAuth status',
-        }] as const;
+  const refreshMcpOAuthStatuses = useCallback(
+    async (servers: MCPServer[]) => {
+      if (!settingsClient || servers.length === 0) {
+        setMcpOAuthStatus({});
+        return;
       }
-    }));
-    setMcpOAuthStatus(Object.fromEntries(entries));
-  }, [settingsClient]);
+
+      const entries = await Promise.all(
+        servers.map(async (server) => {
+          try {
+            return [server.name, await settingsClient.getMcpOAuthStatus(server.name)] as const;
+          } catch (error: any) {
+            return [
+              server.name,
+              {
+                configured: false,
+                authenticated: false,
+                error: error?.message || 'Failed to load OAuth status',
+              },
+            ] as const;
+          }
+        }),
+      );
+      setMcpOAuthStatus(Object.fromEntries(entries));
+    },
+    [settingsClient],
+  );
 
   const refreshChatGptWebAuthStatus = useCallback(async () => {
     if (!settingsClient) {
@@ -606,10 +705,22 @@ export default function SettingsScreen({ navigation }: any) {
       let successCount = 0;
 
       const [profilesRes, serversRes, settingsRes, localModelsRes] = await Promise.all([
-        settingsClient.getProfiles().catch((e) => { errors.push('profiles'); return null; }),
-        settingsClient.getMCPServers().catch((e) => { errors.push('MCP servers'); return null; }),
-        settingsClient.getSettings().catch((e) => { errors.push('settings'); return null; }),
-        settingsClient.getLocalSpeechModelStatuses().catch((e) => { errors.push('local speech models'); return null; }),
+        settingsClient.getProfiles().catch((e) => {
+          errors.push('profiles');
+          return null;
+        }),
+        settingsClient.getMCPServers().catch((e) => {
+          errors.push('MCP servers');
+          return null;
+        }),
+        settingsClient.getSettings().catch((e) => {
+          errors.push('settings');
+          return null;
+        }),
+        settingsClient.getLocalSpeechModelStatuses().catch((e) => {
+          errors.push('local speech models');
+          return null;
+        }),
       ]);
 
       if (profilesRes) {
@@ -818,7 +929,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   useEffect(() => {
     if (!settingsClient) return;
-    const hasActiveDownload = Object.values(localSpeechModelStatuses).some(status => status?.downloading);
+    const hasActiveDownload = Object.values(localSpeechModelStatuses).some((status) => status?.downloading);
     if (!hasActiveDownload) return;
 
     const interval = setInterval(() => {
@@ -827,37 +938,40 @@ export default function SettingsScreen({ navigation }: any) {
     return () => clearInterval(interval);
   }, [localSpeechModelStatuses, refreshLocalSpeechModelStatuses, settingsClient]);
 
-  const handleLocalSpeechModelDownload = useCallback(async (providerId: LocalSpeechModelProviderId) => {
-    if (!settingsClient) return;
+  const handleLocalSpeechModelDownload = useCallback(
+    async (providerId: LocalSpeechModelProviderId) => {
+      if (!settingsClient) return;
 
-    setPendingLocalSpeechModelAction(`${providerId}:download`);
-    setRemoteError(null);
-    setSaveStatusMessage(null);
-    try {
-      const response = await settingsClient.downloadLocalSpeechModel(providerId);
-      if (!response.success) {
-        throw new Error(response.error || response.message || 'Failed to start model download');
+      setPendingLocalSpeechModelAction(`${providerId}:download`);
+      setRemoteError(null);
+      setSaveStatusMessage(null);
+      try {
+        const response = await settingsClient.downloadLocalSpeechModel(providerId);
+        if (!response.success) {
+          throw new Error(response.error || response.message || 'Failed to start model download');
+        }
+        setSaveStatusMessage(response.message);
+        const downloaded = response.details?.downloaded === true;
+        setLocalSpeechModelStatuses((current) => ({
+          ...current,
+          [providerId]: {
+            downloaded,
+            downloading: !downloaded,
+            progress: downloaded ? 1 : (current[providerId]?.progress ?? 0),
+            error: undefined,
+            path: current[providerId]?.path,
+          },
+        }));
+        await refreshLocalSpeechModelStatuses();
+      } catch (error: any) {
+        console.error('[Settings] Failed to start local speech model download:', error);
+        setRemoteError(error.message || 'Failed to start model download');
+      } finally {
+        setPendingLocalSpeechModelAction(null);
       }
-      setSaveStatusMessage(response.message);
-      const downloaded = response.details?.downloaded === true;
-      setLocalSpeechModelStatuses((current) => ({
-        ...current,
-        [providerId]: {
-          downloaded,
-          downloading: !downloaded,
-          progress: downloaded ? 1 : current[providerId]?.progress ?? 0,
-          error: undefined,
-          path: current[providerId]?.path,
-        },
-      }));
-      await refreshLocalSpeechModelStatuses();
-    } catch (error: any) {
-      console.error('[Settings] Failed to start local speech model download:', error);
-      setRemoteError(error.message || 'Failed to start model download');
-    } finally {
-      setPendingLocalSpeechModelAction(null);
-    }
-  }, [refreshLocalSpeechModelStatuses, settingsClient]);
+    },
+    [refreshLocalSpeechModelStatuses, settingsClient],
+  );
 
   const handleRemoteTtsTest = useCallback(async () => {
     if (!remoteSettings?.ttsProviderId || !config.baseUrl || !config.apiKey) return;
@@ -900,7 +1014,7 @@ export default function SettingsScreen({ navigation }: any) {
       await settingsClient.setCurrentProfile(profileId);
       setCurrentProfileId(profileId);
       // Update the profile context so the header badge updates immediately
-      const selectedProfile = profiles.find(p => p.id === profileId);
+      const selectedProfile = profiles.find((p) => p.id === profileId);
       if (selectedProfile) {
         setProfileContext(selectedProfile);
       }
@@ -926,11 +1040,14 @@ export default function SettingsScreen({ navigation }: any) {
       const result = await settingsClient.exportProfile(currentProfileId);
       await Share.share({
         message: result.profileJson,
-        title: 'Export Profile',
+        title: APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.exportTitle,
       });
     } catch (error: any) {
       console.error('[Settings] Failed to export profile:', error);
-      Alert.alert('Export Failed', error.message || 'Failed to export profile');
+      Alert.alert(
+        APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.exportFailedTitle,
+        error.message || APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.exportFailed,
+      );
     } finally {
       setIsExportingProfile(false);
     }
@@ -946,7 +1063,10 @@ export default function SettingsScreen({ navigation }: any) {
       // Import succeeded - close modal and show success first
       setShowImportModal(false);
       setImportJsonText('');
-      Alert.alert('Success', `Profile "${result.profile.name}" imported successfully`);
+      Alert.alert(
+        APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.importSuccessTitle,
+        formatAppShellAgentProfileImportSuccessMessage(result.profile.name),
+      );
 
       // Refresh profiles list separately - don't show import failure if only refresh fails
       try {
@@ -959,7 +1079,10 @@ export default function SettingsScreen({ navigation }: any) {
       }
     } catch (error: any) {
       console.error('[Settings] Failed to import profile:', error);
-      Alert.alert('Import Failed', error.message || 'Failed to import profile');
+      Alert.alert(
+        APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.importFailedTitle,
+        error.message || APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.importFailed,
+      );
     } finally {
       setIsImportingProfile(false);
     }
@@ -971,22 +1094,18 @@ export default function SettingsScreen({ navigation }: any) {
     setIsExportingBundle(true);
     setRemoteError(null);
     try {
-      const result = await settingsClient.exportBundle({ name: 'DotAgents Bundle' });
+      const result = await settingsClient.exportBundle({ name: APP_SHELL_BUNDLE_IMPORT_PRESENTATION.defaultBundleName });
       const itemCount =
-        result.bundle.agentProfiles.length
-        + result.bundle.mcpServers.length
-        + result.bundle.skills.length
-        + result.bundle.repeatTasks.length
-        + result.bundle.knowledgeNotes.length;
+        result.bundle.agentProfiles.length + result.bundle.mcpServers.length + result.bundle.skills.length + result.bundle.repeatTasks.length + result.bundle.knowledgeNotes.length;
       await Share.share({
         message: result.bundleJson,
         title: `${result.bundle.manifest.name}.dotagents`,
       });
-      setSaveStatusMessage(`Exported bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+      setSaveStatusMessage(formatAppShellBundleExportStatus(itemCount));
     } catch (error: any) {
       console.error('[Settings] Failed to export bundle:', error);
-      setRemoteError(error.message || 'Failed to export bundle');
-      Alert.alert('Export Failed', error.message || 'Failed to export bundle');
+      setRemoteError(error.message || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.exportFailed);
+      Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.alerts.exportFailedTitle, error.message || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.exportFailed);
     } finally {
       setIsExportingBundle(false);
     }
@@ -995,21 +1114,21 @@ export default function SettingsScreen({ navigation }: any) {
   const handleBundleExport = () => {
     if (!settingsClient) return;
 
-    const message = 'Bundles can include agents, MCP servers, skills, tasks, and knowledge notes. Share only with places you trust.';
+    const message = APP_SHELL_BUNDLE_IMPORT_PRESENTATION.exportDescription;
 
     if (Platform.OS === 'web') {
       const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
-      if (!confirmFn || !confirmFn(`Export DotAgents Bundle\n\n${message}`)) {
+      if (!confirmFn || !confirmFn(`${APP_SHELL_BUNDLE_IMPORT_PRESENTATION.exportTitle}\n\n${message}`)) {
         return;
       }
       void shareBundleExport();
       return;
     }
 
-    Alert.alert('Export DotAgents Bundle', message, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.exportTitle, message, [
+      { text: getAppShellBundleActionLabel('cancel'), style: 'cancel' },
       {
-        text: 'Export',
+        text: getAppShellBundleActionLabel('export'),
         onPress: () => {
           void shareBundleExport();
         },
@@ -1032,7 +1151,7 @@ export default function SettingsScreen({ navigation }: any) {
   }, []);
 
   const handleBundleImportComponentToggle = useCallback((key: BundleImportComponentKey, value: boolean) => {
-    setBundleImportComponents(prev => ({ ...prev, [key]: value }));
+    setBundleImportComponents((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const handleBundleImportPreview = useCallback(async () => {
@@ -1041,8 +1160,8 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       JSON.parse(bundleImportJsonText.trim());
     } catch {
-      setRemoteError('Bundle JSON is invalid');
-      Alert.alert('Preview Failed', 'Bundle JSON is invalid');
+      setRemoteError(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.validation.invalidJson);
+      Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.alerts.previewFailedTitle, APP_SHELL_BUNDLE_IMPORT_PRESENTATION.validation.invalidJson);
       return;
     }
 
@@ -1053,11 +1172,11 @@ export default function SettingsScreen({ navigation }: any) {
       setBundleImportPreview(result.preview);
       const components = result.preview.bundle.manifest.components;
       const itemCount = components.agentProfiles + components.mcpServers + components.skills + components.repeatTasks + components.knowledgeNotes;
-      setSaveStatusMessage(`Previewed bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+      setSaveStatusMessage(formatAppShellBundlePreviewStatus(itemCount));
     } catch (error: any) {
       console.error('[Settings] Failed to preview bundle import:', error);
-      setRemoteError(error.message || 'Failed to preview bundle');
-      Alert.alert('Preview Failed', error.message || 'Failed to preview bundle');
+      setRemoteError(error.message || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.previewFailed);
+      Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.alerts.previewFailedTitle, error.message || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.previewFailed);
     } finally {
       setIsPreviewingBundleImport(false);
     }
@@ -1074,8 +1193,8 @@ export default function SettingsScreen({ navigation }: any) {
   const handleBundleImport = useCallback(async () => {
     if (!settingsClient || !bundleImportJsonText.trim()) return;
     if (!hasSelectedBundleComponent(bundleImportComponents)) {
-      setRemoteError('Select at least one bundle component to import');
-      Alert.alert('Import Failed', 'Select at least one bundle component to import');
+      setRemoteError(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.validation.noComponentsSelected);
+      Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.alerts.importFailedTitle, APP_SHELL_BUNDLE_IMPORT_PRESENTATION.validation.noComponentsSelected);
       return;
     }
 
@@ -1089,7 +1208,7 @@ export default function SettingsScreen({ navigation }: any) {
       });
 
       if (!result.success) {
-        throw new Error(result.errors.join(', ') || 'Import failed');
+        throw new Error(result.errors.join(', ') || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.importFailed);
       }
 
       const importedCount = getBundleImportChangedItemCount(result);
@@ -1099,23 +1218,17 @@ export default function SettingsScreen({ navigation }: any) {
       setBundleImportPreview(null);
       setBundleImportConflictStrategy('skip');
       setBundleImportComponents(DEFAULT_BUNDLE_COMPONENT_SELECTION);
-      setSaveStatusMessage(`Imported ${importedCount} bundle item${importedCount === 1 ? '' : 's'}`);
+      setSaveStatusMessage(formatAppShellBundleImportStatus(importedCount));
       await refreshAfterBundleImport();
-      Alert.alert('Import Complete', `Imported ${importedCount} item${importedCount === 1 ? '' : 's'} from the bundle.`);
+      Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.alerts.importCompleteTitle, formatAppShellBundleImportCompleteMessage(importedCount));
     } catch (error: any) {
       console.error('[Settings] Failed to import bundle:', error);
-      setRemoteError(error.message || 'Failed to import bundle');
-      Alert.alert('Import Failed', error.message || 'Failed to import bundle');
+      setRemoteError(error.message || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.importBundleFailed);
+      Alert.alert(APP_SHELL_BUNDLE_IMPORT_PRESENTATION.alerts.importFailedTitle, error.message || APP_SHELL_BUNDLE_IMPORT_PRESENTATION.errors.importBundleFailed);
     } finally {
       setIsImportingBundle(false);
     }
-  }, [
-    bundleImportComponents,
-    bundleImportConflictStrategy,
-    bundleImportJsonText,
-    refreshAfterBundleImport,
-    settingsClient,
-  ]);
+  }, [bundleImportComponents, bundleImportConflictStrategy, bundleImportJsonText, refreshAfterBundleImport, settingsClient]);
 
   // Handle MCP server toggle
   const handleServerToggle = async (serverName: string, enabled: boolean) => {
@@ -1124,7 +1237,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       await settingsClient.toggleMCPServer(serverName, enabled);
       // Update local state optimistically
-      setMcpServers(prev => setMcpServerRuntimeEnabledInList(prev, serverName, enabled));
+      setMcpServers((prev) => setMcpServerRuntimeEnabledInList(prev, serverName, enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle server:', error);
       setRemoteError(error.message || 'Failed to toggle server');
@@ -1133,44 +1246,50 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
-  const handleMcpOAuthStart = useCallback(async (serverName: string) => {
-    if (!settingsClient) return;
+  const handleMcpOAuthStart = useCallback(
+    async (serverName: string) => {
+      if (!settingsClient) return;
 
-    setPendingMcpOAuthAction(`${serverName}:start`);
-    setRemoteError(null);
-    setSaveStatusMessage(null);
-    try {
-      await settingsClient.initiateMcpOAuthFlow(serverName);
-      setSaveStatusMessage(`Started OAuth for ${serverName}`);
-      await refreshMcpOAuthStatuses(mcpServers);
-    } catch (error: any) {
-      console.error('[Settings] Failed to start MCP OAuth:', error);
-      setRemoteError(error.message || 'Failed to start MCP OAuth');
-    } finally {
-      setPendingMcpOAuthAction(null);
-    }
-  }, [mcpServers, refreshMcpOAuthStatuses, settingsClient]);
-
-  const handleMcpOAuthRevoke = useCallback(async (serverName: string) => {
-    if (!settingsClient) return;
-
-    setPendingMcpOAuthAction(`${serverName}:revoke`);
-    setRemoteError(null);
-    setSaveStatusMessage(null);
-    try {
-      const result = await settingsClient.revokeMcpOAuthTokens(serverName);
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to revoke MCP OAuth');
+      setPendingMcpOAuthAction(`${serverName}:start`);
+      setRemoteError(null);
+      setSaveStatusMessage(null);
+      try {
+        await settingsClient.initiateMcpOAuthFlow(serverName);
+        setSaveStatusMessage(`Started OAuth for ${serverName}`);
+        await refreshMcpOAuthStatuses(mcpServers);
+      } catch (error: any) {
+        console.error('[Settings] Failed to start MCP OAuth:', error);
+        setRemoteError(error.message || 'Failed to start MCP OAuth');
+      } finally {
+        setPendingMcpOAuthAction(null);
       }
-      setSaveStatusMessage(`Revoked OAuth for ${serverName}`);
-      await refreshMcpOAuthStatuses(mcpServers);
-    } catch (error: any) {
-      console.error('[Settings] Failed to revoke MCP OAuth:', error);
-      setRemoteError(error.message || 'Failed to revoke MCP OAuth');
-    } finally {
-      setPendingMcpOAuthAction(null);
-    }
-  }, [mcpServers, refreshMcpOAuthStatuses, settingsClient]);
+    },
+    [mcpServers, refreshMcpOAuthStatuses, settingsClient],
+  );
+
+  const handleMcpOAuthRevoke = useCallback(
+    async (serverName: string) => {
+      if (!settingsClient) return;
+
+      setPendingMcpOAuthAction(`${serverName}:revoke`);
+      setRemoteError(null);
+      setSaveStatusMessage(null);
+      try {
+        const result = await settingsClient.revokeMcpOAuthTokens(serverName);
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to revoke MCP OAuth');
+        }
+        setSaveStatusMessage(`Revoked OAuth for ${serverName}`);
+        await refreshMcpOAuthStatuses(mcpServers);
+      } catch (error: any) {
+        console.error('[Settings] Failed to revoke MCP OAuth:', error);
+        setRemoteError(error.message || 'Failed to revoke MCP OAuth');
+      } finally {
+        setPendingMcpOAuthAction(null);
+      }
+    },
+    [mcpServers, refreshMcpOAuthStatuses, settingsClient],
+  );
 
   // Handle remote settings toggle
   const handleRemoteSettingToggle = async (key: keyof Settings, value: boolean) => {
@@ -1178,7 +1297,7 @@ export default function SettingsScreen({ navigation }: any) {
 
     try {
       await settingsClient.updateSettings({ [key]: value });
-      setRemoteSettings(prev => prev ? { ...prev, [key]: value } : null);
+      setRemoteSettings((prev) => (prev ? { ...prev, [key]: value } : null));
     } catch (error: any) {
       console.error('[Settings] Failed to update setting:', error);
       setRemoteError(error.message || 'Failed to update setting');
@@ -1186,83 +1305,97 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   // Handle remote settings update for string/number fields (with debounce)
-  const handleRemoteSettingUpdate = useCallback((key: keyof SettingsUpdate, value: string | number | string[]) => {
-    // Update local draft immediately for responsive UI
-    setInputDrafts(prev => ({ ...prev, [key]: String(value) }));
-    setRemoteSettings(prev => prev ? { ...prev, [key]: value } : null);
-    markRemotePending(String(key));
-    setSaveStatusMessage(null);
+  const handleRemoteSettingUpdate = useCallback(
+    (key: keyof SettingsUpdate, value: string | number | string[]) => {
+      // Update local draft immediately for responsive UI
+      setInputDrafts((prev) => ({ ...prev, [key]: String(value) }));
+      setRemoteSettings((prev) => (prev ? { ...prev, [key]: value } : null));
+      markRemotePending(String(key));
+      setSaveStatusMessage(null);
 
-    // Cancel any pending update for this key
-    if (inputTimeoutRefs.current[key]) {
-      clearTimeout(inputTimeoutRefs.current[key]);
-    }
-
-    // Debounce the actual API call by 1000ms
-    inputTimeoutRefs.current[key] = setTimeout(async () => {
-      if (!settingsClient) return;
-
-      try {
-        await settingsClient.updateSettings({ [key]: value });
-        clearRemotePending(String(key));
-        delete inputTimeoutRefs.current[key];
-      } catch (error: any) {
-        console.error(`[Settings] Failed to update ${key}:`, error);
-        setRemoteError(error.message || `Failed to update ${key}`);
-        // Refresh to get actual state
-        fetchRemoteSettings();
+      // Cancel any pending update for this key
+      if (inputTimeoutRefs.current[key]) {
+        clearTimeout(inputTimeoutRefs.current[key]);
       }
-    }, 1000);
-  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
 
-  const handleRemoteListSettingUpdate = useCallback((key: DiscordListSettingKey, value: string) => {
-    markRemotePending(key);
-    setSaveStatusMessage(null);
-    setInputDrafts(prev => ({ ...prev, [key]: value }));
+      // Debounce the actual API call by 1000ms
+      inputTimeoutRefs.current[key] = setTimeout(async () => {
+        if (!settingsClient) return;
 
-    const parsedValues = parseConfigListInput(value, { unique: true });
-    if (inputTimeoutRefs.current[key]) {
-      clearTimeout(inputTimeoutRefs.current[key]);
-    }
+        try {
+          await settingsClient.updateSettings({ [key]: value });
+          clearRemotePending(String(key));
+          delete inputTimeoutRefs.current[key];
+        } catch (error: any) {
+          console.error(`[Settings] Failed to update ${key}:`, error);
+          setRemoteError(error.message || `Failed to update ${key}`);
+          // Refresh to get actual state
+          fetchRemoteSettings();
+        }
+      }, 1000);
+    },
+    [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient],
+  );
 
-    inputTimeoutRefs.current[key] = setTimeout(async () => {
-      if (!settingsClient) return;
+  const handleRemoteListSettingUpdate = useCallback(
+    (key: DiscordListSettingKey, value: string) => {
+      markRemotePending(key);
+      setSaveStatusMessage(null);
+      setInputDrafts((prev) => ({ ...prev, [key]: value }));
 
+      const parsedValues = parseConfigListInput(value, { unique: true });
+      if (inputTimeoutRefs.current[key]) {
+        clearTimeout(inputTimeoutRefs.current[key]);
+      }
+
+      inputTimeoutRefs.current[key] = setTimeout(async () => {
+        if (!settingsClient) return;
+
+        try {
+          await settingsClient.updateSettings({
+            [key]: parsedValues,
+          } as SettingsUpdate);
+          setRemoteSettings((prev) => (prev ? { ...prev, [key]: parsedValues } : null));
+          clearRemotePending(key);
+          delete inputTimeoutRefs.current[key];
+        } catch (error: any) {
+          console.error(`[Settings] Failed to update ${key}:`, error);
+          setRemoteError(error.message || `Failed to update ${key}`);
+          fetchRemoteSettings();
+        }
+      }, 1000);
+    },
+    [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient],
+  );
+
+  const handleRemoteSecretDraftChange = useCallback(
+    (key: ProviderSecretSettingKey, value: string) => {
+      markRemotePending(key);
+      setSaveStatusMessage(null);
+      setInputDrafts((prev) => ({ ...prev, [key]: value }));
+    },
+    [markRemotePending],
+  );
+
+  const commitRemoteSecretDraft = useCallback(
+    async (key: ProviderSecretSettingKey) => {
+      if (!settingsClient || !pendingRemoteSaveKeys.includes(key)) return;
+
+      const value = inputDrafts[key] ?? '';
       try {
-        await settingsClient.updateSettings({ [key]: parsedValues } as SettingsUpdate);
-        setRemoteSettings(prev => prev ? { ...prev, [key]: parsedValues } : null);
+        await settingsClient.updateSettings({ [key]: value } as SettingsUpdate);
+        setRemoteSettings((prev) => (prev ? { ...prev, [key]: value ? SECRET_MASK : '' } : null));
         clearRemotePending(key);
-        delete inputTimeoutRefs.current[key];
+        setInputDrafts((prev) => ({ ...prev, [key]: '' }));
+        setSaveStatusMessage('Saved');
       } catch (error: any) {
         console.error(`[Settings] Failed to update ${key}:`, error);
         setRemoteError(error.message || `Failed to update ${key}`);
         fetchRemoteSettings();
       }
-    }, 1000);
-  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
-
-  const handleRemoteSecretDraftChange = useCallback((key: ProviderSecretSettingKey, value: string) => {
-    markRemotePending(key);
-    setSaveStatusMessage(null);
-    setInputDrafts(prev => ({ ...prev, [key]: value }));
-  }, [markRemotePending]);
-
-  const commitRemoteSecretDraft = useCallback(async (key: ProviderSecretSettingKey) => {
-    if (!settingsClient || !pendingRemoteSaveKeys.includes(key)) return;
-
-    const value = inputDrafts[key] ?? '';
-    try {
-      await settingsClient.updateSettings({ [key]: value } as SettingsUpdate);
-      setRemoteSettings(prev => prev ? { ...prev, [key]: value ? SECRET_MASK : '' } : null);
-      clearRemotePending(key);
-      setInputDrafts(prev => ({ ...prev, [key]: '' }));
-      setSaveStatusMessage('Saved');
-    } catch (error: any) {
-      console.error(`[Settings] Failed to update ${key}:`, error);
-      setRemoteError(error.message || `Failed to update ${key}`);
-      fetchRemoteSettings();
-    }
-  }, [clearRemotePending, fetchRemoteSettings, inputDrafts, pendingRemoteSaveKeys, settingsClient]);
+    },
+    [clearRemotePending, fetchRemoteSettings, inputDrafts, pendingRemoteSaveKeys, settingsClient],
+  );
 
   // Cleanup input timeouts on unmount
   useEffect(() => {
@@ -1274,7 +1407,16 @@ export default function SettingsScreen({ navigation }: any) {
   // Toggle section collapse state
   const toggleSection = useCallback((section: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  }, []);
+
+  const activateDesktopSettingsNavItem = useCallback((itemId: AppShellSettingsNavItemId) => {
+    setActiveDesktopSettingsNavItemId(itemId);
+    const sections = getAppShellMobileSettingsSectionIdsForDesktopNavItem(itemId);
+    setExpandedSections((prev) => ({
+      ...prev,
+      ...Object.fromEntries(sections.map((section) => [section, true])),
+    }));
   }, []);
 
   // Handle skill toggle for current profile
@@ -1283,10 +1425,13 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       const res = await settingsClient.toggleSkillForProfile(skillId);
       // Optimistically update the UI
-      setSkills(prev => setSkillEnabledForProfileInList(prev, skillId, res.enabledForProfile));
+      setSkills((prev) => setSkillEnabledForProfileInList(prev, skillId, res.enabledForProfile));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle skill:', error);
-      Alert.alert('Error', 'Failed to toggle skill');
+      Alert.alert(
+        APP_SHELL_SETTINGS_FEEDBACK_LABELS.error,
+        APP_SHELL_SKILL_FEEDBACK_PRESENTATION.updateAccessFailed,
+      );
     }
   };
 
@@ -1311,13 +1456,19 @@ export default function SettingsScreen({ navigation }: any) {
       const result = await settingsClient.importSkillFromMarkdown(skillImportMarkdownText.trim());
       setShowSkillImportModal(false);
       setSkillImportMarkdownText('');
-      setSaveStatusMessage(`Imported skill "${result.skill.name}"`);
+      setSaveStatusMessage(formatAppShellSkillImportedStatus(result.skill.name));
       await fetchSkills();
-      Alert.alert('Import Complete', `Imported "${result.skill.name}".`);
+      Alert.alert(
+        APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importCompleteTitle,
+        formatAppShellSkillImportCompleteMessage(result.skill.name),
+      );
     } catch (error: any) {
       console.error('[Settings] Failed to import skill Markdown:', error);
-      setRemoteError(error.message || 'Failed to import skill');
-      Alert.alert('Import Failed', error.message || 'Failed to import skill');
+      setRemoteError(error.message || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFailed);
+      Alert.alert(
+        APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFailedTitle,
+        error.message || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFailed,
+      );
     } finally {
       setIsImportingSkillMarkdown(false);
     }
@@ -1331,70 +1482,79 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       const result = await settingsClient.importSkillFromGitHub(skillGitHubImportText.trim());
       if (!result.success) {
-        throw new Error(result.errors.join(', ') || 'No skills imported');
+        throw new Error(result.errors.join(', ') || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.noSkillsImported);
       }
 
       setShowSkillGitHubImportModal(false);
       setSkillGitHubImportText('');
-      setSaveStatusMessage(`Imported ${result.imported.length} GitHub skill${result.imported.length === 1 ? '' : 's'}`);
+      setSaveStatusMessage(formatAppShellSkillGitHubImportedStatus(result.imported.length));
       await fetchSkills();
-      Alert.alert('Import Complete', `Imported ${result.imported.length} skill${result.imported.length === 1 ? '' : 's'} from GitHub.`);
+      Alert.alert(
+        APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importCompleteTitle,
+        formatAppShellSkillGitHubImportCompleteMessage(result.imported.length),
+      );
     } catch (error: any) {
       console.error('[Settings] Failed to import GitHub skill:', error);
-      setRemoteError(error.message || 'Failed to import GitHub skill');
-      Alert.alert('Import Failed', error.message || 'Failed to import GitHub skill');
+      setRemoteError(error.message || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importGitHubFailed);
+      Alert.alert(
+        APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFailedTitle,
+        error.message || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importGitHubFailed,
+      );
     } finally {
       setIsImportingSkillGitHub(false);
     }
   }, [fetchSkills, settingsClient, skillGitHubImportText]);
 
-  const handleSkillMarkdownExport = useCallback(async (skill: Skill) => {
-    if (!settingsClient) return;
+  const handleSkillMarkdownExport = useCallback(
+    async (skill: Skill) => {
+      if (!settingsClient) return;
 
-    setIsExportingSkillMarkdownId(skill.id);
-    setRemoteError(null);
-    try {
-      const result = await settingsClient.exportSkillToMarkdown(skill.id);
-      await Share.share({
-        message: result.markdown,
-        title: `${skill.name}.md`,
-      });
-      setSaveStatusMessage(`Exported skill "${skill.name}"`);
-    } catch (error: any) {
-      console.error('[Settings] Failed to export skill Markdown:', error);
-      setRemoteError(error.message || 'Failed to export skill');
-      Alert.alert('Export Failed', error.message || 'Failed to export skill');
-    } finally {
-      setIsExportingSkillMarkdownId(null);
-    }
-  }, [settingsClient]);
+      setIsExportingSkillMarkdownId(skill.id);
+      setRemoteError(null);
+      try {
+        const result = await settingsClient.exportSkillToMarkdown(skill.id);
+        await Share.share({
+          message: result.markdown,
+          title: `${skill.name}.md`,
+        });
+        setSaveStatusMessage(formatAppShellSkillExportedStatus(skill.name));
+      } catch (error: any) {
+        console.error('[Settings] Failed to export skill Markdown:', error);
+        setRemoteError(error.message || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.exportFailed);
+        Alert.alert(
+          APP_SHELL_SKILL_FEEDBACK_PRESENTATION.exportFailedTitle,
+          error.message || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.exportFailed,
+        );
+      } finally {
+        setIsExportingSkillMarkdownId(null);
+      }
+    },
+    [settingsClient],
+  );
 
-  const confirmDestructiveAction = useCallback(
-    (title: string, message: string, onConfirm: () => Promise<void> | void, confirmLabel: string = 'Delete') => {
-      if (Platform.OS === 'web') {
-        const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
-        if (!confirmFn) {
-          return;
-        }
-        if (confirmFn(`${title}\n\n${message}`)) {
-          void onConfirm();
-        }
+  const confirmDestructiveAction = useCallback((title: string, message: string, onConfirm: () => Promise<void> | void, confirmLabel: string = 'Delete') => {
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (!confirmFn) {
         return;
       }
+      if (confirmFn(`${title}\n\n${message}`)) {
+        void onConfirm();
+      }
+      return;
+    }
 
-      Alert.alert(title, message, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: confirmLabel,
-          style: 'destructive',
-          onPress: () => {
-            void onConfirm();
-          },
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: confirmLabel,
+        style: 'destructive',
+        onPress: () => {
+          void onConfirm();
         },
-      ]);
-    },
-    []
-  );
+      },
+    ]);
+  }, []);
 
   const handleChatGptWebOAuthLogin = useCallback(async () => {
     if (!settingsClient || pendingChatGptWebAuthAction) return;
@@ -1421,8 +1581,8 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient || pendingChatGptWebAuthAction) return;
 
     confirmDestructiveAction(
-      'Disconnect ChatGPT Web',
-      'Disconnect the desktop OpenAI Codex OAuth session?',
+      APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectConfirmTitle,
+      APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectConfirmMessage,
       async () => {
         setPendingChatGptWebAuthAction('logout');
         setRemoteError(null);
@@ -1441,7 +1601,7 @@ export default function SettingsScreen({ navigation }: any) {
           setPendingChatGptWebAuthAction(null);
         }
       },
-      'Disconnect'
+      APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectActionLabel,
     );
   }, [confirmDestructiveAction, pendingChatGptWebAuthAction, settingsClient]);
 
@@ -1463,28 +1623,27 @@ export default function SettingsScreen({ navigation }: any) {
           Alert.alert('Clear Chats Failed', getErrorMessage(error));
         }
       },
-      'Delete All'
+      'Delete All',
     );
   }, [confirmDestructiveAction, connectionManager, sessionStore, settingsClient]);
 
-  const handleMcpServerDelete = useCallback((server: MCPServer) => {
-    if (!settingsClient) return;
+  const handleMcpServerDelete = useCallback(
+    (server: MCPServer) => {
+      if (!settingsClient) return;
 
-    confirmDestructiveAction(
-      'Delete MCP Server',
-      `Delete "${server.name}" from the connected desktop MCP config?`,
-      async () => {
+      confirmDestructiveAction(APP_SHELL_MCP_SERVER_DELETE_PRESENTATION.title, getAppShellMcpServerDeleteConfirmMessage(server.name), async () => {
         try {
           await settingsClient.deleteMCPServerConfig(server.name);
-          setMcpServers(prev => removeMcpServerFromList(prev, server.name));
+          setMcpServers((prev) => removeMcpServerFromList(prev, server.name));
         } catch (error: any) {
           console.error('[Settings] Failed to delete MCP server:', error);
-          Alert.alert('Error', error.message || 'Failed to delete MCP server');
+          Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, error.message || APP_SHELL_MCP_SERVER_DELETE_PRESENTATION.deleteFailed);
           fetchRemoteSettings();
         }
-      }
-    );
-  }, [confirmDestructiveAction, fetchRemoteSettings, settingsClient]);
+      });
+    },
+    [confirmDestructiveAction, fetchRemoteSettings, settingsClient],
+  );
 
   const openMcpServerEditor = useCallback(() => {
     setMcpServerEditorMode('create');
@@ -1515,11 +1674,8 @@ export default function SettingsScreen({ navigation }: any) {
     setMcpImportJsonText('');
   }, [isImportingMcpServers]);
 
-  const handleMcpServerDraftChange = useCallback(<K extends keyof McpServerDraft>(
-    key: K,
-    value: McpServerDraft[K],
-  ) => {
-    setMcpServerDraft(prev => ({ ...prev, [key]: value }));
+  const handleMcpServerDraftChange = useCallback(<K extends keyof McpServerDraft>(key: K, value: McpServerDraft[K]) => {
+    setMcpServerDraft((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const handleMcpServerEditorSave = async () => {
@@ -1544,10 +1700,10 @@ export default function SettingsScreen({ navigation }: any) {
       setShowMcpServerEditor(false);
       setMcpServerEditorMode('create');
       setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
-      setSaveStatusMessage('Saved');
+      setSaveStatusMessage(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.saved);
     } catch (error: any) {
       console.error('[Settings] Failed to save MCP server:', error);
-      setRemoteError(error.message || 'Failed to save MCP server');
+      setRemoteError(error.message || APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.saveFailed);
     } finally {
       setIsSavingMcpServer(false);
     }
@@ -1560,15 +1716,21 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       parsedJson = JSON.parse(mcpImportJsonText.trim());
     } catch {
-      setRemoteError('MCP server JSON is invalid');
-      Alert.alert('Import Failed', 'MCP server JSON is invalid');
+      setRemoteError(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.jsonInvalid);
+      Alert.alert(
+        APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importFailedTitle,
+        APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.jsonInvalid,
+      );
       return;
     }
 
     const parsedRequest = parseMcpServerConfigImportRequestBody(parsedJson);
     if (parsedRequest.ok === false) {
       setRemoteError(parsedRequest.error);
-      Alert.alert('Import Failed', parsedRequest.error);
+      Alert.alert(
+        APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importFailedTitle,
+        parsedRequest.error,
+      );
       return;
     }
 
@@ -1578,7 +1740,7 @@ export default function SettingsScreen({ navigation }: any) {
       const result = await settingsClient.importMCPServerConfigs(parsedRequest.request.config);
       setShowMcpImportModal(false);
       setMcpImportJsonText('');
-      setSaveStatusMessage('Saved');
+      setSaveStatusMessage(formatAppShellMcpServerImportStatus(result.importedCount));
 
       try {
         const serversRes = await settingsClient.getMCPServers();
@@ -1587,15 +1749,20 @@ export default function SettingsScreen({ navigation }: any) {
         console.error('[Settings] Failed to refresh MCP servers after import:', refreshError);
       }
 
-      const importedLabel = `${result.importedCount} MCP server${result.importedCount === 1 ? '' : 's'}`;
-      const skippedLabel = result.skippedReservedServerNames.length > 0
-        ? ` Skipped reserved names: ${result.skippedReservedServerNames.join(', ')}.`
-        : '';
-      Alert.alert('Import Complete', `Imported ${importedLabel}.${skippedLabel}`);
+      Alert.alert(
+        APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importCompleteTitle,
+        formatAppShellMcpServerImportCompleteMessage(
+          result.importedCount,
+          result.skippedReservedServerNames,
+        ),
+      );
     } catch (error: any) {
       console.error('[Settings] Failed to import MCP servers:', error);
-      setRemoteError(error.message || 'Failed to import MCP servers');
-      Alert.alert('Import Failed', error.message || 'Failed to import MCP servers');
+      setRemoteError(error.message || APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importFailed);
+      Alert.alert(
+        APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importFailedTitle,
+        error.message || APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importFailed,
+      );
     } finally {
       setIsImportingMcpServers(false);
     }
@@ -1611,13 +1778,16 @@ export default function SettingsScreen({ navigation }: any) {
       const serverNames = Object.keys(result.config.mcpServers || {});
       await Share.share({
         message: JSON.stringify(result.config, null, 2),
-        title: 'Export MCP Servers',
+        title: APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportTitle,
       });
-      setSaveStatusMessage(`Exported ${serverNames.length} MCP server${serverNames.length === 1 ? '' : 's'}`);
+      setSaveStatusMessage(formatAppShellMcpServerExportStatus(serverNames.length));
     } catch (error: any) {
       console.error('[Settings] Failed to export MCP servers:', error);
-      setRemoteError(error.message || 'Failed to export MCP servers');
-      Alert.alert('Export Failed', error.message || 'Failed to export MCP servers');
+      setRemoteError(error.message || APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportFailed);
+      Alert.alert(
+        APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportFailedTitle,
+        error.message || APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportFailed,
+      );
     } finally {
       setIsExportingMcpServers(false);
     }
@@ -1626,40 +1796,47 @@ export default function SettingsScreen({ navigation }: any) {
   const handleMcpServerExport = () => {
     if (!settingsClient) return;
 
-    const message = 'MCP config exports can include tokens, headers, and environment variables. Share only with places you trust.';
+    const message = APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportWarning;
 
     if (Platform.OS === 'web') {
       const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
-      if (!confirmFn || !confirmFn(`Export MCP Servers\n\n${message}`)) {
+      if (
+        !confirmFn ||
+        !confirmFn(`${APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportTitle}\n\n${message}`)
+      ) {
         return;
       }
       void shareMcpServerExport();
       return;
     }
 
-    Alert.alert('Export MCP Servers', message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Export',
-        onPress: () => {
-          void shareMcpServerExport();
+    Alert.alert(
+      APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportTitle,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: getAppShellMcpServerActionLabel('export'),
+          onPress: () => {
+            void shareMcpServerExport();
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   // Handle knowledge note delete
   const handleKnowledgeNoteDelete = async (noteId: string) => {
     if (!settingsClient) return;
-    confirmDestructiveAction('Delete Note', 'Are you sure you want to delete this note?', async () => {
+    confirmDestructiveAction(getAppShellKnowledgeNoteDeleteConfirmTitle('single'), formatAppShellKnowledgeNoteDeleteConfirmMessage('single'), async () => {
       try {
         await settingsClient.deleteKnowledgeNote(noteId);
-        setKnowledgeNotes(prev => removeKnowledgeNoteFromList(prev, noteId));
-        setKnowledgeNoteSearchResults(prev => removeKnowledgeNoteFromList(prev, noteId));
+        setKnowledgeNotes((prev) => removeKnowledgeNoteFromList(prev, noteId));
+        setKnowledgeNoteSearchResults((prev) => removeKnowledgeNoteFromList(prev, noteId));
         setSelectedKnowledgeNoteIds(prev => removeSetValue(prev, noteId));
       } catch (error: any) {
         console.error('[Settings] Failed to delete knowledge note:', error);
-        Alert.alert('Error', 'Failed to delete note');
+        Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION.deleteFailed);
       }
     });
   };
@@ -1667,113 +1844,113 @@ export default function SettingsScreen({ navigation }: any) {
   const handleKnowledgeNoteDeleteMultiple = async () => {
     if (!settingsClient || visibleSelectedKnowledgeNoteIds.length === 0) return;
     const ids = visibleSelectedKnowledgeNoteIds;
-    confirmDestructiveAction(
-      'Delete Selected Notes',
-      `Delete ${ids.length} selected note${ids.length === 1 ? '' : 's'}? This cannot be undone.`,
-      async () => {
-        try {
-          await settingsClient.deleteKnowledgeNotes(ids);
-          setKnowledgeNotes(prev => removeKnowledgeNotesFromList(prev, ids));
-          setKnowledgeNoteSearchResults(prev => removeKnowledgeNotesFromList(prev, ids));
-          setSelectedKnowledgeNoteIds(prev => removeSetValues(prev, ids));
-        } catch (error: any) {
-          console.error('[Settings] Failed to delete selected knowledge notes:', error);
-          Alert.alert('Error', 'Failed to delete selected notes');
-        }
+    confirmDestructiveAction(getAppShellKnowledgeNoteDeleteConfirmTitle('selected'), formatAppShellKnowledgeNoteDeleteConfirmMessage('selected', ids.length), async () => {
+      try {
+        await settingsClient.deleteKnowledgeNotes(ids);
+        setKnowledgeNotes((prev) => removeKnowledgeNotesFromList(prev, ids));
+        setKnowledgeNoteSearchResults((prev) => removeKnowledgeNotesFromList(prev, ids));
+        setSelectedKnowledgeNoteIds(prev => removeSetValues(prev, ids));
+      } catch (error: any) {
+        console.error('[Settings] Failed to delete selected knowledge notes:', error);
+        Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION.deleteSelectedFailed);
       }
-    );
+    });
   };
 
   const handleKnowledgeNoteDeleteAll = async () => {
     if (!settingsClient || knowledgeNotes.length === 0) return;
-    confirmDestructiveAction(
-      'Delete All Notes',
-      'Delete every knowledge note on desktop? This cannot be undone.',
-      async () => {
-        try {
-          await settingsClient.deleteAllKnowledgeNotes();
-          setKnowledgeNotes([]);
-          setKnowledgeNoteSearchResults([]);
-          setSelectedKnowledgeNoteIds(new Set());
-        } catch (error: any) {
-          console.error('[Settings] Failed to delete all knowledge notes:', error);
-          Alert.alert('Error', 'Failed to delete all notes');
-        }
+    confirmDestructiveAction(getAppShellKnowledgeNoteDeleteConfirmTitle('all'), formatAppShellKnowledgeNoteDeleteConfirmMessage('all', knowledgeNotes.length), async () => {
+      try {
+        await settingsClient.deleteAllKnowledgeNotes();
+        setKnowledgeNotes([]);
+        setKnowledgeNoteSearchResults([]);
+        setSelectedKnowledgeNoteIds(new Set());
+      } catch (error: any) {
+        console.error('[Settings] Failed to delete all knowledge notes:', error);
+        Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION.deleteAllFailed);
       }
-    );
+    });
   };
 
-  const handleKnowledgeNotePromote = useCallback(async (note: KnowledgeNote) => {
-    if (!settingsClient || note.context === 'auto') return;
-    try {
-      await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
-      const promotedAt = Date.now();
-      setKnowledgeNotes(prev => setKnowledgeNoteContextInList(prev, note.id, 'auto', promotedAt));
-      setKnowledgeNoteSearchResults(prev => setKnowledgeNoteContextInList(prev, note.id, 'auto', promotedAt));
-    } catch (error: any) {
-      console.error('[Settings] Failed to promote knowledge note to auto context:', error);
-      Alert.alert('Error', 'Failed to promote note to auto context');
-    }
-  }, [settingsClient]);
+  const handleKnowledgeNotePromote = useCallback(
+    async (note: KnowledgeNote) => {
+      if (!settingsClient || note.context === 'auto') return;
+      try {
+        await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
+        const promotedAt = Date.now();
+        setKnowledgeNotes((prev) => setKnowledgeNoteContextInList(prev, note.id, 'auto', promotedAt));
+        setKnowledgeNoteSearchResults((prev) => setKnowledgeNoteContextInList(prev, note.id, 'auto', promotedAt));
+      } catch (error: any) {
+        console.error('[Settings] Failed to promote knowledge note to auto context:', error);
+        Alert.alert('Error', 'Failed to promote note to auto context');
+      }
+    },
+    [settingsClient],
+  );
 
   // Navigate to knowledge note edit screen
-  const handleKnowledgeNoteEdit = useCallback((note?: KnowledgeNote) => {
-    navigation.navigate('KnowledgeNoteEdit', {
-      noteId: note?.id,
-      note,
-    });
-  }, [navigation]);
+  const handleKnowledgeNoteEdit = useCallback(
+    (note?: KnowledgeNote) => {
+      navigation.navigate('KnowledgeNoteEdit', {
+        noteId: note?.id,
+        note,
+      });
+    },
+    [navigation],
+  );
 
   const toggleKnowledgeNoteSelection = useCallback((noteId: string) => {
     setSelectedKnowledgeNoteIds(prev => toggleSetValue(prev, noteId));
   }, []);
 
-  const handleSkillEdit = useCallback((skill?: Skill) => {
-    navigation.navigate('SkillEdit', {
-      skillId: skill?.id,
-      skill,
-    });
-  }, [navigation]);
+  const handleSkillEdit = useCallback(
+    (skill?: Skill) => {
+      navigation.navigate('SkillEdit', {
+        skillId: skill?.id,
+        skill,
+      });
+    },
+    [navigation],
+  );
 
   const toggleSkillSelection = useCallback((skillId: string) => {
     setSelectedSkillIds(prev => toggleSetValue(prev, skillId));
   }, []);
 
-  const handleSkillDelete = useCallback((skill: Skill) => {
-    if (!settingsClient) return;
-    confirmDestructiveAction('Delete Skill', `Are you sure you want to delete "${skill.name}"?`, async () => {
-      try {
-        await settingsClient.deleteSkill(skill.id);
-        setSkills(prev => removeSkillFromList(prev, skill.id));
-        setSelectedSkillIds(prev => removeSetValue(prev, skill.id));
-      } catch (error: any) {
-        console.error('[Settings] Failed to delete skill:', error);
-        Alert.alert('Error', error.message || 'Failed to delete skill');
-      }
-    });
-  }, [confirmDestructiveAction, settingsClient]);
+  const handleSkillDelete = useCallback(
+    (skill: Skill) => {
+      if (!settingsClient) return;
+      confirmDestructiveAction(getAppShellSkillDeleteConfirmTitle(), getAppShellSkillDeleteConfirmMessage(skill.name), async () => {
+        try {
+          await settingsClient.deleteSkill(skill.id);
+          setSkills((prev) => removeSkillFromList(prev, skill.id));
+          setSelectedSkillIds(prev => removeSetValue(prev, skill.id));
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete skill:', error);
+          Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, error.message || APP_SHELL_SKILL_DELETE_PRESENTATION.deleteFailed);
+        }
+      });
+    },
+    [confirmDestructiveAction, settingsClient],
+  );
 
   const handleSelectedSkillsDelete = useCallback(() => {
     if (!settingsClient || visibleSelectedSkillIds.length === 0) return;
 
-    confirmDestructiveAction(
-      'Delete Selected Skills',
-      `Delete ${visibleSelectedSkillIds.length} selected skill${visibleSelectedSkillIds.length === 1 ? '' : 's'}?`,
-      async () => {
-        try {
-          const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
-          const deletedIds = getSuccessfulSkillDeleteIds(result.results);
-          setSkills(prev => removeSkillsFromList(prev, deletedIds));
-          setSelectedSkillIds(prev => removeSetValues(prev, visibleSelectedSkillIds));
-          if (result.deletedCount < visibleSelectedSkillIds.length) {
-            Alert.alert('Partial Delete', `Deleted ${result.deletedCount} of ${visibleSelectedSkillIds.length} selected skills.`);
-          }
-        } catch (error: any) {
-          console.error('[Settings] Failed to delete selected skills:', error);
-          Alert.alert('Error', error.message || 'Failed to delete selected skills');
+    confirmDestructiveAction(getAppShellSkillDeleteConfirmTitle(true), formatAppShellSkillDeleteSelectedConfirmMessage(visibleSelectedSkillIds.length), async () => {
+      try {
+        const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
+        const deletedIds = getSuccessfulSkillDeleteIds(result.results);
+        setSkills((prev) => removeSkillsFromList(prev, deletedIds));
+        setSelectedSkillIds(prev => removeSetValues(prev, visibleSelectedSkillIds));
+        if (result.deletedCount < visibleSelectedSkillIds.length) {
+          Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.partialDelete, formatAppShellSkillPartialDeleteMessage(result.deletedCount, visibleSelectedSkillIds.length));
         }
+      } catch (error: any) {
+        console.error('[Settings] Failed to delete selected skills:', error);
+        Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, error.message || APP_SHELL_SKILL_DELETE_PRESENTATION.deleteSelectedFailed);
       }
-    );
+    });
   }, [confirmDestructiveAction, settingsClient, visibleSelectedSkillIds]);
 
   // Handle agent profile toggle
@@ -1781,10 +1958,13 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     try {
       const res = await settingsClient.toggleAgentProfile(profileId);
-      setAgentProfiles(prev => setAgentProfileEnabledInList(prev, profileId, res.enabled));
+      setAgentProfiles((prev) => setAgentProfileEnabledInList(prev, profileId, res.enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle agent profile:', error);
-      Alert.alert('Error', 'Failed to toggle agent profile');
+      Alert.alert(
+        APP_SHELL_SETTINGS_FEEDBACK_LABELS.error,
+        APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.toggleFailed,
+      );
     }
   };
 
@@ -1797,43 +1977,55 @@ export default function SettingsScreen({ navigation }: any) {
       setAgentProfiles(res.profiles);
     } catch (error: any) {
       console.error('[Settings] Failed to reload agent profiles:', error);
-      Alert.alert('Error', error.message || 'Failed to rescan agent files');
+      Alert.alert(
+        APP_SHELL_SETTINGS_FEEDBACK_LABELS.error,
+        error.message || APP_SHELL_AGENT_PROFILE_FEEDBACK_PRESENTATION.rescanFailed,
+      );
     } finally {
       setIsReloadingAgentProfiles(false);
     }
   }, [isReloadingAgentProfiles, settingsClient]);
 
   // Handle agent profile delete
-  const handleAgentProfileDelete = useCallback(async (profile: AgentProfile) => {
-    if (!settingsClient) return;
-    if (profile.isBuiltIn) {
-      Alert.alert('Cannot Delete', 'Built-in agents cannot be deleted');
-      return;
-    }
-
-    confirmDestructiveAction('Delete Agent', `Are you sure you want to delete "${profile.displayName}"?`, async () => {
-      try {
-        await settingsClient.deleteAgentProfile(profile.id);
-        setAgentProfiles(prev => removeAgentProfileFromList(prev, profile.id));
-      } catch (error: any) {
-        console.error('[Settings] Failed to delete agent profile:', error);
-        Alert.alert('Error', error.message || 'Failed to delete agent profile');
+  const handleAgentProfileDelete = useCallback(
+    async (profile: AgentProfile) => {
+      if (!settingsClient) return;
+      if (profile.isBuiltIn) {
+        Alert.alert(APP_SHELL_AGENT_DELETE_PRESENTATION.cannotDeleteTitle, APP_SHELL_AGENT_DELETE_PRESENTATION.builtInCannotDelete);
+        return;
       }
-    });
-  }, [settingsClient, confirmDestructiveAction]);
+
+      confirmDestructiveAction(APP_SHELL_AGENT_DELETE_PRESENTATION.title, getAppShellAgentDeleteConfirmMessage(profile.displayName), async () => {
+        try {
+          await settingsClient.deleteAgentProfile(profile.id);
+          setAgentProfiles((prev) => removeAgentProfileFromList(prev, profile.id));
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete agent profile:', error);
+          Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, error.message || APP_SHELL_AGENT_DELETE_PRESENTATION.deleteFailed);
+        }
+      });
+    },
+    [settingsClient, confirmDestructiveAction],
+  );
 
   // Navigate to agent edit screen
-  const handleAgentProfileEdit = useCallback((agentId?: string) => {
-    navigation.navigate('AgentEdit', { agentId });
-  }, [navigation]);
+  const handleAgentProfileEdit = useCallback(
+    (agentId?: string) => {
+      navigation.navigate('AgentEdit', { agentId });
+    },
+    [navigation],
+  );
 
   // Navigate to loop edit screen
-  const handleLoopEdit = useCallback((loop?: Loop) => {
-    navigation.navigate('LoopEdit', {
-      loopId: loop?.id,
-      loop,
-    });
-  }, [navigation]);
+  const handleLoopEdit = useCallback(
+    (loop?: Loop) => {
+      navigation.navigate('LoopEdit', {
+        loopId: loop?.id,
+        loop,
+      });
+    },
+    [navigation],
+  );
 
   const closeLoopImportModal = useCallback(() => {
     if (isImportingLoopMarkdown) return;
@@ -1850,76 +2042,100 @@ export default function SettingsScreen({ navigation }: any) {
       const result = await settingsClient.importLoopFromMarkdown(loopImportMarkdownText.trim());
       setShowLoopImportModal(false);
       setLoopImportMarkdownText('');
-      setSaveStatusMessage(`Imported loop "${result.loop.name}"`);
+      setSaveStatusMessage(formatAppShellLoopImportedStatus(result.loop.name));
       await fetchLoops();
-      Alert.alert('Import Complete', `Imported "${result.loop.name}".`);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.importComplete,
+        formatAppShellLoopImportCompleteMessage(result.loop.name),
+      );
     } catch (error: any) {
       console.error('[Settings] Failed to import loop Markdown:', error);
-      setRemoteError(error.message || 'Failed to import loop');
-      Alert.alert('Import Failed', error.message || 'Failed to import loop');
+      setRemoteError(error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.importExport.importFailed);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.importFailed,
+        error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.importExport.importFailed,
+      );
     } finally {
       setIsImportingLoopMarkdown(false);
     }
   }, [fetchLoops, loopImportMarkdownText, settingsClient]);
 
-  const handleLoopMarkdownExport = useCallback(async (loop: Loop) => {
-    if (!settingsClient) return;
+  const handleLoopMarkdownExport = useCallback(
+    async (loop: Loop) => {
+      if (!settingsClient) return;
 
-    setIsExportingLoopMarkdownId(loop.id);
-    setRemoteError(null);
-    try {
-      const result = await settingsClient.exportLoopToMarkdown(loop.id);
-      await Share.share({
-        message: result.markdown,
-        title: `${loop.name}.md`,
-      });
-      setSaveStatusMessage(`Exported loop "${loop.name}"`);
-    } catch (error: any) {
-      console.error('[Settings] Failed to export loop Markdown:', error);
-      setRemoteError(error.message || 'Failed to export loop');
-      Alert.alert('Export Failed', error.message || 'Failed to export loop');
-    } finally {
-      setIsExportingLoopMarkdownId(null);
-    }
-  }, [settingsClient]);
-
-  const handleLoopDelete = useCallback((loop: Loop) => {
-    if (!settingsClient) return;
-    confirmDestructiveAction('Delete Loop', `Are you sure you want to delete "${loop.name}"?`, async () => {
+      setIsExportingLoopMarkdownId(loop.id);
+      setRemoteError(null);
       try {
-        await settingsClient.deleteLoop(loop.id);
-        setLoops(prev => removeRepeatTaskFromList(prev, loop.id));
+        const result = await settingsClient.exportLoopToMarkdown(loop.id);
+        await Share.share({
+          message: result.markdown,
+          title: `${loop.name}.md`,
+        });
+        setSaveStatusMessage(formatAppShellLoopExportedStatus(loop.name));
       } catch (error: any) {
-        console.error('[Settings] Failed to delete loop:', error);
-        Alert.alert('Error', error.message || 'Failed to delete loop');
+        console.error('[Settings] Failed to export loop Markdown:', error);
+        setRemoteError(error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.importExport.exportFailed);
+        Alert.alert(
+          APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.exportFailed,
+          error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.importExport.exportFailed,
+        );
+      } finally {
+        setIsExportingLoopMarkdownId(null);
       }
-    });
-  }, [settingsClient, confirmDestructiveAction]);
+    },
+    [settingsClient],
+  );
+
+  const handleLoopDelete = useCallback(
+    (loop: Loop) => {
+      if (!settingsClient) return;
+      confirmDestructiveAction(APP_SHELL_LOOP_DELETE_PRESENTATION.title, getAppShellLoopDeleteConfirmMessage(loop.name), async () => {
+        try {
+          await settingsClient.deleteLoop(loop.id);
+          setLoops((prev) => removeRepeatTaskFromList(prev, loop.id));
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete loop:', error);
+          Alert.alert(APP_SHELL_SETTINGS_FEEDBACK_LABELS.error, error.message || APP_SHELL_LOOP_DELETE_PRESENTATION.deleteFailed);
+        }
+      });
+    },
+    [settingsClient, confirmDestructiveAction],
+  );
 
   // Handle loop toggle
   const handleLoopToggle = async (loopId: string) => {
     if (!settingsClient) return;
     try {
       const res = await settingsClient.toggleLoop(loopId);
-      setLoops(prev => setRepeatTaskEnabledInList(prev, loopId, res.enabled));
+      setLoops((prev) => setRepeatTaskEnabledInList(prev, loopId, res.enabled));
       void fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to toggle loop:', error);
-      Alert.alert('Error', 'Failed to toggle loop');
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.error,
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.updateFailed,
+      );
     }
   };
 
   // Handle loop run
-  const handleLoopRun = async (loopId: string) => {
+  const handleLoopRun = async (loop: Loop) => {
     if (!settingsClient) return;
     try {
-      await settingsClient.runLoop(loopId);
-      Alert.alert('Success', 'Loop triggered successfully');
+      await settingsClient.runLoop(loop.id);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.success,
+        formatAppShellLoopRunningMessage(loop.name),
+      );
       // Refresh loops to get updated lastRunAt
       fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to run loop:', error);
-      Alert.alert('Error', error.message || 'Failed to run loop');
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.error,
+        error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.triggerFailed,
+      );
     }
   };
 
@@ -1929,17 +2145,18 @@ export default function SettingsScreen({ navigation }: any) {
     setRemoteError(null);
     try {
       const result = await settingsClient.startLoop(loop.id);
-      setLoops(prev => applyRepeatTaskRuntimeStatusInList(prev, loop.id, result.status));
-      setSaveStatusMessage(`Started loop "${loop.name}"`);
+      setLoops((prev) => applyRepeatTaskRuntimeStatusInList(prev, loop.id, result.status));
+      setSaveStatusMessage(formatAppShellLoopStartedStatus(loop.name));
       await fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to start loop:', error);
-      setRemoteError(error.message || 'Failed to start loop');
-      Alert.alert('Error', error.message || 'Failed to start loop');
-    } finally {
-      setLoopRuntimeAction(prev =>
-        prev?.loopId === loop.id && prev.action === 'start' ? null : prev
+      setRemoteError(error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.startFailed);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.error,
+        error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.startFailed,
       );
+    } finally {
+      setLoopRuntimeAction((prev) => (prev?.loopId === loop.id && prev.action === 'start' ? null : prev));
     }
   };
 
@@ -1949,17 +2166,18 @@ export default function SettingsScreen({ navigation }: any) {
     setRemoteError(null);
     try {
       const result = await settingsClient.stopLoop(loop.id);
-      setLoops(prev => applyRepeatTaskRuntimeStatusInList(prev, loop.id, result.status));
-      setSaveStatusMessage(`Stopped loop "${loop.name}"`);
+      setLoops((prev) => applyRepeatTaskRuntimeStatusInList(prev, loop.id, result.status));
+      setSaveStatusMessage(formatAppShellLoopStoppedStatus(loop.name));
       await fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to stop loop:', error);
-      setRemoteError(error.message || 'Failed to stop loop');
-      Alert.alert('Error', error.message || 'Failed to stop loop');
-    } finally {
-      setLoopRuntimeAction(prev =>
-        prev?.loopId === loop.id && prev.action === 'stop' ? null : prev
+      setRemoteError(error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.stopFailed);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.error,
+        error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.stopFailed,
       );
+    } finally {
+      setLoopRuntimeAction((prev) => (prev?.loopId === loop.id && prev.action === 'stop' ? null : prev));
     }
   };
 
@@ -1969,15 +2187,18 @@ export default function SettingsScreen({ navigation }: any) {
     setRemoteError(null);
     try {
       const result = await settingsClient.startAllLoops();
-      setLoops(prev => applyRepeatTaskRuntimeStatuses(prev, result.statuses));
-      setSaveStatusMessage(`Started ${result.count} loop${result.count === 1 ? '' : 's'}`);
+      setLoops((prev) => applyRepeatTaskRuntimeStatuses(prev, result.statuses));
+      setSaveStatusMessage(formatAppShellLoopBulkStartedStatus(result.count));
       await fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to start all loops:', error);
-      setRemoteError(error.message || 'Failed to start all loops');
-      Alert.alert('Error', error.message || 'Failed to start all loops');
+      setRemoteError(error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.startAllFailed);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.error,
+        error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.startAllFailed,
+      );
     } finally {
-      setLoopBulkRuntimeAction(prev => (prev === 'start-all' ? null : prev));
+      setLoopBulkRuntimeAction((prev) => (prev === 'start-all' ? null : prev));
     }
   };
 
@@ -1987,15 +2208,18 @@ export default function SettingsScreen({ navigation }: any) {
     setRemoteError(null);
     try {
       const result = await settingsClient.stopAllLoops();
-      setLoops(prev => applyRepeatTaskRuntimeStatuses(prev, result.statuses));
-      setSaveStatusMessage(`Stopped ${result.count} loop${result.count === 1 ? '' : 's'}`);
+      setLoops((prev) => applyRepeatTaskRuntimeStatuses(prev, result.statuses));
+      setSaveStatusMessage(formatAppShellLoopBulkStoppedStatus(result.count));
       await fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to stop all loops:', error);
-      setRemoteError(error.message || 'Failed to stop all loops');
-      Alert.alert('Error', error.message || 'Failed to stop all loops');
+      setRemoteError(error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.stopAllFailed);
+      Alert.alert(
+        APP_SHELL_LOOP_FEEDBACK_PRESENTATION.titles.error,
+        error.message || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.stopAllFailed,
+      );
     } finally {
-      setLoopBulkRuntimeAction(prev => (prev === 'stop-all' ? null : prev));
+      setLoopBulkRuntimeAction((prev) => (prev === 'stop-all' ? null : prev));
     }
   };
 
@@ -2009,11 +2233,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabled) {
       const success = await registerPush(config.baseUrl, config.apiKey);
       if (!success) {
-        Alert.alert(
-          'Permission Required',
-          'Push notifications require permission. Please enable notifications in your device settings.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Permission Required', 'Push notifications require permission. Please enable notifications in your device settings.', [{ text: 'OK' }]);
       }
     } else {
       await unregisterPush(config.baseUrl, config.apiKey);
@@ -2021,27 +2241,30 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   // Fetch available models for the current provider
-  const fetchModels = useCallback(async (providerId: CHAT_PROVIDER_ID) => {
-    if (!settingsClient) return;
+  const fetchModels = useCallback(
+    async (providerId: CHAT_PROVIDER_ID) => {
+      if (!settingsClient) return;
 
-    setIsLoadingModels(true);
-    try {
-      const response = await settingsClient.getModels(providerId);
-      setAvailableModels(response.models);
-      // Check if current model is in the list, if not enable custom mode
-      const currentModel = getCurrentModelValue();
-      if (currentModel && response.models.length > 0) {
-        const isInList = response.models.some(m => m.id === currentModel);
-        setUseCustomModel(!isInList);
+      setIsLoadingModels(true);
+      try {
+        const response = await settingsClient.getModels(providerId);
+        setAvailableModels(response.models);
+        // Check if current model is in the list, if not enable custom mode
+        const currentModel = getCurrentModelValue();
+        if (currentModel && response.models.length > 0) {
+          const isInList = response.models.some((m) => m.id === currentModel);
+          setUseCustomModel(!isInList);
+        }
+      } catch (error: any) {
+        console.error('[Settings] Failed to fetch models:', error);
+        // Keep any existing models on error to avoid UI looking empty
+        // Only log the error, don't clear the list
+      } finally {
+        setIsLoadingModels(false);
       }
-    } catch (error: any) {
-      console.error('[Settings] Failed to fetch models:', error);
-      // Keep any existing models on error to avoid UI looking empty
-      // Only log the error, don't clear the list
-    } finally {
-      setIsLoadingModels(false);
-    }
-  }, [settingsClient]);
+    },
+    [settingsClient],
+  );
 
   const getAgentProvider = (): CHAT_PROVIDER_ID => resolveAgentProviderId(remoteSettings);
 
@@ -2065,7 +2288,7 @@ export default function SettingsScreen({ navigation }: any) {
 
     try {
       await settingsClient.updateSettings({ agentProviderId: provider });
-      setRemoteSettings(prev => prev ? { ...prev, agentProviderId: provider } : null);
+      setRemoteSettings((prev) => (prev ? { ...prev, agentProviderId: provider } : null));
       // Reset custom model mode when switching providers
       setUseCustomModel(false);
       // Models will be fetched via the useEffect above
@@ -2104,13 +2327,13 @@ export default function SettingsScreen({ navigation }: any) {
 
   const getCurrentModelPreset = (): ModelPresetSummary | undefined => {
     if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return undefined;
-    return remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
+    return remoteSettings.availablePresets.find((p) => p.id === remoteSettings.currentModelPresetId);
   };
 
   // Get current preset display name
   const getCurrentPresetName = () => {
     if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return 'OpenAI';
-    const preset = remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
+    const preset = remoteSettings.availablePresets.find((p) => p.id === remoteSettings.currentModelPresetId);
     return preset?.name || 'OpenAI';
   };
 
@@ -2131,7 +2354,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handlePresetDraftChange = (key: keyof ModelPresetDraft, value: string) => {
-    setPresetDraft(prev => ({ ...prev, [key]: value }));
+    setPresetDraft((prev) => ({ ...prev, [key]: value }));
   };
 
   const refreshSettingsAfterPresetMutation = async () => {
@@ -2165,8 +2388,8 @@ export default function SettingsScreen({ navigation }: any) {
       setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
       setSaveStatusMessage('Saved');
     } catch (error: any) {
-      console.error('[Settings] Failed to save endpoint:', error);
-      setRemoteError(error.message || 'Failed to save endpoint');
+      console.error('[Settings] Failed to save preset:', error);
+      setRemoteError(error.message || APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.saveFailure);
     } finally {
       setIsSavingPreset(false);
     }
@@ -2176,8 +2399,8 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient || !presetDraft.id || presetDraft.isBuiltIn) return;
 
     confirmDestructiveAction(
-      'Delete Endpoint',
-      `Are you sure you want to delete "${presetDraft.name}"?`,
+      APP_SHELL_MODEL_PRESET_PRESENTATION.editor.deleteConfirmTitle,
+      getAppShellModelPresetDeleteConfirmMessage(presetDraft.name),
       async () => {
         setIsSavingPreset(true);
         setRemoteError(null);
@@ -2188,53 +2411,56 @@ export default function SettingsScreen({ navigation }: any) {
           setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
           setSaveStatusMessage('Saved');
         } catch (error: any) {
-          console.error('[Settings] Failed to delete endpoint:', error);
-          setRemoteError(error.message || 'Failed to delete endpoint');
+          console.error('[Settings] Failed to delete preset:', error);
+          setRemoteError(error.message || APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.deleteFailure);
         } finally {
           setIsSavingPreset(false);
         }
       },
-      'Delete'
+      APP_SHELL_MODEL_PRESET_PRESENTATION.actions.delete,
     );
   };
 
   // Handle model name change with debouncing to avoid request storms per keystroke
-  const handleModelNameChange = useCallback((modelName: string) => {
-    // Update draft state immediately for responsive UI
-    setCustomModelDraft(modelName);
-    if (remoteSettings) {
-      const pendingModelKey = getAgentModelSettingKey(getAgentProvider());
-      markRemotePending(pendingModelKey);
-    }
-    setSaveStatusMessage(null);
-
-    // Cancel any pending update
-    if (modelUpdateTimeoutRef.current) {
-      clearTimeout(modelUpdateTimeoutRef.current);
-    }
-
-    // Debounce the actual API call by 500ms
-    modelUpdateTimeoutRef.current = setTimeout(async () => {
-      if (!settingsClient || !remoteSettings) return;
-
-      const provider = getAgentProvider();
-      const modelKey = getAgentModelSettingKey(provider);
-
-      // Update local state
-      setRemoteSettings(prev => prev ? { ...prev, [modelKey]: modelName } : null);
-
-      try {
-        await settingsClient.updateSettings({ [modelKey]: modelName });
-        clearRemotePending(modelKey);
-        modelUpdateTimeoutRef.current = null;
-      } catch (error: any) {
-        console.error('[Settings] Failed to update model:', error);
-        setRemoteError(error.message || 'Failed to update model');
-        // Refresh to get actual state
-        fetchRemoteSettings();
+  const handleModelNameChange = useCallback(
+    (modelName: string) => {
+      // Update draft state immediately for responsive UI
+      setCustomModelDraft(modelName);
+      if (remoteSettings) {
+        const pendingModelKey = getAgentModelSettingKey(getAgentProvider());
+        markRemotePending(pendingModelKey);
       }
-    }, 500);
-  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, remoteSettings, settingsClient]);
+      setSaveStatusMessage(null);
+
+      // Cancel any pending update
+      if (modelUpdateTimeoutRef.current) {
+        clearTimeout(modelUpdateTimeoutRef.current);
+      }
+
+      // Debounce the actual API call by 500ms
+      modelUpdateTimeoutRef.current = setTimeout(async () => {
+        if (!settingsClient || !remoteSettings) return;
+
+        const provider = getAgentProvider();
+        const modelKey = getAgentModelSettingKey(provider);
+
+        // Update local state
+        setRemoteSettings((prev) => (prev ? { ...prev, [modelKey]: modelName } : null));
+
+        try {
+          await settingsClient.updateSettings({ [modelKey]: modelName });
+          clearRemotePending(modelKey);
+          modelUpdateTimeoutRef.current = null;
+        } catch (error: any) {
+          console.error('[Settings] Failed to update model:', error);
+          setRemoteError(error.message || 'Failed to update model');
+          // Refresh to get actual state
+          fetchRemoteSettings();
+        }
+      }, 500);
+    },
+    [clearRemotePending, fetchRemoteSettings, markRemotePending, remoteSettings, settingsClient],
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -2250,7 +2476,18 @@ export default function SettingsScreen({ navigation }: any) {
     if (remoteSettings) {
       setCustomModelDraft(getCurrentModelValue());
     }
-  }, [remoteSettings?.agentProviderId, remoteSettings?.mcpToolsProviderId, remoteSettings?.agentOpenaiModel, remoteSettings?.agentGroqModel, remoteSettings?.agentGeminiModel, remoteSettings?.agentChatgptWebModel, remoteSettings?.mcpToolsOpenaiModel, remoteSettings?.mcpToolsGroqModel, remoteSettings?.mcpToolsGeminiModel, remoteSettings?.mcpToolsChatgptWebModel]);
+  }, [
+    remoteSettings?.agentProviderId,
+    remoteSettings?.mcpToolsProviderId,
+    remoteSettings?.agentOpenaiModel,
+    remoteSettings?.agentGroqModel,
+    remoteSettings?.agentGeminiModel,
+    remoteSettings?.agentChatgptWebModel,
+    remoteSettings?.mcpToolsOpenaiModel,
+    remoteSettings?.mcpToolsGroqModel,
+    remoteSettings?.mcpToolsGeminiModel,
+    remoteSettings?.mcpToolsChatgptWebModel,
+  ]);
 
   // Get current model value based on provider
   const getCurrentModelValue = () => {
@@ -2271,7 +2508,7 @@ export default function SettingsScreen({ navigation }: any) {
   const getCurrentModelDisplayName = () => {
     const currentValue = getCurrentModelValue();
     if (!currentValue) return 'Select a model';
-    const model = availableModels.find(m => m.id === currentValue);
+    const model = availableModels.find((m) => m.id === currentValue);
     return model?.name || currentValue;
   };
 
@@ -2372,7 +2609,9 @@ export default function SettingsScreen({ navigation }: any) {
         }
         for (const key of DISCORD_LIST_SETTING_KEYS) {
           if (pendingKeys.has(key)) {
-            updates[key] = parseConfigListInput(inputDrafts[key] ?? '', { unique: true });
+            updates[key] = parseConfigListInput(inputDrafts[key] ?? '', {
+              unique: true,
+            });
           }
         }
         for (const section of PROVIDER_CREDENTIAL_SECTIONS) {
@@ -2409,26 +2648,42 @@ export default function SettingsScreen({ navigation }: any) {
 
         if (Object.keys(updates).length > 0) {
           await settingsClient.updateSettings(updates);
-          setRemoteSettings((prev) => prev ? {
-            ...prev,
-            ...updates,
-            ...(updates.openaiApiKey !== undefined ? { openaiApiKey: updates.openaiApiKey ? SECRET_MASK : '' } : {}),
-            ...(updates.groqApiKey !== undefined ? { groqApiKey: updates.groqApiKey ? SECRET_MASK : '' } : {}),
-            ...(updates.geminiApiKey !== undefined ? { geminiApiKey: updates.geminiApiKey ? SECRET_MASK : '' } : {}),
-            ...(updates.chatgptWebAccessToken !== undefined ? { chatgptWebAccessToken: updates.chatgptWebAccessToken ? SECRET_MASK : '' } : {}),
-            ...(updates.chatgptWebSessionToken !== undefined ? { chatgptWebSessionToken: updates.chatgptWebSessionToken ? SECRET_MASK : '' } : {}),
-            ...(updates.discordBotToken !== undefined ? { discordBotToken: updates.discordBotToken ? SECRET_MASK : '' } : {}),
-            ...(updates.langfuseSecretKey ? { langfuseSecretKey: '••••••••' } : {}),
-          } : null);
+          setRemoteSettings((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  ...updates,
+                  ...(updates.openaiApiKey !== undefined ? { openaiApiKey: updates.openaiApiKey ? SECRET_MASK : '' } : {}),
+                  ...(updates.groqApiKey !== undefined ? { groqApiKey: updates.groqApiKey ? SECRET_MASK : '' } : {}),
+                  ...(updates.geminiApiKey !== undefined ? { geminiApiKey: updates.geminiApiKey ? SECRET_MASK : '' } : {}),
+                  ...(updates.chatgptWebAccessToken !== undefined
+                    ? {
+                        chatgptWebAccessToken: updates.chatgptWebAccessToken ? SECRET_MASK : '',
+                      }
+                    : {}),
+                  ...(updates.chatgptWebSessionToken !== undefined
+                    ? {
+                        chatgptWebSessionToken: updates.chatgptWebSessionToken ? SECRET_MASK : '',
+                      }
+                    : {}),
+                  ...(updates.discordBotToken !== undefined
+                    ? {
+                        discordBotToken: updates.discordBotToken ? SECRET_MASK : '',
+                      }
+                    : {}),
+                  ...(updates.langfuseSecretKey ? { langfuseSecretKey: '••••••••' } : {}),
+                }
+              : null,
+          );
 
           if (
-            updates.langfuseSecretKey
-            || updates.discordBotToken !== undefined
-            || updates.openaiApiKey !== undefined
-            || updates.groqApiKey !== undefined
-            || updates.geminiApiKey !== undefined
-            || updates.chatgptWebAccessToken !== undefined
-            || updates.chatgptWebSessionToken !== undefined
+            updates.langfuseSecretKey ||
+            updates.discordBotToken !== undefined ||
+            updates.openaiApiKey !== undefined ||
+            updates.groqApiKey !== undefined ||
+            updates.geminiApiKey !== undefined ||
+            updates.chatgptWebAccessToken !== undefined ||
+            updates.chatgptWebSessionToken !== undefined
           ) {
             setInputDrafts((prev) => ({
               ...prev,
@@ -2454,57 +2709,43 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsSavingAllSettings(false);
     }
-  }, [
-    clearAllRemoteTimeouts,
-    customModelDraft,
-    draft,
-    inputDrafts,
-    isSavingAllSettings,
-    pendingRemoteSaveKeys,
-    remoteSettings,
-    saveConfig,
-    setConfig,
-    settingsClient,
-  ]);
+  }, [clearAllRemoteTimeouts, customModelDraft, draft, inputDrafts, isSavingAllSettings, pendingRemoteSaveKeys, remoteSettings, saveConfig, setConfig, settingsClient]);
 
   const hasPendingSaves = hasPendingLocalSave || pendingRemoteSaveKeys.length > 0;
-  const saveButtonLabel = isSavingAllSettings
-    ? 'Saving…'
-    : hasPendingSaves
-      ? 'Save changes'
-      : 'Save settings now';
+  const saveButtonLabel = isSavingAllSettings ? 'Saving…' : hasPendingSaves ? 'Save changes' : 'Save settings now';
   const saveButtonHint = hasPendingSaves
     ? 'Save all current settings immediately, including typed edits that have not blurred yet.'
     : 'Save the current settings again if you want a clear confirmation.';
 
-
   // CollapsibleSection component
-  const CollapsibleSection = ({
-    id,
-    title,
-    children
-  }: {
-    id: string;
-    title: string;
-    children: React.ReactNode;
-  }) => {
+  const CollapsibleSection = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => {
+    if (
+      isDesktopSettingsLayout &&
+      !activeDesktopSettingsSectionIds.has(id as AppShellMobileSettingsSectionId)
+    ) {
+      return null;
+    }
+
     const isExpanded = expandedSections[id] ?? false;
+
+    if (isDesktopSettingsLayout) {
+      return (
+        <View style={[styles.collapsibleSection, styles.desktopSettingsActivePanel]}>
+          <View style={[styles.collapsibleHeader, styles.desktopSettingsActiveHeader]}>
+            <Text style={styles.collapsibleTitle}>{title}</Text>
+          </View>
+          <View style={styles.collapsibleContent}>{children}</View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.collapsibleSection}>
-        <TouchableOpacity
-          style={styles.collapsibleHeader}
-          onPress={() => toggleSection(id)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: isExpanded }}
-        >
+        <TouchableOpacity style={styles.collapsibleHeader} onPress={() => toggleSection(id)} accessibilityRole="button" accessibilityState={{ expanded: isExpanded }}>
           <Text style={styles.collapsibleTitle}>{title}</Text>
           <Text style={styles.collapsibleChevron}>{isExpanded ? '▼' : '▶'}</Text>
         </TouchableOpacity>
-        {isExpanded && (
-          <View style={styles.collapsibleContent}>
-            {children}
-          </View>
-        )}
+        {isExpanded && <View style={styles.collapsibleContent}>{children}</View>}
       </View>
     );
   };
@@ -2513,21 +2754,40 @@ export default function SettingsScreen({ navigation }: any) {
     const isSelected = selectedKnowledgeNoteIds.has(note.id);
     return (
       <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-        <TouchableOpacity
-          style={styles.agentInfoPressable}
-          onPress={() => handleKnowledgeNoteEdit(note)}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.agentInfoPressable} onPress={() => handleKnowledgeNoteEdit(note)} activeOpacity={0.7}>
           <View style={[styles.serverInfo, { flex: 1 }]}>
             <Text style={styles.serverName}>{note.title}</Text>
-            <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
+            <Text style={styles.serverMeta} numberOfLines={2}>
+              {note.summary || note.body}
+            </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
               {note.tags.map((tag, idx) => (
-                <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+                <View
+                  key={idx}
+                  style={[
+                    styles.providerOption,
+                    {
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      marginRight: 4,
+                      marginTop: 2,
+                    },
+                  ]}
+                >
                   <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
                 </View>
               ))}
-              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+              <View
+                style={[
+                  styles.providerOption,
+                  {
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    marginRight: 4,
+                    marginTop: 2,
+                  },
+                ]}
+              >
                 <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
               </View>
             </View>
@@ -2539,12 +2799,10 @@ export default function SettingsScreen({ navigation }: any) {
             onPress={() => toggleKnowledgeNoteSelection(note.id)}
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
-            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} note ${note.title}`}
+            accessibilityLabel={getAppShellKnowledgeNoteSelectionAccessibilityLabel(note.title, isSelected)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[styles.noteSelectButtonText, isSelected && styles.noteSelectButtonTextSelected]}>
-              {isSelected ? 'Selected' : 'Select'}
-            </Text>
+            <Text style={[styles.noteSelectButtonText, isSelected && styles.noteSelectButtonTextSelected]}>{getAppShellKnowledgeNoteSelectionLabel(isSelected)}</Text>
           </TouchableOpacity>
           {note.context === 'search-only' && (
             <TouchableOpacity
@@ -2559,10 +2817,10 @@ export default function SettingsScreen({ navigation }: any) {
           <TouchableOpacity
             style={styles.noteDeleteButton}
             onPress={() => handleKnowledgeNoteDelete(note.id)}
-            accessibilityLabel={`Delete note ${note.title}`}
+            accessibilityLabel={getAppShellKnowledgeNoteDeleteAccessibilityLabel(note.title)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.noteDeleteButtonText}>Delete</Text>
+            <Text style={styles.noteDeleteButtonText}>{getAppShellKnowledgeNoteActionLabel('delete')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -2572,2648 +2830,2553 @@ export default function SettingsScreen({ navigation }: any) {
   if (!ready) return null;
 
   const isLoopBulkRuntimeBusy = loopBulkRuntimeAction !== null;
+  const desktopSettingsNavItems = getDesktopSettingsNavItems({
+    whatsappEnabled: remoteSettings?.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED,
+    discordEnabled: remoteSettings?.discordEnabled ?? DEFAULT_DISCORD_ENABLED,
+  });
+  const isGeneralSettingsSectionActive = !isDesktopSettingsLayout || activeDesktopSettingsNavItemId === 'general';
 
   return (
     <>
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing['3xl'] + 120 }]}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }
-      >
-        {/* Connection Card - Tap to navigate to ConnectionSettings */}
-        <TouchableOpacity
-          style={styles.connectionCard}
-          onPress={() => navigation.navigate('ConnectionSettings')}
-          accessibilityRole="button"
-          accessibilityLabel="Connection settings"
+      <AppShellSettingsLayout
+        isDesktopLayout={isDesktopSettingsLayout}
+        navItems={desktopSettingsNavItems}
+        activeNavItemId={activeDesktopSettingsNavItemId}
+        onActivateNavItem={activateDesktopSettingsNavItem}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
+        footer={(
+          <>
+            <TouchableOpacity
+              style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
+              onPress={() => {
+                void flushAllSettingsSaves();
+              }}
+              disabled={isSavingAllSettings}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={saveButtonLabel}
+              accessibilityHint={saveButtonHint}
+            >
+              <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
+            </TouchableOpacity>
+            <Text style={styles.saveBarHint}>{saveStatusMessage || saveButtonHint}</Text>
+          </>
+        )}
         >
-          <View style={styles.connectionCardContent}>
-            <View style={styles.connectionCardLeft}>
-              <View style={styles.connectionStatusRow}>
-                <View style={[
-                  styles.statusDot,
-                  { width: 10, height: 10, borderRadius: 5 },
-                  config.baseUrl && config.apiKey
-                    ? styles.statusConnected
-                    : { backgroundColor: '#ef4444' }
-                ]} />
-                <Text style={styles.connectionCardTitle}>
-                  {config.baseUrl && config.apiKey ? 'Connected' : 'Not connected'}
-                </Text>
+          {isGeneralSettingsSectionActive && (
+            <>
+          {/* Connection Card - Tap to navigate to ConnectionSettings */}
+          <TouchableOpacity
+            style={styles.connectionCard}
+            onPress={() => navigation.navigate('ConnectionSettings')}
+            accessibilityRole="button"
+            accessibilityLabel="Connection settings"
+          >
+            <View style={styles.connectionCardContent}>
+              <View style={styles.connectionCardLeft}>
+                <View style={styles.connectionStatusRow}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      { width: 10, height: 10, borderRadius: 5 },
+                      config.baseUrl && config.apiKey ? styles.statusConnected : { backgroundColor: '#ef4444' },
+                    ]}
+                  />
+                  <Text style={styles.connectionCardTitle}>{config.baseUrl && config.apiKey ? 'Connected' : 'Not connected'}</Text>
+                </View>
+                {config.baseUrl && (
+                  <Text style={styles.connectionCardUrl} numberOfLines={2}>
+                    {config.baseUrl}
+                  </Text>
+                )}
               </View>
-              {config.baseUrl && (
-                <Text style={styles.connectionCardUrl} numberOfLines={2}>
-                  {config.baseUrl}
-                </Text>
+              <Text style={styles.connectionCardChevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.connectionCard, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
+            onPress={() => navigation.navigate('Operations')}
+            disabled={!(config.baseUrl && config.apiKey)}
+            accessibilityRole="button"
+            accessibilityLabel="Operator console"
+          >
+            <View style={styles.connectionCardContent}>
+              <View style={styles.connectionCardLeft}>
+                <Text style={styles.connectionCardTitle}>Operator Console</Text>
+                <Text style={styles.connectionCardUrl}>Health, recent errors, and safe restart actions for the connected desktop.</Text>
+              </View>
+              <Text style={styles.connectionCardChevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Go to Chats button */}
+          <TouchableOpacity
+            style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
+            onPress={() => {
+              if (navigation.canGoBack?.()) {
+                navigation.goBack();
+                return;
+              }
+
+              navigation.navigate('Sessions');
+            }}
+            disabled={!(config.baseUrl && config.apiKey)}
+            accessibilityRole="button"
+            accessibilityLabel="Go to Chats"
+          >
+            <Text style={styles.primaryButtonText}>Go to Chats</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.sectionTitle}>Chats</Text>
+          {remoteSettings && (
+            <>
+              <View style={styles.row}>
+                <Text style={styles.label}>Desktop History</Text>
+                <Switch
+                  value={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+                  onValueChange={(v) => handleRemoteSettingToggle('conversationsEnabled', v)}
+                  trackColor={{
+                    false: theme.colors.muted,
+                    true: theme.colors.primary,
+                  }}
+                  thumbColor={(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                />
+              </View>
+              <Text style={styles.helperText}>Store desktop agent conversations so they can sync to mobile.</Text>
+
+              <View style={styles.row}>
+                <Text style={styles.label}>Auto-Save Desktop Chats</Text>
+                <Switch
+                  value={remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS}
+                  onValueChange={(v) => handleRemoteSettingToggle('autoSaveConversations', v)}
+                  trackColor={{
+                    false: theme.colors.muted,
+                    true: theme.colors.primary,
+                  }}
+                  thumbColor={(remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS) ? theme.colors.primaryForeground : theme.colors.background}
+                  disabled={!(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED)}
+                />
+              </View>
+
+              <Text style={styles.label}>Keep Recent Chats</Text>
+              <TextInput
+                style={[styles.input, !(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) && styles.inputDisabled]}
+                value={inputDrafts.maxConversationsToKeep ?? String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+                onChangeText={(v) => {
+                  markRemotePending('maxConversationsToKeep');
+                  setSaveStatusMessage(null);
+                  const num = parseMaxConversationsToKeepDraft(v);
+                  if (num !== null) {
+                    handleRemoteSettingUpdate('maxConversationsToKeep', num);
+                  } else {
+                    setInputDrafts((prev) => ({
+                      ...prev,
+                      maxConversationsToKeep: v,
+                    }));
+                  }
+                }}
+                placeholder={String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+                placeholderTextColor={theme.colors.mutedForeground}
+                keyboardType="number-pad"
+                editable={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+              />
+              <Text style={styles.helperText}>Maximum desktop chats to keep before pruning older history.</Text>
+            </>
+          )}
+          <View style={styles.serverRow}>
+            <View style={styles.serverInfo}>
+              <Text style={styles.serverName}>Clear all chats</Text>
+              <Text style={styles.serverMeta}>Delete every chat saved in this mobile app, including pinned chats.</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.dangerActionButton, sessionStore.sessions.length === 0 && styles.dangerActionButtonDisabled]}
+              onPress={handleClearAllChats}
+              disabled={sessionStore.sessions.length === 0}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
+              accessibilityHint="Deletes every chat saved in this mobile app after confirmation."
+            >
+              <Text style={[styles.dangerActionButtonText, sessionStore.sessions.length === 0 && styles.dangerActionButtonTextDisabled]}>Clear All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <View style={styles.themeSelector}>
+            {THEME_PREFERENCE_OPTIONS.map((option) => (
+              <Pressable key={option.value} style={[styles.themeOption, themeMode === option.value && styles.themeOptionActive]} onPress={() => setThemeMode(option.value)}>
+                <Text style={[styles.themeOptionText, themeMode === option.value && styles.themeOptionTextActive]}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Hands-free Voice Mode</Text>
+            <Switch
+              value={!!draft.handsFree}
+              onValueChange={(v) => updateLocalConfig({ handsFree: v })}
+              accessibilityLabel={createSwitchAccessibilityLabel('Hands-free Voice Mode')}
+              trackColor={{
+                false: theme.colors.muted,
+                true: theme.colors.primary,
+              }}
+              thumbColor={draft.handsFree ? theme.colors.primaryForeground : theme.colors.background}
+            />
+          </View>
+          <Text style={styles.helperText}>Mobile v1 only works while the app stays open on the Chat screen in the foreground.</Text>
+
+          <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
+          <TextInput
+            style={styles.input}
+            value={draftHandsFreeWakePhrase}
+            onChangeText={(value) => updateDraftField({ handsFreeWakePhrase: value })}
+            onEndEditing={() =>
+              updateLocalConfig({
+                handsFreeWakePhrase: draftHandsFreeWakePhrase,
+              })
+            }
+            placeholder={DEFAULT_HANDS_FREE_WAKE_PHRASE}
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <Text style={[styles.label, { marginTop: spacing.md }]}>Sleep phrase</Text>
+          <TextInput
+            style={styles.input}
+            value={draftHandsFreeSleepPhrase}
+            onChangeText={(value) => updateDraftField({ handsFreeSleepPhrase: value })}
+            onEndEditing={() =>
+              updateLocalConfig({
+                handsFreeSleepPhrase: draftHandsFreeSleepPhrase,
+              })
+            }
+            placeholder={DEFAULT_HANDS_FREE_SLEEP_PHRASE}
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <Text style={[styles.label, { marginTop: spacing.md }]}>Send after silence</Text>
+          <TextInput
+            style={styles.input}
+            value={handsFreeDebounceInput}
+            onChangeText={handleHandsFreeDebounceInputChange}
+            onEndEditing={commitHandsFreeDebounceInput}
+            placeholder={`${DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS}`}
+            placeholderTextColor={theme.colors.mutedForeground}
+            keyboardType="number-pad"
+          />
+          <Text style={styles.helperText}>
+            Wait this many milliseconds without new speech before sending a hands-free message. Any value ≥ 0 works. Current: {Math.round((draft.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS) / 10) / 100}s.
+          </Text>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Debug Voice State</Text>
+              <Text style={[styles.helperText, { marginTop: 2 }]}>Show recent recognizer and handsfree events in Chat.</Text>
+            </View>
+            <Switch
+              value={draft.handsFreeDebug === true}
+              onValueChange={(v) => updateLocalConfig({ handsFreeDebug: v })}
+              accessibilityLabel={createSwitchAccessibilityLabel('Debug Voice State')}
+              trackColor={{
+                false: theme.colors.muted,
+                true: theme.colors.primary,
+              }}
+              thumbColor={draft.handsFreeDebug ? theme.colors.primaryForeground : theme.colors.background}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Foreground Only</Text>
+              <Text style={[styles.helperText, { marginTop: 2 }]}>Keep this on for the mobile MVP safety boundary.</Text>
+            </View>
+            <Switch
+              value={draftHandsFreeForegroundOnly}
+              onValueChange={(v) => updateLocalConfig({ handsFreeForegroundOnly: v })}
+              accessibilityLabel={createSwitchAccessibilityLabel('Foreground Only')}
+              trackColor={{
+                false: theme.colors.muted,
+                true: theme.colors.primary,
+              }}
+              thumbColor={draftHandsFreeForegroundOnly ? theme.colors.primaryForeground : theme.colors.background}
+            />
+          </View>
+
+          {/* Microphone Device Selection */}
+          <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Audio Input</Text>
+          <MicrophoneSelector selectedDeviceId={draft.audioInputDeviceId} onDeviceChange={(deviceId) => updateLocalConfig({ audioInputDeviceId: deviceId })} />
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Text-to-Speech</Text>
+            <Switch
+              value={draftTtsEnabled}
+              onValueChange={(v) => updateLocalConfig({ ttsEnabled: v })}
+              accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
+              trackColor={{
+                false: theme.colors.muted,
+                true: theme.colors.primary,
+              }}
+              thumbColor={draftTtsEnabled ? theme.colors.primaryForeground : theme.colors.background}
+            />
+          </View>
+
+          {/* TTS Voice Settings - shown when TTS is enabled */}
+          {draftTtsEnabled && (
+            <>
+              <TTSSettings
+                voiceId={draft.ttsVoiceId}
+                rate={draft.ttsRate ?? 1.0}
+                pitch={draft.ttsPitch ?? 1.0}
+                ttsProvider={draft.ttsProvider ?? 'native'}
+                edgeTtsVoice={draft.edgeTtsVoice}
+                remoteBaseUrl={draft.baseUrl}
+                remoteApiKey={draft.apiKey}
+                onVoiceChange={(v) => updateLocalConfig({ ttsVoiceId: v })}
+                onRateChange={(r) => updateLocalConfig({ ttsRate: r })}
+                onPitchChange={(p) => updateLocalConfig({ ttsPitch: p })}
+                onTtsProviderChange={(p) => updateLocalConfig({ ttsProvider: p })}
+                onEdgeTtsVoiceChange={(v) => updateLocalConfig({ edgeTtsVoice: v })}
+              />
+              <Text style={styles.helperText}>
+                Edge TTS voices route through your paired desktop. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
+              </Text>
+            </>
+          )}
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Message Queuing</Text>
+            <Switch
+              value={draftMessageQueueEnabled}
+              onValueChange={(v) => updateLocalConfig({ messageQueueEnabled: v })}
+              accessibilityLabel={createSwitchAccessibilityLabel('Message Queuing')}
+              trackColor={{
+                false: theme.colors.muted,
+                true: theme.colors.primary,
+              }}
+              thumbColor={draftMessageQueueEnabled ? theme.colors.primaryForeground : theme.colors.background}
+            />
+          </View>
+          <Text style={styles.helperText}>Queue messages while the agent is busy processing</Text>
+
+          {/* Push Notifications Section */}
+          <View style={[styles.row, styles.sectionLeadRow]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Push Notifications</Text>
+              {!notificationsSupported && <Text style={[styles.helperText, { marginTop: 2 }]}>Only available on physical devices</Text>}
+              {notificationsSupported && notificationPermission === 'denied' && (
+                <Text style={[styles.helperText, { marginTop: 2, color: theme.colors.destructive }]}>Permission denied - enable in device settings</Text>
               )}
             </View>
-            <Text style={styles.connectionCardChevron}>›</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.connectionCard, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
-          onPress={() => navigation.navigate('Operations')}
-          disabled={!(config.baseUrl && config.apiKey)}
-          accessibilityRole="button"
-          accessibilityLabel="Operator console"
-        >
-          <View style={styles.connectionCardContent}>
-            <View style={styles.connectionCardLeft}>
-              <Text style={styles.connectionCardTitle}>Operator Console</Text>
-              <Text style={styles.connectionCardUrl}>
-                Health, recent errors, and safe restart actions for the connected desktop.
-              </Text>
-            </View>
-            <Text style={styles.connectionCardChevron}>›</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Go to Chats button */}
-        <TouchableOpacity
-          style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
-          onPress={() => {
-            if (navigation.canGoBack?.()) {
-              navigation.goBack();
-              return;
-            }
-
-            navigation.navigate('Sessions');
-          }}
-          disabled={!(config.baseUrl && config.apiKey)}
-          accessibilityRole="button"
-          accessibilityLabel="Go to Chats"
-        >
-          <Text style={styles.primaryButtonText}>Go to Chats</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.sectionTitle}>Chats</Text>
-        {remoteSettings && (
-          <>
-            <View style={styles.row}>
-              <Text style={styles.label}>Desktop History</Text>
-              <Switch
-                value={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
-                onValueChange={(v) => handleRemoteSettingToggle('conversationsEnabled', v)}
-                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                thumbColor={(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-              />
-            </View>
-            <Text style={styles.helperText}>
-              Store desktop agent conversations so they can sync to mobile.
-            </Text>
-
-            <View style={styles.row}>
-              <Text style={styles.label}>Auto-Save Desktop Chats</Text>
-              <Switch
-                value={remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS}
-                onValueChange={(v) => handleRemoteSettingToggle('autoSaveConversations', v)}
-                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                thumbColor={(remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS) ? theme.colors.primaryForeground : theme.colors.background}
-                disabled={!(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED)}
-              />
-            </View>
-
-            <Text style={styles.label}>Keep Recent Chats</Text>
-            <TextInput
-              style={[
-                styles.input,
-                !(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) && styles.inputDisabled,
-              ]}
-              value={inputDrafts.maxConversationsToKeep ?? String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
-              onChangeText={(v) => {
-                markRemotePending('maxConversationsToKeep');
-                setSaveStatusMessage(null);
-                const num = parseMaxConversationsToKeepDraft(v);
-                if (num !== null) {
-                  handleRemoteSettingUpdate('maxConversationsToKeep', num);
-                } else {
-                  setInputDrafts(prev => ({ ...prev, maxConversationsToKeep: v }));
-                }
+            <Switch
+              value={notificationsRegistered}
+              onValueChange={handleNotificationToggle}
+              accessibilityLabel={createSwitchAccessibilityLabel('Push Notifications')}
+              trackColor={{
+                false: theme.colors.muted,
+                true: theme.colors.primary,
               }}
-              placeholder={String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
-              placeholderTextColor={theme.colors.mutedForeground}
-              keyboardType="number-pad"
-              editable={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+              thumbColor={notificationsRegistered ? theme.colors.primaryForeground : theme.colors.background}
+              disabled={!notificationsSupported || isNotificationLoading}
             />
-            <Text style={styles.helperText}>
-              Maximum desktop chats to keep before pruning older history.
-            </Text>
-          </>
-        )}
-        <View style={styles.serverRow}>
-          <View style={styles.serverInfo}>
-            <Text style={styles.serverName}>Clear all chats</Text>
-            <Text style={styles.serverMeta}>
-              Delete every chat saved in this mobile app, including pinned chats.
-            </Text>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.dangerActionButton,
-              sessionStore.sessions.length === 0 && styles.dangerActionButtonDisabled,
-            ]}
-            onPress={handleClearAllChats}
-            disabled={sessionStore.sessions.length === 0}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
-            accessibilityHint="Deletes every chat saved in this mobile app after confirmation."
-          >
-            <Text
-              style={[
-                styles.dangerActionButtonText,
-                sessionStore.sessions.length === 0 && styles.dangerActionButtonTextDisabled,
-              ]}
-            >
-              Clear All
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.helperText}>Receive notifications when new messages arrive from your AI assistant</Text>
+            </>
+          )}
 
-        <Text style={styles.sectionTitle}>Appearance</Text>
-        <View style={styles.themeSelector}>
-          {THEME_PREFERENCE_OPTIONS.map((option) => (
-            <Pressable
-              key={option.value}
-              style={[
-                styles.themeOption,
-                themeMode === option.value && styles.themeOptionActive,
-              ]}
-              onPress={() => setThemeMode(option.value)}
-            >
-              <Text style={[
-                styles.themeOptionText,
-                themeMode === option.value && styles.themeOptionTextActive,
-              ]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+          {/* Remote Settings Section - only show when connected to a DotAgents desktop server */}
+          {settingsClient && (isLoadingRemote || isDotAgentsServer) && (
+            <>
+              <Text style={styles.sectionTitle}>Desktop Settings</Text>
 
-        <View style={styles.row}>
-          <Text style={styles.label}>Hands-free Voice Mode</Text>
-          <Switch
-            value={!!draft.handsFree}
-            onValueChange={(v) => updateLocalConfig({ handsFree: v })}
-            accessibilityLabel={createSwitchAccessibilityLabel('Hands-free Voice Mode')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draft.handsFree ? theme.colors.primaryForeground : theme.colors.background}
-          />
-        </View>
-        <Text style={styles.helperText}>
-          Mobile v1 only works while the app stays open on the Chat screen in the foreground.
-        </Text>
-
-        <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
-        <TextInput
-          style={styles.input}
-          value={draftHandsFreeWakePhrase}
-          onChangeText={(value) => updateDraftField({ handsFreeWakePhrase: value })}
-          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draftHandsFreeWakePhrase })}
-          placeholder={DEFAULT_HANDS_FREE_WAKE_PHRASE}
-          placeholderTextColor={theme.colors.mutedForeground}
-          autoCapitalize='none'
-          autoCorrect={false}
-        />
-
-        <Text style={[styles.label, { marginTop: spacing.md }]}>Sleep phrase</Text>
-        <TextInput
-          style={styles.input}
-          value={draftHandsFreeSleepPhrase}
-          onChangeText={(value) => updateDraftField({ handsFreeSleepPhrase: value })}
-          onEndEditing={() => updateLocalConfig({ handsFreeSleepPhrase: draftHandsFreeSleepPhrase })}
-          placeholder={DEFAULT_HANDS_FREE_SLEEP_PHRASE}
-          placeholderTextColor={theme.colors.mutedForeground}
-          autoCapitalize='none'
-          autoCorrect={false}
-        />
-
-        <Text style={[styles.label, { marginTop: spacing.md }]}>Send after silence</Text>
-        <TextInput
-          style={styles.input}
-          value={handsFreeDebounceInput}
-          onChangeText={handleHandsFreeDebounceInputChange}
-          onEndEditing={commitHandsFreeDebounceInput}
-          placeholder={`${DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS}`}
-          placeholderTextColor={theme.colors.mutedForeground}
-          keyboardType='number-pad'
-        />
-        <Text style={styles.helperText}>
-          Wait this many milliseconds without new speech before sending a hands-free message. Any value ≥ 0 works.
-          Current: {Math.round((draft.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS) / 10) / 100}s.
-        </Text>
-
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Debug Voice State</Text>
-            <Text style={[styles.helperText, { marginTop: 2 }]}>Show recent recognizer and handsfree events in Chat.</Text>
-          </View>
-          <Switch
-            value={draft.handsFreeDebug === true}
-            onValueChange={(v) => updateLocalConfig({ handsFreeDebug: v })}
-            accessibilityLabel={createSwitchAccessibilityLabel('Debug Voice State')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draft.handsFreeDebug ? theme.colors.primaryForeground : theme.colors.background}
-          />
-        </View>
-
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Foreground Only</Text>
-            <Text style={[styles.helperText, { marginTop: 2 }]}>Keep this on for the mobile MVP safety boundary.</Text>
-          </View>
-          <Switch
-            value={draftHandsFreeForegroundOnly}
-            onValueChange={(v) => updateLocalConfig({ handsFreeForegroundOnly: v })}
-            accessibilityLabel={createSwitchAccessibilityLabel('Foreground Only')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draftHandsFreeForegroundOnly ? theme.colors.primaryForeground : theme.colors.background}
-          />
-        </View>
-
-        {/* Microphone Device Selection */}
-        <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Audio Input</Text>
-        <MicrophoneSelector
-          selectedDeviceId={draft.audioInputDeviceId}
-          onDeviceChange={(deviceId) => updateLocalConfig({ audioInputDeviceId: deviceId })}
-        />
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Text-to-Speech</Text>
-          <Switch
-            value={draftTtsEnabled}
-            onValueChange={(v) => updateLocalConfig({ ttsEnabled: v })}
-            accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draftTtsEnabled ? theme.colors.primaryForeground : theme.colors.background}
-          />
-        </View>
-
-        {/* TTS Voice Settings - shown when TTS is enabled */}
-        {draftTtsEnabled && (
-          <>
-            <TTSSettings
-              voiceId={draft.ttsVoiceId}
-              rate={draft.ttsRate ?? 1.0}
-              pitch={draft.ttsPitch ?? 1.0}
-              ttsProvider={draft.ttsProvider ?? 'native'}
-              edgeTtsVoice={draft.edgeTtsVoice}
-              remoteBaseUrl={draft.baseUrl}
-              remoteApiKey={draft.apiKey}
-              onVoiceChange={(v) => updateLocalConfig({ ttsVoiceId: v })}
-              onRateChange={(r) => updateLocalConfig({ ttsRate: r })}
-              onPitchChange={(p) => updateLocalConfig({ ttsPitch: p })}
-              onTtsProviderChange={(p) => updateLocalConfig({ ttsProvider: p })}
-              onEdgeTtsVoiceChange={(v) => updateLocalConfig({ edgeTtsVoice: v })}
-            />
-            <Text style={styles.helperText}>
-              Edge TTS voices route through your paired desktop. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
-            </Text>
-          </>
-        )}
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Message Queuing</Text>
-          <Switch
-            value={draftMessageQueueEnabled}
-            onValueChange={(v) => updateLocalConfig({ messageQueueEnabled: v })}
-            accessibilityLabel={createSwitchAccessibilityLabel('Message Queuing')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draftMessageQueueEnabled ? theme.colors.primaryForeground : theme.colors.background}
-          />
-        </View>
-        <Text style={styles.helperText}>
-          Queue messages while the agent is busy processing
-        </Text>
-
-        {/* Push Notifications Section */}
-        <View style={[styles.row, styles.sectionLeadRow]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Push Notifications</Text>
-            {!notificationsSupported && (
-              <Text style={[styles.helperText, { marginTop: 2 }]}>
-                Only available on physical devices
-              </Text>
-            )}
-            {notificationsSupported && notificationPermission === 'denied' && (
-              <Text style={[styles.helperText, { marginTop: 2, color: theme.colors.destructive }]}>
-                Permission denied - enable in device settings
-              </Text>
-            )}
-          </View>
-          <Switch
-            value={notificationsRegistered}
-            onValueChange={handleNotificationToggle}
-            accessibilityLabel={createSwitchAccessibilityLabel('Push Notifications')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={notificationsRegistered ? theme.colors.primaryForeground : theme.colors.background}
-            disabled={!notificationsSupported || isNotificationLoading}
-          />
-        </View>
-        <Text style={styles.helperText}>
-          Receive notifications when new messages arrive from your AI assistant
-        </Text>
-
-        {/* Remote Settings Section - only show when connected to a DotAgents desktop server */}
-        {settingsClient && (isLoadingRemote || isDotAgentsServer) && (
-          <>
-            <Text style={styles.sectionTitle}>Desktop Settings</Text>
-
-            {isLoadingRemote && !isRefreshing && (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Loading remote settings...</Text>
-              </View>
-            )}
-
-            {remoteError && (
-              <View style={styles.warningContainer}>
-                <View style={styles.warningContent}>
-                  <Text style={styles.warningTitle}>Desktop settings need attention</Text>
-                  <Text style={styles.warningText}>{remoteError}</Text>
-                  <Text style={styles.warningDetailText}>
-                    Some desktop sections may be out of date until the retry finishes.
-                  </Text>
+              {isLoadingRemote && !isRefreshing && (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.loadingText}>Loading remote settings...</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.warningRetryButton}
-                  onPress={fetchRemoteSettings}
-                  accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Retry loading desktop settings')}
-                  accessibilityHint="Reloads the desktop settings section and refreshes stale values."
-                >
-                  <Text style={styles.warningRetryButtonText}>Retry loading</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
 
-            {/* Provider Selection */}
-            {remoteSettings && (
-              <CollapsibleSection id="providerSelection" title="Provider Selection">
-                {/* Voice Transcription (STT) Provider */}
-                <Text style={styles.label}>Voice Transcription (STT)</Text>
-                <View style={styles.providerSelector}>
-                  {STT_PROVIDERS.map((provider) => (
-                    <Pressable
-                      key={provider.value}
-                      style={[
-                        styles.providerOption,
-                        (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionActive,
-                      ]}
-                      onPress={() => handleRemoteSettingUpdate('sttProviderId', provider.value)}
-                    >
-                      <Text style={[
-                        styles.providerOptionText,
-                        (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
-                      ]}>
-                        {provider.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {/* Agent Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>Agent</Text>
-                <View style={styles.providerSelector}>
-                  {CHAT_PROVIDERS.map((provider) => (
-                    <Pressable
-                      key={provider.value}
-                      style={[
-                        styles.providerOption,
-                        getAgentProvider() === provider.value && styles.providerOptionActive,
-                      ]}
-                      onPress={() => handleProviderChange(provider.value)}
-                    >
-                      <Text style={[
-                        styles.providerOptionText,
-                        getAgentProvider() === provider.value && styles.providerOptionTextActive,
-                      ]}>
-                        {provider.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {/* Text-to-Speech (TTS) Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>Text-to-Speech (TTS)</Text>
-                <View style={styles.providerSelector}>
-                  {TTS_PROVIDERS.map((provider) => (
-                    <Pressable
-                      key={provider.value}
-                      style={[
-                        styles.providerOption,
-                        (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionActive,
-                      ]}
-                      onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
-                    >
-                      <Text style={[
-                        styles.providerOptionText,
-                        (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
-                      ]}>
-                        {provider.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </CollapsibleSection>
-            )}
-
-            {/* Provider Setup */}
-            {remoteSettings && (
-              <CollapsibleSection id="providerSetup" title="Provider Setup">
-                {PROVIDER_CREDENTIAL_SECTIONS.map((provider) => (
-                  <View key={provider.id} style={styles.providerCredentialGroup}>
-                    <Text style={styles.subsectionTitle}>{provider.label}</Text>
-
-                    {provider.secrets.map((secret) => {
-                      const hasConfiguredSecret = remoteSettings[secret.key] === SECRET_MASK;
-                      return (
-                        <View key={secret.key}>
-                          <Text style={styles.label}>{secret.label}</Text>
-                          <TextInput
-                            style={styles.input}
-                            value={inputDrafts[secret.key] ?? ''}
-                            onChangeText={(v) => handleRemoteSecretDraftChange(secret.key, v)}
-                            onBlur={() => { void commitRemoteSecretDraft(secret.key); }}
-                            placeholder={hasConfiguredSecret ? 'Configured' : secret.placeholder}
-                            placeholderTextColor={theme.colors.mutedForeground}
-                            autoCapitalize='none'
-                            autoCorrect={false}
-                            secureTextEntry
-                          />
-                        </View>
-                      );
-                    })}
-
-                    <Text style={styles.label}>Base URL</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts[provider.baseUrl] ?? ''}
-                      onChangeText={(v) => handleRemoteSettingUpdate(provider.baseUrl, v)}
-                      placeholder={provider.baseUrlPlaceholder}
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                      autoCorrect={false}
-                      keyboardType="url"
-                    />
-
-                    {provider.id === 'chatgpt-web' && (
-                      <View style={styles.chatGptWebAuthBlock}>
-                        <Text style={styles.label}>Desktop OAuth</Text>
-                        <View style={styles.serverNameRow}>
-                          <View style={[
-                            styles.statusDot,
-                            chatGptWebAuthStatus?.authenticated ? styles.statusConnected : styles.statusDisconnected,
-                          ]} />
-                          <Text style={styles.serverName}>
-                            {chatGptWebAuthStatus?.authenticated ? 'Connected' : 'Not connected'}
-                          </Text>
-                        </View>
-                        {chatGptWebAuthStatus?.authenticated && (
-                          <Text style={styles.helperText}>
-                            {[chatGptWebAuthStatus.email, chatGptWebAuthStatus.planType].filter(Boolean).join(' • ') || 'OpenAI Codex'}
-                          </Text>
-                        )}
-                        {chatGptWebAuthStatus?.callbackUrl && (
-                          <Text style={styles.helperText} numberOfLines={2}>
-                            Callback URL: {chatGptWebAuthStatus.callbackUrl}
-                          </Text>
-                        )}
-                        <View style={styles.profileActions}>
-                          <TouchableOpacity
-                            style={[
-                              styles.profileActionButton,
-                              pendingChatGptWebAuthAction && styles.profileActionButtonDisabled,
-                            ]}
-                            onPress={handleChatGptWebOAuthLogin}
-                            disabled={!!pendingChatGptWebAuthAction}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel('Connect ChatGPT Web OAuth')}
-                          >
-                            <Text style={styles.profileActionButtonText}>
-                              {pendingChatGptWebAuthAction === 'login'
-                                ? 'Connecting...'
-                                : chatGptWebAuthStatus?.authenticated
-                                  ? 'Re-auth'
-                                  : 'Connect'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.dangerActionButton,
-                              (!chatGptWebAuthStatus?.authenticated || pendingChatGptWebAuthAction) && styles.dangerActionButtonDisabled,
-                            ]}
-                            onPress={handleChatGptWebOAuthLogout}
-                            disabled={!chatGptWebAuthStatus?.authenticated || !!pendingChatGptWebAuthAction}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel('Disconnect ChatGPT Web OAuth')}
-                          >
-                            <Text style={[
-                              styles.dangerActionButtonText,
-                              !chatGptWebAuthStatus?.authenticated && styles.dangerActionButtonTextDisabled,
-                            ]}>
-                              {pendingChatGptWebAuthAction === 'logout' ? 'Disconnecting...' : 'Disconnect'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
+              {remoteError && (
+                <View style={styles.warningContainer}>
+                  <View style={styles.warningContent}>
+                    <Text style={styles.warningTitle}>Desktop settings need attention</Text>
+                    <Text style={styles.warningText}>{remoteError}</Text>
+                    <Text style={styles.warningDetailText}>Some desktop sections may be out of date until the retry finishes.</Text>
                   </View>
-                ))}
-              </CollapsibleSection>
-            )}
-
-            {/* 4a. Profile & Model */}
-            {remoteSettings && (
-              <CollapsibleSection id="profileModel" title="Profile & Model">
-                {/* Profile Switching */}
-                {profiles.length > 0 && (
-                  <>
-                    <Text style={styles.label}>Profile</Text>
-                    <View style={styles.profileList}>
-                      {profiles.map((profile) => (
-                        <TouchableOpacity
-                          key={profile.id}
-                          style={[
-                            styles.profileItem,
-                            currentProfileId === profile.id && styles.profileItemActive,
-                          ]}
-                          onPress={() => handleProfileSwitch(profile.id)}
-                        >
-                          <Text style={[
-                            styles.profileName,
-                            currentProfileId === profile.id && styles.profileNameActive,
-                          ]} numberOfLines={2}>
-                            {profile.name}
-                            {profile.isDefault && ' (Default)'}
-                          </Text>
-                          {currentProfileId === profile.id && (
-                            <Text style={styles.checkmark}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <View style={styles.profileActions}>
-                      <TouchableOpacity
-                        style={[styles.profileActionButton, isImportingProfile && styles.profileActionButtonDisabled]}
-                        onPress={() => setShowImportModal(true)}
-                        disabled={isImportingProfile}
-                      >
-                        <Text style={styles.profileActionButtonText}>
-                          {isImportingProfile ? 'Importing...' : 'Import'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.profileActionButton, (!currentProfileId || isExportingProfile) && styles.profileActionButtonDisabled]}
-                        onPress={handleExportProfile}
-                        disabled={!currentProfileId || isExportingProfile}
-                      >
-                        <Text style={styles.profileActionButtonText}>
-                          {isExportingProfile ? 'Exporting...' : 'Export'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-
-                {/* Model Settings */}
-                <Text style={styles.label}>Provider</Text>
-                <View style={styles.providerSelector}>
-                  {CHAT_PROVIDERS.map((provider) => (
-                    <Pressable
-                      key={provider.value}
-                      style={[
-                        styles.providerOption,
-                        getAgentProvider() === provider.value && styles.providerOptionActive,
-                      ]}
-                      onPress={() => handleProviderChange(provider.value)}
-                    >
-                      <Text style={[
-                        styles.providerOptionText,
-                        getAgentProvider() === provider.value && styles.providerOptionTextActive,
-                      ]}>
-                        {provider.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {getAgentProvider() === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
-                  <>
-                    <Text style={styles.label}>OpenAI Compatible Endpoint</Text>
-                    <TouchableOpacity
-                      style={styles.modelSelector}
-                      onPress={() => setShowPresetPicker(true)}
-                    >
-                      <View style={styles.modelSelectorContent}>
-                        <Text style={styles.modelSelectorText}>
-                          {getCurrentPresetName()}
-                        </Text>
-                        <Text style={styles.modelSelectorChevron}>▼</Text>
-                      </View>
-                    </TouchableOpacity>
-                    {(() => {
-                      const currentPreset = getCurrentModelPreset();
-                      return (
-                        <View style={styles.endpointPanel}>
-                          <View style={styles.endpointMetaRow}>
-                            <Text style={styles.endpointBaseUrl} numberOfLines={1}>
-                              {currentPreset?.baseUrl || 'No base URL set'}
-                            </Text>
-                            <Text style={[
-                              styles.endpointKeyBadge,
-                              currentPreset?.hasApiKey && styles.endpointKeyBadgeActive,
-                            ]}>
-                              {currentPreset?.hasApiKey ? 'Key set' : 'No key'}
-                            </Text>
-                          </View>
-                          <View style={styles.profileActions}>
-                            <TouchableOpacity
-                              style={styles.profileActionButton}
-                              onPress={() => currentPreset && openPresetEditor('edit', currentPreset)}
-                              disabled={!currentPreset}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Configure endpoint ${currentPreset?.name || getCurrentPresetName()}`}
-                            >
-                              <Text style={styles.profileActionButtonText}>
-                                {currentPreset?.isBuiltIn ? 'Configure' : 'Edit Endpoint'}
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.profileActionButton}
-                              onPress={() => openPresetEditor('create')}
-                              accessibilityRole="button"
-                              accessibilityLabel="Create endpoint"
-                            >
-                              <Text style={styles.profileActionButtonText}>New Endpoint</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      );
-                    })()}
-                  </>
-                )}
-
-                <View style={styles.modelLabelRow}>
-                  <Text style={styles.label}>Model Name</Text>
-                  <View style={styles.modelActions}>
-                    <TouchableOpacity
-                      style={styles.modelActionButton}
-                      onPress={() => setUseCustomModel(!useCustomModel)}
-                      accessibilityRole="button"
-                      accessibilityLabel={useCustomModel ? 'Show model list' : 'Enter custom model name'}
-                    >
-                      <Text style={styles.modelActionText}>
-                        {useCustomModel ? 'List' : 'Custom'}
-                      </Text>
-                    </TouchableOpacity>
-                    {!useCustomModel && (
-                      <TouchableOpacity
-                        style={[styles.modelActionButton, isLoadingModels && styles.modelActionButtonDisabled]}
-                        onPress={() => remoteSettings && fetchModels(getAgentProvider())}
-                        disabled={isLoadingModels}
-                        accessibilityRole="button"
-                        accessibilityLabel="Refresh available models"
-                      >
-                        <Text style={styles.modelActionText}>
-                          {isLoadingModels ? 'Refreshing…' : 'Refresh'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-
-                {useCustomModel ? (
-                  <TextInput
-                    style={styles.input}
-                    value={customModelDraft}
-                    onChangeText={handleModelNameChange}
-                    placeholder={getModelPlaceholder()}
-                    placeholderTextColor={theme.colors.mutedForeground}
-                    autoCapitalize='none'
-                  />
-                ) : (
                   <TouchableOpacity
-                    style={styles.modelSelector}
-                    onPress={() => setShowModelPicker(true)}
-                    disabled={isLoadingModels}
-                  >
-                    {isLoadingModels ? (
-                      <View style={styles.modelSelectorContent}>
-                        <ActivityIndicator size="small" color={theme.colors.mutedForeground} />
-                        <Text style={styles.modelSelectorPlaceholder}>Loading models...</Text>
-                      </View>
-                    ) : (
-                      <View style={styles.modelSelectorContent}>
-                        <Text style={[
-                          styles.modelSelectorText,
-                          !getCurrentModelValue() && styles.modelSelectorPlaceholder
-                        ]}>
-                          {getCurrentModelDisplayName()}
-                        </Text>
-                        <Text style={styles.modelSelectorChevron}>▼</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )}
-
-                {getAgentProvider() === 'chatgpt-web' && (
-                  <View style={styles.codexOptionsGroup}>
-                    <Text style={styles.subsectionTitle}>Codex Options</Text>
-                    <Text style={styles.helperText}>
-                      Tune reasoning effort and response verbosity for the OpenAI Codex provider.
-                    </Text>
-
-                    <Text style={styles.label}>Thinking Level</Text>
-                    <View style={styles.providerSelector}>
-                      {OPENAI_REASONING_EFFORT_OPTIONS.map((option) => (
-                        <Pressable
-                          key={option.value}
-                          style={[
-                            styles.providerOption,
-                            (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionActive,
-                          ]}
-                          onPress={() => handleRemoteSettingUpdate('openaiReasoningEffort', option.value as OpenAiReasoningEffort)}
-                        >
-                          <Text style={[
-                            styles.providerOptionText,
-                            (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionTextActive,
-                          ]}>
-                            {option.value === DEFAULT_CODEX_REASONING_EFFORT ? `${option.label} (default)` : option.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-
-                    <Text style={[styles.label, { marginTop: spacing.md }]}>Verbosity</Text>
-                    <View style={styles.providerSelector}>
-                      {CODEX_TEXT_VERBOSITY_OPTIONS.map((option) => (
-                        <Pressable
-                          key={option.value}
-                          style={[
-                            styles.providerOption,
-                            (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionActive,
-                          ]}
-                          onPress={() => handleRemoteSettingUpdate('codexTextVerbosity', option.value as CodexTextVerbosity)}
-                        >
-                          <Text style={[
-                            styles.providerOptionText,
-                            (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionTextActive,
-                          ]}>
-                            {option.value === DEFAULT_CODEX_TEXT_VERBOSITY ? `${option.label} (default)` : option.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                <Text style={[styles.label, { marginTop: spacing.lg }]}>Transcript Processing</Text>
-                <Text style={styles.helperText}>
-                  Clean up transcripts after speech-to-text and before they are used elsewhere.
-                </Text>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Enabled</Text>
-                  <Switch
-                    value={remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('transcriptPostProcessingEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                <Text style={styles.label}>Provider</Text>
-                <View style={styles.providerSelector}>
-                  {CHAT_PROVIDERS.map((provider) => (
-                    <Pressable
-                      key={provider.value}
-                      style={[
-                        styles.providerOption,
-                        (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionActive,
-                      ]}
-                      onPress={() => handleRemoteSettingUpdate('transcriptPostProcessingProviderId', provider.value)}
-                    >
-                      <Text style={[
-                        styles.providerOptionText,
-                        (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
-                      ]}>
-                        {provider.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) && (
-                  <>
-                    {(() => {
-                      const providerId = remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID;
-                      const modelKey = getTranscriptPostProcessingModelSettingKey(providerId);
-                      if (!modelKey) return null;
-
-                      return (
-                        <>
-                          <Text style={styles.label}>Model</Text>
-                          <TextInput
-                            style={styles.input}
-                            value={inputDrafts[modelKey] ?? remoteSettings[modelKey] ?? ''}
-                            onChangeText={(v) => handleRemoteSettingUpdate(modelKey, v)}
-                            placeholder="Use provider default"
-                            placeholderTextColor={theme.colors.mutedForeground}
-                            autoCapitalize='none'
-                          />
-                          <Text style={styles.helperText}>
-                            Provider model used to clean up speech-to-text transcripts.
-                          </Text>
-                        </>
-                      );
-                    })()}
-
-                    <Text style={styles.label}>Prompt</Text>
-                    <TextInput
-                      style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                      value={inputDrafts.transcriptPostProcessingPrompt ?? ''}
-                      onChangeText={(v) => handleRemoteSettingUpdate('transcriptPostProcessingPrompt', v)}
-                      placeholder="Custom instructions for transcript processing..."
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      multiline
-                      numberOfLines={3}
-                    />
-                  </>
-                )}
-              </CollapsibleSection>
-            )}
-
-            {/* 4b. Bundles */}
-            {isDotAgentsServer && (
-              <CollapsibleSection id="bundles" title="Bundles">
-                <View style={styles.profileActions}>
-                  <TouchableOpacity
-                    style={[styles.profileActionButton, isImportingBundle && styles.profileActionButtonDisabled]}
-                    onPress={() => setShowBundleImportModal(true)}
-                    disabled={isImportingBundle}
+                    style={styles.warningRetryButton}
+                    onPress={fetchRemoteSettings}
                     accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Import DotAgents bundle JSON')}
+                    accessibilityLabel={createButtonAccessibilityLabel('Retry loading desktop settings')}
+                    accessibilityHint="Reloads the desktop settings section and refreshes stale values."
                   >
-                    <Text style={styles.profileActionButtonText}>
-                      {isImportingBundle ? 'Importing...' : 'Import Bundle'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.profileActionButton, isExportingBundle && styles.profileActionButtonDisabled]}
-                    onPress={handleBundleExport}
-                    disabled={isExportingBundle}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Export DotAgents bundle JSON')}
-                  >
-                    <Text style={styles.profileActionButtonText}>
-                      {isExportingBundle ? 'Exporting...' : 'Export Bundle'}
-                    </Text>
+                    <Text style={styles.warningRetryButtonText}>Retry loading</Text>
                   </TouchableOpacity>
                 </View>
-              </CollapsibleSection>
-            )}
+              )}
 
-            {/* 4b. Streamer Mode */}
-            {remoteSettings && (
-              <CollapsibleSection id="streamerMode" title="Streamer Mode">
-                <View style={styles.row}>
-                  <Text style={styles.label}>Streamer Mode</Text>
-                  <Switch
-                    value={remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('streamerModeEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Hide sensitive information when streaming or sharing screen
-                </Text>
-              </CollapsibleSection>
-            )}
+              {/* Provider Selection */}
+              {remoteSettings && (
+                <CollapsibleSection id="providerSelection" title={getAppShellMobileSettingsSectionTitle('providerSelection')}>
+                  {/* Voice Transcription (STT) Provider */}
+                  <Text style={styles.label}>Voice Transcription (STT)</Text>
+                  <View style={styles.providerSelector}>
+                    {STT_PROVIDERS.map((provider) => (
+                      <Pressable
+                        key={provider.value}
+                        style={[styles.providerOption, (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionActive]}
+                        onPress={() => handleRemoteSettingUpdate('sttProviderId', provider.value)}
+                      >
+                        <Text style={[styles.providerOptionText, (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionTextActive]}>
+                          {provider.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
 
-            {/* 4c. Speech-to-Text */}
-            {remoteSettings && (
-              <CollapsibleSection id="speechToText" title="Speech-to-Text">
-                <Text style={styles.label}>STT Language</Text>
-                <TextInput
-                  style={styles.input}
-                  value={inputDrafts.sttLanguage ?? ''}
-                  onChangeText={(v) => handleRemoteSettingUpdate('sttLanguage', v)}
-                  placeholder="en (default)"
-                  placeholderTextColor={theme.colors.mutedForeground}
-                  autoCapitalize='none'
-                />
-                <Text style={styles.helperText}>
-                  Language code for speech-to-text (e.g., en, es, fr)
-                </Text>
+                  {/* Agent Provider */}
+                  <Text style={[styles.label, { marginTop: spacing.md }]}>Agent</Text>
+                  <View style={styles.providerSelector}>
+                    {CHAT_PROVIDERS.map((provider) => (
+                      <Pressable
+                        key={provider.value}
+                        style={[styles.providerOption, getAgentProvider() === provider.value && styles.providerOptionActive]}
+                        onPress={() => handleProviderChange(provider.value)}
+                      >
+                        <Text style={[styles.providerOptionText, getAgentProvider() === provider.value && styles.providerOptionTextActive]}>{provider.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
 
-                {(remoteSettings.sttProviderId === 'openai' || remoteSettings.sttProviderId === 'groq') && (() => {
-                  const providerId = remoteSettings.sttProviderId;
-                  const languageKey = providerId === 'openai' ? 'openaiSttLanguage' : 'groqSttLanguage';
-                  const languageLabel = providerId === 'openai' ? 'OpenAI Language Override' : 'Groq Language Override';
-                  const modelKey = providerId === 'openai' ? 'openaiSttModel' : 'groqSttModel';
-                  const currentModel = remoteSettings[modelKey] || getDefaultSttModel(providerId) || '';
+                  {/* Text-to-Speech (TTS) Provider */}
+                  <Text style={[styles.label, { marginTop: spacing.md }]}>Text-to-Speech (TTS)</Text>
+                  <View style={styles.providerSelector}>
+                    {TTS_PROVIDERS.map((provider) => (
+                      <Pressable
+                        key={provider.value}
+                        style={[styles.providerOption, (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionActive]}
+                        onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
+                      >
+                        <Text style={[styles.providerOptionText, (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionTextActive]}>
+                          {provider.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </CollapsibleSection>
+              )}
 
-                  return (
-                    <>
-                      <Text style={styles.label}>{languageLabel}</Text>
+              {/* Provider Setup */}
+              {remoteSettings && (
+                <CollapsibleSection id="providerSetup" title={getAppShellMobileSettingsSectionTitle('providerSetup')}>
+                  {PROVIDER_CREDENTIAL_SECTIONS.map((provider) => (
+                    <View key={provider.id} style={styles.providerCredentialGroup}>
+                      <Text style={styles.subsectionTitle}>{provider.label}</Text>
+
+                      {provider.secrets.map((secret) => {
+                        const hasConfiguredSecret = remoteSettings[secret.key] === SECRET_MASK;
+                        return (
+                          <View key={secret.key}>
+                            <Text style={styles.label}>{secret.label}</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={inputDrafts[secret.key] ?? ''}
+                              onChangeText={(v) => handleRemoteSecretDraftChange(secret.key, v)}
+                              onBlur={() => {
+                                void commitRemoteSecretDraft(secret.key);
+                              }}
+                              placeholder={hasConfiguredSecret ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.configuredSecretPlaceholder : secret.placeholder}
+                              placeholderTextColor={theme.colors.mutedForeground}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              secureTextEntry
+                            />
+                          </View>
+                        );
+                      })}
+
+                      <Text style={styles.label}>{APP_SHELL_PROVIDER_SETUP_PRESENTATION.baseUrlLabel}</Text>
                       <TextInput
                         style={styles.input}
-                        value={inputDrafts[languageKey] ?? ''}
-                        onChangeText={(v) => handleRemoteSettingUpdate(languageKey, v)}
-                        placeholder="Use global language"
+                        value={inputDrafts[provider.baseUrl] ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate(provider.baseUrl, v)}
+                        placeholder={provider.baseUrlPlaceholder}
                         placeholderTextColor={theme.colors.mutedForeground}
-                        autoCapitalize='none'
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="url"
                       />
-                      <Text style={styles.helperText}>
-                        Leave blank to use STT Language.
-                      </Text>
 
-                      <Text style={styles.label}>STT Model</Text>
+                      {provider.id === 'chatgpt-web' && (
+                        <View style={styles.chatGptWebAuthBlock}>
+                          <Text style={styles.label}>{APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.oauthTitle}</Text>
+                          <View style={styles.serverNameRow}>
+                            <View style={[styles.statusDot, chatGptWebAuthStatus?.authenticated ? styles.statusConnected : styles.statusDisconnected]} />
+                            <Text style={styles.serverName}>
+                              {getAppShellChatGptWebConnectionLabel(!!chatGptWebAuthStatus?.authenticated)}
+                            </Text>
+                          </View>
+                          {chatGptWebAuthStatus?.authenticated && (
+                            <Text style={styles.helperText}>
+                              {[chatGptWebAuthStatus.email, chatGptWebAuthStatus.planType].filter(Boolean).join(' • ') ||
+                                APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.providerFallbackLabel}
+                            </Text>
+                          )}
+                          {chatGptWebAuthStatus?.callbackUrl && (
+                            <Text style={styles.helperText} numberOfLines={2}>
+                              {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.callbackUrlLabel}: {chatGptWebAuthStatus.callbackUrl}
+                            </Text>
+                          )}
+                          <View style={styles.profileActions}>
+                            <TouchableOpacity
+                              style={[styles.profileActionButton, pendingChatGptWebAuthAction && styles.profileActionButtonDisabled]}
+                              onPress={handleChatGptWebOAuthLogin}
+                              disabled={!!pendingChatGptWebAuthAction}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.connectAccessibilityLabel)}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {pendingChatGptWebAuthAction === 'login'
+                                  ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.connectingActionLabel
+                                  : chatGptWebAuthStatus?.authenticated
+                                    ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.reauthActionLabel
+                                    : APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.connectActionLabel}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.dangerActionButton, (!chatGptWebAuthStatus?.authenticated || pendingChatGptWebAuthAction) && styles.dangerActionButtonDisabled]}
+                              onPress={handleChatGptWebOAuthLogout}
+                              disabled={!chatGptWebAuthStatus?.authenticated || !!pendingChatGptWebAuthAction}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectAccessibilityLabel)}
+                            >
+                              <Text style={[styles.dangerActionButtonText, !chatGptWebAuthStatus?.authenticated && styles.dangerActionButtonTextDisabled]}>
+                                {pendingChatGptWebAuthAction === 'logout'
+                                  ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectingActionLabel
+                                  : APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectActionLabel}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </CollapsibleSection>
+              )}
+
+              {/* 4a. Profile & Model */}
+              {remoteSettings && (
+                <CollapsibleSection id="profileModel" title={getAppShellMobileSettingsSectionTitle('profileModel')}>
+                  {/* Profile Switching */}
+                  {profiles.length > 0 && (
+                    <>
+                      <Text style={styles.label}>Profile</Text>
+                      <View style={styles.profileList}>
+                        {profiles.map((profile) => (
+                          <TouchableOpacity
+                            key={profile.id}
+                            style={[styles.profileItem, currentProfileId === profile.id && styles.profileItemActive]}
+                            onPress={() => handleProfileSwitch(profile.id)}
+                          >
+                            <Text style={[styles.profileName, currentProfileId === profile.id && styles.profileNameActive]} numberOfLines={2}>
+                              {profile.name}
+                              {profile.isDefault && ' (Default)'}
+                            </Text>
+                            {currentProfileId === profile.id && <Text style={styles.checkmark}>✓</Text>}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <View style={styles.profileActions}>
+                        <TouchableOpacity
+                          style={[styles.profileActionButton, isImportingProfile && styles.profileActionButtonDisabled]}
+                          onPress={() => setShowImportModal(true)}
+                          disabled={isImportingProfile}
+                        >
+                          <Text style={styles.profileActionButtonText}>{isImportingProfile ? 'Importing...' : 'Import'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.profileActionButton, (!currentProfileId || isExportingProfile) && styles.profileActionButtonDisabled]}
+                          onPress={handleExportProfile}
+                          disabled={!currentProfileId || isExportingProfile}
+                        >
+                          <Text style={styles.profileActionButtonText}>{isExportingProfile ? 'Exporting...' : 'Export'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+
+                  {/* Model Settings */}
+                  <Text style={styles.label}>Provider</Text>
+                  <View style={styles.providerSelector}>
+                    {CHAT_PROVIDERS.map((provider) => (
+                      <Pressable
+                        key={provider.value}
+                        style={[styles.providerOption, getAgentProvider() === provider.value && styles.providerOptionActive]}
+                        onPress={() => handleProviderChange(provider.value)}
+                      >
+                        <Text style={[styles.providerOptionText, getAgentProvider() === provider.value && styles.providerOptionTextActive]}>{provider.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  {getAgentProvider() === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
+                    <>
+                      <Text style={styles.label}>{APP_SHELL_MODEL_PRESET_PRESENTATION.manager.title}</Text>
+                      <TouchableOpacity style={styles.modelSelector} onPress={() => setShowPresetPicker(true)}>
+                        <View style={styles.modelSelectorContent}>
+                          <Text style={styles.modelSelectorText}>{getCurrentPresetName()}</Text>
+                          <Text style={styles.modelSelectorChevron}>▼</Text>
+                        </View>
+                      </TouchableOpacity>
+                      {(() => {
+                        const currentPreset = getCurrentModelPreset();
+                        return (
+                          <View style={styles.endpointPanel}>
+                            <View style={styles.endpointMetaRow}>
+                              <Text style={styles.endpointBaseUrl} numberOfLines={1}>
+                                {currentPreset?.baseUrl || APP_SHELL_MODEL_PRESET_PRESENTATION.manager.noUrlLabel}
+                              </Text>
+                              <Text style={[styles.endpointKeyBadge, currentPreset?.hasApiKey && styles.endpointKeyBadgeActive]}>
+                                {currentPreset?.hasApiKey
+                                  ? APP_SHELL_MODEL_PRESET_PRESENTATION.manager.keySetBadge
+                                  : APP_SHELL_MODEL_PRESET_PRESENTATION.manager.missingKeyBadge}
+                              </Text>
+                            </View>
+                            <View style={styles.profileActions}>
+                              <TouchableOpacity
+                                style={styles.profileActionButton}
+                                onPress={() => currentPreset && openPresetEditor('edit', currentPreset)}
+                                disabled={!currentPreset}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${
+                                  currentPreset?.isBuiltIn
+                                    ? APP_SHELL_MODEL_PRESET_PRESENTATION.actions.configure
+                                    : APP_SHELL_MODEL_PRESET_PRESENTATION.actions.edit
+                                } preset ${currentPreset?.name || getCurrentPresetName()}`}
+                              >
+                                <Text style={styles.profileActionButtonText}>
+                                  {currentPreset?.isBuiltIn
+                                    ? APP_SHELL_MODEL_PRESET_PRESENTATION.actions.configure
+                                    : APP_SHELL_MODEL_PRESET_PRESENTATION.actions.edit}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.profileActionButton}
+                                onPress={() => openPresetEditor('create')}
+                                accessibilityRole="button"
+                                accessibilityLabel={APP_SHELL_MODEL_PRESET_PRESENTATION.editor.createAccessibilityLabel}
+                              >
+                                <Text style={styles.profileActionButtonText}>{APP_SHELL_MODEL_PRESET_PRESENTATION.actions.newPreset}</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })()}
+                    </>
+                  )}
+
+                  <View style={styles.modelLabelRow}>
+                    <Text style={styles.label}>Model Name</Text>
+                    <View style={styles.modelActions}>
+                      <TouchableOpacity
+                        style={styles.modelActionButton}
+                        onPress={() => setUseCustomModel(!useCustomModel)}
+                        accessibilityRole="button"
+                        accessibilityLabel={useCustomModel ? 'Show model list' : 'Enter custom model name'}
+                      >
+                        <Text style={styles.modelActionText}>{useCustomModel ? 'List' : 'Custom'}</Text>
+                      </TouchableOpacity>
+                      {!useCustomModel && (
+                        <TouchableOpacity
+                          style={[styles.modelActionButton, isLoadingModels && styles.modelActionButtonDisabled]}
+                          onPress={() => remoteSettings && fetchModels(getAgentProvider())}
+                          disabled={isLoadingModels}
+                          accessibilityRole="button"
+                          accessibilityLabel="Refresh available models"
+                        >
+                          <Text style={styles.modelActionText}>{isLoadingModels ? 'Refreshing…' : 'Refresh'}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+
+                  {useCustomModel ? (
+                    <TextInput
+                      style={styles.input}
+                      value={customModelDraft}
+                      onChangeText={handleModelNameChange}
+                      placeholder={getModelPlaceholder()}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize="none"
+                    />
+                  ) : (
+                    <TouchableOpacity style={styles.modelSelector} onPress={() => setShowModelPicker(true)} disabled={isLoadingModels}>
+                      {isLoadingModels ? (
+                        <View style={styles.modelSelectorContent}>
+                          <ActivityIndicator size="small" color={theme.colors.mutedForeground} />
+                          <Text style={styles.modelSelectorPlaceholder}>Loading models...</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.modelSelectorContent}>
+                          <Text style={[styles.modelSelectorText, !getCurrentModelValue() && styles.modelSelectorPlaceholder]}>{getCurrentModelDisplayName()}</Text>
+                          <Text style={styles.modelSelectorChevron}>▼</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  {getAgentProvider() === 'chatgpt-web' && (
+                    <View style={styles.codexOptionsGroup}>
+                      <Text style={styles.subsectionTitle}>Codex Options</Text>
+                      <Text style={styles.helperText}>Tune reasoning effort and response verbosity for the OpenAI Codex provider.</Text>
+
+                      <Text style={styles.label}>Thinking Level</Text>
                       <View style={styles.providerSelector}>
-                        {KNOWN_STT_MODEL_IDS[providerId].map((modelId) => (
+                        {OPENAI_REASONING_EFFORT_OPTIONS.map((option) => (
                           <Pressable
-                            key={modelId}
+                            key={option.value}
                             style={[
                               styles.providerOption,
-                              currentModel === modelId && styles.providerOptionActive,
+                              (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionActive,
                             ]}
-                            onPress={() => handleRemoteSettingUpdate(modelKey, modelId)}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Use ${modelId} for ${providerId} speech-to-text`}
+                            onPress={() => handleRemoteSettingUpdate('openaiReasoningEffort', option.value as OpenAiReasoningEffort)}
                           >
-                            <Text style={[
-                              styles.providerOptionText,
-                              currentModel === modelId && styles.providerOptionTextActive,
-                            ]}>
-                              {modelId}
+                            <Text
+                              style={[
+                                styles.providerOptionText,
+                                (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionTextActive,
+                              ]}
+                            >
+                              {option.value === DEFAULT_CODEX_REASONING_EFFORT ? `${option.label} (default)` : option.label}
                             </Text>
                           </Pressable>
                         ))}
                       </View>
-                    </>
-                  );
-                })()}
 
-                {remoteSettings.sttProviderId === 'groq' && (
-                  <>
-                    <Text style={styles.label}>Groq Prompt</Text>
-                    <TextInput
-                      style={[styles.input, { minHeight: 88 }]}
-                      value={inputDrafts.groqSttPrompt ?? ''}
-                      onChangeText={(v) => handleRemoteSettingUpdate('groqSttPrompt', v)}
-                      placeholder="Optional spelling or style hints for Groq transcription"
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      multiline
-                      numberOfLines={4}
-                      textAlignVertical="top"
+                      <Text style={[styles.label, { marginTop: spacing.md }]}>Verbosity</Text>
+                      <View style={styles.providerSelector}>
+                        {CODEX_TEXT_VERBOSITY_OPTIONS.map((option) => (
+                          <Pressable
+                            key={option.value}
+                            style={[styles.providerOption, (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionActive]}
+                            onPress={() => handleRemoteSettingUpdate('codexTextVerbosity', option.value as CodexTextVerbosity)}
+                          >
+                            <Text
+                              style={[
+                                styles.providerOptionText,
+                                (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionTextActive,
+                              ]}
+                            >
+                              {option.value === DEFAULT_CODEX_TEXT_VERBOSITY ? `${option.label} (default)` : option.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  <Text style={[styles.label, { marginTop: spacing.lg }]}>Transcript Processing</Text>
+                  <Text style={styles.helperText}>Clean up transcripts after speech-to-text and before they are used elsewhere.</Text>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Enabled</Text>
+                    <Switch
+                      value={remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('transcriptPostProcessingEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={
+                        (remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background
+                      }
                     />
-                    <Text style={styles.helperText}>
-                      Optional hints for spelling unfamiliar words or names.
-                    </Text>
-                  </>
-                )}
+                  </View>
 
-                <View style={styles.row}>
-                  <Text style={styles.label}>Transcription Preview</Text>
-                  <Switch
-                    value={remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('transcriptionPreviewEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                  <Text style={styles.label}>Provider</Text>
+                  <View style={styles.providerSelector}>
+                    {CHAT_PROVIDERS.map((provider) => (
+                      <Pressable
+                        key={provider.value}
+                        style={[
+                          styles.providerOption,
+                          (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionActive,
+                        ]}
+                        onPress={() => handleRemoteSettingUpdate('transcriptPostProcessingProviderId', provider.value)}
+                      >
+                        <Text
+                          style={[
+                            styles.providerOptionText,
+                            (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value &&
+                              styles.providerOptionTextActive,
+                          ]}
+                        >
+                          {provider.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  {(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) && (
+                    <>
+                      {(() => {
+                        const providerId = remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID;
+                        const modelKey = getTranscriptPostProcessingModelSettingKey(providerId);
+                        if (!modelKey) return null;
+
+                        return (
+                          <>
+                            <Text style={styles.label}>Model</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={inputDrafts[modelKey] ?? remoteSettings[modelKey] ?? ''}
+                              onChangeText={(v) => handleRemoteSettingUpdate(modelKey, v)}
+                              placeholder="Use provider default"
+                              placeholderTextColor={theme.colors.mutedForeground}
+                              autoCapitalize="none"
+                            />
+                            <Text style={styles.helperText}>Provider model used to clean up speech-to-text transcripts.</Text>
+                          </>
+                        );
+                      })()}
+
+                      <Text style={styles.label}>Prompt</Text>
+                      <TextInput
+                        style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                        value={inputDrafts.transcriptPostProcessingPrompt ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate('transcriptPostProcessingPrompt', v)}
+                        placeholder="Custom instructions for transcript processing..."
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        multiline
+                        numberOfLines={3}
+                      />
+                    </>
+                  )}
+                </CollapsibleSection>
+              )}
+
+              {/* 4b. Bundles */}
+              {isDotAgentsServer && (
+                <CollapsibleSection id="bundles" title={getAppShellMobileSettingsSectionTitle('bundles')}>
+                  <View style={styles.profileActions}>
+                    <TouchableOpacity
+                      style={[styles.profileActionButton, isImportingBundle && styles.profileActionButtonDisabled]}
+                      onPress={() => setShowBundleImportModal(true)}
+                      disabled={isImportingBundle}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellBundleImportJsonAccessibilityLabel())}
+                    >
+                      <Text style={styles.profileActionButtonText}>{getAppShellBundleImportActionLabel(isImportingBundle)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.profileActionButton, isExportingBundle && styles.profileActionButtonDisabled]}
+                      onPress={handleBundleExport}
+                      disabled={isExportingBundle}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellBundleExportJsonAccessibilityLabel())}
+                    >
+                      <Text style={styles.profileActionButtonText}>{getAppShellBundleExportActionLabel(isExportingBundle)}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </CollapsibleSection>
+              )}
+
+              {/* 4b. Streamer Mode */}
+              {remoteSettings && (
+                <CollapsibleSection id="streamerMode" title={getAppShellMobileSettingsSectionTitle('streamerMode')}>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Streamer Mode</Text>
+                    <Switch
+                      value={remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('streamerModeEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Hide sensitive information when streaming or sharing screen</Text>
+                </CollapsibleSection>
+              )}
+
+              {/* 4c. Speech-to-Text */}
+              {remoteSettings && (
+                <CollapsibleSection id="speechToText" title={getAppShellMobileSettingsSectionTitle('speechToText')}>
+                  <Text style={styles.label}>STT Language</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={inputDrafts.sttLanguage ?? ''}
+                    onChangeText={(v) => handleRemoteSettingUpdate('sttLanguage', v)}
+                    placeholder="en (default)"
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    autoCapitalize="none"
                   />
-                </View>
-                <Text style={styles.helperText}>
-                  Show live transcription while recording
-                </Text>
+                  <Text style={styles.helperText}>Language code for speech-to-text (e.g., en, es, fr)</Text>
 
-                {remoteSettings.sttProviderId === 'parakeet' && (
-                  <View style={styles.localSpeechModelBlock}>
-                    {(() => {
-                      const status = localSpeechModelStatuses.parakeet;
-                      const progress = Math.max(0, Math.min(1, status?.progress ?? 0));
-                      const isDownloading = !!status?.downloading || pendingLocalSpeechModelAction === 'parakeet:download';
-                      const downloadDisabled = isDownloading || !!status?.downloaded;
+                  {(remoteSettings.sttProviderId === 'openai' || remoteSettings.sttProviderId === 'groq') &&
+                    (() => {
+                      const providerId = remoteSettings.sttProviderId;
+                      const languageKey = providerId === 'openai' ? 'openaiSttLanguage' : 'groqSttLanguage';
+                      const languageLabel = providerId === 'openai' ? 'OpenAI Language Override' : 'Groq Language Override';
+                      const modelKey = providerId === 'openai' ? 'openaiSttModel' : 'groqSttModel';
+                      const currentModel = remoteSettings[modelKey] || getDefaultSttModel(providerId) || '';
 
                       return (
                         <>
-                          <View style={styles.row}>
-                            <View style={styles.rowCopy}>
-                              <Text style={styles.label}>Parakeet Model</Text>
-                              <Text style={styles.helperText}>{formatLocalModelProgress(status)}</Text>
-                            </View>
-                            <TouchableOpacity
-                              style={[
-                                styles.profileActionButton,
-                                styles.localSpeechModelButton,
-                                downloadDisabled && styles.profileActionButtonDisabled,
-                              ]}
-                              onPress={() => handleLocalSpeechModelDownload('parakeet')}
-                              disabled={downloadDisabled}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`${status?.error ? 'Retry' : 'Download'} Parakeet model`)}
-                            >
-                              <Text style={styles.profileActionButtonText}>
-                                {status?.downloaded
-                                  ? 'Ready'
-                                  : isDownloading
-                                    ? 'Downloading...'
-                                    : status?.error
-                                      ? 'Retry'
-                                      : 'Download'}
-                              </Text>
-                            </TouchableOpacity>
+                          <Text style={styles.label}>{languageLabel}</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={inputDrafts[languageKey] ?? ''}
+                            onChangeText={(v) => handleRemoteSettingUpdate(languageKey, v)}
+                            placeholder="Use global language"
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize="none"
+                          />
+                          <Text style={styles.helperText}>Leave blank to use STT Language.</Text>
+
+                          <Text style={styles.label}>STT Model</Text>
+                          <View style={styles.providerSelector}>
+                            {KNOWN_STT_MODEL_IDS[providerId].map((modelId) => (
+                              <Pressable
+                                key={modelId}
+                                style={[styles.providerOption, currentModel === modelId && styles.providerOptionActive]}
+                                onPress={() => handleRemoteSettingUpdate(modelKey, modelId)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Use ${modelId} for ${providerId} speech-to-text`}
+                              >
+                                <Text style={[styles.providerOptionText, currentModel === modelId && styles.providerOptionTextActive]}>{modelId}</Text>
+                              </Pressable>
+                            ))}
                           </View>
-
-                          {(status?.downloading || isDownloading) && (
-                            <View style={styles.localSpeechProgressTrack}>
-                              <View style={[styles.localSpeechProgressFill, { width: `${Math.round(progress * 100)}%` }]} />
-                            </View>
-                          )}
-
-                          {status?.error ? <Text style={styles.warningText}>{status.error}</Text> : null}
                         </>
                       );
                     })()}
 
-                    <Text style={[styles.label, { marginTop: spacing.sm }]}>CPU Threads</Text>
-                    <View style={styles.providerSelector}>
-                      {PARAKEET_NUM_THREAD_OPTIONS.map((threadCount) => (
-                        <Pressable
-                          key={threadCount}
-                          style={[
-                            styles.providerOption,
-                            (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionActive,
-                          ]}
-                          onPress={() => handleRemoteSettingUpdate('parakeetNumThreads', threadCount)}
-                        >
-                          <Text style={[
-                            styles.providerOptionText,
-                            (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionTextActive,
-                          ]}>
-                            {threadCount}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
+                  {remoteSettings.sttProviderId === 'groq' && (
+                    <>
+                      <Text style={styles.label}>Groq Prompt</Text>
+                      <TextInput
+                        style={[styles.input, { minHeight: 88 }]}
+                        value={inputDrafts.groqSttPrompt ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate('groqSttPrompt', v)}
+                        placeholder="Optional spelling or style hints for Groq transcription"
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                      />
+                      <Text style={styles.helperText}>Optional hints for spelling unfamiliar words or names.</Text>
+                    </>
+                  )}
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Transcription Preview</Text>
+                    <Switch
+                      value={remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('transcriptionPreviewEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
                   </View>
-                )}
+                  <Text style={styles.helperText}>Show live transcription while recording</Text>
 
-              </CollapsibleSection>
-            )}
+                  {remoteSettings.sttProviderId === 'parakeet' && (
+                    <View style={styles.localSpeechModelBlock}>
+                      {(() => {
+                        const status = localSpeechModelStatuses.parakeet;
+                        const progress = Math.max(0, Math.min(1, status?.progress ?? 0));
+                        const isDownloading = !!status?.downloading || pendingLocalSpeechModelAction === 'parakeet:download';
+                        const downloadDisabled = isDownloading || !!status?.downloaded;
 
-            {/* 4d. Text-to-Speech */}
-            {remoteSettings && (
-              <CollapsibleSection id="textToSpeech" title="Text-to-Speech">
-                <View style={styles.row}>
-                  <Text style={styles.label}>TTS Enabled</Text>
-                  <Switch
-                    value={remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('ttsEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Enable text-to-speech for responses on desktop
-                </Text>
+                        return (
+                          <>
+                            <View style={styles.row}>
+                              <View style={styles.rowCopy}>
+                                <Text style={styles.label}>Parakeet Model</Text>
+                                <Text style={styles.helperText}>{formatLocalModelProgress(status)}</Text>
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.profileActionButton, styles.localSpeechModelButton, downloadDisabled && styles.profileActionButtonDisabled]}
+                                onPress={() => handleLocalSpeechModelDownload('parakeet')}
+                                disabled={downloadDisabled}
+                                accessibilityRole="button"
+                                accessibilityLabel={createButtonAccessibilityLabel(`${status?.error ? 'Retry' : 'Download'} Parakeet model`)}
+                              >
+                                <Text style={styles.profileActionButtonText}>
+                                  {status?.downloaded ? 'Ready' : isDownloading ? 'Downloading...' : status?.error ? 'Retry' : 'Download'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
 
-                {(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
-                  <>
-                    {/* TTS Provider Selector */}
-                    <Text style={[styles.label, { marginTop: spacing.md }]}>TTS Provider</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: spacing.sm }}>
+                            {(status?.downloading || isDownloading) && (
+                              <View style={styles.localSpeechProgressTrack}>
+                                <View style={[styles.localSpeechProgressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                              </View>
+                            )}
+
+                            {status?.error ? <Text style={styles.warningText}>{status.error}</Text> : null}
+                          </>
+                        );
+                      })()}
+
+                      <Text style={[styles.label, { marginTop: spacing.sm }]}>CPU Threads</Text>
                       <View style={styles.providerSelector}>
-                        {TTS_PROVIDERS.map((provider) => (
+                        {PARAKEET_NUM_THREAD_OPTIONS.map((threadCount) => (
                           <Pressable
-                            key={provider.value}
-                            style={[
-                              styles.providerOption,
-                              remoteTtsProviderId === provider.value && styles.providerOptionActive,
-                            ]}
-                            onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
+                            key={threadCount}
+                            style={[styles.providerOption, (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionActive]}
+                            onPress={() => handleRemoteSettingUpdate('parakeetNumThreads', threadCount)}
                           >
-                            <Text style={[
-                              styles.providerOptionText,
-                              remoteTtsProviderId === provider.value && styles.providerOptionTextActive,
-                            ]}>
-                              {provider.label}
+                            <Text
+                              style={[
+                                styles.providerOptionText,
+                                (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionTextActive,
+                              ]}
+                            >
+                              {threadCount}
                             </Text>
                           </Pressable>
                         ))}
                       </View>
-                    </ScrollView>
+                    </View>
+                  )}
+                </CollapsibleSection>
+              )}
 
-                    {/* Per-provider Voice/Model Settings */}
-                    {getTtsModelsForProvider(remoteTtsProviderId).length > 0 && (
-                      <>
-                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
-                        <TouchableOpacity
-                          style={styles.modelSelector}
-                          onPress={() => setShowTtsModelPicker(true)}
-                        >
-                          <View style={styles.modelSelectorContent}>
-                            <Text style={styles.modelSelectorText}>
-                              {(() => {
-                                const models = getTtsModelsForProvider(remoteTtsProviderId);
-                                const modelValue = getRemoteTtsModelValue(remoteSettings);
-                                const model = models.find(m => m.value === modelValue);
-                                return model?.label || modelValue || 'Select model';
-                              })()}
-                            </Text>
-                            <Text style={styles.modelSelectorChevron}>▼</Text>
+              {/* 4d. Text-to-Speech */}
+              {remoteSettings && (
+                <CollapsibleSection id="textToSpeech" title={getAppShellMobileSettingsSectionTitle('textToSpeech')}>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>TTS Enabled</Text>
+                    <Switch
+                      value={remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('ttsEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Enable text-to-speech for responses on desktop</Text>
+
+                  {(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
+                    <>
+                      {/* TTS Provider Selector */}
+                      <Text style={[styles.label, { marginTop: spacing.md }]}>TTS Provider</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: spacing.sm }}>
+                        <View style={styles.providerSelector}>
+                          {TTS_PROVIDERS.map((provider) => (
+                            <Pressable
+                              key={provider.value}
+                              style={[styles.providerOption, remoteTtsProviderId === provider.value && styles.providerOptionActive]}
+                              onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
+                            >
+                              <Text style={[styles.providerOptionText, remoteTtsProviderId === provider.value && styles.providerOptionTextActive]}>{provider.label}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </ScrollView>
+
+                      {/* Per-provider Voice/Model Settings */}
+                      {getTtsModelsForProvider(remoteTtsProviderId).length > 0 && (
+                        <>
+                          <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
+                          <TouchableOpacity style={styles.modelSelector} onPress={() => setShowTtsModelPicker(true)}>
+                            <View style={styles.modelSelectorContent}>
+                              <Text style={styles.modelSelectorText}>
+                                {(() => {
+                                  const models = getTtsModelsForProvider(remoteTtsProviderId);
+                                  const modelValue = getRemoteTtsModelValue(remoteSettings);
+                                  const model = models.find((m) => m.value === modelValue);
+                                  return model?.label || modelValue || 'Select model';
+                                })()}
+                              </Text>
+                              <Text style={styles.modelSelectorChevron}>▼</Text>
+                            </View>
+                          </TouchableOpacity>
+                        </>
+                      )}
+
+                      {getTtsVoicesForProvider(remoteTtsProviderId, remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined).length > 0 && (
+                        <>
+                          <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
+                          <TouchableOpacity style={styles.modelSelector} onPress={() => setShowTtsVoicePicker(true)}>
+                            <View style={styles.modelSelectorContent}>
+                              <Text style={styles.modelSelectorText}>
+                                {(() => {
+                                  const ttsModel = remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
+                                  const voices = getTtsVoicesForProvider(remoteTtsProviderId, ttsModel);
+                                  const voiceValue = getRemoteTtsVoiceValue(remoteSettings);
+                                  const voice = voices.find((v) => String(v.value) === String(voiceValue));
+                                  return voice?.label || String(voiceValue ?? '') || 'Select voice';
+                                })()}
+                              </Text>
+                              <Text style={styles.modelSelectorChevron}>▼</Text>
+                            </View>
+                          </TouchableOpacity>
+                        </>
+                      )}
+
+                      {(() => {
+                        const localProviderId = getLocalTtsSpeechModelProviderId(remoteTtsProviderId);
+                        if (!localProviderId) return null;
+
+                        const status = localSpeechModelStatuses[localProviderId];
+                        const progress = Math.max(0, Math.min(1, status?.progress ?? 0));
+                        const isDownloading = !!status?.downloading || pendingLocalSpeechModelAction === `${localProviderId}:download`;
+                        const isTesting = pendingLocalSpeechModelAction === `${localProviderId}:test`;
+                        const downloadDisabled = isDownloading || !!status?.downloaded;
+
+                        return (
+                          <View style={styles.localSpeechModelBlock}>
+                            <View style={styles.row}>
+                              <View style={styles.rowCopy}>
+                                <Text style={styles.label}>{getLocalSpeechModelLabel(localProviderId)} Model</Text>
+                                <Text style={styles.helperText}>{formatLocalModelProgress(status)}</Text>
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.profileActionButton, styles.localSpeechModelButton, downloadDisabled && styles.profileActionButtonDisabled]}
+                                onPress={() => handleLocalSpeechModelDownload(localProviderId)}
+                                disabled={downloadDisabled}
+                                accessibilityRole="button"
+                                accessibilityLabel={createButtonAccessibilityLabel(`${status?.error ? 'Retry' : 'Download'} ${localProviderId} model`)}
+                              >
+                                <Text style={styles.profileActionButtonText}>
+                                  {status?.downloaded ? 'Ready' : isDownloading ? 'Downloading...' : status?.error ? 'Retry' : 'Download'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            {(status?.downloading || isDownloading) && (
+                              <View style={styles.localSpeechProgressTrack}>
+                                <View style={[styles.localSpeechProgressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                              </View>
+                            )}
+
+                            {status?.error ? <Text style={styles.warningText}>{status.error}</Text> : null}
+
+                            {status?.downloaded && (
+                              <TouchableOpacity
+                                style={[styles.profileActionButton, styles.localSpeechTestButton, isTesting && styles.profileActionButtonDisabled]}
+                                onPress={handleRemoteTtsTest}
+                                disabled={isTesting}
+                                accessibilityRole="button"
+                                accessibilityLabel={createButtonAccessibilityLabel('Test selected desktop TTS voice')}
+                              >
+                                <Text style={styles.profileActionButtonText}>{isTesting ? 'Testing...' : 'Test voice'}</Text>
+                              </TouchableOpacity>
+                            )}
                           </View>
-                        </TouchableOpacity>
-                      </>
-                    )}
+                        );
+                      })()}
 
-                    {getTtsVoicesForProvider(
-                      remoteTtsProviderId,
-                      remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined,
-                    ).length > 0 && (
-                      <>
-                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
-                        <TouchableOpacity
-                          style={styles.modelSelector}
-                          onPress={() => setShowTtsVoicePicker(true)}
-                        >
-                          <View style={styles.modelSelectorContent}>
-                            <Text style={styles.modelSelectorText}>
-                              {(() => {
-                                const ttsModel = remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
-                                const voices = getTtsVoicesForProvider(remoteTtsProviderId, ttsModel);
-                                const voiceValue = getRemoteTtsVoiceValue(remoteSettings);
-                                const voice = voices.find(v => String(v.value) === String(voiceValue));
-                                return voice?.label || String(voiceValue ?? '') || 'Select voice';
-                              })()}
-                            </Text>
-                            <Text style={styles.modelSelectorChevron}>▼</Text>
+                      {remoteTtsProviderId === 'supertonic' && (
+                        <View>
+                          <Text style={[styles.label, { marginTop: spacing.sm }]}>Language</Text>
+                          <View style={styles.providerSelector}>
+                            {SUPERTONIC_TTS_LANGUAGES.map((language) => (
+                              <Pressable
+                                key={language.value}
+                                style={[
+                                  styles.providerOption,
+                                  (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionActive,
+                                ]}
+                                onPress={() => handleRemoteSettingUpdate('supertonicLanguage', language.value)}
+                              >
+                                <Text
+                                  style={[
+                                    styles.providerOptionText,
+                                    (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionTextActive,
+                                  ]}
+                                >
+                                  {language.label}
+                                </Text>
+                              </Pressable>
+                            ))}
                           </View>
-                        </TouchableOpacity>
-                      </>
-                    )}
+                        </View>
+                      )}
 
-                    {(() => {
-                      const localProviderId = getLocalTtsSpeechModelProviderId(remoteTtsProviderId);
-                      if (!localProviderId) return null;
+                      {remoteTtsSpeedSetting && (
+                        <View style={{ marginTop: spacing.sm }}>
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Text style={styles.label}>Speed</Text>
+                            <Text style={[styles.helperText, { marginTop: 0 }]}>
+                              {(remoteSettings[remoteTtsSpeedSetting.key] ?? remoteTtsSpeedSetting.defaultValue).toFixed(remoteTtsSpeedSetting.fractionDigits)}x
+                            </Text>
+                          </View>
+                          <Slider
+                            style={{ width: '100%', height: 40 }}
+                            minimumValue={remoteTtsSpeedSetting.minimumValue}
+                            maximumValue={remoteTtsSpeedSetting.maximumValue}
+                            step={remoteTtsSpeedSetting.step}
+                            value={remoteSettings[remoteTtsSpeedSetting.key] ?? remoteTtsSpeedSetting.defaultValue}
+                            onSlidingComplete={(v) => handleRemoteSettingUpdate(remoteTtsSpeedSetting.key, v)}
+                            minimumTrackTintColor={theme.colors.primary}
+                            maximumTrackTintColor={theme.colors.muted}
+                            thumbTintColor={theme.colors.primary}
+                          />
+                        </View>
+                      )}
 
-                      const status = localSpeechModelStatuses[localProviderId];
-                      const progress = Math.max(0, Math.min(1, status?.progress ?? 0));
-                      const isDownloading = !!status?.downloading || pendingLocalSpeechModelAction === `${localProviderId}:download`;
-                      const isTesting = pendingLocalSpeechModelAction === `${localProviderId}:test`;
-                      const downloadDisabled = isDownloading || !!status?.downloaded;
+                      {remoteTtsProviderId === 'supertonic' && (
+                        <View style={{ marginTop: spacing.sm }}>
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Text style={styles.label}>Quality Steps</Text>
+                            <Text style={[styles.helperText, { marginTop: 0 }]}>{Math.round(remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS)}</Text>
+                          </View>
+                          <Slider
+                            style={{ width: '100%', height: 40 }}
+                            minimumValue={MIN_SUPERTONIC_TTS_STEPS}
+                            maximumValue={MAX_SUPERTONIC_TTS_STEPS}
+                            step={1}
+                            value={remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
+                            onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
+                            minimumTrackTintColor={theme.colors.primary}
+                            maximumTrackTintColor={theme.colors.muted}
+                            thumbTintColor={theme.colors.primary}
+                          />
+                        </View>
+                      )}
+
+                      <View style={[styles.row, { marginTop: spacing.md }]}>
+                        <Text style={styles.label}>Auto-Play</Text>
+                        <Switch
+                          value={remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY}
+                          onValueChange={(v) => handleRemoteSettingToggle('ttsAutoPlay', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+
+                      <View style={styles.row}>
+                        <Text style={styles.label}>TTS Preprocessing</Text>
+                        <Switch
+                          value={remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED}
+                          onValueChange={(v) => handleRemoteSettingToggle('ttsPreprocessingEnabled', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+                      <Text style={styles.helperText}>Clean up text before speaking</Text>
+
+                      {(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) && (
+                        <>
+                          <View style={[styles.row, { paddingLeft: spacing.md }]}>
+                            <Text style={styles.label}>Remove Code Blocks</Text>
+                            <Switch
+                              value={remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS}
+                              onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveCodeBlocks', v)}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={(remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS) ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                          </View>
+
+                          <View style={[styles.row, { paddingLeft: spacing.md }]}>
+                            <Text style={styles.label}>Remove URLs</Text>
+                            <Switch
+                              value={remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS}
+                              onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveUrls', v)}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={(remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS) ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                          </View>
+
+                          <View style={[styles.row, { paddingLeft: spacing.md }]}>
+                            <Text style={styles.label}>Convert Markdown</Text>
+                            <Switch
+                              value={remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN}
+                              onValueChange={(v) => handleRemoteSettingToggle('ttsConvertMarkdown', v)}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={(remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN) ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                          </View>
+
+                          <View style={[styles.row, { paddingLeft: spacing.md }]}>
+                            <Text style={styles.label}>Use LLM Preprocessing</Text>
+                            <Switch
+                              value={remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING}
+                              onValueChange={(v) => handleRemoteSettingToggle('ttsUseLLMPreprocessing', v)}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={(remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING) ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                          </View>
+                        </>
+                      )}
+                    </>
+                  )}
+                </CollapsibleSection>
+              )}
+
+              {/* 4e. Agent Settings */}
+              {remoteSettings && (
+                <CollapsibleSection id="agentSettings" title={getAppShellMobileSettingsSectionTitle('agentSettings')}>
+                  <Text style={styles.label}>Main Agent Mode</Text>
+                  <View style={styles.providerSelector}>
+                    {MAIN_AGENT_MODE_DISPLAY_OPTIONS.map((option) => (
+                      <Pressable
+                        key={option.value}
+                        style={[styles.providerOption, (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionActive]}
+                        onPress={() => handleRemoteSettingUpdate('mainAgentMode', option.value)}
+                      >
+                        <Text style={[styles.providerOptionText, (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionTextActive]}>
+                          {option.compactLabel}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={styles.helperText}>API uses external LLMs, acpx routes to an acpx-managed agent</Text>
+
+                  {/* acpx-specific settings - only show when acpx mode selected */}
+                  {(remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === 'acpx' && (
+                    <>
+                      <Text style={styles.label}>acpx Agent</Text>
+                      {availableAcpMainAgents.length > 0 ? (
+                        <View style={styles.providerSelector}>
+                          {availableAcpMainAgents.map((agent) => (
+                            <Pressable
+                              key={agent.name}
+                              style={[styles.providerOption, remoteSettings.mainAgentName === agent.name && styles.providerOptionActive]}
+                              onPress={() => handleRemoteSettingUpdate('mainAgentName', agent.name)}
+                            >
+                              <Text style={[styles.providerOptionText, remoteSettings.mainAgentName === agent.name && styles.providerOptionTextActive]}>
+                                {agent.displayName || agent.name}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : (
+                        <Text style={styles.helperText}>No acpx agents available</Text>
+                      )}
+                      <Text style={styles.helperText}>Select which acpx agent handles requests</Text>
+                    </>
+                  )}
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Message Queue</Text>
+                    <Switch
+                      value={remoteSettings.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpMessageQueueEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Require Tool Approval</Text>
+                    <Switch
+                      value={remoteSettings.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpRequireApprovalBeforeToolCall', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={
+                        (remoteSettings.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL)
+                          ? theme.colors.primaryForeground
+                          : theme.colors.background
+                      }
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Require approval before executing MCP tools</Text>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Verify Completion</Text>
+                    <Switch
+                      value={remoteSettings.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpVerifyCompletionEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Final Summary</Text>
+                    <Switch
+                      value={remoteSettings.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpFinalSummaryEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Generate a summary after completing a task</Text>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Auto-Paste Response</Text>
+                    <Switch
+                      value={remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpAutoPasteEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Paste completed agent responses into the desktop app that was focused before the request</Text>
+
+                  <Text style={styles.label}>Auto-Paste Delay</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={inputDrafts.mcpAutoPasteDelay ?? String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
+                    onChangeText={(v) => {
+                      markRemotePending('mcpAutoPasteDelay');
+                      setSaveStatusMessage(null);
+                      const num = parseMcpAutoPasteDelayDraft(v);
+                      if (num !== null) {
+                        handleRemoteSettingUpdate('mcpAutoPasteDelay', num);
+                      } else {
+                        setInputDrafts((prev) => ({
+                          ...prev,
+                          mcpAutoPasteDelay: v,
+                        }));
+                      }
+                    }}
+                    placeholder={String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    keyboardType="number-pad"
+                  />
+                  <Text style={styles.helperText}>Delay in milliseconds before pasting</Text>
+
+                  <Text style={styles.label}>Max Iterations</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={inputDrafts.mcpMaxIterations ?? String(MCP_MAX_ITERATIONS_DEFAULT)}
+                    onChangeText={(v) => {
+                      markRemotePending('mcpMaxIterations');
+                      setSaveStatusMessage(null);
+                      const num = parseMcpMaxIterationsDraft(v);
+                      if (num !== null) {
+                        handleRemoteSettingUpdate('mcpMaxIterations', num);
+                      } else {
+                        setInputDrafts((prev) => ({
+                          ...prev,
+                          mcpMaxIterations: v,
+                        }));
+                      }
+                    }}
+                    placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    keyboardType="number-pad"
+                  />
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Unlimited Iterations</Text>
+                    <Switch
+                      value={remoteSettings.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpUnlimitedIterations', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                </CollapsibleSection>
+              )}
+
+              {/* 4f. Tool Execution */}
+              {remoteSettings && (
+                <CollapsibleSection id="toolExecution" title={getAppShellMobileSettingsSectionTitle('toolExecution')}>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Context Reduction</Text>
+                    <Switch
+                      value={remoteSettings.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpContextReductionEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Reduce context size for tool responses</Text>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Tool Response Processing</Text>
+                    <Switch
+                      value={remoteSettings.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpToolResponseProcessingEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={
+                        (remoteSettings.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background
+                      }
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Parallel Tool Execution</Text>
+                    <Switch
+                      value={remoteSettings.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION}
+                      onValueChange={(v) => handleRemoteSettingToggle('mcpParallelToolExecution', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>Execute multiple tools in parallel when possible</Text>
+                </CollapsibleSection>
+              )}
+
+              {/* 4h. MCP Servers */}
+              {isDotAgentsServer && (
+                <CollapsibleSection id="mcpServers" title={getAppShellMobileSettingsSectionTitle('mcpServers')}>
+                  {mcpServers.length === 0 ? (
+                    <Text style={styles.helperText}>No MCP servers configured</Text>
+                  ) : (
+                    mcpServers.map((server) => {
+                      const canDeleteServer = !isReservedMcpServerName(server.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES);
+                      const oauthStatus = mcpOAuthStatus[server.name];
+                      const pendingOAuthStart = pendingMcpOAuthAction === `${server.name}:start`;
+                      const pendingOAuthRevoke = pendingMcpOAuthAction === `${server.name}:revoke`;
 
                       return (
-                        <View style={styles.localSpeechModelBlock}>
-                          <View style={styles.row}>
-                            <View style={styles.rowCopy}>
-                              <Text style={styles.label}>{getLocalSpeechModelLabel(localProviderId)} Model</Text>
-                              <Text style={styles.helperText}>{formatLocalModelProgress(status)}</Text>
-                            </View>
-                            <TouchableOpacity
-                              style={[
-                                styles.profileActionButton,
-                                styles.localSpeechModelButton,
-                                downloadDisabled && styles.profileActionButtonDisabled,
-                              ]}
-                              onPress={() => handleLocalSpeechModelDownload(localProviderId)}
-                              disabled={downloadDisabled}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`${status?.error ? 'Retry' : 'Download'} ${localProviderId} model`)}
-                            >
-                              <Text style={styles.profileActionButtonText}>
-                                {status?.downloaded
-                                  ? 'Ready'
-                                  : isDownloading
-                                    ? 'Downloading...'
-                                    : status?.error
-                                      ? 'Retry'
-                                      : 'Download'}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-
-                          {(status?.downloading || isDownloading) && (
-                            <View style={styles.localSpeechProgressTrack}>
-                              <View style={[styles.localSpeechProgressFill, { width: `${Math.round(progress * 100)}%` }]} />
-                            </View>
-                          )}
-
-                          {status?.error ? <Text style={styles.warningText}>{status.error}</Text> : null}
-
-                          {status?.downloaded && (
-                            <TouchableOpacity
-                              style={[
-                                styles.profileActionButton,
-                                styles.localSpeechTestButton,
-                                isTesting && styles.profileActionButtonDisabled,
-                              ]}
-                              onPress={handleRemoteTtsTest}
-                              disabled={isTesting}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel('Test selected desktop TTS voice')}
-                            >
-                              <Text style={styles.profileActionButtonText}>
-                                {isTesting ? 'Testing...' : 'Test voice'}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      );
-                    })()}
-
-                    {remoteTtsProviderId === 'supertonic' && (
-                      <View>
-                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Language</Text>
-                        <View style={styles.providerSelector}>
-                          {SUPERTONIC_TTS_LANGUAGES.map((language) => (
-                            <Pressable
-                              key={language.value}
-                              style={[
-                                styles.providerOption,
-                                (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionActive,
-                              ]}
-                              onPress={() => handleRemoteSettingUpdate('supertonicLanguage', language.value)}
-                            >
-                              <Text style={[
-                                styles.providerOptionText,
-                                (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionTextActive,
-                              ]}>
-                                {language.label}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-
-                    {remoteTtsSpeedSetting && (
-                      <View style={{ marginTop: spacing.sm }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.label}>Speed</Text>
-                          <Text style={[styles.helperText, { marginTop: 0 }]}>
-                            {(remoteSettings[remoteTtsSpeedSetting.key] ?? remoteTtsSpeedSetting.defaultValue).toFixed(remoteTtsSpeedSetting.fractionDigits)}x
-                          </Text>
-                        </View>
-                        <Slider
-                          style={{ width: '100%', height: 40 }}
-                          minimumValue={remoteTtsSpeedSetting.minimumValue}
-                          maximumValue={remoteTtsSpeedSetting.maximumValue}
-                          step={remoteTtsSpeedSetting.step}
-                          value={remoteSettings[remoteTtsSpeedSetting.key] ?? remoteTtsSpeedSetting.defaultValue}
-                          onSlidingComplete={(v) => handleRemoteSettingUpdate(remoteTtsSpeedSetting.key, v)}
-                          minimumTrackTintColor={theme.colors.primary}
-                          maximumTrackTintColor={theme.colors.muted}
-                          thumbTintColor={theme.colors.primary}
-                        />
-                      </View>
-                    )}
-
-                    {remoteTtsProviderId === 'supertonic' && (
-                      <View style={{ marginTop: spacing.sm }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.label}>Quality Steps</Text>
-                          <Text style={[styles.helperText, { marginTop: 0 }]}>
-                            {Math.round(remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS)}
-                          </Text>
-                        </View>
-                        <Slider
-                          style={{ width: '100%', height: 40 }}
-                          minimumValue={MIN_SUPERTONIC_TTS_STEPS}
-                          maximumValue={MAX_SUPERTONIC_TTS_STEPS}
-                          step={1}
-                          value={remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
-                          onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
-                          minimumTrackTintColor={theme.colors.primary}
-                          maximumTrackTintColor={theme.colors.muted}
-                          thumbTintColor={theme.colors.primary}
-                        />
-                      </View>
-                    )}
-
-                    <View style={[styles.row, { marginTop: spacing.md }]}>
-                      <Text style={styles.label}>Auto-Play</Text>
-                      <Switch
-                        value={remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY}
-                        onValueChange={(v) => handleRemoteSettingToggle('ttsAutoPlay', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>TTS Preprocessing</Text>
-                      <Switch
-                        value={remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED}
-                        onValueChange={(v) => handleRemoteSettingToggle('ttsPreprocessingEnabled', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-                    <Text style={styles.helperText}>
-                      Clean up text before speaking
-                    </Text>
-
-                    {(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) && (
-                      <>
-                        <View style={[styles.row, { paddingLeft: spacing.md }]}>
-                          <Text style={styles.label}>Remove Code Blocks</Text>
-                          <Switch
-                            value={remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS}
-                            onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveCodeBlocks', v)}
-                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={(remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS) ? theme.colors.primaryForeground : theme.colors.background}
-                          />
-                        </View>
-
-                        <View style={[styles.row, { paddingLeft: spacing.md }]}>
-                          <Text style={styles.label}>Remove URLs</Text>
-                          <Switch
-                            value={remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS}
-                            onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveUrls', v)}
-                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={(remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS) ? theme.colors.primaryForeground : theme.colors.background}
-                          />
-                        </View>
-
-                        <View style={[styles.row, { paddingLeft: spacing.md }]}>
-                          <Text style={styles.label}>Convert Markdown</Text>
-                          <Switch
-                            value={remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN}
-                            onValueChange={(v) => handleRemoteSettingToggle('ttsConvertMarkdown', v)}
-                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={(remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN) ? theme.colors.primaryForeground : theme.colors.background}
-                          />
-                        </View>
-
-                        <View style={[styles.row, { paddingLeft: spacing.md }]}>
-                          <Text style={styles.label}>Use LLM Preprocessing</Text>
-                          <Switch
-                            value={remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING}
-                            onValueChange={(v) => handleRemoteSettingToggle('ttsUseLLMPreprocessing', v)}
-                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={(remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING) ? theme.colors.primaryForeground : theme.colors.background}
-                          />
-                        </View>
-                      </>
-                    )}
-                  </>
-                )}
-              </CollapsibleSection>
-            )}
-
-            {/* 4e. Agent Settings */}
-            {remoteSettings && (
-              <CollapsibleSection id="agentSettings" title="Agent Settings">
-                <Text style={styles.label}>Main Agent Mode</Text>
-                <View style={styles.providerSelector}>
-                  {MAIN_AGENT_MODE_DISPLAY_OPTIONS.map((option) => (
-                    <Pressable
-                      key={option.value}
-                      style={[
-                        styles.providerOption,
-                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionActive,
-                      ]}
-                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', option.value)}
-                    >
-                      <Text style={[
-                        styles.providerOptionText,
-                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionTextActive,
-                      ]}>
-                        {option.compactLabel}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.helperText}>
-                  API uses external LLMs, acpx routes to an acpx-managed agent
-                </Text>
-
-                {/* acpx-specific settings - only show when acpx mode selected */}
-                {(remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === 'acpx' && (
-                  <>
-                    <Text style={styles.label}>acpx Agent</Text>
-                    {availableAcpMainAgents.length > 0 ? (
-                      <View style={styles.providerSelector}>
-                        {availableAcpMainAgents.map((agent) => (
-                          <Pressable
-                            key={agent.name}
-                            style={[
-                              styles.providerOption,
-                              remoteSettings.mainAgentName === agent.name && styles.providerOptionActive,
-                            ]}
-                            onPress={() => handleRemoteSettingUpdate('mainAgentName', agent.name)}
-                          >
-                            <Text style={[
-                              styles.providerOptionText,
-                              remoteSettings.mainAgentName === agent.name && styles.providerOptionTextActive,
-                            ]}>
-                              {agent.displayName || agent.name}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    ) : (
-                      <Text style={styles.helperText}>No acpx agents available</Text>
-                    )}
-                    <Text style={styles.helperText}>
-                      Select which acpx agent handles requests
-                    </Text>
-                  </>
-                )}
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Message Queue</Text>
-                  <Switch
-                    value={remoteSettings.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpMessageQueueEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Require Tool Approval</Text>
-                  <Switch
-                    value={remoteSettings.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpRequireApprovalBeforeToolCall', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Require approval before executing MCP tools
-                </Text>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Verify Completion</Text>
-                  <Switch
-                    value={remoteSettings.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpVerifyCompletionEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Final Summary</Text>
-                  <Switch
-                    value={remoteSettings.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpFinalSummaryEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Generate a summary after completing a task
-                </Text>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Auto-Paste Response</Text>
-                  <Switch
-                    value={remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpAutoPasteEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Paste completed agent responses into the desktop app that was focused before the request
-                </Text>
-
-                <Text style={styles.label}>Auto-Paste Delay</Text>
-                <TextInput
-                  style={styles.input}
-                  value={inputDrafts.mcpAutoPasteDelay ?? String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
-                  onChangeText={(v) => {
-                    markRemotePending('mcpAutoPasteDelay');
-                    setSaveStatusMessage(null);
-                    const num = parseMcpAutoPasteDelayDraft(v);
-                    if (num !== null) {
-                      handleRemoteSettingUpdate('mcpAutoPasteDelay', num);
-                    } else {
-                      setInputDrafts(prev => ({ ...prev, mcpAutoPasteDelay: v }));
-                    }
-                  }}
-                  placeholder={String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
-                  placeholderTextColor={theme.colors.mutedForeground}
-                  keyboardType="number-pad"
-                />
-                <Text style={styles.helperText}>
-                  Delay in milliseconds before pasting
-                </Text>
-
-                <Text style={styles.label}>Max Iterations</Text>
-                <TextInput
-                  style={styles.input}
-                  value={inputDrafts.mcpMaxIterations ?? String(MCP_MAX_ITERATIONS_DEFAULT)}
-                  onChangeText={(v) => {
-                    markRemotePending('mcpMaxIterations');
-                    setSaveStatusMessage(null);
-                    const num = parseMcpMaxIterationsDraft(v);
-                    if (num !== null) {
-                      handleRemoteSettingUpdate('mcpMaxIterations', num);
-                    } else {
-                      setInputDrafts(prev => ({ ...prev, mcpMaxIterations: v }));
-                    }
-                  }}
-                  placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
-                  placeholderTextColor={theme.colors.mutedForeground}
-                  keyboardType="number-pad"
-                />
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Unlimited Iterations</Text>
-                  <Switch
-                    value={remoteSettings.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpUnlimitedIterations', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-              </CollapsibleSection>
-            )}
-
-            {/* 4f. Tool Execution */}
-            {remoteSettings && (
-              <CollapsibleSection id="toolExecution" title="Tool Execution">
-                <View style={styles.row}>
-                  <Text style={styles.label}>Context Reduction</Text>
-                  <Switch
-                    value={remoteSettings.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpContextReductionEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Reduce context size for tool responses
-                </Text>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Tool Response Processing</Text>
-                  <Switch
-                    value={remoteSettings.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpToolResponseProcessingEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Parallel Tool Execution</Text>
-                  <Switch
-                    value={remoteSettings.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpParallelToolExecution', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Execute multiple tools in parallel when possible
-                </Text>
-              </CollapsibleSection>
-            )}
-
-            {/* 4h. MCP Servers */}
-            {isDotAgentsServer && (
-              <CollapsibleSection id="mcpServers" title="MCP Servers">
-                {mcpServers.length === 0 ? (
-                  <Text style={styles.helperText}>No MCP servers configured</Text>
-                ) : mcpServers.map((server) => {
-                  const canDeleteServer = !isReservedMcpServerName(server.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES);
-                  const oauthStatus = mcpOAuthStatus[server.name];
-                  const pendingOAuthStart = pendingMcpOAuthAction === `${server.name}:start`;
-                  const pendingOAuthRevoke = pendingMcpOAuthAction === `${server.name}:revoke`;
-
-                  return (
-                    <View key={server.name} style={styles.serverRow}>
-                      <View style={styles.serverInfo}>
-                        <View style={styles.serverNameRow}>
-                          <View style={[
-                            styles.statusDot,
-                            server.connected ? styles.statusConnected : styles.statusDisconnected,
-                          ]} />
-                          <Text style={styles.serverName}>{server.name}</Text>
-                        </View>
-                        <Text style={styles.serverMeta}>
-                          {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
-                          {oauthStatus?.configured && ` • OAuth ${oauthStatus.authenticated ? 'connected' : 'needs auth'}`}
-                          {oauthStatus?.error && ` • OAuth: ${oauthStatus.error}`}
-                          {server.error && ` • ${server.error}`}
-                        </Text>
-                      </View>
-                      <View style={styles.agentActions}>
-                        <Switch
-                          value={server.enabled}
-                          onValueChange={(v) => handleServerToggle(server.name, v)}
-                          accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                          thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                          disabled={server.configDisabled}
-                        />
-                        {oauthStatus?.configured && (
-                          oauthStatus.authenticated ? (
-                            <TouchableOpacity
-                              style={[styles.agentDeleteButton, pendingOAuthRevoke && styles.agentActionButtonDisabled]}
-                              onPress={() => handleMcpOAuthRevoke(server.name)}
-                              disabled={pendingOAuthRevoke}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`Revoke OAuth for MCP server ${server.name}`)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Text style={styles.agentDeleteButtonText}>
-                                {pendingOAuthRevoke ? 'Revoking...' : 'Revoke OAuth'}
-                              </Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <TouchableOpacity
-                              style={[styles.agentDeleteButton, pendingOAuthStart && styles.agentActionButtonDisabled]}
-                              onPress={() => handleMcpOAuthStart(server.name)}
-                              disabled={pendingOAuthStart}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`Start OAuth for MCP server ${server.name}`)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Text style={styles.notePromoteButtonText}>
-                                {pendingOAuthStart ? 'Starting...' : 'Start OAuth'}
-                              </Text>
-                            </TouchableOpacity>
-                          )
-                        )}
-                        {canDeleteServer && (
-                          <>
-                            <TouchableOpacity
-                              style={styles.agentDeleteButton}
-                              onPress={() => openMcpServerReplaceEditor(server)}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`Replace MCP server ${server.name} config`)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Text style={styles.notePromoteButtonText}>Replace</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.agentDeleteButton}
-                              onPress={() => handleMcpServerDelete(server)}
-                              accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`Delete MCP server ${server.name}`)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Text style={styles.agentDeleteButtonText}>Delete</Text>
-                            </TouchableOpacity>
-                          </>
-                        )}
-                      </View>
-                    </View>
-                  );
-                })}
-                <View style={styles.profileActions}>
-                  <TouchableOpacity
-                    style={[styles.profileActionButton, isImportingMcpServers && styles.profileActionButtonDisabled]}
-                    onPress={() => setShowMcpImportModal(true)}
-                    disabled={isImportingMcpServers}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Import MCP server JSON')}
-                  >
-                    <Text style={styles.profileActionButtonText}>
-                      {isImportingMcpServers ? 'Importing...' : 'Import JSON'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.profileActionButton, isExportingMcpServers && styles.profileActionButtonDisabled]}
-                    onPress={handleMcpServerExport}
-                    disabled={isExportingMcpServers}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Export MCP server JSON')}
-                  >
-                    <Text style={styles.profileActionButtonText}>
-                      {isExportingMcpServers ? 'Exporting...' : 'Export JSON'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.profileActionButton}
-                    onPress={openMcpServerEditor}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Create MCP server')}
-                  >
-                    <Text style={styles.profileActionButtonText}>Create MCP Server</Text>
-                  </TouchableOpacity>
-                </View>
-              </CollapsibleSection>
-            )}
-
-            {/* 4i. WhatsApp */}
-            {remoteSettings && (
-              <CollapsibleSection id="whatsapp" title="WhatsApp">
-                <View style={styles.row}>
-                  <Text style={styles.label}>WhatsApp Integration</Text>
-                  <Switch
-                    value={remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('whatsappEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                {(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) && (
-                  <>
-                    <Text style={styles.label}>Allowed Numbers</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts.whatsappAllowFrom ?? ''}
-                      onChangeText={(v) => {
-                        markRemotePending('whatsappAllowFrom');
-                        setSaveStatusMessage(null);
-                        // Update the text draft immediately for responsive UI
-                        setInputDrafts(prev => ({ ...prev, whatsappAllowFrom: v }));
-                        // Parse comma-separated numbers and debounce the API update
-                        // Don't update remoteSettings locally to avoid the sync effect
-                        // rewriting the user's raw text (losing trailing commas/spaces)
-                        const numbers = parseConfigListInput(v);
-                        if (inputTimeoutRefs.current.whatsappAllowFrom) {
-                          clearTimeout(inputTimeoutRefs.current.whatsappAllowFrom);
-                        }
-                        inputTimeoutRefs.current.whatsappAllowFrom = setTimeout(async () => {
-                          if (!settingsClient) return;
-                          try {
-                            await settingsClient.updateSettings({ whatsappAllowFrom: numbers });
-                            clearRemotePending('whatsappAllowFrom');
-                            delete inputTimeoutRefs.current.whatsappAllowFrom;
-                          } catch (error: any) {
-                            console.error('[Settings] Failed to update whatsappAllowFrom:', error);
-                            setRemoteError(error.message || 'Failed to update whatsappAllowFrom');
-                            fetchRemoteSettings();
-                          }
-                        }, 1000);
-                      }}
-                      placeholder="1234567890, 0987654321"
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                      keyboardType="phone-pad"
-                    />
-                    <Text style={styles.helperText}>
-                      Comma-separated phone numbers (international format without +)
-                    </Text>
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Auto-Reply</Text>
-                      <Switch
-                        value={remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY}
-                        onValueChange={(v) => handleRemoteSettingToggle('whatsappAutoReply', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Log Messages</Text>
-                      <Switch
-                        value={remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES}
-                        onValueChange={(v) => handleRemoteSettingToggle('whatsappLogMessages', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-                    <Text style={styles.helperText}>
-                      Log message content (privacy concern)
-                    </Text>
-                  </>
-                )}
-              </CollapsibleSection>
-            )}
-
-            {/* 4j. Discord */}
-            {remoteSettings && (
-              <CollapsibleSection id="discord" title="Discord">
-                <View style={styles.row}>
-                  <Text style={styles.label}>Discord Integration</Text>
-                  <Switch
-                    value={remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('discordEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                {(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) && (
-                  <>
-                    <Text style={styles.label}>Bot Token</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts.discordBotToken ?? ''}
-                      onChangeText={(v) => {
-                        markRemotePending('discordBotToken');
-                        setSaveStatusMessage(null);
-                        setInputDrafts(prev => ({ ...prev, discordBotToken: v }));
-                      }}
-                      onBlur={() => {
-                        if (!settingsClient || !pendingRemoteSaveKeys.includes('discordBotToken')) return;
-                        const value = inputDrafts.discordBotToken ?? '';
-                        settingsClient.updateSettings({ discordBotToken: value }).then(() => {
-                          setRemoteSettings(prev => prev ? { ...prev, discordBotToken: value ? SECRET_MASK : '' } : null);
-                          clearRemotePending('discordBotToken');
-                          setInputDrafts(prev => ({ ...prev, discordBotToken: '' }));
-                        }).catch((error: any) => {
-                          console.error('[Settings] Failed to update discordBotToken:', error);
-                          setRemoteError(error.message || 'Failed to update discordBotToken');
-                        });
-                      }}
-                      placeholder={remoteSettings.discordBotToken === SECRET_MASK ? 'Configured' : 'Paste your Discord bot token'}
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                      autoCorrect={false}
-                      secureTextEntry
-                    />
-                    <Text style={styles.helperText}>
-                      Leave unchanged to keep the existing desktop token.
-                    </Text>
-
-                    {profiles.length > 0 && (
-                      <>
-                        <Text style={styles.label}>Default Profile</Text>
-                        <View style={styles.providerSelector}>
-                          <Pressable
-                            style={[
-                              styles.providerOption,
-                              !remoteSettings.discordDefaultProfileId && styles.providerOptionActive,
-                            ]}
-                            onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', '')}
-                          >
-                            <Text style={[
-                              styles.providerOptionText,
-                              !remoteSettings.discordDefaultProfileId && styles.providerOptionTextActive,
-                            ]}>
-                              None
-                            </Text>
-                          </Pressable>
-                          {profiles.map((profile) => (
-                            <Pressable
-                              key={profile.id}
-                              style={[
-                                styles.providerOption,
-                                remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionActive,
-                              ]}
-                              onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', profile.id)}
-                            >
-                              <Text style={[
-                                styles.providerOptionText,
-                                remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionTextActive,
-                              ]}>
-                                {profile.name}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      </>
-                    )}
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Allow Direct Messages</Text>
-                      <Switch
-                        value={remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED}
-                        onValueChange={(v) => handleRemoteSettingToggle('discordDmEnabled', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Require Mention</Text>
-                      <Switch
-                        value={remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION}
-                        onValueChange={(v) => handleRemoteSettingToggle('discordRequireMention', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-
-                    {DISCORD_LIST_SETTING_SECTIONS.map((section) => (
-                      <View key={section.key} style={styles.providerCredentialGroup}>
-                        <Text style={styles.label}>{section.label}</Text>
-                        <TextInput
-                          style={[styles.input, { minHeight: 76, textAlignVertical: 'top' }]}
-                          value={inputDrafts[section.key] ?? ''}
-                          onChangeText={(v) => handleRemoteListSettingUpdate(section.key, v)}
-                          placeholder={section.placeholder}
-                          placeholderTextColor={theme.colors.mutedForeground}
-                          autoCapitalize='none'
-                          autoCorrect={false}
-                          multiline
-                          numberOfLines={3}
-                        />
-                        <Text style={styles.helperText}>{section.helper}</Text>
-                      </View>
-                    ))}
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Log Messages</Text>
-                      <Switch
-                        value={remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES}
-                        onValueChange={(v) => handleRemoteSettingToggle('discordLogMessages', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={(remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-                    <Text style={styles.helperText}>
-                      Log Discord message content on the desktop.
-                    </Text>
-                  </>
-                )}
-              </CollapsibleSection>
-            )}
-
-            {/* 4k. Langfuse */}
-            {remoteSettings && (
-              <CollapsibleSection id="langfuse" title="Langfuse">
-                <View style={styles.row}>
-                  <Text style={styles.label}>{LOCAL_TRACE_LOGGING_SETTING_METADATA.label}</Text>
-                  <Switch
-                    value={remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  {LOCAL_TRACE_LOGGING_SETTING_METADATA.helperText}
-                </Text>
-
-                {(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) && (
-                  <>
-                    <Text style={styles.label}>{LOCAL_TRACE_LOG_PATH_FIELD_METADATA.label}</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts.localTraceLogPath ?? ''}
-                      onChangeText={(v) => handleRemoteSettingUpdate('localTraceLogPath', v)}
-                      placeholder={LOCAL_TRACE_LOG_PATH_FIELD_METADATA.placeholder}
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                    />
-                    <Text style={styles.helperText}>
-                      {LOCAL_TRACE_LOG_PATH_FIELD_METADATA.helperText}
-                    </Text>
-                  </>
-                )}
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Langfuse tracing</Text>
-                  <Switch
-                    value={remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED}
-                    onValueChange={(v) => handleRemoteSettingToggle('langfuseEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={(remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-
-                {(remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) && (
-                  <>
-                    <Text style={styles.label}>Public Key</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts.langfusePublicKey ?? ''}
-                      onChangeText={(v) => handleRemoteSettingUpdate('langfusePublicKey', v)}
-                      placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfusePublicKey.placeholder}
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                    />
-
-                    <Text style={styles.label}>Secret Key</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts.langfuseSecretKey ?? ''}
-                      onChangeText={(v) => {
-                        markRemotePending('langfuseSecretKey');
-                        setSaveStatusMessage(null);
-                        setInputDrafts(prev => ({ ...prev, langfuseSecretKey: v }));
-                      }}
-                      onBlur={() => {
-                        const value = inputDrafts.langfuseSecretKey;
-                        if (value !== undefined && value !== '' && settingsClient) {
-                          settingsClient.updateSettings({ langfuseSecretKey: value }).then(() => {
-                            setRemoteSettings(prev => prev ? { ...prev, langfuseSecretKey: '••••••••' } : null);
-                            clearRemotePending('langfuseSecretKey');
-                            setInputDrafts(prev => ({ ...prev, langfuseSecretKey: '' }));
-                          }).catch((error: any) => {
-                            console.error('[Settings] Failed to update langfuseSecretKey:', error);
-                            setRemoteError(error.message || 'Failed to update langfuseSecretKey');
-                          });
-                        }
-                      }}
-                      placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseSecretKey.placeholder}
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                      secureTextEntry
-                    />
-
-                    <Text style={styles.label}>Base URL</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={inputDrafts.langfuseBaseUrl ?? ''}
-                      onChangeText={(v) => handleRemoteSettingUpdate('langfuseBaseUrl', v)}
-                      placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseBaseUrl.placeholder}
-                      placeholderTextColor={theme.colors.mutedForeground}
-                      autoCapitalize='none'
-                      keyboardType="url"
-                    />
-                    <Text style={styles.helperText}>
-                      Leave empty for Langfuse Cloud
-                    </Text>
-                  </>
-                )}
-              </CollapsibleSection>
-            )}
-
-            {/* 4k. Skills */}
-            {isDotAgentsServer && (
-              <CollapsibleSection id="skills" title="Skills">
-                {isLoadingSkills ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : skills.length === 0 ? (
-                  <Text style={styles.helperText}>No skills configured</Text>
-                ) : (
-                  displaySkills.map((skill) => {
-                    const isSelected = selectedSkillIds.has(skill.id);
-                    return (
-                      <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
-                        <TouchableOpacity
-                          style={styles.agentInfoPressable}
-                          onPress={() => handleSkillEdit(skill)}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Edit skill ${skill.name}`)}
-                        >
+                        <View key={server.name} style={styles.serverRow}>
                           <View style={styles.serverInfo}>
                             <View style={styles.serverNameRow}>
-                              <Text style={styles.serverName}>{skill.name}</Text>
-                              {skill.source && (
-                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{skill.source}</Text>
-                                </View>
+                              <View style={[styles.statusDot, server.connected ? styles.statusConnected : styles.statusDisconnected]} />
+                              <Text style={styles.serverName}>{server.name}</Text>
+                            </View>
+                            <Text style={styles.serverMeta}>
+                              {server.toolCount} tool
+                              {server.toolCount !== 1 ? 's' : ''}
+                              {oauthStatus?.configured && ` • OAuth ${oauthStatus.authenticated ? 'connected' : 'needs auth'}`}
+                              {oauthStatus?.error && ` • OAuth: ${oauthStatus.error}`}
+                              {server.error && ` • ${server.error}`}
+                            </Text>
+                          </View>
+                          <View style={styles.agentActions}>
+                            <Switch
+                              value={server.enabled}
+                              onValueChange={(v) => handleServerToggle(server.name, v)}
+                              accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                              disabled={server.configDisabled}
+                            />
+                            {oauthStatus?.configured &&
+                              (oauthStatus.authenticated ? (
+                                <TouchableOpacity
+                                  style={[styles.agentDeleteButton, pendingOAuthRevoke && styles.agentActionButtonDisabled]}
+                                  onPress={() => handleMcpOAuthRevoke(server.name)}
+                                  disabled={pendingOAuthRevoke}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerItemActionAccessibilityLabel('revokeOAuth', server.name))}
+                                  hitSlop={{
+                                    top: 8,
+                                    bottom: 8,
+                                    left: 8,
+                                    right: 8,
+                                  }}
+                                >
+                                  <Text style={styles.agentDeleteButtonText}>{getAppShellMcpServerRevokeOAuthActionLabel(pendingOAuthRevoke)}</Text>
+                                </TouchableOpacity>
+                              ) : (
+                                <TouchableOpacity
+                                  style={[styles.agentDeleteButton, pendingOAuthStart && styles.agentActionButtonDisabled]}
+                                  onPress={() => handleMcpOAuthStart(server.name)}
+                                  disabled={pendingOAuthStart}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerItemActionAccessibilityLabel('startOAuth', server.name))}
+                                  hitSlop={{
+                                    top: 8,
+                                    bottom: 8,
+                                    left: 8,
+                                    right: 8,
+                                  }}
+                                >
+                                  <Text style={styles.notePromoteButtonText}>{getAppShellMcpServerStartOAuthActionLabel(pendingOAuthStart)}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            {canDeleteServer && (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.agentDeleteButton}
+                                  onPress={() => openMcpServerReplaceEditor(server)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerItemActionAccessibilityLabel('replace', server.name))}
+                                  hitSlop={{
+                                    top: 8,
+                                    bottom: 8,
+                                    left: 8,
+                                    right: 8,
+                                  }}
+                                >
+                                  <Text style={styles.notePromoteButtonText}>{getAppShellMcpServerActionLabel('replace')}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.agentDeleteButton}
+                                  onPress={() => handleMcpServerDelete(server)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerItemActionAccessibilityLabel('delete', server.name))}
+                                  hitSlop={{
+                                    top: 8,
+                                    bottom: 8,
+                                    left: 8,
+                                    right: 8,
+                                  }}
+                                >
+                                  <Text style={styles.agentDeleteButtonText}>{getAppShellMcpServerActionLabel('delete')}</Text>
+                                </TouchableOpacity>
+                              </>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                  <View style={styles.profileActions}>
+                    <TouchableOpacity
+                      style={[styles.profileActionButton, isImportingMcpServers && styles.profileActionButtonDisabled]}
+                      onPress={() => setShowMcpImportModal(true)}
+                      disabled={isImportingMcpServers}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerImportJsonAccessibilityLabel())}
+                    >
+                      <Text style={styles.profileActionButtonText}>{getAppShellMcpServerImportActionLabel(isImportingMcpServers)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.profileActionButton, isExportingMcpServers && styles.profileActionButtonDisabled]}
+                      onPress={handleMcpServerExport}
+                      disabled={isExportingMcpServers}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerExportJsonAccessibilityLabel())}
+                    >
+                      <Text style={styles.profileActionButtonText}>{getAppShellMcpServerExportActionLabel(isExportingMcpServers)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.profileActionButton}
+                      onPress={openMcpServerEditor}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellMcpServerCreateAccessibilityLabel())}
+                    >
+                      <Text style={styles.profileActionButtonText}>{getAppShellMcpServerActionLabel('addServer')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </CollapsibleSection>
+              )}
+
+              {/* 4i. WhatsApp */}
+              {remoteSettings && (
+                <CollapsibleSection id="whatsapp" title={getAppShellMobileSettingsSectionTitle('whatsapp')}>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>WhatsApp Integration</Text>
+                    <Switch
+                      value={remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('whatsappEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+
+                  {(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) && (
+                    <>
+                      <Text style={styles.label}>Allowed Numbers</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts.whatsappAllowFrom ?? ''}
+                        onChangeText={(v) => {
+                          markRemotePending('whatsappAllowFrom');
+                          setSaveStatusMessage(null);
+                          // Update the text draft immediately for responsive UI
+                          setInputDrafts((prev) => ({
+                            ...prev,
+                            whatsappAllowFrom: v,
+                          }));
+                          // Parse comma-separated numbers and debounce the API update
+                          // Don't update remoteSettings locally to avoid the sync effect
+                          // rewriting the user's raw text (losing trailing commas/spaces)
+                          const numbers = parseConfigListInput(v);
+                          if (inputTimeoutRefs.current.whatsappAllowFrom) {
+                            clearTimeout(inputTimeoutRefs.current.whatsappAllowFrom);
+                          }
+                          inputTimeoutRefs.current.whatsappAllowFrom = setTimeout(async () => {
+                            if (!settingsClient) return;
+                            try {
+                              await settingsClient.updateSettings({
+                                whatsappAllowFrom: numbers,
+                              });
+                              clearRemotePending('whatsappAllowFrom');
+                              delete inputTimeoutRefs.current.whatsappAllowFrom;
+                            } catch (error: any) {
+                              console.error('[Settings] Failed to update whatsappAllowFrom:', error);
+                              setRemoteError(error.message || 'Failed to update whatsappAllowFrom');
+                              fetchRemoteSettings();
+                            }
+                          }, 1000);
+                        }}
+                        placeholder="1234567890, 0987654321"
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                        keyboardType="phone-pad"
+                      />
+                      <Text style={styles.helperText}>Comma-separated phone numbers (international format without +)</Text>
+
+                      <View style={styles.row}>
+                        <Text style={styles.label}>Auto-Reply</Text>
+                        <Switch
+                          value={remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY}
+                          onValueChange={(v) => handleRemoteSettingToggle('whatsappAutoReply', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+
+                      <View style={styles.row}>
+                        <Text style={styles.label}>Log Messages</Text>
+                        <Switch
+                          value={remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES}
+                          onValueChange={(v) => handleRemoteSettingToggle('whatsappLogMessages', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+                      <Text style={styles.helperText}>Log message content (privacy concern)</Text>
+                    </>
+                  )}
+                </CollapsibleSection>
+              )}
+
+              {/* 4j. Discord */}
+              {remoteSettings && (
+                <CollapsibleSection id="discord" title={getAppShellMobileSettingsSectionTitle('discord')}>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Discord Integration</Text>
+                    <Switch
+                      value={remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('discordEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+
+                  {(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) && (
+                    <>
+                      <Text style={styles.label}>Bot Token</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts.discordBotToken ?? ''}
+                        onChangeText={(v) => {
+                          markRemotePending('discordBotToken');
+                          setSaveStatusMessage(null);
+                          setInputDrafts((prev) => ({
+                            ...prev,
+                            discordBotToken: v,
+                          }));
+                        }}
+                        onBlur={() => {
+                          if (!settingsClient || !pendingRemoteSaveKeys.includes('discordBotToken')) return;
+                          const value = inputDrafts.discordBotToken ?? '';
+                          settingsClient
+                            .updateSettings({ discordBotToken: value })
+                            .then(() => {
+                              setRemoteSettings((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      discordBotToken: value ? SECRET_MASK : '',
+                                    }
+                                  : null,
+                              );
+                              clearRemotePending('discordBotToken');
+                              setInputDrafts((prev) => ({
+                                ...prev,
+                                discordBotToken: '',
+                              }));
+                            })
+                            .catch((error: any) => {
+                              console.error('[Settings] Failed to update discordBotToken:', error);
+                              setRemoteError(error.message || 'Failed to update discordBotToken');
+                            });
+                        }}
+                        placeholder={remoteSettings.discordBotToken === SECRET_MASK ? 'Configured' : 'Paste your Discord bot token'}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        secureTextEntry
+                      />
+                      <Text style={styles.helperText}>Leave unchanged to keep the existing desktop token.</Text>
+
+                      {profiles.length > 0 && (
+                        <>
+                          <Text style={styles.label}>Default Profile</Text>
+                          <View style={styles.providerSelector}>
+                            <Pressable
+                              style={[styles.providerOption, !remoteSettings.discordDefaultProfileId && styles.providerOptionActive]}
+                              onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', '')}
+                            >
+                              <Text style={[styles.providerOptionText, !remoteSettings.discordDefaultProfileId && styles.providerOptionTextActive]}>None</Text>
+                            </Pressable>
+                            {profiles.map((profile) => (
+                              <Pressable
+                                key={profile.id}
+                                style={[styles.providerOption, remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionActive]}
+                                onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', profile.id)}
+                              >
+                                <Text style={[styles.providerOptionText, remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionTextActive]}>
+                                  {profile.name}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        </>
+                      )}
+
+                      <View style={styles.row}>
+                        <Text style={styles.label}>Allow Direct Messages</Text>
+                        <Switch
+                          value={remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED}
+                          onValueChange={(v) => handleRemoteSettingToggle('discordDmEnabled', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+
+                      <View style={styles.row}>
+                        <Text style={styles.label}>Require Mention</Text>
+                        <Switch
+                          value={remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION}
+                          onValueChange={(v) => handleRemoteSettingToggle('discordRequireMention', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+
+                      {DISCORD_LIST_SETTING_SECTIONS.map((section) => (
+                        <View key={section.key} style={styles.providerCredentialGroup}>
+                          <Text style={styles.label}>{section.label}</Text>
+                          <TextInput
+                            style={[styles.input, { minHeight: 76, textAlignVertical: 'top' }]}
+                            value={inputDrafts[section.key] ?? ''}
+                            onChangeText={(v) => handleRemoteListSettingUpdate(section.key, v)}
+                            placeholder={section.placeholder}
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            multiline
+                            numberOfLines={3}
+                          />
+                          <Text style={styles.helperText}>{section.helper}</Text>
+                        </View>
+                      ))}
+
+                      <View style={styles.row}>
+                        <Text style={styles.label}>Log Messages</Text>
+                        <Switch
+                          value={remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES}
+                          onValueChange={(v) => handleRemoteSettingToggle('discordLogMessages', v)}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
+                          thumbColor={(remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+                      <Text style={styles.helperText}>Log Discord message content on the desktop.</Text>
+                    </>
+                  )}
+                </CollapsibleSection>
+              )}
+
+              {/* 4k. Langfuse */}
+              {remoteSettings && (
+                <CollapsibleSection id="langfuse" title={getAppShellMobileSettingsSectionTitle('langfuse')}>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>{LOCAL_TRACE_LOGGING_SETTING_METADATA.label}</Text>
+                    <Switch
+                      value={remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>{LOCAL_TRACE_LOGGING_SETTING_METADATA.helperText}</Text>
+
+                  {(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) && (
+                    <>
+                      <Text style={styles.label}>{LOCAL_TRACE_LOG_PATH_FIELD_METADATA.label}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts.localTraceLogPath ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate('localTraceLogPath', v)}
+                        placeholder={LOCAL_TRACE_LOG_PATH_FIELD_METADATA.placeholder}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                      />
+                      <Text style={styles.helperText}>{LOCAL_TRACE_LOG_PATH_FIELD_METADATA.helperText}</Text>
+                    </>
+                  )}
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Langfuse tracing</Text>
+                    <Switch
+                      value={remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED}
+                      onValueChange={(v) => handleRemoteSettingToggle('langfuseEnabled', v)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
+                      thumbColor={(remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+
+                  {(remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) && (
+                    <>
+                      <Text style={styles.label}>Public Key</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts.langfusePublicKey ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate('langfusePublicKey', v)}
+                        placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfusePublicKey.placeholder}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                      />
+
+                      <Text style={styles.label}>Secret Key</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts.langfuseSecretKey ?? ''}
+                        onChangeText={(v) => {
+                          markRemotePending('langfuseSecretKey');
+                          setSaveStatusMessage(null);
+                          setInputDrafts((prev) => ({
+                            ...prev,
+                            langfuseSecretKey: v,
+                          }));
+                        }}
+                        onBlur={() => {
+                          const value = inputDrafts.langfuseSecretKey;
+                          if (value !== undefined && value !== '' && settingsClient) {
+                            settingsClient
+                              .updateSettings({ langfuseSecretKey: value })
+                              .then(() => {
+                                setRemoteSettings((prev) => (prev ? { ...prev, langfuseSecretKey: '••••••••' } : null));
+                                clearRemotePending('langfuseSecretKey');
+                                setInputDrafts((prev) => ({
+                                  ...prev,
+                                  langfuseSecretKey: '',
+                                }));
+                              })
+                              .catch((error: any) => {
+                                console.error('[Settings] Failed to update langfuseSecretKey:', error);
+                                setRemoteError(error.message || 'Failed to update langfuseSecretKey');
+                              });
+                          }
+                        }}
+                        placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseSecretKey.placeholder}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                        secureTextEntry
+                      />
+
+                      <Text style={styles.label}>Base URL</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts.langfuseBaseUrl ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate('langfuseBaseUrl', v)}
+                        placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseBaseUrl.placeholder}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                        keyboardType="url"
+                      />
+                      <Text style={styles.helperText}>Leave empty for Langfuse Cloud</Text>
+                    </>
+                  )}
+                </CollapsibleSection>
+              )}
+
+              {/* 4k. Skills */}
+              {isDotAgentsServer && (
+                <CollapsibleSection id="skills" title={getAppShellMobileSettingsSectionTitle('skills')}>
+                  {isLoadingSkills ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : skills.length === 0 ? (
+                    <Text style={styles.helperText}>No skills configured</Text>
+                  ) : (
+                    displaySkills.map((skill) => {
+                      const isSelected = selectedSkillIds.has(skill.id);
+                      return (
+                        <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
+                          <TouchableOpacity
+                            style={styles.agentInfoPressable}
+                            onPress={() => handleSkillEdit(skill)}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(getAppShellSkillItemActionAccessibilityLabel('edit', skill.name))}
+                          >
+                            <View style={styles.serverInfo}>
+                              <View style={styles.serverNameRow}>
+                                <Text style={styles.serverName}>{skill.name}</Text>
+                                {skill.source && (
+                                  <View
+                                    style={[
+                                      styles.providerOption,
+                                      {
+                                        paddingHorizontal: 6,
+                                        paddingVertical: 2,
+                                        marginLeft: 6,
+                                      },
+                                    ]}
+                                  >
+                                    <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{skill.source}</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                {!skill.enabled ? '(Globally disabled) ' : ''}
+                                {skill.description || 'No description'}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                          <View style={styles.agentActions}>
+                            <Switch
+                              value={skill.enabledForProfile}
+                              onValueChange={() => handleSkillToggle(skill.id)}
+                              disabled={!skill.enabled}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                            <TouchableOpacity
+                              style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
+                              onPress={() => toggleSkillSelection(skill.id)}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: isSelected }}
+                              accessibilityLabel={getAppShellSkillSelectionAccessibilityLabel(skill.name, isSelected)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={[styles.noteSelectButtonText, isSelected && styles.noteSelectButtonTextSelected]}>{getAppShellSkillSelectionLabel(isSelected)}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.agentSecondaryButton, isExportingSkillMarkdownId === skill.id && styles.agentActionButtonDisabled]}
+                              onPress={() => handleSkillMarkdownExport(skill)}
+                              disabled={isExportingSkillMarkdownId === skill.id}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellSkillExportMarkdownAccessibilityLabel(skill.name))}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.agentSecondaryButtonText}>{isExportingSkillMarkdownId === skill.id ? getAppShellSkillActionLabel('exporting') : getAppShellSkillActionLabel('export')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.agentDeleteButton}
+                              onPress={() => handleSkillDelete(skill)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellSkillItemActionAccessibilityLabel('delete', skill.name))}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.agentDeleteButtonText}>{getAppShellSkillActionLabel('delete')}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                  <View style={styles.sectionActionRow}>
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton]}
+                      onPress={() => handleSkillEdit()}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellEditorActionLabel('skill', false))}
+                    >
+                      <Text style={styles.createAgentButtonText}>+ {getAppShellEditorActionLabel('skill', false)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton]}
+                      onPress={() => setShowSkillImportModal(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellSkillImportMarkdownAccessibilityLabel())}
+                    >
+                      <Text style={styles.createAgentButtonText}>{getAppShellSkillActionLabel('importSkill')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton]}
+                      onPress={() => setShowSkillGitHubImportModal(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellSkillImportGitHubAccessibilityLabel())}
+                    >
+                      <Text style={styles.createAgentButtonText}>{getAppShellSkillActionLabel('importFromGitHub')}</Text>
+                    </TouchableOpacity>
+                    {visibleSelectedSkillIds.length > 0 && (
+                      <TouchableOpacity
+                        style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                        onPress={handleSelectedSkillsDelete}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(formatAppShellSkillBulkActionLabel('deleteSelected', visibleSelectedSkillIds.length))}
+                      >
+                        <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>{formatAppShellSkillBulkActionLabel('deleteSelected', visibleSelectedSkillIds.length)}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <Text style={styles.helperText}>Tap a skill to edit, or toggle to enable it for the Main Agent.</Text>
+                </CollapsibleSection>
+              )}
+
+              {/* 4l. Knowledge Notes */}
+              {isDotAgentsServer && (
+                <CollapsibleSection id="knowledgeNotes" title={getAppShellMobileSettingsSectionTitle('knowledgeNotes')}>
+                  <TextInput
+                    style={[styles.input, styles.knowledgeNoteSearchInput]}
+                    value={knowledgeNoteSearchQuery}
+                    onChangeText={setKnowledgeNoteSearchQuery}
+                    placeholder={getAppShellKnowledgeNoteActionLabel('searchPlaceholder')}
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    accessibilityLabel={getAppShellKnowledgeNoteActionLabel('searchAccessibilityLabel')}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="search"
+                  />
+                  <View style={styles.knowledgeFilterGroup}>
+                    {KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[styles.knowledgeFilterButton, knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonActive]}
+                        onPress={() => setKnowledgeNoteContextFilter(option.value)}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          selected: knowledgeNoteContextFilter === option.value,
+                        }}
+                        accessibilityLabel={`Filter knowledge notes by ${option.label}`}
+                      >
+                        <Text style={[styles.knowledgeFilterButtonText, knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonTextActive]}>
+                          {option.compactLabel}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={styles.knowledgeFilterGroup}>
+                    {KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[styles.knowledgeFilterButton, knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonActive]}
+                        onPress={() => setKnowledgeNoteDateFilter(option.value)}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          selected: knowledgeNoteDateFilter === option.value,
+                        }}
+                        accessibilityLabel={`Filter knowledge notes by ${option.label}`}
+                      >
+                        <Text style={[styles.knowledgeFilterButtonText, knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonTextActive]}>
+                          {option.compactLabel}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={styles.knowledgeFilterGroup}>
+                    {KNOWLEDGE_NOTE_SORT_OPTIONS.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[styles.knowledgeFilterButton, knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonActive]}
+                        onPress={() => setKnowledgeNoteSortOption(option.value)}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          selected: knowledgeNoteSortOption === option.value,
+                        }}
+                        accessibilityLabel={`Sort knowledge notes by ${option.label}`}
+                      >
+                        <Text style={[styles.knowledgeFilterButtonText, knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonTextActive]}>
+                          {option.compactLabel}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {isLoadingKnowledgeNotes ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : isSearchingKnowledgeNotes ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : displayedKnowledgeNotes.length === 0 ? (
+                    <Text style={styles.helperText}>{trimmedKnowledgeNoteSearchQuery ? 'No matching notes' : 'No notes saved'}</Text>
+                  ) : (
+                    knowledgeNoteSections.map((section) => (
+                      <View key={section.key}>
+                        <Text style={styles.subsectionTitle}>{section.label}</Text>
+                        {section.notes.map(renderKnowledgeNoteRow)}
+                        {section.seriesSections.map((series) => (
+                          <View key={series.key}>
+                            <Text
+                              style={[
+                                styles.serverMeta,
+                                {
+                                  marginTop: spacing.xs,
+                                  marginBottom: spacing.xs,
+                                },
+                              ]}
+                            >
+                              {series.label}
+                            </Text>
+                            {series.notes.map(renderKnowledgeNoteRow)}
+                          </View>
+                        ))}
+                      </View>
+                    ))
+                  )}
+                  <View style={styles.sectionActionRow}>
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton]}
+                      onPress={() => handleKnowledgeNoteEdit()}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellEditorActionLabel('knowledgeNote', false))}
+                    >
+                      <Text style={styles.createAgentButtonText}>+ {getAppShellEditorActionLabel('knowledgeNote', false)}</Text>
+                    </TouchableOpacity>
+                    {visibleSelectedKnowledgeNoteIds.length > 0 && (
+                      <TouchableOpacity
+                        style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                        onPress={handleKnowledgeNoteDeleteMultiple}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(getAppShellKnowledgeNoteDeleteSelectedAccessibilityLabel(visibleSelectedKnowledgeNoteIds.length))}
+                      >
+                        <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>{formatAppShellKnowledgeNoteBulkActionLabel('deleteSelected', visibleSelectedKnowledgeNoteIds.length)}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {knowledgeNotes.length > 0 && (
+                      <TouchableOpacity
+                        style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                        onPress={handleKnowledgeNoteDeleteAll}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(getAppShellKnowledgeNoteDeleteAllAccessibilityLabel())}
+                      >
+                        <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>{getAppShellKnowledgeNoteActionLabel('deleteAll')}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <Text style={styles.helperText}>
+                    Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references. Use auto context sparingly for
+                    high-signal notes.
+                  </Text>
+                </CollapsibleSection>
+              )}
+
+              {/* 4m. Agents */}
+              {isDotAgentsServer && (
+                <CollapsibleSection id="agents" title={getAppShellMobileSettingsSectionTitle('agents')}>
+                  <View style={styles.sectionActionRow}>
+                    <TouchableOpacity
+                      style={[styles.profileActionButton, styles.sectionActionButton, isReloadingAgentProfiles && styles.profileActionButtonDisabled]}
+                      onPress={handleAgentProfilesReload}
+                      disabled={isReloadingAgentProfiles}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellAgentRescanAccessibilityLabel())}
+                    >
+                      <Text style={styles.profileActionButtonText}>{getAppShellAgentRescanActionLabel(isReloadingAgentProfiles)}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {isLoadingAgentProfiles ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : sortedAgentProfiles.length === 0 ? (
+                    <>
+                      <Text style={styles.serverName}>{APP_SHELL_AGENT_LIST_PRESENTATION.emptyTitle}</Text>
+                      <Text style={styles.helperText}>{APP_SHELL_AGENT_LIST_PRESENTATION.emptyDescription}</Text>
+                    </>
+                  ) : (
+                    sortedAgentProfiles.map((profile) => (
+                      <View key={profile.id} style={styles.serverRow}>
+                        <TouchableOpacity style={styles.agentInfoPressable} onPress={() => handleAgentProfileEdit(profile.id)} activeOpacity={0.7}>
+                          <View style={styles.agentListContent}>
+                            <View style={styles.agentListAvatar}>
+                              {profile.avatarDataUrl ? (
+                                <Image source={{ uri: profile.avatarDataUrl }} style={styles.agentListAvatarImage} accessibilityIgnoresInvertColors />
+                              ) : (
+                                <Text style={styles.agentListAvatarInitial}>{getAppShellAgentListInitial(profile)}</Text>
                               )}
                             </View>
-                            <Text style={styles.serverMeta} numberOfLines={2}>
-                              {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
-                            </Text>
+                            <View style={styles.serverInfo}>
+                              <View style={styles.serverNameRow}>
+                                <Text style={styles.serverName}>{profile.displayName}</Text>
+                                {profile.isBuiltIn && (
+                                  <View
+                                    style={[
+                                      styles.providerOption,
+                                      {
+                                        paddingHorizontal: 6,
+                                        paddingVertical: 2,
+                                        marginLeft: 6,
+                                      },
+                                    ]}
+                                  >
+                                    <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{APP_SHELL_AGENT_LIST_PRESENTATION.badges.builtIn}</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text style={styles.serverMeta}>
+                                {getAppShellAgentListMetadata(profile)}
+                              </Text>
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                {getAppShellAgentListDescription(profile)}
+                              </Text>
+                              {profile.systemPrompt?.trim() && (
+                                <View style={styles.customPromptBadge}>
+                                  <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
+                                </View>
+                              )}
+                              {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
+                                <Text style={styles.serverMeta} numberOfLines={2}>
+                                  Default system prompt updates are blocked until this custom prompt is reset.
+                                </Text>
+                              )}
+                            </View>
                           </View>
                         </TouchableOpacity>
                         <View style={styles.agentActions}>
                           <Switch
-                            value={skill.enabledForProfile}
-                            onValueChange={() => handleSkillToggle(skill.id)}
-                            disabled={!skill.enabled}
-                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                            value={profile.enabled}
+                            onValueChange={() => handleAgentProfileToggle(profile.id)}
+                            trackColor={{
+                              false: theme.colors.muted,
+                              true: theme.colors.primary,
+                            }}
+                            thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
                           />
-                          <TouchableOpacity
-                            style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
-                            onPress={() => toggleSkillSelection(skill.id)}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: isSelected }}
-                            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} skill ${skill.name}`}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={[styles.noteSelectButtonText, isSelected && styles.noteSelectButtonTextSelected]}>
-                              {isSelected ? 'Selected' : 'Select'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.agentSecondaryButton,
-                              isExportingSkillMarkdownId === skill.id && styles.agentActionButtonDisabled,
-                            ]}
-                            onPress={() => handleSkillMarkdownExport(skill)}
-                            disabled={isExportingSkillMarkdownId === skill.id}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Export skill ${skill.name} as Markdown`)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.agentSecondaryButtonText}>
-                              {isExportingSkillMarkdownId === skill.id ? 'Exporting...' : 'Export'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.agentDeleteButton}
-                            onPress={() => handleSkillDelete(skill)}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Delete skill ${skill.name}`)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-                <View style={styles.sectionActionRow}>
-                  <TouchableOpacity
-                    style={[styles.createAgentButton, styles.sectionActionButton]}
-                    onPress={() => handleSkillEdit()}
-                  >
-                    <Text style={styles.createAgentButtonText}>+ Create New Skill</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.createAgentButton, styles.sectionActionButton]}
-                    onPress={() => setShowSkillImportModal(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Import skill Markdown')}
-                  >
-                    <Text style={styles.createAgentButtonText}>Import Skill</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.createAgentButton, styles.sectionActionButton]}
-                    onPress={() => setShowSkillGitHubImportModal(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Import skill from GitHub')}
-                  >
-                    <Text style={styles.createAgentButtonText}>Import GitHub</Text>
-                  </TouchableOpacity>
-                  {visibleSelectedSkillIds.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
-                      onPress={handleSelectedSkillsDelete}
-                      accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedSkillIds.length} selected skills`)}
-                    >
-                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
-                        Delete Selected ({visibleSelectedSkillIds.length})
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <Text style={styles.helperText}>
-                  Tap a skill to edit, or toggle to enable it for the Main Agent.
-                </Text>
-              </CollapsibleSection>
-            )}
-
-            {/* 4l. Knowledge Notes */}
-            {isDotAgentsServer && (
-              <CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">
-                <TextInput
-                  style={[styles.input, styles.knowledgeNoteSearchInput]}
-                  value={knowledgeNoteSearchQuery}
-                  onChangeText={setKnowledgeNoteSearchQuery}
-                  placeholder="Search notes"
-                  placeholderTextColor={theme.colors.mutedForeground}
-                  accessibilityLabel="Search knowledge notes"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="search"
-                />
-                <View style={styles.knowledgeFilterGroup}>
-                  {KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.knowledgeFilterButton,
-                        knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonActive,
-                      ]}
-                      onPress={() => setKnowledgeNoteContextFilter(option.value)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: knowledgeNoteContextFilter === option.value }}
-                      accessibilityLabel={`Filter knowledge notes by ${option.label}`}
-                    >
-                      <Text
-                        style={[
-                          styles.knowledgeFilterButtonText,
-                          knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonTextActive,
-                        ]}
-                      >
-                        {option.compactLabel}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.knowledgeFilterGroup}>
-                  {KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.knowledgeFilterButton,
-                        knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonActive,
-                      ]}
-                      onPress={() => setKnowledgeNoteDateFilter(option.value)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: knowledgeNoteDateFilter === option.value }}
-                      accessibilityLabel={`Filter knowledge notes by ${option.label}`}
-                    >
-                      <Text
-                        style={[
-                          styles.knowledgeFilterButtonText,
-                          knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonTextActive,
-                        ]}
-                      >
-                        {option.compactLabel}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.knowledgeFilterGroup}>
-                  {KNOWLEDGE_NOTE_SORT_OPTIONS.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.knowledgeFilterButton,
-                        knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonActive,
-                      ]}
-                      onPress={() => setKnowledgeNoteSortOption(option.value)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: knowledgeNoteSortOption === option.value }}
-                      accessibilityLabel={`Sort knowledge notes by ${option.label}`}
-                    >
-                      <Text
-                        style={[
-                          styles.knowledgeFilterButtonText,
-                          knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonTextActive,
-                        ]}
-                      >
-                        {option.compactLabel}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {isLoadingKnowledgeNotes ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : isSearchingKnowledgeNotes ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : displayedKnowledgeNotes.length === 0 ? (
-                  <Text style={styles.helperText}>
-                    {trimmedKnowledgeNoteSearchQuery ? 'No matching notes' : 'No notes saved'}
-                  </Text>
-                ) : (
-                  knowledgeNoteSections.map((section) => (
-                    <View key={section.key}>
-                      <Text style={styles.subsectionTitle}>{section.label}</Text>
-                      {section.notes.map(renderKnowledgeNoteRow)}
-                      {section.seriesSections.map((series) => (
-                        <View key={series.key}>
-                          <Text style={[styles.serverMeta, { marginTop: spacing.xs, marginBottom: spacing.xs }]}>
-                            {series.label}
-                          </Text>
-                          {series.notes.map(renderKnowledgeNoteRow)}
-                        </View>
-                      ))}
-                    </View>
-                  ))
-                )}
-                <View style={styles.sectionActionRow}>
-                  <TouchableOpacity
-                    style={[styles.createAgentButton, styles.sectionActionButton]}
-                    onPress={() => handleKnowledgeNoteEdit()}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Create knowledge note')}
-                  >
-                    <Text style={styles.createAgentButtonText}>+ Create Note</Text>
-                  </TouchableOpacity>
-                  {visibleSelectedKnowledgeNoteIds.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
-                      onPress={handleKnowledgeNoteDeleteMultiple}
-                      accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedKnowledgeNoteIds.length} selected knowledge notes`)}
-                    >
-                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
-                        Delete Selected ({visibleSelectedKnowledgeNoteIds.length})
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {knowledgeNotes.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
-                      onPress={handleKnowledgeNoteDeleteAll}
-                      accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel('Delete all knowledge notes')}
-                    >
-                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
-                        Delete All
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <Text style={styles.helperText}>
-                  Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references. Use auto context sparingly for high-signal notes.
-                </Text>
-              </CollapsibleSection>
-            )}
-
-            {/* 4m. Agents */}
-            {isDotAgentsServer && (
-              <CollapsibleSection id="agents" title="Agents">
-                <View style={styles.sectionActionRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.profileActionButton,
-                      styles.sectionActionButton,
-                      isReloadingAgentProfiles && styles.profileActionButtonDisabled,
-                    ]}
-                    onPress={handleAgentProfilesReload}
-                    disabled={isReloadingAgentProfiles}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Rescan agent files')}
-                  >
-                    <Text style={styles.profileActionButtonText}>
-                      {isReloadingAgentProfiles ? 'Rescanning...' : 'Rescan Files'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {isLoadingAgentProfiles ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : sortedAgentProfiles.length === 0 ? (
-                  <Text style={styles.helperText}>No agents configured</Text>
-                ) : (
-                  sortedAgentProfiles.map((profile) => (
-                    <View
-                      key={profile.id}
-                      style={styles.serverRow}
-                    >
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleAgentProfileEdit(profile.id)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.agentListContent}>
-                          <View style={styles.agentListAvatar}>
-                            {profile.avatarDataUrl ? (
-                              <Image
-                                source={{ uri: profile.avatarDataUrl }}
-                                style={styles.agentListAvatarImage}
-                                accessibilityIgnoresInvertColors
-                              />
-                            ) : (
-                              <Text style={styles.agentListAvatarInitial}>
-                                {(profile.displayName || profile.name || 'A').slice(0, 1).toUpperCase()}
-                              </Text>
-                            )}
-                          </View>
-                          <View style={styles.serverInfo}>
-                            <View style={styles.serverNameRow}>
-                              <Text style={styles.serverName}>{profile.displayName}</Text>
-                              {profile.isBuiltIn && (
-                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.serverMeta}>
-                              {profile.connectionType} • {profile.role || 'agent'}
-                            </Text>
-                            {profile.description && (
-                              <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
-                            )}
-                            {profile.systemPrompt?.trim() && (
-                              <View style={styles.customPromptBadge}>
-                                <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
-                              </View>
-                            )}
-                          {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>
-                              Default system prompt updates are blocked until this custom prompt is reset.
-                            </Text>
+                          {!profile.isBuiltIn && (
+                            <TouchableOpacity
+                              style={styles.agentDeleteButton}
+                              onPress={() => handleAgentProfileDelete(profile)}
+                              accessibilityLabel={getAppShellAgentDeleteAccessibilityLabel(profile.displayName)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.agentDeleteButtonText}>{getAppShellAgentActionLabel('delete')}</Text>
+                            </TouchableOpacity>
                           )}
+                        </View>
+                      </View>
+                    ))
+                  )}
+                  <TouchableOpacity style={styles.createAgentButton} onPress={() => handleAgentProfileEdit()}>
+                    <Text style={styles.createAgentButtonText}>+ Create New Agent</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.helperText}>Tap an agent name to edit, toggle to enable or disable</Text>
+                </CollapsibleSection>
+              )}
+
+              {/* 4n. Agent Loops */}
+              {isDotAgentsServer && (
+                <CollapsibleSection id="agentLoops" title={getAppShellMobileSettingsSectionTitle('agentLoops')}>
+                  {loops.length > 0 && (
+                    <View style={styles.sectionActionRow}>
+                      <TouchableOpacity
+                        style={[styles.createAgentButton, styles.sectionActionButton, isLoopBulkRuntimeBusy && styles.agentActionButtonDisabled]}
+                        onPress={handleLoopStartAll}
+                        disabled={isLoopBulkRuntimeBusy}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopStartAllAccessibilityLabel())}
+                        accessibilityHint="Starts scheduling every enabled loop on the desktop app."
+                      >
+                        <Text style={styles.createAgentButtonText}>{getAppShellLoopStartAllActionLabel(loopBulkRuntimeAction === 'start-all')}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.createAgentButton, styles.sectionActionButton, isLoopBulkRuntimeBusy && styles.agentActionButtonDisabled]}
+                        onPress={handleLoopStopAll}
+                        disabled={isLoopBulkRuntimeBusy}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopStopAllAccessibilityLabel())}
+                        accessibilityHint="Stops every active loop schedule on the desktop app."
+                      >
+                        <Text style={styles.createAgentButtonText}>{getAppShellLoopStopAllActionLabel(loopBulkRuntimeAction === 'stop-all')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {isLoadingLoops ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : loops.length === 0 ? (
+                    <>
+                      <Text style={styles.serverName}>{APP_SHELL_LOOP_LIST_PRESENTATION.emptyTitle}</Text>
+                      <Text style={styles.helperText}>{APP_SHELL_LOOP_LIST_PRESENTATION.emptyDescription}</Text>
+                    </>
+                  ) : (
+	                    loops.map((loop) => {
+	                      const loopRuntimeLabel = describeRepeatTaskRuntime(loop, {
+	                        timestampFormatOptions: MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT,
+	                      });
+	                      const loopLastRunAt = loop.lastRunAt;
+	                      const loopMetadataItems = [
+	                        describeLoopCadence(loop),
+	                        ...(loop.profileName ? [loop.profileName] : []),
+	                        ...getAppShellLoopFeatureLabels(loop),
+	                        ...(loopLastRunAt
+	                          ? [formatAppShellLoopLastRunLabel(formatRepeatTaskRuntimeTimestampOrFallback(loopLastRunAt, 'Never', MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT))]
+	                          : []),
+	                      ];
+                      const isLoopStarting = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'start';
+                      const isLoopStopping = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'stop';
+                      const isLoopRuntimeBusy = isLoopStarting || isLoopStopping || isLoopBulkRuntimeBusy;
+
+                      return (
+                        <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                          <TouchableOpacity style={styles.agentInfoPressable} onPress={() => handleLoopEdit(loop)} activeOpacity={0.7}>
+                            <View style={[styles.serverInfo, { flex: 1 }]}>
+                              <View style={styles.serverNameRow}>
+                                <View style={[styles.statusDot, loop.isRunning ? styles.statusConnected : styles.statusDisconnected]} />
+                                <Text style={styles.serverName}>{loop.name}</Text>
+                              </View>
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                {loop.prompt}
+                              </Text>
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                {loopMetadataItems.join(' • ')}
+                              </Text>
+                              <Text style={styles.loopRuntimeMeta} numberOfLines={1}>
+                                {loopRuntimeLabel}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                          <View style={styles.loopActions}>
+                            <Switch
+                              value={loop.enabled}
+                              onValueChange={() => handleLoopToggle(loop.id)}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
+                              thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                              accessibilityLabel={getAppShellLoopToggleAccessibilityLabel(loop.name, loop.enabled)}
+                            />
+                            <TouchableOpacity
+                              style={styles.loopActionButton}
+                              onPress={() => handleLoopRun(loop)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopRunNowAccessibilityLabel(loop.name))}
+                              accessibilityHint="Runs this loop immediately without waiting for the next scheduled interval."
+                            >
+                              <Text style={styles.loopActionButtonText}>{getAppShellLoopActionLabel('runNow')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.loopActionButton, (!loop.enabled || isLoopRuntimeBusy) && styles.agentActionButtonDisabled]}
+                              onPress={() => handleLoopStart(loop)}
+                              disabled={!loop.enabled || isLoopRuntimeBusy}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopStartScheduleAccessibilityLabel(loop.name))}
+                              accessibilityHint="Starts scheduling this enabled loop on the desktop app."
+                            >
+                              <Text style={styles.loopActionButtonText}>{getAppShellLoopStartActionLabel(isLoopStarting)}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.loopActionButton, isLoopRuntimeBusy && styles.agentActionButtonDisabled]}
+                              onPress={() => handleLoopStop(loop)}
+                              disabled={isLoopRuntimeBusy}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopStopScheduleAccessibilityLabel(loop.name))}
+                              accessibilityHint="Stops the scheduled timer for this loop on the desktop app."
+                            >
+                              <Text style={styles.loopActionButtonText}>{getAppShellLoopStopActionLabel(isLoopStopping)}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.loopActionButton, isExportingLoopMarkdownId === loop.id && styles.agentActionButtonDisabled]}
+                              onPress={() => handleLoopMarkdownExport(loop)}
+                              disabled={isExportingLoopMarkdownId === loop.id}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopExportMarkdownAccessibilityLabel(loop.name))}
+                            >
+                              <Text style={styles.loopActionButtonText}>{getAppShellLoopExportActionLabel(isExportingLoopMarkdownId === loop.id)}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.loopActionButton, styles.loopActionButtonDanger]}
+                              onPress={() => handleLoopDelete(loop)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopDeleteAccessibilityLabel(loop.name))}
+                              accessibilityHint="Opens a confirmation prompt before permanently deleting this loop."
+                            >
+                              <Text style={[styles.loopActionButtonText, styles.loopActionButtonTextDanger]}>{getAppShellLoopActionLabel('delete')}</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
-                      </TouchableOpacity>
-                      <View style={styles.agentActions}>
-                        <Switch
-                          value={profile.enabled}
-                          onValueChange={() => handleAgentProfileToggle(profile.id)}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                          thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                        />
-                        {!profile.isBuiltIn && (
-                          <TouchableOpacity
-                            style={styles.agentDeleteButton}
-                            onPress={() => handleAgentProfileDelete(profile)}
-                            accessibilityLabel={`Delete agent ${profile.displayName}`}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
-                  ))
-                )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleAgentProfileEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create New Agent</Text>
-                </TouchableOpacity>
-                <Text style={styles.helperText}>
-                  Tap an agent name to edit, toggle to enable or disable
-                </Text>
-              </CollapsibleSection>
-            )}
-
-            {/* 4n. Agent Loops */}
-            {isDotAgentsServer && (
-              <CollapsibleSection id="agentLoops" title="Agent Loops">
-                {loops.length > 0 && (
+                      );
+                    })
+                  )}
                   <View style={styles.sectionActionRow}>
-                    <TouchableOpacity
-                      style={[
-                        styles.createAgentButton,
-                        styles.sectionActionButton,
-                        isLoopBulkRuntimeBusy && styles.agentActionButtonDisabled,
-                      ]}
-                      onPress={handleLoopStartAll}
-                      disabled={isLoopBulkRuntimeBusy}
-                      accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel('Start all loop schedules')}
-                      accessibilityHint="Starts scheduling every enabled loop on the desktop app."
-                    >
-                      <Text style={styles.createAgentButtonText}>
-                        {loopBulkRuntimeAction === 'start-all' ? 'Starting All...' : 'Start All'}
-                      </Text>
+                    <TouchableOpacity style={[styles.createAgentButton, styles.sectionActionButton]} onPress={() => handleLoopEdit()}>
+                      <Text style={styles.createAgentButtonText}>+ {getAppShellEditorActionLabel('loop', false)}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[
-                        styles.createAgentButton,
-                        styles.sectionActionButton,
-                        isLoopBulkRuntimeBusy && styles.agentActionButtonDisabled,
-                      ]}
-                      onPress={handleLoopStopAll}
-                      disabled={isLoopBulkRuntimeBusy}
+                      style={[styles.createAgentButton, styles.sectionActionButton]}
+                      onPress={() => setShowLoopImportModal(true)}
                       accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel('Stop all loop schedules')}
-                      accessibilityHint="Stops every active loop schedule on the desktop app."
+                      accessibilityLabel={createButtonAccessibilityLabel(getAppShellLoopImportMarkdownAccessibilityLabel())}
                     >
-                      <Text style={styles.createAgentButtonText}>
-                        {loopBulkRuntimeAction === 'stop-all' ? 'Stopping All...' : 'Stop All'}
-                      </Text>
+                      <Text style={styles.createAgentButtonText}>{getAppShellLoopActionLabel('importLoop')}</Text>
                     </TouchableOpacity>
                   </View>
-                )}
-                {isLoadingLoops ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : loops.length === 0 ? (
-                  <Text style={styles.helperText}>No agent loops configured</Text>
-                ) : (
-                  loops.map((loop) => {
-                    const loopRuntimeLabel = describeRepeatTaskRuntime(loop, {
-                      timestampFormatOptions: MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT,
-                    });
-                    const isLoopStarting = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'start';
-                    const isLoopStopping = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'stop';
-                    const isLoopRuntimeBusy = isLoopStarting || isLoopStopping || isLoopBulkRuntimeBusy;
-
-                    return (
-                      <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-                        <TouchableOpacity
-                          style={styles.agentInfoPressable}
-                          onPress={() => handleLoopEdit(loop)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.serverInfo, { flex: 1 }]}>
-                            <View style={styles.serverNameRow}>
-                              <View style={[
-                                styles.statusDot,
-                                loop.isRunning ? styles.statusConnected : styles.statusDisconnected,
-                              ]} />
-                              <Text style={styles.serverName}>{loop.name}</Text>
-                            </View>
-                            <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
-                            <Text style={styles.serverMeta} numberOfLines={2}>
-                              {describeLoopCadence(loop)}
-                              {loop.profileName && ` • ${loop.profileName}`}
-                              {loop.lastRunAt && ` • Last: ${formatRepeatTaskRuntimeTimestamp(loop.lastRunAt, MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT)}`}
-                            </Text>
-                            <Text style={styles.loopRuntimeMeta} numberOfLines={1}>
-                              {loopRuntimeLabel}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                        <View style={styles.loopActions}>
-                          <Switch
-                            value={loop.enabled}
-                            onValueChange={() => handleLoopToggle(loop.id)}
-                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                          />
-                          <TouchableOpacity
-                            style={styles.loopActionButton}
-                            onPress={() => handleLoopRun(loop.id)}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
-                            accessibilityHint="Runs this loop immediately without waiting for the next scheduled interval."
-                          >
-                            <Text style={styles.loopActionButtonText}>Run now</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.loopActionButton,
-                              (!loop.enabled || isLoopRuntimeBusy) && styles.agentActionButtonDisabled,
-                            ]}
-                            onPress={() => handleLoopStart(loop)}
-                            disabled={!loop.enabled || isLoopRuntimeBusy}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Start ${loop.name} loop schedule`)}
-                            accessibilityHint="Starts scheduling this enabled loop on the desktop app."
-                          >
-                            <Text style={styles.loopActionButtonText}>
-                              {isLoopStarting ? 'Starting...' : 'Start'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.loopActionButton,
-                              isLoopRuntimeBusy && styles.agentActionButtonDisabled,
-                            ]}
-                            onPress={() => handleLoopStop(loop)}
-                            disabled={isLoopRuntimeBusy}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Stop ${loop.name} loop schedule`)}
-                            accessibilityHint="Stops the scheduled timer for this loop on the desktop app."
-                          >
-                            <Text style={styles.loopActionButtonText}>
-                              {isLoopStopping ? 'Stopping...' : 'Stop'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.loopActionButton, isExportingLoopMarkdownId === loop.id && styles.agentActionButtonDisabled]}
-                            onPress={() => handleLoopMarkdownExport(loop)}
-                            disabled={isExportingLoopMarkdownId === loop.id}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Export ${loop.name} loop as Markdown`)}
-                          >
-                            <Text style={styles.loopActionButtonText}>
-                              {isExportingLoopMarkdownId === loop.id ? 'Exporting...' : 'Export'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.loopActionButton, styles.loopActionButtonDanger]}
-                            onPress={() => handleLoopDelete(loop)}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
-                            accessibilityHint="Opens a confirmation prompt before permanently deleting this loop."
-                          >
-                            <Text style={[styles.loopActionButtonText, styles.loopActionButtonTextDanger]}>Delete</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-                <View style={styles.sectionActionRow}>
-                  <TouchableOpacity
-                    style={[styles.createAgentButton, styles.sectionActionButton]}
-                    onPress={() => handleLoopEdit()}
-                  >
-                    <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.createAgentButton, styles.sectionActionButton]}
-                    onPress={() => setShowLoopImportModal(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel={createButtonAccessibilityLabel('Import loop Markdown')}
-                  >
-                    <Text style={styles.createAgentButtonText}>Import Loop</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.helperText}>
-                  Tap a loop to edit, or run/toggle/delete from the actions
-                </Text>
-              </CollapsibleSection>
-            )}
-          </>
-        )}
-
-      </ScrollView>
-
-	      <View style={[styles.saveBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
-	        <TouchableOpacity
-	          style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
-	          onPress={() => { void flushAllSettingsSaves(); }}
-	          disabled={isSavingAllSettings}
-	          activeOpacity={0.85}
-	          accessibilityRole="button"
-	          accessibilityLabel={saveButtonLabel}
-	          accessibilityHint={saveButtonHint}
-	        >
-	          <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
-	        </TouchableOpacity>
-	        <Text style={styles.saveBarHint}>
-	          {saveStatusMessage || saveButtonHint}
-	        </Text>
-	      </View>
-    </KeyboardAvoidingView>
+                  <Text style={styles.helperText}>Tap a loop to edit, or run/toggle/delete from the actions</Text>
+                </CollapsibleSection>
+              )}
+            </>
+          )}
+      </AppShellSettingsLayout>
 
       {/* Model Picker Modal */}
       <Modal
@@ -5259,36 +5422,18 @@ export default function SettingsScreen({ navigation }: any) {
             <ScrollView style={styles.modelList} keyboardShouldPersistTaps="handled">
               {filteredModels.length === 0 ? (
                 <View style={styles.modelListEmpty}>
-                  <Text style={styles.modelListEmptyText}>
-                    {modelSearchQuery ? `No models match "${modelSearchQuery}"` : 'No models available'}
-                  </Text>
+                  <Text style={styles.modelListEmptyText}>{modelSearchQuery ? `No models match "${modelSearchQuery}"` : 'No models available'}</Text>
                 </View>
               ) : (
                 filteredModels.map((model) => {
                   const isSelected = getCurrentModelValue() === model.id;
                   return (
-                    <TouchableOpacity
-                      key={model.id}
-                      style={[
-                        styles.modelItem,
-                        isSelected && styles.modelItemActive,
-                      ]}
-                      onPress={() => handleModelSelect(model.id)}
-                    >
+                    <TouchableOpacity key={model.id} style={[styles.modelItem, isSelected && styles.modelItemActive]} onPress={() => handleModelSelect(model.id)}>
                       <View style={styles.modelItemContent}>
-                        <Text style={[
-                          styles.modelItemName,
-                          isSelected && styles.modelItemNameActive,
-                        ]}>
-                          {model.name}
-                        </Text>
-                        {model.id !== model.name && (
-                          <Text style={styles.modelItemId}>{model.id}</Text>
-                        )}
+                        <Text style={[styles.modelItemName, isSelected && styles.modelItemNameActive]}>{model.name}</Text>
+                        {model.id !== model.name && <Text style={styles.modelItemId}>{model.id}</Text>}
                       </View>
-                      {isSelected && (
-                        <Text style={styles.modelItemCheck}>✓</Text>
-                      )}
+                      {isSelected && <Text style={styles.modelItemCheck}>✓</Text>}
                     </TouchableOpacity>
                   );
                 })
@@ -5308,23 +5453,18 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* Preset Picker Modal */}
-      <Modal
-        visible={showPresetPicker}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowPresetPicker(false)}
-      >
+      <Modal visible={showPresetPicker} animationType="slide" transparent={true} onRequestClose={() => setShowPresetPicker(false)}>
         <View style={styles.modelPickerOverlay}>
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
-              <Text style={styles.modelPickerTitle}>Select Endpoint</Text>
+              <Text style={styles.modelPickerTitle}>{APP_SHELL_MODEL_PRESET_PRESENTATION.picker.title}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setShowPresetPicker(false)}
                 accessibilityRole="button"
-                accessibilityLabel="Close endpoint picker"
+                accessibilityLabel={APP_SHELL_MODEL_PRESET_PRESENTATION.picker.closeAccessibilityLabel}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={styles.modalCloseText}>{APP_SHELL_MODEL_PRESET_PRESENTATION.actions.close}</Text>
               </TouchableOpacity>
             </View>
 
@@ -5332,26 +5472,12 @@ export default function SettingsScreen({ navigation }: any) {
               {remoteSettings?.availablePresets?.map((preset) => {
                 const isSelected = remoteSettings.currentModelPresetId === preset.id;
                 return (
-                  <TouchableOpacity
-                    key={preset.id}
-                    style={[
-                      styles.modelItem,
-                      isSelected && styles.modelItemActive,
-                    ]}
-                    onPress={() => handlePresetChange(preset.id)}
-                  >
+                  <TouchableOpacity key={preset.id} style={[styles.modelItem, isSelected && styles.modelItemActive]} onPress={() => handlePresetChange(preset.id)}>
                     <View style={styles.modelItemContent}>
-                      <Text style={[
-                        styles.modelItemName,
-                        isSelected && styles.modelItemNameActive,
-                      ]}>
-                        {preset.name}
-                      </Text>
+                      <Text style={[styles.modelItemName, isSelected && styles.modelItemNameActive]}>{preset.name}</Text>
                       <Text style={styles.modelItemId}>{preset.baseUrl}</Text>
                     </View>
-                    {isSelected && (
-                      <Text style={styles.modelItemCheck}>✓</Text>
-                    )}
+                    {isSelected && <Text style={styles.modelItemCheck}>✓</Text>}
                   </TouchableOpacity>
                 );
               })}
@@ -5359,7 +5485,7 @@ export default function SettingsScreen({ navigation }: any) {
 
             <View style={styles.modelPickerFooter}>
               <Text style={styles.modelPickerFooterText}>
-                {remoteSettings?.availablePresets?.length || 0} endpoint{(remoteSettings?.availablePresets?.length || 0) !== 1 ? 's' : ''} available
+                {formatAppShellModelPresetCount(remoteSettings?.availablePresets?.length || 0)}
               </Text>
             </View>
           </View>
@@ -5367,62 +5493,55 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* Preset Editor Modal */}
-      <Modal
-        visible={showPresetEditor}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closePresetEditor}
-      >
+      <Modal visible={showPresetEditor} animationType="slide" transparent={true} onRequestClose={closePresetEditor}>
         <View style={styles.importModalOverlay}>
           <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
             <View style={styles.importModalHeader}>
               <Text style={styles.importModalTitle}>
-                {presetEditorMode === 'create'
-                  ? 'New Endpoint'
-                  : presetDraft.isBuiltIn
-                    ? 'Configure Endpoint'
-                    : 'Edit Endpoint'}
+                {getAppShellModelPresetEditorTitle(presetEditorMode, presetDraft.isBuiltIn)}
               </Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closePresetEditor}
                 accessibilityRole="button"
-                accessibilityLabel="Close endpoint editor"
+                accessibilityLabel={APP_SHELL_MODEL_PRESET_PRESENTATION.editor.closeAccessibilityLabel}
                 disabled={isSavingPreset}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={styles.modalCloseText}>{APP_SHELL_MODEL_PRESET_PRESENTATION.actions.close}</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
-              <Text style={styles.label}>Name</Text>
+              <Text style={styles.label}>{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.name.label}</Text>
               <TextInput
                 style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
                 value={presetDraft.name}
                 onChangeText={(v) => handlePresetDraftChange('name', v)}
-                placeholder="My endpoint"
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.name.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 editable={!presetDraft.isBuiltIn && !isSavingPreset}
               />
 
-              <Text style={styles.label}>Base URL</Text>
+              <Text style={styles.label}>{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.baseUrl.label}</Text>
               <TextInput
                 style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
                 value={presetDraft.baseUrl}
                 onChangeText={(v) => handlePresetDraftChange('baseUrl', v)}
-                placeholder="https://api.example.com/v1"
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.baseUrl.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!presetDraft.isBuiltIn && !isSavingPreset}
               />
 
-              <Text style={styles.label}>API Key</Text>
+              <Text style={styles.label}>{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.label}</Text>
               <TextInput
                 style={styles.input}
                 value={presetDraft.apiKey}
                 onChangeText={(v) => handlePresetDraftChange('apiKey', v)}
-                placeholder={presetDraft.hasApiKey ? 'Configured' : 'sk-...'}
+                placeholder={presetDraft.hasApiKey
+                  ? APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.configuredPlaceholder
+                  : APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 secureTextEntry
                 autoCapitalize="none"
@@ -5430,24 +5549,24 @@ export default function SettingsScreen({ navigation }: any) {
                 editable={!isSavingPreset}
               />
 
-              <Text style={styles.label}>Agent Model</Text>
+              <Text style={styles.label}>{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.label}</Text>
               <TextInput
                 style={styles.input}
                 value={presetDraft.agentModel}
                 onChangeText={(v) => handlePresetDraftChange('agentModel', v)}
-                placeholder="gpt-4.1-mini"
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.textPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isSavingPreset}
               />
 
-              <Text style={styles.label}>Transcript Model</Text>
+              <Text style={styles.label}>{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.compactLabel}</Text>
               <TextInput
                 style={styles.input}
                 value={presetDraft.transcriptProcessingModel}
                 onChangeText={(v) => handlePresetDraftChange('transcriptProcessingModel', v)}
-                placeholder="gpt-4.1-mini"
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.textPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -5462,17 +5581,13 @@ export default function SettingsScreen({ navigation }: any) {
                   onPress={handlePresetDelete}
                   disabled={isSavingPreset}
                   accessibilityRole="button"
-                  accessibilityLabel={`Delete endpoint ${presetDraft.name}`}
+                  accessibilityLabel={`Delete preset ${presetDraft.name}`}
                 >
-                  <Text style={styles.dangerActionButtonText}>Delete</Text>
+                  <Text style={styles.dangerActionButtonText}>{APP_SHELL_MODEL_PRESET_PRESENTATION.actions.delete}</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closePresetEditor}
-                disabled={isSavingPreset}
-              >
-                <Text style={styles.importModalCancelText}>Cancel</Text>
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closePresetEditor} disabled={isSavingPreset}>
+                <Text style={styles.importModalCancelText}>{APP_SHELL_MODEL_PRESET_PRESENTATION.actions.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.importModalImportButton, isSavingPreset && styles.importModalImportButtonDisabled]}
@@ -5480,7 +5595,9 @@ export default function SettingsScreen({ navigation }: any) {
                 disabled={isSavingPreset}
               >
                 <Text style={styles.importModalImportText}>
-                  {isSavingPreset ? 'Saving...' : 'Save'}
+                  {isSavingPreset
+                    ? APP_SHELL_MODEL_PRESET_PRESENTATION.actions.saving
+                    : APP_SHELL_MODEL_PRESET_PRESENTATION.actions.save}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -5489,18 +5606,11 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* MCP Server Editor Modal */}
-      <Modal
-        visible={showMcpServerEditor}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeMcpServerEditor}
-      >
+      <Modal visible={showMcpServerEditor} animationType="slide" transparent={true} onRequestClose={closeMcpServerEditor}>
         <View style={styles.importModalOverlay}>
           <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>
-                {mcpServerEditorMode === 'create' ? 'New MCP Server' : 'Replace MCP Server'}
-              </Text>
+              <Text style={styles.importModalTitle}>{getAppShellMcpServerEditorTitle(mcpServerEditorMode === 'create' ? 'create' : 'replace')}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeMcpServerEditor}
@@ -5508,67 +5618,59 @@ export default function SettingsScreen({ navigation }: any) {
                 accessibilityLabel="Close MCP server editor"
                 disabled={isSavingMcpServer}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={styles.modalCloseText}>{getAppShellMcpServerActionLabel('close')}</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
-              <Text style={styles.label}>Name</Text>
+              <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.name.label}</Text>
               <TextInput
                 style={[styles.input, mcpServerEditorMode === 'replace' && styles.inputDisabled]}
                 value={mcpServerDraft.name}
                 onChangeText={(v) => handleMcpServerDraftChange('name', v)}
-                placeholder="filesystem"
+                placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.name.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={mcpServerEditorMode === 'create' && !isSavingMcpServer}
               />
 
-              <Text style={styles.label}>Transport</Text>
+              <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.transport.label}</Text>
               <View style={styles.providerSelector}>
                 {MCP_TRANSPORT_OPTIONS.map((transport) => (
                   <Pressable
                     key={transport.value}
-                    style={[
-                      styles.providerOption,
-                      mcpServerDraft.transport === transport.value && styles.providerOptionActive,
-                    ]}
+                    style={[styles.providerOption, mcpServerDraft.transport === transport.value && styles.providerOptionActive]}
                     onPress={() => handleMcpServerDraftChange('transport', transport.value)}
                     accessibilityRole="button"
                     accessibilityLabel={`Use ${transport.label} MCP transport`}
                     disabled={isSavingMcpServer}
                   >
-                    <Text style={[
-                      styles.providerOptionText,
-                      mcpServerDraft.transport === transport.value && styles.providerOptionTextActive,
-                    ]}>
-                      {transport.label}
-                    </Text>
+                  <Text style={[styles.providerOptionText, mcpServerDraft.transport === transport.value && styles.providerOptionTextActive]}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.transports[transport.value]}</Text>
                   </Pressable>
                 ))}
               </View>
 
               {mcpServerDraft.transport === 'stdio' ? (
                 <>
-                  <Text style={styles.label}>Command</Text>
+                  <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.command.label}</Text>
                   <TextInput
                     style={styles.input}
                     value={mcpServerDraft.command}
                     onChangeText={(v) => handleMcpServerDraftChange('command', v)}
-                    placeholder="npx"
+                    placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.command.placeholder}
                     placeholderTextColor={theme.colors.mutedForeground}
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!isSavingMcpServer}
                   />
 
-                  <Text style={styles.label}>Arguments</Text>
+                  <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.args.label}</Text>
                   <TextInput
                     style={[styles.input, { minHeight: 88 }]}
                     value={mcpServerDraft.args}
                     onChangeText={(v) => handleMcpServerDraftChange('args', v)}
-                    placeholder={"-y\n@modelcontextprotocol/server-filesystem"}
+                    placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.args.placeholder}
                     placeholderTextColor={theme.colors.mutedForeground}
                     multiline
                     numberOfLines={4}
@@ -5578,12 +5680,12 @@ export default function SettingsScreen({ navigation }: any) {
                     editable={!isSavingMcpServer}
                   />
 
-                  <Text style={styles.label}>Environment</Text>
+                  <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.env.compactLabel}</Text>
                   <TextInput
                     style={[styles.input, { minHeight: 88 }]}
                     value={mcpServerDraft.env}
                     onChangeText={(v) => handleMcpServerDraftChange('env', v)}
-                    placeholder="API_KEY=value"
+                    placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.env.placeholder}
                     placeholderTextColor={theme.colors.mutedForeground}
                     multiline
                     numberOfLines={4}
@@ -5595,24 +5697,26 @@ export default function SettingsScreen({ navigation }: any) {
                 </>
               ) : (
                 <>
-                  <Text style={styles.label}>URL</Text>
+                  <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.label}</Text>
                   <TextInput
                     style={styles.input}
                     value={mcpServerDraft.url}
                     onChangeText={(v) => handleMcpServerDraftChange('url', v)}
-                    placeholder={mcpServerDraft.transport === 'websocket' ? 'wss://example.com/mcp' : 'https://example.com/mcp'}
+                    placeholder={mcpServerDraft.transport === 'websocket'
+                      ? APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.websocketPlaceholder
+                      : APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.streamableHttpPlaceholder}
                     placeholderTextColor={theme.colors.mutedForeground}
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!isSavingMcpServer}
                   />
 
-                  <Text style={styles.label}>Headers</Text>
+                  <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.headers.compactLabel}</Text>
                   <TextInput
                     style={[styles.input, { minHeight: 88 }]}
                     value={mcpServerDraft.headers}
                     onChangeText={(v) => handleMcpServerDraftChange('headers', v)}
-                    placeholder="Authorization=Bearer token"
+                    placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.headers.placeholder}
                     placeholderTextColor={theme.colors.mutedForeground}
                     multiline
                     numberOfLines={4}
@@ -5625,11 +5729,14 @@ export default function SettingsScreen({ navigation }: any) {
                   {mcpServerDraft.transport === 'streamableHttp' && (
                     <View style={styles.localSpeechModelBlock}>
                       <View style={styles.row}>
-                        <Text style={styles.label}>OAuth</Text>
+                        <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.label}</Text>
                         <Switch
                           value={mcpServerDraft.oauthEnabled}
                           onValueChange={(v) => handleMcpServerDraftChange('oauthEnabled', v)}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          trackColor={{
+                            false: theme.colors.muted,
+                            true: theme.colors.primary,
+                          }}
                           thumbColor={mcpServerDraft.oauthEnabled ? theme.colors.primaryForeground : theme.colors.background}
                           disabled={isSavingMcpServer}
                         />
@@ -5637,24 +5744,24 @@ export default function SettingsScreen({ navigation }: any) {
 
                       {mcpServerDraft.oauthEnabled && (
                         <>
-                          <Text style={styles.label}>OAuth Scope</Text>
+                          <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.scopeLabel}</Text>
                           <TextInput
                             style={styles.input}
                             value={mcpServerDraft.oauthScope}
                             onChangeText={(v) => handleMcpServerDraftChange('oauthScope', v)}
-                            placeholder="user"
+                            placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.scopePlaceholder}
                             placeholderTextColor={theme.colors.mutedForeground}
                             autoCapitalize="none"
                             autoCorrect={false}
                             editable={!isSavingMcpServer}
                           />
 
-                          <Text style={styles.label}>OAuth Client ID</Text>
+                          <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.clientIdLabel}</Text>
                           <TextInput
                             style={styles.input}
                             value={mcpServerDraft.oauthClientId}
                             onChangeText={(v) => handleMcpServerDraftChange('oauthClientId', v)}
-                            placeholder="Auto-registered"
+                            placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.clientIdPlaceholder}
                             placeholderTextColor={theme.colors.mutedForeground}
                             autoCapitalize="none"
                             autoCorrect={false}
@@ -5662,22 +5769,28 @@ export default function SettingsScreen({ navigation }: any) {
                           />
 
                           <View style={styles.row}>
-                            <Text style={styles.label}>Metadata Discovery</Text>
+                            <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.discoveryLabel}</Text>
                             <Switch
                               value={mcpServerDraft.oauthUseDiscovery}
                               onValueChange={(v) => handleMcpServerDraftChange('oauthUseDiscovery', v)}
-                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
                               thumbColor={mcpServerDraft.oauthUseDiscovery ? theme.colors.primaryForeground : theme.colors.background}
                               disabled={isSavingMcpServer}
                             />
                           </View>
 
                           <View style={styles.row}>
-                            <Text style={styles.label}>Dynamic Registration</Text>
+                            <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.oauth.dynamicRegistrationLabel}</Text>
                             <Switch
                               value={mcpServerDraft.oauthUseDynamicRegistration}
                               onValueChange={(v) => handleMcpServerDraftChange('oauthUseDynamicRegistration', v)}
-                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                              trackColor={{
+                                false: theme.colors.muted,
+                                true: theme.colors.primary,
+                              }}
                               thumbColor={mcpServerDraft.oauthUseDynamicRegistration ? theme.colors.primaryForeground : theme.colors.background}
                               disabled={isSavingMcpServer}
                             />
@@ -5689,23 +5802,26 @@ export default function SettingsScreen({ navigation }: any) {
                 </>
               )}
 
-              <Text style={styles.label}>Timeout</Text>
+              <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.timeout.compactLabel}</Text>
               <TextInput
                 style={styles.input}
                 value={mcpServerDraft.timeout}
                 onChangeText={(v) => handleMcpServerDraftChange('timeout', v)}
-                placeholder="30"
+                placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.timeout.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 keyboardType="number-pad"
                 editable={!isSavingMcpServer}
               />
 
               <View style={styles.row}>
-                <Text style={styles.label}>Disabled</Text>
+                <Text style={styles.label}>{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.disabled.label}</Text>
                 <Switch
                   value={mcpServerDraft.disabled}
                   onValueChange={(v) => handleMcpServerDraftChange('disabled', v)}
-                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  trackColor={{
+                    false: theme.colors.muted,
+                    true: theme.colors.primary,
+                  }}
                   thumbColor={mcpServerDraft.disabled ? theme.colors.primaryForeground : theme.colors.background}
                   disabled={isSavingMcpServer}
                 />
@@ -5713,23 +5829,17 @@ export default function SettingsScreen({ navigation }: any) {
             </ScrollView>
 
             <View style={styles.importModalActions}>
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closeMcpServerEditor}
-                disabled={isSavingMcpServer}
-              >
-                <Text style={styles.importModalCancelText}>Cancel</Text>
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closeMcpServerEditor} disabled={isSavingMcpServer}>
+                <Text style={styles.importModalCancelText}>{getAppShellMcpServerActionLabel('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.importModalImportButton, isSavingMcpServer && styles.importModalImportButtonDisabled]}
                 onPress={handleMcpServerEditorSave}
                 disabled={isSavingMcpServer}
                 accessibilityRole="button"
-                accessibilityLabel="Save MCP server"
+                accessibilityLabel={getAppShellMcpServerSaveAccessibilityLabel()}
               >
-                <Text style={styles.importModalImportText}>
-                  {isSavingMcpServer ? 'Saving...' : mcpServerEditorMode === 'create' ? 'Save' : 'Replace'}
-                </Text>
+                <Text style={styles.importModalImportText}>{getAppShellMcpServerEditorSaveActionLabel(mcpServerEditorMode === 'create' ? 'create' : 'replace', isSavingMcpServer)}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -5737,16 +5847,11 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* Bundle Import Modal */}
-      <Modal
-        visible={showBundleImportModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeBundleImportModal}
-      >
+      <Modal visible={showBundleImportModal} animationType="slide" transparent={true} onRequestClose={closeBundleImportModal}>
         <View style={styles.importModalOverlay}>
           <View style={styles.importModalContainer}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>Import Bundle</Text>
+              <Text style={styles.importModalTitle}>{APP_SHELL_BUNDLE_IMPORT_PRESENTATION.title}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeBundleImportModal}
@@ -5754,20 +5859,16 @@ export default function SettingsScreen({ navigation }: any) {
                 accessibilityLabel="Close bundle import modal"
                 disabled={isPreviewingBundleImport || isImportingBundle}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={styles.modalCloseText}>{getAppShellBundleActionLabel('close')}</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView
-              style={styles.bundleImportBody}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.bundleImportBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <TextInput
                 style={styles.importJsonInput}
                 value={bundleImportJsonText}
                 onChangeText={handleBundleImportJsonChange}
-                placeholder='{"manifest":{"version":1,"name":"Bundle"},"agentProfiles":[]}'
+                placeholder={APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.bundleJson.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 multiline
                 numberOfLines={8}
@@ -5778,47 +5879,43 @@ export default function SettingsScreen({ navigation }: any) {
                 editable={!isPreviewingBundleImport && !isImportingBundle}
               />
 
-              <Text style={styles.label}>Handle conflicts</Text>
+              <Text style={styles.label}>{APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.conflicts.label}</Text>
               <View style={styles.providerSelector}>
                 {BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS.map((strategy) => (
                   <Pressable
                     key={strategy.value}
-                    style={[
-                      styles.providerOption,
-                      bundleImportConflictStrategy === strategy.value && styles.providerOptionActive,
-                    ]}
+                    style={[styles.providerOption, bundleImportConflictStrategy === strategy.value && styles.providerOptionActive]}
                     onPress={() => setBundleImportConflictStrategy(strategy.value)}
                     disabled={isImportingBundle}
                   >
-                    <Text style={[
-                      styles.providerOptionText,
-                      bundleImportConflictStrategy === strategy.value && styles.providerOptionTextActive,
-                    ]}>
-                      {strategy.label}
-                    </Text>
+                    <Text style={[styles.providerOptionText, bundleImportConflictStrategy === strategy.value && styles.providerOptionTextActive]}>{strategy.label}</Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={styles.label}>Components</Text>
+              <Text style={styles.label}>{APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.components}</Text>
               {BUNDLE_COMPONENT_OPTIONS.map((component) => {
                 const count = bundleImportPreview?.bundle.manifest.components[component.key] ?? 0;
                 const conflicts = bundleImportPreview?.conflicts[component.key].length ?? 0;
+                const componentLabel = getAppShellBundleComponentLabel(component.key, 'compact');
                 return (
                   <View key={component.key} style={styles.row}>
                     <View style={styles.serverInfo}>
-                      <Text style={styles.serverName}>{component.label}</Text>
+                      <Text style={styles.serverName}>{componentLabel}</Text>
                       <Text style={styles.serverMeta}>
                         {bundleImportPreview
-                          ? `${count} item${count === 1 ? '' : 's'}${conflicts > 0 ? `, ${conflicts} conflict${conflicts === 1 ? '' : 's'}` : ''}`
-                          : 'Not previewed'}
+                          ? formatAppShellBundleComponentSummary(count, conflicts)
+                          : APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.notPreviewed}
                       </Text>
                     </View>
                     <Switch
                       value={bundleImportComponents[component.key]}
                       onValueChange={(value) => handleBundleImportComponentToggle(component.key, value)}
-                      accessibilityLabel={createSwitchAccessibilityLabel(`Import bundle ${component.label}`)}
-                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                      accessibilityLabel={createSwitchAccessibilityLabel(`Import bundle ${componentLabel}`)}
+                      trackColor={{
+                        false: theme.colors.muted,
+                        true: theme.colors.primary,
+                      }}
                       thumbColor={bundleImportComponents[component.key] ? theme.colors.primaryForeground : theme.colors.background}
                     />
                   </View>
@@ -5833,48 +5930,32 @@ export default function SettingsScreen({ navigation }: any) {
                       {bundleImportPreview.bundle.manifest.description}
                     </Text>
                   )}
-                  <Text style={styles.serverMeta}>
-                    Exported from {bundleImportPreview.bundle.manifest.exportedFrom}
-                  </Text>
+                  <Text style={styles.serverMeta}>{formatAppShellBundleExportedFromLabel(bundleImportPreview.bundle.manifest.exportedFrom)}</Text>
                 </View>
               )}
             </ScrollView>
 
             <View style={styles.importModalActions}>
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closeBundleImportModal}
-                disabled={isPreviewingBundleImport || isImportingBundle}
-              >
-                <Text style={styles.importModalCancelText}>Cancel</Text>
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closeBundleImportModal} disabled={isPreviewingBundleImport || isImportingBundle}>
+                <Text style={styles.importModalCancelText}>{getAppShellBundleActionLabel('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalCancelButton,
-                  (!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalCancelButton, (!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle) && styles.importModalImportButtonDisabled]}
                 onPress={handleBundleImportPreview}
                 disabled={!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle}
                 accessibilityRole="button"
-                accessibilityLabel="Preview DotAgents bundle JSON"
+                accessibilityLabel={getAppShellBundlePreviewJsonAccessibilityLabel()}
               >
-                <Text style={styles.importModalCancelText}>
-                  {isPreviewingBundleImport ? 'Previewing...' : 'Preview'}
-                </Text>
+                <Text style={styles.importModalCancelText}>{getAppShellBundlePreviewActionLabel(isPreviewingBundleImport)}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalImportButton,
-                  (!bundleImportPreview || isImportingBundle || isPreviewingBundleImport) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalImportButton, (!bundleImportPreview || isImportingBundle || isPreviewingBundleImport) && styles.importModalImportButtonDisabled]}
                 onPress={handleBundleImport}
                 disabled={!bundleImportPreview || isImportingBundle || isPreviewingBundleImport}
                 accessibilityRole="button"
-                accessibilityLabel="Import DotAgents bundle JSON"
+                accessibilityLabel={getAppShellBundleImportJsonAccessibilityLabel()}
               >
-                <Text style={styles.importModalImportText}>
-                  {isImportingBundle ? 'Importing...' : 'Import'}
-                </Text>
+                <Text style={styles.importModalImportText}>{isImportingBundle ? getAppShellBundleActionLabel('importing') : getAppShellBundleActionLabel('import')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -5882,16 +5963,11 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* Skill Markdown Import Modal */}
-      <Modal
-        visible={showSkillImportModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeSkillImportModal}
-      >
+      <Modal visible={showSkillImportModal} animationType="slide" transparent={true} onRequestClose={closeSkillImportModal}>
         <View style={styles.importModalOverlay}>
           <View style={styles.importModalContainer}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>Import Skill</Text>
+              <Text style={styles.importModalTitle}>{getAppShellSkillActionLabel('importSkill')}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeSkillImportModal}
@@ -5919,26 +5995,17 @@ export default function SettingsScreen({ navigation }: any) {
             />
 
             <View style={styles.importModalActions}>
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closeSkillImportModal}
-                disabled={isImportingSkillMarkdown}
-              >
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closeSkillImportModal} disabled={isImportingSkillMarkdown}>
                 <Text style={styles.importModalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalImportButton,
-                  (!skillImportMarkdownText.trim() || isImportingSkillMarkdown) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalImportButton, (!skillImportMarkdownText.trim() || isImportingSkillMarkdown) && styles.importModalImportButtonDisabled]}
                 onPress={handleSkillMarkdownImport}
                 disabled={!skillImportMarkdownText.trim() || isImportingSkillMarkdown}
                 accessibilityRole="button"
-                accessibilityLabel="Import skill Markdown"
+                accessibilityLabel={getAppShellSkillImportMarkdownAccessibilityLabel()}
               >
-                <Text style={styles.importModalImportText}>
-                  {isImportingSkillMarkdown ? 'Importing...' : 'Import'}
-                </Text>
+                <Text style={styles.importModalImportText}>{isImportingSkillMarkdown ? getAppShellSkillActionLabel('importing') : getAppShellSkillActionLabel('import')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -5946,16 +6013,11 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* Skill GitHub Import Modal */}
-      <Modal
-        visible={showSkillGitHubImportModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeSkillGitHubImportModal}
-      >
+      <Modal visible={showSkillGitHubImportModal} animationType="slide" transparent={true} onRequestClose={closeSkillGitHubImportModal}>
         <View style={styles.importModalOverlay}>
           <View style={styles.importModalContainer}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>Import GitHub Skill</Text>
+              <Text style={styles.importModalTitle}>{getAppShellSkillActionLabel('importSkillFromGitHubTitle')}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeSkillGitHubImportModal}
@@ -5980,26 +6042,17 @@ export default function SettingsScreen({ navigation }: any) {
             />
 
             <View style={styles.importModalActions}>
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closeSkillGitHubImportModal}
-                disabled={isImportingSkillGitHub}
-              >
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closeSkillGitHubImportModal} disabled={isImportingSkillGitHub}>
                 <Text style={styles.importModalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalImportButton,
-                  (!skillGitHubImportText.trim() || isImportingSkillGitHub) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalImportButton, (!skillGitHubImportText.trim() || isImportingSkillGitHub) && styles.importModalImportButtonDisabled]}
                 onPress={handleSkillGitHubImport}
                 disabled={!skillGitHubImportText.trim() || isImportingSkillGitHub}
                 accessibilityRole="button"
-                accessibilityLabel="Import GitHub skill"
+                accessibilityLabel={getAppShellSkillImportGitHubAccessibilityLabel()}
               >
-                <Text style={styles.importModalImportText}>
-                  {isImportingSkillGitHub ? 'Importing...' : 'Import'}
-                </Text>
+                <Text style={styles.importModalImportText}>{isImportingSkillGitHub ? getAppShellSkillActionLabel('importing') : getAppShellSkillActionLabel('import')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -6007,16 +6060,11 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* Loop Markdown Import Modal */}
-      <Modal
-        visible={showLoopImportModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeLoopImportModal}
-      >
+      <Modal visible={showLoopImportModal} animationType="slide" transparent={true} onRequestClose={closeLoopImportModal}>
         <View style={styles.importModalOverlay}>
           <View style={styles.importModalContainer}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>Import Loop</Text>
+              <Text style={styles.importModalTitle}>{getAppShellLoopActionLabel('importLoop')}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeLoopImportModal}
@@ -6044,26 +6092,17 @@ export default function SettingsScreen({ navigation }: any) {
             />
 
             <View style={styles.importModalActions}>
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closeLoopImportModal}
-                disabled={isImportingLoopMarkdown}
-              >
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closeLoopImportModal} disabled={isImportingLoopMarkdown}>
                 <Text style={styles.importModalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalImportButton,
-                  (!loopImportMarkdownText.trim() || isImportingLoopMarkdown) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalImportButton, (!loopImportMarkdownText.trim() || isImportingLoopMarkdown) && styles.importModalImportButtonDisabled]}
                 onPress={handleLoopMarkdownImport}
                 disabled={!loopImportMarkdownText.trim() || isImportingLoopMarkdown}
                 accessibilityRole="button"
-                accessibilityLabel="Import loop Markdown"
+                accessibilityLabel={getAppShellLoopImportMarkdownAccessibilityLabel()}
               >
-                <Text style={styles.importModalImportText}>
-                  {isImportingLoopMarkdown ? 'Importing...' : 'Import'}
-                </Text>
+                <Text style={styles.importModalImportText}>{isImportingLoopMarkdown ? getAppShellLoopActionLabel('importing') : getAppShellLoopActionLabel('import')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -6071,16 +6110,11 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* MCP Server Import Modal */}
-      <Modal
-        visible={showMcpImportModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeMcpImportModal}
-      >
+      <Modal visible={showMcpImportModal} animationType="slide" transparent={true} onRequestClose={closeMcpImportModal}>
         <View style={styles.importModalOverlay}>
           <View style={styles.importModalContainer}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>Import MCP Servers</Text>
+              <Text style={styles.importModalTitle}>{getAppShellMcpServerActionLabel('importServers')}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeMcpImportModal}
@@ -6088,7 +6122,7 @@ export default function SettingsScreen({ navigation }: any) {
                 accessibilityLabel="Close MCP server import modal"
                 disabled={isImportingMcpServers}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={styles.modalCloseText}>{getAppShellMcpServerActionLabel('close')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -6108,26 +6142,17 @@ export default function SettingsScreen({ navigation }: any) {
             />
 
             <View style={styles.importModalActions}>
-              <TouchableOpacity
-                style={styles.importModalCancelButton}
-                onPress={closeMcpImportModal}
-                disabled={isImportingMcpServers}
-              >
-                <Text style={styles.importModalCancelText}>Cancel</Text>
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closeMcpImportModal} disabled={isImportingMcpServers}>
+                <Text style={styles.importModalCancelText}>{getAppShellMcpServerActionLabel('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalImportButton,
-                  (!mcpImportJsonText.trim() || isImportingMcpServers) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalImportButton, (!mcpImportJsonText.trim() || isImportingMcpServers) && styles.importModalImportButtonDisabled]}
                 onPress={handleMcpServerImport}
                 disabled={!mcpImportJsonText.trim() || isImportingMcpServers}
                 accessibilityRole="button"
-                accessibilityLabel="Import MCP servers"
+                accessibilityLabel={getAppShellMcpServerImportServersAccessibilityLabel()}
               >
-                <Text style={styles.importModalImportText}>
-                  {isImportingMcpServers ? 'Importing...' : 'Import'}
-                </Text>
+                <Text style={styles.importModalImportText}>{isImportingMcpServers ? getAppShellMcpServerActionLabel('importing') : getAppShellMcpServerActionLabel('import')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -6135,22 +6160,12 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* TTS Model Picker Modal */}
-      <Modal
-        visible={showTtsModelPicker}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTtsModelPicker(false)}
-      >
+      <Modal visible={showTtsModelPicker} animationType="slide" transparent={true} onRequestClose={() => setShowTtsModelPicker(false)}>
         <View style={styles.modelPickerOverlay}>
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select TTS Model</Text>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowTtsModelPicker(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Close TTS model picker"
-              >
+              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowTtsModelPicker(false)} accessibilityRole="button" accessibilityLabel="Close TTS model picker">
                 <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
@@ -6162,10 +6177,7 @@ export default function SettingsScreen({ navigation }: any) {
                 return (
                   <TouchableOpacity
                     key={model.value}
-                    style={[
-                      styles.modelItem,
-                      isSelected && styles.modelItemActive,
-                    ]}
+                    style={[styles.modelItem, isSelected && styles.modelItemActive]}
                     onPress={() => {
                       const key = getTtsModelSettingKey(remoteTtsProviderId);
                       if (key) {
@@ -6182,17 +6194,10 @@ export default function SettingsScreen({ navigation }: any) {
                     }}
                   >
                     <View style={styles.modelItemContent}>
-                      <Text style={[
-                        styles.modelItemName,
-                        isSelected && styles.modelItemNameActive,
-                      ]}>
-                        {model.label}
-                      </Text>
+                      <Text style={[styles.modelItemName, isSelected && styles.modelItemNameActive]}>{model.label}</Text>
                       <Text style={styles.modelItemId}>{model.value}</Text>
                     </View>
-                    {isSelected && (
-                      <Text style={styles.modelItemCheck}>✓</Text>
-                    )}
+                    {isSelected && <Text style={styles.modelItemCheck}>✓</Text>}
                   </TouchableOpacity>
                 );
               })}
@@ -6200,7 +6205,8 @@ export default function SettingsScreen({ navigation }: any) {
 
             <View style={styles.modelPickerFooter}>
               <Text style={styles.modelPickerFooterText}>
-                {getTtsModelsForProvider(remoteTtsProviderId).length} model{getTtsModelsForProvider(remoteTtsProviderId).length !== 1 ? 's' : ''} available
+                {getTtsModelsForProvider(remoteTtsProviderId).length} model
+                {getTtsModelsForProvider(remoteTtsProviderId).length !== 1 ? 's' : ''} available
               </Text>
             </View>
           </View>
@@ -6208,22 +6214,12 @@ export default function SettingsScreen({ navigation }: any) {
       </Modal>
 
       {/* TTS Voice Picker Modal */}
-      <Modal
-        visible={showTtsVoicePicker}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTtsVoicePicker(false)}
-      >
+      <Modal visible={showTtsVoicePicker} animationType="slide" transparent={true} onRequestClose={() => setShowTtsVoicePicker(false)}>
         <View style={styles.modelPickerOverlay}>
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select TTS Voice</Text>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowTtsVoicePicker(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Close TTS voice picker"
-              >
+              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowTtsVoicePicker(false)} accessibilityRole="button" accessibilityLabel="Close TTS voice picker">
                 <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
@@ -6238,10 +6234,7 @@ export default function SettingsScreen({ navigation }: any) {
                   return (
                     <TouchableOpacity
                       key={voice.value}
-                      style={[
-                        styles.modelItem,
-                        isSelected && styles.modelItemActive,
-                      ]}
+                      style={[styles.modelItem, isSelected && styles.modelItemActive]}
                       onPress={() => {
                         const key = getTtsVoiceSettingKey(remoteTtsProviderId);
                         if (key) {
@@ -6251,16 +6244,9 @@ export default function SettingsScreen({ navigation }: any) {
                       }}
                     >
                       <View style={styles.modelItemContent}>
-                        <Text style={[
-                          styles.modelItemName,
-                          isSelected && styles.modelItemNameActive,
-                        ]}>
-                          {voice.label}
-                        </Text>
+                        <Text style={[styles.modelItemName, isSelected && styles.modelItemNameActive]}>{voice.label}</Text>
                       </View>
-                      {isSelected && (
-                        <Text style={styles.modelItemCheck}>✓</Text>
-                      )}
+                      {isSelected && <Text style={styles.modelItemCheck}>✓</Text>}
                     </TouchableOpacity>
                   );
                 });
@@ -6307,9 +6293,7 @@ export default function SettingsScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.importModalDescription}>
-              Paste the profile JSON below to import it.
-            </Text>
+            <Text style={styles.importModalDescription}>Paste the profile JSON below to import it.</Text>
 
             <TextInput
               style={styles.importJsonInput}
@@ -6336,16 +6320,11 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.importModalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.importModalImportButton,
-                  (!importJsonText.trim() || isImportingProfile) && styles.importModalImportButtonDisabled,
-                ]}
+                style={[styles.importModalImportButton, (!importJsonText.trim() || isImportingProfile) && styles.importModalImportButtonDisabled]}
                 onPress={handleImportProfile}
                 disabled={!importJsonText.trim() || isImportingProfile}
               >
-                <Text style={styles.importModalImportText}>
-                  {isImportingProfile ? 'Importing...' : 'Import'}
-                </Text>
+                <Text style={styles.importModalImportText}>{isImportingProfile ? 'Importing...' : 'Import'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -6357,10 +6336,6 @@ export default function SettingsScreen({ navigation }: any) {
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
-    container: {
-      padding: spacing.lg,
-      gap: spacing.md,
-    },
     // Connection card styles
     connectionCard: {
       backgroundColor: theme.colors.card,
@@ -6599,18 +6574,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     dangerActionButtonTextDisabled: {
       color: theme.colors.mutedForeground,
-    },
-    saveBar: {
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
-      paddingHorizontal: spacing.md,
-      paddingTop: spacing.sm,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: -2 },
-      elevation: 8,
     },
     saveBarButton: {
       marginTop: 0,
@@ -7117,6 +7080,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.primary,
       fontWeight: '500',
+      textAlign: 'center',
+      flexShrink: 1,
     },
     sectionActionRow: {
       flexDirection: 'row',
@@ -7330,12 +7295,21 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.card,
       overflow: 'hidden',
     },
+    desktopSettingsActivePanel: {
+      marginTop: spacing.md,
+      borderRadius: radius.md,
+    },
     collapsibleHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: spacing.md,
       backgroundColor: theme.colors.muted,
+    },
+    desktopSettingsActiveHeader: {
+      backgroundColor: theme.colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
     collapsibleTitle: {
       fontSize: 14,

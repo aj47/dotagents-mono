@@ -42,6 +42,22 @@ import {
   type RepeatTaskEditFormData,
   updateRepeatTaskScheduleTimeAt,
 } from "@dotagents/shared/repeat-task-utils"
+import {
+  APP_SHELL_LOOP_DELETE_PRESENTATION,
+  APP_SHELL_LOOP_EDITOR_PRESENTATION,
+  APP_SHELL_LOOP_FEEDBACK_PRESENTATION,
+  APP_SHELL_LOOP_LIST_PRESENTATION,
+  formatAppShellLoopRunningMessage,
+  formatAppShellLoopTriggerUnavailableMessage,
+  formatAppShellLoopLastRunLabel,
+  formatAppShellLoopNextRunLabel,
+  getAppShellEditorTitle,
+  getAppShellLoopActionLabel,
+  getAppShellLoopDeleteConfirmMessage,
+  getAppShellLoopFeatureLabels,
+  getAppShellLoopStatusLabel,
+  getAppShellLoopToggleAccessibilityLabel,
+} from "@dotagents/shared/app-shell"
 
 // Sentinel used by the session picker to represent "no pinned session";
 // Radix Select does not accept an empty string as an item value.
@@ -65,7 +81,7 @@ function SessionPicker({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor="lastSessionId">Continue from session</Label>
+      <Label htmlFor="lastSessionId">{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.continueFromSession.label}</Label>
       <Select
         value={selectValue}
         onValueChange={(v) => onChange(v === AUTO_SESSION_VALUE ? undefined : v)}
@@ -74,7 +90,7 @@ function SessionPicker({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={AUTO_SESSION_VALUE}>Auto — most recent run of this task</SelectItem>
+          <SelectItem value={AUTO_SESSION_VALUE}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.autoDesktopLabel}</SelectItem>
           {options.map((candidate) => (
             <SelectItem key={`${candidate.group}:${candidate.id}`} value={candidate.id}>
               {getOptionLabel(candidate)}
@@ -83,7 +99,7 @@ function SessionPicker({
         </SelectContent>
       </Select>
       <p className="text-xs text-muted-foreground">
-        When left on Auto, this task appends to whichever session it last created. Pick a specific session to resume it on the next run. If the selected session can no longer be revived (e.g. its conversation was deleted), this task falls back to a new session and tracks that one instead.
+        {APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.desktopHelper}
       </p>
     </div>
   )
@@ -145,15 +161,15 @@ export function SettingsLoops() {
     setEditing(formatRepeatTaskEditFormData(loop))
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this repeat task?")) return
+  const handleDelete = async (id: string, name?: string) => {
+    if (!confirm(getAppShellLoopDeleteConfirmMessage(name))) return
     try {
       await desktopLoopsClient.deleteLoop(id)
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
-      toast.success("Task deleted")
+      toast.success(APP_SHELL_LOOP_DELETE_PRESENTATION.deleted)
     } catch {
-      toast.error("Failed to delete task")
+      toast.error(APP_SHELL_LOOP_DELETE_PRESENTATION.deleteFailed)
     }
   }
 
@@ -193,14 +209,16 @@ export function SettingsLoops() {
     try {
       const saveResult = await desktopLoopsClient.saveLoop(loopData)
       if (saveResult?.success === false) {
-        toast.error("Failed to save task")
+        toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.saveFailed)
         return
       }
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       setEditing(null)
       setEditingLoopId(null)
       setIsCreating(false)
-      toast.success(isCreating ? "Task created" : "Task updated")
+      toast.success(isCreating
+        ? APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.created
+        : APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.updated)
 
       // Start/stop loop based on enabled state
       if (loopData.enabled) {
@@ -210,7 +228,7 @@ export function SettingsLoops() {
       }
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     } catch {
-      toast.error("Failed to save task")
+      toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.saveFailed)
     }
   }
 
@@ -219,7 +237,7 @@ export function SettingsLoops() {
     try {
       const saveResult = await desktopLoopsClient.saveLoop(updatedLoop)
       if (saveResult?.success === false) {
-        toast.error("Failed to update task")
+        toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.updateFailed)
         return
       }
       queryClient.invalidateQueries({ queryKey: ["loops"] })
@@ -230,9 +248,11 @@ export function SettingsLoops() {
         await desktopLoopsClient.stopLoop(loop.id)
       }
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
-      toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
+      toast.success(updatedLoop.enabled
+        ? APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.enabled
+        : APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.disabled)
     } catch {
-      toast.error("Failed to update task")
+      toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.updateFailed)
     }
   }
 
@@ -240,12 +260,12 @@ export function SettingsLoops() {
     try {
       const result = await desktopLoopsClient.runLoop(loop.id)
       if (result && !result.success) {
-        toast.error(`Could not trigger "${loop.name}" right now`)
+        toast.error(formatAppShellLoopTriggerUnavailableMessage(loop.name))
         return
       }
-      toast.success(`Running "${loop.name}"...`)
+      toast.success(formatAppShellLoopRunningMessage(loop.name))
     } catch {
-      toast.error("Failed to trigger task")
+      toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.triggerFailed)
     }
   }
 
@@ -253,10 +273,10 @@ export function SettingsLoops() {
     try {
       const result = await desktopLoopsClient.openLoopTaskFile(loop.id)
       if (!result?.success) {
-        toast.error(result?.error || "Failed to reveal task file")
+        toast.error(result?.error || APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.revealFailed)
       }
     } catch {
-      toast.error("Failed to reveal task file")
+      toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.revealFailed)
     }
   }
 
@@ -265,8 +285,13 @@ export function SettingsLoops() {
       {orderedLoops.map((loop) => {
         const runtime = statusByLoopId.get(loop.id)
         const isRunning = runtime?.isRunning ?? false
+        const statusLabel = getAppShellLoopStatusLabel({
+          enabled: loop.enabled,
+          isRunning,
+        })
         const nextRunAt = runtime?.nextRunAt
         const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
+        const featureLabels = getAppShellLoopFeatureLabels(loop)
         return (
           <div
             key={loop.id}
@@ -279,15 +304,14 @@ export function SettingsLoops() {
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-sm font-medium leading-5">{loop.name}</span>
-                  {isRunning ? (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                      Running
+                  {statusLabel && (
+                    <Badge
+                      variant={statusLabel === APP_SHELL_LOOP_LIST_PRESENTATION.status.disabled ? "outline" : "secondary"}
+                      className="h-5 px-1.5 text-[10px]"
+                    >
+                      {statusLabel}
                     </Badge>
-                  ) : !loop.enabled ? (
-                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                      Disabled
-                    </Badge>
-                  ) : null}
+                  )}
                 </div>
                 <p className="line-clamp-1 text-[11px] leading-4 text-muted-foreground">
                   {loop.prompt}
@@ -295,7 +319,7 @@ export function SettingsLoops() {
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Switch
-                  aria-label={`${loop.enabled ? "Disable" : "Enable"} ${loop.name}`}
+                  aria-label={getAppShellLoopToggleAccessibilityLabel(loop.name, loop.enabled)}
                   checked={loop.enabled}
                   onCheckedChange={() => handleToggleEnabled(loop)}
                 />
@@ -305,7 +329,7 @@ export function SettingsLoops() {
                   className="h-6 gap-1 px-1.5 text-xs"
                   onClick={() => handleRunNow(loop)}
                 >
-                  <Play className="h-3.5 w-3.5" />Run
+                  <Play className="h-3.5 w-3.5" />{getAppShellLoopActionLabel("runNow")}
                 </Button>
                 <Button
                   variant="outline"
@@ -313,13 +337,13 @@ export function SettingsLoops() {
                   className="h-6 gap-1 px-1.5 text-xs"
                   onClick={() => handleOpenTaskFile(loop)}
                 >
-                  <FileText className="h-3.5 w-3.5" />File
+                  <FileText className="h-3.5 w-3.5" />{getAppShellLoopActionLabel("file")}
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  title="Edit task"
+                  title={getAppShellLoopActionLabel("editTask")}
                   onClick={() => handleEdit(loop)}
                 >
                   <Edit2 className="h-3.5 w-3.5" />
@@ -328,8 +352,8 @@ export function SettingsLoops() {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  title="Delete task"
-                  onClick={() => handleDelete(loop.id)}
+                  title={getAppShellLoopActionLabel("deleteTask")}
+                  onClick={() => handleDelete(loop.id, loop.name)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -341,20 +365,20 @@ export function SettingsLoops() {
                 <Clock className="h-3 w-3" />
                 {describeLoopCadence(loop)}
               </div>
-              {loop.runOnStartup && <div>Runs on startup</div>}
-              {loop.speakOnTrigger && <div>Speaks on trigger</div>}
-              {loop.continueInSession && <div>Continues in same session</div>}
+              {featureLabels.map((label) => (
+                <div key={label}>{label}</div>
+              ))}
               {typeof nextRunAt === "number" && (
-                <div>Next run: {formatRepeatTaskRuntimeTimestampOrFallback(nextRunAt)}</div>
+                <div>{formatAppShellLoopNextRunLabel(formatRepeatTaskRuntimeTimestampOrFallback(nextRunAt))}</div>
               )}
-              <div>Last run: {formatRepeatTaskRuntimeTimestampOrFallback(lastRunAt)}</div>
+              <div>{formatAppShellLoopLastRunLabel(formatRepeatTaskRuntimeTimestampOrFallback(lastRunAt))}</div>
             </div>
           </div>
         )
       })}
       {loops.length === 0 && (
         <div className="py-8 text-center text-muted-foreground">
-          No repeat tasks configured. Click &quot;Add Task&quot; to create one.
+          {APP_SHELL_LOOP_LIST_PRESENTATION.emptyTitle} {APP_SHELL_LOOP_LIST_PRESENTATION.emptyDescription}
         </div>
       )}
     </div>
@@ -365,37 +389,37 @@ export function SettingsLoops() {
     return (
       <Card className="max-w-3xl">
         <CardHeader className="space-y-1 pb-2">
-          <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
-          <CardDescription>Set the prompt, schedule, and startup behavior.</CardDescription>
+          <CardTitle className="text-lg">{getAppShellEditorTitle("loop", !isCreating)}</CardTitle>
+          <CardDescription>{APP_SHELL_LOOP_EDITOR_PRESENTATION.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.name.label}</Label>
             <Input
               id="name"
               value={editing.name}
               onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-              placeholder="e.g., Daily Summary"
+              placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.name.placeholder}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="prompt">Prompt</Label>
+            <Label htmlFor="prompt">{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.prompt.label}</Label>
             <Textarea
               id="prompt"
               value={editing.prompt}
               onChange={(e) => setEditing({ ...editing, prompt: e.target.value })}
-              placeholder="Enter the prompt to send to the agent..."
+              placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.prompt.placeholder}
               rows={4}
             />
           </div>
           <div className="space-y-2">
-            <Label>Schedule</Label>
+            <Label>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.schedule.label}</Label>
             <div className="flex flex-wrap gap-1.5">
               {([
-                { mode: "interval", label: "Interval" },
-                { mode: "continuous", label: "Continuous" },
-                { mode: "daily", label: "Daily" },
-                { mode: "weekly", label: "Weekly" },
+                { mode: "interval", label: APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes.interval },
+                { mode: "continuous", label: APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes.continuous },
+                { mode: "daily", label: APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes.daily },
+                { mode: "weekly", label: APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes.weekly },
               ] as const).map(({ mode, label }) => (
                 <Button
                   key={mode}
@@ -411,7 +435,7 @@ export function SettingsLoops() {
           </div>
           {editing.scheduleMode === "interval" && (
             <div className="space-y-2">
-              <Label htmlFor="interval">Every</Label>
+              <Label htmlFor="interval">{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.interval.label}</Label>
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   id="interval"
@@ -421,7 +445,7 @@ export function SettingsLoops() {
                   onChange={(e) => setEditing({ ...editing, intervalMinutes: e.target.value })}
                   className="h-8 w-20"
                 />
-                <span className="self-center text-xs text-muted-foreground">minutes</span>
+                <span className="self-center text-xs text-muted-foreground">{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.interval.unitLabel}</span>
               </div>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {REPEAT_TASK_INTERVAL_PRESETS.map((preset) => (
@@ -440,12 +464,12 @@ export function SettingsLoops() {
           )}
           {editing.scheduleMode === "continuous" && (
             <p className="text-xs text-muted-foreground">
-              Starts the next run as soon as the previous run finishes. Only one run of this task executes at a time.
+              {APP_SHELL_LOOP_EDITOR_PRESENTATION.schedule.continuousHelper}
             </p>
           )}
           {editing.scheduleMode !== "interval" && editing.scheduleMode !== "continuous" && (
             <div className="space-y-2">
-              <Label>Time(s)</Label>
+              <Label>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.times.label}</Label>
               <div className="flex flex-wrap items-center gap-2">
                 {editing.scheduleTimes.map((time, idx) => (
                   <div key={idx} className="flex items-center gap-1">
@@ -465,7 +489,7 @@ export function SettingsLoops() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        title="Remove time"
+                        title={APP_SHELL_LOOP_EDITOR_PRESENTATION.actions.removeTime}
                         onClick={() => {
                           setEditing({
                             ...editing,
@@ -489,15 +513,15 @@ export function SettingsLoops() {
                     })
                   }
                 >
-                  <Plus className="h-3.5 w-3.5" />Add time
+                  <Plus className="h-3.5 w-3.5" />{APP_SHELL_LOOP_EDITOR_PRESENTATION.actions.addTime}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Local time, 24-hour format.</p>
+              <p className="text-xs text-muted-foreground">{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.times.helper}</p>
             </div>
           )}
           {editing.scheduleMode === "weekly" && (
             <div className="space-y-2">
-              <Label>Days of week</Label>
+              <Label>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.daysOfWeek.label}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {REPEAT_TASK_DAY_LABELS.map((label, dayIdx) => {
                   const active = editing.scheduleDaysOfWeek.includes(dayIdx)
@@ -528,7 +552,7 @@ export function SettingsLoops() {
                 checked={editing.enabled}
                 onCheckedChange={(v) => setEditing({ ...editing, enabled: v })}
               />
-              <Label htmlFor="enabled">Enabled</Label>
+              <Label htmlFor="enabled">{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.enabled.label}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -536,7 +560,7 @@ export function SettingsLoops() {
                 checked={editing.runOnStartup}
                 onCheckedChange={(v) => setEditing({ ...editing, runOnStartup: v })}
               />
-              <Label htmlFor="runOnStartup">Run on Startup</Label>
+              <Label htmlFor="runOnStartup">{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.runOnStartup.label}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -544,7 +568,7 @@ export function SettingsLoops() {
                 checked={editing.speakOnTrigger}
                 onCheckedChange={(v) => setEditing({ ...editing, speakOnTrigger: v })}
               />
-              <Label htmlFor="speakOnTrigger">Speak on Trigger</Label>
+              <Label htmlFor="speakOnTrigger">{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.speakOnTrigger.label}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -552,7 +576,7 @@ export function SettingsLoops() {
                 checked={editing.continueInSession}
                 onCheckedChange={(v) => setEditing({ ...editing, continueInSession: v })}
               />
-              <Label htmlFor="continueInSession">Continue in Same Session</Label>
+              <Label htmlFor="continueInSession">{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.continueInSession.label}</Label>
             </div>
           </div>
           {editing.continueInSession && (
@@ -564,10 +588,10 @@ export function SettingsLoops() {
           )}
           <div className="flex justify-end gap-2 pt-3">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCancel}>
-              <X className="h-4 w-4" />Cancel
+              <X className="h-4 w-4" />{getAppShellLoopActionLabel("cancel")}
             </Button>
             <Button size="sm" className="gap-1.5" onClick={handleSave}>
-              <Save className="h-4 w-4" />Save
+              <Save className="h-4 w-4" />{getAppShellLoopActionLabel("save")}
             </Button>
           </div>
         </CardContent>
@@ -579,7 +603,7 @@ export function SettingsLoops() {
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-          <Plus className="h-3.5 w-3.5" />Add Task
+          <Plus className="h-3.5 w-3.5" />{getAppShellLoopActionLabel("addTask")}
         </Button>
       </div>
       {editing ? renderEditForm() : renderLoopList()}

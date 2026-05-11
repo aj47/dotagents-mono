@@ -13,6 +13,11 @@ test('uses shared skill edit form defaults and formatting', () => {
   assert.match(screenSource, /formatSkillEditFormData\(skillFromRoute\)/);
   assert.match(screenSource, /formatSkillEditFormData\(res\.skill\)/);
   assert.match(screenSource, /SkillEditFormData/);
+  assert.match(screenSource, /APP_SHELL_SKILL_EDITOR_PRESENTATION\.loadingLabel/);
+  assert.match(screenSource, /APP_SHELL_SKILL_EDITOR_PRESENTATION\.fields\.name\.requiredLabel/);
+  assert.match(screenSource, /APP_SHELL_SKILL_EDITOR_PRESENTATION\.fields\.instructions\.helper/);
   assert.doesNotMatch(screenSource, /type SkillFormData/);
   assert.doesNotMatch(screenSource, /const defaultFormData/);
+  assert.doesNotMatch(screenSource, />Loading skill\.\.\.</);
+  assert.doesNotMatch(screenSource, />Name \*<\/Text>/);
 });

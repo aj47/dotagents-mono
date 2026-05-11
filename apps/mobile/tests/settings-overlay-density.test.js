@@ -22,26 +22,28 @@ test('keeps mobile settings overlay close affordances text-first and explicitly 
   assert.doesNotMatch(settingsSource, /<Text style=\{styles\.(?:modelPickerClose|importModalClose|modalCloseText)\}>✕<\/Text>/);
 
   const closeTextMatches = [
-    ...settingsSource.matchAll(/<Text style=\{styles\.modalCloseText\}>Close<\/Text>/g),
+    ...settingsSource.matchAll(
+      /<Text style=\{styles\.modalCloseText\}>(?:Close|\{APP_SHELL_MODEL_PRESET_PRESENTATION\.actions\.close\}|\{getAppShellMcpServerActionLabel\('close'\)\}|\{getAppShellBundleActionLabel\('close'\)\})<\/Text>/g,
+    ),
   ];
-  const expectedCloseLabels = [
-    'Close model picker',
-    'Close endpoint picker',
-    'Close endpoint editor',
-    'Close MCP server editor',
-    'Close bundle import modal',
-    'Close skill import modal',
-    'Close GitHub skill import modal',
-    'Close loop import modal',
-    'Close MCP server import modal',
-    'Close TTS model picker',
-    'Close TTS voice picker',
-    'Close import profile modal',
+  const expectedCloseLabelPatterns = [
+    /accessibilityLabel="Close model picker"/,
+    /accessibilityLabel=\{APP_SHELL_MODEL_PRESET_PRESENTATION\.picker\.closeAccessibilityLabel\}/,
+    /accessibilityLabel=\{APP_SHELL_MODEL_PRESET_PRESENTATION\.editor\.closeAccessibilityLabel\}/,
+    /accessibilityLabel="Close MCP server editor"/,
+    /accessibilityLabel="Close bundle import modal"/,
+    /accessibilityLabel="Close skill import modal"/,
+    /accessibilityLabel="Close GitHub skill import modal"/,
+    /accessibilityLabel="Close loop import modal"/,
+    /accessibilityLabel="Close MCP server import modal"/,
+    /accessibilityLabel="Close TTS model picker"/,
+    /accessibilityLabel="Close TTS voice picker"/,
+    /accessibilityLabel="Close import profile modal"/,
   ];
-  assert.equal(closeTextMatches.length, expectedCloseLabels.length);
+  assert.equal(closeTextMatches.length, expectedCloseLabelPatterns.length);
 
-  for (const label of expectedCloseLabels) {
-    assert.match(settingsSource, new RegExp(`accessibilityLabel="${label}"`));
+  for (const pattern of expectedCloseLabelPatterns) {
+    assert.match(settingsSource, pattern);
   }
 });
 

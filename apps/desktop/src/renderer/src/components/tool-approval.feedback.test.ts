@@ -7,19 +7,19 @@ describe("desktop tool approval failure feedback", () => {
   it("shows visible approval failure feedback in AgentProgress", () => {
     expect(agentProgressSource).toContain('import { toast } from "sonner"')
     expect(agentProgressSource).toContain(
-      'function getActionErrorMessage(error: unknown, fallback: string): string',
+      'formatChatRuntimeToolApprovalFailureMessage',
     )
     expect(agentProgressSource).toContain(
       'console.error("[Tool Approval UI] Failed to approve tool call:", error)',
     )
     expect(agentProgressSource).toContain(
-      '`Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`',
+      'toast.error(formatChatRuntimeToolApprovalFailureMessage("approve", error))',
     )
     expect(agentProgressSource).toContain(
       'console.error("[Tool Approval UI] Failed to deny tool call:", error)',
     )
     expect(agentProgressSource).toContain(
-      '`Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`',
+      'toast.error(formatChatRuntimeToolApprovalFailureMessage("deny", error))',
     )
   })
 

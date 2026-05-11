@@ -27,7 +27,18 @@ describe("desktop provider settings draft behavior", () => {
     expect(settingsProvidersSource).toMatch(/queryKey: \["chatgpt-web-auth-status"\]/)
     expect(settingsProvidersSource).toMatch(/desktopChatGptWebClient\.loginOAuth\(\)/)
     expect(settingsProvidersSource).toMatch(/desktopChatGptWebClient\.logoutOAuth\(\)/)
-    expect(settingsProvidersSource).toMatch(/Copy Callback URL/)
+    expect(settingsProvidersSource).toMatch(/APP_SHELL_PROVIDER_SETUP_PRESENTATION\.chatGptWeb\.copyCallbackActionLabel/)
+  })
+
+  it("uses shared provider setup presentation for common visible copy", () => {
+    expect(settingsProvidersSource).toContain("APP_SHELL_PROVIDER_SETUP_PRESENTATION.pageTitle")
+    expect(settingsProvidersSource).toContain("APP_SHELL_PROVIDER_SETUP_PRESENTATION.baseUrlLabel")
+    expect(settingsProvidersSource).toContain("APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription")
+    expect(settingsProvidersSource).toContain("getAppShellProviderModelSelectionMovedDescription(GROQ_CREDENTIAL_SECTION.label)")
+    expect(settingsProvidersSource).toContain("getAppShellChatGptWebConnectionLabel")
+    expect(settingsProvidersSource).not.toContain("Not selected above. You can still configure it here.")
+    expect(settingsProvidersSource).not.toContain("Groq model selection now lives on the Models page.")
+    expect(settingsProvidersSource).not.toContain("Gemini model selection now lives on the Models page.")
   })
 
   it("uses shared provider fallback defaults for active provider badges", () => {

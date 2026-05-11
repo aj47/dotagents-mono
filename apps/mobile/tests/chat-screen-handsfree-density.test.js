@@ -16,7 +16,7 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
 });
 
 test('lets handsfree users queue a drafted message without sending immediately', () => {
-  assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage(?:, currentConversationId)?\);[\s\S]*?setInput\(''\);[\s\S]*?setPendingImages\(\[\]\);/);
+  assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage, currentConversationId\);[\s\S]*?setInput\(''\);[\s\S]*?setPendingImages\(\[\]\);/);
   assert.match(screenSource, /handsFree && messageQueueEnabled && \([\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Queue message'\)\}[\s\S]*?<Text style=\{styles\.queueButtonText\}>Queue<\/Text>/);
 });
 

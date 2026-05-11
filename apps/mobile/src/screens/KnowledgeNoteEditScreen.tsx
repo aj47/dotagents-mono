@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
 import { spacing, radius } from '../ui/theme';
 import type {
   KnowledgeNote,
@@ -19,12 +19,16 @@ import {
   parseKnowledgeNoteTagsInput,
   type KnowledgeNoteEditFormData,
 } from '@dotagents/shared/knowledge-note-form';
+import {
+  APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION,
+  getAppShellEditorActionLabel,
+  getAppShellEditorTitle,
+} from '@dotagents/shared/app-shell';
 
 const toFormData = (note: KnowledgeNote): KnowledgeNoteEditFormData =>
   formatKnowledgeNoteEditFormData(note, { referencesInputFormat: 'comma' });
 
 export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
@@ -50,13 +54,13 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   }, [config.baseUrl, config.apiKey]);
 
   useEffect(() => {
-    navigation.setOptions({ title: isEditing ? 'Edit Note' : 'Create Note' });
+    navigation.setOptions({ title: getAppShellEditorTitle('knowledgeNote', isEditing) });
   }, [isEditing, navigation]);
 
   useEffect(() => {
     if (isEditing && !noteFromRoute && !settingsClient) {
       setIsLoading(false);
-      setError('Configure Base URL and API key to load and save notes');
+      setError(APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.unavailableLoadSaveError);
     }
   }, [isEditing, noteFromRoute, settingsClient]);
 
@@ -76,7 +80,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setError(err.message || 'Failed to load note');
+          setError(err.message || APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.errors.loadFailed);
         }
       })
       .finally(() => {
@@ -92,7 +96,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
-      setError('Configure Base URL and API key in Settings before saving this note');
+      setError(APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.unavailableSaveError);
       return;
     }
 
@@ -102,7 +106,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
     const body = formData.body.trim();
 
     if (!title || !body) {
-      setError('Title and body are required');
+      setError(APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.validation.titleAndBodyRequired);
       return;
     }
 
@@ -138,7 +142,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
 
       navigation.goBack();
     } catch (err: any) {
-      setError(err.message || 'Failed to save note');
+      setError(err.message || APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.errors.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -150,52 +154,45 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading note...</Text>
+        <Text style={styles.loadingText}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.loadingLabel}</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppShellEditorLayout title={getAppShellEditorTitle('knowledgeNote', isEditing)}>
         {error && <Text style={styles.errorText}>{error}</Text>}
         {!settingsClient && (
-          <Text style={styles.helperText}>Configure Base URL and API key in Settings to save note changes.</Text>
+          <Text style={styles.helperText}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.unavailableSaveHelper}</Text>
         )}
 
-        <Text style={styles.label}>Note ID</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.noteId.label}</Text>
         <TextInput
           style={[styles.input, isEditing && styles.disabledInput]}
           value={formData.noteId}
           onChangeText={value => updateField('noteId', value)}
-          placeholder="optional-custom-note-id"
+          placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.noteId.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize="none"
           editable={!isEditing}
         />
         <Text style={styles.sectionHelperText}>
-          {isEditing ? 'Note IDs are fixed after creation.' : 'Optional. Leave blank to derive an ID from the title.'}
+          {isEditing
+            ? APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.noteId.editHelper
+            : APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.noteId.createHelper}
         </Text>
 
-        <Text style={styles.label}>Note title *</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.title.requiredLabel}</Text>
         <TextInput
           style={styles.input}
           value={formData.title}
           onChangeText={value => updateField('title', value)}
-          placeholder="Project architecture"
+          placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.title.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
         />
 
-        <Text style={styles.label}>Context</Text>
-        <Text style={styles.sectionHelperText}>Context controls retrieval behavior. Use auto only when the note should be considered for automatic runtime loading.</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.context.label}</Text>
+        <Text style={styles.sectionHelperText}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.context.helper}</Text>
         <View style={styles.noteContextOptions}>
           {KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS.map(option => {
             const isSelected = formData.context === option.value;
@@ -220,56 +217,55 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
           })}
         </View>
 
-        <Text style={styles.label}>Summary</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.summary.label}</Text>
         <TextInput
           style={[styles.input, styles.summaryInput]}
           value={formData.summary}
           onChangeText={value => updateField('summary', value)}
-          placeholder="Short note summary"
+          placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.summary.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
         />
-        <Text style={styles.sectionHelperText}>Canonical files live at .agents/knowledge/&lt;slug&gt;/&lt;slug&gt;.md.</Text>
+        <Text style={styles.sectionHelperText}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.summary.helper}</Text>
 
-        <Text style={styles.label}>Body *</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.body.requiredLabel}</Text>
         <TextInput
           style={[styles.input, styles.bodyInput]}
           value={formData.body}
           onChangeText={value => updateField('body', value)}
-          placeholder="Detailed knowledge note body"
+          placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.body.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           multiline
           numberOfLines={10}
           textAlignVertical="top"
         />
 
-        <Text style={styles.label}>Tags</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.tags.label}</Text>
         <TextInput
           style={styles.input}
           value={formData.tagsInput}
           onChangeText={value => updateField('tagsInput', value)}
-          placeholder="project, preference, follow-up"
+          placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.tags.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>References</Text>
+        <Text style={styles.label}>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.references.label}</Text>
         <TextInput
           style={styles.input}
           value={formData.referencesInput}
           onChangeText={value => updateField('referencesInput', value)}
-          placeholder="docs/architecture.md, https://example.com/design"
+          placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.references.placeholder}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize="none"
         />
 
         <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
-          {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Note' : 'Create Note'}</Text>}
+          {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{getAppShellEditorActionLabel('knowledgeNote', isEditing)}</Text>}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

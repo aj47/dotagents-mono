@@ -9,13 +9,12 @@ const screenSource = fs.readFileSync(
 );
 
 test('adds a mobile chat search field with a search-specific empty state', () => {
-  assert.match(screenSource, /placeholder='Search chats\.\.\.'/);
-  assert.match(screenSource, /accessibilityHint="Search chat titles, previews, and loaded message text\."/);
-  assert.match(screenSource, /sessionListMode === 'archived' \? 'No matching archived chats' : 'No matching chats'/);
+  assert.match(screenSource, /placeholder=\{APP_CONVERSATION_LIST_COPY\.searchPlaceholder\}/);
+  assert.match(screenSource, /accessibilityHint=\{APP_CONVERSATION_LIST_COPY\.searchAccessibilityHint\}/);
+  assert.match(screenSource, /getConversationListEmptyState\(\{[\s\S]*?hasActiveSearch: true,/);
   assert.match(screenSource, /ListEmptyComponent=\{hasActiveSearch \? SearchEmptyState : EmptyState\}/);
 });
 
 test('shows matched message snippets in search results when available', () => {
-  assert.match(screenSource, /const rawPreview = \(item\.searchPreview \?\? item\.preview\) \|\| 'No messages yet';/);
-  assert.match(screenSource, /const sessionPreviewText = rawPreview\.startsWith\('tool: \['\) \|\| rawPreview\.includes\('\{"success":'\)/);
+  assert.match(screenSource, /normalizeConversationListPreviewText\(item\.searchPreview \?\? item\.preview\)/);
 });

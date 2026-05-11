@@ -3,11 +3,12 @@ import { cn } from "@renderer/lib/utils"
 import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import {
-  canEditQueuedMessage,
-  canMutateQueuedMessage,
+  MESSAGE_QUEUE_PANEL_PRESENTATION,
+  formatMessageQueueCompactLabel,
+  formatMessageQueuePanelTitle,
+  getMessageQueueListToggleLabel,
+  getQueuedMessageItemPresentation,
   hasProcessingQueuedMessage,
-  isQueuedMessageFailed,
-  isQueuedMessageProcessing,
   type QueuedMessage,
 } from "@dotagents/shared/message-queue-utils"
 import { useMutation } from "@tanstack/react-query"
@@ -34,11 +35,16 @@ function QueuedMessageItem({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editText, setEditText] = useState(message.text)
-  const isLongMessage = message.text.length > 100
-  const isFailed = isQueuedMessageFailed(message)
-  const isProcessing = isQueuedMessageProcessing(message)
-  const canMutateMessage = canMutateQueuedMessage(message)
-  const canEditMessage = canEditQueuedMessage(message)
+  const messagePresentation = getQueuedMessageItemPresentation(message, isExpanded)
+  const {
+    isLongMessage,
+    isFailed,
+    isProcessing,
+    canMutateMessage,
+    canEditMessage,
+    expansionLabel,
+    errorText,
+  } = messagePresentation
 
   // Sync editText with message.text when it changes via IPC (only when not editing)
   useEffect(() => {
@@ -134,7 +140,7 @@ function QueuedMessageItem({
               className="h-6 text-xs"
               onClick={handleCancelEdit}
             >
-              Cancel
+              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel}
             </Button>
             <Button
               variant="default"
@@ -144,7 +150,7 @@ function QueuedMessageItem({
               disabled={updateMutation.isPending || !editText.trim()}
             >
               <Check className="h-3 w-3 mr-1" />
-              Save
+              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel}
             </Button>
           </div>
         </div>
@@ -169,9 +175,9 @@ function QueuedMessageItem({
               >
                 {message.text}
               </p>
-              {isFailed && message.errorMessage && (
+              {errorText && (
                 <p className="text-[10px] text-destructive/80 mt-0.5">
-                  Error: {message.errorMessage}
+                  {errorText}
                 </p>
               )}
               {isLongMessage && (
@@ -184,12 +190,12 @@ function QueuedMessageItem({
                   {isExpanded ? (
                     <>
                       <ChevronUp className="h-3 w-3 mr-0.5" />
-                      Less
+                      {expansionLabel}
                     </>
                   ) : (
                     <>
                       <ChevronDown className="h-3 w-3 mr-0.5" />
-                      More
+                      {expansionLabel}
                     </>
                   )}
                 </Button>
@@ -204,8 +210,12 @@ function QueuedMessageItem({
                     className="text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={() => retryMutation.mutate()}
                     disabled={retryMutation.isPending}
-                    title="Retry message"
-                    aria-label={retryMutation.isPending ? "Retrying message" : "Retry message"}
+                    title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel}
+                    aria-label={
+                      retryMutation.isPending
+                        ? MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryPendingAccessibilityLabel
+                        : MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel
+                    }
                   >
                     <RotateCcw className={cn("h-3.5 w-3.5", retryMutation.isPending && "animate-spin")} />
                   </Button>
@@ -215,8 +225,8 @@ function QueuedMessageItem({
                     variant="ghost"
                     size="sm-icon"
                     onClick={() => setIsEditing(true)}
-                    title="Edit message"
-                    aria-label="Edit message"
+                    title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editAccessibilityLabel}
+                    aria-label={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editAccessibilityLabel}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -227,8 +237,8 @@ function QueuedMessageItem({
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => removeMutation.mutate()}
                   disabled={removeMutation.isPending}
-                  title="Remove from queue"
-                  aria-label="Remove from queue"
+                  title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeFromQueueTitle}
+                  aria-label={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeAccessibilityLabel}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -255,6 +265,7 @@ export function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const [isListCollapsed, setIsListCollapsed] = useState(false)
   const messageListId = `message-queue-list-${conversationId}`
+  const listToggleLabel = getMessageQueueListToggleLabel(isListCollapsed)
 
   // Reset collapse state when switching to a different conversation.
   useEffect(() => {
@@ -306,7 +317,7 @@ export function MessageQueuePanel({
           "min-w-0 flex-1",
           isPaused ? "text-orange-700 dark:text-orange-300" : "text-amber-700 dark:text-amber-300"
         )}>
-          {messages.length} queued{isPaused ? " (paused)" : ""}
+          {formatMessageQueueCompactLabel(messages.length, isPaused)}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {isPaused ? (
@@ -316,7 +327,7 @@ export function MessageQueuePanel({
               className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
-              title="Resume queue execution"
+              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.resumeTitle}
             >
               <Play className="h-3.5 w-3.5" />
             </Button>
@@ -327,7 +338,7 @@ export function MessageQueuePanel({
               className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               onClick={() => pauseMutation.mutate()}
               disabled={pauseMutation.isPending || hasProcessingMessage}
-              title="Pause queue"
+              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.pauseTitle}
             >
               <Pause className="h-3.5 w-3.5" />
             </Button>
@@ -342,7 +353,11 @@ export function MessageQueuePanel({
             )}
             onClick={() => clearMutation.mutate()}
             disabled={clearMutation.isPending || hasProcessingMessage}
-            title={hasProcessingMessage ? "Cannot clear while processing" : "Clear queue"}
+            title={
+              hasProcessingMessage
+                ? MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearWhileProcessingTitle
+                : MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearQueueTitle
+            }
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -379,7 +394,7 @@ export function MessageQueuePanel({
             "min-w-0 text-xs font-medium",
             isPaused ? "text-orange-800 dark:text-orange-200" : "text-amber-800 dark:text-amber-200"
           )}>
-            {isPaused ? "Paused" : "Queued"} ({messages.length})
+            {formatMessageQueuePanelTitle(messages.length, isPaused)}
           </span>
         </div>
         <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
@@ -390,10 +405,10 @@ export function MessageQueuePanel({
               className="h-6 text-xs text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 hover:bg-green-200/50 dark:hover:bg-green-800/50"
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
-              title="Resume queue execution"
+              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.resumeTitle}
             >
               <Play className="h-3 w-3 mr-1" />
-              Resume
+              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.resumeLabel}
             </Button>
           ) : (
             <Button
@@ -402,10 +417,10 @@ export function MessageQueuePanel({
               className="h-6 text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-800/50"
               onClick={() => pauseMutation.mutate()}
               disabled={pauseMutation.isPending || hasProcessingMessage}
-              title="Pause queue"
+              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.pauseTitle}
             >
               <Pause className="h-3 w-3 mr-1" />
-              Pause
+              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.pauseLabel}
             </Button>
           )}
           {!isListCollapsed && (
@@ -420,9 +435,9 @@ export function MessageQueuePanel({
               )}
               onClick={() => clearMutation.mutate()}
               disabled={clearMutation.isPending || hasProcessingMessage}
-              title={hasProcessingMessage ? "Cannot clear while processing" : undefined}
+              title={hasProcessingMessage ? MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearWhileProcessingTitle : undefined}
             >
-              Clear All
+              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearAllLabel}
             </Button>
           )}
           <Button
@@ -436,8 +451,8 @@ export function MessageQueuePanel({
             onClick={() => setIsListCollapsed((prev) => !prev)}
             aria-expanded={!isListCollapsed}
             aria-controls={!isListCollapsed ? messageListId : undefined}
-            aria-label={isListCollapsed ? "Expand queue" : "Collapse queue"}
-            title={isListCollapsed ? "Expand queue" : "Collapse queue"}
+            aria-label={listToggleLabel}
+            title={listToggleLabel}
           >
             {isListCollapsed ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -451,7 +466,7 @@ export function MessageQueuePanel({
       {/* Paused notice */}
       {isPaused && !isListCollapsed && (
         <div className="border-b border-orange-200 bg-orange-100/30 px-2.5 py-1 text-[10px] text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-          Paused. Click Resume to continue.
+          {MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice}
         </div>
       )}
 

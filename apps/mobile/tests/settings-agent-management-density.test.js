@@ -8,6 +8,10 @@ const settingsSource = fs.readFileSync(
   'utf8'
 );
 
+function sectionMarker(id) {
+  return `<CollapsibleSection id="${id}" title={getAppShellMobileSettingsSectionTitle('${id}')}>`;
+}
+
 function extractBetween(startMarker, endMarker) {
   const start = settingsSource.indexOf(startMarker);
   assert.notEqual(start, -1, `Missing start marker: ${startMarker}`);
@@ -20,18 +24,21 @@ function extractBetween(startMarker, endMarker) {
 
 test('keeps the mobile Agents subsection free of decorative delete emoji chrome', () => {
   const agentsSection = extractBetween(
-    '<CollapsibleSection id="agents" title="Agents">',
+    sectionMarker('agents'),
     '{/* 4n. Agent Loops */}'
   );
 
   assert.doesNotMatch(agentsSection, /🗑️/);
-  assert.match(agentsSection, /<Text style=\{styles\.agentDeleteButtonText\}>Delete<\/Text>/);
-  assert.match(agentsSection, /accessibilityLabel=\{`Delete agent \$\{profile\.displayName\}`\}/);
+  assert.match(agentsSection, /getAppShellAgentActionLabel\('delete'\)/);
+  assert.match(agentsSection, /getAppShellAgentDeleteAccessibilityLabel\(profile\.displayName\)/);
+  assert.match(agentsSection, /getAppShellAgentListInitial\(profile\)/);
+  assert.match(agentsSection, /getAppShellAgentListMetadata\(profile\)/);
+  assert.match(agentsSection, /getAppShellAgentListDescription\(profile\)/);
 });
 
 test('lets mobile rescan desktop agent profile files from the Agents subsection', () => {
   const agentsSection = extractBetween(
-    '<CollapsibleSection id="agents" title="Agents">',
+    sectionMarker('agents'),
     '{/* 4n. Agent Loops */}'
   );
 
@@ -39,27 +46,27 @@ test('lets mobile rescan desktop agent profile files from the Agents subsection'
   assert.match(settingsSource, /const handleAgentProfilesReload = useCallback\(async \(\) => \{/);
   assert.match(settingsSource, /settingsClient\.reloadAgentProfiles\(\)/);
   assert.match(settingsSource, /setAgentProfiles\(res\.profiles\)/);
-  assert.match(agentsSection, /Rescan Files/);
-  assert.match(agentsSection, /createButtonAccessibilityLabel\('Rescan agent files'\)/);
+  assert.match(agentsSection, /getAppShellAgentRescanActionLabel\(isReloadingAgentProfiles\)/);
+  assert.match(agentsSection, /getAppShellAgentRescanAccessibilityLabel\(\)/);
   assert.match(agentsSection, /disabled=\{isReloadingAgentProfiles\}/);
 });
 
 test('keeps mobile Agent Loop actions text-first and explicitly labeled', () => {
   const loopsSection = extractBetween(
-    '<CollapsibleSection id="agentLoops" title="Agent Loops">',
-    '</>'
+    sectionMarker('agentLoops'),
+    '</CollapsibleSection>'
   );
 
   assert.doesNotMatch(loopsSection, /▶ Run|🗑 Delete/);
-  assert.match(loopsSection, /<Text style=\{styles\.loopActionButtonText\}>Run now<\/Text>/);
-  assert.match(loopsSection, /<Text style=\{\[styles\.loopActionButtonText, styles\.loopActionButtonTextDanger\]\}>Delete<\/Text>/);
-  assert.match(loopsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Run \$\{loop\.name\} loop now`\)\}/);
-  assert.match(loopsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Delete \$\{loop\.name\} loop`\)\}/);
+  assert.match(loopsSection, /getAppShellLoopActionLabel\('runNow'\)/);
+  assert.match(loopsSection, /getAppShellLoopActionLabel\('delete'\)/);
+  assert.match(loopsSection, /getAppShellLoopRunNowAccessibilityLabel\(loop\.name\)/);
+  assert.match(loopsSection, /getAppShellLoopDeleteAccessibilityLabel\(loop\.name\)/);
 });
 
 test('marks mobile agents with custom system prompts in the settings list', () => {
   const agentsSection = extractBetween(
-    '<CollapsibleSection id="agents" title="Agents">',
+    sectionMarker('agents'),
     '{/* 4n. Agent Loops */}'
   );
 

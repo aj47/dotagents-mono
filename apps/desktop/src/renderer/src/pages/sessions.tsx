@@ -18,6 +18,10 @@ import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-m
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery, useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@dotagents/shared/key-utils"
+import {
+  APP_SHELL_SESSION_START_PRESENTATION,
+  getAppShellHeaderActionDisplayLabel,
+} from "@dotagents/shared/app-shell"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@dotagents/shared/sidebar-sessions"
@@ -315,9 +319,11 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
       <div className="mb-3 rounded-full bg-muted/70 p-2.5">
         <MessageCircle className="h-5 w-5 text-muted-foreground" />
       </div>
-      <h3 className="mb-1.5 text-lg font-semibold">No Active Sessions</h3>
+      <h3 className="mb-1.5 text-lg font-semibold">
+        {APP_SHELL_SESSION_START_PRESENTATION.emptyTitle}
+      </h3>
       <p className="mb-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        Start a new agent session using text or voice input. Your sessions will appear here as tiles.
+        {APP_SHELL_SESSION_START_PRESENTATION.emptyDescription}
       </p>
       <div className="flex w-full max-w-md flex-col items-center gap-3">
         <AgentSelector
@@ -328,11 +334,11 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
         <div className="flex flex-wrap gap-2 items-center justify-center">
           <Button onClick={onTextClick} className="gap-2">
             <Plus className="h-4 w-4" />
-            Start with Text
+            {getAppShellHeaderActionDisplayLabel("startTextSession")}
           </Button>
           <Button variant="secondary" onClick={onVoiceClick} className="gap-2">
             <Mic className="h-4 w-4" />
-            Start with Voice
+            {getAppShellHeaderActionDisplayLabel("startVoiceSession")}
           </Button>
           <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} buttonSize="sm" />
         </div>
@@ -340,19 +346,19 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
         <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Keyboard className="h-3.5 w-3.5 shrink-0" />
-            <span>Text:</span>
+            <span>{APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.text}</span>
             <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
               {textInputShortcut}
             </kbd>
           </div>
           <div className="flex items-center gap-1.5">
-            <span>Voice:</span>
+            <span>{APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.voice}</span>
             <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
               {voiceInputShortcut}
             </kbd>
           </div>
           <div className="flex items-center gap-1.5">
-            <span>Dictation:</span>
+            <span>{APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.dictation}</span>
             <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
               {dictationShortcut}
             </kbd>

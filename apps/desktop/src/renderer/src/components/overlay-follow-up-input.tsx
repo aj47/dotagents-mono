@@ -15,6 +15,7 @@ import {
   getFollowUpInputPresentation,
   type FollowUpInputPresentation,
 } from "@dotagents/shared/session-presentation"
+import { formatChatImageAttachmentErrorMessage } from "@dotagents/shared/conversation-media-assets"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,
@@ -199,7 +200,7 @@ export function OverlayFollowUpInput({
         window.alert(errors.join("\n"))
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+      window.alert(formatChatImageAttachmentErrorMessage(error))
     }
   }
 

@@ -44,6 +44,7 @@ export interface FollowUpInputPresentation {
   isDisabled: boolean
   submitTitle: string
   submitAriaLabel: string
+  submitHint: string
   voiceTitle: string
 }
 
@@ -55,6 +56,117 @@ export interface SidebarStatusPresentation {
   pinnedIconClassName: string
   shouldPulse: boolean
   isForeground: boolean
+}
+
+export const CHAT_RUNTIME_PRESENTATION = {
+  common: {
+    cancel: "Cancel",
+    errorTitle: "Error",
+    successTitle: "Success",
+    retryFallback: "Please try again.",
+  },
+  killSwitch: {
+    title: "Emergency Stop",
+    message:
+      "Are you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.",
+    actionLabel: "Stop All",
+    successFallback: "All sessions stopped",
+    stopFailed: "Failed to stop sessions",
+    connectionFailed: "Failed to connect to server",
+  },
+  branch: {
+    buttonLabel: "Branch",
+    pendingLabel: "Branching...",
+    buttonTitle: "Branch from here",
+    buttonAccessibilityLabel: "Branch conversation from this message",
+    unavailableTitle: "Branch Unavailable",
+    unavailableMessage: "This chat is not linked to a desktop conversation yet.",
+    createdTitle: "Branch Created",
+    createdMessage: "The branched chat will appear in the chat list after sync.",
+    successToast: "Conversation branched",
+    failedTitle: "Branch Failed",
+    failedMessage: "Failed to branch conversation",
+  },
+  approval: {
+    connectionRequiredTitle: "Connection Required",
+    connectionRequiredMessage:
+      "Configure your desktop server connection before responding to tool approvals.",
+    unavailableTitle: "Approval Unavailable",
+    unavailableMessage: "The approval request is no longer pending.",
+    failedTitle: "Approval Failed",
+    responseFailedMessage: "Failed to respond to the tool approval request.",
+    approveFailedPrefix: "Failed to approve tool call.",
+    denyFailedPrefix: "Failed to deny tool call.",
+  },
+  connectionError: {
+    partialContentMessage: "Connection lost. Partial response shown above.",
+    retryTip: 'Tip: Check your internet connection and tap "Retry" to try again.',
+  },
+} as const
+
+export type ChatRuntimeToolApprovalAction = "approve" | "deny"
+
+export interface ChatRuntimeRecoveryStatePresentationInput {
+  status?: string
+  retryCount?: number
+  lastError?: string | null
+}
+
+export function getChatRuntimeAlertMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
+export function formatChatRuntimeWebConfirmMessage(title: string, message: string): string {
+  return `${title}\n\n${message}`
+}
+
+export function formatChatRuntimeToolApprovalFailureMessage(
+  action: ChatRuntimeToolApprovalAction,
+  error: unknown,
+): string {
+  const prefix = action === "approve"
+    ? CHAT_RUNTIME_PRESENTATION.approval.approveFailedPrefix
+    : CHAT_RUNTIME_PRESENTATION.approval.denyFailedPrefix
+  return `${prefix} ${getChatRuntimeAlertMessage(error, CHAT_RUNTIME_PRESENTATION.common.retryFallback)}`
+}
+
+export function formatChatRuntimeBranchAccessibilityLabel(role: string, messageNumber: number): string {
+  return `Branch conversation from ${role} message ${messageNumber}`
+}
+
+export function formatChatRuntimeConnectionErrorMessage(
+  errorMessage: string,
+  recoveryState?: ChatRuntimeRecoveryStatePresentationInput | null,
+): string {
+  if (recoveryState?.status === "failed") {
+    return `Connection failed after ${recoveryState.retryCount ?? 0} retries. ${recoveryState.lastError || ""}`.trim()
+  }
+
+  if (recoveryState?.status === "reconnecting") {
+    return `Connection lost. Attempted ${recoveryState.retryCount ?? 0} reconnections. ${errorMessage}`.trim()
+  }
+
+  return errorMessage
+}
+
+export function formatChatRuntimeAssistantErrorContent(
+  errorMessage: string,
+  partialContent?: string | null,
+): string {
+  if (partialContent && partialContent.length > 0) {
+    return [
+      partialContent,
+      "",
+      "---",
+      CHAT_RUNTIME_PRESENTATION.connectionError.partialContentMessage,
+      "",
+      `Error: ${errorMessage}`,
+    ].join("\n")
+  }
+
+  return `Error: ${errorMessage}\n\n${CHAT_RUNTIME_PRESENTATION.connectionError.retryTip}`
 }
 
 export function deriveLifecycleState(input: SessionPresentationInput): SessionLifecycleState {
@@ -128,6 +240,7 @@ export function getFollowUpInputPresentation(input: SessionPresentationInput): F
       isDisabled: true,
       submitTitle: "Starting follow-up",
       submitAriaLabel: "Starting follow-up",
+      submitHint: "Wait for the session to finish starting before sending a follow-up.",
       voiceTitle: "Voice unavailable while session starts",
     }
   }
@@ -139,6 +252,7 @@ export function getFollowUpInputPresentation(input: SessionPresentationInput): F
       isDisabled: false,
       submitTitle: "Queue next message",
       submitAriaLabel: "Queue next message",
+      submitHint: "Adds your message to the queue for this conversation.",
       voiceTitle: "Record voice message (will be queued)",
     }
   }
@@ -150,6 +264,7 @@ export function getFollowUpInputPresentation(input: SessionPresentationInput): F
       isDisabled: true,
       submitTitle: "Agent is processing",
       submitAriaLabel: "Agent is processing",
+      submitHint: "Wait for the agent to finish or enable message queueing before sending another message.",
       voiceTitle: "Voice unavailable while agent is processing",
     }
   }
@@ -160,6 +275,7 @@ export function getFollowUpInputPresentation(input: SessionPresentationInput): F
     isDisabled: false,
     submitTitle: "Send message",
     submitAriaLabel: "Send message",
+    submitHint: "Sends your message to the selected agent.",
     voiceTitle: "Continue with voice",
   }
 }

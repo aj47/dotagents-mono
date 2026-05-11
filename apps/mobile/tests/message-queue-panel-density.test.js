@@ -9,12 +9,12 @@ const source = fs.readFileSync(
 );
 
 test('mobile queued-message rows use text-first actions with explicit accessibility labels', () => {
-  assert.match(source, /<Text style=\{styles\.retryActionText\}>Retry<\/Text>/);
-  assert.match(source, /<Text style=\{styles\.editActionText\}>Edit<\/Text>/);
-  assert.match(source, /<Text style=\{styles\.removeActionText\}>Remove<\/Text>/);
-  assert.match(source, /accessibilityLabel="Retry queued message"/);
-  assert.match(source, /accessibilityLabel="Edit queued message"/);
-  assert.match(source, /accessibilityLabel="Remove queued message"/);
+  assert.match(source, /<Text style=\{styles\.retryActionText\}>\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.retryLabel\}<\/Text>/);
+  assert.match(source, /<Text style=\{styles\.editActionText\}>\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.editLabel\}<\/Text>/);
+  assert.match(source, /<Text style=\{styles\.removeActionText\}>\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.removeLabel\}<\/Text>/);
+  assert.match(source, /accessibilityLabel=\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.retryAccessibilityLabel\}/);
+  assert.match(source, /accessibilityLabel=\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.editAccessibilityLabel\}/);
+  assert.match(source, /accessibilityLabel=\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.removeAccessibilityLabel\}/);
   assert.doesNotMatch(source, /<Ionicons name="refresh" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
   assert.doesNotMatch(source, /<Ionicons name="pencil" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
   assert.doesNotMatch(source, /<Ionicons name="close" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
@@ -29,20 +29,27 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
 test('mobile queue panel exposes an explicit send-next action for queued drafts', () => {
   assert.match(source, /onProcessNext\?: \(\) => void;/);
   assert.match(source, /canProcessNext\?: boolean;/);
-  assert.match(source, /accessibilityLabel="Send next queued message"/);
-  assert.match(source, /<Text style=\{styles\.processButtonText\}>Send Next<\/Text>/);
+  assert.match(source, /accessibilityLabel=\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.sendNextAccessibilityLabel\}/);
+  assert.match(source, /<Text style=\{styles\.processButtonText\}>\{MESSAGE_QUEUE_PANEL_PRESENTATION\.actions\.sendNextLabel\}<\/Text>/);
 });
 
 test('mobile queue panel uses shared queued-message eligibility rules', () => {
-  assert.match(source, /isQueuedMessageProcessing\(message\)/);
-  assert.match(source, /isQueuedMessageFailed\(message\)/);
-  assert.match(source, /canMutateQueuedMessage\(message\)/);
-  assert.match(source, /canEditQueuedMessage\(message\)/);
-  assert.match(source, /getQueuedMessageStatusLabel\(message\)/);
+  assert.match(source, /MESSAGE_QUEUE_PANEL_PRESENTATION/);
+  assert.match(source, /formatMessageQueueCompactLabel\(messages\.length\)/);
+  assert.match(source, /formatMessageQueuePanelTitle\(messages\.length\)/);
+  assert.match(source, /getQueuedMessageItemPresentation\(message, isExpanded\)/);
+  assert.match(source, /getMessageQueueListToggleLabel\(isListCollapsed\)/);
+  assert.match(source, /messagePresentation/);
+  assert.match(source, /statusLabel,/);
+  assert.match(source, /errorText,/);
   assert.match(source, /hasProcessingQueuedMessage\(messages\)/);
 
+  assert.doesNotMatch(source, /Queued Messages \(\{messages\.length\}\)/);
+  assert.doesNotMatch(source, /Error: \{message\.errorMessage\}/);
   assert.doesNotMatch(source, /message\.status === ['"]processing['"]/);
   assert.doesNotMatch(source, /message\.status === ['"]failed['"]/);
+  assert.doesNotMatch(source, /isQueuedMessageProcessing\(message\)/);
+  assert.doesNotMatch(source, /isQueuedMessageFailed\(message\)/);
   assert.doesNotMatch(source, /isFailed \? 'Failed' : isProcessing \? 'Processing\.\.\.' : 'Queued'/);
   assert.doesNotMatch(source, /messages\.some\(\(m\) => m\.status === ['"]processing['"]\)/);
 });

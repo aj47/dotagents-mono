@@ -29,6 +29,22 @@ import type { LegacyProfileRecord as Profile } from "@dotagents/shared/agent-pro
 import type { AgentSkill } from "@dotagents/shared/types"
 import { toggleSetValue } from "@dotagents/shared/collection-state"
 import { isSkillEnabledForProfile, sortSkillsByProfileEnablement } from "@dotagents/shared/skills-api"
+import {
+  APP_SHELL_SKILL_DELETE_PRESENTATION,
+  APP_SHELL_SKILL_EDITOR_PRESENTATION,
+  APP_SHELL_SKILL_FEEDBACK_PRESENTATION,
+  formatAppShellSkillBulkActionLabel,
+  formatAppShellSkillDeleteSelectedConfirmMessage,
+  formatAppShellSkillFolderImportStatus,
+  formatAppShellSkillGitHubImportStatus,
+  formatAppShellSkillImportedSuccessMessage,
+  formatAppShellSkillImportSummary,
+  getAppShellEditorActionLabel,
+  getAppShellEditorTitle,
+  getAppShellSkillActionLabel,
+  getAppShellSkillDeleteConfirmMessage,
+  getAppShellSkillItemActionAccessibilityLabel,
+} from "@dotagents/shared/app-shell"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal, AlertTriangle } from "lucide-react"
 
@@ -96,11 +112,11 @@ export function Component() {
         const importedSkills = await desktopSkillsClient.scanSkillsFolder()
         queryClient.invalidateQueries({ queryKey: ["skills"] })
         if (importedSkills && importedSkills.length > 0) {
-          toast.success(`Auto-imported ${importedSkills.length} skill(s)`)
+          toast.success(formatAppShellSkillFolderImportStatus(importedSkills.length))
         }
       } catch (error) {
         console.error("Failed to auto-refresh skills:", error)
-        toast.error("Failed to auto-refresh skills")
+        toast.error(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.autoRefreshFailed)
       }
     })
     return () => unsubscribe()
@@ -114,10 +130,10 @@ export function Component() {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
       setIsCreateDialogOpen(false)
       resetNewSkillForm()
-      toast.success("Skill created successfully")
+      toast.success(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.created)
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create skill: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.createFailed}: ${error.message}`)
     },
   })
 
@@ -129,10 +145,10 @@ export function Component() {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
       setIsEditDialogOpen(false)
       setEditingSkill(null)
-      toast.success("Skill updated successfully")
+      toast.success(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.updated)
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update skill: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.updateFailed}: ${error.message}`)
     },
   })
 
@@ -142,10 +158,10 @@ export function Component() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
-      toast.success("Skill deleted successfully")
+      toast.success(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.deleted)
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete skill: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_DELETE_PRESENTATION.deleteFailed}: ${error.message}`)
     },
   })
 
@@ -159,7 +175,7 @@ export function Component() {
       toast.success(`${skillName} ${willEnable ? "enabled" : "disabled"}`)
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update skill access: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.updateAccessFailed}: ${error.message}`)
     },
   })
 
@@ -177,7 +193,7 @@ export function Component() {
       setIsSelectMode(false)
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete skills: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_DELETE_PRESENTATION.deleteSelectedFailed}: ${error.message}`)
     },
   })
 
@@ -188,11 +204,11 @@ export function Component() {
     onSuccess: (skill: AgentSkill | null) => {
       if (skill) {
         queryClient.invalidateQueries({ queryKey: ["skills"] })
-        toast.success(`Skill "${skill.name}" imported successfully`)
+        toast.success(formatAppShellSkillImportedSuccessMessage(skill.name))
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to import skill: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFailed}: ${error.message}`)
     },
   })
 
@@ -204,11 +220,11 @@ export function Component() {
     onSuccess: (skill: AgentSkill | null) => {
       if (skill) {
         queryClient.invalidateQueries({ queryKey: ["skills"] })
-        toast.success(`Skill "${skill.name}" imported successfully`)
+        toast.success(formatAppShellSkillImportedSuccessMessage(skill.name))
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to import skill folder: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFolderFailed}: ${error.message}`)
     },
   })
 
@@ -221,29 +237,24 @@ export function Component() {
       if (result) {
         queryClient.invalidateQueries({ queryKey: ["skills"] })
 
-        const messages: string[] = []
+        const message = formatAppShellSkillImportSummary(
+          result.imported.length,
+          result.skipped.length,
+          result.errors.length,
+        )
         if (result.imported.length > 0) {
-          messages.push(`Imported ${result.imported.length} skill(s)`)
-        }
-        if (result.skipped.length > 0) {
-          messages.push(`${result.skipped.length} already imported`)
-        }
-        if (result.errors.length > 0) {
-          messages.push(`${result.errors.length} failed`)
-        }
-        if (result.imported.length > 0) {
-          toast.success(messages.join(", "))
+          toast.success(message)
         } else if (result.skipped.length > 0) {
-          toast.info(messages.join(", "))
+          toast.info(message)
         } else if (result.errors.length > 0) {
-          toast.error(`Failed to import skills: ${result.errors.map(e => e.folder).join(", ")}`)
+          toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importSkillsFailed}: ${result.errors.map(e => e.folder).join(", ")}`)
         } else {
-          toast.info("No skill folders found")
+          toast.info(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.noSkillFoldersFound)
         }
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to import skills: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importSkillsFailed}: ${error.message}`)
     },
   })
 
@@ -253,11 +264,11 @@ export function Component() {
     },
     onSuccess: (success: boolean) => {
       if (success) {
-        toast.success("Skill exported successfully")
+        toast.success(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.exported)
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to export skill: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.exportFailed}: ${error.message}`)
     },
   })
 
@@ -297,11 +308,11 @@ export function Component() {
     },
     onSuccess: (result) => {
       if (!result?.success) {
-        toast.error(result?.error || "Failed to reveal skill file")
+        toast.error(result?.error || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.revealFileFailed)
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to reveal skill file: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.revealFileFailed}: ${error.message}`)
     },
   })
 
@@ -311,11 +322,11 @@ export function Component() {
     },
     onSuccess: (result) => {
       if (!result?.success) {
-        toast.error(result?.error || "Failed to open skills folder")
+        toast.error(result?.error || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.openFolderFailed)
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to open skills folder: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.openFolderFailed}: ${error.message}`)
     },
   })
 
@@ -325,11 +336,11 @@ export function Component() {
     },
     onSuccess: (result) => {
       if (!result?.success) {
-        toast.error(result?.error || "Failed to open workspace skills folder")
+        toast.error(result?.error || APP_SHELL_SKILL_FEEDBACK_PRESENTATION.openWorkspaceFolderFailed)
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to open workspace skills folder: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.openWorkspaceFolderFailed}: ${error.message}`)
     },
   })
 
@@ -340,13 +351,13 @@ export function Component() {
     onSuccess: (importedSkills: AgentSkill[]) => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
       if (importedSkills.length > 0) {
-        toast.success(`Imported ${importedSkills.length} skill(s) from folder`)
+        toast.success(formatAppShellSkillFolderImportStatus(importedSkills.length))
       } else {
-        toast.info("No new skills found in folder")
+        toast.info(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.noNewSkillsFound)
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to scan skills folder: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.scanFolderFailed}: ${error.message}`)
     },
   })
 
@@ -359,24 +370,24 @@ export function Component() {
       if (result) {
         queryClient.invalidateQueries({ queryKey: ["skills"] })
         if (result.imported.length > 0) {
-          toast.success(`Imported ${result.imported.length} skill(s) from GitHub: ${result.imported.map(s => s.name).join(", ")}`)
+          toast.success(formatAppShellSkillGitHubImportStatus(result.imported.length, result.imported.map(s => s.name)))
         } else if (result.errors.length > 0) {
-          toast.error(`Failed to import: ${result.errors.join("; ")}`)
+          toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importFailed}: ${result.errors.join("; ")}`)
         } else {
-          toast.info("No skills found in repository")
+          toast.info(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.noSkillsFoundInRepository)
         }
         setIsGitHubDialogOpen(false)
         setGitHubRepoInput("")
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to import from GitHub: ${error.message}`)
+      toast.error(`${APP_SHELL_SKILL_FEEDBACK_PRESENTATION.importGitHubFailed}: ${error.message}`)
     },
   })
 
   const handleImportFromGitHub = () => {
     if (!gitHubRepoInput.trim()) {
-      toast.error("Please enter a GitHub repository (e.g., owner/repo)")
+      toast.error(APP_SHELL_SKILL_FEEDBACK_PRESENTATION.gitHubRepositoryRequired)
       return
     }
     importSkillFromGitHubMutation.mutate(gitHubRepoInput.trim())
@@ -390,11 +401,11 @@ export function Component() {
 
   const handleCreateSkill = () => {
     if (!newSkillName.trim()) {
-      toast.error("Skill name is required")
+      toast.error(APP_SHELL_SKILL_EDITOR_PRESENTATION.validation.nameRequired)
       return
     }
     if (!newSkillInstructions.trim()) {
-      toast.error("Skill instructions are required")
+      toast.error(APP_SHELL_SKILL_EDITOR_PRESENTATION.validation.instructionsRequired)
       return
     }
     createSkillMutation.mutate({
@@ -415,7 +426,7 @@ export function Component() {
   }
 
   const handleDeleteSkill = (skill: AgentSkill) => {
-    if (confirm(`Are you sure you want to delete the skill "${skill.name}"?`)) {
+    if (confirm(getAppShellSkillDeleteConfirmMessage(skill.name))) {
       deleteSkillMutation.mutate(skill.id)
     }
   }
@@ -423,7 +434,7 @@ export function Component() {
   const handleDeleteSelected = () => {
     if (selectedSkillIds.size === 0) return
     const count = selectedSkillIds.size
-    if (confirm(`Are you sure you want to delete ${count} skill(s)?`)) {
+    if (confirm(formatAppShellSkillDeleteSelectedConfirmMessage(count))) {
       deleteSkillsMutation.mutate(Array.from(selectedSkillIds))
     }
   }
@@ -483,7 +494,9 @@ export function Component() {
                 ) : (
                   <Square className="h-3 w-3" />
                 )}
-                {selectedSkillIds.size === skills.length && skills.length > 0 ? "Deselect All" : "Select All"}
+                {selectedSkillIds.size === skills.length && skills.length > 0
+                  ? getAppShellSkillActionLabel("deselectAll")
+                  : getAppShellSkillActionLabel("selectAll")}
               </Button>
               <Button
                 variant="outline"
@@ -497,7 +510,7 @@ export function Component() {
                 ) : (
                   <Download className="h-3 w-3" />
                 )}
-                Export Bundle {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : ""}
+                {formatAppShellSkillBulkActionLabel("exportBundle", selectedSkillIds.size)}
               </Button>
               <Button
                 variant="destructive"
@@ -511,7 +524,7 @@ export function Component() {
                 ) : (
                   <Trash2 className="h-3 w-3" />
                 )}
-                Delete {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : "Selected"}
+                {formatAppShellSkillBulkActionLabel("deleteSelected", selectedSkillIds.size)}
               </Button>
               <Button
                 variant="ghost"
@@ -520,7 +533,7 @@ export function Component() {
                 onClick={exitSelectMode}
               >
                 <X className="h-3 w-3" />
-                Cancel
+                {getAppShellSkillActionLabel("cancel")}
               </Button>
             </>
           ) : (
@@ -533,7 +546,7 @@ export function Component() {
                   onClick={() => setIsSelectMode(true)}
                 >
                   <CheckSquare className="h-3 w-3" />
-                  Select
+                  {getAppShellSkillActionLabel("select")}
                 </Button>
               )}
               <Button
@@ -543,7 +556,7 @@ export function Component() {
                 onClick={() => openSkillsFolderMutation.mutate()}
               >
                 <FolderOpen className="h-3 w-3" />
-                Open Folder
+                {getAppShellSkillActionLabel("openFolder")}
               </Button>
               <Button
                 variant="outline"
@@ -553,7 +566,7 @@ export function Component() {
                 disabled={!agentsFoldersQuery.data?.workspace?.skillsDir || openWorkspaceSkillsFolderMutation.isPending}
               >
                 <FolderUp className="h-3 w-3" />
-                Workspace
+                {getAppShellSkillActionLabel("workspaceFolder")}
               </Button>
               <Button
                 variant="outline"
@@ -563,7 +576,7 @@ export function Component() {
                 disabled={scanSkillsFolderMutation.isPending}
               >
                 <RefreshCw className={`h-3 w-3 ${scanSkillsFolderMutation.isPending ? 'animate-spin' : ''}`} />
-                Scan Folder
+                {getAppShellSkillActionLabel("scanFolder")}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -574,30 +587,30 @@ export function Component() {
                     disabled={importSkillMutation.isPending || importSkillFolderMutation.isPending || importSkillsFromParentFolderMutation.isPending || importSkillFromGitHubMutation.isPending}
                   >
                     <Upload className="h-3 w-3" />
-                    Import
+                    {getAppShellSkillActionLabel("import")}
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setIsBundleImportDialogOpen(true)}>
                     <Package />
-                    Import Bundle
+                    {getAppShellSkillActionLabel("importBundle")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsGitHubDialogOpen(true)}>
                     <Github />
-                    Import from GitHub
+                    {getAppShellSkillActionLabel("importFromGitHub")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => importSkillMutation.mutate()}>
                     <Upload />
-                    Import SKILL.md File
+                    {getAppShellSkillActionLabel("importSkillMarkdownFile")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => importSkillFolderMutation.mutate()}>
                     <FolderOpen />
-                    Import Skill Folder
+                    {getAppShellSkillActionLabel("importSkillFolder")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => importSkillsFromParentFolderMutation.mutate()}>
                     <FolderUp />
-                    Bulk Import from Folder
+                    {getAppShellSkillActionLabel("bulkImportFromFolder")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -607,7 +620,7 @@ export function Component() {
                 onClick={() => setIsCreateDialogOpen(true)}
               >
                 <Plus className="h-3 w-3" />
-                New Skill
+                {getAppShellEditorActionLabel("skill", false)}
               </Button>
             </>
           )}
@@ -713,31 +726,31 @@ export function Component() {
                               variant="ghost"
                               size="sm"
                               className="h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                              aria-label={`Actions for ${skill.name}`}
+                              aria-label={getAppShellSkillItemActionAccessibilityLabel("actions", skill.name)}
                             >
                               <MoreHorizontal className="h-3.5 w-3.5" />
-                              <span>Actions</span>
+                              <span>{getAppShellSkillActionLabel("actions")}</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEditSkill(skill)}>
                               <Pencil className="h-3.5 w-3.5" />
-                              Edit
+                              {getAppShellSkillActionLabel("edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openSkillFileMutation.mutate(skill.id)}>
                               <FileText className="h-3.5 w-3.5" />
-                              Reveal File
+                              {getAppShellSkillActionLabel("revealFile")}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => exportSkillMutation.mutate(skill.id)}>
                               <Download className="h-3.5 w-3.5" />
-                              Export
+                              {getAppShellSkillActionLabel("export")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteSkill(skill)}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
-                              Delete
+                              {getAppShellSkillActionLabel("delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -754,39 +767,39 @@ export function Component() {
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create New Skill</DialogTitle>
+              <DialogTitle>{getAppShellEditorTitle("skill", false)}</DialogTitle>
               <DialogDescription>
-                Create a skill with specialized instructions for the AI agent.
+                {APP_SHELL_SKILL_EDITOR_PRESENTATION.createDescription}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="skill-name">Name</Label>
+                <Label htmlFor="skill-name">{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.label}</Label>
                 <Input
                   id="skill-name"
                   value={newSkillName}
                   onChange={(e) => setNewSkillName(e.target.value)}
-                  placeholder="e.g., Code Review Expert"
+                  placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.placeholder}
                 />
               </div>
               <div>
-                <Label htmlFor="skill-description">Description</Label>
+                <Label htmlFor="skill-description">{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.description.label}</Label>
                 <Input
                   id="skill-description"
                   value={newSkillDescription}
                   onChange={(e) => setNewSkillDescription(e.target.value)}
-                  placeholder="Brief description of what this skill does"
+                  placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.description.placeholder}
                 />
               </div>
               <div>
-                <Label htmlFor="skill-instructions">Instructions</Label>
+                <Label htmlFor="skill-instructions">{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.label}</Label>
                 <Textarea
                   id="skill-instructions"
                   value={newSkillInstructions}
                   onChange={(e) => setNewSkillInstructions(e.target.value)}
                   rows={12}
                   className="font-mono text-sm"
-                  placeholder="Enter the instructions for this skill in markdown format..."
+                  placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.placeholder}
                 />
               </div>
             </div>
@@ -795,7 +808,7 @@ export function Component() {
                 Cancel
               </Button>
               <Button onClick={handleCreateSkill} disabled={createSkillMutation.isPending}>
-                {createSkillMutation.isPending ? "Creating..." : "Create Skill"}
+                {createSkillMutation.isPending ? APP_SHELL_SKILL_EDITOR_PRESENTATION.pending.creatingLabel : getAppShellEditorActionLabel("skill", false)}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -805,35 +818,37 @@ export function Component() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Skill</DialogTitle>
+              <DialogTitle>{getAppShellEditorTitle("skill", true)}</DialogTitle>
               <DialogDescription>
-                Update the skill name, description, and instructions.
+                {APP_SHELL_SKILL_EDITOR_PRESENTATION.editDescription}
               </DialogDescription>
             </DialogHeader>
             {editingSkill && (
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="edit-skill-name">Name</Label>
+                  <Label htmlFor="edit-skill-name">{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.label}</Label>
                   <Input
                     id="edit-skill-name"
                     value={editingSkill.name}
                     onChange={(e) =>
                       setEditingSkill({ ...editingSkill, name: e.target.value })
                     }
+                    placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.placeholder}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-skill-description">Description</Label>
+                  <Label htmlFor="edit-skill-description">{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.description.label}</Label>
                   <Input
                     id="edit-skill-description"
                     value={editingSkill.description}
                     onChange={(e) =>
                       setEditingSkill({ ...editingSkill, description: e.target.value })
                     }
+                    placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.description.placeholder}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-skill-instructions">Instructions</Label>
+                  <Label htmlFor="edit-skill-instructions">{APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.label}</Label>
                   <Textarea
                     id="edit-skill-instructions"
                     value={editingSkill.instructions}
@@ -842,6 +857,7 @@ export function Component() {
                     }
                     rows={12}
                     className="font-mono text-sm"
+                    placeholder={APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.placeholder}
                   />
                 </div>
               </div>
@@ -851,7 +867,7 @@ export function Component() {
                 Cancel
               </Button>
               <Button onClick={handleUpdateSkill} disabled={updateSkillMutation.isPending}>
-                {updateSkillMutation.isPending ? "Saving..." : "Save Changes"}
+                {updateSkillMutation.isPending ? APP_SHELL_SKILL_EDITOR_PRESENTATION.pending.savingLabel : getAppShellEditorActionLabel("skill", true)}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -861,7 +877,7 @@ export function Component() {
           open={isBundleImportDialogOpen}
           onOpenChange={setIsBundleImportDialogOpen}
           onImportComplete={handleBundleImportComplete}
-          title="Import Skill Bundle"
+          title={getAppShellSkillActionLabel("importBundle")}
           description="Preview and import skills from a local .dotagents bundle file."
           initialComponents={{
             agentProfiles: false,
@@ -883,7 +899,7 @@ export function Component() {
         <Dialog open={isGitHubDialogOpen} onOpenChange={setIsGitHubDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Import Skill from GitHub</DialogTitle>
+              <DialogTitle>{getAppShellSkillActionLabel("importSkillFromGitHubTitle")}</DialogTitle>
               <DialogDescription>
                 Enter a GitHub repository to import skills from. Supports formats like "owner/repo" or full GitHub URLs.
               </DialogDescription>
@@ -918,12 +934,12 @@ export function Component() {
                 {importSkillFromGitHubMutation.isPending ? (
                   <>
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Importing...
+                    {getAppShellSkillActionLabel("importing")}
                   </>
                 ) : (
                   <>
                     <Github className="h-3 w-3" />
-                    Import
+                    {getAppShellSkillActionLabel("import")}
                   </>
                 )}
               </Button>

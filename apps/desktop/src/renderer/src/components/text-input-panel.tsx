@@ -3,6 +3,7 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
+import { tipcClient } from "@renderer/lib/tipc-client"
 import { AgentProcessingView } from "./agent-processing-view"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { useTheme } from "@renderer/contexts/theme-context"
@@ -11,6 +12,7 @@ import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
 import { logUI } from "@renderer/lib/debug"
+import { formatChatImageAttachmentErrorMessage } from "@dotagents/shared/conversation-media-assets"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,
@@ -168,7 +170,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
         window.alert(errors.join("\n"))
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+      window.alert(formatChatImageAttachmentErrorMessage(error))
     }
   }
 

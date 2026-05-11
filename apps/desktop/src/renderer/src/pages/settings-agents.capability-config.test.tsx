@@ -4,6 +4,17 @@ import { describe, expect, it } from "vitest"
 const settingsAgentsSource = readFileSync(new URL("./settings-agents.tsx", import.meta.url), "utf8")
 
 describe("settings agents capability config", () => {
+  it("uses shared agent editor presentation copy in the desktop editor", () => {
+    expect(settingsAgentsSource).toContain("APP_SHELL_AGENT_EDITOR_PRESENTATION")
+    expect(settingsAgentsSource).toContain("APP_SHELL_AGENT_EDITOR_PRESENTATION.description")
+    expect(settingsAgentsSource).toContain("APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.uploadActionLabel")
+    expect(settingsAgentsSource).toContain("APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.displayName.placeholder")
+    expect(settingsAgentsSource).toContain("APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.command.placeholder")
+    expect(settingsAgentsSource).toContain("APP_SHELL_AGENT_EDITOR_PRESENTATION.externalSetup.verifyActionLabel")
+    expect(settingsAgentsSource).not.toContain("Configure agent identity, behavior, model, and capabilities.</CardDescription>")
+    expect(settingsAgentsSource).not.toContain('placeholder="e.g., claude-code-acp"')
+  })
+
   it("uses shared agent profile capability helpers for desktop MCP and runtime toggles", () => {
     expect(settingsAgentsSource).toContain("countEnabledAgentProfileMcpServers(agent.toolConfig, serverNames)")
     expect(settingsAgentsSource).toContain("getAgentProfileMcpConfigAfterServerToggle")

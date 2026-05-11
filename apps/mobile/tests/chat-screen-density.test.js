@@ -158,7 +158,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /promptQuickStarts\.map\(\(item\) => \(/);
   assert.match(screenSource, /chatHomeShortcutGrid/);
   assert.match(screenSource, /handleQuickStartPress\(item\)/);
-  assert.match(screenSource, /No prompts, skills, or tasks available from your connected desktop app\./);
+  assert.match(screenSource, /PROMPT_LIBRARY_PRESENTATION\.empty\.mobileLibrary/);
   assert.doesNotMatch(screenSource, /chatHomeScanButtonText/);
 });
 
@@ -181,12 +181,17 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /getPromptLibrarySkillContent\(skill\)/);
   assert.match(screenSource, /getPromptLibrarySkillDescription\(skill\)/);
   assert.match(screenSource, /getPromptLibraryTaskContent\(task\)/);
-  assert.match(screenSource, /getPromptLibraryTaskDescription\(task, 'Run this desktop task now\.'\)/);
+  assert.match(screenSource, /getPromptLibraryTaskDescription\(task, PROMPT_LIBRARY_PRESENTATION\.mobile\.taskDescriptionFallback\)/);
+  assert.match(screenSource, /getPromptLibraryShortcutAccessibilityLabel\(item\.source, item\.title, item\.action\)/);
+  assert.match(screenSource, /getPromptLibraryShortcutAccessibilityHint\(item\.source, item\.action\)/);
+  assert.match(screenSource, /getPromptLibraryEditPromptAccessibilityLabel\(item\.title\)/);
+  assert.match(screenSource, /getPromptLibraryDeletePromptAccessibilityLabel\(item\.title\)/);
+  assert.match(screenSource, /getPromptLibrarySaveSuccessMessage\(Boolean\(editingPrompt\)\)/);
   assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /updatePredefinedPromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
   assert.match(screenSource, /deletePredefinedPromptFromList\(predefinedPrompts, prompt\.id\)/);
-  assert.match(screenSource, /editingPrompt \? 'Edit Prompt' : 'Add New Prompt'/);
-  assert.match(screenSource, /editingPrompt \? 'Save Changes' : 'Add Prompt'/);
+  assert.match(screenSource, /getPromptLibraryEditorTitle\(Boolean\(editingPrompt\)\)/);
+  assert.match(screenSource, /getPromptLibraryEditorSaveActionLabel\(Boolean\(editingPrompt\), isSavingPrompt\)/);
   assert.match(screenSource, /styles\.chatHomeShortcutActions/);
 });
 
@@ -196,7 +201,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(screenSource, /await sessionStore\.syncWithServer\(settingsClient\)/);
   assert.match(screenSource, /sessionStore\.findSessionByServerConversationId\(branchedConversation\.id\)/);
   assert.match(screenSource, /const canBranchFromMessage =\s+!!currentSession\?\.serverConversationId &&\s+\(m\.role === 'user' \|\| m\.role === 'assistant'\);/);
-  assert.match(screenSource, /accessibilityLabel=\{`Branch conversation from \$\{m\.role\} message \$\{i \+ 1\}`\}/);
+  assert.match(screenSource, /formatChatRuntimeBranchAccessibilityLabel\(m\.role, i \+ 1\)/);
   assert.match(screenSource, /styles\.messageActionsRow/);
 });
 

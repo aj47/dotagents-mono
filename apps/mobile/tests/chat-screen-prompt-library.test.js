@@ -20,7 +20,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /availableSkills\.slice/);
   assert.doesNotMatch(screenSource, /availableTasks\.slice/);
   assert.match(screenSource, /promptQuickStarts\.map\(\(item\) =>/);
-  assert.match(screenSource, /No prompts, skills, or tasks available from your connected desktop app\./);
+  assert.match(screenSource, /PROMPT_LIBRARY_PRESENTATION\.empty\.mobileLibrary/);
   assert.doesNotMatch(screenSource, /title: 'Custom Commands'/);
   assert.doesNotMatch(screenSource, /title: 'Saved Prompts'/);
   assert.doesNotMatch(screenSource, /title: 'Prompt Library'/);
@@ -30,12 +30,12 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
 
 test('can create a new predefined prompt from mobile and save it to desktop settings', () => {
   assert.match(screenSource, /id: 'action-add-prompt'/);
-  assert.match(screenSource, /title: '\+ Add Prompt'/);
+  assert.match(screenSource, /title: PROMPT_LIBRARY_PRESENTATION\.mobile\.addPromptTitle/);
   assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
   assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
   assert.match(screenSource, /onPress=\{handleSavePrompt\}/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
-  assert.match(screenSource, /Prompt saved to your desktop prompt library\./);
+  assert.match(screenSource, /getPromptLibrarySaveSuccessMessage\(Boolean\(editingPrompt\)\)/);
 });
 
 test('removes the bottom composer prompt-library button', () => {

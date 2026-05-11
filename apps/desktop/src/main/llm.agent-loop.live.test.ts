@@ -301,7 +301,7 @@ async function executeLiveSafeTool(
 
   if (toolCall.name === "respond_to_user") {
     const { appendSessionUserResponse } = await import("./session-user-response-store")
-    const { extractRespondToUserContentFromArgs } = await import("./respond-to-user-utils")
+    const { extractRespondToUserContentFromArgs } = await import("@dotagents/shared/chat-utils")
     const responseContent = extractRespondToUserContentFromArgs(toolCall.arguments)
 
     if (!responseContent) {
@@ -344,7 +344,7 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
     fs.rmSync(liveHarness.tempRoot, { recursive: true, force: true })
     fs.mkdirSync(liveHarness.tempRoot, { recursive: true })
 
-    const { state } = await import("./state")
+    const { state } = await import("@dotagents/core")
     state.shouldStopAgent = false
     state.agentSessions.clear()
     state.llmAbortControllers.clear()

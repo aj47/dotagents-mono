@@ -78,6 +78,45 @@ import type {
 } from "@dotagents/shared/mcp-utils"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
+  APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION,
+  APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION,
+  formatAppShellMcpServerClearLogsFailedMessage,
+  formatAppShellMcpServerConnectedStatus,
+  formatAppShellMcpServerConnectFailedMessage,
+  formatAppShellMcpServerConnectionTestFailedMessage,
+  formatAppShellMcpServerExampleAddedStatus,
+  formatAppShellMcpServerExportConfigFailedMessage,
+  formatAppShellMcpServerImportConfigFailedMessage,
+  formatAppShellMcpServerImportStatus,
+  formatAppShellMcpServerInvalidJsonMessage,
+  formatAppShellMcpServerLogsClearedStatus,
+  formatAppShellMcpServerRestartedStatus,
+  formatAppShellMcpServerRestartFailedMessage,
+  formatAppShellMcpServerRevokeAuthenticationFailedMessage,
+  formatAppShellMcpServerReservedNameHiddenMessage,
+  formatAppShellMcpServerSetupRequiredMessage,
+  formatAppShellMcpServerSkippedReservedName,
+  formatAppShellMcpServerStartedStatus,
+  formatAppShellMcpServerStartFailedMessage,
+  formatAppShellMcpServerStartOAuthFailedMessage,
+  formatAppShellMcpServerStoppedStatus,
+  formatAppShellMcpServerStopFailedMessage,
+  formatAppShellMcpSourceToolsPartialToggleStatus,
+  formatAppShellMcpSourceToolsToggleErrorMessage,
+  formatAppShellMcpSourceToolsToggleStatus,
+  formatAppShellMcpToolToggleErrorMessage,
+  formatAppShellMcpToolToggleFailedMessage,
+  formatAppShellMcpToolToggleStatus,
+  formatAppShellMcpToolsPartialToggleStatus,
+  formatAppShellMcpToolsToggleErrorMessage,
+  formatAppShellMcpToolsToggleStatus,
+  getAppShellMcpServerActionLabel,
+  getAppShellMcpServerDeleteConfirmMessage,
+  getAppShellMcpServerEditorSaveActionLabel,
+  getAppShellMcpServerEditorTitle,
+  getAppShellMcpServerItemActionAccessibilityLabel,
+} from "@dotagents/shared/app-shell"
+import {
   buildMcpServerConfigFromDraft,
   countEnabledMcpTools,
   getCollapsedMcpNames,
@@ -143,13 +182,13 @@ const SERVER_DIALOG_DRAFT_OPTIONS = {
 } satisfies BuildMcpServerConfigFromDraftOptions
 
 function formatServerDialogDraftError(error: string): string {
-  if (error === "MCP server name is required") return "Server name is required"
-  if (error === "Command is required for stdio MCP servers") return "Command is required for stdio transport"
-  if (error === "URL is required for remote MCP servers") return "URL is required for remote transport"
-  if (error === "MCP server URL is invalid") return "Invalid URL format"
+  if (error === "MCP server name is required") return APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.validation.nameRequired
+  if (error === "Command is required for stdio MCP servers") return APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.validation.commandRequired
+  if (error === "URL is required for remote MCP servers") return APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.validation.urlRequired
+  if (error === "MCP server URL is invalid") return APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.validation.invalidUrl
 
   const reservedMatch = error.match(/^MCP server name "(.+)" is reserved$/)
-  if (reservedMatch) return `Server name "${reservedMatch[1]}" is reserved and cannot be used`
+  if (reservedMatch) return `Server name "${reservedMatch[1]}" ${APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.validation.reservedNameSuffix}`
 
   return error
 }
@@ -268,9 +307,11 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   return (
     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>{server ? "Edit Server" : "Add Server"}</DialogTitle>
+        <DialogTitle>
+          {getAppShellMcpServerEditorTitle(server ? "edit" : "create")}
+        </DialogTitle>
         <DialogDescription>
-          Add or configure an MCP server
+          {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.description}
         </DialogDescription>
       </DialogHeader>
 
@@ -282,7 +323,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             className="flex-1"
             size="sm"
           >
-            Manual
+            {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.tabs.manual}
           </Button>
           {/* Only show import tabs when adding a new server (not editing) */}
           {!server && onImportFromFile && (
@@ -293,7 +334,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               size="sm"
             >
               <Upload className="h-3 w-3" />
-              From File
+              {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.tabs.file}
             </Button>
           )}
           {!server && onImportFromText && (
@@ -304,7 +345,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               size="sm"
             >
               <FileText className="h-3 w-3" />
-              Paste JSON
+              {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.tabs.paste}
             </Button>
           )}
           <Button
@@ -313,7 +354,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             className="flex-1"
             size="sm"
           >
-            Examples
+            {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.tabs.examples}
           </Button>
         </div>
 
@@ -321,65 +362,65 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         {activeTab === 'manual' && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="server-name">Server Name</Label>
+              <Label htmlFor="server-name">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.name.label}</Label>
               <Input
                 id="server-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., google-maps"
+                placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.name.placeholder}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="transport">Transport Type</Label>
+              <Label htmlFor="transport">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.transport.label}</Label>
               <Select
                 value={transport}
                 onValueChange={(value: MCPTransportType) => setTransport(value)}
               >
                 <SelectTrigger id="transport" className="border border-primary/40">
-                  <SelectValue placeholder="Select transport type" />
+                  <SelectValue placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.transport.placeholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="stdio">Local Command (stdio)</SelectItem>
-                  <SelectItem value="websocket">WebSocket</SelectItem>
-                  <SelectItem value="streamableHttp">Streamable HTTP</SelectItem>
+                  <SelectItem value="stdio">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.transports.stdio}</SelectItem>
+                  <SelectItem value="websocket">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.transports.websocket}</SelectItem>
+                  <SelectItem value="streamableHttp">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.transports.streamableHttp}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Choose how to connect to the MCP server
+                {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.transport.helper}
               </p>
             </div>
 
             {transport === "stdio" ? (
               <div className="space-y-2">
-                <Label htmlFor="fullCommand">Command</Label>
+                <Label htmlFor="fullCommand">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.command.label}</Label>
                 <Input
                   id="fullCommand"
                   value={fullCommand}
                   onChange={(e) => setFullCommand(e.target.value)}
-                  placeholder="e.g., npx -y @modelcontextprotocol/server-google-maps"
+                  placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.command.placeholder}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Full command with arguments (space-separated)
+                  {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.command.helper}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="url">Server URL</Label>
+                <Label htmlFor="url">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.label}</Label>
                 <Input
                   id="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder={
                     transport === "websocket"
-                      ? "ws://localhost:8080"
-                      : "http://localhost:8080"
+                      ? APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.websocketPlaceholder
+                      : APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.streamableHttpPlaceholder
                   }
                 />
                 <p className="text-xs text-muted-foreground">
                   {transport === "websocket"
-                    ? "WebSocket URL (e.g., ws://localhost:8080 or wss://example.com/mcp)"
-                    : "HTTP URL for streamable HTTP transport (e.g., http://localhost:8080/mcp)"}
+                    ? APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.websocketHelper
+                    : APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.url.streamableHttpHelper}
                 </p>
               </div>
             )}
@@ -387,43 +428,43 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             {/* Custom Headers - only shown for streamableHttp transport */}
             {transport === "streamableHttp" && (
               <div className="space-y-2">
-                <Label htmlFor="headers">Custom HTTP Headers</Label>
+                <Label htmlFor="headers">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.headers.label}</Label>
                 <Textarea
                   id="headers"
                   value={headers}
                   onChange={(e) => setHeaders(e.target.value)}
-                  placeholder="X-API-Key=your-api-key&#10;User-Agent=MyApp/1.0&#10;Content-Type=application/json"
+                  placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.headers.placeholder}
                   rows={4}
                 />
                 <p className="text-xs text-muted-foreground">
-                  One per line in Header-Name=value format. These headers will be included in all HTTP requests to the server.
+                  {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.headers.helper}
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="env">Environment Variables</Label>
+              <Label htmlFor="env">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.env.label}</Label>
               <Textarea
                 id="env"
                 value={env}
                 onChange={(e) => setEnv(e.target.value)}
-                placeholder="API_KEY=your-key-here&#10;ANOTHER_VAR=value"
+                placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.env.placeholder}
                 rows={4}
               />
               <p className="text-xs text-muted-foreground">
-                One per line in KEY=value format
+                {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.env.helper}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="timeout">Timeout (ms)</Label>
+                <Label htmlFor="timeout">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.timeout.label}</Label>
                 <Input
                   id="timeout"
                   type="number"
                   value={timeout}
                   onChange={(e) => setTimeout(e.target.value)}
-                  placeholder="60000"
+                  placeholder={APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.timeout.placeholder}
                 />
               </div>
 
@@ -433,41 +474,41 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   checked={disabled}
                   onCheckedChange={setDisabled}
                 />
-                <Label htmlFor="disabled">Disabled</Label>
+                <Label htmlFor="disabled">{APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.disabled.label}</Label>
               </div>
             </div>
 
             {/* OAuth Configuration - automatically shown for streamableHttp transport */}
             {transport === "streamableHttp" && url && (
               <OAuthServerConfig
-                serverName={name || "New Server"}
+                serverName={name || APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.oauth.newServerName}
                 serverUrl={url}
                 oauthConfig={oauthConfig}
                 onConfigChange={setOAuthConfig}
                 onStartAuth={async () => {
                   if (!name) {
-                    toast.error("Please save the server configuration first")
+                    toast.error(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.oauth.saveBeforeAuth)
                     return
                   }
                   try {
                     await desktopMcpOAuthClient.initiateFlow(name)
-                    toast.success("OAuth authentication started. Please complete the flow in your browser.")
+                    toast.success(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.oauth.startSuccess)
                   } catch (error) {
-                    toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
+                    toast.error(formatAppShellMcpServerStartOAuthFailedMessage(error instanceof Error ? error.message : String(error)))
                   }
                 }}
                 onRevokeAuth={async () => {
                   if (!name) return
                   try {
                     await desktopMcpOAuthClient.revokeTokens(name)
-                    toast.success("OAuth tokens revoked successfully")
+                    toast.success(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.oauth.revokeSuccess)
                   } catch (error) {
-                    toast.error(`Failed to revoke OAuth tokens: ${error instanceof Error ? error.message : String(error)}`)
+                    toast.error(formatAppShellMcpServerRevokeAuthenticationFailedMessage(error instanceof Error ? error.message : String(error)))
                   }
                 }}
                 onTestConnection={async () => {
                   if (!name) {
-                    toast.error("Please save the server configuration first")
+                    toast.error(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.oauth.saveBeforeAuth)
                     return
                   }
                   try {
@@ -479,12 +520,12 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
 
                     const result = await desktopMcpServerClient.testConnection(draftResult.name, draftResult.config)
                     if (result.success) {
-                      toast.success("Connection test successful!")
+                      toast.success(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.runtime.connectionTestSuccess)
                     } else {
-                      toast.error(`Connection test failed: ${result.error}`)
+                      toast.error(formatAppShellMcpServerConnectionTestFailedMessage(result.error))
                     }
                   } catch (error) {
-                    toast.error(`Connection test failed: ${error instanceof Error ? error.message : String(error)}`)
+                    toast.error(formatAppShellMcpServerConnectionTestFailedMessage(error instanceof Error ? error.message : String(error)))
                   }
                 }}
               />
@@ -497,7 +538,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
           <div className="space-y-4">
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Import from JSON file</h3>
+              <h3 className="text-lg font-medium mb-2">
+                {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.import.fileTitle}
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Select a JSON file containing MCP server configurations
               </p>
@@ -573,7 +616,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   Validating...
                 </>
               ) : (
-                "Import Configuration"
+                APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.import.pasteTitle
               )}
             </Button>
           </div>
@@ -589,7 +632,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {/* Standard MCP Examples */}
               <div className="space-y-2">
-                <h4 className="font-medium text-sm">Standard MCP Servers</h4>
+                <h4 className="font-medium text-sm">
+                  {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.import.standardExamplesTitle}
+                </h4>
                 {Object.entries(MCP_EXAMPLES).map(([key, example]) => (
                   <Card key={key} className="p-3">
                     <div className="flex items-start justify-between">
@@ -643,7 +688,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               {/* OAuth MCP Examples */}
               {Object.keys(OAUTH_MCP_EXAMPLES).length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">OAuth-Enabled MCP Servers</h4>
+                  <h4 className="font-medium text-sm">
+                    {APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.import.oauthExamplesTitle}
+                  </h4>
                   {Object.entries(OAUTH_MCP_EXAMPLES).map(([key, example]) => (
                     <Card key={key} className="p-3">
                       <div className="flex items-start justify-between">
@@ -693,12 +740,17 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          {getAppShellMcpServerActionLabel("cancel")}
         </Button>
         {/* Only show Add/Update Server button on manual and examples tabs */}
         {/* File and paste tabs have their own action buttons */}
         {(activeTab === 'manual' || activeTab === 'examples') && (
-          <Button onClick={handleSave}>{server ? "Update" : "Add"} Server</Button>
+          <Button onClick={handleSave}>
+            {getAppShellMcpServerEditorSaveActionLabel(
+              server ? "edit" : "create",
+              false,
+            )}
+          </Button>
         )}
       </DialogFooter>
     </DialogContent>
@@ -928,7 +980,7 @@ export function MCPConfigManager({
     for (const serverName of hiddenServers) {
       if (!warnedReservedServersRef.current.has(serverName)) {
         warnedReservedServersRef.current.add(serverName)
-        toast.warning(`Server "${serverName}" uses a reserved name and has been hidden. Please rename or remove it from your MCP configuration.`)
+        toast.warning(formatAppShellMcpServerReservedNameHiddenMessage(serverName))
       }
     }
   }, [servers])
@@ -1121,22 +1173,20 @@ export function MCPConfigManager({
       const result = await desktopMcpToolsClient.setToolEnabled(toolName, enabled)
 
       if ((result as any).success) {
-        toast.success(`Tool ${toolName} ${enabled ? "enabled" : "disabled"}`)
+        toast.success(formatAppShellMcpToolToggleStatus(toolName, enabled))
       } else {
         // Revert local state if backend call failed
         setTools((prevTools) =>
           setMcpToolEnabledInList(prevTools, toolName, !enabled),
         )
-        toast.error(
-          `Failed to ${enabled ? "enable" : "disable"} tool ${toolName}`,
-        )
+        toast.error(formatAppShellMcpToolToggleFailedMessage(toolName, enabled))
       }
     } catch (error: any) {
       // Revert local state on error
       setTools((prevTools) =>
         setMcpToolEnabledInList(prevTools, toolName, !enabled),
       )
-      toast.error(`Error toggling tool: ${error.message}`)
+      toast.error(formatAppShellMcpToolToggleErrorMessage(error.message))
     }
   }
 
@@ -1168,7 +1218,11 @@ export function MCPConfigManager({
 
       if (failed === 0) {
         toast.success(
-          `All ${serverTools.length} tools for ${sourceLabel} ${enable ? "enabled" : "disabled"}`,
+          formatAppShellMcpSourceToolsToggleStatus(
+            serverTools.length,
+            sourceLabel,
+            enable,
+          ),
         )
       } else {
         // Revert local state for failed calls (rejected OR success:false)
@@ -1188,14 +1242,20 @@ export function MCPConfigManager({
         setTools(revertedTools)
 
         toast.warning(
-          `${successful}/${serverTools.length} tools ${enable ? "enabled" : "disabled"} for ${sourceLabel} (${failed} failed)`,
+          formatAppShellMcpSourceToolsPartialToggleStatus(
+            successful,
+            serverTools.length,
+            sourceLabel,
+            enable,
+            failed,
+          ),
         )
       }
     } catch (error: any) {
       // Revert all tools on error
       const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, originalStates)
       setTools(revertedTools)
-      toast.error(`Error toggling tools for ${sourceLabel}: ${error.message}`)
+      toast.error(formatAppShellMcpSourceToolsToggleErrorMessage(sourceLabel, error.message))
     }
   }
 
@@ -1241,19 +1301,19 @@ export function MCPConfigManager({
           // Mark the server as runtime-enabled
           const runtimeResult = await desktopMcpServerClient.setRuntimeEnabled(name, true)
           if (!runtimeResult.success) {
-            toast.error(`Failed to enable server: Server not found`)
+            toast.error(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.runtime.enableServerMissing)
             return
           }
 
           // Start the server
           const result = await desktopMcpServerClient.restartServer(name)
           if (result.success) {
-            toast.success(`Server ${name} connected successfully`)
+            toast.success(formatAppShellMcpServerConnectedStatus(name))
           } else {
-            toast.error(`Failed to connect server: ${result.error}`)
+            toast.error(formatAppShellMcpServerConnectFailedMessage(result.error))
           }
         } catch (error) {
-          toast.error(`Failed to connect server: ${error instanceof Error ? error.message : String(error)}`)
+          toast.error(formatAppShellMcpServerConnectFailedMessage(error instanceof Error ? error.message : String(error)))
         }
       }, 500)
     }
@@ -1270,6 +1330,7 @@ export function MCPConfigManager({
   }
 
   const handleDeleteServer = (name: string) => {
+    if (!confirm(getAppShellMcpServerDeleteConfirmMessage(name))) return
     const newConfig = removeMcpServerConfig(config, name)
     onConfigChange(newConfig)
   }
@@ -1284,21 +1345,21 @@ export function MCPConfigManager({
 
         // Warn about skipped reserved names
         for (const skippedName of importResult.skippedReservedServerNames) {
-          toast.warning(`Skipped importing reserved server name: ${skippedName}`)
+          toast.warning(formatAppShellMcpServerSkippedReservedName(skippedName))
         }
 
         if (importResult.importedCount === 0 && importResult.skippedReservedServerNames.length > 0) {
-          toast.error("No servers to import - all server names were reserved")
+          toast.error(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.noImportableServers)
           return
         }
 
         // Add imported servers to config (duplicates will be replaced by imported versions)
         onConfigChange(importResult.config)
         setShowAddDialog(false)
-        toast.success(`Successfully imported ${importResult.importedCount} server(s)`)
+        toast.success(formatAppShellMcpServerImportStatus(importResult.importedCount))
       }
     } catch (error) {
-      toast.error(`Failed to import config: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerImportConfigFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -1306,10 +1367,10 @@ export function MCPConfigManager({
     try {
       const success = await desktopMcpServerClient.saveConfigFile(config)
       if (success) {
-        toast.success("MCP configuration exported successfully")
+        toast.success(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportSuccess)
       }
     } catch (error) {
-      toast.error(`Failed to export config: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerExportConfigFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -1339,23 +1400,23 @@ export function MCPConfigManager({
 
         // Warn about skipped reserved names
         for (const skippedName of importResult.skippedReservedServerNames) {
-          toast.warning(`Skipped importing reserved server name: ${skippedName}`)
+          toast.warning(formatAppShellMcpServerSkippedReservedName(skippedName))
         }
 
         if (importResult.importedCount === 0 && importResult.skippedReservedServerNames.length > 0) {
-          toast.error("No servers to import - all server names were reserved")
+          toast.error(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.noImportableServers)
           return false
         }
 
         // Add imported servers to config (duplicates will be replaced by imported versions)
         onConfigChange(importResult.config)
         setShowAddDialog(false)
-        toast.success(`Successfully imported ${importResult.importedCount} server(s)`)
+        toast.success(formatAppShellMcpServerImportStatus(importResult.importedCount))
         return true
       }
       return false
     } catch (error) {
-      toast.error(`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerInvalidJsonMessage(error instanceof Error ? error.message : String(error)))
       return false
     }
   }
@@ -1365,7 +1426,7 @@ export function MCPConfigManager({
     if (example) {
       handleAddServer(example.name, example.config)
       setShowExamples(false)
-      toast.success(`Added ${example.name} server configuration`)
+      toast.success(formatAppShellMcpServerExampleAddedStatus(example.name))
     }
   }
 
@@ -1374,11 +1435,11 @@ export function MCPConfigManager({
     if (example) {
       handleAddServer(example.name, example.config)
       setShowExamples(false)
-      toast.success(`Added ${example.name} OAuth server configuration`)
+      toast.success(formatAppShellMcpServerExampleAddedStatus(example.name, true))
 
       // Show setup instructions
       if (example.setupInstructions.length > 0) {
-        toast.info(`Setup required: ${example.setupInstructions[0]}`, {
+        toast.info(formatAppShellMcpServerSetupRequiredMessage(example.setupInstructions[0]), {
           duration: 5000,
         })
       }
@@ -1389,12 +1450,12 @@ export function MCPConfigManager({
     try {
       const result = await desktopMcpServerClient.restartServer(serverName)
       if (result.success) {
-        toast.success(`Server ${serverName} restarted successfully`)
+        toast.success(formatAppShellMcpServerRestartedStatus(serverName))
       } else {
-        toast.error(`Failed to restart server: ${result.error}`)
+        toast.error(formatAppShellMcpServerRestartFailedMessage(result.error))
       }
     } catch (error) {
-      toast.error(`Failed to restart server: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerRestartFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -1403,21 +1464,21 @@ export function MCPConfigManager({
       // First mark the server as runtime-disabled so it stays stopped
       const runtimeResult = await desktopMcpServerClient.setRuntimeEnabled(serverName, false)
       if (!runtimeResult.success) {
-        toast.error(`Failed to disable server: Server not found`)
+        toast.error(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.runtime.disableServerMissing)
         return
       }
 
       // Then stop the server
       const result = await desktopMcpServerClient.stopServer(serverName)
       if (result.success) {
-        toast.success(`Server ${serverName} stopped successfully`)
+        toast.success(formatAppShellMcpServerStoppedStatus(serverName))
         // Immediately fetch tools to update the UI
         await fetchTools()
       } else {
-        toast.error(`Failed to stop server: ${result.error}`)
+        toast.error(formatAppShellMcpServerStopFailedMessage(result.error))
       }
     } catch (error) {
-      toast.error(`Failed to stop server: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerStopFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -1426,49 +1487,49 @@ export function MCPConfigManager({
       // Mark the server as runtime-enabled so it can be initialized
       const runtimeResult = await desktopMcpServerClient.setRuntimeEnabled(serverName, true)
       if (!runtimeResult.success) {
-        toast.error(`Failed to enable server: Server not found`)
+        toast.error(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.runtime.enableServerMissing)
         return
       }
 
       // Restart the server to initialize it
       const result = await desktopMcpServerClient.restartServer(serverName)
       if (result.success) {
-        toast.success(`Server ${serverName} started successfully`)
+        toast.success(formatAppShellMcpServerStartedStatus(serverName))
         // Immediately fetch tools so they appear without waiting for the 5-second interval
         await fetchTools()
       } else {
-        toast.error(`Failed to start server: ${result.error}`)
+        toast.error(formatAppShellMcpServerStartFailedMessage(result.error))
       }
     } catch (error) {
-      toast.error(`Failed to start server: ${error.message}`)
+      toast.error(formatAppShellMcpServerStartFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
   const handleRevokeOAuth = async (serverName: string) => {
     try {
       await desktopMcpOAuthClient.revokeTokens(serverName)
-      toast.success("OAuth authentication revoked")
+      toast.success(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.oauth.revoked)
       refreshOAuthStatus(serverName)
     } catch (error) {
-      toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerRevokeAuthenticationFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
   const handleInitiateOAuth = async (serverName: string) => {
     try {
       await desktopMcpOAuthClient.initiateFlow(serverName)
-      toast.success("OAuth authentication started")
+      toast.success(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.oauth.started)
       const checkCompletion = setInterval(async () => {
         const statusResult = await desktopMcpOAuthClient.getStatus(serverName)
         if (statusResult.authenticated) {
           clearInterval(checkCompletion)
           refreshOAuthStatus(serverName)
-          toast.success("OAuth authentication completed")
+          toast.success(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.oauth.completed)
         }
       }, 2000)
       setTimeout(() => clearInterval(checkCompletion), 60000)
     } catch (error) {
-      toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerStartOAuthFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -1535,9 +1596,9 @@ export function MCPConfigManager({
     try {
       await desktopMcpServerClient.clearServerLogs(serverName)
       setServerLogs(prev => ({ ...prev, [serverName]: [] }))
-      toast.success(`Logs cleared for ${serverName}`)
+      toast.success(formatAppShellMcpServerLogsClearedStatus(serverName))
     } catch (error) {
-      toast.error(`Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(formatAppShellMcpServerClearLogsFailedMessage(error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -1583,7 +1644,7 @@ export function MCPConfigManager({
       const failed = results.length - successful
 
       if (failed === 0) {
-        toast.success(`All ${filteredTools.length} tools ${enable ? "enabled" : "disabled"}`)
+        toast.success(formatAppShellMcpToolsToggleStatus(filteredTools.length, enable))
       } else {
         // Revert local state for failed calls (rejected OR success: false)
         const failedTools = filteredTools.filter(
@@ -1602,14 +1663,19 @@ export function MCPConfigManager({
         setTools(revertedTools)
 
         toast.warning(
-          `${successful}/${filteredTools.length} tools ${enable ? "enabled" : "disabled"} (${failed} failed)`,
+          formatAppShellMcpToolsPartialToggleStatus(
+            successful,
+            filteredTools.length,
+            enable,
+            failed,
+          ),
         )
       }
     } catch (error: any) {
       // Revert all tools on error
       const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, originalStates)
       setTools(revertedTools)
-      toast.error(`Error toggling tools: ${error.message}`)
+      toast.error(formatAppShellMcpToolsToggleErrorMessage(error.message))
     }
   }
 
@@ -1918,13 +1984,13 @@ export function MCPConfigManager({
           >
             <Button variant="outline" size="sm" className="gap-2" onClick={handleExportConfig}>
               <Download className="h-4 w-4" />
-              Export
+              {getAppShellMcpServerActionLabel("export")}
             </Button>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Add Server
+                  {getAppShellMcpServerActionLabel("addServer")}
                 </Button>
               </DialogTrigger>
               <ServerDialog
@@ -1953,7 +2019,10 @@ export function MCPConfigManager({
                       role="button"
                       tabIndex={0}
                       aria-expanded={expandedServers.has(name)}
-                      aria-label={`Toggle ${name} server details`}
+                      aria-label={getAppShellMcpServerItemActionAccessibilityLabel(
+                        "toggleDetails",
+                        name,
+                      )}
                       className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onClick={() => toggleServerExpansion(name)}
                       onKeyDown={(e) => {
@@ -2020,7 +2089,10 @@ export function MCPConfigManager({
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                                aria-label={`Actions for ${name} server`}
+                                aria-label={getAppShellMcpServerItemActionAccessibilityLabel(
+                                  "actions",
+                                  name,
+                                )}
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
                                 <span>Actions</span>
@@ -2032,17 +2104,17 @@ export function MCPConfigManager({
                                   {status?.runtimeEnabled === false ? (
                                     <DropdownMenuItem onClick={() => handleStartServer(name)}>
                                       <Play className="h-3.5 w-3.5" />
-                                      Start server
+                                      {getAppShellMcpServerActionLabel("startServer")}
                                     </DropdownMenuItem>
                                   ) : (
                                     <>
                                       <DropdownMenuItem onClick={() => handleRestartServer(name)}>
                                         <RotateCcw className="h-3.5 w-3.5" />
-                                        Restart server
+                                        {getAppShellMcpServerActionLabel("restartServer")}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleStopServer(name)}>
                                         <Square className="h-3.5 w-3.5" />
-                                        Stop server
+                                        {getAppShellMcpServerActionLabel("stopServer")}
                                       </DropdownMenuItem>
                                     </>
                                   )}
@@ -2051,7 +2123,7 @@ export function MCPConfigManager({
                               )}
                               <DropdownMenuItem onClick={() => setEditingServer({ name, config: serverConfig })}>
                                 <Edit className="h-3.5 w-3.5" />
-                                Edit server
+                                {getAppShellMcpServerActionLabel("editServer")}
                               </DropdownMenuItem>
                               {serverConfig.transport === "streamableHttp" && serverConfig.url && (
                                 <>
@@ -2061,12 +2133,12 @@ export function MCPConfigManager({
                                       className="text-destructive focus:text-destructive"
                                     >
                                       <XCircle className="h-3.5 w-3.5" />
-                                      Revoke OAuth
+                                      {getAppShellMcpServerActionLabel("revokeOAuth")}
                                     </DropdownMenuItem>
                                   ) : oauthStatus[name]?.configured ? (
                                     <DropdownMenuItem onClick={() => handleInitiateOAuth(name)}>
                                       <ExternalLink className="h-3.5 w-3.5" />
-                                      Start OAuth
+                                      {getAppShellMcpServerActionLabel("startOAuth")}
                                     </DropdownMenuItem>
                                   ) : null}
                                 </>
@@ -2077,7 +2149,7 @@ export function MCPConfigManager({
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
-                                Delete server
+                                {getAppShellMcpServerActionLabel("deleteServer")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

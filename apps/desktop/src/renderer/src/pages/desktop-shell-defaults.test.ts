@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 
 const settingsGeneralSource = readFileSync(new URL("./settings-general.tsx", import.meta.url), "utf8")
 const panelSource = readFileSync(new URL("./panel.tsx", import.meta.url), "utf8")
+const sessionsSource = readFileSync(new URL("./sessions.tsx", import.meta.url), "utf8")
+const sessionInputSource = readFileSync(new URL("../components/session-input.tsx", import.meta.url), "utf8")
 
 describe("desktop shell renderer defaults", () => {
   it("uses shared defaults in general settings", () => {
@@ -27,5 +29,14 @@ describe("desktop shell renderer defaults", () => {
   it("uses the shared panel drag default in the panel renderer", () => {
     expect(panelSource).toContain("DEFAULT_PANEL_DRAG_ENABLED")
     expect(panelSource).toContain("(configQuery.data as any)?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED")
+  })
+
+  it("uses shared app-shell copy for desktop session start surfaces", () => {
+    expect(sessionsSource).toContain("APP_SHELL_SESSION_START_PRESENTATION")
+    expect(sessionsSource).toContain('getAppShellHeaderActionDisplayLabel("startTextSession")')
+    expect(sessionsSource).toContain('getAppShellHeaderActionDisplayLabel("startVoiceSession")')
+    expect(sessionInputSource).toContain("APP_SHELL_SESSION_START_PRESENTATION")
+    expect(sessionInputSource).toContain("APP_SHELL_SESSION_START_PRESENTATION.textInputPlaceholder")
+    expect(sessionInputSource).not.toContain("Start a new agent session</div>")
   })
 })

@@ -151,6 +151,11 @@
       "import": "./dist/conversation-list-search.mjs",
       "require": "./dist/conversation-list-search.js"
     },
+    "./conversation-list-presentation": {
+      "types": "./dist/conversation-list-presentation.d.ts",
+      "import": "./dist/conversation-list-presentation.mjs",
+      "require": "./dist/conversation-list-presentation.js"
+    },
     "./agent-progress": {
       "types": "./dist/agent-progress.d.ts",
       "import": "./dist/agent-progress.mjs",
@@ -255,6 +260,11 @@
       "types": "./dist/theme-preference.d.ts",
       "import": "./dist/theme-preference.mjs",
       "require": "./dist/theme-preference.js"
+    },
+    "./app-shell": {
+      "types": "./dist/app-shell.d.ts",
+      "import": "./dist/app-shell.mjs",
+      "require": "./dist/app-shell.js"
     },
     "./split-pane-selection": {
       "types": "./dist/split-pane-selection.d.ts",

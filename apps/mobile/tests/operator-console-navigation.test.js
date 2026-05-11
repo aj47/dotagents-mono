@@ -15,7 +15,7 @@ const operationsSource = fs.readFileSync(
 
 test('wires the operations screen into mobile navigation', () => {
   assert.match(appSource, /import OperationsScreen from '\.\/src\/screens\/OperationsScreen';/);
-  assert.match(appSource, /name="Operations"[\s\S]*?component=\{OperationsScreen\}[\s\S]*?title: 'Operations'/);
+  assert.match(appSource, /name="Operations"[\s\S]*?component=\{OperationsScreen\}[\s\S]*?title: APP_SHELL_MOBILE_ROUTE_TITLES\.Operations/);
 });
 
 test('adds an operator console entry from the settings screen', () => {
@@ -25,8 +25,8 @@ test('adds an operator console entry from the settings screen', () => {
 });
 
 test('keeps the operator console focused on refresh plus safe operator actions', () => {
-  assert.match(operationsSource, /Refresh operator console/);
-  assert.match(operationsSource, /Restart remote server/);
-  assert.match(operationsSource, /Restart app/);
-  assert.match(operationsSource, /Emergency stop/);
+  assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.refreshButton\.buttonLabel/);
+  assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.restartRemoteServerAction\.buttonLabel/);
+  assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.restartAppAction\.buttonLabel/);
+  assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.emergencyStopAction\.buttonLabel/);
 });

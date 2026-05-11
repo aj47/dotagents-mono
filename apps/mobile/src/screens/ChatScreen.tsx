@@ -75,6 +75,15 @@ import {
   type AgentConversationState,
 } from '@dotagents/shared/conversation-state';
 import {
+  CHAT_RUNTIME_PRESENTATION,
+  formatChatRuntimeAssistantErrorContent,
+  formatChatRuntimeBranchAccessibilityLabel,
+  formatChatRuntimeConnectionErrorMessage,
+  formatChatRuntimeWebConfirmMessage,
+  getChatRuntimeAlertMessage,
+  getFollowUpInputPresentation,
+} from '@dotagents/shared/session-presentation';
+import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
   resolveAgentProgressConversationState,
 } from '@dotagents/shared/agent-progress';
@@ -97,7 +106,14 @@ import {
 import {
   buildConversationImageMarkdownMessage,
   extractDataImageMarkdownReferences,
-  formatMediaBytesMb,
+  CHAT_IMAGE_ATTACHMENT_PRESENTATION,
+  formatChatImageAttachmentErrorMessage,
+  formatChatImageAttachmentLimitMessage,
+  formatChatImageBudgetExceededMessage,
+  formatChatImageBudgetReachedMessage,
+  formatChatImageMissingDataMessage,
+  formatChatImageSelectionTooLargeMessage,
+  formatChatImageUnsupportedFormatMessage,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
   inferImageMimeTypeFromSource,
@@ -113,12 +129,23 @@ import type {
   Skill,
 } from '@dotagents/shared/api-types';
 import {
+  PROMPT_LIBRARY_PRESENTATION,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  formatPromptLibraryDeletePromptConfirmMessage,
+  formatPromptLibraryDeletePromptWebConfirmMessage,
+  formatPromptLibraryTaskStartedMessage,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
+  getPromptLibraryDeletePromptAccessibilityLabel,
+  getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorSaveActionLabel,
+  getPromptLibraryEditorTitle,
+  getPromptLibrarySaveSuccessMessage,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
+  getPromptLibraryShortcutAccessibilityHint,
+  getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
@@ -489,43 +516,59 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
-        '⚠️ Emergency Stop\n\nAre you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.'
+        formatChatRuntimeWebConfirmMessage(
+          CHAT_RUNTIME_PRESENTATION.killSwitch.title,
+          CHAT_RUNTIME_PRESENTATION.killSwitch.message,
+        )
       );
       if (confirmed) {
         try {
           const result = await client.killSwitch();
           if (result.success) {
-            window.alert(result.message || 'All sessions stopped');
+            window.alert(result.message || CHAT_RUNTIME_PRESENTATION.killSwitch.successFallback);
           } else {
-            window.alert('Error: ' + (result.error || 'Failed to stop sessions'));
+            window.alert(
+              `${CHAT_RUNTIME_PRESENTATION.common.errorTitle}: ${result.error || CHAT_RUNTIME_PRESENTATION.killSwitch.stopFailed}`,
+            );
           }
         } catch (e: any) {
           console.error('[ChatScreen] Kill switch error:', e);
-          window.alert('Error: ' + (e.message || 'Failed to connect to server'));
+          window.alert(
+            `${CHAT_RUNTIME_PRESENTATION.common.errorTitle}: ${getChatRuntimeAlertMessage(e, CHAT_RUNTIME_PRESENTATION.killSwitch.connectionFailed)}`,
+          );
         }
       }
       return;
     }
 
     Alert.alert(
-      '⚠️ Emergency Stop',
-      'Are you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.',
+      CHAT_RUNTIME_PRESENTATION.killSwitch.title,
+      CHAT_RUNTIME_PRESENTATION.killSwitch.message,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: CHAT_RUNTIME_PRESENTATION.common.cancel, style: 'cancel' },
         {
-          text: 'Stop All',
+          text: CHAT_RUNTIME_PRESENTATION.killSwitch.actionLabel,
           style: 'destructive',
           onPress: async () => {
             try {
               const result = await client.killSwitch();
               if (result.success) {
-                Alert.alert('Success', result.message || 'All sessions stopped');
+                Alert.alert(
+                  CHAT_RUNTIME_PRESENTATION.common.successTitle,
+                  result.message || CHAT_RUNTIME_PRESENTATION.killSwitch.successFallback,
+                );
               } else {
-                Alert.alert('Error', result.error || 'Failed to stop sessions');
+                Alert.alert(
+                  CHAT_RUNTIME_PRESENTATION.common.errorTitle,
+                  result.error || CHAT_RUNTIME_PRESENTATION.killSwitch.stopFailed,
+                );
               }
             } catch (e: any) {
               console.error('[ChatScreen] Kill switch error:', e);
-              Alert.alert('Error', e.message || 'Failed to connect to server');
+              Alert.alert(
+                CHAT_RUNTIME_PRESENTATION.common.errorTitle,
+                getChatRuntimeAlertMessage(e, CHAT_RUNTIME_PRESENTATION.killSwitch.connectionFailed),
+              );
             }
           },
         },
@@ -561,9 +604,9 @@ export default function ChatScreen({ route, navigation }: any) {
     setRunningPromptTaskId(task.id);
     try {
       await settingsClient.runLoop(task.id);
-      Alert.alert('Task started', `Running "${task.name}" on desktop.`);
+      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.taskStartedTitle, formatPromptLibraryTaskStartedMessage(task.name));
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to run task.');
+      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.errorTitle, error?.message || PROMPT_LIBRARY_PRESENTATION.feedback.taskRunFailed);
     } finally {
       setRunningPromptTaskId(null);
     }
@@ -612,7 +655,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
     const serverConversationId = currentSession?.serverConversationId;
     if (!settingsClient || !serverConversationId) {
-      Alert.alert('Branch Unavailable', 'This chat is not linked to a desktop conversation yet.');
+      Alert.alert(
+        CHAT_RUNTIME_PRESENTATION.branch.unavailableTitle,
+        CHAT_RUNTIME_PRESENTATION.branch.unavailableMessage,
+      );
       return;
     }
 
@@ -627,9 +673,15 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
 
-      Alert.alert('Branch Created', 'The branched chat will appear in the chat list after sync.');
+      Alert.alert(
+        CHAT_RUNTIME_PRESENTATION.branch.createdTitle,
+        CHAT_RUNTIME_PRESENTATION.branch.createdMessage,
+      );
     } catch (error: any) {
-      Alert.alert('Branch Failed', error?.message || 'Failed to branch this conversation.');
+      Alert.alert(
+        CHAT_RUNTIME_PRESENTATION.branch.failedTitle,
+        getChatRuntimeAlertMessage(error, CHAT_RUNTIME_PRESENTATION.branch.failedMessage),
+      );
     } finally {
       setBranchingMessageIndex(null);
     }
@@ -806,7 +858,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before responding to tool approvals.');
+      Alert.alert(
+        CHAT_RUNTIME_PRESENTATION.approval.connectionRequiredTitle,
+        CHAT_RUNTIME_PRESENTATION.approval.connectionRequiredMessage,
+      );
       return;
     }
 
@@ -815,10 +870,16 @@ export default function ChatScreen({ route, navigation }: any) {
       const response = await settingsClient.respondToToolApproval(approvalId, approved);
       setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
       if (!response.success) {
-        Alert.alert('Approval Unavailable', 'The approval request is no longer pending.');
+        Alert.alert(
+          CHAT_RUNTIME_PRESENTATION.approval.unavailableTitle,
+          CHAT_RUNTIME_PRESENTATION.approval.unavailableMessage,
+        );
       }
     } catch (error: any) {
-      Alert.alert('Approval Failed', error.message || 'Failed to respond to the tool approval request.');
+      Alert.alert(
+        CHAT_RUNTIME_PRESENTATION.approval.failedTitle,
+        getChatRuntimeAlertMessage(error, CHAT_RUNTIME_PRESENTATION.approval.responseFailedMessage),
+      );
     } finally {
       setPendingToolApprovalResponseId(null);
     }
@@ -1434,10 +1495,10 @@ export default function ChatScreen({ route, navigation }: any) {
       setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert('Success', editingPrompt ? 'Prompt updated in your desktop prompt library.' : 'Prompt saved to your desktop prompt library.');
+      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.successTitle, getPromptLibrarySaveSuccessMessage(Boolean(editingPrompt)));
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
-      Alert.alert('Error', error.message || 'Failed to save prompt.');
+      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.errorTitle, error.message || PROMPT_LIBRARY_PRESENTATION.feedback.promptSaveFailed);
     } finally {
       setIsSavingPrompt(false);
     }
@@ -1454,7 +1515,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {
         console.error('[ChatScreen] Error deleting prompt:', error);
-        Alert.alert('Error', error.message || 'Failed to delete prompt.');
+        Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.errorTitle, error.message || PROMPT_LIBRARY_PRESENTATION.feedback.promptDeleteFailed);
       } finally {
         setIsSavingPrompt(false);
       }
@@ -1462,15 +1523,15 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (Platform.OS === 'web') {
       const confirmFn = (globalThis as { confirm?: (message?: string) => boolean }).confirm;
-      if (confirmFn?.(`Delete prompt "${prompt.name}"?`)) {
+      if (confirmFn?.(formatPromptLibraryDeletePromptWebConfirmMessage(prompt.name))) {
         void deletePrompt();
       }
       return;
     }
 
-    Alert.alert('Delete Prompt', `Delete "${prompt.name}" from your desktop prompt library?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { void deletePrompt(); } },
+    Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.deletePromptTitle, formatPromptLibraryDeletePromptConfirmMessage(prompt.name), [
+      { text: PROMPT_LIBRARY_PRESENTATION.actions.cancel, style: 'cancel' },
+      { text: PROMPT_LIBRARY_PRESENTATION.actions.delete, style: 'destructive', onPress: () => { void deletePrompt(); } },
     ]);
   }, [predefinedPrompts, settingsClient]);
 
@@ -1923,7 +1984,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handlePickImages = useCallback(async () => {
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
-      Alert.alert('Image limit reached', `You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
+      Alert.alert(
+        CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.limitReached,
+        formatChatImageAttachmentLimitMessage(MAX_PENDING_IMAGES),
+      );
       return;
     }
 
@@ -1933,8 +1997,8 @@ export default function ChatScreen({ route, navigation }: any) {
     );
     if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
       Alert.alert(
-        'Image budget reached',
-        `This message already reached the image budget (${formatMediaBytesMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
+        CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.budgetReached,
+        formatChatImageBudgetReachedMessage(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES),
       );
       return;
     }
@@ -2004,33 +2068,36 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (missingBase64Names.length > 0) {
         Alert.alert(
-          'Some images were skipped',
-          `${missingBase64Names.join(', ')} could not be attached. Please try again.`
+          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.skipped,
+          formatChatImageMissingDataMessage(missingBase64Names),
         );
       }
 
       if (oversizedImageNames.length > 0) {
         Alert.alert(
-          'Image too large',
-          `${oversizedImageNames.join(', ')} exceed the 4MB limit.`
+          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.tooLarge,
+          formatChatImageSelectionTooLargeMessage(oversizedImageNames, MAX_PENDING_IMAGE_FILE_SIZE_BYTES),
         );
       }
 
       if (unknownMimeNames.length > 0) {
         Alert.alert(
-          'Unsupported image format',
-          `${unknownMimeNames.join(', ')} could not be attached because the image type could not be determined.`
+          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.unsupportedFormat,
+          formatChatImageUnsupportedFormatMessage(unknownMimeNames),
         );
       }
 
       if (budgetExceededNames.length > 0) {
         Alert.alert(
-          'Image budget reached',
-          `${budgetExceededNames.join(', ')} exceed the per-message image budget (${formatMediaBytesMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
+          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.budgetReached,
+          formatChatImageBudgetExceededMessage(budgetExceededNames, MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES),
         );
       }
     } catch (error: any) {
-      Alert.alert('Image picker error', error?.message || 'Unable to select images right now.');
+      Alert.alert(
+        CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.pickerError,
+        formatChatImageAttachmentErrorMessage(error, CHAT_IMAGE_ATTACHMENT_PRESENTATION.errors.pickerFailed),
+      );
     }
   }, [pendingImages]);
 
@@ -2442,32 +2509,23 @@ export default function ChatScreen({ route, navigation }: any) {
         });
         return;
       }
-	      setConversationState('blocked');
+      setConversationState('blocked');
 
       const recoveryState = connectionState;
-      let errorMessage = e.message;
-
-      if (recoveryState?.status === 'failed') {
-        errorMessage = `Connection failed after ${recoveryState.retryCount} retries. ${recoveryState.lastError || ''}`;
-      } else if (recoveryState?.status === 'reconnecting') {
-        errorMessage = `Connection lost. Attempted ${recoveryState.retryCount} reconnections. ${e.message}`;
-      }
+      const errorMessage = formatChatRuntimeConnectionErrorMessage(e.message, recoveryState);
 
       // Save the failed message for retry
       setLastFailedMessage(text);
 
       // Check if there's partial content we can show
       const partialContent = client.getPartialContent();
-      const hasPartialContent = partialContent && partialContent.length > 0;
 
       setDebugInfo(`Error: ${errorMessage}`);
       // Update the in-flight assistant message instead of appending a new one
       // This avoids duplicating the assistant loading placeholder and ensures
       // the retry pop logic removes the correct items
       setMessages((m) => {
-        const errorContent = hasPartialContent
-          ? `${partialContent}\n\n---\n⚠️ Connection lost. Partial response shown above.\n\nError: ${errorMessage}`
-          : `Error: ${errorMessage}\n\nTip: Check your internet connection and tap "Retry" to try again.`;
+        const errorContent = formatChatRuntimeAssistantErrorContent(errorMessage, partialContent);
         // Find and update the last assistant message instead of appending
         const copy = [...m];
         for (let i = copy.length - 1; i >= 0; i--) {
@@ -2828,6 +2886,13 @@ export default function ChatScreen({ route, navigation }: any) {
 	  liveTranscript,
 		  sttPreview,
 		});
+	const composerPresentation = useMemo(
+	  () => getFollowUpInputPresentation({
+	    conversationState: conversationState ?? (responding ? 'running' : 'complete'),
+	    isQueueEnabled: messageQueueEnabled,
+	  }),
+	  [conversationState, messageQueueEnabled, responding]
+	);
 
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => {
@@ -2853,16 +2918,16 @@ export default function ChatScreen({ route, navigation }: any) {
         id: `task-${task.id}`,
         title: task.name,
         content: getPromptLibraryTaskContent(task),
-        description: getPromptLibraryTaskDescription(task, 'Run this desktop task now.'),
+        description: getPromptLibraryTaskDescription(task, PROMPT_LIBRARY_PRESENTATION.mobile.taskDescriptionFallback),
         source: 'task' as const,
         task,
       }));
 
       const addPromptItem: QuickStartShortcut[] = settingsClient ? [{
         id: 'action-add-prompt',
-        title: '+ Add Prompt',
+        title: PROMPT_LIBRARY_PRESENTATION.mobile.addPromptTitle,
         content: '',
-        description: 'Create a predefined prompt and save it back to desktop.',
+        description: PROMPT_LIBRARY_PRESENTATION.mobile.addPromptDescription,
         source: 'action' as const,
         action: 'add-prompt' as const,
       }] : [];
@@ -2878,6 +2943,12 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+	const isComposerSubmitDisabled = !composerHasContent || (!handsFree && composerPresentation.isDisabled);
+	const composerSubmitAccessibilityLabel = handsFree ? 'Send message' : composerPresentation.submitAriaLabel;
+	const composerSubmitAccessibilityHint = handsFree
+	  ? 'Sends your typed text and any attached images to the selected agent.'
+	  : composerPresentation.submitHint;
+	const composerSubmitButtonText = !handsFree && composerPresentation.mode === 'queue' ? 'Queue' : 'Send';
 
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
@@ -3076,7 +3147,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		? (handsFreeController.state.phase === 'paused'
 			? 'Handsfree paused — tap mic to resume or type a message'
 			: `Say “${handsFreeWakePhrase}” or type a message`)
-		: (listening ? 'Listening…' : 'Type or hold mic');
+		: (listening ? 'Listening…' : composerPresentation.placeholder || composerPresentation.submitTitle);
 
 	const micButtonLabel = handsFree
 			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
@@ -3137,8 +3208,8 @@ export default function ChatScreen({ route, navigation }: any) {
 		                      onPress={() => handleQuickStartPress(item)}
 		                      disabled={item.source === 'task' && runningPromptTaskId === item.task?.id}
 	                      accessibilityRole="button"
-		                      accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : item.source === 'task' ? `Run task ${item.title}` : `Insert ${item.source} ${item.title}`)}
-		                      accessibilityHint={item.action === 'add-prompt' ? 'Create a predefined prompt and save it to desktop.' : item.source === 'task' ? 'Runs this desktop task now.' : 'Inserts this desktop library item into the composer.'}
+		                      accessibilityLabel={createButtonAccessibilityLabel(getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action))}
+		                      accessibilityHint={getPromptLibraryShortcutAccessibilityHint(item.source, item.action)}
 	                    >
 		                      <Text style={[
 		                        styles.chatHomeShortcutTitle,
@@ -3156,9 +3227,9 @@ export default function ChatScreen({ route, navigation }: any) {
                                   openEditPromptModal(item.prompt!);
                                 }}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Edit prompt ${item.title}`}
+                                accessibilityLabel={getPromptLibraryEditPromptAccessibilityLabel(item.title)}
                               >
-                                <Text style={styles.chatHomeShortcutActionText}>Edit</Text>
+                                <Text style={styles.chatHomeShortcutActionText}>{PROMPT_LIBRARY_PRESENTATION.actions.edit}</Text>
                               </Pressable>
                               <Pressable
                                 style={styles.chatHomeShortcutActionButton}
@@ -3167,9 +3238,9 @@ export default function ChatScreen({ route, navigation }: any) {
                                   handleDeletePrompt(item.prompt!);
                                 }}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Delete prompt ${item.title}`}
+                                accessibilityLabel={getPromptLibraryDeletePromptAccessibilityLabel(item.title)}
                               >
-                                <Text style={[styles.chatHomeShortcutActionText, styles.chatHomeShortcutActionDangerText]}>Delete</Text>
+                                <Text style={[styles.chatHomeShortcutActionText, styles.chatHomeShortcutActionDangerText]}>{PROMPT_LIBRARY_PRESENTATION.actions.delete}</Text>
                               </Pressable>
                             </View>
                           ) : null}
@@ -3178,7 +3249,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	                </View>
 	              ) : (
 	                <Text style={styles.chatHomeEmptyText}>
-		                  {isLoadingQuickStartPrompts ? 'Loading desktop library…' : 'No prompts, skills, or tasks available from your connected desktop app.'}
+		                  {isLoadingQuickStartPrompts ? 'Loading desktop library…' : PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary}
 	                </Text>
 	              )}
             </View>
@@ -3677,10 +3748,12 @@ export default function ChatScreen({ route, navigation }: any) {
                           onPress={() => { void handleBranchFromMessage(i); }}
                           disabled={branchingMessageIndex !== null}
                           accessibilityRole="button"
-                          accessibilityLabel={`Branch conversation from ${m.role} message ${i + 1}`}
+                          accessibilityLabel={formatChatRuntimeBranchAccessibilityLabel(m.role, i + 1)}
                         >
                           <Text style={styles.messageActionButtonText}>
-                            {branchingMessageIndex === i ? 'Branching...' : 'Branch'}
+                            {branchingMessageIndex === i
+                              ? CHAT_RUNTIME_PRESENTATION.branch.pendingLabel
+                              : CHAT_RUNTIME_PRESENTATION.branch.buttonLabel}
                           </Text>
                         </Pressable>
                       </View>
@@ -4093,16 +4166,16 @@ export default function ChatScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 	            <TouchableOpacity
-	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
+	              style={[styles.sendButton, isComposerSubmitDisabled && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
-	              disabled={!composerHasContent}
+	              disabled={isComposerSubmitDisabled}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Send message')}
-	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
-              accessibilityState={{ disabled: !composerHasContent }}
+              accessibilityLabel={createButtonAccessibilityLabel(composerSubmitAccessibilityLabel)}
+	              accessibilityHint={composerSubmitAccessibilityHint}
+              accessibilityState={{ disabled: isComposerSubmitDisabled }}
 	            >
-              <Text style={styles.sendButtonText}>Send</Text>
+              <Text style={styles.sendButtonText}>{composerSubmitButtonText}</Text>
             </TouchableOpacity>
           </View>
           {/* Large mic button - ~20% of screen height */}
@@ -4153,23 +4226,23 @@ export default function ChatScreen({ route, navigation }: any) {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{editingPrompt ? 'Edit Prompt' : 'Add New Prompt'}</Text>
+              <Text style={styles.modalTitle}>{getPromptLibraryEditorTitle(Boolean(editingPrompt))}</Text>
 
-              <Text style={styles.modalLabel}>Name</Text>
+              <Text style={styles.modalLabel}>{PROMPT_LIBRARY_PRESENTATION.editor.nameLabel}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={newPromptName}
                 onChangeText={setNewPromptName}
-                placeholder="e.g., Code Review Request"
+                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
               />
 
-              <Text style={styles.modalLabel}>Prompt Content</Text>
+              <Text style={styles.modalLabel}>{PROMPT_LIBRARY_PRESENTATION.editor.contentLabel}</Text>
               <TextInput
                 style={[styles.modalInput, styles.modalInputMultiline]}
                 value={newPromptContent}
                 onChangeText={setNewPromptContent}
-                placeholder="Enter your prompt text..."
+                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 multiline
                 textAlignVertical="top"
@@ -4181,7 +4254,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   onPress={closePromptModal}
                   disabled={isSavingPrompt}
                 >
-                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                  <Text style={styles.modalCancelButtonText}>{PROMPT_LIBRARY_PRESENTATION.actions.cancel}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -4192,7 +4265,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
                 >
                   <Text style={styles.modalSaveButtonText}>
-                    {isSavingPrompt ? 'Saving...' : editingPrompt ? 'Save Changes' : 'Add Prompt'}
+                    {getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt), isSavingPrompt)}
                   </Text>
                 </TouchableOpacity>
               </View>

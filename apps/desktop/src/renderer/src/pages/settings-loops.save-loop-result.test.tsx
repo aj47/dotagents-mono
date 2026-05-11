@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
+import { APP_SHELL_LOOP_FEEDBACK_PRESENTATION } from "@dotagents/shared/app-shell"
+
 const settingsLoopsSource = readFileSync(new URL("./settings-loops.tsx", import.meta.url), "utf8")
 
 function getSection(source: string, startMarker: string, endMarker: string): string {
@@ -19,7 +21,8 @@ describe("desktop repeat-task save result handling", () => {
 
     expect(handleSaveSection).toContain("const saveResult = await desktopLoopsClient.saveLoop(loopData)")
     expect(handleSaveSection).toContain("if (saveResult?.success === false) {")
-    expect(handleSaveSection).toContain('toast.error("Failed to save task")')
+    expect(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.saveFailed).toBe("Failed to save task")
+    expect(handleSaveSection).toContain("toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.saveFailed)")
 
     const guardIndex = handleSaveSection.indexOf("if (saveResult?.success === false) {")
     const invalidateIndex = handleSaveSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loops"] })')
@@ -33,7 +36,8 @@ describe("desktop repeat-task save result handling", () => {
 
     expect(toggleSection).toContain("const saveResult = await desktopLoopsClient.saveLoop(updatedLoop)")
     expect(toggleSection).toContain("if (saveResult?.success === false) {")
-    expect(toggleSection).toContain('toast.error("Failed to update task")')
+    expect(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.updateFailed).toBe("Failed to update task")
+    expect(toggleSection).toContain("toast.error(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.updateFailed)")
 
     const guardIndex = toggleSection.indexOf("if (saveResult?.success === false) {")
     const invalidateIndex = toggleSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loops"] })')

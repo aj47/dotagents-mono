@@ -25,6 +25,20 @@ import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
 import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { hasUnreadAgentResponse } from "@dotagents/shared/sidebar-sessions"
+import {
+  APP_SHELL_PRIMARY_NAV_ITEMS,
+  APP_SHELL_PRODUCT_LABEL,
+  getAppShellGlobalTtsToggleLabel,
+  getAppShellHeaderActionLabel,
+  getAppShellPrimaryNavItemLabel,
+  getAppShellSidebarToggleLabel,
+  getDesktopPrimaryNavItemId,
+  getDesktopSettingsActiveNavItemId,
+  getDesktopSettingsNavItems,
+  resolveAppShellLayout,
+  type AppShellPrimaryNavItemId,
+  type AppShellSettingsNavItemId,
+} from "@dotagents/shared/app-shell"
 import { useAgentStore } from "@renderer/stores"
 import {
   Clock,
@@ -40,9 +54,32 @@ import {
 } from "lucide-react"
 
 type NavLinkItem = {
+  id: AppShellSettingsNavItemId
   text: string
   href: string
   icon: string | React.ComponentType<{ className?: string }>
+}
+
+const primaryNavIcons: Record<AppShellPrimaryNavItemId, string> = {
+  sessions: "i-mingcute-chat-3-line",
+  agents: "i-mingcute-group-line",
+  knowledge: "i-mingcute-book-2-line",
+  settings: "i-mingcute-settings-3-line",
+}
+
+const settingsNavIcons: Record<
+  AppShellSettingsNavItemId,
+  string | React.ComponentType<{ className?: string }>
+> = {
+  general: "i-mingcute-settings-3-line",
+  models: "i-mingcute-brain-line",
+  providers: Plug2,
+  knowledge: "i-mingcute-book-2-line",
+  agents: "i-mingcute-group-line",
+  capabilities: "i-mingcute-tool-line",
+  whatsapp: "i-mingcute-message-4-line",
+  discord: "i-mingcute-discord-line",
+  repeatTasks: "i-mingcute-refresh-3-line",
 }
 
 interface AgentSession {
@@ -76,6 +113,9 @@ export const Component = () => {
   useTTSPlaybackController()
   const navigate = useNavigate()
   const location = useLocation()
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1024 : window.innerWidth,
+  )
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [savedConversationsDialogOpen, setSavedConversationsDialogOpen] = useState(false)
   const [savedConversationsHotkeyOpen, setSavedConversationsHotkeyOpen] = useState(false)
@@ -93,6 +133,13 @@ export const Component = () => {
   const agentResponseReadAtBySessionId = useAgentStore(
     (s) => s.agentResponseReadAtBySessionId,
   )
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth)
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   const { data: sessionData, refetch: refetchSessionData } =
     useQuery<SessionListResponse>({
@@ -319,86 +366,27 @@ export const Component = () => {
     [navigate, setFocusedSessionId, setScrollToSessionId],
   )
 
-  const settingsNavLinks: NavLinkItem[] = [
-    {
-      text: "General",
-      href: "/settings",
-      icon: "i-mingcute-settings-3-line",
-    },
-    {
-      text: "Models",
-      href: "/settings/models",
-      icon: "i-mingcute-brain-line",
-    },
-    {
-      text: "Providers",
-      href: "/settings/providers",
-      icon: Plug2,
-    },
-    {
-      text: "Knowledge",
-      href: "/knowledge",
-      icon: "i-mingcute-book-2-line",
-    },
-    {
-      text: "Agents",
-      href: "/settings/agents",
-      icon: "i-mingcute-group-line",
-    },
-    {
-      text: "Capabilities",
-      href: "/settings/capabilities",
-      icon: "i-mingcute-tool-line",
-    },
-    // Only show WhatsApp settings when enabled
-    ...(whatsappEnabled
-      ? [
-          {
-            text: "WhatsApp",
-            href: "/settings/whatsapp",
-            icon: "i-mingcute-message-4-line",
-          },
-        ]
-      : []),
-    ...(discordEnabled
-      ? [
-          {
-            text: "Discord",
-            href: "/settings/discord",
-            icon: "i-mingcute-discord-line",
-          },
-        ]
-      : []),
-    {
-      text: "Repeat Tasks",
-      href: "/settings/repeat-tasks",
-      icon: "i-mingcute-refresh-3-line",
-    },
-  ]
+  const settingsNavLinks: NavLinkItem[] = getDesktopSettingsNavItems({
+    whatsappEnabled,
+    discordEnabled,
+  }).map((item) => ({
+    id: item.id,
+    text: item.label,
+    href: item.desktopPath,
+    icon: settingsNavIcons[item.id],
+  }))
 
-  // Route aliases that should highlight the same nav item
-  // Maps route paths to their primary nav link href
-  const routeAliases: Record<string, string> = {
-    "/settings/general": "/settings",
-    "/settings/mcp-tools": "/settings/capabilities",
-    "/settings/skills": "/settings/capabilities",
-    "/settings/remote-server": "/settings",
-    "/settings/loops": "/settings/repeat-tasks",
-    "/settings/agents": "/settings/agents",
-  }
+  const activePrimaryNavItemId = getDesktopPrimaryNavItemId(location.pathname)
+  const activeSettingsNavItemId = getDesktopSettingsActiveNavItemId(location.pathname)
+  const appShellLayout = resolveAppShellLayout(viewportWidth)
+  const isCompactShell = appShellLayout === "compact"
+  const isAgentsActive = activePrimaryNavItemId === "agents"
+  const compactShellTitle = getAppShellPrimaryNavItemLabel(activePrimaryNavItemId)
+  const globalTtsToggleLabel = getAppShellGlobalTtsToggleLabel(isGlobalTTSEnabled)
+  const sidebarToggleLabel = getAppShellSidebarToggleLabel(isCollapsed)
 
-  const isAgentsActive =
-    location.pathname === "/settings/agents" ||
-    location.pathname.startsWith("/settings/agents")
-
-  // Check if current path matches the nav link (including aliases)
-  const isNavLinkActive = (linkHref: string): boolean => {
-    const currentPath = location.pathname
-    // Exact match
-    if (currentPath === linkHref) return true
-    // Check if current path is an alias that maps to this link
-    const aliasTarget = routeAliases[currentPath]
-    return aliasTarget === linkHref
+  const isNavLinkActive = (linkId: AppShellSettingsNavItemId): boolean => {
+    return activeSettingsNavItemId === linkId
   }
 
   useEffect(() => {
@@ -408,7 +396,7 @@ export const Component = () => {
   }, [])
 
   const renderNavLink = (link: NavLinkItem) => {
-    const isActive = isNavLinkActive(link.href)
+    const isActive = isNavLinkActive(link.id)
     const icon = typeof link.icon === "string"
       ? <span className={cn(link.icon, "h-3.5 w-3.5 shrink-0")}></span>
       : <link.icon className="h-3.5 w-3.5 shrink-0" />
@@ -446,13 +434,45 @@ export const Component = () => {
 
   const sidebarWidth = isCollapsed ? SIDEBAR_DIMENSIONS.width.collapsed : width
 
-  const isSessionsActive =
-    location.pathname === "/" ||
-    (!location.pathname.startsWith("/settings") &&
-      !location.pathname.startsWith("/onboarding") &&
-      !location.pathname.startsWith("/setup") &&
-      !location.pathname.startsWith("/panel") &&
-      !location.pathname.startsWith("/knowledge"))
+  const isSessionsActive = activePrimaryNavItemId === "sessions"
+  const outletContext = {
+    onOpenSavedConversationsDialog: () => setSavedConversationsDialogOpen(true),
+    sidebarWidth: isCompactShell ? 0 : sidebarWidth,
+    selectedAgentId,
+    setSelectedAgentId,
+    onStartTextSession: handleStartTextSession,
+    onStartVoiceSession: handleStartVoiceSession,
+    onStartPromptSession: handleStartPromptSession,
+    openSessionActionDialog,
+  }
+
+  const renderPrimaryNavLink = (
+    item: (typeof APP_SHELL_PRIMARY_NAV_ITEMS)[number],
+  ) => {
+    const isActive = activePrimaryNavItemId === item.id
+
+    return (
+      <NavLink
+        key={item.id}
+        to={item.desktopPath}
+        onClick={(e) => {
+          e.preventDefault()
+          navigate(item.desktopPath)
+        }}
+        className={cn(
+          "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-[10px] font-medium transition-colors",
+          isActive
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+        )}
+        aria-label={item.label}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <span className={cn(primaryNavIcons[item.id], "h-4 w-4 shrink-0")} />
+        <span className="max-w-full truncate">{item.label}</span>
+      </NavLink>
+    )
+  }
 
   return (
     <>
@@ -473,6 +493,7 @@ export const Component = () => {
         <div
           className={cn(
             "bg-background relative flex shrink-0 flex-col border-r",
+            isCompactShell && "hidden",
             !isResizing && "transition-all duration-200",
             isResizing && "select-none",
           )}
@@ -496,16 +517,8 @@ export const Component = () => {
                   onClick={handleToggleGlobalTTS}
                   disabled={!configQuery.data || saveConfigMutation.isPending}
                   className="app-no-drag-region text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 disabled:opacity-50"
-                  title={
-                    isGlobalTTSEnabled
-                      ? "Disable global TTS"
-                      : "Enable global TTS"
-                  }
-                  aria-label={
-                    isGlobalTTSEnabled
-                      ? "Disable global TTS"
-                      : "Enable global TTS"
-                  }
+                  title={globalTtsToggleLabel}
+                  aria-label={globalTtsToggleLabel}
                 >
                   {saveConfigMutation.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -522,8 +535,8 @@ export const Component = () => {
                   onClick={handleEmergencyStopAll}
                   disabled={isEmergencyStopping}
                   className="app-no-drag-region text-destructive hover:bg-destructive/10 shrink-0 disabled:opacity-50"
-                  title="Emergency stop all agent sessions"
-                  aria-label="Emergency stop all agent sessions"
+                  title={getAppShellHeaderActionLabel("emergencyStopAll")}
+                  aria-label={getAppShellHeaderActionLabel("emergencyStopAll")}
                 >
                   {isEmergencyStopping ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -542,8 +555,8 @@ export const Component = () => {
                 "app-no-drag-region shrink-0",
                 "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
-              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarToggleLabel}
+              aria-label={sidebarToggleLabel}
             >
               {isCollapsed ? (
                 <PanelLeft className="h-3.5 w-3.5" />
@@ -566,16 +579,8 @@ export const Component = () => {
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     "text-muted-foreground hover:bg-accent/50 hover:text-foreground disabled:opacity-50",
                   )}
-                  title={
-                    isGlobalTTSEnabled
-                      ? "Disable global TTS"
-                      : "Enable global TTS"
-                  }
-                  aria-label={
-                    isGlobalTTSEnabled
-                      ? "Disable global TTS"
-                      : "Enable global TTS"
-                  }
+                  title={globalTtsToggleLabel}
+                  aria-label={globalTtsToggleLabel}
                 >
                   {saveConfigMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -594,8 +599,8 @@ export const Component = () => {
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     "text-destructive hover:bg-destructive/10 disabled:opacity-50",
                   )}
-                  title="Emergency stop all agent sessions"
-                  aria-label="Emergency stop all agent sessions"
+                  title={getAppShellHeaderActionLabel("emergencyStopAll")}
+                  aria-label={getAppShellHeaderActionLabel("emergencyStopAll")}
                 >
                   {isEmergencyStopping ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -613,8 +618,8 @@ export const Component = () => {
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
-                  title="Saved conversations"
-                  aria-label="Saved conversations"
+                  title={getAppShellHeaderActionLabel("savedConversations")}
+                  aria-label={getAppShellHeaderActionLabel("savedConversations")}
                   aria-pressed={savedConversationsDialogOpen || undefined}
                 >
                   <Clock className="h-4 w-4" />
@@ -627,8 +632,8 @@ export const Component = () => {
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
-                  title="Start with text"
-                  aria-label="Start with text"
+                  title={getAppShellHeaderActionLabel("startTextSession")}
+                  aria-label={getAppShellHeaderActionLabel("startTextSession")}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -640,8 +645,8 @@ export const Component = () => {
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
-                  title="Start with voice"
-                  aria-label="Start with voice"
+                  title={getAppShellHeaderActionLabel("startVoiceSession")}
+                  aria-label={getAppShellHeaderActionLabel("startVoiceSession")}
                 >
                   <Mic className="h-4 w-4" />
                 </button>
@@ -770,7 +775,7 @@ export const Component = () => {
               {/* Settings Section - collapsed quick navigation */}
               <div className="mt-2 grid gap-1">
                 {settingsNavLinks.map((link) => {
-                  const isActive = isNavLinkActive(link.href)
+                  const isActive = isNavLinkActive(link.id)
                   const icon = typeof link.icon === "string"
                     ? <span className={cn(link.icon, "h-4 w-4")}></span>
                     : <link.icon className="h-4 w-4" />
@@ -850,7 +855,7 @@ export const Component = () => {
               {/* Logo/version pushed down by menu content, scrolls naturally */}
               <div className="flex shrink-0 flex-col items-center space-y-2 pb-4 pt-2">
                 <LoadingSpinner size="lg" />
-                <div>DotAgents</div>
+                <div>{APP_SHELL_PRODUCT_LABEL}</div>
                 <div className="text-xs">{process.env.APP_VERSION}</div>
               </div>
             </div>
@@ -884,21 +889,97 @@ export const Component = () => {
 
         {/* Main content area */}
         <div className="bg-background flex min-w-0 grow flex-col">
+          {isCompactShell && (
+            <header
+              className={cn(
+                "flex shrink-0 items-center justify-between gap-2 border-b px-2 pb-1",
+                process.env.IS_MAC ? "pt-7 app-drag-region" : "pt-2",
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <LoadingSpinner size="sm" />
+                <div className="truncate text-sm font-semibold">{compactShellTitle}</div>
+              </div>
+              <div className="app-no-drag-region flex shrink-0 items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  onClick={() => setSavedConversationsDialogOpen(true)}
+                  className="text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  title={getAppShellHeaderActionLabel("savedConversations")}
+                  aria-label={getAppShellHeaderActionLabel("savedConversations")}
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  onClick={() => void handleStartTextSession()}
+                  className="text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  title={getAppShellHeaderActionLabel("startTextSession")}
+                  aria-label={getAppShellHeaderActionLabel("startTextSession")}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  onClick={() => void handleStartVoiceSession()}
+                  className="text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  title={getAppShellHeaderActionLabel("startVoiceSession")}
+                  aria-label={getAppShellHeaderActionLabel("startVoiceSession")}
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  onClick={handleToggleGlobalTTS}
+                  disabled={!configQuery.data || saveConfigMutation.isPending}
+                  className="text-muted-foreground hover:bg-accent/50 hover:text-foreground disabled:opacity-50"
+                  title={globalTtsToggleLabel}
+                  aria-label={globalTtsToggleLabel}
+                >
+                  {saveConfigMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isGlobalTTSEnabled ? (
+                    <Volume2 className="h-4 w-4" />
+                  ) : (
+                    <VolumeX className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  onClick={handleEmergencyStopAll}
+                  disabled={isEmergencyStopping}
+                  className="text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                  title={getAppShellHeaderActionLabel("emergencyStopAll")}
+                  aria-label={getAppShellHeaderActionLabel("emergencyStopAll")}
+                >
+                  {isEmergencyStopping ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <OctagonX className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </header>
+          )}
+
           {/* Scrollable content area */}
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <Outlet
-              context={{
-                onOpenSavedConversationsDialog: () => setSavedConversationsDialogOpen(true),
-                sidebarWidth,
-                selectedAgentId,
-                setSelectedAgentId,
-                onStartTextSession: handleStartTextSession,
-                onStartVoiceSession: handleStartVoiceSession,
-                onStartPromptSession: handleStartPromptSession,
-                openSessionActionDialog,
-              }}
-            />
+            <Outlet context={outletContext} />
           </div>
+
+          {isCompactShell && (
+            <nav
+              className="grid shrink-0 grid-cols-4 gap-1 border-t bg-background px-2 py-1"
+              aria-label="Primary navigation"
+            >
+              {APP_SHELL_PRIMARY_NAV_ITEMS.map(renderPrimaryNavLink)}
+            </nav>
+          )}
         </div>
       </div>
 

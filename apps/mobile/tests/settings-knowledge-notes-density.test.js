@@ -8,6 +8,10 @@ const settingsSource = fs.readFileSync(
   'utf8'
 );
 
+function sectionMarker(id) {
+  return `<CollapsibleSection id="${id}" title={getAppShellMobileSettingsSectionTitle('${id}')}>`;
+}
+
 function extractBetween(startMarker, endMarker) {
   const start = settingsSource.indexOf(startMarker);
   assert.notEqual(start, -1, `Missing start marker: ${startMarker}`);
@@ -24,13 +28,13 @@ test('keeps the mobile knowledge notes subsection free of decorative delete emoj
     '  };\n\n  if (!ready)'
   );
   const knowledgeNotesSection = extractBetween(
-    '<CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">',
+    sectionMarker('knowledgeNotes'),
     '{/* 4m. Agents */}'
   );
 
   assert.doesNotMatch(knowledgeNoteRowRenderer, /🗑️/);
-  assert.match(knowledgeNoteRowRenderer, /<Text style=\{styles\.noteDeleteButtonText\}>Delete<\/Text>/);
-  assert.match(knowledgeNoteRowRenderer, /accessibilityLabel=\{`Delete note \$\{note\.title\}`\}/);
+  assert.match(knowledgeNoteRowRenderer, /getAppShellKnowledgeNoteActionLabel\('delete'\)/);
+  assert.match(knowledgeNoteRowRenderer, /getAppShellKnowledgeNoteDeleteAccessibilityLabel\(note\.title\)/);
   assert.match(knowledgeNotesSection, /knowledgeNoteSections\.map/);
   assert.match(knowledgeNotesSection, /Canonical note fields are title, context, summary, body, tags, and references\./);
 });

@@ -10,7 +10,8 @@ const screenSource = fs.readFileSync(
 
 test('avoids redundant desktop emoji chrome in stub session rows', () => {
   assert.doesNotMatch(screenSource, /💻/);
-  assert.match(screenSource, /\{isStub \? ' · from desktop' : ''\}/);
+  assert.match(screenSource, /APP_CONVERSATION_LIST_COPY\.desktopSourceLabel/);
+  assert.match(screenSource, /getConversationListMessageCountLabel\(item\.messageCount/);
 });
 
 test('keeps session rows to a compact two-line layout with inline metadata', () => {
@@ -29,7 +30,7 @@ test('keeps the session title row shrinkable for narrow mobile widths', () => {
 
 test('moves new chat into the navigation header and removes the old inline action row', () => {
   assert.match(screenSource, /style=\{styles\.headerNewChatButton\}/);
-  assert.match(screenSource, />\+ New Chat<\/Text>/);
+  assert.match(screenSource, /APP_SHELL_HEADER_ACTIONS\.newChat\.displayLabel/);
   assert.doesNotMatch(screenSource, /styles\.clearButton/);
 });
 
@@ -42,6 +43,6 @@ test('keeps pin controls in chat rows and removes the helper copy under search',
 test('keeps archived chats reachable from the session list', () => {
   assert.match(screenSource, /sessionListMode/);
   assert.match(screenSource, /filterSessionsByArchiveMode\(results, sessionListMode\)/);
-  assert.match(screenSource, /Archived\$\{sessionArchiveCount > 0/);
+  assert.match(screenSource, /getConversationArchiveFilterLabel\('archived', sessionArchiveCount\)/);
   assert.match(screenSource, /Unarchive/);
 });

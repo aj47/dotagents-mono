@@ -65,6 +65,17 @@ import {
   removeSetValues,
   toggleSetValue,
 } from "@dotagents/shared/collection-state"
+import {
+  APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION,
+  APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION,
+  formatAppShellKnowledgeNoteBulkActionLabel,
+  formatAppShellKnowledgeNoteDeleteConfirmMessage,
+  formatAppShellKnowledgeNoteDeleteCountLabel,
+  getAppShellEditorActionLabel,
+  getAppShellEditorTitle,
+  getAppShellKnowledgeNoteActionLabel,
+  getAppShellKnowledgeNoteDeleteConfirmTitle,
+} from "@dotagents/shared/app-shell"
 
 const contextBadgeClasses: Record<KnowledgeNoteContext, string> = {
   auto: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
@@ -572,7 +583,7 @@ export function Component() {
       toast.success("Note deleted")
       setDeleteConfirmId(null)
     },
-    onError: (error: Error) => toast.error(`Failed to delete: ${error.message}`),
+    onError: (error: Error) => toast.error(`${APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION.deleteFailed}: ${error.message}`),
   })
 
   const updateMutation = useMutation({
@@ -630,7 +641,7 @@ export function Component() {
       setSelectedIds(new Set())
       setBulkDeleteConfirm(false)
     },
-    onError: (error: Error) => toast.error(`Failed to delete: ${error.message}`),
+    onError: (error: Error) => toast.error(`${APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION.deleteSelectedFailed}: ${error.message}`),
   })
 
   const deleteAllMutation = useMutation({
@@ -641,7 +652,7 @@ export function Component() {
       setSelectedIds(new Set())
       setDeleteAllConfirm(false)
     },
-    onError: (error: Error) => toast.error(`Failed to delete: ${error.message}`),
+    onError: (error: Error) => toast.error(`${APP_SHELL_KNOWLEDGE_NOTE_DELETE_PRESENTATION.deleteAllFailed}: ${error.message}`),
   })
 
   const openKnowledgeFolderMutation = useMutation({
@@ -749,7 +760,7 @@ export function Component() {
     const title = editForm.title.trim()
     const body = editForm.body.trim()
     if (!title || !body) {
-      toast.error("Title and body are required")
+      toast.error(APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.validation.titleAndBodyRequired)
       return
     }
 
@@ -863,7 +874,7 @@ export function Component() {
           <div className="relative w-full min-w-0 md:max-w-md md:flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search notes..."
+              placeholder={getAppShellKnowledgeNoteActionLabel("searchPlaceholder")}
               value={searchQuery}
               onChange={(event) => handleSearch(event.target.value)}
               className="pl-9 pr-9"
@@ -980,7 +991,7 @@ export function Component() {
                 ) : (
                   <Trash2 className="h-4 w-4" />
                 )}
-                Delete Selected ({selectedIds.size})
+                {formatAppShellKnowledgeNoteBulkActionLabel("deleteSelected", selectedIds.size)}
               </Button>
             ) : null}
             {totalCount ? (
@@ -991,7 +1002,7 @@ export function Component() {
                 className="gap-2 text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete All
+                {getAppShellKnowledgeNoteActionLabel("deleteAll")}
               </Button>
             ) : null}
           </div>
@@ -1140,23 +1151,23 @@ export function Component() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Note</DialogTitle>
-            <DialogDescription>Update canonical note fields for this knowledge note.</DialogDescription>
+            <DialogTitle>{getAppShellEditorTitle("knowledgeNote", true)}</DialogTitle>
+            <DialogDescription>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.editDescription}</DialogDescription>
           </DialogHeader>
 
           {editForm ? (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.title.requiredLabel}</Label>
                 <Input
                   value={editForm.title}
                   onChange={(event) => setEditForm({ ...editForm, title: event.target.value })}
-                  placeholder="Project architecture"
+                  placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.title.placeholder}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Context</Label>
+                <Label>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.context.label}</Label>
                 <div className="flex flex-wrap gap-2">
                   {KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS.map((option) => (
                     <Button
@@ -1172,47 +1183,50 @@ export function Component() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Keep <span className="font-medium">auto</span> notes limited to high-signal context.
+                  {APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.context.helper}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label>Summary</Label>
+                <Label>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.summary.label}</Label>
                 <Textarea
                   value={editForm.summary}
                   onChange={(event) => setEditForm({ ...editForm, summary: event.target.value })}
-                  placeholder="Short note summary"
+                  placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.summary.placeholder}
                   rows={3}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.summary.helper}
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label>Body</Label>
+                <Label>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.body.requiredLabel}</Label>
                 <Textarea
                   value={editForm.body}
                   onChange={(event) => setEditForm({ ...editForm, body: event.target.value })}
-                  placeholder="Detailed note body"
+                  placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.body.placeholder}
                   rows={8}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Tags (comma-separated)</Label>
+                <Label>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.tags.label}</Label>
                 <Input
                   value={editForm.tagsInput}
                   onChange={(event) => setEditForm({ ...editForm, tagsInput: event.target.value })}
-                  placeholder="tag1, tag2, tag3"
+                  placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.tags.placeholder}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>References (comma or newline separated)</Label>
+                <Label>{APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.references.label}</Label>
                 <Textarea
                   value={editForm.referencesInput}
                   onChange={(event) =>
                     setEditForm({ ...editForm, referencesInput: event.target.value })
                   }
-                  placeholder="docs/architecture.md"
+                  placeholder={APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION.fields.references.placeholder}
                   rows={3}
                 />
               </div>
@@ -1231,7 +1245,7 @@ export function Component() {
             </Button>
             <Button className="gap-2" onClick={handleSaveEdit} disabled={updateMutation.isPending || !editForm}>
               {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save
+              {getAppShellEditorActionLabel("knowledgeNote", true)}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1242,10 +1256,10 @@ export function Component() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              Delete Note
+              {getAppShellKnowledgeNoteDeleteConfirmTitle("single")}
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this note? This action cannot be undone.
+              {formatAppShellKnowledgeNoteDeleteConfirmMessage("single")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1270,11 +1284,10 @@ export function Component() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              Delete {visibleSelectedCount} Notes
+              {getAppShellKnowledgeNoteDeleteConfirmTitle("selected")}
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {visibleSelectedCount} selected notes? This action cannot
-              be undone.
+              {formatAppShellKnowledgeNoteDeleteConfirmMessage("selected", visibleSelectedCount)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1288,7 +1301,7 @@ export function Component() {
               disabled={deleteMultipleMutation.isPending}
             >
               {deleteMultipleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Delete {visibleSelectedCount} Notes
+              {formatAppShellKnowledgeNoteDeleteCountLabel(visibleSelectedCount)}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1299,10 +1312,10 @@ export function Component() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              Delete All Notes
+              {getAppShellKnowledgeNoteDeleteConfirmTitle("all")}
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete ALL {totalCount} notes? This action cannot be undone.
+              {formatAppShellKnowledgeNoteDeleteConfirmMessage("all", totalCount)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1316,7 +1329,7 @@ export function Component() {
               disabled={deleteAllMutation.isPending}
             >
               {deleteAllMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Delete All Notes
+              {getAppShellKnowledgeNoteActionLabel("deleteAllNotes")}
             </Button>
           </DialogFooter>
         </DialogContent>

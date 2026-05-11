@@ -27,7 +27,7 @@ describe("desktop repeat-task list layout", () => {
     const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
 
     expect(listSection).toContain('className="flex shrink-0 items-center gap-1"')
-    expect(listSection).toContain('aria-label={`${loop.enabled ? "Disable" : "Enable"} ${loop.name}`}')
+    expect(listSection).toContain("getAppShellLoopToggleAccessibilityLabel(loop.name, loop.enabled)")
     expect(listSection).toContain('className="h-6 gap-1 px-1.5 text-xs"')
     expect(listSection).not.toContain('<Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>')
   })
@@ -35,18 +35,19 @@ describe("desktop repeat-task list layout", () => {
   it("shows continuous repeat tasks as a distinct cadence", () => {
     const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
 
-    expect(settingsLoopsSource).toContain("type RepeatTaskScheduleMode")
+    expect(settingsLoopsSource).toContain("type RepeatTaskEditFormData")
     expect(settingsLoopsSource).toContain("describeLoopCadence")
     expect(listSection).toContain("{describeLoopCadence(loop)}")
-    expect(settingsLoopsSource).toContain('{ mode: "continuous", label: "Continuous" }')
+    expect(settingsLoopsSource).toContain('{ mode: "continuous", label: APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes.continuous }')
   })
 
   it("uses shared runtime timestamp formatting for repeat-task run metadata", () => {
     const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
 
     expect(settingsLoopsSource).toContain("formatRepeatTaskRuntimeTimestampOrFallback")
-    expect(listSection).toContain("Next run: {formatRepeatTaskRuntimeTimestampOrFallback(nextRunAt)}")
-    expect(listSection).toContain("Last run: {formatRepeatTaskRuntimeTimestampOrFallback(lastRunAt)}")
+    expect(listSection).toContain("formatAppShellLoopNextRunLabel(formatRepeatTaskRuntimeTimestampOrFallback(nextRunAt))")
+    expect(listSection).toContain("formatAppShellLoopLastRunLabel(formatRepeatTaskRuntimeTimestampOrFallback(lastRunAt))")
+    expect(listSection).toContain("getAppShellLoopFeatureLabels(loop)")
     expect(settingsLoopsSource).not.toContain("function formatLastRun")
   })
 })

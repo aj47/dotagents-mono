@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  CHAT_RUNTIME_PRESENTATION,
   deriveAttentionState,
   deriveLifecycleState,
+  formatChatRuntimeAssistantErrorContent,
+  formatChatRuntimeBranchAccessibilityLabel,
+  formatChatRuntimeConnectionErrorMessage,
+  formatChatRuntimeToolApprovalFailureMessage,
+  formatChatRuntimeWebConfirmMessage,
+  getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
   getSessionPresentation,
   getSidebarStatusPresentation,
@@ -35,6 +42,7 @@ describe("session presentation semantics", () => {
     expect(sidebar.shouldPulse).toBe(false)
     expect(input.mode).toBe("queue")
     expect(input.placeholder).toBe("Queue next message...")
+    expect(input.submitHint).toBe("Adds your message to the queue for this conversation.")
   })
 
   it("prioritizes pending approval and blocked state above running/background", () => {
@@ -60,6 +68,7 @@ describe("session presentation semantics", () => {
       mode: "send",
       placeholder: "Continue conversation...",
       isDisabled: false,
+      submitHint: "Sends your message to the selected agent.",
     })
     expect(getFollowUpInputPresentation({ conversationState: "blocked", isQueueEnabled: true }).mode).toBe("send")
   })
@@ -70,5 +79,28 @@ describe("session presentation semantics", () => {
     expect(deriveAttentionState({ conversationState: "running", isSnoozed: true, hasForegroundActivity: true })).toBe("foreground")
     expect(deriveAttentionState({ conversationState: "complete", hasRecentFinalResponse: true })).toBe("foreground")
     expect(deriveLifecycleState({ conversationState: "running", isSnoozed: true, hasUnreadResponse: true })).toBe("running")
+  })
+
+  it("centralizes chat runtime feedback copy", () => {
+    expect(CHAT_RUNTIME_PRESENTATION.killSwitch.title).toBe("Emergency Stop")
+    expect(formatChatRuntimeWebConfirmMessage("Title", "Body")).toBe("Title\n\nBody")
+    expect(getChatRuntimeAlertMessage(new Error("Network"), "Fallback")).toBe("Network")
+    expect(getChatRuntimeAlertMessage("", "Fallback")).toBe("Fallback")
+    expect(formatChatRuntimeToolApprovalFailureMessage("approve", new Error("Nope"))).toBe(
+      "Failed to approve tool call. Nope",
+    )
+    expect(formatChatRuntimeToolApprovalFailureMessage("deny", null)).toBe(
+      "Failed to deny tool call. Please try again.",
+    )
+    expect(formatChatRuntimeBranchAccessibilityLabel("assistant", 3)).toBe(
+      "Branch conversation from assistant message 3",
+    )
+    expect(formatChatRuntimeConnectionErrorMessage("Lost", { status: "reconnecting", retryCount: 2 })).toBe(
+      "Connection lost. Attempted 2 reconnections. Lost",
+    )
+    expect(formatChatRuntimeAssistantErrorContent("Lost")).toContain('tap "Retry"')
+    expect(formatChatRuntimeAssistantErrorContent("Lost", "Partial")).toBe(
+      "Partial\n\n---\nConnection lost. Partial response shown above.\n\nError: Lost",
+    )
   })
 })

@@ -34,6 +34,11 @@ import {
   CONVERSATION_SEARCH_RESULT_LIMIT,
   filterConversationSearchEntries,
 } from "@dotagents/shared/conversation-list-search"
+import {
+  APP_CONVERSATION_LIST_SECTION_LABELS,
+  getConversationListItemAccessibilityLabel,
+  normalizeConversationListPreviewText,
+} from "@dotagents/shared/conversation-list-presentation"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 
 const INITIAL_SAVED_CONVERSATIONS = 20
@@ -325,7 +330,7 @@ export function SavedConversationsDialog({
           conversationId,
           sessionId: session.id,
           updatedAt: getSessionUpdatedAt(session, progress),
-          preview: lastMessage,
+          preview: normalizeConversationListPreviewText(lastMessage),
           lastMessage,
           statusLabel:
             session.status === "error"
@@ -361,7 +366,9 @@ export function SavedConversationsDialog({
         title: conversation.title,
         conversationId: conversation.id,
         updatedAt: conversation.updatedAt,
-        preview: getConversationSnippet(undefined, conversation.lastMessage, conversation.preview),
+        preview: normalizeConversationListPreviewText(
+          getConversationSnippet(undefined, conversation.lastMessage, conversation.preview),
+        ),
         lastMessage:
           normalizeConversationText(conversation.lastMessage) ||
           normalizeConversationText(conversation.preview),
@@ -578,17 +585,24 @@ export function SavedConversationsDialog({
                   const showSectionTitle =
                     index === 0 ||
                     visibleConversationEntries[index - 1]?.kind !== entry.kind
+                  const entryPreview = normalizeConversationListPreviewText(entry.preview)
 
                   return (
                     <div key={entry.key}>
                       {showSectionTitle && (
                         <p className="text-muted-foreground px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide">
-                          {entry.kind === "active" ? "Active conversations" : "Saved conversations"}
+                          {APP_CONVERSATION_LIST_SECTION_LABELS[entry.kind]}
                         </p>
                       )}
                       <div
                         role="button"
                         tabIndex={0}
+                        aria-label={getConversationListItemAccessibilityLabel({
+                          title: entry.title,
+                          isPinned: entry.isPinned,
+                          isArchived: entry.isArchived,
+                          statusLabel: entry.statusLabel,
+                        })}
                         onClick={() => handleOpenConversation(entry)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -604,7 +618,7 @@ export function SavedConversationsDialog({
                         )}
                         onMouseEnter={() => setHighlightedConversationId(entry.key)}
                         data-highlighted={highlightedConversationId === entry.key ? "true" : undefined}
-                        title={`${entry.preview}\n${dayjs(entry.updatedAt).format("MMM D, h:mm A")}`}
+                        title={`${entryPreview}\n${dayjs(entry.updatedAt).format("MMM D, h:mm A")}`}
                       >
                         <span
                           className={cn(
@@ -676,7 +690,7 @@ export function SavedConversationsDialog({
                             </div>
                           )}
                           <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]">
-                            {entry.preview}
+                            {entryPreview}
                           </p>
                         </div>
                       </div>

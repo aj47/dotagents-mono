@@ -9,7 +9,7 @@ test('keeps the settings modal dismissible even with custom header content', () 
   assert.match(appSource, /screenOptions=\{\(\{ route \}\) => \(\{/);
   assert.doesNotMatch(appSource, /headerLeft:\s*route\.name === 'Settings'/);
   assert.match(appSource, /name="Settings"[\s\S]*?options=\{\(\{ navigation \}\) => \(\{/);
-  assert.match(appSource, /accessibilityLabel="Close settings"/);
+  assert.match(appSource, /accessibilityLabel=\{APP_SHELL_HEADER_ACTIONS\.closeSettings\.label\}/);
 });
 
 test('starts the mobile app on Sessions and opens Settings as a modal', () => {

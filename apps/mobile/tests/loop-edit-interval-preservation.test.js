@@ -7,15 +7,23 @@ const screenSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'LoopEditScreen.tsx'),
   'utf8'
 );
+const repeatTaskSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'repeat-task-utils.ts'),
+  'utf8'
+);
 
 test('preserves an existing loop interval when hidden interval text is invalid while editing', () => {
-  assert.match(screenSource, /DEFAULT_REPEAT_TASK_INTERVAL_MINUTES/);
+  assert.match(repeatTaskSource, /DEFAULT_REPEAT_TASK_INTERVAL_MINUTES/);
   assert.match(screenSource, /existingLoopIntervalMinutes, setExistingLoopIntervalMinutes/);
   assert.match(screenSource, /setExistingLoopIntervalMinutes\(loop\.intervalMinutes\);/);
   assert.match(
     screenSource,
-    /resolveRepeatTaskIntervalMinutesDraft\(formData\.intervalMinutes, \{[\s\S]*?existingIntervalMinutes: isEditing \? existingLoopIntervalMinutes : null,[\s\S]*?fallbackIntervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,[\s\S]*?\}\)/
+    /buildRepeatTaskEditFormSavePayload\(formData, \{[\s\S]*?existingIntervalMinutes: isEditing \? existingLoopIntervalMinutes : null,[\s\S]*?\}\)/
   );
-  assert.match(screenSource, /intervalMinutes: intervalResolution\.intervalMinutes/);
+  assert.match(
+    repeatTaskSource,
+    /resolveRepeatTaskIntervalMinutesDraft\(formData\.intervalMinutes, \{[\s\S]*?existingIntervalMinutes: options\.existingIntervalMinutes,[\s\S]*?fallbackIntervalMinutes: options\.fallbackIntervalMinutes \?\? DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,[\s\S]*?\}\)/
+  );
+  assert.match(repeatTaskSource, /intervalMinutes: intervalResolution\.intervalMinutes/);
   assert.doesNotMatch(screenSource, /const savedIntervalMinutes = hasValidInterval \? intervalMinutes : 60;/);
 });

@@ -34,12 +34,18 @@ import {
   PARAKEET_NUM_THREAD_OPTIONS,
 } from "@dotagents/shared/stt-models"
 import {
+  CHAT_PROVIDER_CREDENTIAL_SECTIONS,
   DEFAULT_AGENT_PROVIDER_ID,
   DEFAULT_STT_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
   DEFAULT_TTS_PROVIDER_ID,
 } from "@dotagents/shared/providers"
 import { getSelectableMainAcpAgents } from "@dotagents/shared/main-agent-selection"
+import {
+  APP_SHELL_PROVIDER_SETUP_PRESENTATION,
+  getAppShellChatGptWebConnectionLabel,
+  getAppShellProviderModelSelectionMovedDescription,
+} from "@dotagents/shared/app-shell"
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
@@ -51,6 +57,9 @@ type ProviderDraftKey =
   | "groqBaseUrl"
   | "geminiApiKey"
   | "geminiBaseUrl"
+
+const GROQ_CREDENTIAL_SECTION = CHAT_PROVIDER_CREDENTIAL_SECTIONS.find((section) => section.id === "groq")!
+const GEMINI_CREDENTIAL_SECTION = CHAT_PROVIDER_CREDENTIAL_SECTIONS.find((section) => section.id === "gemini")!
 
 function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
   return {
@@ -206,7 +215,7 @@ function ParakeetProviderSection({
           <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
             {isActive
               ? "Local speech-to-text with NVIDIA Parakeet on your device."
-              : "Not selected above. You can still configure it here."}
+              : APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription}
           </p>
 
           {/* Model Download Section */}
@@ -412,7 +421,7 @@ function KittenProviderSection({
           <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
             {isActive
               ? "Local text-to-speech with Kitten on your device."
-              : "Not selected above. You can still configure it here."}
+              : APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription}
           </p>
 
           {/* Model Download Section */}
@@ -619,7 +628,7 @@ function SupertonicProviderSection({
           <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
             {isActive
               ? "Local text-to-speech with Supertonic on your device. Supports English, Korean, Spanish, Portuguese, and French."
-              : "Not selected above. You can still configure it here."}
+              : APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription}
           </p>
 
           {/* Model Download Section */}
@@ -882,21 +891,21 @@ export function Component() {
 
       <div className="grid gap-4">
         <div className="rounded-lg border bg-muted/20 px-4 py-3">
-          <h2 className="text-sm font-semibold">Provider Setup</h2>
+          <h2 className="text-sm font-semibold">{APP_SHELL_PROVIDER_SETUP_PRESENTATION.pageTitle}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Use this page for API keys, base URLs, local engine downloads, and quick provider diagnostics. All model and voice
-            selection now lives on the Models page.
+            {APP_SHELL_PROVIDER_SETUP_PRESENTATION.pageDescription}
           </p>
           {isMainAgentAcpMode && (
             <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-primary">
                 <Bot className="h-3.5 w-3.5" />
-                ACP Main Agent:{" "}
-                <span className="text-foreground">{selectedMainAcpAgentDisplayName || "Not selected"}</span>
+                {APP_SHELL_PROVIDER_SETUP_PRESENTATION.acpMode.titlePrefix}:{" "}
+                <span className="text-foreground">
+                  {selectedMainAcpAgentDisplayName || APP_SHELL_PROVIDER_SETUP_PRESENTATION.acpMode.fallbackAgentLabel}
+                </span>
               </div>
               <p className="mt-1 text-muted-foreground">
-                ACP mode handles chat submissions through the selected agent. Provider setup below still applies to API-backed
-                tools, voice, and local engines.
+                {APP_SHELL_PROVIDER_SETUP_PRESENTATION.acpMode.description}
               </p>
             </div>
           )}
@@ -934,13 +943,13 @@ export function Component() {
             <div id="openai-provider-content" className="divide-y border-t">
               {activeProviders.openai.length === 0 && (
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
-                  OpenAI-compatible presets are selected from the Models page.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.openAiCompatibleInactiveDescription}
                 </p>
               )}
 
               <div className="px-3 py-2">
                 <p className="text-sm text-muted-foreground">
-                  OpenAI-compatible presets, agent models, and transcript cleanup models are now managed on the Models page.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.openAiCompatibleManagedDescription}
                 </p>
               </div>
             </div>
@@ -975,18 +984,19 @@ export function Component() {
             {!configQuery.data.providerSectionCollapsedGroq && (
               <div id="groq-provider-content" className="divide-y border-t">
                 {renderProviderDraftInput("groqApiKey", {
-                  label: "API Key",
+                  label: GROQ_CREDENTIAL_SECTION.secrets[0].label,
                   type: "password",
+                  placeholder: GROQ_CREDENTIAL_SECTION.secrets[0].placeholder,
                 })}
 
                 {renderProviderDraftInput("groqBaseUrl", {
-                  label: "API Base URL",
+                  label: APP_SHELL_PROVIDER_SETUP_PRESENTATION.baseUrlLabel,
                   type: "url",
-                  placeholder: "https://api.groq.com/openai/v1",
+                  placeholder: GROQ_CREDENTIAL_SECTION.baseUrlPlaceholder,
                 })}
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Groq model selection now lives on the Models page.
+                  {getAppShellProviderModelSelectionMovedDescription(GROQ_CREDENTIAL_SECTION.label)}
                 </p>
               </div>
             )}
@@ -1021,18 +1031,19 @@ export function Component() {
             {!configQuery.data.providerSectionCollapsedGemini && (
               <div id="gemini-provider-content" className="divide-y border-t">
                 {renderProviderDraftInput("geminiApiKey", {
-                  label: "API Key",
+                  label: GEMINI_CREDENTIAL_SECTION.secrets[0].label,
                   type: "password",
+                  placeholder: GEMINI_CREDENTIAL_SECTION.secrets[0].placeholder,
                 })}
 
                 {renderProviderDraftInput("geminiBaseUrl", {
-                  label: "API Base URL",
+                  label: APP_SHELL_PROVIDER_SETUP_PRESENTATION.baseUrlLabel,
                   type: "url",
-                  placeholder: "https://generativelanguage.googleapis.com",
+                  placeholder: GEMINI_CREDENTIAL_SECTION.baseUrlPlaceholder,
                 })}
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Gemini model selection now lives on the Models page.
+                  {getAppShellProviderModelSelectionMovedDescription(GEMINI_CREDENTIAL_SECTION.label)}
                 </p>
               </div>
             )}
@@ -1069,18 +1080,19 @@ export function Component() {
                 <div className="px-3 py-3 space-y-3">
                   <div className="text-sm">
                     <div className="font-medium">
-                      {(chatgptWebAuthQuery.data as any)?.authenticated
-                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
-                        : "Not connected"}
+                      {getAppShellChatGptWebConnectionLabel(
+                        !!(chatgptWebAuthQuery.data as any)?.authenticated,
+                        (chatgptWebAuthQuery.data as any)?.email,
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {(chatgptWebAuthQuery.data as any)?.planType
-                        ? `Plan: ${(chatgptWebAuthQuery.data as any).planType}`
-                        : "Uses your ChatGPT Codex subscription via OAuth."}
+                        ? `${APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.planPrefix}: ${(chatgptWebAuthQuery.data as any).planType}`
+                        : APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.fallbackDescription}
                     </div>
                     {(chatgptWebAuthQuery.data as any)?.accountId && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        Account ID: {(chatgptWebAuthQuery.data as any).accountId}
+                        {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.accountIdLabel}: {(chatgptWebAuthQuery.data as any).accountId}
                       </div>
                     )}
                   </div>
@@ -1088,17 +1100,17 @@ export function Component() {
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={handleChatgptWebAuth} disabled={chatgptWebAuthBusy}>
                       {chatgptWebAuthBusy
-                        ? "Working..."
+                        ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.workingActionLabel
                         : (chatgptWebAuthQuery.data as any)?.authenticated
-                          ? "Re-auth"
-                          : "Connect"}
+                          ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.reauthActionLabel
+                          : APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.connectActionLabel}
                     </Button>
                     <Button size="sm" variant="outline" onClick={handleCopyChatgptCallbackUrl} disabled={chatgptWebAuthBusy}>
-                      Copy Callback URL
+                      {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.copyCallbackActionLabel}
                     </Button>
                     {(chatgptWebAuthQuery.data as any)?.authenticated && (
                       <Button size="sm" variant="outline" onClick={handleChatgptWebLogout} disabled={chatgptWebAuthBusy}>
-                        Disconnect
+                        {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectActionLabel}
                       </Button>
                     )}
                   </div>
@@ -1109,7 +1121,7 @@ export function Component() {
                 </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Browser sign-in should return to `http://localhost:1455/auth/callback`. Use Copy Callback URL if you need to inspect or paste the callback target.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.activeCallbackHelper}
                 </p>
               </div>
             )}
@@ -1175,22 +1187,23 @@ export function Component() {
             {!configQuery.data.providerSectionCollapsedGroq && (
               <div id="groq-provider-content-inactive" className="divide-y border-t">
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
-                  Not selected above. You can still configure it here.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription}
                 </p>
 
                 {renderProviderDraftInput("groqApiKey", {
-                  label: "API Key",
+                  label: GROQ_CREDENTIAL_SECTION.secrets[0].label,
                   type: "password",
+                  placeholder: GROQ_CREDENTIAL_SECTION.secrets[0].placeholder,
                 })}
 
                 {renderProviderDraftInput("groqBaseUrl", {
-                  label: "API Base URL",
+                  label: APP_SHELL_PROVIDER_SETUP_PRESENTATION.baseUrlLabel,
                   type: "url",
-                  placeholder: "https://api.groq.com/openai/v1",
+                  placeholder: GROQ_CREDENTIAL_SECTION.baseUrlPlaceholder,
                 })}
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Groq model selection now lives on the Models page.
+                  {getAppShellProviderModelSelectionMovedDescription(GROQ_CREDENTIAL_SECTION.label)}
                 </p>
               </div>
             )}
@@ -1219,22 +1232,23 @@ export function Component() {
             {!configQuery.data.providerSectionCollapsedGemini && (
               <div id="gemini-provider-content-inactive" className="divide-y border-t">
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
-                  Not selected above. You can still configure it here.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription}
                 </p>
 
                 {renderProviderDraftInput("geminiApiKey", {
-                  label: "API Key",
+                  label: GEMINI_CREDENTIAL_SECTION.secrets[0].label,
                   type: "password",
+                  placeholder: GEMINI_CREDENTIAL_SECTION.secrets[0].placeholder,
                 })}
 
                 {renderProviderDraftInput("geminiBaseUrl", {
-                  label: "API Base URL",
+                  label: APP_SHELL_PROVIDER_SETUP_PRESENTATION.baseUrlLabel,
                   type: "url",
-                  placeholder: "https://generativelanguage.googleapis.com",
+                  placeholder: GEMINI_CREDENTIAL_SECTION.baseUrlPlaceholder,
                 })}
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Gemini model selection now lives on the Models page.
+                  {getAppShellProviderModelSelectionMovedDescription(GEMINI_CREDENTIAL_SECTION.label)}
                 </p>
               </div>
             )}
@@ -1263,35 +1277,36 @@ export function Component() {
             {!configQuery.data.providerSectionCollapsedChatgptWeb && (
               <div id="chatgpt-web-provider-content-inactive" className="divide-y border-t">
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
-                  Not selected above. You can still configure it here.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.inactiveDescription}
                 </p>
 
                 <div className="px-3 py-3 space-y-3">
                   <div className="text-sm">
                     <div className="font-medium">
-                      {(chatgptWebAuthQuery.data as any)?.authenticated
-                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
-                        : "Not connected"}
+                      {getAppShellChatGptWebConnectionLabel(
+                        !!(chatgptWebAuthQuery.data as any)?.authenticated,
+                        (chatgptWebAuthQuery.data as any)?.email,
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      Uses your ChatGPT Codex subscription via OAuth.
+                      {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.fallbackDescription}
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={handleChatgptWebAuth} disabled={chatgptWebAuthBusy}>
                       {chatgptWebAuthBusy
-                        ? "Working..."
+                        ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.workingActionLabel
                         : (chatgptWebAuthQuery.data as any)?.authenticated
-                          ? "Re-auth"
-                          : "Connect"}
+                          ? APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.reauthActionLabel
+                          : APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.connectActionLabel}
                     </Button>
                     <Button size="sm" variant="outline" onClick={handleCopyChatgptCallbackUrl} disabled={chatgptWebAuthBusy}>
-                      Copy Callback URL
+                      {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.copyCallbackActionLabel}
                     </Button>
                     {(chatgptWebAuthQuery.data as any)?.authenticated && (
                       <Button size="sm" variant="outline" onClick={handleChatgptWebLogout} disabled={chatgptWebAuthBusy}>
-                        Disconnect
+                        {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.disconnectActionLabel}
                       </Button>
                     )}
                   </div>
@@ -1302,7 +1317,7 @@ export function Component() {
                 </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Browser sign-in should return to `http://localhost:1455/auth/callback`. This provider now talks to the Codex responses transport, not the legacy conversation endpoint.
+                  {APP_SHELL_PROVIDER_SETUP_PRESENTATION.chatGptWeb.inactiveCallbackHelper}
                 </p>
               </div>
             )}

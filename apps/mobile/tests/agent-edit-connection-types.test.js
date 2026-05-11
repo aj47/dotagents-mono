@@ -14,7 +14,7 @@ const profileConnectionSource = fs.readFileSync(
 );
 
 test('explains agent connection types and exposes them as selected-state buttons', () => {
-  assert.match(screenSource, /Choose how DotAgents should reach this agent\. The setup fields below change based on this choice\./);
+  assert.match(screenSource, /APP_SHELL_AGENT_EDITOR_PRESENTATION\.fields\.connectionType\.helper/);
   assert.match(screenSource, /AGENT_EDIT_CONNECTION_TYPE_OPTIONS\.map\(ct =>/);
   assert.doesNotMatch(screenSource, /const CONNECTION_TYPES = \[/);
   assert.match(profileConnectionSource, /Uses the built-in DotAgents runtime with this profile’s prompts and settings\./);
@@ -27,8 +27,8 @@ test('explains agent connection types and exposes them as selected-state buttons
 test('shows local launch fields for acpx while keeping Base URL remote-only', () => {
   assert.match(screenSource, /const showCommandFields = formData\.connectionType === 'acpx';/);
   assert.match(screenSource, /const showRemoteBaseUrlField = formData\.connectionType === 'remote';/);
-  assert.match(screenSource, /\{showCommandFields && \([\s\S]*?<Text style=\{styles\.label\}>Command<\/Text>[\s\S]*?<Text style=\{styles\.label\}>Arguments<\/Text>[\s\S]*?<Text style=\{styles\.label\}>Working Directory<\/Text>/);
-  assert.match(screenSource, /\{showRemoteBaseUrlField && \([\s\S]*?<Text style=\{styles\.label\}>Base URL<\/Text>/);
+  assert.match(screenSource, /\{showCommandFields && \([\s\S]*?APP_SHELL_AGENT_EDITOR_PRESENTATION\.fields\.command\.label[\s\S]*?APP_SHELL_AGENT_EDITOR_PRESENTATION\.fields\.args\.label[\s\S]*?APP_SHELL_AGENT_EDITOR_PRESENTATION\.fields\.cwd\.label/);
+  assert.match(screenSource, /\{showRemoteBaseUrlField && \([\s\S]*?APP_SHELL_AGENT_EDITOR_PRESENTATION\.fields\.baseUrl\.label/);
 });
 
 test('keeps agent connection type options full-width and touch-friendly on narrow screens', () => {

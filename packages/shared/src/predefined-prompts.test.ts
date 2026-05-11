@@ -1,16 +1,32 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  PROMPT_LIBRARY_PRESENTATION,
   buildPromptLibraryCommandItems,
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   filterPromptLibraryCommandItems,
   filterPromptLibraryItemsByQuery,
+  formatPromptLibraryDeletePromptConfirmMessage,
+  formatPromptLibraryDeletePromptWebConfirmMessage,
+  formatPromptLibraryTaskRunningToast,
+  formatPromptLibraryTaskStartedMessage,
+  formatPromptLibraryTaskUnavailableMessage,
+  getPromptLibraryDeletePromptAccessibilityLabel,
+  getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorSaveActionLabel,
+  getPromptLibraryEditorTitle,
+  getPromptLibraryEmptyPromptLabel,
+  getPromptLibraryEmptySkillLabel,
+  getPromptLibraryEmptyTaskLabel,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
+  getPromptLibrarySaveSuccessMessage,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
+  getPromptLibraryShortcutAccessibilityHint,
+  getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
@@ -24,6 +40,41 @@ import {
 } from "./predefined-prompts"
 
 describe("predefined prompt helpers", () => {
+  it("shares prompt-library presentation across desktop and mobile shells", () => {
+    expect(PROMPT_LIBRARY_PRESENTATION.triggerAccessibilityLabel).toBe("Open predefined prompts")
+    expect(PROMPT_LIBRARY_PRESENTATION.search.placeholder).toBe("Search prompts, skills, tasks...")
+    expect(PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder).toBe("e.g., Code Review Request")
+    expect(getPromptLibraryEditorTitle(false)).toBe("Add New Prompt")
+    expect(getPromptLibraryEditorTitle(true)).toBe("Edit Prompt")
+    expect(getPromptLibraryEditorSaveActionLabel(false)).toBe("Add Prompt")
+    expect(getPromptLibraryEditorSaveActionLabel(true)).toBe("Save Changes")
+    expect(getPromptLibraryEditorSaveActionLabel(true, true)).toBe("Saving...")
+    expect(getPromptLibrarySaveSuccessMessage(false)).toBe("Prompt saved to your desktop prompt library.")
+    expect(getPromptLibrarySaveSuccessMessage(true)).toBe("Prompt updated in your desktop prompt library.")
+    expect(getPromptLibraryEmptyPromptLabel(false)).toBe("No saved prompts yet")
+    expect(getPromptLibraryEmptyPromptLabel(true)).toBe("No matching prompts")
+    expect(getPromptLibraryEmptySkillLabel(false)).toBe("No skills available")
+    expect(getPromptLibraryEmptySkillLabel(true)).toBe("No matching skills")
+    expect(getPromptLibraryEmptyTaskLabel(false)).toBe("No tasks available")
+    expect(getPromptLibraryEmptyTaskLabel(true)).toBe("No matching tasks")
+    expect(getPromptLibraryEditPromptAccessibilityLabel("Review")).toBe("Edit predefined prompt Review")
+    expect(getPromptLibraryDeletePromptAccessibilityLabel("Review")).toBe("Delete predefined prompt Review")
+    expect(getPromptLibraryShortcutAccessibilityLabel("action", "+ Add Prompt", "add-prompt")).toBe("Add new prompt")
+    expect(getPromptLibraryShortcutAccessibilityLabel("task", "Daily")).toBe("Run task Daily")
+    expect(getPromptLibraryShortcutAccessibilityLabel("saved-prompt", "Review")).toBe("Insert prompt Review")
+    expect(getPromptLibraryShortcutAccessibilityHint("action", "add-prompt")).toBe(
+      "Create a predefined prompt and save it to desktop.",
+    )
+    expect(getPromptLibraryShortcutAccessibilityHint("task")).toBe("Runs this desktop task now.")
+    expect(formatPromptLibraryDeletePromptWebConfirmMessage("Review")).toBe('Delete prompt "Review"?')
+    expect(formatPromptLibraryDeletePromptConfirmMessage("Review")).toBe(
+      'Delete "Review" from your desktop prompt library?',
+    )
+    expect(formatPromptLibraryTaskUnavailableMessage("Daily")).toBe('Could not trigger "Daily" right now')
+    expect(formatPromptLibraryTaskRunningToast("Daily")).toBe('Running "Daily"...')
+    expect(formatPromptLibraryTaskStartedMessage("Daily")).toBe('Running "Daily" on desktop.')
+  })
+
   it("classifies slash command prompt names", () => {
     expect(PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION).toBe("Use this skill as a reusable prompt.")
     expect(PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION).toBe("Run this task now.")

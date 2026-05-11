@@ -27,9 +27,19 @@ import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import type { PredefinedPrompt } from "@dotagents/shared/api-types"
 import type { LoopConfig } from "@dotagents/shared/types"
 import {
+  PROMPT_LIBRARY_PRESENTATION,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   filterPromptLibraryItemsByQuery,
+  formatPromptLibraryTaskRunningToast,
+  formatPromptLibraryTaskUnavailableMessage,
+  getPromptLibraryDeletePromptAccessibilityLabel,
+  getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorSaveActionLabel,
+  getPromptLibraryEditorTitle,
+  getPromptLibraryEmptyPromptLabel,
+  getPromptLibraryEmptySkillLabel,
+  getPromptLibraryEmptyTaskLabel,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
@@ -111,13 +121,13 @@ export function PredefinedPromptsMenu({
     try {
       const result = await desktopLoopsClient.runLoop(task.id)
       if (result && !result.success) {
-        toast.error(`Could not trigger "${task.name}" right now`)
+        toast.error(formatPromptLibraryTaskUnavailableMessage(task.name))
         return
       }
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
-      toast.success(`Running "${task.name}"...`)
+      toast.success(formatPromptLibraryTaskRunningToast(task.name))
     } catch {
-      toast.error("Failed to trigger task")
+      toast.error(PROMPT_LIBRARY_PRESENTATION.feedback.taskTriggerFailed)
     }
   }
 
@@ -187,8 +197,8 @@ export function PredefinedPromptsMenu({
             variant="ghost"
             className={cn("shrink-0", triggerButtonClassName, className)}
             disabled={disabled}
-            title="Predefined prompts"
-            aria-label="Open predefined prompts"
+            title={PROMPT_LIBRARY_PRESENTATION.triggerTitle}
+            aria-label={PROMPT_LIBRARY_PRESENTATION.triggerAccessibilityLabel}
           >
             <BookMarked className={triggerIconClassName} />
           </Button>
@@ -205,18 +215,18 @@ export function PredefinedPromptsMenu({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search prompts, skills, tasks..."
-              aria-label="Search prompts, skills, and tasks"
+              placeholder={PROMPT_LIBRARY_PRESENTATION.search.placeholder}
+              aria-label={PROMPT_LIBRARY_PRESENTATION.search.accessibilityLabel}
               wrapperClassName="h-8"
               className="text-xs"
               endContent={<Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
             />
           </div>
-          <DropdownMenuLabel className={sectionLabelClassName}>Predefined Prompts</DropdownMenuLabel>
+          <DropdownMenuLabel className={sectionLabelClassName}>{PROMPT_LIBRARY_PRESENTATION.sections.prompts}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {filteredPrompts.length === 0 ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              {prompts.length === 0 ? "No saved prompts yet" : "No matching prompts"}
+              {getPromptLibraryEmptyPromptLabel(prompts.length > 0)}
             </div>
           ) : (
             filteredPrompts.map((prompt) => (
@@ -239,8 +249,8 @@ export function PredefinedPromptsMenu({
                     variant="ghost"
                     size="md-icon"
                     onClick={(e) => handleEdit(e, prompt)}
-                    title="Edit"
-                    aria-label={`Edit predefined prompt ${prompt.name}`}
+                    title={PROMPT_LIBRARY_PRESENTATION.actions.edit}
+                    aria-label={getPromptLibraryEditPromptAccessibilityLabel(prompt.name)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -250,8 +260,8 @@ export function PredefinedPromptsMenu({
                     size="md-icon"
                     className="text-destructive hover:text-destructive"
                     onClick={(e) => handleDelete(e, prompt)}
-                    title="Delete"
-                    aria-label={`Delete predefined prompt ${prompt.name}`}
+                    title={PROMPT_LIBRARY_PRESENTATION.actions.delete}
+                    aria-label={getPromptLibraryDeletePromptAccessibilityLabel(prompt.name)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -262,13 +272,13 @@ export function PredefinedPromptsMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={handleAddNew} className="cursor-pointer">
             <Plus className="mr-2 h-4 w-4 shrink-0" />
-            Add new prompt
+            {PROMPT_LIBRARY_PRESENTATION.actions.addNewPrompt}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className={sectionLabelClassName}>Skills</DropdownMenuLabel>
+          <DropdownMenuLabel className={sectionLabelClassName}>{PROMPT_LIBRARY_PRESENTATION.sections.skills}</DropdownMenuLabel>
           {filteredSkills.length === 0 ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              {availableSkills.length === 0 ? "No skills available" : "No matching skills"}
+              {getPromptLibraryEmptySkillLabel(availableSkills.length > 0)}
             </div>
           ) : (
             filteredSkills.map((skill) => (
@@ -288,10 +298,10 @@ export function PredefinedPromptsMenu({
             ))
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className={sectionLabelClassName}>Tasks</DropdownMenuLabel>
+          <DropdownMenuLabel className={sectionLabelClassName}>{PROMPT_LIBRARY_PRESENTATION.sections.tasks}</DropdownMenuLabel>
           {filteredTasks.length === 0 ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              {availableTasks.length === 0 ? "No tasks available" : "No matching tasks"}
+              {getPromptLibraryEmptyTaskLabel(availableTasks.length > 0)}
             </div>
           ) : (
             filteredTasks.map((task) => (
@@ -316,38 +326,38 @@ export function PredefinedPromptsMenu({
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingPrompt ? "Edit Prompt" : "Add New Prompt"}</DialogTitle>
+            <DialogTitle>{getPromptLibraryEditorTitle(Boolean(editingPrompt))}</DialogTitle>
             <DialogDescription>
-              Save a frequently used prompt for quick access.
+              {PROMPT_LIBRARY_PRESENTATION.editor.description}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="prompt-name">Name</Label>
+              <Label htmlFor="prompt-name">{PROMPT_LIBRARY_PRESENTATION.editor.nameLabel}</Label>
               <Input
                 id="prompt-name"
                 value={promptName}
                 onChange={(e) => setPromptName(e.target.value)}
-                placeholder="e.g., Code Review Request"
+                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="prompt-content">Prompt Content</Label>
+              <Label htmlFor="prompt-content">{PROMPT_LIBRARY_PRESENTATION.editor.contentLabel}</Label>
               <Textarea
                 id="prompt-content"
                 value={promptContent}
                 onChange={(e) => setPromptContent(e.target.value)}
-                placeholder="Enter your prompt text..."
+                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder}
                 className="min-h-[120px] resize-y"
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
+              {PROMPT_LIBRARY_PRESENTATION.actions.cancel}
             </Button>
             <Button onClick={handleSave} disabled={!promptName.trim() || !promptContent.trim()}>
-              {editingPrompt ? "Save Changes" : "Add Prompt"}
+              {getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt))}
             </Button>
           </DialogFooter>
         </DialogContent>

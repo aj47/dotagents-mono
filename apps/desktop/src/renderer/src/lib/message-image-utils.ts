@@ -1,7 +1,13 @@
 import { logUI } from "@renderer/lib/debug"
 import {
   buildConversationImageMarkdownMessage,
-  formatMediaBytesMb,
+  formatChatImageAttachmentLimitMessage,
+  formatChatImageBudgetExceededMessage,
+  formatChatImageBudgetReachedMessage,
+  formatChatImageFileTooLargeMessage,
+  formatChatImageNotImageFileMessage,
+  formatChatImageSlotsRemainingMessage,
+  formatChatImageTryFewerOrSmallerMessage,
   getDataImageBytesFromUrl,
   MAX_CHAT_IMAGE_ATTACHMENTS,
   MAX_CHAT_IMAGE_FILE_BYTES,
@@ -195,29 +201,26 @@ export const readImageAttachments = async (
   if (slotsRemaining === 0) {
     return {
       attachments: [],
-      errors: [`You can attach up to ${MAX_IMAGE_ATTACHMENTS} images per message.`],
+      errors: [formatChatImageAttachmentLimitMessage(MAX_IMAGE_ATTACHMENTS)],
     }
   }
 
   if (existingEmbeddedBytes >= MAX_TOTAL_EMBEDDED_IMAGE_BYTES) {
     return {
       attachments: [],
-      errors: [
-        `This message already reached the image budget (${formatMediaBytesMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}).`,
-      ],
+      errors: [formatChatImageBudgetReachedMessage(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)],
     }
   }
 
   const accepted = selected
     .filter((file) => {
       if (!file.type.startsWith("image/")) {
-        errors.push(`${file.name} is not an image file.`)
+        errors.push(formatChatImageNotImageFileMessage(file.name))
         return false
       }
 
       if (file.size > MAX_IMAGE_SIZE_BYTES) {
-        const limitMb = Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))
-        errors.push(`${file.name} is larger than ${limitMb}MB.`)
+        errors.push(formatChatImageFileTooLargeMessage(file.name, MAX_IMAGE_SIZE_BYTES))
         return false
       }
 
@@ -226,7 +229,7 @@ export const readImageAttachments = async (
     .slice(0, slotsRemaining)
 
   if (selected.length > slotsRemaining && slotsRemaining > 0) {
-    errors.push(`Only ${slotsRemaining} image slot(s) remaining for this message.`)
+    errors.push(formatChatImageSlotsRemainingMessage(slotsRemaining))
   }
 
   const processedAttachments = await Promise.all(
@@ -247,9 +250,7 @@ export const readImageAttachments = async (
   let runningBytes = existingEmbeddedBytes
   for (const attachment of processedAttachments) {
     if (runningBytes + attachment.sizeBytes > MAX_TOTAL_EMBEDDED_IMAGE_BYTES) {
-      errors.push(
-        `${attachment.name} exceeds the per-message image budget (${formatMediaBytesMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}).`
-      )
+      errors.push(formatChatImageBudgetExceededMessage([attachment.name], MAX_TOTAL_EMBEDDED_IMAGE_BYTES))
       continue
     }
     attachments.push(attachment)
@@ -257,9 +258,7 @@ export const readImageAttachments = async (
   }
 
   if (processedAttachments.length > 0 && attachments.length === 0) {
-    errors.push(
-      `Try fewer or smaller images. Total embedded image budget is ${formatMediaBytesMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}.`
-    )
+    errors.push(formatChatImageTryFewerOrSmallerMessage(MAX_TOTAL_EMBEDDED_IMAGE_BYTES))
   }
 
   const totalOriginalBytes = accepted.reduce((sum, file) => sum + file.size, 0)

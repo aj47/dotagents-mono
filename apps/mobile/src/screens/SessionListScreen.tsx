@@ -27,6 +27,18 @@ import {
   type SessionArchiveMode,
   type SessionSearchResult,
 } from '@dotagents/shared/session';
+import {
+  APP_CONVERSATION_LIST_COPY,
+  getConversationArchiveFilterLabel,
+  getConversationListEmptyState,
+  getConversationListItemAccessibilityLabel,
+  getConversationListMessageCountLabel,
+  normalizeConversationListPreviewText,
+} from '@dotagents/shared/conversation-list-presentation';
+import {
+  APP_SHELL_HEADER_ACTIONS,
+  APP_SHELL_MOBILE_ROUTE_TITLES,
+} from '@dotagents/shared/app-shell';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -628,7 +640,7 @@ export default function SessionListScreen({ navigation }: Props) {
           accessibilityLabel={`Current agent: ${currentProfile?.name || 'Default'}. Tap to change.`}
           accessibilityHint="Opens agent selection menu"
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chats</Text>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>{APP_SHELL_MOBILE_ROUTE_TITLES.Sessions}</Text>
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -659,8 +671,8 @@ export default function SessionListScreen({ navigation }: Props) {
             onPress={handleOpenSplitView}
             style={styles.headerSettingsButton}
             accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Open split view')}
-            accessibilityHint="Opens two chats at once for comparison"
+            accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_HEADER_ACTIONS.openSplitView.label)}
+            accessibilityHint={APP_SHELL_HEADER_ACTIONS.openSplitView.hint}
           >
             <Text style={{ fontSize: 17, color: theme.colors.foreground }}>◫</Text>
           </TouchableOpacity>
@@ -668,17 +680,17 @@ export default function SessionListScreen({ navigation }: Props) {
             onPress={handleCreateSession}
             style={styles.headerNewChatButton}
             accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('New chat')}
-            accessibilityHint="Creates and opens a new chat."
+            accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_HEADER_ACTIONS.newChat.label)}
+            accessibilityHint={APP_SHELL_HEADER_ACTIONS.newChat.hint}
           >
-            <Text style={styles.headerNewChatButtonText}>+ New Chat</Text>
+            <Text style={styles.headerNewChatButtonText}>{APP_SHELL_HEADER_ACTIONS.newChat.displayLabel}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleOpenSettings}
             style={styles.headerSettingsButton}
             accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Open settings')}
-            accessibilityHint="Opens app settings."
+            accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_HEADER_ACTIONS.openSettings.label)}
+            accessibilityHint={APP_SHELL_HEADER_ACTIONS.openSettings.hint}
           >
             <Text style={{ fontSize: 20, color: theme.colors.foreground }}>⚙️</Text>
           </TouchableOpacity>
@@ -887,13 +899,10 @@ export default function SessionListScreen({ navigation }: Props) {
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
-    const rawPreview = (item.searchPreview ?? item.preview) || 'No messages yet';
-    const sessionPreviewText = rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')
-      ? 'Used a tool'
-      : rawPreview.includes('{"')
-        ? rawPreview.replace(/\{.*\}/g, '{...}').trim()
-        : rawPreview;
-    const sessionMetaLabel = `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`;
+    const sessionPreviewText = normalizeConversationListPreviewText(item.searchPreview ?? item.preview);
+    const sessionMetaLabel = getConversationListMessageCountLabel(item.messageCount, {
+      sourceLabel: isStub ? APP_CONVERSATION_LIST_COPY.desktopSourceLabel : null,
+    });
 
     return (
       <Pressable
@@ -905,7 +914,12 @@ export default function SessionListScreen({ navigation }: Props) {
         onPress={() => handleSelectSession(item.id)}
         onLongPress={() => handleSessionLongPress(item)}
         accessibilityRole="button"
-        accessibilityLabel={`${item.isPinned ? 'Pinned, ' : ''}${item.isArchived ? 'Archived, ' : ''}${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
+        accessibilityLabel={getConversationListItemAccessibilityLabel({
+          title: item.title,
+          isPinned: item.isPinned,
+          isArchived: item.isArchived,
+          messageCount: item.messageCount,
+        })}
         accessibilityHint="Opens this chat. Long press for rename, pin, archive, and delete actions."
       >
         <View style={styles.sessionHeader}>
@@ -961,25 +975,27 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const EmptyState = () => {
     const isArchivedMode = sessionListMode === 'archived';
+    const emptyState = getConversationListEmptyState({
+      mode: sessionListMode,
+      hasActiveSearch: false,
+    });
 
     return (
       <View style={styles.emptyState}>
         <View style={styles.emptyStateTextGroup}>
-          <Text style={styles.emptyTitle}>{isArchivedMode ? 'No archived chats' : 'No chats yet'}</Text>
+          <Text style={styles.emptyTitle}>{emptyState.title}</Text>
           <Text style={styles.emptySubtitle}>
-            {isArchivedMode
-              ? 'Your archived chat list is empty.'
-              : 'Start your first chat so recent conversations show up here.'}
+            {emptyState.subtitle}
           </Text>
         </View>
         <TouchableOpacity
           style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
           onPress={isArchivedMode ? () => setSessionListMode('active') : handleCreateSession}
           accessibilityRole="button"
-          accessibilityLabel={createButtonAccessibilityLabel(isArchivedMode ? 'View chats' : 'Start first chat')}
-          accessibilityHint={isArchivedMode ? 'Returns to the chats list.' : 'Creates and opens your first chat.'}
+          accessibilityLabel={createButtonAccessibilityLabel(emptyState.actionLabel)}
+          accessibilityHint={emptyState.actionHint}
         >
-          <Text style={styles.emptyStateButtonText}>{isArchivedMode ? 'View chats' : 'Start first chat'}</Text>
+          <Text style={styles.emptyStateButtonText}>{emptyState.actionLabel}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1023,27 +1039,30 @@ export default function SessionListScreen({ navigation }: Props) {
     </View>
   );
 
-  const SearchEmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyStateTextGroup}>
-        <Text style={styles.emptyTitle}>
-          {sessionListMode === 'archived' ? 'No matching archived chats' : 'No matching chats'}
-        </Text>
-        <Text style={styles.emptySubtitle}>
-          Try a different keyword or clear search.
-        </Text>
+  const SearchEmptyState = () => {
+    const emptyState = getConversationListEmptyState({
+      mode: sessionListMode,
+      hasActiveSearch: true,
+    });
+
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyStateTextGroup}>
+          <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+          <Text style={styles.emptySubtitle}>{emptyState.subtitle}</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+          onPress={() => setSearchQuery('')}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel(emptyState.actionLabel)}
+          accessibilityHint={emptyState.actionHint}
+        >
+          <Text style={styles.emptyStateButtonText}>{emptyState.actionLabel}</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
-        onPress={() => setSearchQuery('')}
-        accessibilityRole="button"
-        accessibilityLabel={createButtonAccessibilityLabel('Clear chat search')}
-        accessibilityHint="Clears the current chat search query."
-      >
-        <Text style={styles.emptyStateButtonText}>Clear search</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const rfHintText = rfStatus === 'listening'
     ? 'Release to send...'
@@ -1077,10 +1096,10 @@ export default function SessionListScreen({ navigation }: Props) {
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder='Search chats...'
+            placeholder={APP_CONVERSATION_LIST_COPY.searchPlaceholder}
             placeholderTextColor={theme.colors.mutedForeground}
             accessibilityLabel={createTextInputAccessibilityLabel('Chat search')}
-            accessibilityHint="Search chat titles, previews, and loaded message text."
+            accessibilityHint={APP_CONVERSATION_LIST_COPY.searchAccessibilityHint}
             autoCapitalize='none'
             autoCorrect={false}
             returnKeyType='search'
@@ -1099,8 +1118,8 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
         <View style={styles.sessionFilterRow}>
           {([
-            ['active', 'Chats'],
-            ['archived', `Archived${sessionArchiveCount > 0 ? ` (${sessionArchiveCount})` : ''}`],
+            ['active', getConversationArchiveFilterLabel('active')],
+            ['archived', getConversationArchiveFilterLabel('archived', sessionArchiveCount)],
           ] as const).map(([mode, label]) => {
             const isSelected = sessionListMode === mode;
             return (

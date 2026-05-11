@@ -32,6 +32,12 @@ import {
 } from "@dotagents/shared/model-presets"
 import { DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared/providers"
 import { PresetModelSelector } from "./preset-model-selector"
+import {
+  APP_SHELL_MODEL_PRESET_PRESENTATION,
+  getAppShellModelPresetDeleteConfirmMessage,
+  getAppShellModelPresetEditorDescription,
+  getAppShellModelPresetEditorTitle,
+} from "@dotagents/shared/app-shell"
 
 export function ModelPresetManager({
   showAgentModel = true,
@@ -85,17 +91,17 @@ export function ModelPresetManager({
     const preset = allPresets.find(p => p.id === presetId)
     if (preset) {
       saveConfig(getModelPresetActivationUpdates(preset))
-      toast.success(`Switched to preset: ${preset.name}`)
+      toast.success(`${APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.switchedPrefix}: ${preset.name}`)
     }
   }
 
   const handleCreatePreset = () => {
     if (!newPreset.name?.trim()) {
-      toast.error("Preset name is required")
+      toast.error(APP_SHELL_MODEL_PRESET_PRESENTATION.validation.nameRequired)
       return
     }
     if (!newPreset.baseUrl?.trim()) {
-      toast.error("Base URL is required")
+      toast.error(APP_SHELL_MODEL_PRESET_PRESENTATION.validation.baseUrlRequired)
       return
     }
 
@@ -115,7 +121,7 @@ export function ModelPresetManager({
 
     setIsCreateDialogOpen(false)
     setNewPreset({ name: "", baseUrl: "", apiKey: "", agentModel: "", transcriptProcessingModel: "" })
-    toast.success("Preset created successfully")
+    toast.success(APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.created)
   }
 
   const handleUpdatePreset = () => {
@@ -124,18 +130,18 @@ export function ModelPresetManager({
     saveConfig(buildModelPresetEditUpdates(config, editingPreset, currentPresetId) as Partial<Config>)
     setIsEditDialogOpen(false)
     setEditingPreset(null)
-    toast.success("Preset updated successfully")
+    toast.success(APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.updated)
   }
 
   const handleDeletePreset = (preset: ModelPreset) => {
     if (!config) return
     if (preset.isBuiltIn) {
-      toast.error("Cannot delete built-in presets")
+      toast.error(APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.cannotDeleteBuiltIn)
       return
     }
-    if (confirm(`Delete preset "${preset.name}"?`)) {
+    if (confirm(getAppShellModelPresetDeleteConfirmMessage(preset.name))) {
       saveConfig(buildModelPresetDeleteUpdates(config, preset.id, currentPresetId) as Partial<Config>)
-      toast.success("Preset deleted")
+      toast.success(APP_SHELL_MODEL_PRESET_PRESENTATION.toasts.deleted)
     }
   }
 
@@ -149,7 +155,7 @@ export function ModelPresetManager({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label>OpenAI-Compatible Preset</Label>
+        <Label>{APP_SHELL_MODEL_PRESET_PRESENTATION.manager.title}</Label>
         <div className="flex gap-2">
           {currentPreset && (
             <Button
@@ -158,7 +164,9 @@ export function ModelPresetManager({
               onClick={() => handleEditPreset(currentPreset)}
             >
               <Settings2 className="h-3 w-3 mr-1" />
-              {currentPreset.isBuiltIn ? "Configure" : "Edit"}
+              {currentPreset.isBuiltIn
+                ? APP_SHELL_MODEL_PRESET_PRESENTATION.actions.configure
+                : APP_SHELL_MODEL_PRESET_PRESENTATION.actions.edit}
             </Button>
           )}
           <Button
@@ -167,14 +175,14 @@ export function ModelPresetManager({
             onClick={() => setIsCreateDialogOpen(true)}
           >
             <Plus className="h-3 w-3 mr-1" />
-            New Preset
+            {APP_SHELL_MODEL_PRESET_PRESENTATION.actions.newPreset}
           </Button>
         </div>
       </div>
 
       <Select value={currentPresetId} onValueChange={handlePresetChange}>
         <SelectTrigger>
-          <SelectValue placeholder="Select a preset" />
+          <SelectValue placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.manager.selectPlaceholder} />
         </SelectTrigger>
         <SelectContent>
           {allPresets.map((preset) => (
@@ -182,7 +190,7 @@ export function ModelPresetManager({
               <div className="flex items-center gap-2">
                 <span>{preset.name}</span>
                 {preset.isBuiltIn && (
-                  <span className="text-xs text-muted-foreground">(Built-in)</span>
+                  <span className="text-xs text-muted-foreground">({APP_SHELL_MODEL_PRESET_PRESENTATION.manager.builtInBadge})</span>
                 )}
                 {preset.apiKey && (
                   <Key className="h-3 w-3 text-green-500" />
@@ -197,7 +205,7 @@ export function ModelPresetManager({
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Globe className="h-4 w-4" />
-            <span className="truncate">{currentPreset.baseUrl || "No URL set"}</span>
+            <span className="truncate">{currentPreset.baseUrl || APP_SHELL_MODEL_PRESET_PRESENTATION.manager.noUrlLabel}</span>
           </div>
 
           {/* Inline model selectors - changes are auto-saved to preset */}
@@ -211,8 +219,8 @@ export function ModelPresetManager({
                 onValueChange={(value) => {
                   saveModelWithPreset('agentModel', 'agentOpenaiModel', value)
                 }}
-                label="Agent Model"
-                placeholder="Select model"
+                label={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.label}
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.placeholder}
               />
             )}
             {showTranscriptCleanupModel && (
@@ -224,8 +232,8 @@ export function ModelPresetManager({
                 onValueChange={(value) => {
                   saveModelWithPreset('transcriptProcessingModel', 'transcriptPostProcessingOpenaiModel', value)
                 }}
-                label="Transcript Processing Model"
-                placeholder="Select model"
+                label={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.label}
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.placeholder}
               />
             )}
           </div>
@@ -237,7 +245,7 @@ export function ModelPresetManager({
               onClick={() => handleDeletePreset(currentPreset)}
             >
               <Trash2 className="h-3 w-3 mr-1" />
-              Delete Preset
+              {APP_SHELL_MODEL_PRESET_PRESENTATION.actions.deletePreset}
             </Button>
           )}
         </div>
@@ -247,39 +255,39 @@ export function ModelPresetManager({
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Preset</DialogTitle>
+            <DialogTitle>{getAppShellModelPresetEditorTitle("create")}</DialogTitle>
             <DialogDescription>
-              Create a custom preset with its own API key, base URL, and model preferences.
+              {APP_SHELL_MODEL_PRESET_PRESENTATION.editor.createDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="preset-name">Preset Name</Label>
+              <Label htmlFor="preset-name">{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.name.label}</Label>
               <Input
                 id="preset-name"
                 value={newPreset.name}
                 onChange={(e) => setNewPreset({ ...newPreset, name: e.target.value })}
-                placeholder="e.g., My OpenRouter"
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.name.placeholder}
               />
             </div>
             <div>
-              <Label htmlFor="preset-url">API Base URL</Label>
+              <Label htmlFor="preset-url">{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.baseUrl.label}</Label>
               <Input
                 id="preset-url"
                 type="url"
                 value={newPreset.baseUrl}
                 onChange={(e) => setNewPreset({ ...newPreset, baseUrl: e.target.value })}
-                placeholder="https://api.example.com/v1"
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.baseUrl.placeholder}
               />
             </div>
             <div>
-              <Label htmlFor="preset-key">API Key</Label>
+              <Label htmlFor="preset-key">{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.label}</Label>
               <Input
                 id="preset-key"
                 type="password"
                 value={newPreset.apiKey}
                 onChange={(e) => setNewPreset({ ...newPreset, apiKey: e.target.value })}
-                placeholder="sk-..."
+                placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.placeholder}
               />
             </div>
 
@@ -288,10 +296,12 @@ export function ModelPresetManager({
               <div className="border-t pt-4 mt-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Model Preferences (Optional)</span>
+                  <span className="text-sm font-medium">
+                    {APP_SHELL_MODEL_PRESET_PRESENTATION.modelPreferences.createTitle}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Set default models that will be selected when switching to this preset.
+                  {APP_SHELL_MODEL_PRESET_PRESENTATION.modelPreferences.createDescription}
                 </p>
 
                 <div className="space-y-4">
@@ -303,8 +313,8 @@ export function ModelPresetManager({
                     onValueChange={(value) =>
                       setNewPreset({ ...newPreset, agentModel: value })
                     }
-                    label="Agent Model"
-                    placeholder="Select model for agent mode"
+                    label={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.label}
+                    placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.placeholder}
                   />
 
                   <PresetModelSelector
@@ -315,8 +325,8 @@ export function ModelPresetManager({
                     onValueChange={(value) =>
                       setNewPreset({ ...newPreset, transcriptProcessingModel: value })
                     }
-                    label="Transcript Processing Model"
-                    placeholder="Select model for transcript processing"
+                    label={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.label}
+                    placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.placeholder}
                   />
                 </div>
               </div>
@@ -324,10 +334,10 @@ export function ModelPresetManager({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
+              {APP_SHELL_MODEL_PRESET_PRESENTATION.actions.cancel}
             </Button>
             <Button onClick={handleCreatePreset} disabled={saveConfigMutation.isPending}>
-              Create Preset
+              {APP_SHELL_MODEL_PRESET_PRESENTATION.actions.create}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -338,18 +348,16 @@ export function ModelPresetManager({
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingPreset?.isBuiltIn ? "Configure Preset" : "Edit Preset"}
+              {getAppShellModelPresetEditorTitle("edit", editingPreset?.isBuiltIn)}
             </DialogTitle>
             <DialogDescription>
-              {editingPreset?.isBuiltIn
-                ? "Set the API key and model preferences for this built-in preset."
-                : "Update the preset settings and model preferences."}
+              {getAppShellModelPresetEditorDescription(!!editingPreset?.isBuiltIn)}
             </DialogDescription>
           </DialogHeader>
           {editingPreset && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-preset-name">Preset Name</Label>
+                <Label htmlFor="edit-preset-name">{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.name.label}</Label>
                 <Input
                   id="edit-preset-name"
                   value={editingPreset.name}
@@ -360,7 +368,7 @@ export function ModelPresetManager({
                 />
               </div>
               <div>
-                <Label htmlFor="edit-preset-url">API Base URL</Label>
+                <Label htmlFor="edit-preset-url">{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.baseUrl.label}</Label>
                 <Input
                   id="edit-preset-url"
                   type="url"
@@ -372,7 +380,7 @@ export function ModelPresetManager({
                 />
               </div>
               <div>
-                <Label htmlFor="edit-preset-key">API Key</Label>
+                <Label htmlFor="edit-preset-key">{APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.label}</Label>
                 <Input
                   id="edit-preset-key"
                   type="password"
@@ -380,7 +388,7 @@ export function ModelPresetManager({
                   onChange={(e) =>
                     setEditingPreset({ ...editingPreset, apiKey: e.target.value })
                   }
-                  placeholder="sk-..."
+                  placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.apiKey.placeholder}
                 />
               </div>
 
@@ -388,10 +396,12 @@ export function ModelPresetManager({
               <div className="border-t pt-4 mt-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Model Preferences</span>
+                  <span className="text-sm font-medium">
+                    {APP_SHELL_MODEL_PRESET_PRESENTATION.modelPreferences.editTitle}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Optionally set default models for this preset. When switching to this preset, these models will be selected automatically.
+                  {APP_SHELL_MODEL_PRESET_PRESENTATION.modelPreferences.editDescription}
                 </p>
 
                 <div className="space-y-4">
@@ -403,8 +413,8 @@ export function ModelPresetManager({
                     onValueChange={(value) =>
                       setEditingPreset({ ...editingPreset, agentModel: value })
                     }
-                    label="Agent Model"
-                    placeholder="Select model for agent mode"
+                    label={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.label}
+                    placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.agentModel.placeholder}
                   />
 
                   <PresetModelSelector
@@ -415,8 +425,8 @@ export function ModelPresetManager({
                     onValueChange={(value) =>
                       setEditingPreset({ ...editingPreset, transcriptProcessingModel: value })
                     }
-                    label="Transcript Processing Model"
-                    placeholder="Select model for transcript processing"
+                    label={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.label}
+                    placeholder={APP_SHELL_MODEL_PRESET_PRESENTATION.fields.transcriptProcessingModel.placeholder}
                   />
                 </div>
               </div>
@@ -424,10 +434,10 @@ export function ModelPresetManager({
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
+              {APP_SHELL_MODEL_PRESET_PRESENTATION.actions.cancel}
             </Button>
             <Button onClick={handleUpdatePreset} disabled={saveConfigMutation.isPending}>
-              Save Changes
+              {APP_SHELL_MODEL_PRESET_PRESENTATION.actions.save}
             </Button>
           </DialogFooter>
         </DialogContent>

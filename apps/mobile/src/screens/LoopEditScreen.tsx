@@ -4,15 +4,12 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Switch,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
 import { spacing, radius } from '../ui/theme';
 import type {
   AgentSessionCandidatesResponse,
@@ -43,6 +40,11 @@ import {
   type RepeatTaskEditFormData,
   updateRepeatTaskScheduleTimeAt,
 } from '@dotagents/shared/repeat-task-utils';
+import {
+  APP_SHELL_LOOP_EDITOR_PRESENTATION,
+  getAppShellEditorActionLabel,
+  getAppShellEditorTitle,
+} from '@dotagents/shared/app-shell';
 
 function formatMobileSessionCandidateTime(candidate: AgentSessionCandidateOption): string {
   return formatAgentSessionCandidateTime(candidate, {
@@ -56,7 +58,6 @@ function formatMobileSessionCandidateTime(candidate: AgentSessionCandidateOption
 }
 
 export default function LoopEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
@@ -94,13 +95,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
   }, [config.baseUrl, config.apiKey]);
 
   useEffect(() => {
-    navigation.setOptions({ title: isEditing ? 'Edit Loop' : 'Create Loop' });
+    navigation.setOptions({ title: getAppShellEditorTitle('loop', isEditing) });
   }, [isEditing, navigation]);
 
   useEffect(() => {
     if (isEditing && !loopFromRoute && !settingsClient) {
       setIsLoading(false);
-      setError('Configure Base URL and API key to load and save loops');
+      setError(APP_SHELL_LOOP_EDITOR_PRESENTATION.unavailableLoadSaveError);
     }
   }, [isEditing, loopFromRoute, settingsClient]);
 
@@ -116,7 +117,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setError(err.message || 'Failed to load agent profiles');
+          setError(err.message || APP_SHELL_LOOP_EDITOR_PRESENTATION.errors.loadProfilesFailed);
         }
       })
       .finally(() => {
@@ -139,7 +140,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setSessionCandidateError(err.message || 'Failed to load sessions');
+          setSessionCandidateError(err.message || APP_SHELL_LOOP_EDITOR_PRESENTATION.errors.loadSessionsFailed);
         }
       })
       .finally(() => {
@@ -161,7 +162,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         if (cancelled) return;
         const loop = res.loops.find(l => l.id === effectiveLoopId);
         if (!loop) {
-          setError('Loop not found');
+          setError(APP_SHELL_LOOP_EDITOR_PRESENTATION.errors.notFound);
           return;
         }
         setFormData(formatRepeatTaskEditFormData(loop));
@@ -169,7 +170,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setError(err.message || 'Failed to load loop');
+          setError(err.message || APP_SHELL_LOOP_EDITOR_PRESENTATION.errors.loadFailed);
         }
       })
       .finally(() => {
@@ -185,7 +186,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
-      setError('Configure Base URL and API key in Settings before saving');
+      setError(APP_SHELL_LOOP_EDITOR_PRESENTATION.unavailableSaveError);
       return;
     }
 
@@ -236,7 +237,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       }
       navigation.goBack();
     } catch (err: any) {
-      setError(err.message || 'Failed to save loop');
+      setError(err.message || APP_SHELL_LOOP_EDITOR_PRESENTATION.errors.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -248,47 +249,38 @@ export default function LoopEditScreen({ navigation, route }: any) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading loop...</Text>
+        <Text style={styles.loadingText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.loadingLabel}</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppShellEditorLayout title={getAppShellEditorTitle('loop', isEditing)}>
       {error && <Text style={styles.errorText}>{error}</Text>}
-      {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
+      {!settingsClient && <Text style={styles.helperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.unavailableSaveHelper}</Text>}
 
-      <Text style={styles.label}>Name *</Text>
+      <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.name.requiredLabel}</Text>
       <TextInput
         style={styles.input}
         value={formData.name}
         onChangeText={v => updateField('name', v)}
-        placeholder="Daily review"
+        placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.name.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
       />
 
-      <Text style={styles.label}>Prompt *</Text>
+      <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.prompt.requiredLabel}</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         value={formData.prompt}
         onChangeText={v => updateField('prompt', v)}
-        placeholder="Summarize the latest updates and notify me"
+        placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.prompt.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
         numberOfLines={5}
         textAlignVertical="top"
       />
 
-      <Text style={styles.label}>Schedule</Text>
+      <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.schedule.label}</Text>
       <View style={styles.modeRow}>
         {(['interval', 'continuous', 'daily', 'weekly'] as const).map(mode => {
           const active = formData.scheduleMode === mode;
@@ -301,7 +293,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
               accessibilityState={{ selected: active }}
             >
               <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
-                {mode === 'interval' ? 'Interval' : mode === 'continuous' ? 'Continuous' : mode === 'daily' ? 'Daily' : 'Weekly'}
+                {APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes[mode]}
               </Text>
             </TouchableOpacity>
           );
@@ -310,12 +302,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
       {formData.scheduleMode === 'interval' && (
         <>
-          <Text style={styles.label}>Interval (minutes) *</Text>
+          <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.interval.requiredLabel}</Text>
           <TextInput
             style={styles.input}
             value={formData.intervalMinutes}
             onChangeText={v => updateField('intervalMinutes', v)}
-            placeholder="60"
+            placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.interval.placeholder}
             placeholderTextColor={theme.colors.mutedForeground}
             keyboardType="numeric"
           />
@@ -324,13 +316,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
       {formData.scheduleMode === 'continuous' && (
         <Text style={styles.helperText}>
-          Starts the next run as soon as the previous run finishes. Only one run of this task executes at a time.
+          {APP_SHELL_LOOP_EDITOR_PRESENTATION.schedule.continuousHelper}
         </Text>
       )}
 
       {formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous' && (
         <>
-          <Text style={styles.label}>Time(s) (HH:MM, local)</Text>
+          <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.times.label}</Text>
           {formData.scheduleTimes.map((time, idx) => (
             <View key={idx} style={styles.timeRow}>
               <TextInput
@@ -339,7 +331,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
                 onChangeText={v => {
                   updateField('scheduleTimes', updateRepeatTaskScheduleTimeAt(formData.scheduleTimes, idx, v));
                 }}
-                placeholder="09:00"
+                placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.times.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -351,9 +343,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
                   }}
                   style={styles.timeRemoveBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Remove time')}
+                  accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_LOOP_EDITOR_PRESENTATION.actions.removeTime)}
                 >
-                  <Text style={styles.timeRemoveText}>Remove</Text>
+                  <Text style={styles.timeRemoveText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.actions.removeTime}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -365,14 +357,14 @@ export default function LoopEditScreen({ navigation, route }: any) {
             style={styles.addTimeBtn}
             accessibilityRole="button"
           >
-            <Text style={styles.addTimeText}>+ Add time</Text>
+            <Text style={styles.addTimeText}>+ {APP_SHELL_LOOP_EDITOR_PRESENTATION.actions.addTime}</Text>
           </TouchableOpacity>
         </>
       )}
 
       {formData.scheduleMode === 'weekly' && (
         <>
-          <Text style={styles.label}>Days of week</Text>
+          <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.daysOfWeek.label}</Text>
           <View style={styles.modeRow}>
             {REPEAT_TASK_DAY_LABELS.map((label, dayIdx) => {
               const active = formData.scheduleDaysOfWeek.includes(dayIdx);
@@ -398,7 +390,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       )}
 
       <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Enabled</Text>
+        <Text style={styles.switchLabel}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.enabled.label}</Text>
         <Switch
           value={formData.enabled}
           onValueChange={value => updateField('enabled', value)}
@@ -408,8 +400,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       <View style={styles.switchRow}>
         <View style={styles.switchInfo}>
-          <Text style={styles.switchLabel}>Run on startup</Text>
-          <Text style={styles.switchHelperText}>Runs once when the desktop repeat task service starts.</Text>
+          <Text style={styles.switchLabel}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.runOnStartup.label}</Text>
+          <Text style={styles.switchHelperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.runOnStartup.helper}</Text>
         </View>
         <Switch
           value={formData.runOnStartup}
@@ -420,8 +412,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       <View style={styles.switchRow}>
         <View style={styles.switchInfo}>
-          <Text style={styles.switchLabel}>Speak on trigger</Text>
-          <Text style={styles.switchHelperText}>Unsnoozes the completed task session so desktop TTS can play the result.</Text>
+          <Text style={styles.switchLabel}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.speakOnTrigger.label}</Text>
+          <Text style={styles.switchHelperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.speakOnTrigger.helper}</Text>
         </View>
         <Switch
           value={formData.speakOnTrigger}
@@ -432,8 +424,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       <View style={styles.switchRow}>
         <View style={styles.switchInfo}>
-          <Text style={styles.switchLabel}>Continue in same session</Text>
-          <Text style={styles.switchHelperText}>Appends future runs to the last task session when it can be revived.</Text>
+          <Text style={styles.switchLabel}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.continueInSession.label}</Text>
+          <Text style={styles.switchHelperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.continueInSession.helper}</Text>
         </View>
         <Switch
           value={formData.continueInSession}
@@ -444,19 +436,19 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       {formData.continueInSession && (
         <>
-          <Text style={styles.label}>Continue from session</Text>
+          <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.continueFromSession.label}</Text>
           <View style={styles.profileOptions}>
             <TouchableOpacity
               style={[styles.profileOption, !formData.lastSessionId && styles.profileOptionActive]}
               onPress={() => updateField('lastSessionId', '')}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Auto select this loop most recent session')}
-              accessibilityHint={!formData.lastSessionId ? 'Currently selected. Future runs use this task most recent session.' : 'Clears the pinned session for this loop.'}
+              accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.autoAccessibilityLabel)}
+              accessibilityHint={!formData.lastSessionId ? APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.autoSelectedHint : APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.autoUnselectedHint}
               accessibilityState={{ selected: !formData.lastSessionId }}
             >
               <View style={styles.profileOptionInfo}>
-                <Text style={[styles.profileOptionText, !formData.lastSessionId && styles.profileOptionTextActive]}>Auto</Text>
-                <Text style={[styles.profileOptionHelperText, !formData.lastSessionId && styles.profileOptionHelperTextActive]}>Uses this task's most recent session when it can be revived.</Text>
+                <Text style={[styles.profileOptionText, !formData.lastSessionId && styles.profileOptionTextActive]}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.autoLabel}</Text>
+                <Text style={[styles.profileOptionHelperText, !formData.lastSessionId && styles.profileOptionHelperTextActive]}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.autoHelper}</Text>
               </View>
               {!formData.lastSessionId && <Text style={styles.profileOptionCheckmark}>✓</Text>}
             </TouchableOpacity>
@@ -485,38 +477,38 @@ export default function LoopEditScreen({ navigation, route }: any) {
               );
             })}
           </View>
-          {isLoadingSessionCandidates && <Text style={styles.helperText}>Loading sessions...</Text>}
+          {isLoadingSessionCandidates && <Text style={styles.helperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.loadingLabel}</Text>}
           {sessionCandidateError && <Text style={styles.helperText}>{sessionCandidateError}</Text>}
           {!isLoadingSessionCandidates && !sessionCandidateError && sessionCandidateOptions.length === 0 && (
-            <Text style={styles.helperText}>No active or recent desktop sessions found. Auto still tracks the next session this loop creates.</Text>
+            <Text style={styles.helperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.sessionPicker.emptyLabel}</Text>
           )}
         </>
       )}
-      <Text style={styles.label}>Max iterations (optional)</Text>
+      <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.maxIterations.label}</Text>
       <TextInput
         style={styles.input}
         value={formData.maxIterations}
         onChangeText={v => updateField('maxIterations', v)}
-        placeholder="Uses desktop default"
+        placeholder={APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.maxIterations.placeholder}
         placeholderTextColor={theme.colors.mutedForeground}
         keyboardType="numeric"
       />
 
-      <Text style={styles.label}>Agent Profile (optional)</Text>
-      <Text style={styles.sectionHelperText}>Choose a dedicated agent for this loop, or leave it on the default agent.</Text>
+      <Text style={styles.label}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.agentProfile.label}</Text>
+      <Text style={styles.sectionHelperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.fields.agentProfile.helper}</Text>
       <View style={styles.profileOptions}>
         <TouchableOpacity
           style={[styles.profileOption, !formData.profileId && styles.profileOptionActive]}
           onPress={() => updateField('profileId', '')}
           accessibilityRole="button"
-          accessibilityLabel={createButtonAccessibilityLabel('Use the default agent for this loop')}
-          accessibilityHint={!formData.profileId ? 'Currently selected. The loop runs with the default active agent.' : 'Leaves this loop on the default active agent instead of a dedicated profile.'}
+          accessibilityLabel={createButtonAccessibilityLabel(APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.defaultAccessibilityLabel)}
+          accessibilityHint={!formData.profileId ? APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.defaultSelectedHint : APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.defaultUnselectedHint}
           accessibilityState={{ selected: !formData.profileId, disabled: isSaveDisabled }}
           disabled={isSaveDisabled}
         >
           <View style={styles.profileOptionInfo}>
-            <Text style={[styles.profileOptionText, !formData.profileId && styles.profileOptionTextActive]}>No dedicated agent</Text>
-            <Text style={[styles.profileOptionHelperText, !formData.profileId && styles.profileOptionHelperTextActive]}>Uses the default active agent when this loop runs.</Text>
+            <Text style={[styles.profileOptionText, !formData.profileId && styles.profileOptionTextActive]}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.defaultLabel}</Text>
+            <Text style={[styles.profileOptionHelperText, !formData.profileId && styles.profileOptionHelperTextActive]}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.defaultHelper}</Text>
           </View>
           {!formData.profileId && <Text style={styles.profileOptionCheckmark}>✓</Text>}
         </TouchableOpacity>
@@ -547,15 +539,14 @@ export default function LoopEditScreen({ navigation, route }: any) {
         ))}
       </View>
       {!isLoadingProfiles && settingsClient && profiles.length === 0 && (
-        <Text style={styles.helperText}>No saved agent profiles yet. This loop will use the default agent until you create one.</Text>
+        <Text style={styles.helperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.emptyLabel}</Text>
       )}
-      {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
+      {isLoadingProfiles && <Text style={styles.helperText}>{APP_SHELL_LOOP_EDITOR_PRESENTATION.agentProfile.loadingLabel}</Text>}
 
       <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
-        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
+        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{getAppShellEditorActionLabel('loop', isEditing)}</Text>}
       </TouchableOpacity>
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

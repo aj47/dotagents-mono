@@ -9,14 +9,14 @@ const screenSource = fs.readFileSync(
 );
 
 test('explains the default-agent fallback in LoopEdit profile selection', () => {
-  assert.match(screenSource, /Choose a dedicated agent for this loop, or leave it on the default agent\./);
-  assert.match(screenSource, /No dedicated agent/);
-  assert.match(screenSource, /Uses the default active agent when this loop runs\./);
-  assert.match(screenSource, /No saved agent profiles yet\. This loop will use the default agent until you create one\./);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.fields\.agentProfile\.helper/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.agentProfile\.defaultLabel/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.agentProfile\.defaultHelper/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.agentProfile\.emptyLabel/);
 });
 
 test('exposes LoopEdit profile choices as selected-state buttons', () => {
-  assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Use the default agent for this loop'\)/);
+  assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(APP_SHELL_LOOP_EDITOR_PRESENTATION\.agentProfile\.defaultAccessibilityLabel\)/);
   assert.match(screenSource, /accessibilityState=\{\{ selected: !formData\.profileId, disabled: isSaveDisabled \}\}/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`Use \$\{profile\.displayName \|\| profile\.name\} for this loop`\)/);
   assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: isSaveDisabled \}\}/);
@@ -35,27 +35,28 @@ test('exposes desktop repeat task execution options on mobile', () => {
   assert.match(screenSource, /RepeatTaskEditFormData/);
   assert.doesNotMatch(screenSource, /type LoopFormData/);
   assert.doesNotMatch(screenSource, /const defaultFormData/);
-  assert.match(screenSource, /runOnStartup:\s*formData\.runOnStartup/);
-  assert.match(screenSource, /speakOnTrigger:\s*formData\.speakOnTrigger/);
-  assert.match(screenSource, /continueInSession:\s*formData\.continueInSession/);
-  assert.match(screenSource, /lastSessionId:\s*formData\.continueInSession \? \(lastSessionId \|\| null\) : null/);
-  assert.match(screenSource, /maxIterations:\s*parsedMaxIterations \?\? null/);
-  assert.match(screenSource, /buildRepeatTaskScheduleFromDraft/);
-  assert.match(screenSource, /runContinuously:\s*scheduleResult\.runContinuously/);
-  assert.match(screenSource, /schedule:\s*scheduleResult\.schedule/);
-  assert.match(screenSource, /Run on startup/);
-  assert.match(screenSource, /Speak on trigger/);
-  assert.match(screenSource, /Continue in same session/);
-  assert.match(screenSource, /Max iterations \(optional\)/);
+  assert.match(screenSource, /const savePayloadResult = buildRepeatTaskEditFormSavePayload\(formData,/);
+  assert.match(screenSource, /runOnStartup:\s*payload\.runOnStartup/);
+  assert.match(screenSource, /speakOnTrigger:\s*payload\.speakOnTrigger/);
+  assert.match(screenSource, /continueInSession:\s*payload\.continueInSession/);
+  assert.match(screenSource, /lastSessionId:\s*payload\.continueInSession \? \(payload\.lastSessionId \|\| null\) : null/);
+  assert.match(screenSource, /maxIterations:\s*payload\.maxIterations \?\? null/);
+  assert.match(screenSource, /runContinuously:\s*payload\.runContinuously/);
+  assert.match(screenSource, /schedule:\s*payload\.schedule/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.switches\.runOnStartup\.label/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.switches\.speakOnTrigger\.label/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.switches\.continueInSession\.label/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.fields\.maxIterations\.label/);
   assert.doesNotMatch(screenSource, /sanitizeScheduleTimes/);
+  assert.doesNotMatch(screenSource, /buildRepeatTaskScheduleFromDraft/);
 });
 
 test('uses desktop session candidates for the continue-in-session picker', () => {
   assert.match(screenSource, /settingsClient\.getAgentSessionCandidates\(20\)/);
   assert.match(screenSource, /buildAgentSessionCandidateOptions/);
-  assert.match(screenSource, /Continue from session/);
-  assert.match(screenSource, /Auto/);
-  assert.match(screenSource, /Uses this task's most recent session when it can be revived\./);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.fields\.continueFromSession\.label/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.sessionPicker\.autoLabel/);
+  assert.match(screenSource, /APP_SHELL_LOOP_EDITOR_PRESENTATION\.sessionPicker\.autoHelper/);
   assert.match(screenSource, /onPress=\{\(\) => updateField\('lastSessionId', candidate\.id\)\}/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`Continue from \$\{formatAgentSessionCandidateTitle\(candidate\)\}`\)/);
   assert.doesNotMatch(screenSource, /function buildSessionCandidateOptions/);

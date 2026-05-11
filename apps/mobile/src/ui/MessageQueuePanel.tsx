@@ -16,12 +16,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  canEditQueuedMessage,
-  canMutateQueuedMessage,
-  getQueuedMessageStatusLabel,
+  MESSAGE_QUEUE_PANEL_PRESENTATION,
+  formatMessageQueueCompactLabel,
+  formatMessageQueuePanelTitle,
+  getMessageQueueListToggleLabel,
+  getQueuedMessageItemPresentation,
   hasProcessingQueuedMessage,
-  isQueuedMessageFailed,
-  isQueuedMessageProcessing,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
 import { useTheme } from './ThemeProvider';
@@ -50,12 +50,17 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
-  const isLongMessage = message.text.length > 100;
-  const isFailed = isQueuedMessageFailed(message);
-  const isProcessing = isQueuedMessageProcessing(message);
-  const canMutateMessage = canMutateQueuedMessage(message);
-  const canEditMessage = canEditQueuedMessage(message);
-  const statusLabel = getQueuedMessageStatusLabel(message);
+  const messagePresentation = getQueuedMessageItemPresentation(message, isExpanded);
+  const {
+    isLongMessage,
+    isFailed,
+    isProcessing,
+    canMutateMessage,
+    canEditMessage,
+    statusLabel,
+    expansionLabel,
+    errorText,
+  } = messagePresentation;
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -235,14 +240,14 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
             >
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.buttonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
               disabled={!editText.trim()}
             >
-              <Text style={styles.saveButtonText}>Save</Text>
+              <Text style={styles.saveButtonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -266,8 +271,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           >
             {message.text}
           </Text>
-          {isFailed && message.errorMessage && (
-            <Text style={styles.errorText}>Error: {message.errorMessage}</Text>
+          {errorText && (
+            <Text style={styles.errorText}>{errorText}</Text>
           )}
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
@@ -285,7 +290,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   color={theme.colors.mutedForeground}
                 />
                 <Text style={styles.expandText}>
-                  {isExpanded ? 'Less' : 'More'}
+                  {expansionLabel}
                 </Text>
               </TouchableOpacity>
             )}
@@ -297,10 +302,10 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   style={styles.actionButton}
                   onPress={onRetry}
                   accessibilityRole="button"
-                  accessibilityLabel="Retry queued message"
+                  accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.retryActionText}>Retry</Text>
+                  <Text style={styles.retryActionText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryLabel}</Text>
                 </TouchableOpacity>
               )}
               {canEditMessage && (
@@ -308,20 +313,20 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   style={styles.actionButton}
                   onPress={() => setIsEditing(true)}
                   accessibilityRole="button"
-                  accessibilityLabel="Edit queued message"
+                  accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editAccessibilityLabel}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.editActionText}>Edit</Text>
+                  <Text style={styles.editActionText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editLabel}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={onRemove}
                 accessibilityRole="button"
-                accessibilityLabel="Remove queued message"
+                accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeAccessibilityLabel}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={styles.removeActionText}>Remove</Text>
+                <Text style={styles.removeActionText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeLabel}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -347,6 +352,7 @@ export function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
+  const listToggleLabel = getMessageQueueListToggleLabel(isListCollapsed);
 
   useEffect(() => {
     setIsListCollapsed(false);
@@ -431,10 +437,13 @@ export function MessageQueuePanel({
       <View style={styles.compactContainer}>
         <Ionicons name="time-outline" size={12} color={theme.colors.mutedForeground} />
         <Text style={styles.compactText}>
-          {messages.length} queued message{messages.length > 1 ? 's' : ''}
+          {formatMessageQueueCompactLabel(messages.length)}
         </Text>
         {canProcessNext && onProcessNext && (
-          <TouchableOpacity onPress={onProcessNext} accessibilityLabel="Send next queued message">
+          <TouchableOpacity
+            onPress={onProcessNext}
+            accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextAccessibilityLabel}
+          >
             <Ionicons name="play" size={14} color={theme.colors.primary} />
           </TouchableOpacity>
         )}
@@ -458,7 +467,7 @@ export function MessageQueuePanel({
         <View style={styles.headerLeft}>
           <Ionicons name="time-outline" size={16} color={theme.colors.mutedForeground} />
           <Text style={styles.headerTitle}>
-            Queued Messages ({messages.length})
+            {formatMessageQueuePanelTitle(messages.length)}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -467,9 +476,9 @@ export function MessageQueuePanel({
               style={styles.processButton}
               onPress={onProcessNext}
               accessibilityRole="button"
-              accessibilityLabel="Send next queued message"
+              accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextAccessibilityLabel}
             >
-              <Text style={styles.processButtonText}>Send Next</Text>
+              <Text style={styles.processButtonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel}</Text>
             </TouchableOpacity>
           )}
           {!isListCollapsed && (
@@ -478,14 +487,14 @@ export function MessageQueuePanel({
               onPress={onClear}
               disabled={hasProcessingMessage}
             >
-              <Text style={styles.clearButtonText}>Clear All</Text>
+              <Text style={styles.clearButtonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearAllLabel}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={styles.clearButton}
             onPress={() => setIsListCollapsed((prev) => !prev)}
             accessibilityRole="button"
-            accessibilityLabel={isListCollapsed ? 'Expand queue' : 'Collapse queue'}
+            accessibilityLabel={listToggleLabel}
             accessibilityState={{ expanded: !isListCollapsed }}
           >
             <Ionicons

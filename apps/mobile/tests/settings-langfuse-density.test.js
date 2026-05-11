@@ -9,7 +9,7 @@ const settingsSource = fs.readFileSync(
 );
 
 const langfuseSection = settingsSource.match(
-  /<CollapsibleSection id="langfuse" title="Langfuse">[\s\S]*?<\/CollapsibleSection>/
+  /<CollapsibleSection id="langfuse" title=\{getAppShellMobileSettingsSectionTitle\('langfuse'\)\}>[\s\S]*?<\/CollapsibleSection>/
 )?.[0] ?? '';
 
 test('keeps the mobile langfuse section text-first without duplicate intro helper copy', () => {

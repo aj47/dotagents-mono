@@ -195,7 +195,7 @@ describe("agent progress tile layout", () => {
   it("keeps the session model visible and clickable as a picker", () => {
     expect(agentProgressSource).toContain('const SessionModelPicker: React.FC')
     expect(agentProgressSource).toContain('aria-label="Change agent model"')
-    expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config, providerId, modelId)')
+    expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config as AgentModelConfigLike, providerId, modelId)')
     expect(agentProgressSource).toContain('Model/provider controls stay available even before live session metadata arrives')
     expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} />')
     // Tile footer renders unconditionally so the model/thinking/verbosity controls
@@ -305,7 +305,8 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('function shouldAutoPlayTTSForVariant')
     expect(agentProgressSource).toContain('focus no\n  // longer decides whether a tile may request auto-play')
     expect(agentProgressSource).toContain('return !isSnoozed')
-    expect(agentProgressSource).toContain('tipcClient.claimTTSPlaybackKeys')
+    expect(agentProgressSource).toContain('consumeSessionForcedAutoPlay(sessionId)')
+    expect(agentProgressSource).toContain('hasTTSPlayed(key)')
   })
 
   it("uses shared conversation-state normalization across agent progress surfaces", () => {
