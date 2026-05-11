@@ -11,7 +11,7 @@ const settingsAgentsSource = fs.readFileSync(
 const renderAgentListBlock = settingsAgentsSource.match(/function renderAgentList\(\) \{([\s\S]*?)\n  \}\n\n  function renderEditForm/)?.[1] ?? ''
 
 test('desktop settings agents summarize low-priority card metadata into one muted line', () => {
-  assert.match(settingsAgentsSource, /function getAgentCardSummaryItems\(agent: AgentProfile, availableSkillCount: number\): string\[]/)
+  assert.match(settingsAgentsSource, /function getAgentCardSummaryItems\(agent: AgentProfile, availableSkillCount: number, availableRuntimeToolCount: number\): string\[]/)
   assert.match(settingsAgentsSource, /const items: string\[] = \[agent\.connection\.type\]/)
   assert.match(settingsAgentsSource, /const agentProviderId = agent\.modelConfig\?\.agentProviderId \|\| agent\.modelConfig\?\.mcpToolsProviderId/)
   assert.match(settingsAgentsSource, /items\.push\(`\$\{enabledServerCount\} server\$\{enabledServerCount === 1 \? "" : "s"\}`\)/)
@@ -21,11 +21,13 @@ test('desktop settings agents summarize low-priority card metadata into one mute
 
 test('desktop settings agents keep only high-signal status badges and render the rest as summary text', () => {
   assert.ok(renderAgentListBlock, 'expected to find the desktop settings agents list block')
-  assert.match(renderAgentListBlock, /const summaryItems = getAgentCardSummaryItems\(agent, skills\.length\)/)
-  assert.match(renderAgentListBlock, /\{\(agent\.isBuiltIn \|\| agent\.isDefault \|\| !agent\.enabled\) && \(/)
+  assert.match(renderAgentListBlock, /const summaryItems = getAgentCardSummaryItems\(agent, skills\.length, runtimeTools\.length\)/)
+  assert.match(renderAgentListBlock, /\{\(agent\.isBuiltIn \|\| agent\.isDefault \|\| !agent\.enabled \|\| customSystemPromptActive\) && \(/)
   assert.match(renderAgentListBlock, /Built-in/)
   assert.match(renderAgentListBlock, /Default/)
   assert.match(renderAgentListBlock, /Disabled/)
+  assert.match(renderAgentListBlock, /Custom prompt/)
+  assert.match(renderAgentListBlock, /hasCustomSystemPrompt\(agent\.systemPrompt\)/)
   assert.match(renderAgentListBlock, /<p className="text-\[11px\] leading-tight text-muted-foreground">\s*\{summaryItems\.join\(" • "\)\}/)
   assert.doesNotMatch(renderAgentListBlock, /\{agent\.connection\.type\}<\/Badge>/)
   assert.doesNotMatch(renderAgentListBlock, /enabledServers!\.length/) 

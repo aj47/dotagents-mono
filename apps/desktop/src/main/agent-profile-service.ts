@@ -827,7 +827,7 @@ class AgentProfileService {
       ...(mcpServerConfig.allServersDisabledByDefault !== undefined && { allServersDisabledByDefault: mcpServerConfig.allServersDisabledByDefault }),
       ...(mcpServerConfig.enabledServers !== undefined && { enabledServers: mcpServerConfig.enabledServers }),
       ...(mcpServerConfig.enabledRuntimeTools !== undefined && {
-        // Empty array is treated as "not configured" (allow all runtime tools) — clear persisted whitelist.
+        // Empty array is treated as "not configured" (filesystem-first default runtime tools) — clear persisted whitelist.
         enabledRuntimeTools: mcpServerConfig.enabledRuntimeTools.length > 0
           ? mcpServerConfig.enabledRuntimeTools
           : undefined,

@@ -186,6 +186,7 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     QueryClient: class QueryClient {
       constructor(_options?: any) {}
     },
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     useQuery: ({ queryKey }: any) => {
       const key = Array.isArray(queryKey) ? queryKey[0] : queryKey
       if (key === "langfuseInstalled") return { data: true, isLoading: false }

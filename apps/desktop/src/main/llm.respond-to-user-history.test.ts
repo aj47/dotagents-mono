@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./config", () => ({
   configStore: { get: () => currentConfig },
+  conversationsFolder: "/tmp/conversations",
   globalAgentsFolder: "/tmp/global-agents",
   resolveWorkspaceAgentsFolder: () => "/tmp/workspace-agents",
 }))
@@ -1004,7 +1005,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(followupPrompt).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
   })
 
-  it("nudges the model to omit invalid execute_command skillId values after a tool failure", async () => {
+  it("nudges the model toward filesystem skill paths after legacy execute_command skillId failure", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
 
     mocks.makeLLMCallWithStreamingAndTools
@@ -1025,9 +1026,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
             type: "text" as const,
             text: JSON.stringify({
               success: false,
-              error: "Invalid execute_command.skillId: aj47/dotagents-mono",
-              guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
-              retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
+              error: "execute_command.skillId is no longer supported.",
+              guidance: "Skills are filesystem instructions. Use the SKILL.md path shown in Available Skills.",
+              retrySuggestion: "Retry without skillId.",
             }, null, 2),
           }],
           isError: true,
@@ -1045,9 +1046,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
       .map((message: any) => message.content)
       .join("\n")
-    expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
-    expect(secondPrompt).toContain("Retry the same command without skillId")
-    expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
+    expect(secondPrompt).toContain("execute_command.skillId is no longer supported")
+    expect(secondPrompt).toContain("read the listed SKILL.md path with execute_command")
+    expect(secondPrompt).toContain("ordinary shell commands with explicit paths or cd")
   })
 
   it("does not inject unrecoverable permissions notes for failed tools", async () => {

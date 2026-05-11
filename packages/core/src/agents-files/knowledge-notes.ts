@@ -1,13 +1,15 @@
 import fs from "fs"
+import os from "os"
 import path from "path"
 import type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from "../types"
-import type { AgentsLayerPaths } from "./modular-config"
+import { loadAgentsLayerConfig, type AgentsLayerPaths } from "./modular-config"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "./safe-file"
 
 export const AGENTS_KNOWLEDGE_DIR = "knowledge"
 
 export type AgentsKnowledgeNoteOrigin = {
+  rootPath: string
   dirPath: string
   filePath: string
   slug: string
@@ -187,18 +189,67 @@ export function getAgentsKnowledgeDir(layer: AgentsLayerPaths): string {
   return path.join(layer.agentsDir, AGENTS_KNOWLEDGE_DIR)
 }
 
+function expandHomePath(rawPath: string): string {
+  if (rawPath === "~") return os.homedir()
+  if (rawPath.startsWith(`~${path.sep}`) || rawPath.startsWith("~/") || rawPath.startsWith("~\\")) {
+    return path.join(os.homedir(), rawPath.slice(2))
+  }
+  return rawPath
+}
+
+function resolveKnowledgeRootPath(layer: AgentsLayerPaths, rawPath: string): string | null {
+  const trimmed = rawPath.trim()
+  if (!trimmed) return null
+  const expanded = expandHomePath(trimmed)
+  const resolved = path.isAbsolute(expanded)
+    ? expanded
+    : path.resolve(layer.agentsDir, expanded)
+  return path.normalize(resolved)
+}
+
+function getConfiguredKnowledgeRoots(configuredRoots: unknown): string[] {
+  if (!Array.isArray(configuredRoots)) return []
+  return configuredRoots
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+}
+
+export function getAgentsKnowledgeDirs(layer: AgentsLayerPaths, configuredRoots?: unknown): string[] {
+  const defaultDir = path.normalize(getAgentsKnowledgeDir(layer))
+  const rawConfiguredRoots = configuredRoots === undefined
+    ? getConfiguredKnowledgeRoots(loadAgentsLayerConfig(layer).knowledgeRoots)
+    : getConfiguredKnowledgeRoots(configuredRoots)
+
+  const roots = [defaultDir]
+  for (const rawRoot of rawConfiguredRoots) {
+    const resolved = resolveKnowledgeRootPath(layer, rawRoot)
+    if (resolved) roots.push(resolved)
+  }
+
+  return Array.from(new Set(roots))
+}
+
+export function getPrimaryAgentsKnowledgeDir(layer: AgentsLayerPaths, configuredRoots?: unknown): string {
+  const rawConfiguredRoots = configuredRoots === undefined
+    ? getConfiguredKnowledgeRoots(loadAgentsLayerConfig(layer).knowledgeRoots)
+    : getConfiguredKnowledgeRoots(configuredRoots)
+  const firstConfigured = rawConfiguredRoots
+    .map((rawRoot) => resolveKnowledgeRootPath(layer, rawRoot))
+    .find((resolved): resolved is string => Boolean(resolved))
+  return firstConfigured ?? path.normalize(getAgentsKnowledgeDir(layer))
+}
+
 export function getAgentsKnowledgeBackupDir(layer: AgentsLayerPaths): string {
   return path.join(layer.backupsDir, AGENTS_KNOWLEDGE_DIR)
 }
 
-export function knowledgeNoteSlugToDirPath(layer: AgentsLayerPaths, slug: string): string {
-  return path.join(getAgentsKnowledgeDir(layer), sanitizeRelativeLocation(slug))
+export function knowledgeNoteSlugToDirPath(layer: AgentsLayerPaths, slug: string, knowledgeRootPath?: string): string {
+  return path.join(knowledgeRootPath ?? getAgentsKnowledgeDir(layer), sanitizeRelativeLocation(slug))
 }
 
-export function knowledgeNoteSlugToFilePath(layer: AgentsLayerPaths, slug: string): string {
+export function knowledgeNoteSlugToFilePath(layer: AgentsLayerPaths, slug: string, knowledgeRootPath?: string): string {
   const locationSegments = splitLocationSegments(slug)
   const fileName = locationSegments[locationSegments.length - 1] || "note"
-  return path.join(knowledgeNoteSlugToDirPath(layer, slug), `${fileName}.md`)
+  return path.join(knowledgeNoteSlugToDirPath(layer, slug, knowledgeRootPath), `${fileName}.md`)
 }
 
 export function buildKnowledgeNoteStorageLocation(note: Pick<KnowledgeNote, "id" | "group" | "series">, leafOverride?: string): string {
@@ -330,48 +381,54 @@ function discoverCanonicalNoteDirs(currentDir: string): string[] {
   return matches
 }
 
-export function loadAgentsKnowledgeNotesLayer(layer: AgentsLayerPaths): LoadedAgentsKnowledgeNotesLayer {
+export function loadAgentsKnowledgeNotesLayer(
+  layer: AgentsLayerPaths,
+  options: { knowledgeRoots?: unknown } = {},
+): LoadedAgentsKnowledgeNotesLayer {
   const notes: KnowledgeNote[] = []
   const originById = new Map<string, AgentsKnowledgeNoteOrigin>()
 
-  const knowledgeDir = getAgentsKnowledgeDir(layer)
+  const knowledgeDirs = getAgentsKnowledgeDirs(layer, options.knowledgeRoots)
 
   try {
-    if (!fs.existsSync(knowledgeDir) || !fs.statSync(knowledgeDir).isDirectory()) {
-      return { notes, originById }
-    }
-    const noteDirs = discoverCanonicalNoteDirs(knowledgeDir)
-
-    for (const noteDir of noteDirs) {
-      const relativeDir = path.relative(knowledgeDir, noteDir)
-      const relativeDirSegments = relativeDir.split(path.sep).filter(Boolean)
-      const slug = relativeDirSegments[relativeDirSegments.length - 1]
-      if (!slug) continue
-      const noteFilePath = path.join(noteDir, `${slug}.md`)
-      const raw = readTextFileIfExistsSync(noteFilePath, "utf8")
-      if (raw === null) continue
-
-      const parsed = parseKnowledgeNoteMarkdown(raw, { fallbackId: slug, filePath: noteFilePath, warnOnRepair: true })
-      if (!parsed) continue
-      const normalized = applyInferredGrouping(parsed, relativeDirSegments)
-
-      const assetFilePaths = collectNoteAssetFilePaths(noteDir, noteFilePath)
-      const existing = originById.get(normalized.id)
-      if (existing) {
-        const existingNote = notes.find((note) => note.id === normalized.id)
-        if (existingNote && existingNote.updatedAt > normalized.updatedAt) continue
-        const idx = notes.findIndex((note) => note.id === normalized.id)
-        if (idx >= 0) notes[idx] = normalized
-      } else {
-        notes.push(normalized)
+    for (const knowledgeDir of knowledgeDirs) {
+      if (!fs.existsSync(knowledgeDir) || !fs.statSync(knowledgeDir).isDirectory()) {
+        continue
       }
+      const noteDirs = discoverCanonicalNoteDirs(knowledgeDir)
 
-      originById.set(normalized.id, {
-        dirPath: noteDir,
-        filePath: noteFilePath,
-        slug,
-        assetFilePaths,
-      })
+      for (const noteDir of noteDirs) {
+        const relativeDir = path.relative(knowledgeDir, noteDir)
+        const relativeDirSegments = relativeDir.split(path.sep).filter(Boolean)
+        const slug = relativeDirSegments[relativeDirSegments.length - 1]
+        if (!slug) continue
+        const noteFilePath = path.join(noteDir, `${slug}.md`)
+        const raw = readTextFileIfExistsSync(noteFilePath, "utf8")
+        if (raw === null) continue
+
+        const parsed = parseKnowledgeNoteMarkdown(raw, { fallbackId: slug, filePath: noteFilePath, warnOnRepair: true })
+        if (!parsed) continue
+        const normalized = applyInferredGrouping(parsed, relativeDirSegments)
+
+        const assetFilePaths = collectNoteAssetFilePaths(noteDir, noteFilePath)
+        const existing = originById.get(normalized.id)
+        if (existing) {
+          const existingNote = notes.find((note) => note.id === normalized.id)
+          if (existingNote && existingNote.updatedAt > normalized.updatedAt) continue
+          const idx = notes.findIndex((note) => note.id === normalized.id)
+          if (idx >= 0) notes[idx] = normalized
+        } else {
+          notes.push(normalized)
+        }
+
+        originById.set(normalized.id, {
+          rootPath: knowledgeDir,
+          dirPath: noteDir,
+          filePath: noteFilePath,
+          slug,
+          assetFilePaths,
+        })
+      }
     }
   } catch {
     // best-effort
@@ -383,12 +440,12 @@ export function loadAgentsKnowledgeNotesLayer(layer: AgentsLayerPaths): LoadedAg
 export function writeKnowledgeNoteFile(
   layer: AgentsLayerPaths,
   note: KnowledgeNote,
-  options: { slug?: string; filePathOverride?: string; maxBackups?: number } = {},
+  options: { slug?: string; filePathOverride?: string; knowledgeRootPath?: string; maxBackups?: number } = {},
 ): { dirPath: string; filePath: string } {
   const resolvedLocation = options.slug && /[\\/]/.test(options.slug)
     ? options.slug
     : buildKnowledgeNoteStorageLocation(note, options.slug)
-  const filePath = options.filePathOverride ?? knowledgeNoteSlugToFilePath(layer, resolvedLocation)
+  const filePath = options.filePathOverride ?? knowledgeNoteSlugToFilePath(layer, resolvedLocation, options.knowledgeRootPath)
   const backupDir = getAgentsKnowledgeBackupDir(layer)
   const maxBackups = options.maxBackups ?? 10
   const markdown = stringifyKnowledgeNoteMarkdown(note)

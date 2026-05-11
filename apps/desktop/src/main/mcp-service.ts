@@ -42,6 +42,7 @@ import { isDebugTools, logTools, logMCP } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
 import { app, dialog } from "electron"
 import { runtimeTools, executeRuntimeTool, isRuntimeTool } from "./runtime-tools"
+import { DEFAULT_AGENT_RUNTIME_TOOL_NAMES } from "./runtime-tool-definitions"
 import { randomUUID } from "crypto"
 import {
   createToolSpan,
@@ -84,6 +85,10 @@ const ESSENTIAL_RUNTIME_TOOL_NAMES = new Set<string>(["mark_work_complete"])
 
 function isEssentialRuntimeTool(toolName: string): boolean {
   return ESSENTIAL_RUNTIME_TOOL_NAMES.has(toolName)
+}
+
+function getDefaultAgentRuntimeToolNames(): Set<string> {
+  return new Set([...DEFAULT_AGENT_RUNTIME_TOOL_NAMES, ...ESSENTIAL_RUNTIME_TOOL_NAMES])
 }
 
 /**
@@ -202,7 +207,7 @@ export class MCPService {
   private availableTools: MCPTool[] = []
   private disabledTools: Set<string> = new Set()
   // Option B: DotAgents runtime tools are controlled via enabledRuntimeTools allowlist.
-  // - null => no allowlist configured (allow all runtime tools)
+  // - null => no allowlist configured (use the filesystem-first default toolset)
   // - Set => allow essential runtime tools + names present in the set
   private enabledRuntimeToolsWhitelist: Set<string> | null = null
   private isInitializing = false
@@ -308,7 +313,7 @@ export class MCPService {
     if (Array.isArray(enabledRuntimeTools) && enabledRuntimeTools.length > 0) {
       this.enabledRuntimeToolsWhitelist = new Set(enabledRuntimeTools)
     } else {
-      // Empty array is treated as "not configured" (allow all).
+      // Empty array is treated as "not configured" (filesystem-first defaults).
       this.enabledRuntimeToolsWhitelist = null
     }
   }
@@ -320,7 +325,7 @@ export class MCPService {
         agentProfileService.getCurrentProfile()?.toolConfig?.enabledRuntimeTools
       this.setEnabledRuntimeToolsWhitelist(enabledRuntimeTools)
     } catch {
-      // Ignore errors; default is allow-all.
+      // Ignore errors; default is the filesystem-first minimum toolset.
     }
   }
 
@@ -331,7 +336,7 @@ export class MCPService {
 
   private isRuntimeToolEnabledForCurrentProfile(toolName: string): boolean {
     if (isEssentialRuntimeTool(toolName)) return true
-    if (!this.enabledRuntimeToolsWhitelist) return true
+    if (!this.enabledRuntimeToolsWhitelist) return getDefaultAgentRuntimeToolNames().has(toolName)
     return this.enabledRuntimeToolsWhitelist.has(toolName)
   }
 
@@ -341,12 +346,15 @@ export class MCPService {
 
     const enabledRuntimeTools = profileMcpConfig.enabledRuntimeTools
     const hasWhitelist = Array.isArray(enabledRuntimeTools) && enabledRuntimeTools.length > 0
-    if (!hasWhitelist) return true
+    if (!hasWhitelist) return getDefaultAgentRuntimeToolNames().has(toolName)
     return enabledRuntimeTools!.includes(toolName)
   }
 
   private getAvailableRuntimeToolsForCurrentProfile(): MCPTool[] {
-    if (!this.enabledRuntimeToolsWhitelist) return runtimeTools
+    if (!this.enabledRuntimeToolsWhitelist) {
+      const defaultRuntimeTools = getDefaultAgentRuntimeToolNames()
+      return runtimeTools.filter((tool) => defaultRuntimeTools.has(tool.name))
+    }
     const whitelist = this.enabledRuntimeToolsWhitelist
     return runtimeTools.filter(
       (tool) => isEssentialRuntimeTool(tool.name) || whitelist.has(tool.name),
@@ -1805,10 +1813,9 @@ export class MCPService {
       return !this.runtimeDisabledServers.has(serverName)
     })
 
-    // Filter external tools by global disabledTools, but keep all runtime tools.
+    // Filter external tools by global disabledTools; runtime tools use the
+    // filesystem-first default set unless the current profile supplies a whitelist.
     // this.disabledTools is a persistence artifact from profile switching (config.mcpDisabledTools).
-    // When no profile config is provided (e.g. the default agent), all runtime tools
-    // should be available — only external MCP tools respect the global disabled set.
     const enabledExternal = enabledExternalTools.filter(
       (tool) => !this.disabledTools.has(tool.name),
     )
@@ -1825,8 +1832,8 @@ export class MCPService {
    * @returns Tools filtered according to the profile's enabled/disabled servers and tools
    */
   getAvailableToolsForProfile(profileMcpConfig?: ProfileMcpServerConfig): MCPTool[] {
-    // If no profile config, return all available tools.
-    // All runtime tools are included; only external tools respect the global disabledTools set.
+    // If no profile config, return enabled external tools plus default runtime tools.
+    // Runtime tools use the filesystem-first defaults unless a profile supplies an explicit allowlist.
     if (!profileMcpConfig) {
       const enabledExternal = this.availableTools.filter(
         (tool) => !this.disabledTools.has(tool.name),
@@ -1869,12 +1876,14 @@ export class MCPService {
 
     // Filter runtime tools based on enabledRuntimeTools whitelist (if specified and non-empty).
     // Essential runtime tools are always available regardless of whitelist/disabled settings.
-    // An empty array is treated as "not configured" (same as undefined) — allow all runtime tools.
+    // An empty array is treated as "not configured" (same as undefined) — use filesystem-first defaults.
     const hasRuntimeWhitelist = enabledRuntimeTools && enabledRuntimeTools.length > 0
+    const defaultRuntimeTools = getDefaultAgentRuntimeToolNames()
     const filteredRuntimeTools = runtimeTools.filter((tool) =>
       isEssentialRuntimeTool(tool.name) ||
-      !hasRuntimeWhitelist ||
-      enabledRuntimeTools!.includes(tool.name),
+      (hasRuntimeWhitelist
+        ? enabledRuntimeTools!.includes(tool.name)
+        : defaultRuntimeTools.has(tool.name)),
     )
 
     // Apply disabledTools ONLY to external tools, not runtime tools.
@@ -2042,9 +2051,9 @@ export class MCPService {
 
     // Runtime tools are controlled via enabledRuntimeTools allowlist.
     if (toolExistsRuntime) {
-      const allRuntimeNames = runtimeTools.map((t) => t.name)
+      const defaultRuntimeNames = getDefaultAgentRuntimeToolNames()
       const nextWhitelist = new Set<string>(
-        this.enabledRuntimeToolsWhitelist ? Array.from(this.enabledRuntimeToolsWhitelist) : allRuntimeNames,
+        this.enabledRuntimeToolsWhitelist ? Array.from(this.enabledRuntimeToolsWhitelist) : Array.from(defaultRuntimeNames),
       )
 
       if (enabled) {
@@ -2053,7 +2062,7 @@ export class MCPService {
         nextWhitelist.delete(toolName)
       }
 
-      // Never persist an empty allowlist, because [] is treated as "allow all".
+      // Never persist an empty allowlist, because [] is treated as "use defaults".
       // Use essential runtime tools as an always-legal non-empty sentinel.
       if (nextWhitelist.size === 0) {
         for (const essentialName of ESSENTIAL_RUNTIME_TOOL_NAMES) {
@@ -2061,11 +2070,11 @@ export class MCPService {
         }
       }
 
-      const coversAllRuntimeTools = runtimeTools.every(
-        (t) => isEssentialRuntimeTool(t.name) || nextWhitelist.has(t.name),
-      )
+      const matchesDefaultRuntimeTools =
+        nextWhitelist.size === defaultRuntimeNames.size &&
+        Array.from(defaultRuntimeNames).every((name) => nextWhitelist.has(name))
 
-      this.enabledRuntimeToolsWhitelist = coversAllRuntimeTools ? null : nextWhitelist
+      this.enabledRuntimeToolsWhitelist = matchesDefaultRuntimeTools ? null : nextWhitelist
 
       // Auto-save to current profile so switching profiles restores this state
       this.saveCurrentStateToProfile()

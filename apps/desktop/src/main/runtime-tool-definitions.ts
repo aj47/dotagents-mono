@@ -9,7 +9,7 @@
  * import from services that might also need access to these definitions.
  */
 
-import { RUNTIME_TOOLS_SERVER_NAME } from '../shared/runtime-tool-names'
+import { DEFAULT_AGENT_RUNTIME_TOOL_NAMES, RUNTIME_TOOLS_SERVER_NAME } from '../shared/runtime-tool-names'
 import { acpRouterToolDefinitions } from './acp/acp-router-tool-definitions'
 
 export { RUNTIME_TOOLS_SERVER_NAME }
@@ -25,6 +25,8 @@ export interface RuntimeToolDefinition {
     [key: string]: unknown
   }
 }
+
+export { DEFAULT_AGENT_RUNTIME_TOOL_NAMES }
 
 // Tool definitions — runtime tools use plain names (no server prefix)
 export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
@@ -170,17 +172,13 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   },
   {
     name: "execute_command",
-    description: "Execute any shell command. This is the primary tool for file operations, running scripts, and automation. Use for: reading files (cat), writing files (cat/echo with redirection), listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made. Omit skillId for normal workspace or repository commands. Only provide skillId when you need to run inside an exact loaded skill ID from Available Skills.",
+    description: "Execute any shell command. This is the primary tool for filesystem operations, running scripts, and automation. Use for: searching files (rg/find), reading files in targeted ranges (wc/sed/head/tail/cat), editing files, listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made.",
     inputSchema: {
       type: "object",
       properties: {
         command: {
           type: "string",
-          description: "The shell command to execute. Examples: 'cat file.txt' (read), 'echo content > file.txt' (write), 'ls -la' (list), 'mkdir -p dir' (create dir), 'git status', 'rg TODO apps/desktop/src', 'python script.py'. Prefer read-only inspection commands unless the user asked you to run verification/package-manager work.",
-        },
-        skillId: {
-          type: "string",
-          description: "Optional exact loaded skill ID to run the command in that skill's directory. Use only IDs from Available Skills. Never use repository names, paths, URLs, or GitHub slugs here; omit skillId for normal workspace commands.",
+          description: "The shell command to execute. Examples: 'wc -l file.txt' (size), 'sed -n \\'1,120p\\' file.txt' (targeted read), 'rg TODO apps/desktop/src' (search), 'ls -la' (list), 'mkdir -p dir' (create dir), 'git status', 'python script.py'. Prefer read-only inspection commands unless the user asked you to run verification/package-manager work.",
         },
         timeout: {
           type: "number",
@@ -217,20 +215,6 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
         },
       },
       required: ["toolName"],
-    },
-  },
-  {
-    name: "load_skill_instructions",
-    description: "Load the full instructions for a skill. Pass the exact skill id shown in the Available Skills list (the value inside backticks before the dash).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        skillId: {
-          type: "string",
-          description: "Exact skill id from the Available Skills list, e.g. \"api-testing\".",
-        },
-      },
-      required: ["skillId"],
     },
   },
   {

@@ -41,3 +41,12 @@ test('desktop settings agents keep advanced helper and connection toggles wrap-s
   assert.match(renderEditFormBlock, /Verify Setup/)
   assert.match(renderEditFormBlock, /Open docs/)
 })
+
+test('desktop settings agents make custom base system prompts obvious before they block default updates', () => {
+  assert.ok(renderEditFormBlock, 'expected to find the desktop settings agents edit form block')
+  assert.match(renderEditFormBlock, /const customSystemPromptActive = hasCustomSystemPrompt\(editing\.systemPrompt\)/)
+  assert.match(renderEditFormBlock, /Custom base system prompt active/)
+  assert.match(renderEditFormBlock, /will not receive DotAgents default system prompt updates until you reset it/)
+  assert.match(renderEditFormBlock, /Custom prompt active/)
+  assert.match(renderEditFormBlock, /blocks future default prompt updates/)
+})
