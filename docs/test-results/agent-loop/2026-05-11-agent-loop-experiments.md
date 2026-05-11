@@ -34,3 +34,14 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` failed.
 - Live metric: `live-hard-compaction-read-more-context` reached the iteration limit, executed `read_more_context:4`, and did not include `HX-7492-PRISM-RIVER` in the final answer.
 - Decision: discard. The short duplicate response saves deterministic prompt chars but removes useful enough evidence from the live model loop.
+
+## 2026-05-11T23:33Z - Direct search guidance for known compacted-context queries
+
+- Change tried: update compacted-context prompt guidance so agents call `read_more_context(mode: "search")` directly when the needed detail/query is already known, using `mode: "overview"` first only for orientation.
+- Prompt validation: `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts -t "compacted-context search"` passed 1/1.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` passed.
+- Targeted live metric: `live-hard-compaction-read-more-context` recovered `HX-7492-PRISM-RIVER`, avoided the iteration limit, and reduced `read_more_context` calls from the prior kept row's 3 to 2.
+- Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
+- Full live metric: final hard-compaction row used `read_more_context:2`, recovered the hidden token, and avoided the iteration limit. AutoResearch live rows had provider variance, but those cases do not expose `read_more_context`, so this prompt branch is inactive for them.
+- Decision: keep.

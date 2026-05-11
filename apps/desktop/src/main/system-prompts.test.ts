@@ -215,6 +215,18 @@ describe("constructSystemPrompt", () => {
     expect(withTitleTool).toContain("set a concise useful title with set_session_title early")
   })
 
+  it("prefers direct compacted-context search when the query is known", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([
+      { name: "read_more_context", description: "Read compacted context", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(prompt).toContain('call read_more_context(mode: "search") directly')
+    expect(prompt).toContain('use mode: "overview" first only when you need orientation')
+    expect(prompt).not.toContain('Prefer read_more_context(mode: "overview") first')
+  })
+
   it("does not advertise delegation tools when delegation is unavailable", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
 
