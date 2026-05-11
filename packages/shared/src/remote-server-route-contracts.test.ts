@@ -206,7 +206,7 @@ describe('remote server route contracts', () => {
   });
 
   it('builds a complete mobile API action facade from route action groups', () => {
-    const actions = Object.fromEntries(actionKeys.map((key) => [key, vi.fn()])) as TestMobileApiRouteActions;
+    const actions = Object.fromEntries(actionKeys.map((key) => [key, vi.fn()])) as unknown as TestMobileApiRouteActions;
     const pick = <K extends keyof TestMobileApiRouteActions>(...keys: K[]): Pick<TestMobileApiRouteActions, K> =>
       Object.fromEntries(keys.map((key) => [key, actions[key]])) as Pick<TestMobileApiRouteActions, K>;
 
@@ -297,7 +297,7 @@ describe('remote server route contracts', () => {
   });
 
   it('builds a complete operator action facade from route action groups', () => {
-    const actions = Object.fromEntries(operatorActionKeys.map((key) => [key, vi.fn()])) as TestOperatorRouteActions;
+    const actions = Object.fromEntries(operatorActionKeys.map((key) => [key, vi.fn()])) as unknown as TestOperatorRouteActions;
     const pick = <K extends keyof TestOperatorRouteActions>(...keys: K[]): Pick<TestOperatorRouteActions, K> =>
       Object.fromEntries(keys.map((key) => [key, actions[key]])) as Pick<TestOperatorRouteActions, K>;
 
@@ -396,7 +396,7 @@ describe('remote server route contracts', () => {
   });
 
   it('builds a complete injected MCP action facade from protocol and tool groups', () => {
-    const actions = Object.fromEntries(injectedMcpActionKeys.map((key) => [key, vi.fn()])) as TestInjectedMcpRouteActions;
+    const actions = Object.fromEntries(injectedMcpActionKeys.map((key) => [key, vi.fn()])) as unknown as TestInjectedMcpRouteActions;
     const routeActions = createInjectedMcpRouteActions<TestRequest, TestReply>({
       protocol: {
         handleInjectedMcpProtocolRequest: actions.handleInjectedMcpProtocolRequest,

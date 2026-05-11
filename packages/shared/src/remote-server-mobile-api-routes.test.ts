@@ -29,9 +29,9 @@ type TestReply = {
   body: unknown;
   headers: Map<string, string>;
   statusCode: number | undefined;
-  code: ReturnType<typeof vi.fn<(statusCode: number) => TestReply>>;
-  header: ReturnType<typeof vi.fn<(name: string, value: string) => TestReply>>;
-  send: ReturnType<typeof vi.fn<(body?: unknown) => TestReply>>;
+  code: (statusCode: number) => TestReply;
+  header: (name: string, value: string) => TestReply;
+  send: (body?: unknown) => TestReply;
 };
 
 function createRouteServer() {

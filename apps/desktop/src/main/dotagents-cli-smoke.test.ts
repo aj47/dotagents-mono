@@ -92,6 +92,19 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
     })
   })
 
+  it("fails when the daemon streams malformed SSE data", async () => {
+    await expect(
+      execFileAsync("bash", [scriptPath, "chat", "trigger malformed sse"], {
+        env: childProcessEnv(tmpHome),
+        timeout: 10_000,
+        maxBuffer: 1024 * 1024,
+      }),
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: expect.stringContaining("Error: Invalid SSE data frame"),
+    })
+  })
+
   async function startMockDaemon(): Promise<number> {
     server = http.createServer((req, res) => {
       if (req.url === "/v1/operator/health") {
@@ -127,6 +140,11 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
                 data: { message: "mock stream failure" },
               })}\n\n`,
             )
+            res.end()
+            return
+          }
+          if (body.includes("trigger malformed sse")) {
+            res.write("data:{bad json}\n\n")
             res.end()
             return
           }

@@ -284,6 +284,14 @@ describeTuiSmoke("dotagents TUI one-shot server commands", () => {
     expect(seenRequests.map((request) => `${request.method} ${request.url}`)).toContain("POST /v1/chat/completions")
   })
 
+  it("keeps one-shot chat streaming state current after reset chunks", async () => {
+    const { stdout, stderr } = await runTuiCommand("reset stream")
+
+    expect(stderr).toBe("")
+    expect(stdout).toContain("hello from mock daemon again final")
+    expect(stdout).not.toContain("\nhello again")
+  })
+
   it("controls operator message queues through the shared server API", async () => {
     const queues = await runTuiCommand("/queues")
 
@@ -937,6 +945,43 @@ describeTuiSmoke("dotagents TUI one-shot server commands", () => {
 
         if (req.url === "/v1/chat/completions" && req.method === "POST") {
           res.writeHead(200, { "content-type": "text/event-stream" })
+          if (body.includes("reset stream")) {
+            res.write(
+              `data:${JSON.stringify({
+                type: "progress",
+                data: {
+                  streamingContent: { text: "hello from mock daemon" },
+                },
+              })}\n\n`,
+            )
+            res.write(
+              `data:${JSON.stringify({
+                type: "progress",
+                data: {
+                  streamingContent: { text: "hello" },
+                },
+              })}\n\n`,
+            )
+            res.write(
+              `data:${JSON.stringify({
+                type: "progress",
+                data: {
+                  streamingContent: { text: "hello again" },
+                },
+              })}\n\n`,
+            )
+            res.write(
+              `data:${JSON.stringify({
+                type: "done",
+                data: {
+                  content: "hello again final",
+                  conversation_id: "conv-reset",
+                },
+              })}\n\n`,
+            )
+            res.end()
+            return
+          }
           res.write(
             `data:${JSON.stringify({
               type: "progress",

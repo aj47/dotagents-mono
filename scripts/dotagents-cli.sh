@@ -856,6 +856,13 @@ function writeFinalContent(content) {
   ensureNewline();
 }
 
+function failStream(message) {
+  ensureNewline();
+  process.stdout.write(red + 'Error: ' + message + reset + '\n');
+  streamHadError = true;
+  process.exitCode = 1;
+}
+
 rl.on('line', (line) => {
   if (line.startsWith('HTTP_STATUS:')) {
     httpStatus = parseInt(line.slice('HTTP_STATUS:'.length), 10) || 0;
@@ -868,7 +875,13 @@ rl.on('line', (line) => {
   if (!line.startsWith('data:')) return;
   const data = line.replace(/^data: ?/, '');
   let d;
-  try { d = JSON.parse(data); } catch { return; }
+  try {
+    d = JSON.parse(data);
+  } catch (error) {
+    const preview = data.length > 120 ? data.slice(0, 117) + '...' : data;
+    failStream('Invalid SSE data frame: ' + preview);
+    return;
+  }
 
   if (d.type === 'progress') {
     const p = d.data || {};
@@ -896,11 +909,8 @@ rl.on('line', (line) => {
       try { fs.writeFileSync(installDir + '/.last_cid', 'CID:' + r.conversation_id); } catch {}
     }
   } else if (d.type === 'error') {
-    ensureNewline();
     const m = (d.data && d.data.message) || 'Unknown';
-    process.stdout.write(red + 'Error: ' + m + reset + '\n');
-    streamHadError = true;
-    process.exitCode = 1;
+    failStream(m);
   }
 });
 
@@ -1467,6 +1477,13 @@ function writeFinalContent(content) {
   ensureNewline();
 }
 
+function failStream(message) {
+  ensureNewline();
+  process.stdout.write(red + 'Error: ' + message + reset + '\n');
+  streamHadError = true;
+  process.exitCode = 1;
+}
+
 rl.on('line', (line) => {
   if (line.startsWith('HTTP_STATUS:')) {
     httpStatus = parseInt(line.slice('HTTP_STATUS:'.length), 10) || 0;
@@ -1479,7 +1496,13 @@ rl.on('line', (line) => {
   if (!line.startsWith('data:')) return;
   const data = line.replace(/^data: ?/, '');
   let d;
-  try { d = JSON.parse(data); } catch { return; }
+  try {
+    d = JSON.parse(data);
+  } catch (error) {
+    const preview = data.length > 120 ? data.slice(0, 117) + '...' : data;
+    failStream('Invalid SSE data frame: ' + preview);
+    return;
+  }
 
   if (d.type === 'progress') {
     const p = d.data || {};
@@ -1507,11 +1530,8 @@ rl.on('line', (line) => {
       try { fs.writeFileSync(installDir + '/.last_cid', 'CID:' + r.conversation_id); } catch {}
     }
   } else if (d.type === 'error') {
-    ensureNewline();
     const m = (d.data && d.data.message) || 'Unknown';
-    process.stdout.write(red + 'Error: ' + m + reset + '\n');
-    streamHadError = true;
-    process.exitCode = 1;
+    failStream(m);
   }
 });
 

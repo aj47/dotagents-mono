@@ -376,7 +376,7 @@ describe('buildDotAgentsChatCompletionResponse', () => {
       content: 'Done',
       model: 'gpt-test',
       conversationId: 'conv-1',
-      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+      conversationHistory: [{ role: 'assistant' as const, content: 'Done' }],
       id: 'chatcmpl-fixed',
       created: 1710000000,
     })).toEqual({
@@ -918,7 +918,7 @@ describe('handleChatCompletionRequestAction', () => {
     const runAgent = vi.fn(async (options: any) => ({
       content: `Reply to ${options.prompt}`,
       conversationId: options.conversationId,
-      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+      conversationHistory: [{ role: 'assistant' as const, content: 'Done' }],
     }))
 
     await handleChatCompletionRequestAction(
@@ -961,7 +961,7 @@ describe('handleChatCompletionRequestAction', () => {
     const runAgent = vi.fn(async (options: any) => ({
       content: `Reply to ${options.prompt}`,
       conversationId: options.conversationId,
-      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+      conversationHistory: [{ role: 'assistant' as const, content: 'Done' }],
     }))
 
     await routeActions.handleChatCompletionRequest(
@@ -1006,7 +1006,7 @@ describe('handleChatCompletionRequestAction', () => {
     const runAgent = vi.fn(async (options: any) => ({
       content: `Reply to ${options.prompt}`,
       conversationId: options.conversationId,
-      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+      conversationHistory: [{ role: 'assistant' as const, content: 'Done' }],
     }))
 
     expect(routeActionBundle.models.getModels()).toEqual({
@@ -1052,7 +1052,7 @@ describe('handleChatCompletionRequestAction', () => {
       return {
         content: 'Streamed reply',
         conversationId: 'conv-2',
-        conversationHistory: [{ role: 'assistant', content: 'Streamed reply' }],
+        conversationHistory: [{ role: 'assistant' as const, content: 'Streamed reply' }],
       }
     })
 

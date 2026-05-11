@@ -1423,7 +1423,7 @@ async function runOnce(message: string) {
     text: (text) => {
       const delta = textDelta(last, text)
       if (delta) process.stdout.write(delta)
-      if (!last || !last.startsWith(text)) last = text
+      last = text
     },
     done: (content) => {
       const delta = textDelta(last, content)

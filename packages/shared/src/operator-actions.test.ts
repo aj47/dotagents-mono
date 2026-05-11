@@ -3799,12 +3799,12 @@ describe("operator action API helpers", () => {
         },
         getRecentErrors: (count) => {
           calls.push(`errors:${count}`)
-          return [{ timestamp: 1, level: "error", component: "mcp", message: "failed" }].slice(0, count)
+          return [{ timestamp: 1, level: "error" as const, component: "mcp", message: "failed" }].slice(0, count)
         },
         clearErrorLog: () => { calls.push("clear") },
         performHealthCheck: async () => {
           calls.push("health")
-          return { overall: "ok", checks: {} }
+          return { overall: "healthy" as const, checks: {} }
         },
       },
       getTunnelStatus: () => {
@@ -3883,7 +3883,7 @@ describe("operator action API helpers", () => {
     await expect(service.saveDiagnosticReport()).resolves.toBe("/tmp/diagnostic-report.json")
     expect(service.getRecentErrors(1)).toHaveLength(1)
     service.clearErrorLog()
-    await expect(service.performHealthCheck()).resolves.toEqual({ overall: "ok", checks: {} })
+    await expect(service.performHealthCheck()).resolves.toEqual({ overall: "healthy", checks: {} })
     expect(service.getTunnelStatus()).toEqual({ running: false, starting: false, mode: null })
     await expect(service.getIntegrationsSummary()).resolves.toMatchObject({ discord: { available: true } })
     expect(service.getUpdateInfo()).toBeNull()

@@ -49,7 +49,7 @@ function createRouteServer() {
 }
 
 function createReply(): TestReply {
-  const reply = {
+  const reply: TestReply = {
     body: undefined,
     statusCode: undefined,
     code: vi.fn((statusCode: number) => {

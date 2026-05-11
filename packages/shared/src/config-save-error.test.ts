@@ -40,7 +40,8 @@ describe("getSettingsSaveErrorMessage", () => {
   })
 
   it("uses nested causes when the top-level error message is empty", () => {
-    const error = new Error("", { cause: new Error("EACCES: permission denied") })
+    const error = new Error("") as Error & { cause?: unknown }
+    error.cause = new Error("EACCES: permission denied")
 
     expect(getSettingsSaveErrorMessage(error)).toBe(
       "Couldn't save your settings because DotAgents doesn't have permission to write its config files.",
@@ -48,9 +49,8 @@ describe("getSettingsSaveErrorMessage", () => {
   })
 
   it("uses nested causes when the top-level message is only a generic wrapper", () => {
-    const error = new Error("Failed to save settings to disk.", {
-      cause: new Error("ENOSPC: no space left on device"),
-    })
+    const error = new Error("Failed to save settings to disk.") as Error & { cause?: unknown }
+    error.cause = new Error("ENOSPC: no space left on device")
 
     expect(getSettingsSaveErrorMessage(error)).toBe(
       "Couldn't save your settings because your disk is full. Free up some space and try again.",
@@ -70,10 +70,10 @@ describe("getSettingsSaveErrorMessage", () => {
   })
 
   it("unwraps aggregate-style nested errors when the wrapper message is generic", () => {
-    const error = new AggregateError(
-      [new Error("EROFS: read-only file system")],
-      "Failed to save settings to disk.",
-    )
+    const error = {
+      message: "Failed to save settings to disk.",
+      errors: [new Error("EROFS: read-only file system")],
+    }
 
     expect(getSettingsSaveErrorMessage(error)).toBe(
       "Couldn't save your settings because the config location is read-only.",
@@ -82,8 +82,9 @@ describe("getSettingsSaveErrorMessage", () => {
 
   it("handles cyclic AggregateError graphs without recursing forever", () => {
     const nested = new Error("EROFS: read-only file system") as Error & { cause?: unknown }
-    const error = new AggregateError([nested], "Failed to save settings to disk.") as AggregateError & {
-      errors?: unknown
+    const error = {
+      message: "Failed to save settings to disk.",
+      errors: [nested],
     }
 
     nested.cause = error

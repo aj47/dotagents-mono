@@ -80,6 +80,8 @@ import {
   toServerConversationMessage,
   updateConversationAction,
   upsertServerConversationHistoryIndex,
+  type ServerConversationRecord,
+  type ServerConversationRecordMessage,
 } from './conversation-sync';
 
 function createLocalSession(overrides: Partial<Session> = {}): Session {
@@ -309,14 +311,14 @@ describe('server conversation API helpers', () => {
   });
 
   it('materializes persisted conversation record content across displayed and raw histories', async () => {
-    const sharedMessage = {
+    const sharedMessage: ServerConversationRecordMessage = {
       id: 'msg-shared',
       role: 'assistant' as const,
       content: 'stored data:image/png;base64,abc',
       displayContent: 'shown data:image/png;base64,abc',
       timestamp: 2,
     };
-    const conversation = {
+    const conversation: ServerConversationRecord = {
       id: 'conv-materialize-record',
       title: 'Materialize',
       createdAt: 1,
@@ -336,8 +338,8 @@ describe('server conversation API helpers', () => {
 
     expect(conversation.messages[1].content).toBe('stored assets://image.png');
     expect(conversation.messages[1].displayContent).toBe('shown assets://image.png');
-    expect(conversation.rawMessages[0].content).toBe('raw assets://image.png');
-    expect(conversation.rawMessages[1]).toBe(conversation.messages[1]);
+    expect(conversation.rawMessages?.[0].content).toBe('raw assets://image.png');
+    expect(conversation.rawMessages?.[1]).toBe(conversation.messages[1]);
     expect(materializeContent).toHaveBeenCalledTimes(4);
     await expect(materializeServerConversationRecordContent(conversation, { materializeContent })).resolves.toBe(false);
   });
@@ -855,7 +857,7 @@ describe('server conversation API helpers', () => {
   });
 
   it('builds portable compaction checkpoint metadata', () => {
-    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+    const rawMessages: ServerConversationRecordMessage[] = Array.from({ length: 25 }, (_, index) => ({
       id: `m${index}`,
       role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
       content: index === 2
@@ -863,7 +865,7 @@ describe('server conversation API helpers', () => {
         : `Message ${index}`,
       timestamp: 1_700_000_000_000 + index,
     }));
-    const summaryMessage = {
+    const summaryMessage: ServerConversationRecordMessage = {
       id: 'summary-1',
       role: 'assistant' as const,
       content: 'The user mentioned Bin-Huang/youtube-analytics-cli.',
@@ -1060,7 +1062,7 @@ describe('server conversation API helpers', () => {
       isSummary: true,
       summarizedMessageCount: 15,
     };
-    const conversation = {
+    const conversation: ServerConversationRecord = {
       id: 'conv-checkpoint-backfill',
       title: 'Backfill',
       createdAt: 100,
@@ -1095,7 +1097,7 @@ describe('server conversation API helpers', () => {
   });
 
   it('plans compaction slices from the full stored history', () => {
-    const messages = Array.from({ length: 25 }, (_, index) => ({
+    const messages: ServerConversationRecordMessage[] = Array.from({ length: 25 }, (_, index) => ({
       id: `m${index}`,
       role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
       content: `Message ${index}`,
@@ -1137,14 +1139,16 @@ describe('server conversation API helpers', () => {
     const messagesToKeep = messages.slice(15);
     const summaryInput = buildServerConversationCompactionSummaryInput(messagesToSummarize);
 
-    const compacted = buildServerConversationCompactedRecord({
+    const compactableConversation: ServerConversationRecord<{ source: string }> = {
       id: 'conv-compacted-record',
       title: 'Compacted',
       createdAt: 1,
       updatedAt: 2,
       messages,
       metadata: { source: 'test' },
-    }, {
+    };
+
+    const compacted = buildServerConversationCompactedRecord(compactableConversation, {
       fullMessageHistory: messages,
       messagesToSummarize,
       messagesToKeep,
@@ -1215,7 +1219,7 @@ describe('server conversation API helpers', () => {
   });
 
   it('appends messages and updates compacted raw history consistently', () => {
-    const conversation = {
+    const conversation: ServerConversationRecord = {
       id: 'conv-append',
       title: 'Append',
       createdAt: 1,
@@ -1241,7 +1245,7 @@ describe('server conversation API helpers', () => {
   });
 
   it('deduplicates consecutive appended messages while refreshing display content', () => {
-    const conversation = {
+    const conversation: ServerConversationRecord = {
       id: 'conv-duplicate',
       title: 'Duplicate',
       createdAt: 1,
@@ -1345,7 +1349,7 @@ describe('server conversation API helpers', () => {
       lastMessage: 'hello',
       preview: 'hello',
     }];
-    const fullConversation = {
+    const fullConversation: ServerConversationRecord<{ model: string }> = {
       id: 'conv-1',
       title: 'Server Chat',
       createdAt: 1,
@@ -1353,7 +1357,7 @@ describe('server conversation API helpers', () => {
       messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
       metadata: { model: 'test' },
     };
-    const savedConversations = new Map([[fullConversation.id, fullConversation]]);
+    const savedConversations = new Map<string, ServerConversationRecord<any>>([[fullConversation.id, fullConversation]]);
     const generatedConversationIds = ['conv-new', 'conv-branch'];
     const changed = vi.fn();
     const logs: unknown[] = [];
@@ -1364,7 +1368,7 @@ describe('server conversation API helpers', () => {
         generateConversationId: () => generatedConversationIds.shift() ?? 'conv-extra',
         validateConversationId: () => null,
         getTimestamp: () => 10,
-        saveConversation: async (conversation: typeof fullConversation) => {
+        saveConversation: async (conversation: ServerConversationRecord<any>) => {
           savedConversations.set(conversation.id, conversation);
         },
         deleteConversation: async (conversationId: string) => {

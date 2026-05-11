@@ -58,6 +58,7 @@ describe("knowledge note form helpers", () => {
     const note: KnowledgeNote = {
       id: "note-1",
       title: "Title",
+      context: "search-only",
       body: "Body",
       summary: "Summary",
       tags: ["project", "preference"],

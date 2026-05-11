@@ -360,17 +360,10 @@ describe("bundle API helpers", () => {
       repeatTasks: [{
         id: "task-1",
         name: "Existing Task",
-        prompt: "Run",
-        intervalMinutes: 15,
-        enabled: true,
       }],
       knowledgeNotes: [{
         id: "note-1",
         title: "Existing Note",
-        context: "search-only",
-        body: "Body",
-        tags: [],
-        updatedAt: 123,
       }],
     })).toEqual({
       agentProfiles: [{ id: "agent-1", name: "Existing Agent" }],

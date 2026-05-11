@@ -83,6 +83,7 @@ import {
   type OperatorMcpMutationActionOptions,
   type OperatorMcpReadActionOptions,
   type OperatorMcpTestActionOptions,
+  type McpServerDeletedContext,
   type McpServerStatusMapLike,
 } from "./mcp-api"
 import type { MCPConfig, MCPServerConfig } from "./mcp-utils"
@@ -431,7 +432,12 @@ describe("MCP API helpers", () => {
             nextServers: Object.keys(nextMcpConfig.mcpServers).sort(),
           })
         },
-        onMcpServerDeleted: ({ serverName, previousMcpConfig, nextMcpConfig, availableServerNames }) => {
+        onMcpServerDeleted: ({
+          serverName,
+          previousMcpConfig,
+          nextMcpConfig,
+          availableServerNames,
+        }: McpServerDeletedContext) => {
           deletedContexts.push({
             serverName,
             previousServers: Object.keys(previousMcpConfig.mcpServers).sort(),
