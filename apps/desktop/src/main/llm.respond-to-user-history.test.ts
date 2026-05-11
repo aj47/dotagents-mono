@@ -47,6 +47,7 @@ vi.mock("./llm-fetch", () => ({
   verifyCompletionWithFetch: mocks.verifyCompletionWithFetch,
   makeTextCompletionWithFetch: vi.fn(),
 }))
+vi.mock("./mcp-service", () => ({}))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "system prompt") }))
 vi.mock("./state", () => ({ state: mocks.state, agentSessionStateManager: mocks }))
 vi.mock("./debug", () => ({ isDebugLLM: () => false, isDebugTools: () => false, logLLM: vi.fn(), logTools: vi.fn(), logApp: vi.fn() }))
@@ -171,6 +172,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-abort-after-stop",
       "session-prior-display-content",
       "session-recovered-context-final-answer",
+      "session-deduped-context-read",
       ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
@@ -686,6 +688,102 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       recoveredContextInToolHistory: result.conversationHistory.some((message) =>
         message.role === "tool" && message.content.includes(`HIDDEN_AUDIT_TOKEN=${hiddenToken}`)
       ),
+      ...summarizePromptBatches(promptBatches),
+    })
+  })
+
+  it("deduplicates repeated read_more_context calls within one tool batch", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const sessionId = "session-deduped-context-read"
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+    const toolCallLog: any[] = []
+    const readMoreContext = vi.fn(async () => ({
+      content: [{
+        type: "text" as const,
+        text: `historical_audit excerpt: HIDDEN_AUDIT_TOKEN=${hiddenToken}`,
+      }],
+      isError: false,
+    }))
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+        {
+          name: "read_more_context",
+          arguments: {
+            query: "HIDDEN_AUDIT_TOKEN",
+            mode: "search",
+            contextRef: "ctx_hidden_audit",
+            maxChars: 4000,
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+        { name: "mark_work_complete", arguments: { summary: "Recovered hidden audit token" } },
+      ] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.98,
+      missingItems: [],
+    })
+
+    const startedAt = performance.now()
+    const llmCallStart = mocks.makeLLMCallWithStreamingAndTools.mock.calls.length
+    const verifierCallStart = mocks.verifyCompletionWithFetch.mock.calls.length
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall(sessionId, 1, {
+        read_more_context: readMoreContext,
+      }, toolCallLog),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ] as any,
+      "conv-deduped-context-read",
+      sessionId,
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(readMoreContext).toHaveBeenCalledTimes(1)
+    expect(toolCallLog.filter((call) => call.name === "read_more_context")).toHaveLength(1)
+    expect(result.conversationHistory.some((message) =>
+      message.role === "tool" && message.content.includes("Duplicate read_more_context request skipped")
+    )).toBe(true)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const promptBatches = mocks.makeLLMCallWithStreamingAndTools.mock.calls
+      .slice(llmCallStart)
+      .map((call) => call[0])
+    recordAgentLoopMetric({
+      suite: "agent-loop-context-recovery",
+      caseId: "dedupe-read-more-context",
+      status: "pass",
+      durationMs: Math.round(performance.now() - startedAt),
+      llmCalls: mocks.makeLLMCallWithStreamingAndTools.mock.calls.length - llmCallStart,
+      verifierCalls: mocks.verifyCompletionWithFetch.mock.calls.length - verifierCallStart,
+      toolCallsTotal: toolCallLog.length,
+      toolCallsByName: summarizeToolCalls(toolCallLog),
+      readMoreContextToolExecutions: toolCallLog.filter((call) => call.name === "read_more_context").length,
+      duplicateReadMoreContextCallsSkipped: 1,
+      finalContentChars: result.content.length,
+      conversationHistoryLength: result.conversationHistory.length,
+      totalIterations: result.totalIterations,
+      finalAnswerContainsRecoveredToken: result.content.includes(hiddenToken),
       ...summarizePromptBatches(promptBatches),
     })
   })
