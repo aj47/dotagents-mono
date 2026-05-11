@@ -232,6 +232,43 @@ describe("TextInputPanel submit behavior", () => {
     expect(focusRequestCount()).toBe(3)
   })
 
+  it("requests panel focus once after an initially busy panel becomes editable", async () => {
+    vi.useFakeTimers()
+    const runtime = createHookRuntime()
+    const { TextInputPanel, ipcInvokeMock, tipcClientMock } = await loadTextInputPanel(runtime)
+    const focusRequestCount = () =>
+      tipcClientMock.setPanelFocusable.mock.calls.length + ipcInvokeMock.mock.calls.length
+    const props = {
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "Focus later",
+      agentProgress: { message: "Working" },
+    }
+
+    runtime.render(TextInputPanel, { ...props, isProcessing: true } as any)
+    runtime.commitEffects()
+    vi.advanceTimersByTime(200)
+    expect(focusRequestCount()).toBe(0)
+
+    runtime.render(TextInputPanel, { ...props, isProcessing: false } as any)
+    runtime.refs[0].current = { focus: vi.fn() }
+    runtime.commitEffects()
+    expect(focusRequestCount()).toBe(1)
+
+    vi.advanceTimersByTime(200)
+    expect(focusRequestCount()).toBe(3)
+
+    runtime.render(TextInputPanel, { ...props, isProcessing: true } as any)
+    runtime.commitEffects()
+    runtime.render(TextInputPanel, { ...props, isProcessing: false } as any)
+    runtime.commitEffects()
+    vi.advanceTimersByTime(200)
+
+    expect(focusRequestCount()).toBe(3)
+  })
+
   it("keeps the draft when the async submit handler declines the submission", async () => {
     const runtime = createHookRuntime()
     const { TextInputPanel } = await loadTextInputPanel(runtime)
