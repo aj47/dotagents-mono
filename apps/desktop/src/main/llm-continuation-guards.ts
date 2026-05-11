@@ -196,7 +196,11 @@ export function resolveIterationLimitFinalContent({
     }
   }
 
-  const lastAssistantMessage = conversationHistory
+  const eligibleConversationHistory = typeof sinceIndex === "number" && sinceIndex >= 0
+    ? conversationHistory?.slice(sinceIndex)
+    : conversationHistory
+
+  const lastAssistantMessage = eligibleConversationHistory
     ?.slice()
     .reverse()
     .find((msg) => msg.role === "assistant" && typeof msg.content === "string" && msg.content.trim().length > 0)
