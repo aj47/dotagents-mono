@@ -43,8 +43,9 @@ Versioned agent-loop metrics were captured on 2026-05-11:
 - `docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl`
   - rows: `12`
   - result: `12/12` execution rows passed
-  - live AutoResearch E2E: `5/5` execution rows passed; `2/5` semantic evidence rows passed
-  - live context-ref E2E: `23,610 ms`, `4` LLM calls, `1` verifier call, `3` tool calls, final answer matched the requested recovered-token form
+  - live AutoResearch E2E: `5/5` execution rows passed; `1/5` semantic evidence rows passed
+  - live context-ref E2E: `21,737 ms`, `4` LLM calls, `1` verifier call, `5` tool calls, final answer matched the requested recovered-token form
+  - live merged-branch aggregate: `6/6` execution rows passed, `111,298 ms`, `12` LLM calls, `8` verifier calls, `7` tool calls, and `0` iteration-limit hits
 - `docs/test-results/agent-loop/2026-05-11-agent-loop-summary.md`
   - concise rollup of pass rate, durations, LLM calls, verifier calls, and tool calls
 
