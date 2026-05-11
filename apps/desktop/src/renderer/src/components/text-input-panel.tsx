@@ -78,11 +78,13 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       // panel-window focus alongside the textarea retries makes the handoff
       // converge even when the first attempt is dropped.
       const ensurePanelFocus = () => {
-        void Promise.resolve(
-          tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
-        ).catch(() => {
+        try {
+          void tipcClient.setPanelFocusable({ focusable: true, andFocus: true }).catch(() => {
             // Ignore — textarea retries below may still succeed.
           })
+        } catch {
+          // Ignore — textarea retries below may still succeed.
+        }
       }
 
       ensurePanelFocus()
