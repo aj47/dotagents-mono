@@ -30,47 +30,6 @@ export { DEFAULT_AGENT_RUNTIME_TOOL_NAMES }
 
 // Tool definitions — runtime tools use plain names (no server prefix)
 export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
-  {
-    name: "list_running_agents",
-    description: "List all currently running agent sessions with their status, iteration count, and activity. Useful for monitoring active agents before terminating them.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: "send_agent_message",
-    description: "Send a message to another running agent session. The message will be queued and processed by the target agent's conversation. Use list_running_agents first to get session IDs. This enables agent coordination and task delegation.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        sessionId: {
-          type: "string",
-          description: "The session ID of the target agent (get this from list_running_agents)",
-        },
-        message: {
-          type: "string",
-          description: "The message to send to the target agent",
-        },
-      },
-      required: ["sessionId", "message"],
-    },
-  },
-  {
-    name: "kill_agent",
-    description: "Terminate agent sessions. Pass a sessionId to kill a specific agent, or omit it to kill ALL running agents. Aborts in-flight LLM requests, kills spawned processes, and stops agents immediately.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        sessionId: {
-          type: "string",
-          description: "The session ID of the agent to terminate (get this from list_running_agents). Omit to kill all agents.",
-        },
-      },
-      required: [],
-    },
-  },
   // ACP router tools for agent delegation
   // These tools are logically distinct from settings management but are all treated as
   // runtime tools for execution purposes (see isRuntimeTool in runtime-tools.ts).
@@ -140,7 +99,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   {
     name: "set_session_title",
     description:
-      "Set or update the current session title. Use this after the first substantive reply to replace a raw first-prompt title, or later if the conversation topic shifts. Keep the title short, specific, and ideally under 10 words.",
+      "Set or update the current session title. Use this once the task is clear, early enough to make the UI useful, or later if the conversation topic shifts. Keep the title short, specific, and ideally under 10 words.",
     inputSchema: {
       type: "object",
       properties: {
@@ -186,35 +145,6 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
         },
       },
       required: ["command"],
-    },
-  },
-
-  {
-    name: "list_server_tools",
-    description: "List all tools available from a specific MCP server. Use this to discover what tools a server provides before calling them.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        serverName: {
-          type: "string",
-          description: "The name of the MCP server to list tools from (e.g., 'github', 'filesystem'). Use the prompt, app UI, or .agents/mcp.json to find server names.",
-        },
-      },
-      required: ["serverName"],
-    },
-  },
-  {
-    name: "get_tool_schema",
-    description: "Get the full JSON schema for a specific tool, including all parameter details. Use this when you need to know the exact parameters to pass to a tool.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        toolName: {
-          type: "string",
-          description: "The full tool name including server prefix (e.g., 'github:create_issue', 'filesystem:read_file')",
-        },
-      },
-      required: ["toolName"],
     },
   },
   {

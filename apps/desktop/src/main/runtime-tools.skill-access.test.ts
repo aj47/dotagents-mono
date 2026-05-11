@@ -35,6 +35,31 @@ describe("runtime-tools filesystem-first skill access", () => {
     expect(await executeRuntimeTool("load_skill_instructions", { skillId: "any" })).toBeNull()
   })
 
+  it("keeps set_session_title as a direct runtime tool for early UI title updates", async () => {
+    const { runtimeTools, isRuntimeTool } = await import("./runtime-tools")
+    const names = runtimeTools.map((tool) => tool.name)
+
+    expect(names).toContain("set_session_title")
+    expect(isRuntimeTool("set_session_title")).toBe(true)
+  })
+
+  it("does not expose legacy session-control or schema-discovery helpers", async () => {
+    const { runtimeTools, isRuntimeTool, executeRuntimeTool } = await import("./runtime-tools")
+    const names = runtimeTools.map((tool) => tool.name)
+
+    for (const toolName of [
+      "list_running_agents",
+      "send_agent_message",
+      "kill_agent",
+      "list_server_tools",
+      "get_tool_schema",
+    ]) {
+      expect(names).not.toContain(toolName)
+      expect(isRuntimeTool(toolName)).toBe(false)
+      expect(await executeRuntimeTool(toolName, {})).toBeNull()
+    }
+  })
+
   it("rejects execute_command.skillId and directs callers to filesystem paths", async () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("execute_command", {

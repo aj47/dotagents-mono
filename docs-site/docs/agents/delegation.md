@@ -129,8 +129,9 @@ Ensure the main agent has access to the delegation runtime tools:
 {
   "toolConfig": {
     "enabledRuntimeTools": [
-      "list_available_agents",
+      "set_session_title",
       "delegate_to_agent",
+      "check_agent_status",
       "mark_work_complete",
       "respond_to_user"
     ]
@@ -176,19 +177,7 @@ Sub-agents can request things from the parent:
 
 ## Delegation Tools
 
-The main agent uses these runtime tools for delegation:
-
-### `list_available_agents`
-
-Discovers agents available for delegation:
-
-```
-→ list_available_agents()
-← [
-    { id: "code-reviewer", displayName: "Code Reviewer", description: "..." },
-    { id: "devops", displayName: "DevOps Assistant", description: "..." }
-  ]
-```
+The main agent sees available delegation targets in prompt context and uses these runtime tools for delegation:
 
 ### `delegate_to_agent`
 
@@ -201,6 +190,15 @@ Sends a task to a specific agent:
     context: { pr_number: 42 }
   })
 ← { result: "Found 3 issues: ...", status: "complete" }
+```
+
+### `check_agent_status`
+
+Checks an async delegated run:
+
+```
+→ check_agent_status({ runId: "acp_delegation_..." })
+← { status: "completed", output: "..." }
 ```
 
 ## Timeouts and Lifecycle

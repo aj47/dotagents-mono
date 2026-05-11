@@ -1,9 +1,9 @@
 /**
  * Built-in tools for ACP agent routing/delegation.
- * These tools allow the main agent to discover, spawn, delegate to, and manage sub-agents.
+ * These tools allow the main agent to delegate to sub-agents and check their status.
  */
 
-import { acpRouterToolDefinitions, resolveToolName } from './acp-router-tool-definitions';
+import { isRouterTool } from './acp-router-tool-definitions';
 import type {
   ACPRunResult,
   ACPSubAgentState,
@@ -19,7 +19,6 @@ import { RESPOND_TO_USER_TOOL } from '../../shared/runtime-tool-names';
 import { extractRespondToUserContentFromArgs } from '../respond-to-user-utils';
 import {
   runInternalSubSession,
-  cancelSubSession,
   getInternalAgentInfo,
   getSessionDepth,
   generateSubSessionId,
@@ -626,105 +625,6 @@ export function getInternalAgentConfig(): import('../../shared/types').ACPAgentC
 }
 
 /**
- * List all available ACP agents, optionally filtered by capability.
- * Uses configStore for agent definitions and acpService for runtime status.
- * Includes the built-in internal agent alongside configured external agents.
- * Also includes enabled internal agent profiles as available agents for delegation.
- * @param args - Arguments containing optional capability filter
- * @returns Object with list of available agents
- */
-export async function handleListAvailableAgents(args: {
-  capability?: string;
-}): Promise<object> {
-  try {
-    // Get all enabled agent targets from the unified agent profile service
-    const agentTargets = agentProfileService.getEnabledAgentTargets();
-
-    // Note: capability filter parameter is deprecated and ignored
-
-    // Get runtime status from acpService (for external agents)
-    const agentStatuses = acpService.getAgents();
-    const statusMap = new Map(
-      agentStatuses.map((a) => [a.config.name, { status: a.status, error: a.error }])
-    );
-
-    // Format agents for output
-    const formattedAgents = agentTargets.map((agent) => {
-      // Internal agents are always ready
-      if (agent.connection.type === 'internal') {
-        return {
-          name: agent.name,
-          displayName: agent.displayName,
-          description: agent.description || '',
-          connectionType: agent.connection.type,
-          status: 'ready' as const,
-          error: undefined,
-          isInternal: true,
-          isAgentProfile: true,
-        };
-      }
-
-      // External agents (acp, stdio, remote) - check runtime status
-      const runtime = statusMap.get(agent.name);
-      return {
-        name: agent.name,
-        displayName: agent.displayName,
-        description: agent.description || '',
-        connectionType: agent.connection.type,
-        status: runtime?.status || (agent.connection.type === 'remote' ? 'ready' : 'stopped'),
-        error: runtime?.error,
-        isInternal: false,
-        isAgentProfile: true,
-      };
-    });
-
-    const agentTargetNames = new Set(agentTargets.map((a) => a.name));
-
-    // BACKWARD COMPATIBILITY: Also include legacy ACP agents from config
-    const config = configStore.get();
-    const legacyAcpAgents = (config.acpAgents || []).filter(
-      (a) => a.name !== 'internal' && !agentTargetNames.has(a.name)
-    );
-
-    const formattedLegacyAcpAgents = legacyAcpAgents
-      .filter((agent) => agent.enabled !== false)
-      .map((agent) => {
-        const runtime = statusMap.get(agent.name);
-        return {
-          name: agent.name,
-          displayName: agent.displayName,
-          description: agent.description || '',
-          connectionType: agent.connection.type,
-          status: runtime?.status || 'stopped',
-          error: runtime?.error,
-          isInternal: agent.connection.type === 'internal',
-          isLegacy: true,
-        };
-      });
-
-    // Combine all agents
-    const allAgents = [
-      ...formattedAgents,
-      ...formattedLegacyAcpAgents,
-    ];
-
-    return {
-      success: true,
-      agents: allAgents,
-      count: allAgents.length,
-      filter: args.capability || null,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      agents: [],
-      count: 0,
-    };
-  }
-}
-
-/**
  * Delegate a task to a specialized ACP agent (external or internal).
  * Uses the unified AgentProfile system for agent lookup and routing.
  * @param args - Arguments containing agent name, task, optional context, and wait preference
@@ -734,10 +634,9 @@ export async function handleListAvailableAgents(args: {
 export async function handleDelegateToAgent(
   args: {
     agentName: string;
-    task?: string;
+    task: string;
     context?: string;
     workingDirectory?: string;
-    prepareOnly?: boolean;
     waitForResult?: boolean;
   },
   parentSessionId?: string
@@ -746,7 +645,6 @@ export async function handleDelegateToAgent(
     ? args.agentName.trim()
     : '';
   const normalizedWorkingDirectory = args.workingDirectory?.trim() || undefined;
-  const prepareOnly = args.prepareOnly === true;
   const hasTask = typeof args.task === 'string' && args.task.trim().length > 0;
 
   if (!normalizedAgentName) {
@@ -756,21 +654,18 @@ export async function handleDelegateToAgent(
     };
   }
 
-  if (!prepareOnly && !hasTask) {
+  if (!hasTask) {
     return {
       success: false,
-      error: 'Missing required parameter: task must be provided unless prepareOnly is true',
+      error: 'Missing required parameter: task',
     };
   }
 
   const normalizedArgs = {
     ...args,
     agentName: normalizedAgentName,
-    task: hasTask
-      ? args.task!.trim()
-      : `Prepare agent "${normalizedAgentName}" for future delegated work.`,
+    task: args.task.trim(),
     workingDirectory: normalizedWorkingDirectory,
-    prepareOnly,
   };
 
   const waitForResult = args.waitForResult === true; // Default to async/background
@@ -810,7 +705,6 @@ async function executeAgentProfileDelegation(
     task: string;
     context?: string;
     workingDirectory?: string;
-    prepareOnly?: boolean;
   },
   parentSessionId: string | undefined,
   waitForResult: boolean
@@ -870,7 +764,6 @@ async function executeInternalAgent(
     /** @deprecated Use agentProfileName instead. */
     personaName?: string;
     workingDirectory?: string;
-    prepareOnly?: boolean;
   },
   parentSessionId: string | undefined,
   waitForResult: boolean
@@ -884,19 +777,6 @@ async function executeInternalAgent(
   // Use agent profile name for agent identification if provided, otherwise 'internal'
   const agentProfileName = args.agentProfileName ?? args.personaName;
   const agentName = agentProfileName || 'internal';
-
-  if (args.prepareOnly) {
-    return {
-      success: true,
-      prepared: true,
-      agentName,
-      status: 'ready',
-      message: `Internal agent "${agentName}" is always available and does not require spawning.`,
-      note: args.workingDirectory
-        ? 'workingDirectory is ignored for internal agent delegation.'
-        : undefined,
-    };
-  }
 
   if (!parentSessionId) {
     return { success: false, error: 'Parent session ID is required for internal agent delegation' };
@@ -914,8 +794,7 @@ async function executeInternalAgent(
   });
   subAgentState.status = 'running';
 
-  // Pre-generate sub-session ID and store it BEFORE starting execution.
-  // This enables cancel_agent_run to work for in-flight internal tasks.
+  // Pre-generate sub-session ID so async progress can be mapped before execution starts.
   const preGeneratedSubSessionId = generateSubSessionId();
   subAgentState.subSessionId = preGeneratedSubSessionId;
 
@@ -1068,7 +947,6 @@ async function executeACPAgent(
     task: string;
     context?: string;
     workingDirectory?: string;
-    prepareOnly?: boolean;
   },
   parentSessionId: string | undefined,
   waitForResult: boolean
@@ -1097,16 +975,6 @@ async function executeACPAgent(
       return {
         success: false,
         error: `Remote ACP agents are not supported by the acpx runtime path. Reconfigure "${args.agentName}" as an acpx agent profile.`,
-      };
-    }
-
-    if (args.prepareOnly) {
-      return {
-        success: true,
-        prepared: true,
-        agentName: args.agentName,
-        status: 'ready',
-        message: `Agent "${args.agentName}" is ready for delegated acpx work.`,
       };
     }
 
@@ -1373,85 +1241,6 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
   }
 }
 
-/**
- * Prepare an ACP agent without executing delegated work.
- * Compatibility wrapper that routes to delegate_to_agent with prepareOnly=true.
- */
-export async function handleSpawnAgent(
-  args: { agentName: string; workingDirectory?: string }
-): Promise<object> {
-  return handleDelegateToAgent(
-    {
-      agentName: args.agentName,
-      task: `Prepare agent "${args.agentName}" for upcoming delegated work.`,
-      workingDirectory: args.workingDirectory,
-      prepareOnly: true,
-      waitForResult: false,
-    },
-    undefined
-  );
-}
-
-/**
- * Stop a running ACP agent process.
- * Uses acpService to stop agents.
- * @param args - Arguments containing the agent name
- * @returns Object with stop result
- */
-export async function handleStopAgent(args: { agentName: string }): Promise<object> {
-  try {
-    const resolvedAgent = resolveAcpAgentConfig(args.agentName);
-    if (!resolvedAgent) {
-      return {
-        success: false,
-        error: `Agent "${args.agentName}" not found in agent profiles or legacy configuration`,
-      };
-    }
-
-    if (resolvedAgent.connectionType === 'remote') {
-      return {
-        success: false,
-        error: `Agent "${args.agentName}" is a remote agent and cannot be stopped locally.`,
-      };
-    }
-
-    if (resolvedAgent.connectionType === 'internal') {
-      return {
-        success: false,
-        error: `Agent "${args.agentName}" is internal and cannot be stopped via external ACP process controls.`,
-      };
-    }
-
-    // Check current status
-    const agentStatus = acpService.getAgentStatus(args.agentName);
-
-    // Check if agent is already stopped
-    if (agentStatus?.status === 'stopped' || !agentStatus) {
-      return {
-        success: true,
-        message: `Agent "${args.agentName}" is already stopped`,
-        status: 'stopped',
-      };
-    }
-
-    // Stop the agent via acpService
-    await acpService.stopAgent(args.agentName);
-
-    return {
-      success: true,
-      message: `Agent "${args.agentName}" stopped successfully`,
-      agentName: args.agentName,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-
-
 // ============================================================================
 // Main Dispatcher
 // ============================================================================
@@ -1460,7 +1249,7 @@ export async function handleStopAgent(args: { agentName: string }): Promise<obje
  * Execute an ACP router tool by name.
  * This is the main entry point for invoking ACP router tools.
  *
- * @param toolName - The tool name (e.g., 'list_available_agents')
+ * @param toolName - The tool name (e.g., 'delegate_to_agent')
  * @param args - Arguments to pass to the tool handler
  * @param parentSessionId - Optional parent session ID for tracking delegations
  * @returns Object with content string and error flag
@@ -1470,26 +1259,18 @@ export async function executeACPRouterTool(
   args: Record<string, unknown>,
   parentSessionId?: string
 ): Promise<{ content: string; isError: boolean }> {
-  // Resolve alias tool names to their canonical handlers
-  const resolvedToolName = resolveToolName(toolName);
-
   try {
     let result: object;
 
-    switch (resolvedToolName) {
-      case 'list_available_agents':
-        result = await handleListAvailableAgents(args as { capability?: string; skillName?: string });
-        break;
-
+    switch (toolName) {
       case 'delegate_to_agent':
         // Handle both 'runId' and 'taskId' terminology
         result = await handleDelegateToAgent(
           args as {
             agentName: string;
-            task?: string;
+            task: string;
             context?: string;
             workingDirectory?: string;
-            prepareOnly?: boolean;
             contextId?: string;
             waitForResult?: boolean;
           },
@@ -1546,30 +1327,6 @@ export async function executeACPRouterTool(
         }
         break;
 
-      case 'spawn_agent':
-        result = await handleSpawnAgent(args as { agentName: string; workingDirectory?: string });
-        break;
-
-      case 'stop_agent':
-        result = await handleStopAgent(args as { agentName: string });
-        break;
-
-      case 'cancel_agent_run':
-        // Handle both 'runId' and 'taskId' parameter names
-        const cancelArgs = args as { runId?: string; taskId?: string };
-        const cancelRunId = cancelArgs.runId || cancelArgs.taskId;
-        if (!cancelRunId) {
-          result = {
-            success: false,
-            error: 'Missing required parameter: runId or taskId must be provided',
-          };
-        } else {
-          result = await handleCancelAgentRun({ 
-            runId: cancelRunId 
-          });
-        }
-        break;
-
       default:
         return {
           content: JSON.stringify({
@@ -1603,8 +1360,7 @@ export async function executeACPRouterTool(
  * @returns True if the tool is an ACP router tool
  */
 export function isACPRouterTool(toolName: string): boolean {
-  // Check both the original name and any aliases
-  return acpRouterToolDefinitions.some((def) => def.name === toolName);
+  return isRouterTool(toolName);
 }
 
 /**
@@ -1697,73 +1453,5 @@ export function cleanupOldDelegatedRuns(maxAgeMs: number = 60 * 60 * 1000): void
       cleanupDelegationMappings(runId, state.agentName);
     }
     delegatedRuns.delete(runId);
-  }
-}
-
-// ============================================================================
-// Cancellation Support
-// ============================================================================
-
-/**
- * Cancel a running agent task (internal or external).
- * @param args - Arguments containing the run ID
- * @returns Object with cancellation result
- */
-async function handleCancelAgentRun(args: { runId: string }): Promise<object> {
-  const state = delegatedRuns.get(args.runId);
-  if (!state) {
-    return {
-      success: false,
-      error: `Run "${args.runId}" not found`,
-    };
-  }
-
-  if (state.status !== 'running' && state.status !== 'pending') {
-    return {
-      success: false,
-      error: `Run "${args.runId}" is not running (status: ${state.status})`,
-    };
-  }
-
-  try {
-    // Handle internal agent cancellation
-    if (state.isInternal) {
-      // Use the stored subSessionId for cancellation (this is the actual internal sub-session ID,
-      // whereas state.runId is the delegation tracking ID 'acp_delegation_*')
-      const subSessionId = state.subSessionId;
-      if (!subSessionId) {
-        return {
-          success: false,
-          error: `Failed to cancel internal agent run "${args.runId}": sub-session ID not found (task may have completed before cancellation was attempted)`,
-        };
-      }
-      const cancelled = cancelSubSession(subSessionId);
-      if (cancelled) {
-        state.status = 'cancelled';
-        return {
-          success: true,
-          message: `Internal agent run "${args.runId}" cancelled`,
-        };
-      }
-      // Sub-session not found or already completed - report failure
-      // Don't mark local state as cancelled since sub-session cancellation failed
-      return {
-        success: false,
-        error: `Failed to cancel internal agent run "${args.runId}": sub-session not found or already completed`,
-      };
-    }
-
-    // For external agents, we can't really cancel mid-run but we can mark it
-    state.status = 'cancelled';
-    return {
-      success: true,
-      message: `Agent run "${args.runId}" marked as cancelled`,
-      note: 'External agent tasks cannot be forcefully stopped mid-execution',
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
   }
 }

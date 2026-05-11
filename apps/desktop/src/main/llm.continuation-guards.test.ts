@@ -218,6 +218,12 @@ describe("continuation guard helpers", () => {
     expect(isDeliverableResponseContent(content)).toBe(false)
   })
 
+  it("treats continuing/searching intent text as progress updates", () => {
+    const content = "Continuing the audit search now."
+    expect(isProgressUpdateResponse(content)).toBe(true)
+    expect(isDeliverableResponseContent(content)).toBe(false)
+  })
+
   it("only classifies actual placeholder-style tool text as garbled", () => {
     expect(isGarbledToolCallText('[Calling tools: execute_command]')).toBe(true)
     expect(isGarbledToolCallText('The new empty field is at @e33 (nth=4). Let me add the next item.')).toBe(false)

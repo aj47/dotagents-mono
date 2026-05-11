@@ -83,6 +83,9 @@ describe("constructSystemPrompt", () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain("context: auto")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("direct file editing")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("runtime-supplied conversations directory")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("RUNTIME METADATA")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("tools/index.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("OS-appropriate")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("index.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("conv_*.json")
@@ -120,6 +123,8 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("context: search-only")
     expect(prompt).toContain("context: auto")
     expect(prompt).toContain("runtime-supplied conversations directory")
+    expect(prompt).toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(prompt).toContain("DOTAGENTS_TOOL_MANIFEST")
     expect(prompt).toContain("index.json")
     expect(prompt).toContain("conv_*.json")
     expect(prompt).toContain("layered global/workspace .agents folders")
@@ -170,26 +175,6 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("\n - Do not send a second recap")
   })
 
-  it("only advertises discovery helpers that are actually available", async () => {
-    const { constructSystemPrompt } = await import("./system-prompts")
-
-    const withoutHelpers = constructSystemPrompt([
-      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
-    ] as any, undefined, true)
-
-    expect(withoutHelpers).not.toContain("list_server_tools(serverName)")
-    expect(withoutHelpers).not.toContain("get_tool_schema(toolName)")
-
-    const withHelpers = constructSystemPrompt([
-      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
-      { name: "list_server_tools", description: "List tools for a server", inputSchema: { type: "object", properties: {} } },
-      { name: "get_tool_schema", description: "Inspect a tool schema", inputSchema: { type: "object", properties: {} } },
-    ] as any, undefined, true)
-
-    expect(withHelpers).toContain("list_server_tools(serverName)")
-    expect(withHelpers).toContain("get_tool_schema(toolName)")
-  })
-
   it("only advertises execute_command guidance when execute_command is available", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
 
@@ -209,6 +194,25 @@ describe("constructSystemPrompt", () => {
     expect(withExecute).toContain("pnpm-lock.yaml")
     expect(withExecute).toContain("do not default to npm")
     expect(withExecute).toContain("Do not run install/test/build/lint/typecheck unless asked")
+    expect(withExecute).toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(withExecute).toContain("DOTAGENTS_TOOL_SCHEMA_DIR")
+  })
+
+  it("advertises early title updates only when set_session_title is available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const withoutTitleTool = constructSystemPrompt([
+      { name: "execute_command", description: "Execute any shell command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    const withTitleTool = constructSystemPrompt([
+      { name: "set_session_title", description: "Set session title", inputSchema: { type: "object", properties: {} } },
+      { name: "execute_command", description: "Execute any shell command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(withoutTitleTool).not.toContain("SESSION TITLE")
+    expect(withTitleTool).toContain("SESSION TITLE")
+    expect(withTitleTool).toContain("set a concise useful title with set_session_title early")
   })
 
   it("does not advertise delegation tools when delegation is unavailable", async () => {

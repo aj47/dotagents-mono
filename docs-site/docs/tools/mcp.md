@@ -160,15 +160,24 @@ Examples:
 
 ### DotAgents Runtime Tools
 
-DotAgents also provides runtime tools with plain names:
+DotAgents also provides a small set of runtime tools with plain names. The default agent runtime is filesystem-first:
 
 | Tool | Description |
 |------|-------------|
-| `load_skill_instructions` | Load a skill's full instructions |
+| `set_session_title` | Set the visible session title early or when the topic shifts |
+| `execute_command` | Execute shell and filesystem automation |
+| `read_more_context` | Inspect compacted context refs |
 | `mark_work_complete` | Signal task completion |
+
+Runtime discovery metadata is file-backed. Agents can inspect `$DOTAGENTS_RUNTIME_DIR`, `$DOTAGENTS_AGENT_REGISTRY`, `$DOTAGENTS_TOOL_MANIFEST`, and `$DOTAGENTS_TOOL_SCHEMA_DIR` with `execute_command` instead of using list/schema helper tools.
+
+Additional runtime tools can be enabled per agent profile:
+
+| Tool | Description |
+|------|-------------|
 | `respond_to_user` | Send a response (supports images) |
 | `delegate_to_agent` | Delegate to a sub-agent |
-| `list_available_agents` | List delegation targets |
+| `check_agent_status` | Check a delegated run |
 
 ## Tool Discovery
 

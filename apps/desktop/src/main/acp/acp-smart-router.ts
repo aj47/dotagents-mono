@@ -58,7 +58,6 @@ ${agentDescriptions}
 ### How to Delegate
 Use delegate_to_agent with agentName and a clear task description.
 If work must run in a specific path, pass workingDirectory.
-Use prepareOnly: true when you only need to warm up/spawn the agent without running a task.
 Monitor the agent's progress and incorporate its results into your response.
 `.trim()
   }

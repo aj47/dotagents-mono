@@ -48,6 +48,7 @@ import {
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
+  SET_SESSION_TITLE_TOOL,
   INTERNAL_COMPLETION_NUDGE_TEXT,
 } from "../shared/runtime-tool-names"
 import {
@@ -69,6 +70,10 @@ import {
 } from "./llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
+import {
+  ensureRuntimeFilesystemContext,
+  formatRuntimeFilesystemContextForPrompt,
+} from "./runtime-filesystem-context"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { getAgentsKnowledgeDirs } from "./agents-files/knowledge-notes"
 import {
@@ -242,7 +247,7 @@ function extractSkillsIndexForMinimalPrompt(skillsInstructions?: string): string
 const NON_AGENT_WORKING_NOTES_LIMIT = 3
 const AGENT_WORKING_NOTES_LIMIT = 4
 
-function buildFilesystemContextForPrompt(): string {
+function buildFilesystemContextForPrompt(availableTools?: MCPTool[], sessionId?: string): string {
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
   const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
   const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
@@ -251,12 +256,21 @@ function buildFilesystemContextForPrompt(): string {
     ...(workspaceLayer ? getAgentsKnowledgeDirs(workspaceLayer) : []),
   ]
 
-  return [
+  const locations = [
     `Global .agents: ${globalAgentsFolder}`,
     workspaceAgentsFolder ? `Workspace .agents: ${workspaceAgentsFolder}` : "Workspace .agents: not configured",
     `Knowledge roots: ${Array.from(new Set(knowledgeRoots)).join(", ")}`,
     `Conversations: ${conversationsFolder}`,
-  ].join("\n")
+  ]
+
+  try {
+    const runtimePaths = ensureRuntimeFilesystemContext(availableTools, sessionId)
+    locations.push(formatRuntimeFilesystemContextForPrompt(runtimePaths))
+  } catch (error) {
+    logLLM("[buildFilesystemContextForPrompt] Failed to write runtime filesystem manifests:", error)
+  }
+
+  return locations.join("\n")
 }
 
 function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
@@ -356,9 +370,9 @@ function buildAnswerOnlyContinuationDigest(
       const toolName = text.match(/^\[([^\]]+)\]/)?.[1]
       if (toolName === RESPOND_TO_USER_TOOL) {
         text = `[${RESPOND_TO_USER_TOOL}] delivered user response`
-      } else if (toolName === "set_session_title") {
+      } else if (toolName === SET_SESSION_TITLE_TOOL) {
         const title = text.match(/"title":\s*"([^"]+)"/)?.[1]
-        text = title ? `[set_session_title] ${title}` : `[set_session_title] updated title`
+        text = title ? `[${SET_SESSION_TITLE_TOOL}] ${title}` : `[${SET_SESSION_TITLE_TOOL}] updated title`
       } else {
         text = text
           .replace(/^\[([^\]]+)\]\s*\{\s*"success":\s*(true|false),\s*/i, "[$1] ")
@@ -451,7 +465,7 @@ export async function processTranscriptWithTools(
     maxNotes: NON_AGENT_WORKING_NOTES_LIMIT,
   })
   logLLM(`[processTranscriptWithLLM] Loaded ${workingNotes.length} working notes for prompt context`)
-  const filesystemContext = buildFilesystemContextForPrompt()
+  const filesystemContext = buildFilesystemContextForPrompt(uniqueAvailableTools)
 
   const systemPrompt = constructSystemPrompt(
     uniqueAvailableTools,
@@ -1267,7 +1281,7 @@ export async function processTranscriptWithAgentMode(
     maxNotes: AGENT_WORKING_NOTES_LIMIT,
   })
   logLLM(`[processTranscriptWithAgentMode] Loaded ${workingNotes.length} working notes for prompt context`)
-  const filesystemContext = buildFilesystemContextForPrompt()
+  const filesystemContext = buildFilesystemContextForPrompt(baseAvailableTools, currentSessionId)
 
   // The agent's profile ID is used to exclude itself from delegation targets in the system prompt
   const excludeAgentId = effectiveProfileSnapshot?.profileId
@@ -2025,9 +2039,8 @@ export async function processTranscriptWithAgentMode(
         .filter(Boolean as any),
     ]
 
-    // Apply context budget management before the agent LLM call
-    // All active tools are sent to the LLM - progressive disclosure tools
-    // (list_server_tools, get_tool_schema) allow the LLM to discover tools dynamically
+    // Apply context budget management before the agent LLM call.
+    // All active tools are sent to the LLM with their provider schemas.
     const { messages: shrunkMessages, estTokensAfter, maxTokens: maxContextTokens, appliedStrategies } = await shrinkMessagesForLLM({
       messages: messages as any,
       availableTools: activeTools,

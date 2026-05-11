@@ -8,12 +8,10 @@
  * and have direct access to the app's services.
  */
 
-import { mcpService, type MCPTool, type MCPToolResult } from "./mcp-service"
+import { type MCPToolResult } from "./mcp-service"
 import { agentSessionTracker } from "./agent-session-tracker"
-import { agentSessionStateManager, toolApprovalManager } from "./state"
-import { emergencyStopAll } from "./emergency-stop"
+import { agentSessionStateManager } from "./state"
 import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
-import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
@@ -421,189 +419,6 @@ type ToolHandler = (
 ) => Promise<MCPToolResult>
 
 const toolHandlers: Record<string, ToolHandler> = {
-  list_running_agents: async (): Promise<MCPToolResult> => {
-    const activeSessions = agentSessionTracker.getActiveSessions()
-
-    if (activeSessions.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              agents: [],
-              count: 0,
-              message: "No agents currently running",
-            }, null, 2),
-          },
-        ],
-        isError: false,
-      }
-    }
-
-    const agents = activeSessions.map((session) => ({
-      sessionId: session.id,
-      conversationId: session.conversationId,
-      title: session.conversationTitle,
-      status: session.status,
-      currentIteration: session.currentIteration,
-      maxIterations: session.maxIterations,
-      lastActivity: session.lastActivity,
-      startTime: session.startTime,
-      isSnoozed: session.isSnoozed,
-      // Calculate runtime in seconds
-      runtimeSeconds: Math.floor((Date.now() - session.startTime) / 1000),
-    }))
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            agents,
-            count: agents.length,
-          }, null, 2),
-        },
-      ],
-      isError: false,
-    }
-  },
-
-  send_agent_message: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate required parameters with proper type guards
-    if (!args.sessionId || typeof args.sessionId !== "string") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "sessionId is required and must be a string",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    if (!args.message || typeof args.message !== "string") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "message is required and must be a string",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    const sessionId = args.sessionId
-    const message = args.message
-
-    // Get target session
-    const session = agentSessionTracker.getSession(sessionId)
-    if (!session) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: `Agent session not found: ${sessionId}`,
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    // Must have a conversation to queue message
-    if (!session.conversationId) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "Target agent session has no linked conversation",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    // Queue message for the target agent's conversation while preserving the
-    // target session's foreground/background state for the eventual continuation.
-    const startSnoozed = session.isSnoozed ?? false
-    const queuedMessage = messageQueueService.enqueue(session.conversationId, message, sessionId, {
-      startSnoozed,
-      suppressPanelAutoShow: startSnoozed,
-      focusPanelSession: !startSnoozed,
-    })
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            sessionId,
-            conversationId: session.conversationId,
-            queuedMessageId: queuedMessage.id,
-            message: `Message queued for agent session ${sessionId} (${session.conversationTitle})`,
-          }, null, 2),
-        },
-      ],
-      isError: false,
-    }
-  },
-
-  kill_agent: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    const sessionId = args.sessionId as string | undefined
-
-    if (sessionId) {
-      // Kill specific session
-      const session = agentSessionTracker.getSession(sessionId)
-      if (!session) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Agent session not found: ${sessionId}` }) }],
-          isError: true,
-        }
-      }
-      agentSessionStateManager.stopSession(sessionId)
-      toolApprovalManager.cancelSessionApprovals(sessionId)
-      agentSessionTracker.stopSession(sessionId)
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, sessionId, message: `Agent session ${sessionId} (${session.conversationTitle}) terminated` }, null, 2) }],
-        isError: false,
-      }
-    }
-
-    // Kill all agents
-    const activeSessions = agentSessionTracker.getActiveSessions()
-    if (activeSessions.length === 0) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, message: "No agents were running", sessionsTerminated: 0 }, null, 2) }],
-        isError: false,
-      }
-    }
-    toolApprovalManager.cancelAllApprovals()
-    const { before, after } = await emergencyStopAll()
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        success: true,
-        message: `Emergency stop: ${activeSessions.length} session(s) terminated`,
-        sessionsTerminated: activeSessions.length,
-        processesKilled: before - after,
-      }, null, 2) }],
-      isError: false,
-    }
-  },
-
   respond_to_user: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (!context.sessionId) {
       return {
@@ -933,6 +748,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const title = args.title.trim()
     const mappedAppSessionId = getRootAppSessionForAcpSession(context.sessionId)
     const trackedSessionId = mappedAppSessionId ?? context.sessionId
     const session = agentSessionTracker.getSession(trackedSessionId)
@@ -945,7 +761,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const updatedConversation = await conversationService.renameConversationTitle(
       session.conversationId,
-      args.title,
+      title,
     )
 
     if (!updatedConversation) {
@@ -1104,10 +920,27 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    let runtimeFilesystemEnv: Record<string, string> = {}
     try {
-      const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string } = {
+      const {
+        ensureRuntimeFilesystemDirectories,
+        getRuntimeFilesystemEnv,
+      } = await import("./runtime-filesystem-paths")
+      await ensureRuntimeFilesystemDirectories(context.sessionId)
+      runtimeFilesystemEnv = getRuntimeFilesystemEnv(context.sessionId)
+    } catch {
+      // Runtime filesystem env vars are convenience metadata; command execution
+      // should still work if they cannot be prepared.
+    }
+
+    try {
+      const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string; env?: NodeJS.ProcessEnv } = {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
+        env: {
+          ...process.env,
+          ...runtimeFilesystemEnv,
+        },
       }
 
       execOptions.cwd = effectiveCwd
@@ -1202,155 +1035,6 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  list_server_tools: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate serverName parameter
-    if (typeof args.serverName !== "string" || args.serverName.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "serverName must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const serverName = args.serverName.trim()
-    const allTools = mcpService.getAvailableTools()
-
-    // Filter tools by server name
-    const serverTools = allTools.filter((tool) => {
-      const toolServerName = tool.name.includes(":") ? tool.name.split(":")[0] : "unknown"
-      return toolServerName === serverName
-    })
-
-    if (serverTools.length === 0) {
-      // Check if the server exists but has no tools
-      const serverStatus = mcpService.getServerStatus()
-      if (serverStatus[serverName]) {
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              serverName,
-              connected: serverStatus[serverName].connected,
-              tools: [],
-              count: 0,
-              message: serverStatus[serverName].connected
-                ? "Server is connected but has no tools available"
-                : "Server is not connected",
-            }, null, 2),
-          }],
-          isError: false,
-        }
-      }
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Server '${serverName}' not found. Check the configured server list in the prompt, app UI, or .agents/mcp.json.`,
-          }, null, 2),
-        }],
-        isError: true,
-      }
-    }
-
-    // Return tools with brief descriptions (no full schemas)
-    const toolList = serverTools.map((tool) => {
-      const toolName = tool.name.includes(":") ? tool.name.split(":")[1] : tool.name
-      return {
-        name: tool.name,
-        shortName: toolName,
-        description: tool.description,
-      }
-    })
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: true,
-          serverName,
-          tools: toolList,
-          count: toolList.length,
-          hint: "Use get_tool_schema to get full parameter details for a specific tool",
-        }, null, 2),
-      }],
-      isError: false,
-    }
-  },
-
-  get_tool_schema: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate toolName parameter
-    if (typeof args.toolName !== "string" || args.toolName.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "toolName must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const toolName = args.toolName.trim()
-    const allTools = mcpService.getAvailableTools()
-
-    // Find the tool (try exact match first, then partial match)
-    let tool = allTools.find((t) => t.name === toolName)
-
-    // If not found, try matching just the tool name part (without server prefix)
-    if (!tool && !toolName.includes(":")) {
-      // Find ALL matching tools to detect ambiguity
-      const matchingTools = allTools.filter((t) => {
-        const shortName = t.name.includes(":") ? t.name.split(":")[1] : t.name
-        return shortName === toolName
-      })
-
-      if (matchingTools.length > 1) {
-        // Ambiguous match - multiple servers have a tool with this name
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: `Ambiguous tool name '${toolName}' - found in multiple servers. Please use the fully-qualified name.`,
-              matchingTools: matchingTools.map((t) => t.name),
-              hint: "Use one of the fully-qualified tool names listed above (e.g., 'server:tool_name')",
-            }, null, 2),
-          }],
-          isError: true,
-        }
-      }
-
-      // Single match - use it
-      tool = matchingTools[0]
-    }
-
-    if (!tool) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Tool '${toolName}' not found. Use list_server_tools to see available tools for a server.`,
-            availableTools: allTools.slice(0, 10).map((t) => t.name),
-            hint: allTools.length > 10 ? `...and ${allTools.length - 10} more tools` : undefined,
-          }, null, 2),
-        }],
-        isError: true,
-      }
-    }
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: true,
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        }, null, 2),
-      }],
-      isError: false,
-    }
-  },
-
   read_more_context: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (!context.sessionId) {
       return {
@@ -1394,6 +1078,10 @@ export async function executeRuntimeTool(
   args: Record<string, unknown>,
   sessionId?: string
 ): Promise<MCPToolResult | null> {
+  if (!isRuntimeTool(toolName)) {
+    return null
+  }
+
   // Check for ACP router tools first
   if (isACPRouterTool(toolName)) {
     const result = await executeACPRouterTool(toolName, args, sessionId)

@@ -78,30 +78,12 @@ function hasPromptTool(tools: PromptTool[], toolName: string): boolean {
   return tools.some((tool) => tool.name === toolName)
 }
 
-function getToolDiscoveryPromptAddition(availableTools: PromptTool[]): string {
-  const hasListServerTools = hasPromptTool(availableTools, 'list_server_tools')
-  const hasGetToolSchema = hasPromptTool(availableTools, 'get_tool_schema')
-
-  if (hasListServerTools && hasGetToolSchema) {
-    return 'To discover tools: use list_server_tools(serverName) to inspect MCP tools from a real server, or get_tool_schema(toolName) for full parameter details on any available tool.'
-  }
-
-  if (hasListServerTools) {
-    return 'To discover MCP tools from a real server, use list_server_tools(serverName).'
-  }
-
-  if (hasGetToolSchema) {
-    return 'To inspect exact parameters for an available tool, use get_tool_schema(toolName).'
-  }
-
-  return ''
-}
-
 function getAgentModeAdditions(availableTools: PromptTool[]): string {
   const hasRespondToUser = hasPromptTool(availableTools, 'respond_to_user')
   const hasMarkWorkComplete = hasPromptTool(availableTools, 'mark_work_complete')
   const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command')
   const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context')
+  const hasSetSessionTitle = hasPromptTool(availableTools, 'set_session_title')
 
   const sections = [
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
@@ -155,7 +137,14 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.
 - For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.
 - Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.
-- Skills, settings, knowledge, tasks, prompts, and past conversations are files. Use the absolute paths shown in this prompt when available; otherwise discover with filesystem search.`)
+- Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files. Use the absolute paths shown in this prompt when available; otherwise discover with filesystem search.
+- For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR with execute_command instead of expecting list/schema helper tools.`)
+  }
+
+  if (hasSetSessionTitle) {
+    sections.push(`SESSION TITLE:
+- When the task becomes clear, set a concise useful title with set_session_title early enough to improve the UI
+- Keep titles short and specific; update later only if the conversation topic materially shifts`)
   }
 
   if (hasReadMoreContext) {
@@ -318,7 +307,6 @@ AVAILABLE AGENTS (${delegationTargets.length}):
 ${agentsList}
 
 To delegate: \`delegate_to_agent(agentName: "agent_name", task: "...", workingDirectory?: "path")\`
-To prepare only: \`delegate_to_agent(agentName: "agent_name", prepareOnly: true, workingDirectory?: "path")\`
 `.trim()
 }
 
@@ -357,7 +345,7 @@ export function constructSystemPrompt(
   if (isAgentMode) {
     prompt += getAgentModeAdditions(availableTools)
 
-    const hasDelegationTool = hasPromptTool(availableTools, 'delegate_to_agent') || hasPromptTool(availableTools, 'send_to_agent')
+    const hasDelegationTool = hasPromptTool(availableTools, 'delegate_to_agent')
 
     if (hasDelegationTool) {
       // Add ACP agent delegation information if agents are available
@@ -428,11 +416,6 @@ export function constructSystemPrompt(
       prompt += `\n\nDOTAGENTS TOOLS: ${formatRuntimeToolInfo(runtimeTools)}`
     }
 
-    const toolDiscoveryPromptAddition = getToolDiscoveryPromptAddition(availableTools)
-    if (toolDiscoveryPromptAddition) {
-      prompt += `\n\n${toolDiscoveryPromptAddition}`
-    }
-
     // If relevant tools are identified, show them with full details
     if (
       relevantTools &&
@@ -491,7 +474,7 @@ export function constructMinimalSystemPrompt(
     "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible. " +
     "You are highly autonomous and proactive. Make as many tool calls as needed to completely finish the task. Do NOT stop to ask the user for permission or confirmation. Keep working, verifying, and checking your own work until you are certain it is done. " +
     "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, do not ask for permission, only ask the minimum high-signal follow-ups. " +
-    "Skills, settings, knowledge, tasks, prompts, and conversations are files. Use execute_command with rg/find/ls/wc/sed/head/tail to discover and read them through the filesystem. Durable knowledge lives in configured knowledge roots, defaulting to global/workspace .agents/knowledge, as notes at <knowledge-root>/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in the runtime-supplied conversations directory; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in layered global/workspace .agents folders; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available read the dotagents-config-admin SKILL.md path before changing unfamiliar DotAgents config."
+    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files. Use execute_command with rg/find/ls/wc/sed/head/tail to discover and read them through the filesystem. For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR instead of expecting list/schema helper tools. Durable knowledge lives in configured knowledge roots, defaulting to global/workspace .agents/knowledge, as notes at <knowledge-root>/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in the runtime-supplied conversations directory; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in layered global/workspace .agents folders; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available read the dotagents-config-admin SKILL.md path before changing unfamiliar DotAgents config."
 
   if (isAgentMode) {
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up. If AJ says to pick up where you left off or find a prior conversation, proactively search the conversation store with python3 or shell tools, read the last relevant messages, and summarize recovered state before asking follow-up questions."

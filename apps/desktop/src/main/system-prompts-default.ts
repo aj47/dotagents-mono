@@ -63,6 +63,10 @@ PAST CONVERSATIONS:
 - Use index.json to discover relevant conversations, then open matching conv_*.json files for full message history when prior chat context would help
 - Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second; always prefer knowledge notes over recalled conversation context when they conflict
 
+RUNTIME METADATA:
+- Runtime discovery metadata is file-backed. If the prompt or environment includes DOTAGENTS_RUNTIME_DIR, inspect agents.json, tools/index.json, and tools/schemas/ with shell commands instead of expecting list/schema helper tools.
+- Use direct runtime tools for host-side actions such as setting the session title, delegation, user delivery, and completion.
+
 DOTAGENTS CONFIG:
 - DotAgents configuration lives in layered global and workspace .agents folders. Prefer absolute paths supplied in the prompt.
 - The global .agents folder is the default editable layer
