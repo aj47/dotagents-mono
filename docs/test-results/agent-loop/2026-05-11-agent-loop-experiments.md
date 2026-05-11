@@ -52,6 +52,6 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Deterministic validation: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts` passed 38/38.
 - Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
 - Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
-- Live AutoResearch metric: latest full run reduced verifier calls from the prior full run's 17 to 8 and removed the prior full run's 2 iteration-limit hits.
+- Live AutoResearch metric: latest full run reduced verifier calls from the prior full run's 17 to 8 and reduced iteration-limit hits from 2 to 1.
 - Live hard-compaction metric: remained correct with `read_more_context:2`, hidden token recovered, and no iteration-limit hit.
 - Decision: keep.
