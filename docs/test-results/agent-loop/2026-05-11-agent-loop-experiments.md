@@ -25,3 +25,12 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
 - Full live metric: final hard-compaction row recovered the token, avoided the iteration limit, and kept `read_more_context` calls at 3.
 - Decision: keep.
+
+## 2026-05-11T23:30Z - Omit cached duplicate excerpt
+
+- Change tried: shorten duplicate `read_more_context` results by removing the cached excerpt and only pointing the model at the earlier matching result.
+- Deterministic validation: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts -t "deduplicates repeated read_more_context|requires recovered read_more_context"` passed 2/2.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` failed.
+- Live metric: `live-hard-compaction-read-more-context` reached the iteration limit, executed `read_more_context:4`, and did not include `HX-7492-PRISM-RIVER` in the final answer.
+- Decision: discard. The short duplicate response saves deterministic prompt chars but removes useful enough evidence from the live model loop.
