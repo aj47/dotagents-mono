@@ -19,6 +19,8 @@
     "test:run": "pnpm run pretest && vitest run",
     "test:respond-to-user-regressions": "pnpm run pretest && vitest run src/main/llm.respond-to-user-history.test.ts src/renderer/src/components/agent-progress.response-history.test.ts",
     "test:continue-replay": "vitest run src/main/llm.continue-replay.live.test.ts",
+    "test:agent-loop-live": "vitest run src/main/llm.agent-loop.live.test.ts",
+    "test:autoresearch-replay": "vitest run src/main/llm.respond-to-user-history.test.ts -t AutoResearch",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "start": "electron-vite preview",

@@ -16,6 +16,28 @@ All commands below were run successfully on 2026-04-04:
   - cwd: repo root
   - result: `3/3` tests passed
 
+Live E2E harness added and validated on 2026-05-11:
+
+- `pnpm --filter @dotagents/desktop run test:agent-loop-live`
+  - cwd: repo root
+  - result: skipped by default unless `LIVE_AGENT_LOOP_E2E=1` is set
+- `LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live`
+  - cwd: repo root
+  - provider: local Codex ChatGPT auth from `~/.codex/auth.json`
+  - result: passed against the real provider
+- `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts`
+  - cwd: repo root
+  - result: `36/36` tests passed, including the adapted AutoResearch replay fixtures and deterministic final-answer recovery
+- `pnpm --filter @dotagents/desktop run test:autoresearch-replay`
+  - cwd: repo root
+  - result: `5/5` adapted AutoResearch replay cases passed
+- `pnpm --filter @dotagents/desktop run test:respond-to-user-regressions`
+  - cwd: repo root
+  - result: `55/55` tests passed after `build:workspace-deps`
+- `pnpm --filter @dotagents/desktop run typecheck:node`
+  - cwd: repo root
+  - result: passed
+
 ## Before vs after summary
 
 | Area | Before | After |
@@ -58,6 +80,23 @@ Secondary file: `apps/desktop/tests/context-read-more-density.test.mjs`
 | TC-16 | `runtime tool surface exposes read_more_context` | Runtime tool is still wired up |
 | TC-17 | `agent prompts teach the model to use Context refs` | Prompt contract still teaches recovery behavior |
 | TC-18 | `batch summary context refs snapshot source messages before splicing` | Batch-summary refs still preserve original source context |
+
+Live opt-in file: `apps/desktop/src/main/llm.agent-loop.live.test.ts`
+
+| ID | Test name | What it protects |
+|---|---|---|
+| TC-19 | `retrieves a buried context-ref token through the real agent loop` | Exercises production agent loop + real ChatGPT Codex provider + context-budget truncation + `read_more_context` recovery on an oversized historical tool result |
+
+Adapted AutoResearch deterministic replay: `apps/desktop/src/main/llm.respond-to-user-history.test.ts`
+
+| ID | Test name | What it protects |
+|---|---|---|
+| TC-20 | `replays AutoResearch case-a-approval-boundary: Approval boundary after context gathering through the agent-loop continuation harness` | Preserves the ask-before-mutation approval boundary and current known/unknown/blocker/next-action structure after read-only context gathering |
+| TC-21 | `replays AutoResearch case-b-did-it-download: Did it download? through the agent-loop continuation harness` | Status follow-ups like "did it dl" keep recent file/blocker evidence, do not replay stale long-context material, and hide `mark_work_complete` so the model answers rather than prematurely finishing |
+| TC-22 | `replays AutoResearch case-c-try-it-first-alias: Try it first / alias debugging through the agent-loop continuation harness` | "test it" histories preserve the probe-only/simulation boundary, command alias correction, and no-download evidence |
+| TC-23 | `replays AutoResearch case-d-skill-registry-diagnosis: Skill registry diagnosis through the agent-loop continuation harness` | Skill-on-disk but missing-from-runtime-registry histories preserve both facts and keep the answer focused on registry refresh rather than filesystem recreation |
+| TC-24 | `replays AutoResearch case-e-full-long-context-continuation: Full long-context continuation through the agent-loop continuation harness` | A 615-message continuation produces a 609-message compact digest while keeping the current skill-registry blocker and next safest action recoverable |
+| TC-25 | `requires recovered read_more_context evidence to become the final answer` | Ensures context-ref recovery is not merely present in tool history; the retrieved hidden token must appear in the next prompt and final user-facing answer |
 
 ## Mapping back to the Langfuse report
 
