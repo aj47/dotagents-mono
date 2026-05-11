@@ -300,6 +300,7 @@ export interface Settings {
   currentModelPresetId?: string;
   availablePresets?: Array<{ id: string; name: string; baseUrl: string; isBuiltIn: boolean }>;
   predefinedPrompts?: PredefinedPromptSummary[];
+  knowledgeRoots?: string[];
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;

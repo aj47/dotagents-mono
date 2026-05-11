@@ -1083,6 +1083,11 @@ export type Config = {
   // Onboarding Configuration
   onboardingCompleted?: boolean
 
+  // Filesystem-first knowledge roots. Existing .agents/knowledge roots remain
+  // available; configured roots are additional readable locations and the first
+  // configured root is the default write target for new notes.
+  knowledgeRoots?: string[]
+
   // Toggle Voice Dictation Configuration
   toggleVoiceDictationEnabled?: boolean
   toggleVoiceDictationHotkey?: "fn" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" | "custom"

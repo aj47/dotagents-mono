@@ -3,6 +3,8 @@
 import {
   AGENTS_KNOWLEDGE_DIR,
   getAgentsKnowledgeDir,
+  getAgentsKnowledgeDirs,
+  getPrimaryAgentsKnowledgeDir,
   getAgentsKnowledgeBackupDir,
   knowledgeNoteSlugToDirPath,
   knowledgeNoteSlugToFilePath,
@@ -16,6 +18,8 @@ import {
 export {
   AGENTS_KNOWLEDGE_DIR,
   getAgentsKnowledgeDir,
+  getAgentsKnowledgeDirs,
+  getPrimaryAgentsKnowledgeDir,
   getAgentsKnowledgeBackupDir,
   knowledgeNoteSlugToDirPath,
   knowledgeNoteSlugToFilePath,

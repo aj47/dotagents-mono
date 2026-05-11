@@ -27,6 +27,9 @@ function expectReplayResultToMatchFixture(result: { conversationState?: string, 
 }
 
 vi.mock("./config", () => ({
+  conversationsFolder: "/tmp/conversations",
+  globalAgentsFolder: "/tmp/global-agents",
+  resolveWorkspaceAgentsFolder: () => null,
   configStore: {
     get: () => ({
       apiRetryCount: 1,

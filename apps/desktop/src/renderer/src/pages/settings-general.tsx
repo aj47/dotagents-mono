@@ -636,8 +636,8 @@ export function Component() {
             <span className="font-mono">~/.agents</span> is the default layer. Workspace{" "}
             <span className="font-mono">.agents</span> is only used when{" "}
             <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set, and then it overrides the global layer. Skills live in{" "}
-            <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and knowledge notes in{" "}
-            <span className="font-mono">knowledge/&lt;slug&gt;/&lt;slug&gt;.md</span>. Frontmatter uses simple{" "}
+            <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and knowledge notes live in configured knowledge roots as{" "}
+            <span className="font-mono">&lt;slug&gt;/&lt;slug&gt;.md</span>. Frontmatter uses simple{" "}
             <span className="font-mono">key: value</span> lines (not YAML).
           </div>
           <Control label="Global folder" className="px-3">

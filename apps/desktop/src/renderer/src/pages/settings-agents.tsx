@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/u
 import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe, AlertTriangle } from "lucide-react"
 import { Facehash } from "facehash"
 import { toast } from "sonner"
+import { DEFAULT_AGENT_RUNTIME_TOOL_NAMES, MARK_WORK_COMPLETE_TOOL } from "@shared/runtime-tool-names"
 
 // Curated palette of vivid colors to pick from deterministically
 const AVATAR_PALETTE = [
@@ -391,7 +392,7 @@ export function SettingsAgents() {
 
   const isRuntimeToolEnabled = (toolName: string): boolean => {
     const list = editing?.toolConfig?.enabledRuntimeTools
-    if (!list || list.length === 0) return true
+    if (!list || list.length === 0) return DEFAULT_AGENT_RUNTIME_TOOL_NAMES.includes(toolName as typeof DEFAULT_AGENT_RUNTIME_TOOL_NAMES[number])
     return list.includes(toolName)
   }
 
@@ -429,18 +430,19 @@ export function SettingsAgents() {
   const toggleRuntimeTool = (toolName: string) => {
     if (!editing) return
     const tc = { ...(editing.toolConfig || {}) } as AgentProfileToolConfig
-    let currentList = [...(tc.enabledRuntimeTools || [])]
-    if (currentList.length === 0) {
-      currentList = runtimeTools.map(t => t.name).filter(n => n !== toolName)
+    const defaultList = DEFAULT_AGENT_RUNTIME_TOOL_NAMES.filter((name) =>
+      runtimeTools.some((tool) => tool.name === name),
+    )
+    let currentList = [...(tc.enabledRuntimeTools && tc.enabledRuntimeTools.length > 0 ? tc.enabledRuntimeTools : defaultList)]
+    const idx = currentList.indexOf(toolName)
+    if (idx >= 0) {
+      currentList.splice(idx, 1)
     } else {
-      const idx = currentList.indexOf(toolName)
-      if (idx >= 0) currentList.splice(idx, 1)
-      else {
-        currentList.push(toolName)
-        if (currentList.length === runtimeTools.length) currentList = []
-      }
+      currentList.push(toolName)
     }
-    setEditing({ ...editing, toolConfig: { ...tc, enabledRuntimeTools: currentList.length > 0 ? currentList : undefined } })
+    currentList = Array.from(new Set(currentList))
+    const matchesDefault = currentList.length === defaultList.length && defaultList.every((name) => currentList.includes(name))
+    setEditing({ ...editing, toolConfig: { ...tc, enabledRuntimeTools: matchesDefault ? undefined : currentList } })
   }
 
   const toggleSkill = (skillId: string) => {
@@ -487,15 +489,15 @@ export function SettingsAgents() {
 
   const enableAllRuntimeTools = () => {
     if (!editing) return
-    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), enabledRuntimeTools: undefined } })
+    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), enabledRuntimeTools: runtimeTools.map(t => t.name) } })
   }
   const disableAllRuntimeTools = () => {
     if (!editing) return
     // Keep only essential tools enabled
-    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), enabledRuntimeTools: ["mark_work_complete"] } })
+    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), enabledRuntimeTools: [MARK_WORK_COMPLETE_TOOL] } })
   }
-  const allRuntimeEnabled = !editing?.toolConfig?.enabledRuntimeTools || editing.toolConfig.enabledRuntimeTools.length === 0
-  const allRuntimeDisabled = (editing?.toolConfig?.enabledRuntimeTools?.length ?? 0) > 0 && editing?.toolConfig?.enabledRuntimeTools?.every(n => n === "mark_work_complete")
+  const allRuntimeEnabled = runtimeTools.length > 0 && runtimeTools.every(t => isRuntimeToolEnabled(t.name))
+  const allRuntimeDisabled = runtimeTools.length > 0 && runtimeTools.every(t => t.name === MARK_WORK_COMPLETE_TOOL || !isRuntimeToolEnabled(t.name))
 
   // Section collapse helpers
   const isSectionCollapsed = (section: string) => collapsedSections.has(section)

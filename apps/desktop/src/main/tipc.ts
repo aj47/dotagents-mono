@@ -2985,7 +2985,7 @@ export const router = {
   getAgentsFolders: t.procedure.action(async () => {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
     const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { getAgentsKnowledgeDir } = await import("./agents-files/knowledge-notes")
+    const { getAgentsKnowledgeDir, getAgentsKnowledgeDirs } = await import("./agents-files/knowledge-notes")
     const { getAgentsSkillsDir } = await import("./agents-files/skills")
 
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
@@ -3001,6 +3001,7 @@ export const router = {
         systemPromptExists: fs.existsSync(globalLayer.systemPromptMdPath),
         skillsDir: getAgentsSkillsDir(globalLayer),
         knowledgeDir: getAgentsKnowledgeDir(globalLayer),
+        knowledgeDirs: getAgentsKnowledgeDirs(globalLayer),
         memoriesDir: getAgentsKnowledgeDir(globalLayer),
       },
       workspace: workspaceLayer
@@ -3010,6 +3011,7 @@ export const router = {
             systemPromptExists: fs.existsSync(workspaceLayer.systemPromptMdPath),
             skillsDir: getAgentsSkillsDir(workspaceLayer),
             knowledgeDir: getAgentsKnowledgeDir(workspaceLayer),
+            knowledgeDirs: getAgentsKnowledgeDirs(workspaceLayer),
             memoriesDir: getAgentsKnowledgeDir(workspaceLayer),
           }
         : null,
@@ -3084,7 +3086,9 @@ export const router = {
 
   openKnowledgeFolder: t.procedure.action(async () => {
     const { globalAgentsFolder } = await import("./config")
-    const knowledgeDir = path.join(globalAgentsFolder, "knowledge")
+    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getPrimaryAgentsKnowledgeDir } = await import("./agents-files/knowledge-notes")
+    const knowledgeDir = getPrimaryAgentsKnowledgeDir(getAgentsLayerPaths(globalAgentsFolder))
     fs.mkdirSync(knowledgeDir, { recursive: true })
     const error = await shell.openPath(knowledgeDir)
     return { success: !error, error: error || undefined }
@@ -3092,10 +3096,12 @@ export const router = {
 
   openWorkspaceKnowledgeFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
+    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getPrimaryAgentsKnowledgeDir } = await import("./agents-files/knowledge-notes")
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
     if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder configured" }
 
-    const knowledgeDir = path.join(workspaceAgentsFolder, "knowledge")
+    const knowledgeDir = getPrimaryAgentsKnowledgeDir(getAgentsLayerPaths(workspaceAgentsFolder))
     fs.mkdirSync(knowledgeDir, { recursive: true })
     const error = await shell.openPath(knowledgeDir)
     return { success: !error, error: error || undefined }

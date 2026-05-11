@@ -23,7 +23,6 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
-import type { AgentSkill, ProfileSkillsConfig } from "../shared/types"
 
 const execAsync = promisify(exec)
 
@@ -41,105 +40,6 @@ import { runtimeToolDefinitions } from "./runtime-tool-definitions"
 
 interface BuiltinToolContext {
   sessionId?: string
-}
-
-function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkillIds: string[]) {
-  return {
-    ignoredInvalidSkillId: skillId,
-    warning: `Ignored invalid execute_command.skillId: ${skillId}. Ran the command in the default workspace instead.`,
-    guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
-    retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
-    availableSkillIds,
-  }
-}
-
-function uniqueSkillIds(ids: Array<string | undefined>): string[] {
-  return Array.from(new Set(ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id))))
-}
-
-function getSkillFolderIdFromFilePath(filePath?: string): string | undefined {
-  if (!filePath || filePath.startsWith("github:")) return undefined
-
-  const normalized = path.normalize(filePath)
-  const segments = normalized.split(path.sep).filter(Boolean)
-  const agentsIndex = segments.lastIndexOf(".agents")
-  const skillsIndex = agentsIndex >= 0 && segments[agentsIndex + 1] === "skills"
-    ? agentsIndex + 1
-    : segments.lastIndexOf("skills")
-
-  if (skillsIndex >= 0 && skillsIndex < segments.length - 2) {
-    return segments.slice(skillsIndex + 1, -1).join("/")
-  }
-
-  return undefined
-}
-
-function getSkillRuntimeIds(skill: AgentSkill, requestedSkillId?: string): string[] {
-  return uniqueSkillIds([
-    requestedSkillId,
-    skill.id,
-    getSkillFolderIdFromFilePath(skill.filePath),
-  ])
-}
-
-function resolveRuntimeSkill(skillId: string, skillsServiceLike: { getSkill: (id: string) => AgentSkill | undefined; getSkills: () => AgentSkill[] }): AgentSkill | undefined {
-  const trimmedSkillId = skillId.trim()
-  if (!trimmedSkillId) return undefined
-
-  const direct = skillsServiceLike.getSkill(trimmedSkillId)
-  if (direct) return direct
-
-  const normalizedSkillId = trimmedSkillId.toLowerCase()
-  return skillsServiceLike.getSkills().find((skill) => {
-    return skill.name.toLowerCase() === normalizedSkillId
-      || getSkillFolderIdFromFilePath(skill.filePath)?.toLowerCase() === normalizedSkillId
-  })
-}
-
-function isSkillEnabledByConfig(skillIds: string | string[], skillsConfig?: ProfileSkillsConfig): boolean {
-  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
-  const ids = Array.isArray(skillIds) ? skillIds : [skillIds]
-  return ids.some((id) => (skillsConfig.enabledSkillIds ?? []).includes(id))
-}
-
-async function isSkillEnabledForRuntimeContext(skillIds: string | string[], context: BuiltinToolContext): Promise<boolean> {
-  const { agentProfileService } = await import("./agent-profile-service")
-
-  if (context.sessionId) {
-    const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
-      ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
-      : undefined
-    const trackerSnapshot = typeof agentSessionTracker.getSessionProfileSnapshot === "function"
-      ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
-      : undefined
-    const snapshot = stateSnapshot ?? trackerSnapshot
-    if (snapshot) {
-      const currentProfile = agentProfileService.getCurrentProfile()
-      if (currentProfile?.id === snapshot.profileId) {
-        return isSkillEnabledByConfig(skillIds, currentProfile.skillsConfig)
-      }
-      return isSkillEnabledByConfig(skillIds, snapshot.skillsConfig)
-    }
-  }
-
-  const profile = agentProfileService.getCurrentProfile()
-  if (!profile) return false
-  return isSkillEnabledByConfig(skillIds, profile.skillsConfig)
-}
-
-function disabledSkillToolResult(skillId: string, action: "load" | "execute"): MCPToolResult {
-  const actionText = action === "load" ? "load instructions for" : "run commands inside"
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        success: false,
-        skillId,
-        error: `Skill '${skillId}' is disabled for this agent. Enable it in Settings > Skills before trying to ${actionText} this skill.`,
-      }),
-    }],
-    isError: true,
-  }
 }
 
 type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
@@ -1127,8 +1027,6 @@ const toolHandlers: Record<string, ToolHandler> = {
   },
 
   execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
-    const { skillsService } = await import("./skills-service")
-
     // Validate required command parameter
     if (!args.command || typeof args.command !== "string") {
       return {
@@ -1138,7 +1036,20 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const command = args.command as string
-    const skillId = typeof args.skillId === "string" ? args.skillId.trim() : undefined
+    if (args.skillId !== undefined) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "execute_command.skillId is no longer supported.",
+            guidance: "Skills are filesystem instructions. Use the SKILL.md path shown in Available Skills, or run a normal shell command such as `cd /path/to/skill && ...`.",
+            retrySuggestion: "Retry without skillId. If you need a skill, first read its SKILL.md file path with execute_command and then run commands using ordinary filesystem paths.",
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
     // Validate timeout: must be a finite non-negative number, otherwise use default
     // This prevents NaN or negative values from disabling the timeout entirely
     const rawTimeout = args.timeout
@@ -1146,60 +1057,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       ? rawTimeout
       : 30000
 
-    // Determine the working directory
-    let cwd: string | undefined
-    let skillName: string | undefined
-    let ignoredInvalidSkillIdWarning: ReturnType<typeof buildIgnoredExecuteCommandSkillIdWarning> | undefined
-
-    if (skillId) {
-      // Pick up skills added or edited directly in .agents/skills while the app
-      // process is still running.
-      skillsService.refreshFromDisk()
-
-      // Find the skill and get its directory. Prefer exact IDs, but also accept
-      // the canonical .agents/skills/<id>/ folder ID for imported skills whose
-      // frontmatter id/name drifted from the on-disk folder.
-      let skill = resolveRuntimeSkill(skillId, skillsService)
-      if (!skill) {
-        const availableSkillIds = skillsService
-          .getSkills()
-          .map((skill) => skill.id)
-          .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
-        ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
-      } else {
-
-        if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
-          return disabledSkillToolResult(skillId, "execute")
-        }
-
-        if (!skill.filePath) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill has no file path (not imported from disk): ${skill.name}` }) }],
-            isError: true,
-          }
-        }
-
-        // For local files, use the directory containing SKILL.md
-        // For GitHub skills, automatically upgrade to local clone
-        if (skill.filePath.startsWith("github:")) {
-          try {
-            // Dynamically import skills-service to avoid circular dependency
-            const { skillsService: skillsSvc } = await import("./skills-service")
-            skill = await skillsSvc.upgradeGitHubSkillToLocal(skill.id)
-          } catch (upgradeError) {
-            return {
-              content: [{ type: "text", text: JSON.stringify({ success: false, error: `Failed to upgrade GitHub skill to local: ${upgradeError instanceof Error ? upgradeError.message : String(upgradeError)}` }) }],
-              isError: true,
-            }
-          }
-        }
-
-        cwd = path.dirname(skill.filePath!)
-        skillName = skill.name
-      }
-    }
-
-    const effectiveCwd = cwd || process.cwd()
+    const effectiveCwd = process.cwd()
     const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd)
     const effectiveCommand = normalizedCommandResult.command
     const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd)
@@ -1215,8 +1073,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               ...packageManagerMismatch,
             }, null, 2),
@@ -1239,8 +1095,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               ...contextGatheringCommandBlock,
             }, null, 2),
@@ -1256,9 +1110,7 @@ const toolHandlers: Record<string, ToolHandler> = {
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       }
 
-      if (cwd) {
-        execOptions.cwd = cwd
-      }
+      execOptions.cwd = effectiveCwd
 
       if (timeout > 0) {
         execOptions.timeout = timeout
@@ -1294,8 +1146,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               stdout: truncatedStdout,
               stderr: stderr || "",
@@ -1339,8 +1189,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               error: errorMessage + hint,
               exitCode,
@@ -1503,49 +1351,6 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  load_skill_instructions: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
-    // Validate skillId parameter
-    if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "skillId must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const skillId = args.skillId.trim()
-    const { skillsService } = await import("./skills-service")
-    // Pick up skills added or edited directly in .agents/skills while the app
-    // process is still running.
-    skillsService.refreshFromDisk()
-    const skill = resolveRuntimeSkill(skillId, skillsService)
-
-    if (!skill) {
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Skill '${skillId}' not found. Check the Available Skills section in the system prompt for valid skill IDs.`,
-          }),
-        }],
-        isError: true,
-      }
-    }
-
-    if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
-      return disabledSkillToolResult(skillId, "load")
-    }
-
-    return {
-      content: [{
-        type: "text",
-        text: `# ${skill.name}\n\n${skill.instructions}`,
-      }],
-      isError: false,
-    }
-  },
-
   read_more_context: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (!context.sessionId) {
       return {
@@ -1627,7 +1432,9 @@ export async function executeRuntimeTool(
 export function isRuntimeTool(toolName: string): boolean {
   // Check ACP router tools
   if (isACPRouterTool(toolName)) return true
-  // Check if it's in our handler map (plain name match)
-  if (toolName in toolHandlers) return true
+  // Runtime tools are the dependency-free advertised definitions. Handlers may
+  // contain private helpers during migrations, but they are not callable unless
+  // listed in runtime-tool-definitions.
+  if (runtimeToolDefinitions.some((tool) => tool.name === toolName)) return true
   return false
 }
