@@ -56,3 +56,15 @@ test('keeps mobile Agent Loop actions text-first and explicitly labeled', () => 
   assert.match(loopsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Run \$\{loop\.name\} loop now`\)\}/);
   assert.match(loopsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Delete \$\{loop\.name\} loop`\)\}/);
 });
+
+test('marks mobile agents with custom system prompts in the settings list', () => {
+  const agentsSection = extractBetween(
+    '<CollapsibleSection id="agents" title="Agents">',
+    '{/* 4n. Agent Loops */}'
+  );
+
+  assert.match(agentsSection, /profile\.systemPrompt\?\.trim\(\)/);
+  assert.match(agentsSection, /profile\.systemPrompt\?\.trim\(\) && !profile\.isBuiltIn/);
+  assert.match(agentsSection, /Custom prompt/);
+  assert.match(agentsSection, /Default system prompt updates are blocked until this custom prompt is reset\./);
+});

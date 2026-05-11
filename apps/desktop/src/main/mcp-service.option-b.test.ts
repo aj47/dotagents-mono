@@ -10,7 +10,8 @@ const mockExecuteRuntimeTool = vi.fn(async (name: string) => ({ content: [{ type
 const runtimeTools = [
   { name: "mark_work_complete", description: "essential", inputSchema: {} },
   { name: "execute_command", description: "command", inputSchema: {} },
-  { name: "load_skill_instructions", description: "skill", inputSchema: {} },
+  { name: "read_more_context", description: "context", inputSchema: {} },
+  { name: "respond_to_user", description: "respond", inputSchema: {} },
 ]
 
 vi.mock("electron", () => ({ app: { getPath: vi.fn(() => "/tmp"), getAppPath: vi.fn(() => "/tmp/app"), getVersion: vi.fn(() => "0.0.0-test") }, dialog: { showMessageBox: vi.fn(async () => ({ response: 0 })) } }))
@@ -25,6 +26,7 @@ vi.mock("./mcp-sampling", () => ({ requestSampling: vi.fn(), cancelAllSamplingRe
 vi.mock("./langfuse-service", () => ({ isTracingEnabled: vi.fn(() => false), createToolSpan: vi.fn(), endToolSpan: vi.fn(), getAgentTrace: vi.fn(() => null) }))
 vi.mock("./agent-profile-service", () => ({ agentProfileService: { getCurrentProfile: () => ({ id: "profile_1", toolConfig: { enabledRuntimeTools: currentProfileEnabledRuntimeTools } }), saveCurrentMcpStateToProfile: mockSaveCurrentMcpStateToProfile } }))
 vi.mock("./runtime-tools", () => ({ runtimeTools, isRuntimeTool: (n: string) => runtimeTools.some((tool) => tool.name === n), executeRuntimeTool: mockExecuteRuntimeTool }))
+vi.mock("./runtime-tool-definitions", () => ({ DEFAULT_AGENT_RUNTIME_TOOL_NAMES: ["execute_command", "read_more_context", "mark_work_complete"] }))
 
 const flushPromises = async (): Promise<void> => {
   await Promise.resolve(); await Promise.resolve()
@@ -60,7 +62,7 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     const { mcpService } = await import("./mcp-service")
     mockConfigSave.mockClear()
 
-    mcpService.applyProfileMcpConfig(undefined, ["load_skill_instructions", "server:external_tool"], false, undefined, undefined)
+    mcpService.applyProfileMcpConfig(undefined, ["respond_to_user", "server:external_tool"], false, undefined, undefined)
 
     expect(mcpService.getDisabledTools()).toEqual(["server:external_tool"])
     expect(mockConfigSave).toHaveBeenCalledWith(
@@ -81,7 +83,7 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     const detailed = mcpService.getDetailedToolList()
     expect(detailed.find((t) => t.name === "mark_work_complete")?.enabled).toBe(true)
     expect(detailed.find((t) => t.name === "execute_command")?.enabled).toBe(true)
-    expect(detailed.find((t) => t.name === "load_skill_instructions")?.enabled).toBe(false)
+    expect(detailed.find((t) => t.name === "respond_to_user")?.enabled).toBe(false)
     expect(detailed.find((t) => t.name === "execute_command")?.sourceKind).toBe("runtime")
     expect(detailed.find((t) => t.name === "execute_command")?.sourceLabel).toBe("DotAgents Runtime Tools")
     expect(detailed.find((t) => t.name === "execute_command")?.serverName).toBeUndefined()
@@ -92,7 +94,7 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     mockConfigSave.mockClear()
     mockSaveCurrentMcpStateToProfile.mockClear()
 
-    expect(mcpService.setToolEnabled("load_skill_instructions", false)).toBe(true)
+    expect(mcpService.setToolEnabled("respond_to_user", true)).toBe(true)
     expect(mockConfigSave).not.toHaveBeenCalled()
 
     await flushPromises()
@@ -101,6 +103,8 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     expect(enabledRuntimeTools.slice().sort()).toEqual([
       "execute_command",
       "mark_work_complete",
+      "read_more_context",
+      "respond_to_user",
     ])
   })
 
@@ -111,7 +115,7 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     mcpService.applyProfileMcpConfig(undefined, undefined, false, undefined, ["execute_command"])
 
     const denied = await mcpService.executeToolCall(
-      { name: "load_skill_instructions", arguments: {} } as any,
+      { name: "respond_to_user", arguments: {} } as any,
       undefined,
       true,
     )
@@ -127,4 +131,3 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     expect(mockExecuteRuntimeTool).toHaveBeenCalledTimes(1)
   })
 })
-

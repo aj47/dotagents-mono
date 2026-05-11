@@ -7,6 +7,8 @@ import { getAgentsLayerPaths } from "./modular-config"
 import {
   getAgentsKnowledgeBackupDir,
   getAgentsKnowledgeDir,
+  getAgentsKnowledgeDirs,
+  getPrimaryAgentsKnowledgeDir,
   knowledgeNoteSlugToFilePath,
   loadAgentsKnowledgeNotesLayer,
   parseKnowledgeNoteMarkdown,
@@ -170,6 +172,76 @@ tags: misc
       path.join(knowledgeDir, "project-architecture", "assets", "db-schema.pdf"),
       path.join(knowledgeDir, "project-architecture", "diagram.png"),
     ])
+  })
+
+  it("loads configured knowledge roots in addition to the default root", () => {
+    const dir = mkTempDir("dotagents-knowledge-roots-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+    const defaultKnowledgeDir = getAgentsKnowledgeDir(layer)
+    const externalKnowledgeDir = path.join(dir, "shared-knowledge")
+
+    writeFile(
+      layer.settingsJsonPath,
+      JSON.stringify({ knowledgeRoots: [externalKnowledgeDir] }, null, 2),
+    )
+
+    writeFile(
+      path.join(defaultKnowledgeDir, "default-note", "default-note.md"),
+      `---
+kind: note
+id: default-note
+title: Default Note
+context: search-only
+updatedAt: 1
+tags: default
+---
+
+Default body`,
+    )
+
+    writeFile(
+      path.join(externalKnowledgeDir, "external-note", "external-note.md"),
+      `---
+kind: note
+id: external-note
+title: External Note
+context: auto
+updatedAt: 2
+tags: external
+---
+
+External body`,
+    )
+
+    const loaded = loadAgentsKnowledgeNotesLayer(layer)
+
+    expect(getAgentsKnowledgeDirs(layer)).toEqual([defaultKnowledgeDir, externalKnowledgeDir])
+    expect(getPrimaryAgentsKnowledgeDir(layer)).toBe(externalKnowledgeDir)
+    expect(loaded.notes.map((note) => note.id).sort()).toEqual(["default-note", "external-note"])
+    expect(loaded.originById.get("external-note")?.rootPath).toBe(externalKnowledgeDir)
+  })
+
+  it("writes new notes to a configured knowledge root when one is supplied", () => {
+    const dir = mkTempDir("dotagents-knowledge-root-write-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+    const externalKnowledgeDir = path.join(dir, "shared-knowledge")
+
+    const note: KnowledgeNote = {
+      id: "shared-note",
+      title: "Shared Note",
+      context: "search-only",
+      updatedAt: 1,
+      tags: ["shared"],
+      body: "Shared body",
+    }
+
+    writeKnowledgeNoteFile(layer, note, { knowledgeRootPath: externalKnowledgeDir })
+
+    const filePath = knowledgeNoteSlugToFilePath(layer, note.id, externalKnowledgeDir)
+    expect(fs.existsSync(filePath)).toBe(true)
+    expect(fs.existsSync(knowledgeNoteSlugToFilePath(layer, note.id))).toBe(false)
   })
 
   it("loads grouped nested note folders and infers grouping metadata from the path", () => {

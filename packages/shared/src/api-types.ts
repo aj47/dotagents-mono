@@ -648,6 +648,10 @@ export interface PredefinedPromptSummary {
 
 export type PredefinedPrompt = PredefinedPromptSummary;
 
+export interface KnowledgeRootsConfig {
+  knowledgeRoots?: string[];
+}
+
 export interface PredefinedPromptsConfig {
   predefinedPrompts?: PredefinedPromptSummary[];
 }
@@ -1024,17 +1028,18 @@ export interface ConversationStorageConfig {
   autoSaveConversations?: boolean;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentResultDeliveryConfig, McpRuntimeConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, DesktopTextInputConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, KnowledgeRootsConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentResultDeliveryConfig, McpRuntimeConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, DesktopTextInputConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: CHAT_PROVIDER_ID;
   mcpToolsProviderId: CHAT_PROVIDER_ID;
   availablePresets?: ModelPresetSummary[];
+  knowledgeRoots?: string[];
 
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentResultDeliveryConfig, McpRuntimeConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, DesktopTextInputConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, KnowledgeRootsConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentResultDeliveryConfig, McpRuntimeConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, DesktopTextInputConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
 
 // Conversation Sync Types
 export interface ServerConversationMessage {

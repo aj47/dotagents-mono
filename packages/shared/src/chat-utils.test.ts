@@ -1419,10 +1419,10 @@ describe('getCompactToolExecutionPreview', () => {
   it('uses tool result previews for non-command tools when available', () => {
     expect(
       getCompactToolExecutionPreview(
-        { name: 'load_skill_instructions', arguments: { skillId: 'agent-skill-creation' } },
-        { success: true, content: '# Agent Skill Creation\n\nDetailed instructions...' },
+        { name: 'read_more_context', arguments: { contextRef: 'ctx_1234', mode: 'overview' } },
+        { success: true, content: 'Original tool result overview...' },
       ),
-    ).toBe('load_skill_instructions:# Agent Skill Creation')
+    ).toBe('read_more_context:Original tool result overview...')
   })
 
   it('falls back to the per-tool preview while a tool is still pending', () => {

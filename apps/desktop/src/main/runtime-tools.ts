@@ -499,8 +499,6 @@ const toolHandlers: Record<string, ToolHandler> = {
   },
 
   execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
-    const { skillsService } = await import("./skills-service")
-
     const parsedArgs = parseExecuteCommandArgs(args)
     if (parsedArgs.success === false) {
       return {
@@ -509,62 +507,23 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const { command, skillId, timeout } = parsedArgs
-
-    // Determine the working directory
-    let cwd: string | undefined
-    let skillName: string | undefined
-    let ignoredInvalidSkillIdWarning: ReturnType<typeof buildIgnoredExecuteCommandSkillIdWarning> | undefined
-
-    if (skillId) {
-      // Pick up skills added or edited directly in .agents/skills while the app
-      // process is still running.
-      skillsService.refreshFromDisk()
-
-      // Find the skill and get its directory. Prefer exact IDs, but also accept
-      // the canonical .agents/skills/<id>/ folder ID for imported skills whose
-      // frontmatter id/name drifted from the on-disk folder.
-      let skill = resolveRuntimeSkill(skillId, skillsService)
-      if (!skill) {
-        const availableSkillIds = skillsService
-          .getSkills()
-          .map((skill) => skill.id)
-          .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
-        ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
-      } else {
-
-        if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
-          return disabledSkillToolResult(skillId, "execute")
-        }
-
-        if (!skill.filePath) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill has no file path (not imported from disk): ${skill.name}` }) }],
-            isError: true,
-          }
-        }
-
-        // For local files, use the directory containing SKILL.md
-        // For GitHub skills, automatically upgrade to local clone
-        if (skill.filePath.startsWith("github:")) {
-          try {
-            // Dynamically import skills-service to avoid circular dependency
-            const { skillsService: skillsSvc } = await import("./skills-service")
-            skill = await skillsSvc.upgradeGitHubSkillToLocal(skill.id)
-          } catch (upgradeError) {
-            return {
-              content: [{ type: "text", text: JSON.stringify({ success: false, error: `Failed to upgrade GitHub skill to local: ${upgradeError instanceof Error ? upgradeError.message : String(upgradeError)}` }) }],
-              isError: true,
-            }
-          }
-        }
-
-        cwd = path.dirname(skill.filePath!)
-        skillName = skill.name
+    if (args.skillId !== undefined) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "execute_command.skillId is no longer supported.",
+            guidance: "Skills are filesystem instructions. Use the SKILL.md path shown in Available Skills, or run a normal shell command such as `cd /path/to/skill && ...`.",
+            retrySuggestion: "Retry without skillId. If you need a skill, first read its SKILL.md file path with execute_command and then run commands using ordinary filesystem paths.",
+          }, null, 2),
+        }],
+        isError: true,
       }
     }
 
-    const effectiveCwd = cwd || process.cwd()
+    const { command, timeout } = parsedArgs
+    const effectiveCwd = process.cwd()
     const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd, pathExists)
     const effectiveCommand = normalizedCommandResult.command
     const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd, {
@@ -588,8 +547,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         command: effectiveCommand,
         originalCommand: command,
         cwd: effectiveCwd,
-        skillName,
-        ignoredInvalidSkillIdWarning,
         normalizedPaths: normalizedCommandResult.normalizedPaths,
       }, packageManagerMismatch)
 
@@ -612,8 +569,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         command: effectiveCommand,
         originalCommand: command,
         cwd: effectiveCwd,
-        skillName,
-        ignoredInvalidSkillIdWarning,
         normalizedPaths: normalizedCommandResult.normalizedPaths,
       }, contextGatheringCommandBlock)
 
@@ -634,10 +589,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       }
 
-      if (cwd) {
-        execOptions.cwd = cwd
-      }
-
       if (timeout > 0) {
         execOptions.timeout = timeout
       }
@@ -649,8 +600,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         command: effectiveCommand,
         originalCommand: command,
         cwd: effectiveCwd,
-        skillName,
-        ignoredInvalidSkillIdWarning,
         normalizedPaths: normalizedCommandResult.normalizedPaths,
         stdout: truncatedStdout.output,
         stderr,
@@ -679,8 +628,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         command: effectiveCommand,
         originalCommand: command,
         cwd: effectiveCwd,
-        skillName,
-        ignoredInvalidSkillIdWarning,
         normalizedPaths: normalizedCommandResult.normalizedPaths,
         errorMessage,
         exitCode,
@@ -806,6 +753,10 @@ export async function executeRuntimeTool(
   args: Record<string, unknown>,
   sessionId?: string
 ): Promise<MCPToolResult | null> {
+  if (!isRuntimeTool(toolName)) {
+    return null
+  }
+
   // Check for ACP router tools first
   if (isACPRouterTool(toolName)) {
     const result = await executeACPRouterTool(toolName, args, sessionId)
@@ -844,7 +795,9 @@ export async function executeRuntimeTool(
 export function isRuntimeTool(toolName: string): boolean {
   // Check ACP router tools
   if (isACPRouterTool(toolName)) return true
-  // Check if it's in our handler map (plain name match)
-  if (toolName in toolHandlers) return true
+  // Runtime tools are the dependency-free advertised definitions. Handlers may
+  // contain private helpers during migrations, but they are not callable unless
+  // listed in the runtime tool definitions.
+  if (runtimeToolDefinitions.some((tool) => tool.name === toolName)) return true
   return false
 }

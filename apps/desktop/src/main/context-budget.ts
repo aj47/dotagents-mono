@@ -1343,8 +1343,10 @@ export interface ShrinkOptions {
   messages: LLMMessage[]
   availableTools?: Array<{ name: string; description?: string; inputSchema?: any }>
   relevantTools?: Array<{ name: string; description?: string; inputSchema?: any }>
-  /** Optional compact skill index (IDs) so Tier-3 minimal prompts don't drop skills entirely. */
+  /** Optional compact skill index with SKILL.md paths so Tier-3 minimal prompts don't drop skills entirely. */
   skillsIndex?: string
+  /** Optional absolute filesystem locations to preserve when using Tier-3 minimal prompts. */
+  filesystemContext?: string
   isAgentMode?: boolean
   targetRatio?: number // default 0.4
   lastNMessages?: number // default 3
@@ -1740,6 +1742,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     !!opts.isAgentMode,
     opts.relevantTools,
     opts.skillsIndex,
+    opts.filesystemContext,
   )
   if (systemMsgIdx >= 0) {
     messages[systemMsgIdx] = { role: "system", content: minimal }

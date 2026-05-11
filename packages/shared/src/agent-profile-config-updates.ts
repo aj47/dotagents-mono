@@ -166,7 +166,7 @@ export function mergeAgentProfileMcpConfig(
     ...(hasOwnUpdate(updates, "allServersDisabledByDefault") && { allServersDisabledByDefault: updates.allServersDisabledByDefault }),
     ...(hasOwnUpdate(updates, "enabledServers") && { enabledServers: updates.enabledServers }),
     ...(hasOwnUpdate(updates, "enabledRuntimeTools") && {
-      // Empty array is treated as "not configured" (allow all runtime tools) — clear persisted whitelist.
+      // Empty array is treated as "not configured" (filesystem-first default runtime tools) - clear persisted whitelist.
       enabledRuntimeTools: updates.enabledRuntimeTools && updates.enabledRuntimeTools.length > 0
         ? updates.enabledRuntimeTools
         : undefined,

@@ -11,48 +11,17 @@ export interface RuntimeToolDefinition {
   };
 }
 
+export const SET_SESSION_TITLE_TOOL = 'set_session_title';
+export const EXECUTE_COMMAND_TOOL = 'execute_command';
+export const READ_MORE_CONTEXT_TOOL = 'read_more_context';
+export const DEFAULT_AGENT_RUNTIME_TOOL_NAMES = [
+  SET_SESSION_TITLE_TOOL,
+  EXECUTE_COMMAND_TOOL,
+  READ_MORE_CONTEXT_TOOL,
+  'mark_work_complete',
+] as const;
+
 export const baseRuntimeToolDefinitions: RuntimeToolDefinition[] = [
-  {
-    name: 'list_running_agents',
-    description: 'List all currently running agent sessions with their status, iteration count, and activity. Useful for monitoring active agents before terminating them.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: 'send_agent_message',
-    description: "Send a message to another running agent session. The message will be queued and processed by the target agent's conversation. Use list_running_agents first to get session IDs. This enables agent coordination and task delegation.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        sessionId: {
-          type: 'string',
-          description: 'The session ID of the target agent (get this from list_running_agents)',
-        },
-        message: {
-          type: 'string',
-          description: 'The message to send to the target agent',
-        },
-      },
-      required: ['sessionId', 'message'],
-    },
-  },
-  {
-    name: 'kill_agent',
-    description: 'Terminate agent sessions. Pass a sessionId to kill a specific agent, or omit it to kill ALL running agents. Aborts in-flight LLM requests, kills spawned processes, and stops agents immediately.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        sessionId: {
-          type: 'string',
-          description: 'The session ID of the agent to terminate (get this from list_running_agents). Omit to kill all agents.',
-        },
-      },
-      required: [],
-    },
-  },
   {
     name: 'respond_to_user',
     description:
@@ -116,9 +85,9 @@ export const baseRuntimeToolDefinitions: RuntimeToolDefinition[] = [
     },
   },
   {
-    name: 'set_session_title',
+    name: SET_SESSION_TITLE_TOOL,
     description:
-      'Set or update the current session title. Use this after the first substantive reply to replace a raw first-prompt title, or later if the conversation topic shifts. Keep the title short, specific, and ideally under 10 words.',
+      'Set or update the current session title. Use this once the task is clear, early enough to make the UI useful, or later if the conversation topic shifts. Keep the title short, specific, and ideally under 10 words.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -150,17 +119,13 @@ export const baseRuntimeToolDefinitions: RuntimeToolDefinition[] = [
   },
   {
     name: 'execute_command',
-    description: "Execute any shell command. This is the primary tool for file operations, running scripts, and automation. Use for: reading files (cat), writing files (cat/echo with redirection), listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made. Omit skillId for normal workspace or repository commands. Only provide skillId when you need to run inside an exact loaded skill ID from Available Skills.",
+    description: "Execute any shell command. This is the primary tool for filesystem operations, running scripts, and automation. Use for: searching files (rg/find), reading files in targeted ranges (wc/sed/head/tail/cat), editing files, listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made.",
     inputSchema: {
       type: 'object',
       properties: {
         command: {
           type: 'string',
-          description: "The shell command to execute. Examples: 'cat file.txt' (read), 'echo content > file.txt' (write), 'ls -la' (list), 'mkdir -p dir' (create dir), 'git status', 'rg TODO apps/desktop/src', 'python script.py'. Prefer read-only inspection commands unless the user asked you to run verification/package-manager work.",
-        },
-        skillId: {
-          type: 'string',
-          description: 'Optional exact loaded skill ID to run the command in that skill\'s directory. Use only IDs from Available Skills. Never use repository names, paths, URLs, or GitHub slugs here; omit skillId for normal workspace commands.',
+          description: "The shell command to execute. Examples: 'wc -l file.txt' (size), 'sed -n \\'1,120p\\' file.txt' (targeted read), 'rg TODO apps/desktop/src' (search), 'ls -la' (list), 'mkdir -p dir' (create dir), 'git status', 'python script.py'. Prefer read-only inspection commands unless the user asked you to run verification/package-manager work.",
         },
         timeout: {
           type: 'number',
@@ -171,49 +136,7 @@ export const baseRuntimeToolDefinitions: RuntimeToolDefinition[] = [
     },
   },
   {
-    name: 'list_server_tools',
-    description: 'List all tools available from a specific MCP server. Use this to discover what tools a server provides before calling them.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        serverName: {
-          type: 'string',
-          description: "The name of the MCP server to list tools from (e.g., 'github', 'filesystem'). Use the prompt, app UI, or .agents/mcp.json to find server names.",
-        },
-      },
-      required: ['serverName'],
-    },
-  },
-  {
-    name: 'get_tool_schema',
-    description: 'Get the full JSON schema for a specific tool, including all parameter details. Use this when you need to know the exact parameters to pass to a tool.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        toolName: {
-          type: 'string',
-          description: "The full tool name including server prefix (e.g., 'github:create_issue', 'filesystem:read_file')",
-        },
-      },
-      required: ['toolName'],
-    },
-  },
-  {
-    name: 'load_skill_instructions',
-    description: 'Load the full instructions for a skill. Pass the exact skill id shown in the Available Skills list (the value inside backticks before the dash).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        skillId: {
-          type: 'string',
-          description: 'Exact skill id from the Available Skills list, e.g. "api-testing".',
-        },
-      },
-      required: ['skillId'],
-    },
-  },
-  {
-    name: 'read_more_context',
+    name: READ_MORE_CONTEXT_TOOL,
     description: 'Read a specific slice of earlier compacted context using a Context ref shown in truncated or summarized messages. Prefer overview/search/window reads over fetching large heads or tails.',
     inputSchema: {
       type: 'object',
@@ -251,21 +174,6 @@ export const baseRuntimeToolDefinitions: RuntimeToolDefinition[] = [
 
 export const acpRouterToolDefinitions: RuntimeToolDefinition[] = [
   {
-    name: 'list_available_agents',
-    description:
-      'List all available specialized ACP agents that can be delegated to. Returns agent names, descriptions, and capabilities.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        capability: {
-          type: 'string',
-          description: 'Optional filter to only return agents with this capability',
-        },
-      },
-      required: [],
-    },
-  },
-  {
     name: 'delegate_to_agent',
     description:
       'Delegate a sub-task to a specialized ACP agent. The agent will work autonomously and return results. Use this when a task is better suited for a specialist.',
@@ -274,11 +182,11 @@ export const acpRouterToolDefinitions: RuntimeToolDefinition[] = [
       properties: {
         agentName: {
           type: 'string',
-          description: 'Name of the agent to delegate to (use the name or displayName from list_available_agents)',
+          description: 'Name of the agent to delegate to (use the name or displayName from the available agents prompt)',
         },
         task: {
           type: 'string',
-          description: 'Description of the task to delegate. Required unless prepareOnly is true.',
+          description: 'Description of the task to delegate.',
         },
         context: {
           type: 'string',
@@ -288,18 +196,13 @@ export const acpRouterToolDefinitions: RuntimeToolDefinition[] = [
           type: 'string',
           description: 'Optional working directory override for this delegation. Relative paths resolve from workspace root.',
         },
-        prepareOnly: {
-          type: 'boolean',
-          description: 'If true, only prepare/spawn the agent without running the task (default: false).',
-          default: false,
-        },
         waitForResult: {
           type: 'boolean',
           description: 'Whether to wait for the agent to complete before continuing (default: false/background)',
           default: false,
         },
       },
-      required: ['agentName'],
+      required: ['agentName', 'task'],
     },
   },
   {
@@ -324,103 +227,9 @@ export const acpRouterToolDefinitions: RuntimeToolDefinition[] = [
       required: [],
     },
   },
-  {
-    name: 'spawn_agent',
-    description:
-      'Prepare an ACP agent for delegation without executing a task. Compatibility wrapper around delegate_to_agent with prepareOnly=true.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agentName: {
-          type: 'string',
-          description: 'Name of the agent to spawn',
-        },
-        workingDirectory: {
-          type: 'string',
-          description: 'Optional working directory override for spawn. Relative paths resolve from workspace root.',
-        },
-      },
-      required: ['agentName'],
-    },
-  },
-  {
-    name: 'stop_agent',
-    description: 'Stop a running ACP agent process to free resources',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agentName: {
-          type: 'string',
-          description: 'Name of the agent to stop',
-        },
-      },
-      required: ['agentName'],
-    },
-  },
-  {
-    name: 'cancel_agent_run',
-    description: 'Cancel a running delegated agent task',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        runId: {
-          type: 'string',
-          description: 'The run ID returned from a previous delegate_to_agent call',
-        },
-        taskId: {
-          type: 'string',
-          description: 'Alternative name for runId (use either runId or taskId)',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'send_to_agent',
-    description:
-      'Send a task to an agent. Alias for delegate_to_agent. The agent will process the task and return results.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agentName: {
-          type: 'string',
-          description: 'Name of the agent to send the task to (use the name or displayName from list_available_agents)',
-        },
-        task: {
-          type: 'string',
-          description: 'Description of the task to send. Required unless prepareOnly is true.',
-        },
-        context: {
-          type: 'string',
-          description: 'Optional additional context for the agent',
-        },
-        workingDirectory: {
-          type: 'string',
-          description: 'Optional working directory override for this delegation. Relative paths resolve from workspace root.',
-        },
-        prepareOnly: {
-          type: 'boolean',
-          description: 'If true, only prepare/spawn the agent without running the task (default: false).',
-          default: false,
-        },
-        contextId: {
-          type: 'string',
-          description: 'Optional context ID to group related tasks',
-        },
-        waitForResult: {
-          type: 'boolean',
-          description: 'Whether to wait for the agent to complete before continuing (default: false/background)',
-          default: false,
-        },
-      },
-      required: ['agentName'],
-    },
-  },
 ];
 
-export const acpRouterToolNameAliases: Record<string, string> = {
-  send_to_agent: 'delegate_to_agent',
-};
+export const acpRouterToolNameAliases: Record<string, string> = {};
 
 export function resolveAcpRouterToolName(toolName: string): string {
   return acpRouterToolNameAliases[toolName] || toolName;
@@ -430,7 +239,7 @@ export function isAcpRouterTool(toolName: string): boolean {
   return acpRouterToolDefinitions.some((definition) => definition.name === toolName);
 }
 
-const RUNTIME_TOOL_INSERT_INDEX = 3;
+const RUNTIME_TOOL_INSERT_INDEX = 0;
 
 export function buildRuntimeToolDefinitions(
   insertedDefinitions: readonly RuntimeToolDefinition[] = [],

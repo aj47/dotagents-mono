@@ -96,3 +96,10 @@ test('uses shared connection type normalization in the mobile agent editor', () 
   assert.doesNotMatch(screenSource, /formData\.connectionType === 'acpx' && !formData\.connectionCommand/);
   assert.doesNotMatch(screenSource, /formData\.connectionType === 'remote' && !formData\.connectionBaseUrl/);
 });
+
+test('makes custom mobile agent system prompts obvious before default updates are blocked', () => {
+  assert.match(screenSource, /const customSystemPromptActive = formData\.systemPrompt\.trim\(\)\.length > 0;/);
+  assert.match(screenSource, /Custom system prompt active/);
+  assert.match(screenSource, /will not receive DotAgents default system prompt updates until you reset it/);
+  assert.match(screenSource, /Reset to default/);
+});

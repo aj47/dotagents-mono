@@ -69,25 +69,27 @@ describe("constructSystemPrompt", () => {
   it("teaches the knowledge note storage contract in the default prompt", async () => {
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts")
 
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("check relevant knowledge notes and prior conversations first")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("search relevant knowledge notes first and prior conversations second")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("Before asking the user for facts that may already be known")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("~/.agents/knowledge/")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("./.agents/knowledge/")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain(".agents/knowledge/<slug>/<slug>.md")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("whenever the current task likely relates to prior work")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("always prefer knowledge notes over recalled conversation context when they conflict")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("configured knowledge roots")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("global and workspace .agents/knowledge")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("<knowledge-root>/<slug>/<slug>.md")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("human-readable slug")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("kind: note")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("createdAt/updatedAt")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("context: search-only")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("context: auto")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("direct file editing")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("<appData>/<appId>/conversations/")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("~/Library/Application Support/<appId>/conversations/")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("%APPDATA%/<appId>/conversations/")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("~/.config/<appId>/conversations/")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("runtime-supplied conversations directory")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("RUNTIME METADATA")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("tools/index.json")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("OS-appropriate")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("index.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("conv_*.json")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("app.dotagents")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("layered ~/.agents/ and ./.agents/ filesystem")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("layered global and workspace .agents folders")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("dotagents-config-admin")
   })
 
@@ -98,13 +100,13 @@ describe("constructSystemPrompt", () => {
 
     expect(prompt).toContain("KNOWLEDGE NOTES:")
     expect(prompt).toContain("DOTAGENTS CONFIG")
-    expect(prompt).toContain("Prefer direct file editing there to create or update notes")
-    expect(prompt).toContain(".agents/knowledge/<slug>/<slug>.md")
+    expect(prompt).toContain("configured knowledge roots")
+    expect(prompt).toContain("<knowledge-root>/<slug>/<slug>.md")
     expect(prompt).toContain("kind: note")
     expect(prompt).toContain("createdAt/updatedAt")
     expect(prompt).toContain("PAST CONVERSATIONS")
     expect(prompt).toContain("Use index.json to discover relevant conversations")
-    expect(prompt).toContain("load the dotagents-config-admin skill before changing unfamiliar DotAgents config")
+    expect(prompt).toContain("read the dotagents-config-admin SKILL.md file")
     expect(prompt).not.toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
     expect(prompt).not.toContain("Use save_memory")
   })
@@ -116,15 +118,16 @@ describe("constructSystemPrompt", () => {
 
     expect(prompt).toContain("check relevant knowledge notes and prior conversations first")
     expect(prompt).toContain("user/project-specific facts are still missing")
-    expect(prompt).toContain("~/.agents/knowledge/")
-    expect(prompt).toContain(".agents/knowledge/<slug>/<slug>.md")
+    expect(prompt).toContain("configured knowledge roots")
+    expect(prompt).toContain("<knowledge-root>/<slug>/<slug>.md")
     expect(prompt).toContain("context: search-only")
     expect(prompt).toContain("context: auto")
-    expect(prompt).toContain("<appData>/<appId>/conversations/")
+    expect(prompt).toContain("runtime-supplied conversations directory")
+    expect(prompt).toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(prompt).toContain("DOTAGENTS_TOOL_MANIFEST")
     expect(prompt).toContain("index.json")
     expect(prompt).toContain("conv_*.json")
-    expect(prompt).toContain("app.dotagents")
-    expect(prompt).toContain("layered ~/.agents/ and ./.agents/ filesystem")
+    expect(prompt).toContain("layered global/workspace .agents folders")
     expect(prompt).toContain("dotagents-config-admin")
   })
 
@@ -134,12 +137,12 @@ describe("constructSystemPrompt", () => {
     const prompt = constructSystemPrompt([
       { name: "github:search_issues", description: "Search GitHub issues", inputSchema: { type: "object", properties: {} } },
       { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
-      { name: "load_skill_instructions", description: "Load a skill", inputSchema: { type: "object", properties: {} } },
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
     ] as any, undefined, true)
 
     expect(prompt).toContain("AVAILABLE MCP TOOLS (1 tools total)")
     expect(prompt).toContain("- github (1 tools): search_issues")
-    expect(prompt).toContain("DOTAGENTS TOOLS: respond_to_user, load_skill_instructions")
+    expect(prompt).toContain("DOTAGENTS TOOLS: respond_to_user, execute_command")
     expect(prompt).not.toContain("AVAILABLE MCP SERVERS")
     expect(prompt).not.toContain("- unknown")
   })
@@ -172,26 +175,6 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("\n - Do not send a second recap")
   })
 
-  it("only advertises discovery helpers that are actually available", async () => {
-    const { constructSystemPrompt } = await import("./system-prompts")
-
-    const withoutHelpers = constructSystemPrompt([
-      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
-    ] as any, undefined, true)
-
-    expect(withoutHelpers).not.toContain("list_server_tools(serverName)")
-    expect(withoutHelpers).not.toContain("get_tool_schema(toolName)")
-
-    const withHelpers = constructSystemPrompt([
-      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
-      { name: "list_server_tools", description: "List tools for a server", inputSchema: { type: "object", properties: {} } },
-      { name: "get_tool_schema", description: "Inspect a tool schema", inputSchema: { type: "object", properties: {} } },
-    ] as any, undefined, true)
-
-    expect(withHelpers).toContain("list_server_tools(serverName)")
-    expect(withHelpers).toContain("get_tool_schema(toolName)")
-  })
-
   it("only advertises execute_command guidance when execute_command is available", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
 
@@ -211,6 +194,25 @@ describe("constructSystemPrompt", () => {
     expect(withExecute).toContain("pnpm-lock.yaml")
     expect(withExecute).toContain("do not default to npm")
     expect(withExecute).toContain("Do not run install/test/build/lint/typecheck unless asked")
+    expect(withExecute).toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(withExecute).toContain("DOTAGENTS_TOOL_SCHEMA_DIR")
+  })
+
+  it("advertises early title updates only when set_session_title is available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const withoutTitleTool = constructSystemPrompt([
+      { name: "execute_command", description: "Execute any shell command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    const withTitleTool = constructSystemPrompt([
+      { name: "set_session_title", description: "Set session title", inputSchema: { type: "object", properties: {} } },
+      { name: "execute_command", description: "Execute any shell command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(withoutTitleTool).not.toContain("SESSION TITLE")
+    expect(withTitleTool).toContain("SESSION TITLE")
+    expect(withTitleTool).toContain("set a concise useful title with set_session_title early")
   })
 
   it("does not advertise delegation tools when delegation is unavailable", async () => {
@@ -224,16 +226,23 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("To delegate: `delegate_to_agent")
   })
 
-  it("advertises load_skill_instructions only when that tool is available", async () => {
+  it("uses filesystem-first skill guidance when skills are listed", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
 
-    const prompt = constructSystemPrompt([
-      { name: "load_skill_instructions", description: "Load a skill", inputSchema: { type: "object", properties: {} } },
-    ] as any, undefined, true)
+    const skills = `# Available Skills
 
-    expect(prompt).toContain("call load_skill_instructions(skillId) at most once per session")
-    expect(prompt).toContain("reuse successful loads")
-    expect(prompt).toContain("Do not infer a skill's contents from name/description")
+Skills are filesystem instructions. When a task matches a skill below, read its \`SKILL.md\` path with \`execute_command\` before using it.
+
+- \`dotagents-config-admin\` — DotAgents config edits
+  Path: \`/tmp/.agents/skills/dotagents-config-admin/SKILL.md\``
+
+    const prompt = constructSystemPrompt([
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true, undefined, undefined, skills)
+
+    expect(prompt).toContain("read its `SKILL.md` path with `execute_command`")
+    expect(prompt).toContain("Path: `/tmp/.agents/skills/dotagents-config-admin/SKILL.md`")
+    expect(prompt).not.toContain("load_skill_instructions")
   })
 
   it("separates MCP tools from DotAgents runtime tools in the minimal prompt", async () => {

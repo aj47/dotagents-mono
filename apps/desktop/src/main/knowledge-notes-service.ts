@@ -17,6 +17,7 @@ import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "@dotagents/core"
 import {
   getAgentsKnowledgeBackupDir,
+  getPrimaryAgentsKnowledgeDir,
   knowledgeNoteSlugToFilePath,
   loadAgentsKnowledgeNotesLayer,
   readTextFileIfExistsSync,
@@ -46,6 +47,7 @@ const DURABLE_NOTE_CANDIDATE_TYPES = new Set(["preference", "constraint", "decis
 
 type KnowledgeOrigin = {
   layer: "global" | "workspace"
+  rootPath: string
   dirPath: string
   filePath: string
   slug: string
@@ -395,10 +397,12 @@ export class KnowledgeNotesService {
     const { globalLayer, workspaceLayer } = this.getLayers()
     const targetLayerName = previousOrigin?.layer ?? "global"
     const targetLayer = targetLayerName === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+    const targetKnowledgeRoot = previousOrigin?.rootPath ?? getPrimaryAgentsKnowledgeDir(targetLayer)
 
     try {
       const { dirPath, filePath } = writeKnowledgeNoteFile(targetLayer, normalized, {
         filePathOverride: previousOrigin?.filePath,
+        knowledgeRootPath: targetKnowledgeRoot,
         maxBackups: 10,
       })
 
@@ -408,6 +412,7 @@ export class KnowledgeNotesService {
 
       this.originById.set(normalized.id, {
         layer: targetLayerName,
+        rootPath: targetKnowledgeRoot,
         dirPath,
         filePath,
         slug: path.basename(dirPath),
@@ -452,13 +457,15 @@ export class KnowledgeNotesService {
     const origin = this.originById.get(id)
     const { globalLayer, workspaceLayer } = this.getLayers()
     const layer = origin?.layer === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
-    const fallbackFilePath = knowledgeNoteSlugToFilePath(layer, id)
+    const fallbackRootPath = getPrimaryAgentsKnowledgeDir(layer)
+    const fallbackFilePath = knowledgeNoteSlugToFilePath(layer, id, fallbackRootPath)
     const fallbackDirPath = path.dirname(fallbackFilePath)
     const backupDir = getAgentsKnowledgeBackupDir(layer)
 
     try {
       this.backupThenDeleteNoteSync(origin ?? {
         layer: "global",
+        rootPath: fallbackRootPath,
         dirPath: fallbackDirPath,
         filePath: fallbackFilePath,
         slug: id,

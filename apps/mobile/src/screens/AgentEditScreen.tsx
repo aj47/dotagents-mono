@@ -159,6 +159,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const selectedPresetKey = detectAgentProfilePresetKey(formData);
   const selectedPreset = selectedPresetKey ? AGENT_PROFILE_PRESETS[selectedPresetKey] : undefined;
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
+  const customSystemPromptActive = formData.systemPrompt.trim().length > 0;
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -817,6 +818,23 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </>
       )}
 
+      {customSystemPromptActive && !isBuiltInAgent && (
+        <View style={styles.warningContainer}>
+          <Text style={styles.warningText}>Custom system prompt active</Text>
+          <Text style={styles.warningDetailText}>
+            This agent is using a saved system prompt snapshot and will not receive DotAgents default system prompt updates until you reset it.
+          </Text>
+          <TouchableOpacity
+            style={styles.warningActionButton}
+            onPress={() => updateField('systemPrompt', '')}
+            accessibilityRole="button"
+            accessibilityLabel="Reset custom system prompt to default"
+          >
+            <Text style={styles.warningActionButtonText}>Reset to default</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <Text style={styles.label}>System Prompt</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -1233,6 +1251,26 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     warningText: {
       color: '#f59e0b',
       fontSize: 14,
+    },
+    warningDetailText: {
+      color: '#92400e',
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: spacing.xs,
+    },
+    warningActionButton: {
+      marginTop: spacing.sm,
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      borderRadius: radius.md,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+    },
+    warningActionButtonText: {
+      color: '#92400e',
+      fontSize: 13,
+      fontWeight: '600',
     },
     avatarRow: {
       flexDirection: 'row',

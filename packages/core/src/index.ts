@@ -172,6 +172,8 @@ export type { AgentsLayerPaths, SplitAgentsConfig } from './agents-files/modular
 export {
   AGENTS_KNOWLEDGE_DIR,
   getAgentsKnowledgeDir,
+  getAgentsKnowledgeDirs,
+  getPrimaryAgentsKnowledgeDir,
   getAgentsKnowledgeBackupDir,
   knowledgeNoteSlugToDirPath,
   knowledgeNoteSlugToFilePath,

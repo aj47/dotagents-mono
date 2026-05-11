@@ -166,7 +166,7 @@ Your detailed instructions here in markdown...
 
 ### Skill Usage
 1. Agent sees skill name/description in system prompt
-2. Agent calls `load_skill_instructions` to get full instructions
+2. Agent reads the listed `SKILL.md` file with `execute_command`
 3. Agent uses skill knowledge to complete tasks
 4. Skills can reference external files via `filePath` field
 
@@ -264,10 +264,11 @@ interface AgentProfileToolConfig {
 
 ### Runtime Tool Control (Option B Semantics)
 - **DotAgents runtime tools**: Controlled via `enabledRuntimeTools` **allowlist**
-  - `undefined` or `null` = allow all runtime tools
-  - `[]` = unconfigured, allow all runtime tools
+  - `undefined` or `null` = use the filesystem-first default runtime tools (`set_session_title`, `execute_command`, `read_more_context`, `mark_work_complete`)
+  - `[]` = unconfigured, use the filesystem-first default runtime tools
   - `["tool1", "tool2"]` = allow only these + essential tools
   - `mark_work_complete` is **always enabled**
+  - Runtime discovery metadata is file-backed under `$DOTAGENTS_RUNTIME_DIR` (`agents.json`, `tools/index.json`, and `tools/schemas/`)
 - **External MCP tools**: Controlled via `disabledTools` **denylist**
 
 ### Agent Roles
@@ -487,7 +488,7 @@ User Input
     ▼
 Main Agent (internal LLM)
     │
-    ├─ Sees available agents via list_available_agents
+    ├─ Sees available agents in prompt context
     │
     ├─ Decides to delegate to "code-agent"
     │
@@ -525,10 +526,10 @@ Agent System Prompt includes:
 Agent decides to use document-processing skill
     │
     ▼
-Agent calls load_skill_instructions
+Agent reads the listed SKILL.md path with execute_command
     │
     ▼
-Load from .agents/skills/document-processing/skill.md
+Load from .agents/skills/document-processing/SKILL.md
     │
     ▼
 Return full instructions to agent

@@ -4976,6 +4976,16 @@ export default function SettingsScreen({ navigation }: any) {
                             {profile.description && (
                               <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
                             )}
+                            {profile.systemPrompt?.trim() && (
+                              <View style={styles.customPromptBadge}>
+                                <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
+                              </View>
+                            )}
+                          {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
+                            <Text style={styles.serverMeta} numberOfLines={2}>
+                              Default system prompt updates are blocked until this custom prompt is reset.
+                            </Text>
+                          )}
                           </View>
                         </View>
                       </TouchableOpacity>
@@ -6540,6 +6550,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingTop: spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
+    },
+    customPromptBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      marginLeft: 6,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      backgroundColor: '#f59e0b20',
+    },
+    customPromptBadgeText: {
+      color: '#92400e',
+      fontSize: 10,
+      fontWeight: '600',
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,

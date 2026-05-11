@@ -31,22 +31,16 @@ import {
 describe('runtime tool utils', () => {
   it('exports the base runtime tool schemas in prompt order', () => {
     expect(getRuntimeToolNames()).toEqual([
-      'list_running_agents',
-      'send_agent_message',
-      'kill_agent',
       'respond_to_user',
       'set_session_title',
       'mark_work_complete',
       'execute_command',
-      'list_server_tools',
-      'get_tool_schema',
-      'load_skill_instructions',
       'read_more_context',
     ]);
     expect(baseRuntimeToolDefinitions.find((tool) => tool.name === 'execute_command')?.inputSchema.required).toEqual(['command']);
   });
 
-  it('composes inserted runtime tools after kill_agent', () => {
+  it('composes inserted runtime tools before base runtime tools', () => {
     const definitions = buildRuntimeToolDefinitions([{
       name: 'delegate_to_agent',
       description: 'Delegate a task to another agent.',
@@ -58,11 +52,11 @@ describe('runtime tool utils', () => {
     }]);
 
     expect(getRuntimeToolNames(definitions).slice(0, 5)).toEqual([
-      'list_running_agents',
-      'send_agent_message',
-      'kill_agent',
       'delegate_to_agent',
       'respond_to_user',
+      'set_session_title',
+      'mark_work_complete',
+      'execute_command',
     ]);
   });
 
@@ -74,20 +68,14 @@ describe('runtime tool utils', () => {
 
   it('exports ACP router tool schemas and aliases', () => {
     expect(getRuntimeToolNames(acpRouterToolDefinitions)).toEqual([
-      'list_available_agents',
       'delegate_to_agent',
       'check_agent_status',
-      'spawn_agent',
-      'stop_agent',
-      'cancel_agent_run',
-      'send_to_agent',
     ]);
-    expect(acpRouterToolNameAliases).toEqual({
-      send_to_agent: 'delegate_to_agent',
-    });
-    expect(resolveAcpRouterToolName('send_to_agent')).toBe('delegate_to_agent');
+    expect(acpRouterToolNameAliases).toEqual({});
+    expect(resolveAcpRouterToolName('send_to_agent')).toBe('send_to_agent');
     expect(resolveAcpRouterToolName('delegate_to_agent')).toBe('delegate_to_agent');
     expect(isAcpRouterTool('check_agent_status')).toBe(true);
+    expect(isAcpRouterTool('send_to_agent')).toBe(false);
     expect(isAcpRouterTool('missing_tool')).toBe(false);
   });
 

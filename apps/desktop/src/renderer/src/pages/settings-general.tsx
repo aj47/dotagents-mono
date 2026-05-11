@@ -63,6 +63,7 @@ import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
+import { Badge } from "@renderer/components/ui/badge"
 import {
   useConfigQuery,
   useSaveConfigMutation,
@@ -70,10 +71,10 @@ import {
 import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
 import { desktopSettingsGeneralClient } from "@renderer/lib/desktop-settings-general-client"
 import { desktopTtsClient } from "@renderer/lib/desktop-tts-client"
-import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
+import { AlertTriangle, ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
@@ -100,6 +101,7 @@ const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
 export function Component() {
   const configQuery = useConfigQuery()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const cfg = configQuery.data as Config | undefined
 
@@ -136,7 +138,6 @@ export function Component() {
     queryFn: async () => {
       return desktopAgentsFolderClient.getAgentsFolders()
     },
-    staleTime: Infinity,
   })
 
   const externalAgentsQuery = useQuery({
@@ -148,6 +149,14 @@ export function Component() {
   })
 
   const isLangfuseInstalled = langfuseInstalledQuery.data ?? true // Default to true while loading
+  const systemPromptOverrideScope = agentsFoldersQuery.data?.workspace?.systemPromptExists
+    ? "Workspace"
+    : agentsFoldersQuery.data?.global?.systemPromptExists
+      ? "Global"
+      : cfg?.mcpCustomSystemPrompt?.trim()
+        ? "Legacy"
+        : undefined
+  const systemPromptOverrideActive = Boolean(systemPromptOverrideScope)
   const selectableMainAcpAgents = getSelectableMainAcpAgents(
     externalAgentsQuery.data,
     []
@@ -186,8 +195,10 @@ export function Component() {
     } catch (error) {
       console.error("Failed to reveal system prompt file:", error)
       toast.error("Failed to reveal system prompt file")
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ["agentsFolders"] })
     }
-  }, [])
+  }, [queryClient])
 
   const openAgentsGuidelinesFile = useCallback(async () => {
     try {
@@ -650,16 +661,36 @@ export function Component() {
         <ControlGroup
           collapsible
           defaultCollapsed
-          title="Modular config (.agents)"
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              <span>Modular config (.agents)</span>
+              {systemPromptOverrideActive && (
+                <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                  System prompt override active
+                </Badge>
+              )}
+            </span>
+          }
           forceOpen={isSearching}
         >
+          {systemPromptOverrideActive && (
+            <div className="mx-3 mt-2 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0 space-y-1">
+                <p className="font-medium text-amber-700 dark:text-amber-300">{systemPromptOverrideScope} system prompt override active</p>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  A saved system prompt replaces the DotAgents default prompt, so this install will not receive default system prompt updates until the override is removed or reset.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="px-3 py-2 text-sm leading-5 text-muted-foreground">
             Advanced configuration can live in <span className="font-mono">.agents</span>. Global{" "}
             <span className="font-mono">~/.agents</span> is the default layer. Workspace{" "}
             <span className="font-mono">.agents</span> is only used when{" "}
             <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set, and then it overrides the global layer. Skills live in{" "}
-            <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and knowledge notes in{" "}
-            <span className="font-mono">knowledge/&lt;slug&gt;/&lt;slug&gt;.md</span>. Frontmatter uses simple{" "}
+            <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and knowledge notes live in configured knowledge roots as{" "}
+            <span className="font-mono">&lt;slug&gt;/&lt;slug&gt;.md</span>. Frontmatter uses simple{" "}
             <span className="font-mono">key: value</span> lines (not YAML).
           </div>
           <Control label="Global folder" className="px-3">

@@ -1,5 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
+import { autoresearchContinuationCases } from "./agent-loop-autoresearch-cases"
+import {
+  recordAgentLoopMetric,
+  summarizePromptBatches,
+  summarizeToolCalls,
+} from "./agent-loop-test-metrics"
 
 let currentConfig: any
 
@@ -31,6 +37,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./config", () => ({
   configStore: { get: () => currentConfig },
+  conversationsFolder: "/tmp/conversations",
   globalAgentsFolder: "/tmp/global-agents",
   resolveWorkspaceAgentsFolder: () => "/tmp/workspace-agents",
 }))
@@ -98,8 +105,25 @@ const availableTools = [
   { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object", properties: {} } },
 ]
 
-function makeExecuteToolCall(sessionId: string, runId: number, overrides: Record<string, any> = {}) {
+const traceContinuationTools = [
+  ...availableTools,
+  { name: "load_skill_instructions", description: "Load skill instructions", inputSchema: { type: "object", properties: {} } },
+]
+
+const contextRecoveryTools = [
+  ...availableTools,
+  { name: "read_more_context", description: "Read compacted context", inputSchema: { type: "object", properties: {} } },
+]
+
+function makeExecuteToolCall(
+  sessionId: string,
+  runId: number,
+  overrides: Record<string, any> = {},
+  toolCallLog: any[] = [],
+) {
   return async (toolCall: any) => {
+    toolCallLog.push(toolCall)
+
     const result = toolCall.name in overrides
       ? await (typeof overrides[toolCall.name] === "function"
         ? overrides[toolCall.name](toolCall)
@@ -177,6 +201,8 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-provider-error-after-stop",
       "session-abort-after-stop",
       "session-prior-display-content",
+      "session-recovered-context-final-answer",
+      ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
 
@@ -514,6 +540,187 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
   })
 
+  it.each(autoresearchContinuationCases)(
+    "replays AutoResearch $caseId: $name through the agent-loop continuation harness",
+    async (traceCase) => {
+      currentConfig.mcpVerifyCompletionEnabled = true
+      const { processTranscriptWithAgentMode } = await import("./llm")
+
+      expect(traceCase.previousHistory).toHaveLength(traceCase.expectedHistoryLength)
+
+      mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: traceCase.response } },
+      ] })
+      mocks.verifyCompletionWithFetch.mockResolvedValue({
+        isComplete: true,
+        conversationState: "complete",
+        confidence: 0.95,
+        missingItems: [],
+      })
+
+      const startedAt = performance.now()
+      const toolCallLog: any[] = []
+      const llmCallStart = mocks.makeLLMCallWithStreamingAndTools.mock.calls.length
+      const verifierCallStart = mocks.verifyCompletionWithFetch.mock.calls.length
+
+      const result = await processTranscriptWithAgentMode(
+        traceCase.transcript,
+        traceContinuationTools as any,
+        makeExecuteToolCall(traceCase.sessionId, 1, {}, toolCallLog),
+        4,
+        traceCase.previousHistory as any,
+        `conv-${traceCase.sessionId}`,
+        traceCase.sessionId,
+        undefined,
+        undefined,
+        1,
+      )
+
+      expect(result.content).toBe(traceCase.response)
+
+      const firstCallTools = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[5] ?? []) as Array<{ name: string }>
+      expect(firstCallTools.map((tool) => tool.name)).toContain("respond_to_user")
+      expect(firstCallTools.map((tool) => tool.name)).not.toContain("mark_work_complete")
+
+      const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+        .map((message: any) => message.content)
+        .join("\n")
+
+      for (const evidence of traceCase.requiredPromptEvidence) {
+        expect(promptText).toContain(evidence)
+      }
+      for (const evidence of traceCase.forbiddenPromptEvidence ?? []) {
+        expect(promptText).not.toContain(evidence)
+      }
+      for (const evidence of traceCase.requiredResponseEvidence) {
+        expect(result.content).toContain(evidence)
+      }
+      expect(promptText).not.toContain("STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY")
+      expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
+      expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+      const promptBatches = mocks.makeLLMCallWithStreamingAndTools.mock.calls
+        .slice(llmCallStart)
+        .map((call) => call[0])
+      recordAgentLoopMetric({
+        suite: "agent-loop-autoresearch-replay",
+        caseId: traceCase.caseId,
+        caseName: traceCase.name,
+        status: "pass",
+        durationMs: Math.round(performance.now() - startedAt),
+        llmCalls: mocks.makeLLMCallWithStreamingAndTools.mock.calls.length - llmCallStart,
+        verifierCalls: mocks.verifyCompletionWithFetch.mock.calls.length - verifierCallStart,
+        toolCallsTotal: toolCallLog.length,
+        toolCallsByName: summarizeToolCalls(toolCallLog),
+        finalContentChars: result.content.length,
+        conversationHistoryLength: result.conversationHistory.length,
+        totalIterations: result.totalIterations,
+        expectedHistoryLength: traceCase.expectedHistoryLength,
+        ...summarizePromptBatches(promptBatches),
+      })
+    },
+  )
+
+  it("requires recovered read_more_context evidence to become the final answer", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const sessionId = "session-recovered-context-final-answer"
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+        { name: "mark_work_complete", arguments: { summary: "Recovered hidden audit token" } },
+      ] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.98,
+      missingItems: [],
+    })
+
+    const startedAt = performance.now()
+    const toolCallLog: any[] = []
+    const llmCallStart = mocks.makeLLMCallWithStreamingAndTools.mock.calls.length
+    const verifierCallStart = mocks.verifyCompletionWithFetch.mock.calls.length
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from the compacted historical audit payload.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall(sessionId, 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              text: `historical_audit excerpt: HIDDEN_AUDIT_TOKEN=${hiddenToken}`,
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }, toolCallLog),
+      4,
+      [
+        { role: "user", content: "Store the historical audit. It may be compacted later." },
+        { role: "assistant", content: "If the old payload is compacted, I will search the Context ref for HIDDEN_AUDIT_TOKEN." },
+        { role: "tool", content: "[historical_audit] older oversized payload was compacted. Context ref: ctx_hidden_audit" },
+      ] as any,
+      "conv-recovered-context-final-answer",
+      sessionId,
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain(`HIDDEN_AUDIT_TOKEN=${hiddenToken}`)
+    expect(result.conversationHistory.some((message) =>
+      message.role === "tool" && message.content.includes(`HIDDEN_AUDIT_TOKEN=${hiddenToken}`)
+    )).toBe(true)
+    expect(result.conversationHistory.some((message) =>
+      message.role === "assistant" && message.content === `Recovered token: ${hiddenToken}`
+    )).toBe(true)
+
+    const promptBatches = mocks.makeLLMCallWithStreamingAndTools.mock.calls
+      .slice(llmCallStart)
+      .map((call) => call[0])
+    recordAgentLoopMetric({
+      suite: "agent-loop-context-recovery",
+      caseId: "deterministic-final-answer-recovery",
+      status: "pass",
+      durationMs: Math.round(performance.now() - startedAt),
+      llmCalls: mocks.makeLLMCallWithStreamingAndTools.mock.calls.length - llmCallStart,
+      verifierCalls: mocks.verifyCompletionWithFetch.mock.calls.length - verifierCallStart,
+      toolCallsTotal: toolCallLog.length,
+      toolCallsByName: summarizeToolCalls(toolCallLog),
+      finalContentChars: result.content.length,
+      conversationHistoryLength: result.conversationHistory.length,
+      totalIterations: result.totalIterations,
+      finalAnswerContainsRecoveredToken: result.content.includes(hiddenToken),
+      recoveredContextInToolHistory: result.conversationHistory.some((message) =>
+        message.role === "tool" && message.content.includes(`HIDDEN_AUDIT_TOKEN=${hiddenToken}`)
+      ),
+      ...summarizePromptBatches(promptBatches),
+    })
+  })
+
   it("keeps a verified explicit final response to one assistant message", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")
@@ -829,7 +1036,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(followupPrompt).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
   })
 
-  it("nudges the model to omit invalid execute_command skillId values after a tool failure", async () => {
+  it("nudges the model toward filesystem skill paths after legacy execute_command skillId failure", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
 
     mocks.makeLLMCallWithStreamingAndTools
@@ -850,9 +1057,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
             type: "text" as const,
             text: JSON.stringify({
               success: false,
-              error: "Invalid execute_command.skillId: aj47/dotagents-mono",
-              guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
-              retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
+              error: "execute_command.skillId is no longer supported.",
+              guidance: "Skills are filesystem instructions. Use the SKILL.md path shown in Available Skills.",
+              retrySuggestion: "Retry without skillId.",
             }, null, 2),
           }],
           isError: true,
@@ -870,9 +1077,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
       .map((message: any) => message.content)
       .join("\n")
-    expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
-    expect(secondPrompt).toContain("Retry the same command without skillId")
-    expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
+    expect(secondPrompt).toContain("execute_command.skillId is no longer supported")
+    expect(secondPrompt).toContain("read the listed SKILL.md path with execute_command")
+    expect(secondPrompt).toContain("ordinary shell commands with explicit paths or cd")
   })
 
   it("does not inject unrecoverable permissions notes for failed tools", async () => {

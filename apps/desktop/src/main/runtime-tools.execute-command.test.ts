@@ -57,7 +57,7 @@ function buildTypoWorkspacePath(targetPath: string): string | null {
 }
 
 const canRunPathNormalizationTest = process.platform !== "win32"
-  && Boolean(getHomePrefix(process.cwd()) || getHomePrefix(os.homedir()))
+  && Boolean(getHomePrefix(process.cwd()))
 
 const pathNormalizationTest = canRunPathNormalizationTest ? it : it.skip
 
@@ -93,24 +93,21 @@ describe("runtime-tools execute_command", () => {
     }
   })
 
-  it("falls back to the default workspace when skillId is not an exact loaded skill id", async () => {
+  it("rejects legacy skillId usage because skills are filesystem paths now", async () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("execute_command", {
       command: "pwd && ls -la",
       skillId: "aj47/dotagents-mono",
     })
 
-    expect(result?.isError).toBe(false)
+    expect(result?.isError).toBe(true)
     const payload = JSON.parse(String(result?.content[0]?.text))
     expect(payload).toEqual(expect.objectContaining({
-      success: true,
-      ignoredInvalidSkillId: "aj47/dotagents-mono",
+      success: false,
+      error: "execute_command.skillId is no longer supported.",
       retrySuggestion: expect.stringContaining("without skillId"),
-      availableSkillIds: ["agent-skill-creation", "frontend-design"],
     }))
-    expect(payload.cwd).toBe(process.cwd())
-    expect(String(payload.stdout)).toContain("apps")
-    expect(payload.guidance).toContain("Never use repo names")
+    expect(payload.guidance).toContain("SKILL.md path")
   })
 
   pathNormalizationTest("normalizes obvious workspace path typos inside commands", async () => {
@@ -119,19 +116,10 @@ describe("runtime-tools execute_command", () => {
 
     expect(typoWorkspacePath).toBeTruthy()
 
-    if (actualWorkspacePath !== process.cwd()) {
-      mockGetSkill.mockReturnValue({
-        id: "path-normalization-test-skill",
-        name: "path-normalization-test-skill",
-        filePath: path.join(actualWorkspacePath, "SKILL.md"),
-      })
-    }
-
     const { executeRuntimeTool } = await import("./runtime-tools")
     const command = `cd \"${typoWorkspacePath}\" && pwd`
     const result = await executeRuntimeTool("execute_command", {
       command,
-      ...(actualWorkspacePath !== process.cwd() ? { skillId: "path-normalization-test-skill" } : {}),
     })
 
     expect(result?.isError).toBe(false)
@@ -191,4 +179,3 @@ describe("runtime-tools execute_command", () => {
     expect(payload.error).toContain("planning/context question")
   })
 })
-

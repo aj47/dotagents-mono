@@ -1,4 +1,4 @@
-import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import { configStore, conversationsFolder, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import {
   MCPTool,
   MCPToolCall,
@@ -62,6 +62,7 @@ import {
   stripRawToolMarkerTokens,
 } from "@dotagents/shared/chat-utils"
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
+import { SET_SESSION_TITLE_TOOL } from "@dotagents/shared/runtime-tool-utils"
 import {
   appendAgentStopNote,
   resolveExpectedAgentStopReason,
@@ -88,6 +89,12 @@ import {
 } from "@dotagents/shared/llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
+import {
+  ensureRuntimeFilesystemContext,
+  formatRuntimeFilesystemContextForPrompt,
+} from "./runtime-filesystem-context"
+import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsKnowledgeDirs } from "./agents-files/knowledge-notes"
 import {
   buildCompactionCheckpointContextMessage,
   buildRelevantEarlierConversationContextMessage,
@@ -136,31 +143,34 @@ function getVerificationOutcomeDescription(state: AgentConversationState): strin
 }
 
 /**
- * Extract a compact, ID-focused skills index suitable for Tier-3 minimal prompts.
+ * Extract a compact, path-focused skills index suitable for Tier-3 minimal prompts.
  *
- * Why: Tier-3 context shrinking replaces the entire system prompt. If we drop skill IDs,
- * the model cannot call load_skill_instructions and will tend to over-use MCP tools.
+ * Why: Tier-3 context shrinking replaces the entire system prompt. If we drop
+ * skill paths, the model cannot use the filesystem-first skill workflow.
  */
 function extractSkillsIndexForMinimalPrompt(skillsInstructions?: string): string | undefined {
   const text = (skillsInstructions || "").trim()
   if (!text) return undefined
 
   const lines = text.split(/\r?\n/)
-  const skillLines = lines
-    .map((l) => l.trimEnd())
-    // Match the canonical index format from skills-service:
-    // - `skill-id` — description
-    .filter((l) => {
-      const t = l.trim()
-      return t.startsWith("- `") && t.includes("` —")
-    })
-
-  if (skillLines.length > 0) {
-    return skillLines.slice(0, 50).join("\n")
+  const skillLines: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trimEnd()
+    const trimmed = line.trim()
+    if (!trimmed.startsWith("- `") || !trimmed.includes("` —")) continue
+    skillLines.push(line)
+    const nextLine = lines[i + 1]?.trimEnd()
+    if (nextLine?.trim().startsWith("Path: `")) {
+      skillLines.push(nextLine)
+    }
   }
 
-  // Fallback: keep the top portion (drop folder paths/directory info) and cap length.
-  const marker = "\nSkills directory:"
+  if (skillLines.length > 0) {
+    return skillLines.slice(0, 100).join("\n")
+  }
+
+  // Fallback: keep the top portion (drop root directory info) and cap length.
+  const marker = "\nSkill roots:"
   const idx = text.indexOf(marker)
   const cut = (idx >= 0 ? text.slice(0, idx) : text).trim()
   if (!cut) return undefined
@@ -169,6 +179,32 @@ function extractSkillsIndexForMinimalPrompt(skillsInstructions?: string): string
 
 const NON_AGENT_WORKING_NOTES_LIMIT = 3
 const AGENT_WORKING_NOTES_LIMIT = 4
+
+function buildFilesystemContextForPrompt(availableTools?: MCPTool[], sessionId?: string): string {
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+  const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
+  const knowledgeRoots = [
+    ...getAgentsKnowledgeDirs(globalLayer),
+    ...(workspaceLayer ? getAgentsKnowledgeDirs(workspaceLayer) : []),
+  ]
+
+  const locations = [
+    `Global .agents: ${globalAgentsFolder}`,
+    workspaceAgentsFolder ? `Workspace .agents: ${workspaceAgentsFolder}` : "Workspace .agents: not configured",
+    `Knowledge roots: ${Array.from(new Set(knowledgeRoots)).join(", ")}`,
+    `Conversations: ${conversationsFolder}`,
+  ]
+
+  try {
+    const runtimePaths = ensureRuntimeFilesystemContext(availableTools, sessionId)
+    locations.push(formatRuntimeFilesystemContextForPrompt(runtimePaths))
+  } catch (error) {
+    logLLM("[buildFilesystemContextForPrompt] Failed to write runtime filesystem manifests:", error)
+  }
+
+  return locations.join("\n")
+}
 
 function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
   if (toolName !== "execute_command" || !result.isError) return false
@@ -179,6 +215,7 @@ function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, res
     .toLowerCase()
 
   return errorText.includes("invalid execute_command.skillid")
+    || errorText.includes("execute_command.skillid is no longer supported")
     || (errorText.includes("skill not found") && errorText.includes("omit skillid"))
 }
 
@@ -266,9 +303,9 @@ function buildAnswerOnlyContinuationDigest(
       const toolName = text.match(/^\[([^\]]+)\]/)?.[1]
       if (toolName === RESPOND_TO_USER_TOOL) {
         text = `[${RESPOND_TO_USER_TOOL}] delivered user response`
-      } else if (toolName === "set_session_title") {
+      } else if (toolName === SET_SESSION_TITLE_TOOL) {
         const title = text.match(/"title":\s*"([^"]+)"/)?.[1]
-        text = title ? `[set_session_title] ${title}` : `[set_session_title] updated title`
+        text = title ? `[${SET_SESSION_TITLE_TOOL}] ${title}` : `[${SET_SESSION_TITLE_TOOL}] updated title`
       } else {
         text = text
           .replace(/^\[([^\]]+)\]\s*\{\s*"success":\s*(true|false),\s*/i, "[$1] ")
@@ -361,6 +398,7 @@ export async function processTranscriptWithTools(
     maxNotes: NON_AGENT_WORKING_NOTES_LIMIT,
   })
   logLLM(`[processTranscriptWithLLM] Loaded ${workingNotes.length} working notes for prompt context`)
+  const filesystemContext = buildFilesystemContextForPrompt(uniqueAvailableTools)
 
   const systemPrompt = constructSystemPrompt(
     uniqueAvailableTools,
@@ -371,6 +409,8 @@ export async function processTranscriptWithTools(
     skillsInstructions,
     undefined, // agentProperties - not used in non-agent mode
     workingNotes,
+    undefined,
+    filesystemContext,
   )
 
   const messages = [
@@ -389,6 +429,7 @@ export async function processTranscriptWithTools(
     availableTools: uniqueAvailableTools,
     isAgentMode: false,
     skillsIndex,
+    filesystemContext,
   })
 
   const chatProviderId = config.mcpToolsProviderId
@@ -1173,6 +1214,7 @@ export async function processTranscriptWithAgentMode(
     maxNotes: AGENT_WORKING_NOTES_LIMIT,
   })
   logLLM(`[processTranscriptWithAgentMode] Loaded ${workingNotes.length} working notes for prompt context`)
+  const filesystemContext = buildFilesystemContextForPrompt(baseAvailableTools, currentSessionId)
 
   // The agent's profile ID is used to exclude itself from delegation targets in the system prompt
   const excludeAgentId = effectiveProfileSnapshot?.profileId
@@ -1188,6 +1230,7 @@ export async function processTranscriptWithAgentMode(
     agentProperties, // dynamic agent properties
     workingNotes, // injected working notes
     excludeAgentId, // exclude this agent from delegation targets
+    filesystemContext,
   )
 
   logLLM(`[llm.ts processTranscriptWithAgentMode] Initializing conversationHistory for session ${currentSessionId}`)
@@ -1449,6 +1492,7 @@ export async function processTranscriptWithAgentMode(
       agentProperties, // dynamic agent properties
       workingNotes, // injected working notes
       excludeAgentId, // exclude this agent from delegation targets
+      filesystemContext,
     )
 
     const postVerifySummaryMessages = [
@@ -1462,6 +1506,7 @@ export async function processTranscriptWithAgentMode(
       relevantTools: undefined,
       isAgentMode: true,
       skillsIndex,
+      filesystemContext,
       sessionId: currentSessionId,
       onSummarizationProgress: (current, total) => {
         const lastThinkingStep = progressSteps.findLast(step => step.type === "thinking")
@@ -1801,6 +1846,7 @@ export async function processTranscriptWithAgentMode(
           agentProperties, // dynamic agent properties
           workingNotes, // injected working notes
           excludeAgentId, // exclude this agent from delegation targets
+          filesystemContext,
         )
         lastExcludedToolCount = excludedToolCount
         logLLM(`[processTranscriptWithAgentMode] Rebuilt system prompt with ${activeTools.length} active tools (excluded ${excludedToolCount})`)
@@ -1903,15 +1949,15 @@ export async function processTranscriptWithAgentMode(
         .filter(Boolean as any),
     ]
 
-    // Apply context budget management before the agent LLM call
-    // All active tools are sent to the LLM - progressive disclosure tools
-    // (list_server_tools, get_tool_schema) allow the LLM to discover tools dynamically
+    // Apply context budget management before the agent LLM call.
+    // All active tools are sent to the LLM with their provider schemas.
     const { messages: shrunkMessages, estTokensAfter, maxTokens: maxContextTokens, appliedStrategies } = await shrinkMessagesForLLM({
       messages: messages as any,
       availableTools: activeTools,
       relevantTools: undefined,
       isAgentMode: true,
       skillsIndex,
+      filesystemContext,
       sessionId: currentSessionId,
       onSummarizationProgress: (current, total, message) => {
         // Update thinking step with summarization progress
@@ -2921,7 +2967,7 @@ export async function processTranscriptWithAgentMode(
       if (hasInvalidExecuteCommandSkillIdError) {
         addEphemeralMessage(
           "user",
-          "For execute_command, omit skillId unless you are using an exact skill id from Available Skills. Do not use repo names, file paths, URLs, or GitHub slugs as skillId. Retry the same command without skillId unless you explicitly need a skill directory."
+          "execute_command.skillId is no longer supported. Skills are filesystem instructions now: read the listed SKILL.md path with execute_command, then run ordinary shell commands with explicit paths or cd."
         )
       }
 
@@ -3129,6 +3175,7 @@ export async function processTranscriptWithAgentMode(
           agentProperties, // dynamic agent properties
           workingNotes, // injected working notes
           excludeAgentId, // exclude this agent from delegation targets
+          filesystemContext,
         )
 
         const summaryMessages = [
@@ -3142,6 +3189,7 @@ export async function processTranscriptWithAgentMode(
           relevantTools: undefined,
           isAgentMode: true,
           skillsIndex,
+          filesystemContext,
           sessionId: currentSessionId,
           onSummarizationProgress: (current, total) => {
             summaryStep.description = `Summarizing for summary generation (${current}/${total})`

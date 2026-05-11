@@ -103,6 +103,7 @@ export function getAgentModeAdditions(availableTools: PromptTool[]): string {
   const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command');
   const hasLoadSkillInstructions = hasPromptTool(availableTools, 'load_skill_instructions');
   const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context');
+  const hasSetSessionTitle = hasPromptTool(availableTools, 'set_session_title');
 
   const sections = [
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
@@ -121,7 +122,10 @@ export function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
 - Write respond_to_user content naturally and conversationally
 - Markdown is allowed when useful (for example links or image captions)
-- To send images, use respond_to_user.images with either URL/data URL entries or local file paths`);
+- To send images, use respond_to_user.images with either URL/data URL entries or local file paths
+- MEDIA DELIVERY: When your final output includes generated, downloaded, or fetched media assets (images, videos, screenshots, thumbnails), prefer delivering them inline through respond_to_user.images / respond_to_user.videos rather than only returning a local filepath
+- Treat local paths as a secondary reference for follow-up, not the primary delivery mechanism; include them alongside the inline asset when useful, but do not rely on a bare path when inline display is supported
+- Only fall back to path-only responses when inline display/attachment is genuinely unavailable (unsupported media type, or the user explicitly asked for a path)`);
   } else {
     sections.push(`RESPONDING TO USER:
 - No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`);
@@ -159,7 +163,15 @@ export function getAgentModeAdditions(availableTools: PromptTool[]): string {
     sections.push(`AGENT FILE & COMMAND EXECUTION:
 - Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.
 - For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.
-- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.`);
+- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.
+- Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files. Use the absolute paths shown in this prompt when available; otherwise discover with filesystem search.
+- For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR with execute_command instead of expecting list/schema helper tools.`);
+  }
+
+  if (hasSetSessionTitle) {
+    sections.push(`SESSION TITLE:
+- When the task becomes clear, set a concise useful title with set_session_title early enough to improve the UI
+- Keep titles short and specific; update later only if the conversation topic materially shifts`);
   }
 
   if (hasReadMoreContext) {
@@ -170,9 +182,9 @@ export function getAgentModeAdditions(availableTools: PromptTool[]): string {
   }
 
   sections.push(`LOCAL MEMORY & CONFIG:
-- Durable notes live in ~/.agents/knowledge/ and ./.agents/knowledge/; edit note/config files directly and keep context:auto rare
-- Prior conversations live under <appData>/<appId>/conversations/; infer the appId/path, search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
-- DotAgents config is layered ~/.agents/ plus workspace ./.agents/ when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, load dotagents-config-admin if available`);
+- Durable notes live in configured knowledge roots, defaulting to global/workspace .agents/knowledge; edit note/config files directly and keep context:auto rare
+- Prior conversations live under the runtime-supplied conversations directory; search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
+- DotAgents config is layered global .agents plus workspace .agents when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, read the dotagents-config-admin SKILL.md path if it is listed under Available Skills`);
 
   return `\n\n${sections.join('\n\n')}`;
 }

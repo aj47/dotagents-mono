@@ -811,7 +811,7 @@ export function Component() {
           <div className="min-w-0">
             <h1 className="text-2xl font-bold">Knowledge</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Knowledge notes stored as plain files under <span className="font-mono">.agents/knowledge/</span>
+              Knowledge notes stored as plain files in configured knowledge roots
             </p>
           </div>
           <div className="shrink-0 flex flex-wrap gap-2">
