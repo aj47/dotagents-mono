@@ -1,5 +1,10 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
+import {
+  recordAgentLoopMetric,
+  summarizePromptBatches,
+  summarizeToolCalls,
+} from "./agent-loop-test-metrics"
 
 let currentConfig: any
 
@@ -77,8 +82,15 @@ const contextRecoveryTools = [
   { name: "read_more_context", description: "Read compacted context", inputSchema: { type: "object", properties: {} } },
 ]
 
-function makeExecuteToolCall(sessionId: string, runId: number, overrides: Record<string, any> = {}) {
+function makeExecuteToolCall(
+  sessionId: string,
+  runId: number,
+  overrides: Record<string, any> = {},
+  toolCallLog: any[] = [],
+) {
   return async (toolCall: any) => {
+    toolCallLog.push(toolCall)
+
     const result = toolCall.name in overrides
       ? await (typeof overrides[toolCall.name] === "function"
         ? overrides[toolCall.name](toolCall)
@@ -719,10 +731,15 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
         missingItems: [],
       })
 
+      const startedAt = performance.now()
+      const toolCallLog: any[] = []
+      const llmCallStart = mocks.makeLLMCallWithStreamingAndTools.mock.calls.length
+      const verifierCallStart = mocks.verifyCompletionWithFetch.mock.calls.length
+
       const result = await processTranscriptWithAgentMode(
         traceCase.transcript,
         traceContinuationTools as any,
-        makeExecuteToolCall(traceCase.sessionId, 1),
+        makeExecuteToolCall(traceCase.sessionId, 1, {}, toolCallLog),
         4,
         traceCase.previousHistory as any,
         `conv-${traceCase.sessionId}`,
@@ -754,6 +771,26 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       expect(promptText).not.toContain("STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY")
       expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
       expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+      const promptBatches = mocks.makeLLMCallWithStreamingAndTools.mock.calls
+        .slice(llmCallStart)
+        .map((call) => call[0])
+      recordAgentLoopMetric({
+        suite: "agent-loop-autoresearch-replay",
+        caseId: traceCase.caseId,
+        caseName: traceCase.name,
+        status: "pass",
+        durationMs: Math.round(performance.now() - startedAt),
+        llmCalls: mocks.makeLLMCallWithStreamingAndTools.mock.calls.length - llmCallStart,
+        verifierCalls: mocks.verifyCompletionWithFetch.mock.calls.length - verifierCallStart,
+        toolCallsTotal: toolCallLog.length,
+        toolCallsByName: summarizeToolCalls(toolCallLog),
+        finalContentChars: result.content.length,
+        conversationHistoryLength: result.conversationHistory.length,
+        totalIterations: result.totalIterations,
+        expectedHistoryLength: traceCase.expectedHistoryLength,
+        ...summarizePromptBatches(promptBatches),
+      })
     },
   )
 
@@ -785,6 +822,11 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       missingItems: [],
     })
 
+    const startedAt = performance.now()
+    const toolCallLog: any[] = []
+    const llmCallStart = mocks.makeLLMCallWithStreamingAndTools.mock.calls.length
+    const verifierCallStart = mocks.verifyCompletionWithFetch.mock.calls.length
+
     const result = await processTranscriptWithAgentMode(
       "Recover the exact HIDDEN_AUDIT_TOKEN from the compacted historical audit payload.",
       contextRecoveryTools as any,
@@ -800,7 +842,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
           }],
           isError: false,
         },
-      }),
+      }, toolCallLog),
       4,
       [
         { role: "user", content: "Store the historical audit. It may be compacted later." },
@@ -828,6 +870,28 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.conversationHistory.some((message) =>
       message.role === "assistant" && message.content === `Recovered token: ${hiddenToken}`
     )).toBe(true)
+
+    const promptBatches = mocks.makeLLMCallWithStreamingAndTools.mock.calls
+      .slice(llmCallStart)
+      .map((call) => call[0])
+    recordAgentLoopMetric({
+      suite: "agent-loop-context-recovery",
+      caseId: "deterministic-final-answer-recovery",
+      status: "pass",
+      durationMs: Math.round(performance.now() - startedAt),
+      llmCalls: mocks.makeLLMCallWithStreamingAndTools.mock.calls.length - llmCallStart,
+      verifierCalls: mocks.verifyCompletionWithFetch.mock.calls.length - verifierCallStart,
+      toolCallsTotal: toolCallLog.length,
+      toolCallsByName: summarizeToolCalls(toolCallLog),
+      finalContentChars: result.content.length,
+      conversationHistoryLength: result.conversationHistory.length,
+      totalIterations: result.totalIterations,
+      finalAnswerContainsRecoveredToken: result.content.includes(hiddenToken),
+      recoveredContextInToolHistory: result.conversationHistory.some((message) =>
+        message.role === "tool" && message.content.includes(`HIDDEN_AUDIT_TOKEN=${hiddenToken}`)
+      ),
+      ...summarizePromptBatches(promptBatches),
+    })
   })
 
   it("keeps a verified explicit final response to one assistant message", async () => {

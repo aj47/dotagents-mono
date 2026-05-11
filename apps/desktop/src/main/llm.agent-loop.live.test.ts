@@ -2,6 +2,11 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  recordAgentLoopMetric,
+  summarizePromptBatches,
+  summarizeToolCalls,
+} from "./agent-loop-test-metrics"
 import type { MCPToolCall, MCPToolResult } from "./mcp-service"
 
 const liveHarness = vi.hoisted(() => {
@@ -241,6 +246,7 @@ function makeHardCompactionHistory(hiddenToken: string) {
 async function executeLiveSafeTool(
   toolCall: MCPToolCall,
   sessionId: string,
+  runId: number,
 ): Promise<MCPToolResult> {
   liveHarness.executedToolCalls.push({
     name: toolCall.name,
@@ -260,6 +266,32 @@ async function executeLiveSafeTool(
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       isError: result.success === false,
+    }
+  }
+
+  if (toolCall.name === "respond_to_user") {
+    const { appendSessionUserResponse } = await import("./session-user-response-store")
+    const { extractRespondToUserContentFromArgs } = await import("./respond-to-user-utils")
+    const responseContent = extractRespondToUserContentFromArgs(toolCall.arguments)
+
+    if (!responseContent) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "respond_to_user requires text" }) }],
+        isError: true,
+      }
+    }
+
+    appendSessionUserResponse({ sessionId, runId, text: responseContent })
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, message: "Response recorded for delivery to user." }) }],
+      isError: false,
+    }
+  }
+
+  if (toolCall.name === "mark_work_complete") {
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, message: "Work marked complete." }) }],
+      isError: false,
     }
   }
 
@@ -297,15 +329,21 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
   it("retrieves a buried context-ref token through the real agent loop", async () => {
     expect(hasLocalCodexChatGptAuth()).toBe(true)
 
+    const llmFetch = await import("./llm-fetch")
+    const llmSpy = vi.spyOn(llmFetch, "makeLLMCallWithStreamingAndTools")
+    const verifierSpy = vi.spyOn(llmFetch, "verifyCompletionWithFetch")
     const { processTranscriptWithAgentMode } = await import("./llm")
     const { runtimeToolDefinitions } = await import("./runtime-tool-definitions")
     const sessionId = "live-agent-loop-hard-compaction"
     const hiddenToken = "HX-7492-PRISM-RIVER"
-    const safeToolNames = new Set(["read_more_context"])
+    const runId = 1
+    const maxIterations = 6
+    const safeToolNames = new Set(["read_more_context", "respond_to_user", "mark_work_complete"])
     const availableTools = runtimeToolDefinitions.filter((tool) => safeToolNames.has(tool.name))
 
     liveHarness.sessions.set(sessionId, { id: sessionId, conversationTitle: "Live loop E2E" })
 
+    const startedAt = performance.now()
     const result = await processTranscriptWithAgentMode(
       [
         "Recover the exact HIDDEN_AUDIT_TOKEN value from the earlier historical_audit tool result.",
@@ -314,24 +352,51 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
         "Do not continue after providing that exact answer.",
       ].join("\n"),
       availableTools as any,
-      (toolCall) => executeLiveSafeTool(toolCall, sessionId),
-      2,
+      (toolCall) => executeLiveSafeTool(toolCall, sessionId, runId),
+      maxIterations,
       makeHardCompactionHistory(hiddenToken),
       undefined,
       sessionId,
       undefined,
       undefined,
-      1,
+      runId,
     )
 
-    expect(liveHarness.executedToolCalls.some((call) => call.name === "read_more_context")).toBe(true)
-    expect(result.conversationHistory.some((entry) => (
+    const contextEvidenceRecovered = result.conversationHistory.some((entry) => (
       entry.role === "tool" &&
       entry.content.includes("HIDDEN_AUDIT_TOKEN") &&
       entry.content.includes(hiddenToken)
-    ))).toBe(true)
+    ))
+    const finalAnswerContainsHiddenToken = result.content.includes(hiddenToken)
+    const finalAnswerMatchesRequestedForm = result.content.includes(`Recovered token: ${hiddenToken}`)
+
+    recordAgentLoopMetric({
+      suite: "agent-loop-live-e2e",
+      caseId: "live-hard-compaction-read-more-context",
+      status: contextEvidenceRecovered && finalAnswerContainsHiddenToken ? "pass" : "fail",
+      durationMs: Math.round(performance.now() - startedAt),
+      provider: liveHarness.config.mcpToolsProviderId,
+      model: liveHarness.config.mcpToolsChatgptWebModel,
+      llmCalls: llmSpy.mock.calls.length,
+      verifierCalls: verifierSpy.mock.calls.length,
+      toolCallsTotal: liveHarness.executedToolCalls.length,
+      toolCallsByName: summarizeToolCalls(liveHarness.executedToolCalls),
+      readMoreContextCalls: liveHarness.executedToolCalls.filter((call) => call.name === "read_more_context").length,
+      finalContentChars: result.content.length,
+      conversationHistoryLength: result.conversationHistory.length,
+      totalIterations: result.totalIterations,
+      contextEvidenceRecovered,
+      finalAnswerContainsHiddenToken,
+      finalAnswerMatchesRequestedForm,
+      reachedIterationLimit: result.totalIterations >= maxIterations,
+      ...summarizePromptBatches(llmSpy.mock.calls.map((call) => call[0])),
+    })
+
+    expect(liveHarness.executedToolCalls.some((call) => call.name === "read_more_context")).toBe(true)
+    expect(contextEvidenceRecovered).toBe(true)
     if (result.content.includes("Recovered token:")) {
       expect(result.content).toContain(`Recovered token: ${hiddenToken}`)
     }
+    expect(result.content).toContain(hiddenToken)
   }, 180000)
 })
