@@ -14,4 +14,6 @@ AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metri
 
 Each row includes the branch, short git SHA, suite name, case id, status, duration,
 LLM call count, verifier call count, tool call count, prompt-size summary, and any
-case-specific recovery checks.
+case-specific recovery checks. Live AutoResearch rows also include
+`semanticEvidencePassed` and `missingResponseEvidenceGroups` so provider behavior
+can be tracked without making the opt-in live suite fail on wording variance.

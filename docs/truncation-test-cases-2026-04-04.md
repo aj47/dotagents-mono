@@ -20,11 +20,11 @@ Live E2E harness added and validated on 2026-05-11:
 
 - `pnpm --filter @dotagents/desktop run test:agent-loop-live`
   - cwd: repo root
-  - result: skipped by default unless `LIVE_AGENT_LOOP_E2E=1` is set
+  - result: skipped by default unless `LIVE_AGENT_LOOP_E2E=1` is set; currently `6` opt-in tests
 - `LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live`
   - cwd: repo root
   - provider: local Codex ChatGPT auth from `~/.codex/auth.json`
-  - result: passed against the real provider
+  - result: `6/6` live execution tests passed against the real provider, including `5` AutoResearch continuation cases and `1` context-ref recovery case
 - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts`
   - cwd: repo root
   - result: `36/36` tests passed, including the adapted AutoResearch replay fixtures and deterministic final-answer recovery
@@ -41,9 +41,10 @@ Live E2E harness added and validated on 2026-05-11:
 Versioned agent-loop metrics were captured on 2026-05-11:
 
 - `docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl`
-  - rows: `7`
-  - result: `7/7` rows passed
-  - live E2E: `10,717 ms`, `2` LLM calls, `1` verifier call, `2` tool calls, final answer matched the requested recovered-token form
+  - rows: `12`
+  - result: `12/12` execution rows passed
+  - live AutoResearch E2E: `5/5` execution rows passed; `2/5` semantic evidence rows passed
+  - live context-ref E2E: `23,610 ms`, `4` LLM calls, `1` verifier call, `3` tool calls, final answer matched the requested recovered-token form
 - `docs/test-results/agent-loop/2026-05-11-agent-loop-summary.md`
   - concise rollup of pass rate, durations, LLM calls, verifier calls, and tool calls
 
