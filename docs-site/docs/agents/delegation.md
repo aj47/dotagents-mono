@@ -130,9 +130,11 @@ Ensure the main agent has access to the delegation runtime tools:
   "toolConfig": {
     "enabledRuntimeTools": [
       "set_session_title",
+      "execute_command",
+      "read_more_context",
+      "mark_work_complete",
       "delegate_to_agent",
       "check_agent_status",
-      "mark_work_complete",
       "respond_to_user"
     ]
   }

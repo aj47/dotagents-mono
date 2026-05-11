@@ -81,9 +81,11 @@ When reviewing changes:
     "disabledTools": ["filesystem:delete_file"],
     "enabledRuntimeTools": [
       "set_session_title",
+      "execute_command",
+      "read_more_context",
+      "mark_work_complete",
       "delegate_to_agent",
       "check_agent_status",
-      "mark_work_complete",
       "respond_to_user"
     ]
   },
@@ -215,9 +217,11 @@ You handle long-running analysis tasks.
     "disabledTools": ["filesystem:delete_file"],
     "enabledRuntimeTools": [
       "set_session_title",
+      "execute_command",
+      "read_more_context",
+      "mark_work_complete",
       "delegate_to_agent",
       "check_agent_status",
-      "mark_work_complete",
       "respond_to_user"
     ],
     "allServersDisabledByDefault": true
@@ -230,7 +234,7 @@ You handle long-running analysis tasks.
 | `enabledServers` | Whitelist of MCP servers available to the agent. |
 | `disabledServers` | Servers blocked even if configured globally. |
 | `disabledTools` | Individual tools blocked by server/tool identifier. |
-| `enabledRuntimeTools` | Runtime-tool whitelist. Omit it to use the filesystem-first default runtime tools, including `set_session_title`, `execute_command`, `read_more_context`, and `mark_work_complete`. |
+| `enabledRuntimeTools` | Runtime-tool whitelist. Omit it to use the filesystem-first default runtime tools, including `set_session_title`, `execute_command`, `read_more_context`, and `mark_work_complete`. If you set an explicit list, include any default tools the agent should keep. |
 | `allServersDisabledByDefault` | New MCP servers remain disabled until explicitly enabled. |
 
 `mark_work_complete` remains available even when runtime tools are restricted.

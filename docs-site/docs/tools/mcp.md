@@ -175,7 +175,7 @@ Additional runtime tools can be enabled per agent profile:
 
 | Tool | Description |
 |------|-------------|
-| `respond_to_user` | Send a response (supports images) |
+| `respond_to_user` | Send a response with explicit delivery semantics, including images or videos |
 | `delegate_to_agent` | Delegate to a sub-agent |
 | `check_agent_status` | Check a delegated run |
 

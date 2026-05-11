@@ -2,7 +2,9 @@
 
 Source ledger: `2026-05-11-agent-loop-metrics.jsonl`
 
-Commit under test: `3fbe1bc9d`
+Recorded ledger commit: `3fbe1bc9d`
+
+Latest post-merge validation commit: `3dd604df4`
 
 ## Commands
 
@@ -23,6 +25,8 @@ AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metri
 
 Live merged-branch aggregate: `6/6` execution rows passed, `111,298 ms`, `12`
 LLM calls, `8` verifier calls, `7` tool calls, and `0` iteration-limit hits.
+
+Post-merge rerun at `3dd604df4`: `LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed `6/6` after the iteration-limit fallback scoping fix.
 
 ## Live AutoResearch Details
 
