@@ -2646,10 +2646,20 @@ export default function SettingsScreen({ navigation }: any) {
                                 <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
                               </View>
                             )}
+                            {profile.systemPrompt?.trim() && (
+                              <View style={styles.customPromptBadge}>
+                                <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
+                              </View>
+                            )}
                           </View>
                           <Text style={styles.serverMeta}>
                             {profile.connectionType} • {profile.role || 'agent'}
                           </Text>
+                          {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
+                            <Text style={styles.serverMeta} numberOfLines={2}>
+                              Default system prompt updates are blocked until this custom prompt is reset.
+                            </Text>
+                          )}
                           {profile.description && (
                             <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
                           )}
@@ -3289,6 +3299,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     providerOptionTextActive: {
       color: theme.colors.primaryForeground,
+      fontWeight: '600',
+    },
+    customPromptBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      marginLeft: 6,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      backgroundColor: '#f59e0b20',
+    },
+    customPromptBadgeText: {
+      color: '#92400e',
+      fontSize: 10,
       fontWeight: '600',
     },
     primaryButton: {

@@ -78,31 +78,12 @@ function hasPromptTool(tools: PromptTool[], toolName: string): boolean {
   return tools.some((tool) => tool.name === toolName)
 }
 
-function getToolDiscoveryPromptAddition(availableTools: PromptTool[]): string {
-  const hasListServerTools = hasPromptTool(availableTools, 'list_server_tools')
-  const hasGetToolSchema = hasPromptTool(availableTools, 'get_tool_schema')
-
-  if (hasListServerTools && hasGetToolSchema) {
-    return 'To discover tools: use list_server_tools(serverName) to inspect MCP tools from a real server, or get_tool_schema(toolName) for full parameter details on any available tool.'
-  }
-
-  if (hasListServerTools) {
-    return 'To discover MCP tools from a real server, use list_server_tools(serverName).'
-  }
-
-  if (hasGetToolSchema) {
-    return 'To inspect exact parameters for an available tool, use get_tool_schema(toolName).'
-  }
-
-  return ''
-}
-
 function getAgentModeAdditions(availableTools: PromptTool[]): string {
   const hasRespondToUser = hasPromptTool(availableTools, 'respond_to_user')
   const hasMarkWorkComplete = hasPromptTool(availableTools, 'mark_work_complete')
   const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command')
-  const hasLoadSkillInstructions = hasPromptTool(availableTools, 'load_skill_instructions')
   const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context')
+  const hasSetSessionTitle = hasPromptTool(availableTools, 'set_session_title')
 
   const sections = [
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
@@ -130,13 +111,6 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`)
   }
 
-  if (hasLoadSkillInstructions) {
-    sections.push(`SKILLS:
-- Skills are optional modules listed below; before using one, call load_skill_instructions(skillId) at most once per session, reuse successful loads, and retry only after failure or explicit reload request.
-- If a skill exists on disk but cannot load, diagnose runtime skills-registry/refresh first; recommend refresh/restart/import before recreating or rewriting it.
-- Do not infer a skill's contents from name/description.`)
-  }
-
   if (hasRespondToUser && hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
 - When all requested work is fully complete, a normal assistant text final answer is valid and may be the only response
@@ -162,7 +136,15 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
     sections.push(`AGENT FILE & COMMAND EXECUTION:
 - Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.
 - For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.
-- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.`)
+- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.
+- Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files. Use the absolute paths shown in this prompt when available; otherwise discover with filesystem search.
+- For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR with execute_command instead of expecting list/schema helper tools.`)
+  }
+
+  if (hasSetSessionTitle) {
+    sections.push(`SESSION TITLE:
+- When the task becomes clear, set a concise useful title with set_session_title early enough to improve the UI
+- Keep titles short and specific; update later only if the conversation topic materially shifts`)
   }
 
   if (hasReadMoreContext) {
@@ -173,9 +155,9 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   }
 
   sections.push(`LOCAL MEMORY & CONFIG:
-- Durable notes live in ~/.agents/knowledge/ and ./.agents/knowledge/; edit note/config files directly and keep context:auto rare
-- Prior conversations live under <appData>/<appId>/conversations/; infer the appId/path, search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
-- DotAgents config is layered ~/.agents/ plus workspace ./.agents/ when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, load dotagents-config-admin if available`)
+- Durable notes live in configured knowledge roots, defaulting to global/workspace .agents/knowledge; edit note/config files directly and keep context:auto rare
+- Prior conversations live under the runtime-supplied conversations directory; search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
+- DotAgents config is layered global .agents plus workspace .agents when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, read the dotagents-config-admin SKILL.md path if it is listed under Available Skills`)
 
   return `\n\n${sections.join('\n\n')}`
 }
@@ -325,7 +307,6 @@ AVAILABLE AGENTS (${delegationTargets.length}):
 ${agentsList}
 
 To delegate: \`delegate_to_agent(agentName: "agent_name", task: "...", workingDirectory?: "path")\`
-To prepare only: \`delegate_to_agent(agentName: "agent_name", prepareOnly: true, workingDirectory?: "path")\`
 `.trim()
 }
 
@@ -347,6 +328,7 @@ export function constructSystemPrompt(
   agentProperties?: Record<string, string>,
   workingNotes?: KnowledgeNote[],
   excludeAgentId?: string,
+  filesystemContext?: string,
 ): string {
   let prompt = getEffectiveSystemPrompt(customSystemPrompt)
 
@@ -356,10 +338,14 @@ export function constructSystemPrompt(
   const compactNow = formatPromptNow(now, tz)
   prompt += `\n\nNow: ${compactNow} ${tz}`
 
+  if (filesystemContext?.trim()) {
+    prompt += `\n\nFILESYSTEM LOCATIONS:\n${filesystemContext.trim()}`
+  }
+
   if (isAgentMode) {
     prompt += getAgentModeAdditions(availableTools)
 
-    const hasDelegationTool = hasPromptTool(availableTools, 'delegate_to_agent') || hasPromptTool(availableTools, 'send_to_agent')
+    const hasDelegationTool = hasPromptTool(availableTools, 'delegate_to_agent')
 
     if (hasDelegationTool) {
       // Add ACP agent delegation information if agents are available
@@ -390,7 +376,7 @@ export function constructSystemPrompt(
   // Only a tiny subset of context:auto knowledge notes should be injected at runtime.
   const formattedWorkingNotes = formatWorkingNotesForPrompt(workingNotes || [])
   if (formattedWorkingNotes) {
-    prompt += `\n\nWORKING NOTES:\nThese were injected from ~/.agents/knowledge/ and/or ./.agents/knowledge/ because their frontmatter sets context: auto. Prefer note summaries when present, keep this subset tiny, and leave most notes as context: search-only.\n\n${formattedWorkingNotes}`
+    prompt += `\n\nWORKING NOTES:\nThese were injected from configured knowledge roots because their frontmatter sets context: auto. Prefer note summaries when present, keep this subset tiny, and leave most notes as context: search-only.\n\n${formattedWorkingNotes}`
   }
 
   // Format full tool info for relevant tools only (when provided)
@@ -428,11 +414,6 @@ export function constructSystemPrompt(
 
     if (runtimeTools.length > 0) {
       prompt += `\n\nDOTAGENTS TOOLS: ${formatRuntimeToolInfo(runtimeTools)}`
-    }
-
-    const toolDiscoveryPromptAddition = getToolDiscoveryPromptAddition(availableTools)
-    if (toolDiscoveryPromptAddition) {
-      prompt += `\n\n${toolDiscoveryPromptAddition}`
     }
 
     // If relevant tools are identified, show them with full details
@@ -480,28 +461,33 @@ export function constructMinimalSystemPrompt(
     inputSchema?: any
   }>,
   skillsIndex?: string,
+  filesystemContext?: string,
 ): string {
   // IMPORTANT: This prompt is a last-resort fallback used when the full system prompt
   // cannot fit in the model context window. It must preserve the core policies:
   // - Use tools proactively to complete tasks
   // - Work iteratively until goals are fully achieved
-  // - Preserve skills discoverability (IDs) so skills aren't silently dropped
+  // - Preserve filesystem skill paths so skills remain discoverable under shrinking
   let prompt =
     "You are an autonomous AI assistant that uses tools to complete tasks. Work iteratively until goals are fully achieved. " +
     "Use tools proactively - prefer tools over asking users for information you can gather yourself. " +
     "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible. " +
     "You are highly autonomous and proactive. Make as many tool calls as needed to completely finish the task. Do NOT stop to ask the user for permission or confirmation. Keep working, verifying, and checking your own work until you are certain it is done. " +
     "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, do not ask for permission, only ask the minimum high-signal follow-ups. " +
-    "Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/ as notes at .agents/knowledge/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in <appData>/<appId>/conversations/; common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux; <appId> is usually dotagents but some installs may use app.dotagents, so infer the real local folder when needed; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in the layered ~/.agents/ and ./.agents/ filesystem; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available load the dotagents-config-admin skill before changing unfamiliar DotAgents config."
+    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files. Use execute_command with rg/find/ls/wc/sed/head/tail to discover and read them through the filesystem. For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR instead of expecting list/schema helper tools. Durable knowledge lives in configured knowledge roots, defaulting to global/workspace .agents/knowledge, as notes at <knowledge-root>/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in the runtime-supplied conversations directory; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in layered global/workspace .agents folders; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available read the dotagents-config-admin SKILL.md path before changing unfamiliar DotAgents config."
 
   if (isAgentMode) {
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up. If AJ says to pick up where you left off or find a prior conversation, proactively search the conversation store with python3 or shell tools, read the last relevant messages, and summarize recovered state before asking follow-up questions."
   }
 
-  // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
+  if (filesystemContext?.trim()) {
+    prompt += `\n\nFILESYSTEM LOCATIONS:\n${filesystemContext.trim()}`
+  }
+
+  // Preserve filesystem skill paths under Tier-3 shrinking (only if skills exist).
   if (skillsIndex?.trim()) {
     prompt +=
-      " Skills are optional instruction modules. Call load_skill_instructions({ skillId: \"<id>\" }) at most once per skill per agent session, using the exact id shown before the dash. If already loaded, reuse the prior instructions."
+      " Skills are optional filesystem instruction modules. When a task matches a listed skill, read its SKILL.md path with execute_command; do not bulk-read skill folders."
     prompt += `\n\nAVAILABLE SKILLS:\n${skillsIndex.trim()}`
   }
 

@@ -57,7 +57,7 @@ User Request
     ▼
 Main Agent (internal)
     │
-    ├── Sees available agents via list_available_agents
+    ├── Sees available agents in prompt context
     ├── Decides to delegate to "code-agent"
     ├── Calls delegate_to_agent
     │
@@ -111,10 +111,10 @@ Agent System Prompt includes:
 Agent decides to use a skill
     │
     ▼
-Agent calls load_skill_instructions
+Agent reads the listed SKILL.md path with execute_command
     │
     ▼
-Full instructions loaded from .agents/skills/<id>/skill.md
+Full instructions loaded from .agents/skills/<id>/SKILL.md
     │
     ▼
 Agent uses skill knowledge to complete the task
@@ -154,6 +154,8 @@ Agents have fine-grained tool access:
 - **disabledServers** — Blacklist of MCP servers
 - **disabledTools** — Specific tools to block
 - **enabledRuntimeTools** — Whitelist of DotAgents runtime tools
+
+When `enabledRuntimeTools` is omitted, agents get the filesystem-first default runtime tools: `set_session_title`, `execute_command`, `read_more_context`, and `mark_work_complete`. Runtime discovery metadata lives under `$DOTAGENTS_RUNTIME_DIR`, with `agents.json`, `tools/index.json`, and per-tool schemas in `tools/schemas/`.
 
 ---
 

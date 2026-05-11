@@ -149,6 +149,22 @@ describe("continuation guard helpers", () => {
     })
   })
 
+  it("does not reuse assistant messages from before the current request", () => {
+    expect(resolveIterationLimitFinalContent({
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Older request" },
+        { role: "assistant", content: "Older assistant summary" },
+        { role: "user", content: "Current request" },
+      ],
+      sinceIndex: 2,
+      hasRecentErrors: false,
+    })).toEqual({
+      content: "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.",
+      usedExplicitUserResponse: false,
+    })
+  })
+
   it("ignores raw tool transcript final content and prefers a real assistant summary", () => {
     expect(resolveIterationLimitFinalContent({
       finalContent: '[execute_command] {"command":"pwd"}',
@@ -214,6 +230,12 @@ describe("continuation guard helpers", () => {
 
   it("treats bare next-step continuation text as progress updates", () => {
     const content = 'Next: "Health insurance docs (Form 1095)".'
+    expect(isProgressUpdateResponse(content)).toBe(true)
+    expect(isDeliverableResponseContent(content)).toBe(false)
+  })
+
+  it("treats continuing/searching intent text as progress updates", () => {
+    const content = "Continuing the audit search now."
     expect(isProgressUpdateResponse(content)).toBe(true)
     expect(isDeliverableResponseContent(content)).toBe(false)
   })

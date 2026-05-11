@@ -316,8 +316,9 @@ export type ProfileMcpServerConfig = {
   // When allServersDisabledByDefault is true, this list contains servers that are explicitly ENABLED
   // (i.e., servers the user has opted-in to use for this profile)
   enabledServers?: string[]
-  // When set, only these runtime tools are enabled (whitelist approach for agents)
-  // If undefined, all runtime tools are available (default behavior)
+  // When set, only these runtime tools are enabled (whitelist approach for agents).
+  // If undefined, filesystem-first default runtime tools are available:
+  // set_session_title, execute_command, read_more_context, and mark_work_complete.
   enabledRuntimeTools?: string[]
 }
 
@@ -1082,6 +1083,11 @@ export type Config = {
 
   // Onboarding Configuration
   onboardingCompleted?: boolean
+
+  // Filesystem-first knowledge roots. Existing .agents/knowledge roots remain
+  // available; configured roots are additional readable locations and the first
+  // configured root is the default write target for new notes.
+  knowledgeRoots?: string[]
 
   // Toggle Voice Dictation Configuration
   toggleVoiceDictationEnabled?: boolean

@@ -8,12 +8,10 @@
  * and have direct access to the app's services.
  */
 
-import { mcpService, type MCPTool, type MCPToolResult } from "./mcp-service"
+import { type MCPToolResult } from "./mcp-service"
 import { agentSessionTracker } from "./agent-session-tracker"
-import { agentSessionStateManager, toolApprovalManager } from "./state"
-import { emergencyStopAll } from "./emergency-stop"
+import { agentSessionStateManager } from "./state"
 import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
-import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
@@ -23,7 +21,6 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
-import type { AgentSkill, ProfileSkillsConfig } from "../shared/types"
 
 const execAsync = promisify(exec)
 
@@ -41,105 +38,6 @@ import { runtimeToolDefinitions } from "./runtime-tool-definitions"
 
 interface BuiltinToolContext {
   sessionId?: string
-}
-
-function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkillIds: string[]) {
-  return {
-    ignoredInvalidSkillId: skillId,
-    warning: `Ignored invalid execute_command.skillId: ${skillId}. Ran the command in the default workspace instead.`,
-    guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
-    retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
-    availableSkillIds,
-  }
-}
-
-function uniqueSkillIds(ids: Array<string | undefined>): string[] {
-  return Array.from(new Set(ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id))))
-}
-
-function getSkillFolderIdFromFilePath(filePath?: string): string | undefined {
-  if (!filePath || filePath.startsWith("github:")) return undefined
-
-  const normalized = path.normalize(filePath)
-  const segments = normalized.split(path.sep).filter(Boolean)
-  const agentsIndex = segments.lastIndexOf(".agents")
-  const skillsIndex = agentsIndex >= 0 && segments[agentsIndex + 1] === "skills"
-    ? agentsIndex + 1
-    : segments.lastIndexOf("skills")
-
-  if (skillsIndex >= 0 && skillsIndex < segments.length - 2) {
-    return segments.slice(skillsIndex + 1, -1).join("/")
-  }
-
-  return undefined
-}
-
-function getSkillRuntimeIds(skill: AgentSkill, requestedSkillId?: string): string[] {
-  return uniqueSkillIds([
-    requestedSkillId,
-    skill.id,
-    getSkillFolderIdFromFilePath(skill.filePath),
-  ])
-}
-
-function resolveRuntimeSkill(skillId: string, skillsServiceLike: { getSkill: (id: string) => AgentSkill | undefined; getSkills: () => AgentSkill[] }): AgentSkill | undefined {
-  const trimmedSkillId = skillId.trim()
-  if (!trimmedSkillId) return undefined
-
-  const direct = skillsServiceLike.getSkill(trimmedSkillId)
-  if (direct) return direct
-
-  const normalizedSkillId = trimmedSkillId.toLowerCase()
-  return skillsServiceLike.getSkills().find((skill) => {
-    return skill.name.toLowerCase() === normalizedSkillId
-      || getSkillFolderIdFromFilePath(skill.filePath)?.toLowerCase() === normalizedSkillId
-  })
-}
-
-function isSkillEnabledByConfig(skillIds: string | string[], skillsConfig?: ProfileSkillsConfig): boolean {
-  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
-  const ids = Array.isArray(skillIds) ? skillIds : [skillIds]
-  return ids.some((id) => (skillsConfig.enabledSkillIds ?? []).includes(id))
-}
-
-async function isSkillEnabledForRuntimeContext(skillIds: string | string[], context: BuiltinToolContext): Promise<boolean> {
-  const { agentProfileService } = await import("./agent-profile-service")
-
-  if (context.sessionId) {
-    const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
-      ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
-      : undefined
-    const trackerSnapshot = typeof agentSessionTracker.getSessionProfileSnapshot === "function"
-      ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
-      : undefined
-    const snapshot = stateSnapshot ?? trackerSnapshot
-    if (snapshot) {
-      const currentProfile = agentProfileService.getCurrentProfile()
-      if (currentProfile?.id === snapshot.profileId) {
-        return isSkillEnabledByConfig(skillIds, currentProfile.skillsConfig)
-      }
-      return isSkillEnabledByConfig(skillIds, snapshot.skillsConfig)
-    }
-  }
-
-  const profile = agentProfileService.getCurrentProfile()
-  if (!profile) return false
-  return isSkillEnabledByConfig(skillIds, profile.skillsConfig)
-}
-
-function disabledSkillToolResult(skillId: string, action: "load" | "execute"): MCPToolResult {
-  const actionText = action === "load" ? "load instructions for" : "run commands inside"
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        success: false,
-        skillId,
-        error: `Skill '${skillId}' is disabled for this agent. Enable it in Settings > Skills before trying to ${actionText} this skill.`,
-      }),
-    }],
-    isError: true,
-  }
 }
 
 type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
@@ -521,189 +419,6 @@ type ToolHandler = (
 ) => Promise<MCPToolResult>
 
 const toolHandlers: Record<string, ToolHandler> = {
-  list_running_agents: async (): Promise<MCPToolResult> => {
-    const activeSessions = agentSessionTracker.getActiveSessions()
-
-    if (activeSessions.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              agents: [],
-              count: 0,
-              message: "No agents currently running",
-            }, null, 2),
-          },
-        ],
-        isError: false,
-      }
-    }
-
-    const agents = activeSessions.map((session) => ({
-      sessionId: session.id,
-      conversationId: session.conversationId,
-      title: session.conversationTitle,
-      status: session.status,
-      currentIteration: session.currentIteration,
-      maxIterations: session.maxIterations,
-      lastActivity: session.lastActivity,
-      startTime: session.startTime,
-      isSnoozed: session.isSnoozed,
-      // Calculate runtime in seconds
-      runtimeSeconds: Math.floor((Date.now() - session.startTime) / 1000),
-    }))
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            agents,
-            count: agents.length,
-          }, null, 2),
-        },
-      ],
-      isError: false,
-    }
-  },
-
-  send_agent_message: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate required parameters with proper type guards
-    if (!args.sessionId || typeof args.sessionId !== "string") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "sessionId is required and must be a string",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    if (!args.message || typeof args.message !== "string") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "message is required and must be a string",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    const sessionId = args.sessionId
-    const message = args.message
-
-    // Get target session
-    const session = agentSessionTracker.getSession(sessionId)
-    if (!session) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: `Agent session not found: ${sessionId}`,
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    // Must have a conversation to queue message
-    if (!session.conversationId) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "Target agent session has no linked conversation",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    // Queue message for the target agent's conversation while preserving the
-    // target session's foreground/background state for the eventual continuation.
-    const startSnoozed = session.isSnoozed ?? false
-    const queuedMessage = messageQueueService.enqueue(session.conversationId, message, sessionId, {
-      startSnoozed,
-      suppressPanelAutoShow: startSnoozed,
-      focusPanelSession: !startSnoozed,
-    })
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            sessionId,
-            conversationId: session.conversationId,
-            queuedMessageId: queuedMessage.id,
-            message: `Message queued for agent session ${sessionId} (${session.conversationTitle})`,
-          }, null, 2),
-        },
-      ],
-      isError: false,
-    }
-  },
-
-  kill_agent: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    const sessionId = args.sessionId as string | undefined
-
-    if (sessionId) {
-      // Kill specific session
-      const session = agentSessionTracker.getSession(sessionId)
-      if (!session) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Agent session not found: ${sessionId}` }) }],
-          isError: true,
-        }
-      }
-      agentSessionStateManager.stopSession(sessionId)
-      toolApprovalManager.cancelSessionApprovals(sessionId)
-      agentSessionTracker.stopSession(sessionId)
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, sessionId, message: `Agent session ${sessionId} (${session.conversationTitle}) terminated` }, null, 2) }],
-        isError: false,
-      }
-    }
-
-    // Kill all agents
-    const activeSessions = agentSessionTracker.getActiveSessions()
-    if (activeSessions.length === 0) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, message: "No agents were running", sessionsTerminated: 0 }, null, 2) }],
-        isError: false,
-      }
-    }
-    toolApprovalManager.cancelAllApprovals()
-    const { before, after } = await emergencyStopAll()
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        success: true,
-        message: `Emergency stop: ${activeSessions.length} session(s) terminated`,
-        sessionsTerminated: activeSessions.length,
-        processesKilled: before - after,
-      }, null, 2) }],
-      isError: false,
-    }
-  },
-
   respond_to_user: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (!context.sessionId) {
       return {
@@ -1033,6 +748,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const title = args.title.trim()
     const mappedAppSessionId = getRootAppSessionForAcpSession(context.sessionId)
     const trackedSessionId = mappedAppSessionId ?? context.sessionId
     const session = agentSessionTracker.getSession(trackedSessionId)
@@ -1045,7 +761,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const updatedConversation = await conversationService.renameConversationTitle(
       session.conversationId,
-      args.title,
+      title,
     )
 
     if (!updatedConversation) {
@@ -1127,8 +843,6 @@ const toolHandlers: Record<string, ToolHandler> = {
   },
 
   execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
-    const { skillsService } = await import("./skills-service")
-
     // Validate required command parameter
     if (!args.command || typeof args.command !== "string") {
       return {
@@ -1138,7 +852,20 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const command = args.command as string
-    const skillId = typeof args.skillId === "string" ? args.skillId.trim() : undefined
+    if (args.skillId !== undefined) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "execute_command.skillId is no longer supported.",
+            guidance: "Skills are filesystem instructions. Use the SKILL.md path shown in Available Skills, or run a normal shell command such as `cd /path/to/skill && ...`.",
+            retrySuggestion: "Retry without skillId. If you need a skill, first read its SKILL.md file path with execute_command and then run commands using ordinary filesystem paths.",
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
     // Validate timeout: must be a finite non-negative number, otherwise use default
     // This prevents NaN or negative values from disabling the timeout entirely
     const rawTimeout = args.timeout
@@ -1146,60 +873,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       ? rawTimeout
       : 30000
 
-    // Determine the working directory
-    let cwd: string | undefined
-    let skillName: string | undefined
-    let ignoredInvalidSkillIdWarning: ReturnType<typeof buildIgnoredExecuteCommandSkillIdWarning> | undefined
-
-    if (skillId) {
-      // Pick up skills added or edited directly in .agents/skills while the app
-      // process is still running.
-      skillsService.refreshFromDisk()
-
-      // Find the skill and get its directory. Prefer exact IDs, but also accept
-      // the canonical .agents/skills/<id>/ folder ID for imported skills whose
-      // frontmatter id/name drifted from the on-disk folder.
-      let skill = resolveRuntimeSkill(skillId, skillsService)
-      if (!skill) {
-        const availableSkillIds = skillsService
-          .getSkills()
-          .map((skill) => skill.id)
-          .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
-        ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
-      } else {
-
-        if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
-          return disabledSkillToolResult(skillId, "execute")
-        }
-
-        if (!skill.filePath) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill has no file path (not imported from disk): ${skill.name}` }) }],
-            isError: true,
-          }
-        }
-
-        // For local files, use the directory containing SKILL.md
-        // For GitHub skills, automatically upgrade to local clone
-        if (skill.filePath.startsWith("github:")) {
-          try {
-            // Dynamically import skills-service to avoid circular dependency
-            const { skillsService: skillsSvc } = await import("./skills-service")
-            skill = await skillsSvc.upgradeGitHubSkillToLocal(skill.id)
-          } catch (upgradeError) {
-            return {
-              content: [{ type: "text", text: JSON.stringify({ success: false, error: `Failed to upgrade GitHub skill to local: ${upgradeError instanceof Error ? upgradeError.message : String(upgradeError)}` }) }],
-              isError: true,
-            }
-          }
-        }
-
-        cwd = path.dirname(skill.filePath!)
-        skillName = skill.name
-      }
-    }
-
-    const effectiveCwd = cwd || process.cwd()
+    const effectiveCwd = process.cwd()
     const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd)
     const effectiveCommand = normalizedCommandResult.command
     const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd)
@@ -1215,8 +889,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               ...packageManagerMismatch,
             }, null, 2),
@@ -1239,8 +911,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               ...contextGatheringCommandBlock,
             }, null, 2),
@@ -1250,15 +920,30 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    let runtimeFilesystemEnv: Record<string, string> = {}
     try {
-      const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string } = {
+      const {
+        ensureRuntimeFilesystemDirectories,
+        getRuntimeFilesystemEnv,
+      } = await import("./runtime-filesystem-paths")
+      await ensureRuntimeFilesystemDirectories(context.sessionId)
+      runtimeFilesystemEnv = getRuntimeFilesystemEnv(context.sessionId)
+    } catch {
+      // Runtime filesystem env vars are convenience metadata; command execution
+      // should still work if they cannot be prepared.
+    }
+
+    try {
+      const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string; env?: NodeJS.ProcessEnv } = {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
+        env: {
+          ...process.env,
+          ...runtimeFilesystemEnv,
+        },
       }
 
-      if (cwd) {
-        execOptions.cwd = cwd
-      }
+      execOptions.cwd = effectiveCwd
 
       if (timeout > 0) {
         execOptions.timeout = timeout
@@ -1294,8 +979,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               stdout: truncatedStdout,
               stderr: stderr || "",
@@ -1339,8 +1022,6 @@ const toolHandlers: Record<string, ToolHandler> = {
               command: effectiveCommand,
               originalCommand: effectiveCommand === command ? undefined : command,
               cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               error: errorMessage + hint,
               exitCode,
@@ -1351,198 +1032,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         ],
         isError: true,
       }
-    }
-  },
-
-  list_server_tools: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate serverName parameter
-    if (typeof args.serverName !== "string" || args.serverName.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "serverName must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const serverName = args.serverName.trim()
-    const allTools = mcpService.getAvailableTools()
-
-    // Filter tools by server name
-    const serverTools = allTools.filter((tool) => {
-      const toolServerName = tool.name.includes(":") ? tool.name.split(":")[0] : "unknown"
-      return toolServerName === serverName
-    })
-
-    if (serverTools.length === 0) {
-      // Check if the server exists but has no tools
-      const serverStatus = mcpService.getServerStatus()
-      if (serverStatus[serverName]) {
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              serverName,
-              connected: serverStatus[serverName].connected,
-              tools: [],
-              count: 0,
-              message: serverStatus[serverName].connected
-                ? "Server is connected but has no tools available"
-                : "Server is not connected",
-            }, null, 2),
-          }],
-          isError: false,
-        }
-      }
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Server '${serverName}' not found. Check the configured server list in the prompt, app UI, or .agents/mcp.json.`,
-          }, null, 2),
-        }],
-        isError: true,
-      }
-    }
-
-    // Return tools with brief descriptions (no full schemas)
-    const toolList = serverTools.map((tool) => {
-      const toolName = tool.name.includes(":") ? tool.name.split(":")[1] : tool.name
-      return {
-        name: tool.name,
-        shortName: toolName,
-        description: tool.description,
-      }
-    })
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: true,
-          serverName,
-          tools: toolList,
-          count: toolList.length,
-          hint: "Use get_tool_schema to get full parameter details for a specific tool",
-        }, null, 2),
-      }],
-      isError: false,
-    }
-  },
-
-  get_tool_schema: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate toolName parameter
-    if (typeof args.toolName !== "string" || args.toolName.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "toolName must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const toolName = args.toolName.trim()
-    const allTools = mcpService.getAvailableTools()
-
-    // Find the tool (try exact match first, then partial match)
-    let tool = allTools.find((t) => t.name === toolName)
-
-    // If not found, try matching just the tool name part (without server prefix)
-    if (!tool && !toolName.includes(":")) {
-      // Find ALL matching tools to detect ambiguity
-      const matchingTools = allTools.filter((t) => {
-        const shortName = t.name.includes(":") ? t.name.split(":")[1] : t.name
-        return shortName === toolName
-      })
-
-      if (matchingTools.length > 1) {
-        // Ambiguous match - multiple servers have a tool with this name
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: `Ambiguous tool name '${toolName}' - found in multiple servers. Please use the fully-qualified name.`,
-              matchingTools: matchingTools.map((t) => t.name),
-              hint: "Use one of the fully-qualified tool names listed above (e.g., 'server:tool_name')",
-            }, null, 2),
-          }],
-          isError: true,
-        }
-      }
-
-      // Single match - use it
-      tool = matchingTools[0]
-    }
-
-    if (!tool) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Tool '${toolName}' not found. Use list_server_tools to see available tools for a server.`,
-            availableTools: allTools.slice(0, 10).map((t) => t.name),
-            hint: allTools.length > 10 ? `...and ${allTools.length - 10} more tools` : undefined,
-          }, null, 2),
-        }],
-        isError: true,
-      }
-    }
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: true,
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        }, null, 2),
-      }],
-      isError: false,
-    }
-  },
-
-  load_skill_instructions: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
-    // Validate skillId parameter
-    if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "skillId must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const skillId = args.skillId.trim()
-    const { skillsService } = await import("./skills-service")
-    // Pick up skills added or edited directly in .agents/skills while the app
-    // process is still running.
-    skillsService.refreshFromDisk()
-    const skill = resolveRuntimeSkill(skillId, skillsService)
-
-    if (!skill) {
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Skill '${skillId}' not found. Check the Available Skills section in the system prompt for valid skill IDs.`,
-          }),
-        }],
-        isError: true,
-      }
-    }
-
-    if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
-      return disabledSkillToolResult(skillId, "load")
-    }
-
-    return {
-      content: [{
-        type: "text",
-        text: `# ${skill.name}\n\n${skill.instructions}`,
-      }],
-      isError: false,
     }
   },
 
@@ -1589,6 +1078,10 @@ export async function executeRuntimeTool(
   args: Record<string, unknown>,
   sessionId?: string
 ): Promise<MCPToolResult | null> {
+  if (!isRuntimeTool(toolName)) {
+    return null
+  }
+
   // Check for ACP router tools first
   if (isACPRouterTool(toolName)) {
     const result = await executeACPRouterTool(toolName, args, sessionId)
@@ -1627,7 +1120,9 @@ export async function executeRuntimeTool(
 export function isRuntimeTool(toolName: string): boolean {
   // Check ACP router tools
   if (isACPRouterTool(toolName)) return true
-  // Check if it's in our handler map (plain name match)
-  if (toolName in toolHandlers) return true
+  // Runtime tools are the dependency-free advertised definitions. Handlers may
+  // contain private helpers during migrations, but they are not callable unless
+  // listed in runtime-tool-definitions.
+  if (runtimeToolDefinitions.some((tool) => tool.name === toolName)) return true
   return false
 }

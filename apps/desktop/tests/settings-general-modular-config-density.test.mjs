@@ -8,15 +8,23 @@ const settingsGeneralSource = fs.readFileSync(
   'utf8',
 )
 
-const modularConfigBlock = settingsGeneralSource.match(
-  /<ControlGroup[\s\S]*?title="Modular config \(\.agents\)"[\s\S]*?<\/ControlGroup>/,
-)?.[0] ?? ''
+const modularConfigTitleMarker = '<span>Modular config (.agents)</span>'
+const modularConfigTitleIndex = settingsGeneralSource.indexOf(modularConfigTitleMarker)
+const modularConfigStartIndex = modularConfigTitleIndex >= 0
+  ? settingsGeneralSource.lastIndexOf('<ControlGroup', modularConfigTitleIndex)
+  : -1
+const modularConfigEndIndex = modularConfigTitleIndex >= 0
+  ? settingsGeneralSource.indexOf('</ControlGroup>', modularConfigTitleIndex)
+  : -1
+const modularConfigBlock = modularConfigStartIndex >= 0 && modularConfigEndIndex >= 0
+  ? settingsGeneralSource.slice(modularConfigStartIndex, modularConfigEndIndex + '</ControlGroup>'.length)
+  : ''
 
 test('desktop modular config settings use one compact explanatory block instead of split helper copy', () => {
   assert.ok(modularConfigBlock, 'expected to find the modular config settings group')
   assert.doesNotMatch(modularConfigBlock, /endDescription=\{/) 
   assert.doesNotMatch(modularConfigBlock, /Workspace overlay is enabled when a/)
-  assert.match(modularConfigBlock, /Advanced configuration can live in <span className="font-mono">\.agents<\/span>\.[\s\S]*?Workspace[\s\S]*?<span className="font-mono">\.agents<\/span> overrides the global layer when present/)
+  assert.match(modularConfigBlock, /Advanced configuration can live in <span className="font-mono">\.agents<\/span>\.[\s\S]*?Workspace[\s\S]*?<span className="font-mono">\.agents<\/span> is only used when[\s\S]*?it overrides the global layer/)
 })
 
 test('desktop modular config settings consolidate folder and file actions into one dense control row', () => {
@@ -24,4 +32,11 @@ test('desktop modular config settings consolidate folder and file actions into o
   assert.doesNotMatch(modularConfigBlock, /<Control label="Open" className="px-3">/)
   assert.doesNotMatch(modularConfigBlock, /<Control label="Reveal files in Finder\/Explorer" className="px-3">/)
   assert.match(modularConfigBlock, /<Control label="Open folders & files" className="px-3">[\s\S]*?Global Folder[\s\S]*?Workspace Folder[\s\S]*?System Prompt[\s\S]*?Guidelines[\s\S]*?<\/Control>/)
+})
+
+test('desktop modular config settings mark active system prompt overrides as update-blocking', () => {
+  assert.ok(modularConfigBlock, 'expected to find the modular config settings group')
+  assert.match(settingsGeneralSource, /const systemPromptOverrideScope = agentsFoldersQuery\.data\?\.workspace\?\.systemPromptExists/)
+  assert.match(modularConfigBlock, /System prompt override active/)
+  assert.match(modularConfigBlock, /will not receive default system prompt updates until the override is removed or reset/)
 })

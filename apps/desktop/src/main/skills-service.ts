@@ -944,7 +944,10 @@ class SkillsService {
   }
 
   /**
-   * Get the combined instructions for skills enabled for a specific profile
+   * Get the filesystem-first skill index for skills enabled for a specific profile.
+   *
+   * Skills are not loaded through a dedicated runtime tool. The model sees a
+   * compact index, then reads the relevant SKILL.md path with execute_command.
    * @param enabledSkillIds Array of skill IDs that are enabled for the profile
    */
   getEnabledSkillsInstructionsForProfile(enabledSkillIds: string[]): string {
@@ -964,10 +967,11 @@ class SkillsService {
       return ""
     }
 
-    // Progressive disclosure: Only show ID + description initially.
-    // Format is ID-first so the LLM unambiguously knows the value to pass to load_skill_instructions.
+    // Progressive disclosure: only show a compact index with direct file paths.
+    // The model reads SKILL.md itself when a task actually matches a skill.
     const skillsContent = enabledSkills.map(skill => {
-      return `- \`${skill.id}\` — ${skill.description || 'No description'}`
+      const skillPath = skill.filePath?.trim() || "Path unavailable"
+      return `- \`${skill.id}\` — ${skill.description || 'No description'}\n  Path: \`${skillPath}\``
     }).join("\n")
 
     const { globalLayer, workspaceLayer } = this.getLayers()
@@ -978,11 +982,12 @@ class SkillsService {
     return `
 # Available Skills
 
-When a task matches a skill below, call \`load_skill_instructions({ skillId: "<id>" })\` using the exact \`id\` shown before the dash.
+Skills are filesystem instructions. When a task matches a skill below, read its \`SKILL.md\` path with \`execute_command\` before using it.
+Do not bulk-read skill folders. Read \`SKILL.md\` first, then only referenced files needed for the task.
 
 ${skillsContent}
 
-Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsDir ? ` (global fallback: \`${globalSkillsDir}\`)` : ""}
+Skill roots: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsDir ? ` (global fallback: \`${globalSkillsDir}\`)` : ""}
 `
   }
 

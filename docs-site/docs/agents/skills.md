@@ -95,11 +95,11 @@ Available Skills:
 
 ### Loading
 
-When the agent decides to use a skill, it calls `load_skill_instructions` to get the full instructions:
+When the agent decides to use a skill, it reads the listed `SKILL.md` path with `execute_command`:
 
 ```
-Agent → load_skill_instructions("api-testing")
-     → Returns full skill.md content
+Agent → execute_command("sed -n '1,200p' /path/to/api-testing/SKILL.md")
+     → Returns the skill instructions
      → Agent uses the instructions to complete the task
 ```
 
