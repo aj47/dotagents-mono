@@ -602,7 +602,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
 
     expect(searchRead).toEqual(expect.objectContaining({ success: true, contextRef }))
     const firstMatch = (searchRead.matches as Array<{ excerpt: string }>)[0]
-    expect(firstMatch.excerpt.length).toBeLessThanOrEqual(4000)
+    expect(firstMatch.excerpt.length).toBeLessThanOrEqual(2500)
   })
 
   it('reapplies archive frontier even when there is no new overflow', async () => {

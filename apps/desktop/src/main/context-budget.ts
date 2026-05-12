@@ -656,7 +656,7 @@ export function readMoreContext(
 
   const mode = options.mode ?? "overview"
   const defaultMaxChars = 1500
-  const modeMaxChars = mode === "search" ? 4000 : 12000
+  const modeMaxChars = mode === "search" ? 2500 : 12000
   const maxChars = Math.max(100, Math.min(options.maxChars ?? defaultMaxChars, modeMaxChars))
   const totalChars = entry.totalChars
 

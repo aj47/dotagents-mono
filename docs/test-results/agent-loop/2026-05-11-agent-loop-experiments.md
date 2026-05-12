@@ -84,3 +84,15 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` failed.
 - Live metric versus the latest kept targeted hard-compaction row: status regressed from pass to fail, LLM calls increased from 3 to 6, `read_more_context` increased from 3 to 4, prompt chars increased from 22,297 to 47,591, and the run hit the iteration limit without the hidden token in the final answer.
 - Decision: discard. The broad-read shortcut is too aggressive; even when a search hit exists, the live model may still need another real context read to produce the final answer reliably.
+
+## 2026-05-12T00:06Z - Tighter search-mode `read_more_context` cap
+
+- Change tried: reduce search-mode `read_more_context` excerpts from 4,000 chars to 2,500 chars while leaving broader head/tail/window reads unchanged.
+- Focused validation: `pnpm --filter @dotagents/desktop exec vitest run src/main/context-budget.test.ts -t "search-mode read_more_context"` passed 1/1. Context-recovery deterministic cases passed 3/3.
+- Broader deterministic validation: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts src/main/context-budget.test.ts` passed 62/62.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` passed.
+- Targeted live metric versus the latest kept targeted hard-compaction row: status stayed pass, LLM calls stayed 3, `read_more_context` stayed 3, prompt chars decreased from 22,297 to 22,126, and the hidden token remained correct.
+- Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
+- Full hard-compaction metric versus the latest kept full run: `read_more_context` decreased from 4 to 2, prompt chars decreased from 41,431 to 29,669, and hidden-token correctness stayed pass. Versus the earlier best kept hard-compaction baseline, `read_more_context` stayed 2 and prompt chars were roughly neutral at 28,764 to 29,669.
+- Decision: keep. This is a conservative prompt-size optimization that reduces worst-case search payload without withholding real context reads.
