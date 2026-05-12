@@ -157,7 +157,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      grid-template-columns: repeat(8, minmax(130px, 1fr));
       gap: 10px;
       margin: 18px 0;
     }
@@ -194,6 +194,11 @@
       color: var(--muted);
       font-size: 13px;
       white-space: nowrap;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
     }
 
     .kpis {
@@ -295,6 +300,10 @@
       padding: 24px;
     }
 
+    .empty[hidden] {
+      display: none;
+    }
+
     .legend {
       display: flex;
       flex-wrap: wrap;
@@ -352,6 +361,12 @@
       overflow-wrap: anywhere;
     }
 
+    .run-sub {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
     .status {
       border-radius: 999px;
       padding: 3px 8px;
@@ -386,7 +401,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 980px;
+      min-width: 1120px;
       font-size: 12px;
       background: #fff;
     }
@@ -404,7 +419,11 @@
     th:nth-child(2),
     td:nth-child(2),
     th:nth-child(3),
-    td:nth-child(3) {
+    td:nth-child(3),
+    th:nth-child(4),
+    td:nth-child(4),
+    th:nth-child(5),
+    td:nth-child(5) {
       text-align: left;
     }
 
@@ -514,6 +533,14 @@
         <label for="caseSelect">Case</label>
         <select id="caseSelect"></select>
       </div>
+      <div class="control">
+        <label for="statusSelect">Status</label>
+        <select id="statusSelect"></select>
+      </div>
+      <div class="control">
+        <label for="shaSelect">Commit</label>
+        <select id="shaSelect"></select>
+      </div>
       <div class="control file-control">
         <label for="fileInput">JSONL</label>
         <input id="fileInput" type="file" accept=".jsonl,.txt,application/json">
@@ -587,6 +614,7 @@
         <thead>
           <tr>
             <th>Time</th>
+            <th>Commit</th>
             <th>Suite</th>
             <th>Case</th>
             <th>Status</th>
@@ -618,6 +646,11 @@
       readMoreContextCalls: "Context reads",
       totalIterations: "Iterations",
     };
+    const statusOptions = [
+      { value: "all", label: "all" },
+      { value: "pass", label: "pass" },
+      { value: "fail", label: "non-pass" },
+    ];
 
     const state = {
       rows: [],
@@ -635,6 +668,8 @@
       metricSelect: document.getElementById("metricSelect"),
       suiteSelect: document.getElementById("suiteSelect"),
       caseSelect: document.getElementById("caseSelect"),
+      statusSelect: document.getElementById("statusSelect"),
+      shaSelect: document.getElementById("shaSelect"),
       fileInput: document.getElementById("fileInput"),
       liveRefresh: document.getElementById("liveRefresh"),
       reloadButton: document.getElementById("reloadButton"),
@@ -731,6 +766,46 @@
       }).format(new Date(value));
     }
 
+    function caseLabel(row) {
+      return row.caseId || row.caseName || "case";
+    }
+
+    function shortSha(value) {
+      return value ? String(value).slice(0, 9) : "-";
+    }
+
+    function statusMatches(row, value) {
+      if (!value || value === "all") return true;
+      if (value === "pass") return row.status === "pass";
+      if (value === "fail") return row.status !== "pass";
+      return row.status === value;
+    }
+
+    function shaMatches(row, value) {
+      return !value || value === "all" || row.gitSha === value;
+    }
+
+    function commitOptions(rows) {
+      const bySha = new Map();
+      for (const row of rows) {
+        if (!row.gitSha) continue;
+        const current = bySha.get(row.gitSha) || { count: 0, latest: 0 };
+        current.count += 1;
+        current.latest = Math.max(current.latest, row._time || 0);
+        bySha.set(row.gitSha, current);
+      }
+
+      return [
+        { value: "all", label: "all" },
+        ...Array.from(bySha.entries())
+          .sort((a, b) => b[1].latest - a[1].latest || a[0].localeCompare(b[0]))
+          .map(([sha, meta]) => ({
+            value: sha,
+            label: `${shortSha(sha)} - ${formatCompact(meta.count)} rows`,
+          })),
+      ];
+    }
+
     function setStatus(kind, text) {
       els.statusDot.className = `dot ${kind === "fail" ? "fail" : kind === "warn" ? "warn" : ""}`.trim();
       els.loadStatus.textContent = text;
@@ -767,32 +842,56 @@
     function rebuildOptions() {
       const suiteValue = els.suiteSelect.value || "all";
       const caseValue = els.caseSelect.value || "all";
-      const suites = ["all", ...Array.from(new Set(state.rows.map((row) => row.suite).filter(Boolean))).sort()];
+      const statusValue = els.statusSelect.value || "all";
+      const shaValue = els.shaSelect.value || "all";
+
+      setSelectOptions(els.statusSelect, statusOptions, statusValue);
+      const normalizedStatus = els.statusSelect.value || "all";
+
+      const suiteRows = state.rows.filter((row) => statusMatches(row, normalizedStatus) && shaMatches(row, shaValue));
+      const suites = ["all", ...Array.from(new Set(suiteRows.map((row) => row.suite).filter(Boolean))).sort()];
+      setSelectOptions(els.suiteSelect, suites, suiteValue);
+      const normalizedSuite = els.suiteSelect.value || "all";
+
       const cases = ["all", ...Array.from(new Set(
         state.rows
-          .filter((row) => suiteValue === "all" || row.suite === suiteValue)
-          .map((row) => row.caseId || row.caseName)
+          .filter((row) => statusMatches(row, normalizedStatus))
+          .filter((row) => shaMatches(row, shaValue))
+          .filter((row) => normalizedSuite === "all" || row.suite === normalizedSuite)
+          .map(caseLabel)
           .filter(Boolean),
       )).sort()];
-
-      setSelectOptions(els.suiteSelect, suites, suiteValue);
       setSelectOptions(els.caseSelect, cases, caseValue);
+      const normalizedCase = els.caseSelect.value || "all";
+
+      const shaRows = state.rows
+        .filter((row) => statusMatches(row, normalizedStatus))
+        .filter((row) => normalizedSuite === "all" || row.suite === normalizedSuite)
+        .filter((row) => normalizedCase === "all" || caseLabel(row) === normalizedCase);
+      setSelectOptions(els.shaSelect, commitOptions(shaRows), shaValue);
     }
 
     function setSelectOptions(select, values, selected) {
-      select.innerHTML = values
-        .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+      const options = values.map((option) => (
+        typeof option === "string" ? { value: option, label: option } : option
+      ));
+      select.innerHTML = options
+        .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
         .join("");
-      select.value = values.includes(selected) ? selected : "all";
+      select.value = options.some((option) => option.value === selected) ? selected : "all";
     }
 
     function filteredRows() {
       const suite = els.suiteSelect.value;
       const caseId = els.caseSelect.value;
+      const status = els.statusSelect.value;
+      const sha = els.shaSelect.value;
       return state.rows.filter((row) => {
         if (suite && suite !== "all" && row.suite !== suite) return false;
-        const rowCase = row.caseId || row.caseName;
+        const rowCase = caseLabel(row);
         if (caseId && caseId !== "all" && rowCase !== caseId) return false;
+        if (!statusMatches(row, status)) return false;
+        if (!shaMatches(row, sha)) return false;
         return true;
       });
     }
@@ -800,7 +899,7 @@
     function latestRowsByCase(rows) {
       const map = new Map();
       for (const row of rows) {
-        map.set(`${row.suite}:${row.caseId || row.caseName}`, row);
+        map.set(`${row.suite}:${caseLabel(row)}`, row);
       }
       return Array.from(map.values()).sort((a, b) => b._time - a._time);
     }
@@ -825,16 +924,17 @@
         ? `loaded ${new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(state.lastLoad)}`
         : "no data";
 
+      const shownCommits = new Set(rows.map((row) => row.gitSha).filter(Boolean)).size;
       els.kpiRows.textContent = formatCompact(state.rows.length);
-      els.kpiWindow.textContent = `${formatCompact(rows.length)} shown`;
+      els.kpiWindow.textContent = `${formatCompact(rows.length)} shown - ${formatCompact(shownCommits)} commit${shownCommits === 1 ? "" : "s"}`;
       els.kpiPassRate.textContent = `${passRate}%`;
       els.kpiPassDelta.textContent = failures ? `${failures} failing row${failures === 1 ? "" : "s"}` : "no failures";
       els.kpiDuration.textContent = latest ? formatDuration(numberValue(latest, "durationMs")) : "0s";
       els.kpiDurationDelta.textContent = `median ${formatDuration(median(rows.map((row) => numberValue(row, "durationMs"))))}`;
       els.kpiLlm.textContent = latest ? formatCompact(numberValue(latest, "llmCalls")) : "0";
-      els.kpiLlmDelta.textContent = latest ? latest.suite : "latest row";
+      els.kpiLlmDelta.textContent = latest ? `${latest.suite || "-"} - ${shortSha(latest.gitSha)}` : "latest row";
       els.kpiPrompt.textContent = latest ? formatCompact(numberValue(latest, "promptCharsTotal")) : "0";
-      els.kpiPromptDelta.textContent = latest ? (latest.caseId || "latest row") : "latest row";
+      els.kpiPromptDelta.textContent = latest ? `${caseLabel(latest)} - ${shortSha(latest.gitSha)}` : "latest row";
       els.kpiContext.textContent = latest ? formatCompact(numberValue(latest, "readMoreContextCalls")) : "0";
       els.kpiContextDelta.textContent = latest ? `${formatCompact(numberValue(latest, "toolCallsTotal"))} total tools` : "latest row";
 
@@ -851,12 +951,13 @@
           row,
           x: row._time,
           y: numberValue(row, metric),
-          series: `${row.suite} / ${row.caseId || row.caseName || "case"}`,
+          series: `${row.suite} / ${caseLabel(row)}`,
         }));
 
       els.emptyState.hidden = points.length > 0;
       els.chartTitle.textContent = `${metricLabels[metric] || metric} over time`;
-      els.chartMeta.textContent = `${points.length} point${points.length === 1 ? "" : "s"}`;
+      const chartCommits = new Set(points.map((point) => point.row.gitSha).filter(Boolean)).size;
+      els.chartMeta.textContent = `${points.length} point${points.length === 1 ? "" : "s"} - ${chartCommits} commit${chartCommits === 1 ? "" : "s"}`;
 
       const canvas = els.chart;
       const context = canvas.getContext("2d");
@@ -972,9 +1073,10 @@
         return `
           <article class="run-row ${failed ? "fail" : ""}">
             <div class="run-top">
-              <span class="run-case">${escapeHtml(row.caseId || row.caseName || "case")}</span>
+              <span class="run-case">${escapeHtml(caseLabel(row))}</span>
               <span class="status ${failed ? "fail" : ""}">${escapeHtml(row.status || "unknown")}</span>
             </div>
+            <div class="run-sub">${escapeHtml(formatTime(row._time))} - ${escapeHtml(shortSha(row.gitSha))}</div>
             <div class="run-metrics">
               <span>${escapeHtml(row.suite || "-")}</span>
               <span>${formatDuration(numberValue(row, "durationMs"))}</span>
@@ -994,8 +1096,9 @@
         return `
           <tr>
             <td>${escapeHtml(formatTime(row._time))}</td>
+            <td class="mono">${escapeHtml(shortSha(row.gitSha))}</td>
             <td>${escapeHtml(row.suite || "-")}</td>
-            <td>${escapeHtml(row.caseId || row.caseName || "-")}</td>
+            <td>${escapeHtml(caseLabel(row))}</td>
             <td class="${failed ? "fail-text" : "pass-text"}">${escapeHtml(row.status || "-")}</td>
             <td>${formatDuration(numberValue(row, "durationMs"))}</td>
             <td>${formatCompact(numberValue(row, "llmCalls"))}</td>
@@ -1029,6 +1132,8 @@
     els.metricSelect.addEventListener("change", render);
     els.suiteSelect.addEventListener("change", render);
     els.caseSelect.addEventListener("change", render);
+    els.statusSelect.addEventListener("change", render);
+    els.shaSelect.addEventListener("change", render);
     els.reloadButton.addEventListener("click", () => {
       state.fetchAvailable = true;
       loadMetrics();
