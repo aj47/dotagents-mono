@@ -268,6 +268,59 @@ function findMissingEvidenceGroups(content: string, evidenceGroups: string[][]):
   )
 }
 
+function buildIntentJudgeMessages(traceCase: AutoresearchContinuationCase, actualAnswer: string) {
+  return [
+    {
+      role: "system",
+      content: [
+        "You are a strict evaluator for an agent-loop e2e test.",
+        "Judge whether the assistant's ACTUAL ANSWER satisfies the CURRENT REQUEST and user intent.",
+        "Use the prior context only as evidence; do not require exact wording from the reference answer.",
+        "Pass only if the actual answer addresses the latest user request, does not answer a stale older task, and does not use an internal completion summary as the user-facing answer.",
+        "Return JSON only with: conversationState, confidence, missingItems, reason.",
+        "Use conversationState=\"complete\" for pass and conversationState=\"running\" for fail.",
+      ].join("\n"),
+    },
+    {
+      role: "user",
+      content: [
+        `Case: ${traceCase.caseId} - ${traceCase.name}`,
+        "",
+        "CURRENT REQUEST:",
+        traceCase.transcript,
+        "",
+        "REFERENCE ANSWER / INTENT:",
+        traceCase.response,
+        "",
+        "KEY SEMANTIC REQUIREMENTS:",
+        traceCase.requiredLiveResponseEvidence
+          .map((group, index) => `${index + 1}. One of: ${group.join(" | ")}`)
+          .join("\n"),
+        "",
+        "ACTUAL ANSWER:",
+        actualAnswer,
+        "",
+        "Return JSON only. If any key semantic requirement is missing or the answer addresses stale context instead of the current request, return conversationState=\"running\" and list missingItems.",
+      ].join("\n"),
+    },
+  ]
+}
+
+async function judgeLiveIntentMatch(
+  traceCase: AutoresearchContinuationCase,
+  actualAnswer: string,
+) {
+  const { normalizeVerificationResultForCompletion } = await import("./llm-continuation-guards")
+  const { verifyCompletionWithFetch } = await import("./llm-fetch")
+  const messages = buildIntentJudgeMessages(traceCase, actualAnswer)
+  const rawResult = await verifyCompletionWithFetch(
+    messages,
+    liveHarness.config.mcpToolsProviderId,
+    traceCase.sessionId,
+  )
+  return normalizeVerificationResultForCompletion(rawResult, { verificationMessages: messages })
+}
+
 async function executeLiveSafeTool(
   toolCall: MCPToolCall,
   sessionId: string,
@@ -395,6 +448,15 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
       const finalAnswerAvoidedStaleMarker = !result.content.includes("STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY")
       const structuralPass = result.content.trim().length > 0 && finalAnswerAvoidedStaleMarker
       const reachedIterationLimit = result.totalIterations >= maxIterations
+      const agentVerifierCalls = verifierSpy.mock.calls.length
+      const llmJudgeEnabled = process.env.LIVE_AGENT_LOOP_LLM_JUDGE !== "0"
+      const llmJudgeRequired = process.env.LIVE_AGENT_LOOP_LLM_JUDGE_REQUIRED === "1"
+      const llmJudge = llmJudgeEnabled
+        ? await judgeLiveIntentMatch(traceCase, result.content)
+        : undefined
+      const llmJudgePassed = llmJudge
+        ? llmJudge.conversationState === "complete" && llmJudge.isComplete === true
+        : undefined
 
       recordAgentLoopMetric({
         suite: "agent-loop-autoresearch-live-e2e",
@@ -406,7 +468,14 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
         provider: liveHarness.config.mcpToolsProviderId,
         model: liveHarness.config.mcpToolsChatgptWebModel,
         llmCalls: llmSpy.mock.calls.length,
-        verifierCalls: verifierSpy.mock.calls.length,
+        verifierCalls: agentVerifierCalls,
+        llmJudgeEnabled,
+        llmJudgeCalls: llmJudgeEnabled ? 1 : 0,
+        llmJudgePassed,
+        llmJudgeConversationState: llmJudge?.conversationState,
+        llmJudgeConfidence: llmJudge?.confidence,
+        llmJudgeMissingItems: llmJudge?.missingItems,
+        llmJudgeReason: llmJudge?.reason,
         toolCallsTotal: liveHarness.executedToolCalls.length,
         toolCallsByName: summarizeToolCalls(liveHarness.executedToolCalls),
         finalContentChars: result.content.length,
@@ -421,6 +490,9 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
 
       expect(result.content.trim().length).toBeGreaterThan(0)
       expect(finalAnswerAvoidedStaleMarker).toBe(true)
+      if (llmJudgeRequired) {
+        expect(llmJudgePassed, llmJudge?.reason || "LLM judge did not pass").toBe(true)
+      }
     },
     180000,
   )
