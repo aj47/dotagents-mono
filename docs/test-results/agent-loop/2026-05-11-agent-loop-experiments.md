@@ -64,3 +64,14 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Refined validation: `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-verification-replay.test.ts` passed 10/10, `pnpm --filter @dotagents/desktop run typecheck:node` passed, and full live e2e passed 6/6.
 - Refined live metric versus the prior kept full live run: AutoResearch prompt chars increased from 41,332 to 49,561, LLM calls increased from 8 to 9, and duration increased from 93,740ms to 112,770ms. Hard-compaction still passed, but `read_more_context` increased from 2 to 3 and prompt chars increased from 28,764 to 30,733.
 - Decision: discard. The status-only rule caused a correctness failure, and the guarded version removed the failure but regressed the primary hard-compaction metric.
+
+## 2026-05-11T23:55Z - Procedural `respond_to_user` guard after context recovery
+
+- Change tried: if the current turn already has a successful `read_more_context(mode:"search")` result and the agent then calls `respond_to_user` with procedural progress text like "continuing/searching", skip verifier finalization and nudge the agent to answer from the returned excerpt.
+- Deterministic validation: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts` passed 39/39.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` passed.
+- Targeted live metric versus the prior kept full hard-compaction row: LLM calls decreased from 4 to 3, prompt chars decreased from 28,764 to 22,297, duration decreased from 26,608ms to 20,309ms, and the hidden token remained correct. `read_more_context` increased from 2 to 3 in that sample.
+- Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
+- Full live metric versus the prior kept full live run: AutoResearch semantic passes improved from 1/5 to 3/5, but aggregate prompt chars increased from 41,332 to 60,454 and iteration-limit hits increased from 1 to 2. The hard-compaction row stayed correct, but `read_more_context` increased from 2 to 4 and prompt chars increased from 28,764 to 41,431; that hard-compaction run made only `read_more_context` calls, so the new communication-only guard did not fire in that sample.
+- Decision: keep as a narrow correctness guard for a real procedural-response failure mode, but do not count it as a read-count optimization. Continue optimizing query/read-count variance separately.

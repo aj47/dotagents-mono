@@ -171,6 +171,14 @@ function isSuccessfulContextSearchResult(toolCall: MCPToolCall, result: MCPToolR
   return matchCount ? Number(matchCount[1]) > 0 : true
 }
 
+function isSuccessfulContextSearchToolMessage(content: string | undefined): boolean {
+  const text = typeof content === "string" ? content : ""
+  return text.includes(`[${READ_MORE_CONTEXT_TOOL}]`) &&
+    /"success"\s*:\s*true/.test(text) &&
+    /"mode"\s*:\s*"search"/.test(text) &&
+    /"matchCount"\s*:\s*[1-9]\d*/.test(text)
+}
+
 function buildCachedContextReadResult(result: MCPToolResult): MCPToolResult {
   const originalText = getToolResultText(result)
   const maxCachedExcerptChars = 1800
@@ -3287,6 +3295,21 @@ export async function processTranscriptWithAgentMode(
       })
 
       const hasCommunicationOnlyResponse = !!latestCommunicationOnlyResponse?.trim().length
+      const hasSuccessfulContextSearchInCurrentTurn = conversationHistory
+        .slice(currentPromptIndex + 1)
+        .some((message) => message.role === "tool" && isSuccessfulContextSearchToolMessage(message.content))
+      if (
+        hasCommunicationOnlyResponse &&
+        hasSuccessfulContextSearchInCurrentTurn &&
+        isProgressUpdateResponse(latestCommunicationOnlyResponse)
+      ) {
+        addEphemeralMessage(
+          "user",
+          "The compacted context search already returned matching excerpts. Do not send a progress update or say you are still searching; answer the current request now using the returned excerpt."
+        )
+        continue
+      }
+
       const shouldVerifyCommunicationOnlyResponse =
         config.mcpVerifyCompletionEnabled
         && hasCommunicationOnlyResponse

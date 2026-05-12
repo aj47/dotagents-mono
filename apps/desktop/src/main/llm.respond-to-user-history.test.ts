@@ -174,6 +174,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-recovered-context-final-answer",
       "session-deduped-context-read",
       "session-actionable-verifier-feedback",
+      "session-procedural-context-response",
       ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
@@ -1501,6 +1502,81 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.totalIterations).toBeGreaterThan(1)
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(5)
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(5)
+  })
+
+  it("does not verify procedural respond_to_user updates after recovered context search", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "respond_to_user",
+          arguments: {
+            text: "Continuing the audit now; I'm searching the compacted history for the hidden token.",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall("session-procedural-context-response", 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              mode: "search",
+              query: "HIDDEN_AUDIT_TOKEN",
+              matchCount: 1,
+              matches: [{ excerpt: `HIDDEN_AUDIT_TOKEN=${hiddenToken}` }],
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ],
+      "conv-procedural-context-response",
+      "session-procedural-context-response",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+    const thirdPromptText = mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0]
+      ?.map((message: { content: string }) => message.content)
+      .join("\n") ?? ""
+    expect(thirdPromptText).toContain("compacted context search already returned matching excerpts")
   })
 
   it("keeps iterating when verification reason reports missing work even if missingItems only mention completion signal", async () => {
