@@ -553,7 +553,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
 
       const firstCallTools = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[5] ?? []) as Array<{ name: string }>
       expect(firstCallTools.map((tool) => tool.name)).toContain("respond_to_user")
-      expect(firstCallTools.map((tool) => tool.name)).not.toContain("mark_work_complete")
+      if (!traceCase.allowCompletionToolInPrompt) {
+        expect(firstCallTools.map((tool) => tool.name)).not.toContain("mark_work_complete")
+      }
 
       const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
         .map((message: any) => message.content)
@@ -870,6 +872,64 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
     expect(secondPrompt).toContain("Do not add a second recap or summary")
+  })
+
+  it("does not let a completion summary answer the latest harness framing correction", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpFinalSummaryEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const traceCase = autoresearchContinuationCases.find((candidate) =>
+      candidate.caseId === "case-f-harness-agent-not-model-correction"
+    )
+    expect(traceCase).toBeTruthy()
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "mark_work_complete",
+          arguments: {
+            summary: "Validated harness engineering framing against online research and provided revised concise bullets with prompt/context comparison.",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: traceCase!.response } },
+        { name: "mark_work_complete", arguments: { summary: "Answered latest harness correction" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      traceCase!.transcript,
+      traceContinuationTools as any,
+      makeExecuteToolCall(traceCase!.sessionId, 1),
+      4,
+      traceCase!.previousHistory as any,
+      `conv-${traceCase!.sessionId}`,
+      traceCase!.sessionId,
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(traceCase!.response)
+    expect(result.content).toContain("agentic loop")
+    expect(result.content).toContain("not just the model")
+    expect(result.content).not.toContain("Validated harness engineering framing")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain("without first providing the final user-facing answer")
+    expect(secondPrompt).toContain("i think harness engineering is the system around the \"agent\" not the model")
+    expect(secondPrompt).toContain("Validated harness engineering framing")
   })
 
   it("does not promote internal completion metadata when verification is disabled", async () => {

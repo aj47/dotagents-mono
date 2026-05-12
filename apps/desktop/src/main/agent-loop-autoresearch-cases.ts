@@ -14,6 +14,7 @@ export type AutoresearchContinuationCase = {
   response: string
   requiredPromptEvidence: string[]
   forbiddenPromptEvidence?: string[]
+  allowCompletionToolInPrompt?: boolean
   requiredResponseEvidence: string[]
   requiredLiveResponseEvidence: string[][]
 }
@@ -113,6 +114,45 @@ function makeFullLongContextHistory(): TraceHistoryMessage[] {
     { role: "assistant", content: "The skill exists on disk and parses fine, but this session's Available Skills list does not include it. Starting a new chat is not enough if the same app process has not refreshed its skill registry." },
   ]
   return [...omittedHistory, ...recentHistory]
+}
+
+function makeHarnessAgentContextCorrectionHistory(): TraceHistoryMessage[] {
+  return [
+    {
+      role: "user",
+      content: "can you gather some of our context to answer what is harness engineering in less than 10 dot points and give them to me also find the comparison we made to prompt and context engineering",
+    },
+    {
+      role: "assistant",
+      content: "I will gather local workshop context and online validation before tightening the prompt/context/harness comparison.",
+    },
+    ...makeTraceFillerMessages("harness-context", 82),
+    {
+      role: "tool",
+      content: "[exa:web_search_advanced_exa] [summarized]\nLearned that reliable production agents are framed as a systems/harness problem, not a prompt problem. NVIDIA Elements separates Prompt Engineering = single-call wording/few-shot, Context Engineering = curated runtime context, and Harness Engineering = full system design. The summarized evidence says an agent harness wraps the LLM with tools, memory, constraints, and feedback loops.",
+    },
+    {
+      role: "assistant",
+      content: "Yes - the claims are directionally right, but I'd tighten the framing. Harness engineering is designing the system around an LLM - tools, context, state, constraints, evals, logs, and feedback loops - so agent work becomes repeatable and improvable, not just prompted.",
+    },
+    {
+      role: "user",
+      content: "ok this is good. i need to make concise distilled dotpoints i can refer to as i make the video and run the workshop can we start that document. what are the first 10 points",
+    },
+    {
+      role: "assistant",
+      content: [
+        "- **Harness engineering = designing the repeatable system around the model**, not just writing a better prompt.",
+        "- **Context engineering** asks: \"What information, files, tools, and instructions should the model see at runtime?\"",
+        "- **Harness engineering** asks: \"What surrounding system makes the model's work reliable across attempts?\"",
+        "- Final line: **Prompt engineering improves the request. Context engineering improves what the model sees. Harness engineering improves the loop.**",
+      ].join("\n"),
+    },
+    {
+      role: "assistant",
+      content: "A later internal completion summary said: \"Validated harness engineering framing against online research and provided revised concise bullets with prompt/context comparison.\" That summary is not a user-facing answer to the next correction.",
+    },
+  ]
 }
 
 export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
@@ -226,6 +266,39 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
       ["registry", "available skills", "load mismatch"],
       ["refresh", "restart", "reload", "quit", "reopen", "new session"],
       ["next safest action", "next safe action"],
+    ],
+  },
+  {
+    caseId: "case-f-harness-agent-not-model-correction",
+    name: "Harness framing correction after completion summary",
+    sessionId: "session-autoresearch-harness-agent-correction",
+    transcript: "i think harness engineering is the system around the \"agent\" not the model (similar for context engineering). can you verify or debate",
+    expectedHistoryLength: 89,
+    previousHistory: makeHarnessAgentContextCorrectionHistory(),
+    response: "You are right to tighten it: the more precise workshop framing is that harness engineering is the system around the agent or agentic loop, not just the model. Model is acceptable shorthand for a general audience, but it blurs the layers. Prompt engineering shapes one model call, Context engineering shapes what the model or agent sees at runtime, and Harness engineering shapes the loop around agent work: tools, state, permissions, evals, traces, retries, stop rules, and feedback.",
+    requiredPromptEvidence: [
+      "Harness engineering = designing the repeatable system around the model",
+      "[exa:web_search_advanced_exa] [summarized]",
+      "That summary is not a user-facing answer",
+      "i think harness engineering is the system around the \"agent\" not the model",
+    ],
+    requiredResponseEvidence: [
+      "You are right",
+      "agentic loop",
+      "not just the model",
+      "Model is acceptable shorthand",
+      "Prompt engineering",
+      "Context engineering",
+      "Harness engineering",
+    ],
+    forbiddenPromptEvidence: ["STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY"],
+    allowCompletionToolInPrompt: true,
+    requiredLiveResponseEvidence: [
+      ["agent", "agentic loop", "agent loop"],
+      ["not just the model", "not the model", "model is shorthand", "model shorthand"],
+      ["prompt engineering"],
+      ["context engineering"],
+      ["harness engineering"],
     ],
   },
 ]

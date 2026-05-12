@@ -3552,7 +3552,12 @@ export async function processTranscriptWithAgentMode(
         finalContent = lastAssistantContent
       }
 
-      if (!finalContent.trim() && !existingUserResponse?.trim().length && !forceFinalSummary) {
+      if (
+        !config.mcpVerifyCompletionEnabled &&
+        !finalContent.trim() &&
+        !existingUserResponse?.trim().length &&
+        !forceFinalSummary
+      ) {
         let completionSummary = ""
         for (let toolCallIndex = toolCallsArray.length - 1; toolCallIndex >= 0; toolCallIndex--) {
           const toolCall = toolCallsArray[toolCallIndex]
