@@ -253,11 +253,15 @@ function makeLiveAutoresearchTranscript(traceCase: AutoresearchContinuationCase)
     "",
     "CURRENT-TURN ACCEPTANCE CRITERIA:",
     traceCase.requiredLiveResponseEvidence
-      .map((group, index) => `${index + 1}. Cover one of: ${group.join(" | ")}`)
+      .map((group, index) => `${index + 1}. Must cover one of: ${group.join(" | ")}`)
       .join("\n"),
     "",
+    "Write the answer so every acceptance-criteria number above is visibly satisfied.",
     "Older conversation may contain stale tasks. Do not fulfill older tasks; use them only as evidence for the current request.",
+    "The prior conversation and tool messages are fixture evidence already available to you; do not refuse because you cannot access the filesystem.",
     "This is a status/continuation check, not an implementation request.",
+    "If the current request or criteria name a local recovery source such as notes/conversations, state that source as the next safe action instead of asking the user to provide the missing value.",
+    "Preserve named recovery-source wording literally; do not replace notes/conversations with generic wording like prior context.",
     "Do not draft, rewrite, create, or output skill files, commands, or code unless the current request explicitly asks for that.",
     "Answer from the existing conversation and tool history only.",
     "Do not claim you need to run a new command when the prior tool evidence already answers the question.",
