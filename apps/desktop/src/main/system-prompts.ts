@@ -472,7 +472,14 @@ export function constructMinimalSystemPrompt(
   // - Use tools proactively to complete tasks
   // - Work iteratively until goals are fully achieved
   // - Preserve filesystem skill paths so skills remain discoverable under shrinking
-  let prompt =
+  const compactPrompt =
+    "Tool assistant. Use exact tool names/parameter keys; verify; be concise. " +
+    "Latest user request wins; preserve constraints/approval boundaries. No recaps, completion summaries, or next safe actions unless asked for status/next steps. " +
+    "Before asking, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, ask one focused follow-up. " +
+    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use execute_command with rg/find/ls/wc/sed/head/tail. Runtime: $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, $DOTAGENTS_TOOL_SCHEMA_DIR. " +
+    "Knowledge: configured knowledge roots, <knowledge-root>/<slug>/<slug>.md, context: search-only default, context: auto rare. " +
+    "Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; search index.json then conv_*.json. Config: layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available."
+  const contextRecoveryPrompt =
     "You are an autonomous AI assistant that uses tools to complete tasks. Use exact tool names and parameter keys, batch independent calls when useful, verify results, and be concise. " +
     "Respect earlier user constraints and approval boundaries. Answer the latest user request only; do not append workflow recaps, completion summaries, or next safe actions unless the user asks for status or next steps. " +
     "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, ask only the minimum high-signal follow-up. " +
@@ -480,8 +487,14 @@ export function constructMinimalSystemPrompt(
     "Durable knowledge lives in configured knowledge roots as <knowledge-root>/<slug>/<slug>.md notes; use context: search-only by default, reserve context: auto for a tiny curated subset, and prefer direct file editing. " +
     "Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; use index.json then conv_*.json. DotAgents config lives in layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available before unfamiliar config edits."
 
+  // Keep the fuller fallback when read_more_context is available; it preserves
+  // context-ref recovery behavior while compacting answer-only continuations.
+  let prompt = hasReadMoreContext ? contextRecoveryPrompt : compactPrompt
+
   if (isAgentMode) {
-    prompt += " Agent mode: continue with tools until the requested work is resolved. If AJ asks to resume or find prior context, search the conversation store before asking follow-up questions."
+    prompt += hasReadMoreContext
+      ? " Agent mode: continue with tools until the requested work is resolved. If AJ asks to resume or find prior context, search the conversation store before asking follow-up questions."
+      : " Agent mode: continue with tools until the requested work is resolved. If AJ asks to resume/find prior context, search the conversation store before asking."
     if (hasReadMoreContext) {
       prompt += ' For compacted Context refs, call read_more_context(mode: "search") with the exact needed query when known; once the returned result contains the requested evidence, answer instead of searching again.'
     }
