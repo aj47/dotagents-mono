@@ -201,6 +201,78 @@ function makePriorConversationsBeforeUnavailableHistory(): TraceHistoryMessage[]
   ]
 }
 
+function makeInitialConversationReviewPathHistory(): TraceHistoryMessage[] {
+  return [
+    {
+      role: "user",
+      content: [
+        "Review recent DotAgents conversations and promote only durable, high-confidence updates into knowledge.",
+        "",
+        "## Inputs",
+        "- Recent conversation files from the DotAgents conversations store",
+        "- `~/.agents/knowledge`",
+        "- Existing task/skill inventory when deciding whether repeated work justifies a new artifact",
+        "",
+        "## Required windows",
+        "- Search conversations updated in the last 4 hours first",
+        "- If no durable candidates appear, search the last 24 hours",
+        "- If still empty, search the last 7 days before reporting a no-op",
+      ].join("\n"),
+    },
+    {
+      role: "assistant",
+      content: "I will inspect the recent DotAgents conversations windows and only promote durable updates.",
+    },
+    ...makeTraceFillerMessages("conversation-review-path", 58),
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{
+        name: "execute_command",
+        arguments: {
+          command: "bash -lc 'set -e\nAPPDIR=\"$HOME/.config/dotagents/conversations\"\nif [ ! -d \"$APPDIR\" ]; then APPDIR=\"$HOME/Library/Application Support/dotagents/conversations\"; fi\nif [ ! -d \"$APPDIR\" ]; then APPDIR=\"$HOME/.config/app.dotagents/conversations\"; fi\nprintf \"APPDIR=%s\\n\" \"$APPDIR\"\nls -la \"$APPDIR\" | sed -n \"1,20p\"'",
+        },
+      }],
+    },
+    {
+      role: "tool",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"APPDIR=/Users/ajjoobandi/Library/Application Support/dotagents/conversations\\ntotal 0\\ndrwxr-xr-x   2 ajjoobandi  staff    64 May  1 18:01 .\\ndrwx------  12 ajjoobandi  staff   384 May  1 18:01 ..\\n\",\"stderr\":\"\"}",
+    },
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{
+        name: "execute_command",
+        arguments: {
+          command: "python3 - <<'PY'\nimport os, glob, time\napp=os.path.expanduser('~/Library/Application Support/dotagents/conversations')\nnow=time.time()\nfor hrs in (4,24,168):\n    cutoff=now-hrs*3600\n    files=[p for p in glob.glob(app+'/conv_*.json') if os.path.getmtime(p)>=cutoff]\n    print('WINDOW',hrs,'count=',len(files))\nPY",
+        },
+      }],
+    },
+    {
+      role: "tool",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"WINDOW 4 count=0\\nWINDOW 24 count=0\\nWINDOW 168 count=0\\n\",\"stderr\":\"\"}",
+    },
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{
+        name: "execute_command",
+        arguments: {
+          command: "sed -n '1,220p' \"$HOME/.agents/tasks/conversation-to-knowledge-review/task.md\"; tail -n 40 \"$HOME/.agents/knowledge/systems/agent-autonomy/agent-autonomy.md\"",
+        },
+      }],
+    },
+    {
+      role: "tool",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"Inputs: Recent conversation files from the DotAgents conversations store. Process: inspect 4h, then 24h, then 7d conversation windows before recording a no-op. Knowledge tail: prior audit used ~/Library/Application Support/app.dotagents/conversations and current conv_1777651483484_3p1ax883c.json.\\n\",\"stderr\":\"\"}",
+    },
+    {
+      role: "assistant",
+      content: "No-op. I searched the required 4h, 24h, and 7d windows in ~/Library/Application Support/dotagents/conversations, found zero conversations in each bounded window, and therefore promoted nothing.",
+    },
+  ]
+}
+
 export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
   {
     caseId: "case-a-approval-boundary",
@@ -376,6 +448,40 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
       ["knowledge notes", "knowledge"],
       ["files", "local files", "Documents"],
       ["unavailable", "don't have it", "do not have it", "can't find it", "cannot find it"],
+    ],
+  },
+  {
+    caseId: "case-h-initial-conversation-review-path",
+    name: "Initial conversation review must resolve the real store",
+    sessionId: "session-autoresearch-initial-conversation-review-path",
+    transcript: "debug the main issue: the initial conversation-review query should have checked the real app.dotagents conversations store before reporting zero conversations",
+    expectedHistoryLength: 67,
+    previousHistory: makeInitialConversationReviewPathHistory(),
+    response: "The main issue is the initial conversation-review query itself: it resolved the wrong conversations store. A regression case should prove the agent checks the real app.dotagents app-data store and actual conversation files or index before reporting zero conversations. It should fail if the agent only scans ~/Library/Application Support/dotagents/conversations, sees empty 4h, 24h, and 7d windows, and records a no-op.",
+    requiredPromptEvidence: [
+      "Review recent DotAgents conversations and promote only durable",
+      "Recent conversation files from the DotAgents conversations store",
+      "APPDIR=/Users/ajjoobandi/Library/Application Support/dotagents/conversations",
+      "WINDOW 4 count=0",
+      "prior audit used ~/Library/Application Support/app.dotagents/conversations",
+      "No-op. I searched the required 4h, 24h, and 7d windows",
+      "debug the main issue: the initial conversation-review query should have checked the real app.dotagents conversations store before reporting zero conversations",
+    ],
+    requiredResponseEvidence: [
+      "initial conversation-review query itself",
+      "app.dotagents",
+      "zero conversations",
+      "4h, 24h, and 7d",
+      "no-op",
+    ],
+    forbiddenPromptEvidence: ["STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY"],
+    allowCompletionToolInPrompt: true,
+    requiredLiveResponseEvidence: [
+      ["initial query", "initial request", "initial conversation-review", "original query"],
+      ["conversations store", "conversation files", "conversation index", "index.json", "conv_"],
+      ["app.dotagents", "correct app-data path", "real app-data path", "actual app-data path", "right app-data path"],
+      ["4h, 24h, and 7d", "4h/24h/7d", "4-hour, 24-hour, and 7-day", "last 4 hours, 24 hours, and 7 days"],
+      ["no-op", "zero conversations", "claiming zero", "reporting zero", "before saying zero"],
     ],
   },
 ]
