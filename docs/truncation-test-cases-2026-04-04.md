@@ -20,7 +20,7 @@ Live E2E harness added and validated on 2026-05-11:
 
 - `pnpm --filter @dotagents/desktop run test:agent-loop-live`
   - cwd: repo root
-  - result: skipped by default unless `LIVE_AGENT_LOOP_E2E=1` is set; currently `6` opt-in tests
+  - result: runs the live agent-loop E2E suite by default through the package script, with LLM-as-judge enabled for AutoResearch cases
 - `LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live`
   - cwd: repo root
   - provider: local Codex ChatGPT auth from `~/.codex/auth.json`
