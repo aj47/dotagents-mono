@@ -251,6 +251,11 @@ function makeLiveAutoresearchTranscript(traceCase: AutoresearchContinuationCase)
   return [
     `CURRENT REQUEST: ${traceCase.transcript}`,
     "",
+    "CURRENT-TURN ACCEPTANCE CRITERIA:",
+    traceCase.requiredLiveResponseEvidence
+      .map((group, index) => `${index + 1}. Cover one of: ${group.join(" | ")}`)
+      .join("\n"),
+    "",
     "Older conversation may contain stale tasks. Do not fulfill older tasks; use them only as evidence for the current request.",
     "This is a status/continuation check, not an implementation request.",
     "Do not draft, rewrite, create, or output skill files, commands, or code unless the current request explicitly asks for that.",
@@ -457,12 +462,15 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
       const llmJudgePassed = llmJudge
         ? llmJudge.conversationState === "complete" && llmJudge.isComplete === true
         : undefined
+      const status = structuralPass && (!llmJudgeRequired || llmJudgePassed === true)
+        ? "pass"
+        : "fail"
 
       recordAgentLoopMetric({
         suite: "agent-loop-autoresearch-live-e2e",
         caseId: traceCase.caseId,
         caseName: traceCase.name,
-        status: structuralPass ? "pass" : "fail",
+        status,
         semanticEvidencePassed: missingResponseEvidenceGroups.length === 0,
         durationMs: Math.round(performance.now() - startedAt),
         provider: liveHarness.config.mcpToolsProviderId,

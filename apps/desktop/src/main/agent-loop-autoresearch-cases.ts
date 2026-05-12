@@ -155,6 +155,52 @@ function makeHarnessAgentContextCorrectionHistory(): TraceHistoryMessage[] {
   ]
 }
 
+function makePriorConversationsBeforeUnavailableHistory(): TraceHistoryMessage[] {
+  return [
+    {
+      role: "user",
+      content: "what did we decide about the workshop title?",
+    },
+    {
+      role: "assistant",
+      content: "I will check local project memory before answering.",
+    },
+    ...makeTraceFillerMessages("workshop-title", 64),
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{
+        name: "execute_command",
+        arguments: {
+          command: "rg -n \"workshop title|title decision|harness workshop\" ~/.agents/knowledge ~/Documents/harness-workshop-notes",
+        },
+      }],
+    },
+    {
+      role: "tool",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"/Users/ajjoobandi/Documents/harness-workshop-notes/harness-engineering-distilled.md:1:# Harness Engineering - Distilled Workshop Notes\\n\",\"stderr\":\"\"}",
+    },
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{
+        name: "execute_command",
+        arguments: {
+          command: "find ~/Documents -maxdepth 4 -type f \\( -iname '*workshop*' -o -iname '*harness*' \\) | head -50",
+        },
+      }],
+    },
+    {
+      role: "tool",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"/Users/ajjoobandi/Documents/harness-workshop-notes/harness-engineering-distilled.md\\n/Users/ajjoobandi/Desktop/harness-workshop-materials/README.md\\n\",\"stderr\":\"\"}",
+    },
+    {
+      role: "assistant",
+      content: "I do not see a clear prior decision about the workshop title in the knowledge notes or workshop files I checked, so I don't have that decided title available.",
+    },
+  ]
+}
+
 export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
   {
     caseId: "case-a-approval-boundary",
@@ -174,7 +220,7 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
     requiredResponseEvidence: ["Known:", "Unknown:", "Blocker:", "Next safe action:", "approval"],
     requiredLiveResponseEvidence: [
       ["VOD URL", "livestream link", "latest livestream", "latest stream URL", "stream URL"],
-      ["approval", "before downloads", "before any mutating"],
+      ["approval", "before download", "before downloads", "before downloading", "no downloading", "before transcription", "before clipping", "before any mutating"],
     ],
   },
   {
@@ -299,6 +345,37 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
       ["prompt engineering"],
       ["context engineering"],
       ["harness engineering"],
+    ],
+  },
+  {
+    caseId: "case-g-prior-conversations-before-unavailable",
+    name: "Prior conversations before saying unavailable",
+    sessionId: "session-autoresearch-prior-conversations-unavailable",
+    transcript: "you didn't think to look in past conversations? i'm not asking you to do it now, let's just debug the main issue",
+    expectedHistoryLength: 71,
+    previousHistory: makePriorConversationsBeforeUnavailableHistory(),
+    response: "You're right: I should not have concluded the workshop title decision was unavailable after only checking knowledge notes and files. For this kind of local project-memory question, the lookup order should be: check knowledge notes, then search prior conversations, then inspect likely files. If I don't search prior conversations, I should say that explicitly instead of claiming the information is unavailable.",
+    requiredPromptEvidence: [
+      "what did we decide about the workshop title?",
+      "Harness Engineering - Distilled Workshop Notes",
+      "I do not see a clear prior decision about the workshop title",
+      "you didn't think to look in past conversations?",
+    ],
+    requiredResponseEvidence: [
+      "You're right",
+      "knowledge notes",
+      "prior conversations",
+      "files",
+      "unavailable",
+    ],
+    forbiddenPromptEvidence: ["STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY"],
+    allowCompletionToolInPrompt: true,
+    requiredLiveResponseEvidence: [
+      ["You're right", "you are right", "I should not have concluded", "shouldn't have concluded", "before saying unavailable", "before concluding unavailable", "should have checked", "I missed", "mistake", "premature", "couldn't confirm", "could not confirm", "didn't have a confirmed answer"],
+      ["prior conversations", "past conversations", "conversation history", "chat history"],
+      ["knowledge notes", "knowledge"],
+      ["files", "local files", "Documents"],
+      ["unavailable", "don't have it", "do not have it", "can't find it", "cannot find it"],
     ],
   },
 ]

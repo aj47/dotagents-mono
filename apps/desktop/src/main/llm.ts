@@ -171,12 +171,28 @@ function isSuccessfulContextSearchResult(toolCall: MCPToolCall, result: MCPToolR
   return matchCount ? Number(matchCount[1]) > 0 : true
 }
 
-function isSuccessfulContextSearchToolMessage(content: string | undefined): boolean {
+function isSuccessfulContextReadResult(toolCall: MCPToolCall, result: MCPToolResult): boolean {
+  if (toolCall.name !== READ_MORE_CONTEXT_TOOL || result.isError) return false
+
+  const text = getToolResultText(result)
+  if (!/"success"\s*:\s*true/.test(text)) return false
+  if (isSuccessfulContextSearchResult(toolCall, result)) return true
+
+  return /"excerpt"\s*:/.test(text)
+    || /"matches"\s*:/.test(text)
+    || /\bThe exact requested answer is:/i.test(text)
+}
+
+function isSuccessfulContextReadToolMessage(content: string | undefined): boolean {
   const text = typeof content === "string" ? content : ""
   return text.includes(`[${READ_MORE_CONTEXT_TOOL}]`) &&
     /"success"\s*:\s*true/.test(text) &&
-    /"mode"\s*:\s*"search"/.test(text) &&
-    /"matchCount"\s*:\s*[1-9]\d*/.test(text)
+    (
+      /"matchCount"\s*:\s*[1-9]\d*/.test(text) ||
+      /"excerpt"\s*:/.test(text) ||
+      /"matches"\s*:/.test(text) ||
+      /\bThe exact requested answer is:/i.test(text)
+    )
 }
 
 function buildCachedContextReadResult(result: MCPToolResult): MCPToolResult {
@@ -3232,15 +3248,15 @@ export async function processTranscriptWithAgentMode(
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
-    const hasSuccessfulContextSearchResult = toolResults.some((result, index) => {
+    const hasSuccessfulContextReadResult = toolResults.some((result, index) => {
       const toolCall = toolCallsArray[index]
-      return !!toolCall && isSuccessfulContextSearchResult(toolCall, result)
+      return !!toolCall && isSuccessfulContextReadResult(toolCall, result)
     })
 
-    if (!completionSignalConfirmed && !hasErrors && hasSuccessfulContextSearchResult) {
+    if (!completionSignalConfirmed && !hasErrors && hasSuccessfulContextReadResult) {
       addEphemeralMessage(
         "user",
-        "The latest read_more_context search returned matching excerpts. Use those excerpts to answer now; avoid repeating read_more_context for the same query unless a specific detail is still missing.",
+        "The latest read_more_context call returned matching context. Use that returned context to answer now; avoid repeating read_more_context for the same query unless a specific detail is still missing.",
       )
     }
 
@@ -3297,7 +3313,7 @@ export async function processTranscriptWithAgentMode(
       const hasCommunicationOnlyResponse = !!latestCommunicationOnlyResponse?.trim().length
       const hasSuccessfulContextSearchInCurrentTurn = conversationHistory
         .slice(currentPromptIndex + 1)
-        .some((message) => message.role === "tool" && isSuccessfulContextSearchToolMessage(message.content))
+        .some((message) => message.role === "tool" && isSuccessfulContextReadToolMessage(message.content))
       if (
         hasCommunicationOnlyResponse &&
         hasSuccessfulContextSearchInCurrentTurn &&

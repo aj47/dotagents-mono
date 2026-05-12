@@ -175,6 +175,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-deduped-context-read",
       "session-actionable-verifier-feedback",
       "session-procedural-context-response",
+      "session-procedural-context-tail-response",
       ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
@@ -1637,6 +1638,74 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       ?.map((message: { content: string }) => message.content)
       .join("\n") ?? ""
     expect(thirdPromptText).toContain("compacted context search already returned matching excerpts")
+  })
+
+  it("does not verify procedural respond_to_user updates after recovered non-search context reads", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "tail",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "respond_to_user",
+          arguments: {
+            text: "Continuing the audit now.",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall("session-procedural-context-tail-response", 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              mode: "tail",
+              excerpt: `historical_audit excerpt: HIDDEN_AUDIT_TOKEN=${hiddenToken}`,
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ],
+      "conv-procedural-context-tail-response",
+      "session-procedural-context-tail-response",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
   })
 
   it("keeps iterating when verification reason reports missing work even if missingItems only mention completion signal", async () => {
