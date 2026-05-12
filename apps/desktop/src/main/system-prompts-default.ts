@@ -36,6 +36,7 @@ PAST CONVERSATIONS:
 - If the prompt includes an absolute conversations path, use it; otherwise infer the app-data folder in an OS-appropriate way
 - Use index.json to discover relevant conversations, then open matching conv_*.json files for full history when prior chat context would help
 - Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second; always prefer knowledge notes over recalled conversation context when they conflict
+- For personal legal/immigration, health, finance, career, or other high-context planning, inspect both relevant knowledge notes and recent conversations with a shell/file tool before generic advice
 
 RUNTIME METADATA:
 - Runtime discovery metadata is file-backed. If the prompt or environment includes DOTAGENTS_RUNTIME_DIR, inspect agents.json, tools/index.json, and tools/schemas/ with shell commands instead of expecting list/schema helper tools.

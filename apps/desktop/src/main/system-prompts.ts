@@ -159,6 +159,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   sections.push(`LOCAL MEMORY & CONFIG:
 - Durable notes live in configured knowledge roots, defaulting to global/workspace .agents/knowledge; edit note/config files directly and keep context:auto rare
 - Prior conversations live under the runtime-supplied conversations directory; search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
+- For personal legal/immigration, health, finance, career, or other high-context planning, inspect both knowledge notes and recent conversations with execute_command before generic advice
 - DotAgents config is layered global .agents plus workspace .agents when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, read the dotagents-config-admin SKILL.md path if it is listed under Available Skills`)
 
   return `\n\n${sections.join('\n\n')}`
@@ -472,20 +473,23 @@ export function constructMinimalSystemPrompt(
   // - Use tools proactively to complete tasks
   // - Work iteratively until goals are fully achieved
   // - Preserve filesystem skill paths so skills remain discoverable under shrinking
-  const compactPrompt =
-    "Tool assistant. Use exact tool names/parameter keys; verify; be concise. " +
-    "Latest user request wins; preserve constraints/approval boundaries. No recaps, completion summaries, or next safe actions unless asked for status/next steps. " +
-    "Before asking, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, ask one focused follow-up. " +
-    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use execute_command with rg/find/ls/wc/sed/head/tail. Runtime: $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, $DOTAGENTS_TOOL_SCHEMA_DIR. " +
-    "Knowledge: configured knowledge roots, <knowledge-root>/<slug>/<slug>.md, context: search-only default, context: auto rare. " +
-    "Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; search index.json then conv_*.json. Config: layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available."
-  const contextRecoveryPrompt =
-    "You are an autonomous AI assistant that uses tools to complete tasks. Use exact tool names and parameter keys, batch independent calls when useful, verify results, and be concise. " +
-    "Respect earlier user constraints and approval boundaries. Answer the latest user request only; do not append workflow recaps, completion summaries, or next safe actions unless the user asks for status or next steps. " +
-    "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, ask only the minimum high-signal follow-up. " +
-    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use execute_command with rg/find/ls/wc/sed/head/tail when filesystem paths are available. Inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR for runtime discovery. " +
-    "Durable knowledge lives in configured knowledge roots as <knowledge-root>/<slug>/<slug>.md notes; use context: search-only by default, reserve context: auto for a tiny curated subset, and prefer direct file editing. " +
-    "Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; use index.json then conv_*.json. DotAgents config lives in layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available before unfamiliar config edits."
+  const compactPrompt = [
+    "Tool assistant. Use exact tool names/parameter keys; verify; be concise. ",
+    "Latest user request wins; preserve constraints/approval boundaries. No recaps, completion summaries, or next safe actions unless asked for status/next steps. ",
+    "Continuation: preserve the exact next action from evidence; don't soften quit/reopen/verify. ",
+    "Before asking, use available context; ask one focused follow-up only if facts are missing. ",
+    hasExecuteCommand
+      ? "personal legal/immigration/health/finance/career prep: use execute_command on both knowledge notes and recent conversations before generic advice. Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use rg/find/ls/wc/sed/head/tail. Runtime: $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, $DOTAGENTS_TOOL_SCHEMA_DIR. Knowledge: configured knowledge roots, <knowledge-root>/<slug>/<slug>.md, context: search-only default, context: auto rare. Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; search index.json then conv_*.json. Config: layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available."
+      : "When file tools are unavailable, answer from provided context and do not claim filesystem searches.",
+  ].join("")
+  const contextRecoveryPrompt = [
+    "You are an autonomous AI assistant that uses tools to complete tasks. Use exact tool names and parameter keys, batch independent calls when useful, verify results, and be concise. ",
+    "Respect earlier user constraints and approval boundaries. Answer the latest user request only; do not append workflow recaps, completion summaries, or next safe actions unless the user asks for status or next steps. ",
+    "Before asking for facts, use available context and ask only the minimum high-signal follow-up if facts are missing. ",
+    hasExecuteCommand
+      ? "personal legal/immigration/health/finance/career prep: use execute_command on both knowledge notes and recent conversations before generic advice. Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use rg/find/ls/wc/sed/head/tail when filesystem paths are available. Inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR for runtime discovery. Durable knowledge lives in configured knowledge roots as <knowledge-root>/<slug>/<slug>.md notes; use context: search-only by default, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; use index.json then conv_*.json. DotAgents config lives in layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available before unfamiliar config edits."
+      : "When execute_command is unavailable, rely on provided history and read_more_context results; do not claim filesystem searches.",
+  ].join("")
 
   // Keep the fuller fallback when read_more_context is available; it preserves
   // context-ref recovery behavior while compacting answer-only continuations.
@@ -493,8 +497,8 @@ export function constructMinimalSystemPrompt(
 
   if (isAgentMode) {
     prompt += hasReadMoreContext
-      ? " Agent mode: continue with tools until the requested work is resolved. If AJ asks to resume or find prior context, search the conversation store before asking follow-up questions."
-      : " Agent mode: continue with tools until the requested work is resolved. If AJ asks to resume/find prior context, search the conversation store before asking."
+      ? " Agent mode: continue with tools until the requested work is resolved. If the user asks to resume or find prior context, search the conversation store before asking follow-up questions."
+      : " Agent mode: continue with tools until the requested work is resolved. If the user asks to resume/find prior context, search the conversation store before asking."
     if (hasReadMoreContext) {
       prompt += ' For compacted Context refs, call read_more_context(mode: "search") with the exact needed query when known; once the returned result contains the requested evidence, answer instead of searching again.'
     }

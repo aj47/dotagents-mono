@@ -40,6 +40,7 @@ const liveHarness = vi.hoisted(() => {
 
   return {
     config,
+    executeCommandScenario: undefined as undefined | "immigration-context",
     executedToolCalls: [] as Array<{ name: string; arguments: unknown }>,
     oauthTokens: new Map<string, unknown>(),
     progressUpdates: [] as unknown[],
@@ -267,6 +268,8 @@ function makeLiveAutoresearchTranscript(traceCase: AutoresearchContinuationCase)
     "Do not claim you need to run a new command when the prior tool evidence already answers the question.",
     "Preserve any approval or no-mutation boundary from previous turns.",
     "For verify/debate/debug-the-main-issue requests, answer the current issue directly; do not append a next-safe-action line unless the request asks for one.",
+    "If the current request says it is not asking you to do an older task now, do not answer that older task.",
+    "If the criteria mention a stale prior conclusion, describe it only as the prior mistake being debugged; do not reassert it as the current answer.",
     "Be concise and include the current state plus the next safest action when relevant.",
   ].join("\n")
 }
@@ -331,6 +334,51 @@ async function judgeLiveIntentMatch(
   return normalizeVerificationResultForCompletion(rawResult, { verificationMessages: messages })
 }
 
+function executeImmigrationContextCommand(toolCall: MCPToolCall): MCPToolResult {
+  const args = toolCall.arguments && typeof toolCall.arguments === "object" && !Array.isArray(toolCall.arguments)
+    ? toolCall.arguments as Record<string, unknown>
+    : {}
+  const command = typeof args.command === "string" ? args.command : ""
+
+  if (!command.trim()) {
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: false, error: "execute_command requires command" }) }],
+      isError: true,
+    }
+  }
+
+  const normalized = command.toLowerCase()
+  const searchedKnowledge = /\bknowledge\b|\.agents|notes?|memory/.test(normalized)
+  const searchedConversations = /\bconversation\b|\bconversations\b|conv_|app\.dotagents|dotagents|application support/.test(normalized)
+  const stdout: string[] = [`command=${command}`]
+
+  if (searchedKnowledge) {
+    stdout.push([
+      "SYNTHETIC_IMMIGRATION_KNOWLEDGE_CONTEXT:",
+      "/tmp/dotagents-live-agent-loop-test/global-agents/knowledge/synthetic-advisor-prep/synthetic-advisor-prep.md",
+      "Synthetic fixture note: example consultation prep should cover route comparison such as O-1 vs EB-1, status-maintenance questions, filing timeline, evidence packet, recommendation letters, travel constraints, work authorization, family implications, costs, and risk questions.",
+    ].join("\n"))
+  }
+
+  if (searchedConversations) {
+    stdout.push([
+      "SYNTHETIC_LATEST_DOTAGENTS_CONVERSATIONS:",
+      "index.json latest two matching conversations:",
+      "synthetic_conv_route_comparison.json: Fixture says to ask counsel to compare O-1, EB-1, and possible employer sponsorship routes; clarify status-maintenance risk and processing/timeline tradeoffs.",
+      "synthetic_conv_document_questions.json: Fixture says to bring a document checklist, evidence examples, recommendation-letter plan, travel/work authorization questions, family implications, fees, deadlines, and risk questions.",
+    ].join("\n"))
+  }
+
+  if (!searchedKnowledge && !searchedConversations) {
+    stdout.push("No local immigration context returned: this fixture only returns details after inspecting knowledge notes and/or DotAgents conversations.")
+  }
+
+  return {
+    content: [{ type: "text", text: JSON.stringify({ success: true, command, stdout: stdout.join("\n\n"), stderr: "" }) }],
+    isError: false,
+  }
+}
+
 async function executeLiveSafeTool(
   toolCall: MCPToolCall,
   sessionId: string,
@@ -388,6 +436,17 @@ async function executeLiveSafeTool(
     }
   }
 
+  if (toolCall.name === "execute_command") {
+    if (liveHarness.executeCommandScenario === "immigration-context") {
+      return executeImmigrationContextCommand(toolCall)
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: false, error: "Unexpected execute_command in live test" }) }],
+      isError: true,
+    }
+  }
+
   return {
     content: [{ type: "text", text: JSON.stringify({ success: false, error: `Unexpected live test tool: ${toolCall.name}` }) }],
     isError: true,
@@ -401,6 +460,7 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
   beforeEach(async () => {
     vi.clearAllMocks()
     liveHarness.executedToolCalls.length = 0
+    liveHarness.executeCommandScenario = undefined
     liveHarness.oauthTokens.clear()
     liveHarness.progressUpdates.length = 0
     liveHarness.sessions.clear()
@@ -509,6 +569,99 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
     },
     180000,
   )
+
+  it("gathers knowledge and conversation context before immigration advisor prep advice", async () => {
+    expect(hasLocalCodexChatGptAuth()).toBe(true)
+
+    const llmFetch = await import("./llm-fetch")
+    const llmSpy = vi.spyOn(llmFetch, "makeLLMCallWithStreamingAndTools")
+    const verifierSpy = vi.spyOn(llmFetch, "verifyCompletionWithFetch")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const { runtimeToolDefinitions } = await import("./runtime-tool-definitions")
+    const sessionId = "live-agent-loop-immigration-context"
+    const runId = 1
+    const maxIterations = 6
+    const safeToolNames = new Set(["execute_command", "respond_to_user", "mark_work_complete"])
+    const availableTools = runtimeToolDefinitions.filter((tool) => safeToolNames.has(tool.name))
+    const requiredEvidenceGroups = [
+      ["O-1", "O1", "EB-1", "EB1", "visa strategy", "employer sponsorship"],
+      ["evidence", "documents", "document checklist", "recommendation letters"],
+      ["travel", "work authorization", "family"],
+      ["timeline", "deadlines", "premium processing", "fees", "risks"],
+    ]
+
+    liveHarness.executeCommandScenario = "immigration-context"
+    liveHarness.sessions.set(sessionId, { id: sessionId, conversationTitle: "Synthetic Advisor Prep" })
+
+    const startedAt = performance.now()
+    const result = await processTranscriptWithAgentMode(
+      "Need prep for a high-context legal/immigration advisor meeting today. What should be asked based on local context?",
+      availableTools as any,
+      (toolCall) => executeLiveSafeTool(toolCall, sessionId, runId),
+      maxIterations,
+      [],
+      undefined,
+      sessionId,
+      undefined,
+      undefined,
+      runId,
+    )
+
+    const executeCommandCalls = liveHarness.executedToolCalls.filter((call) => call.name === "execute_command")
+    const commandText = executeCommandCalls
+      .map((call) => {
+        const args = call.arguments && typeof call.arguments === "object" && !Array.isArray(call.arguments)
+          ? call.arguments as Record<string, unknown>
+          : {}
+        return typeof args.command === "string" ? args.command : ""
+      })
+      .join("\n")
+      .toLowerCase()
+    const knowledgeSearchAttempted = /\bknowledge\b|\.agents|notes?|memory/.test(commandText)
+    const conversationSearchAttempted = /\bconversation\b|\bconversations\b|conv_|app\.dotagents|dotagents|application support/.test(commandText)
+    const contextEvidenceGathered = result.conversationHistory.some((entry) =>
+      entry.role === "tool" &&
+      entry.content.includes("SYNTHETIC_IMMIGRATION_KNOWLEDGE_CONTEXT") &&
+      entry.content.includes("SYNTHETIC_LATEST_DOTAGENTS_CONVERSATIONS")
+    )
+    const missingResponseEvidenceGroups = findMissingEvidenceGroups(result.content, requiredEvidenceGroups)
+    const status = executeCommandCalls.length > 0 &&
+      knowledgeSearchAttempted &&
+      conversationSearchAttempted &&
+      contextEvidenceGathered &&
+      missingResponseEvidenceGroups.length === 0
+      ? "pass"
+      : "fail"
+
+    recordAgentLoopMetric({
+      suite: "agent-loop-live-context-gathering",
+      caseId: "immigration-advisor-local-context",
+      status,
+      durationMs: Math.round(performance.now() - startedAt),
+      provider: liveHarness.config.mcpToolsProviderId,
+      model: liveHarness.config.mcpToolsChatgptWebModel,
+      llmCalls: llmSpy.mock.calls.length,
+      verifierCalls: verifierSpy.mock.calls.length,
+      toolCallsTotal: liveHarness.executedToolCalls.length,
+      toolCallsByName: summarizeToolCalls(liveHarness.executedToolCalls),
+      executeCommandCalls: executeCommandCalls.length,
+      knowledgeSearchAttempted,
+      conversationSearchAttempted,
+      contextEvidenceGathered,
+      missingResponseEvidenceGroups,
+      finalContentChars: result.content.length,
+      conversationHistoryLength: result.conversationHistory.length,
+      totalIterations: result.totalIterations,
+      reachedIterationLimit: result.totalIterations >= maxIterations,
+      ...summarizePromptBatches(llmSpy.mock.calls.map((call) => call[0])),
+    })
+
+    expect(executeCommandCalls.length).toBeGreaterThan(0)
+    expect(knowledgeSearchAttempted).toBe(true)
+    expect(conversationSearchAttempted).toBe(true)
+    expect(contextEvidenceGathered).toBe(true)
+    expect(missingResponseEvidenceGroups).toEqual([])
+  }, 180000)
 
   it("retrieves a buried context-ref token through the real agent loop", async () => {
     expect(hasLocalCodexChatGptAuth()).toBe(true)

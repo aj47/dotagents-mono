@@ -36,7 +36,7 @@ function makeApprovalBoundaryHistory(): TraceHistoryMessage[] {
     { role: "tool", content: "[set_session_title] {\"success\":true,\"title\":\"Livestream Prep Approval\"}" },
     { role: "assistant", content: "I need to identify the latest TechFren livestream before proposing any mutating plan." },
     { role: "assistant", content: "", toolCalls: [{ name: "execute_command", arguments: { command: "find ~/.agents/knowledge -maxdepth 3 -type f | grep -Ei 'youtube|livestream|techfren' | head" } }] },
-    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"TechFren notes found\\nlocal project: /Users/ajjoobandi/Development/techfren-recap-remotion\\nno exact latest VOD URL confirmed\"}" },
+    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"TechFren notes found\\nlocal project: /tmp/dotagents-fixtures/techfren-recap-remotion\\nno exact latest VOD URL confirmed\"}" },
     { role: "assistant", content: "", toolCalls: [{ name: "execute_command", arguments: { command: "which yt-dlp || true; which ffmpeg || true" } }] },
     { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"/opt/homebrew/bin/yt-dlp\\n/opt/homebrew/bin/ffmpeg\"}" },
     { role: "assistant", content: "Known so far: this is TechFren-related and the local recap project exists. Unknown: the exact latest stream URL." },
@@ -51,7 +51,7 @@ function makeDownloadStatusHistory(): TraceHistoryMessage[] {
     ...makeTraceFillerMessages("download", 60),
     { role: "user", content: "Make sure that we get it in 2K resolution or max resolution." },
     { role: "user", content: "Download at max resolution in the right path. You have permission." },
-    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"created /Users/ajjoobandi/Movies/techfren-latest\\ntotal 0\\nno media files\"}" },
+    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"created /tmp/dotagents-fixtures/techfren-latest\\ntotal 0\\nno media files\"}" },
     { role: "tool", content: "[execute_command] {\"success\":false,\"command\":\"yt-dlp --merge-output-format mp4 https://www.youtube.com/watch?v=SKKLEhBNkdk\",\"stderr\":\"ERROR: [youtube] SKKLEhBNkdk: Sign in to confirm you are not a bot\"}" },
     {
       role: "assistant",
@@ -84,7 +84,7 @@ function makeSkillRegistryHistory(): TraceHistoryMessage[] {
     { role: "assistant", content: "I will check whether the skill is loadable before inferring its workflow. STALE_LONG_CONTEXT_SHOULD_NOT_REPLAY" },
     ...makeTraceFillerMessages("skill", 71),
     { role: "tool", content: "[load_skill_instructions] {\"success\":false,\"error\":\"Skill stream-topic-inventory is not available in the running skills registry\"}" },
-    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"exists on disk: /Users/ajjoobandi/.agents/skills/stream-topic-inventory/SKILL.md\"}" },
+    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"exists on disk: /tmp/dotagents-fixtures/.agents/skills/stream-topic-inventory/SKILL.md\"}" },
     {
       role: "assistant",
       content: "The skill exists on disk, but the running app session does not have it in the live skills registry yet.",
@@ -104,7 +104,7 @@ function makeFullLongContextHistory(): TraceHistoryMessage[] {
   const recentHistory: TraceHistoryMessage[] = [
     { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"skillsService active list does not include stream-topic-inventory\"}" },
     { role: "assistant", content: "I will verify whether this is a registry problem or a filesystem problem before answering." },
-    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"filesystem_skill_exists= True\\n/Users/ajjoobandi/.agents/skills/stream-topic-inventory/SKILL.md\"}" },
+    { role: "tool", content: "[execute_command] {\"success\":true,\"stdout\":\"filesystem_skill_exists= True\\n/tmp/dotagents-fixtures/.agents/skills/stream-topic-inventory/SKILL.md\"}" },
     {
       role: "assistant",
       content: "",
@@ -178,7 +178,7 @@ function makePriorConversationsBeforeUnavailableHistory(): TraceHistoryMessage[]
     },
     {
       role: "tool",
-      content: "[execute_command] {\"success\":true,\"stdout\":\"/Users/ajjoobandi/Documents/harness-workshop-notes/harness-engineering-distilled.md:1:# Harness Engineering - Distilled Workshop Notes\\n\",\"stderr\":\"\"}",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"/tmp/dotagents-fixtures/harness-workshop-notes/harness-engineering-distilled.md:1:# Harness Engineering - Distilled Workshop Notes\\n\",\"stderr\":\"\"}",
     },
     {
       role: "assistant",
@@ -192,7 +192,7 @@ function makePriorConversationsBeforeUnavailableHistory(): TraceHistoryMessage[]
     },
     {
       role: "tool",
-      content: "[execute_command] {\"success\":true,\"stdout\":\"/Users/ajjoobandi/Documents/harness-workshop-notes/harness-engineering-distilled.md\\n/Users/ajjoobandi/Desktop/harness-workshop-materials/README.md\\n\",\"stderr\":\"\"}",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"/tmp/dotagents-fixtures/harness-workshop-notes/harness-engineering-distilled.md\\n/tmp/dotagents-fixtures/harness-workshop-materials/README.md\\n\",\"stderr\":\"\"}",
     },
     {
       role: "assistant",
@@ -236,7 +236,7 @@ function makeInitialConversationReviewPathHistory(): TraceHistoryMessage[] {
     },
     {
       role: "tool",
-      content: "[execute_command] {\"success\":true,\"stdout\":\"APPDIR=/Users/ajjoobandi/Library/Application Support/dotagents/conversations\\ntotal 0\\ndrwxr-xr-x   2 ajjoobandi  staff    64 May  1 18:01 .\\ndrwx------  12 ajjoobandi  staff   384 May  1 18:01 ..\\n\",\"stderr\":\"\"}",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"APPDIR=/tmp/dotagents-fixtures/dotagents/conversations\\ntotal 0\\ndrwxr-xr-x   2 fixture  staff    64 May  1 18:01 .\\ndrwx------  12 fixture  staff   384 May  1 18:01 ..\\n\",\"stderr\":\"\"}",
     },
     {
       role: "assistant",
@@ -264,11 +264,11 @@ function makeInitialConversationReviewPathHistory(): TraceHistoryMessage[] {
     },
     {
       role: "tool",
-      content: "[execute_command] {\"success\":true,\"stdout\":\"Inputs: Recent conversation files from the DotAgents conversations store. Process: inspect 4h, then 24h, then 7d conversation windows before recording a no-op. Knowledge tail: prior audit used ~/Library/Application Support/app.dotagents/conversations and current conv_1777651483484_3p1ax883c.json.\\n\",\"stderr\":\"\"}",
+      content: "[execute_command] {\"success\":true,\"stdout\":\"Inputs: Recent conversation files from the DotAgents conversations store. Process: inspect 4h, then 24h, then 7d conversation windows before recording a no-op. Knowledge tail: prior audit used /tmp/dotagents-fixtures/app.dotagents/conversations and current conv_1777651483484_3p1ax883c.json.\\n\",\"stderr\":\"\"}",
     },
     {
       role: "assistant",
-      content: "No-op. I searched the required 4h, 24h, and 7d windows in ~/Library/Application Support/dotagents/conversations, found zero conversations in each bounded window, and therefore promoted nothing.",
+      content: "No-op. I searched the required 4h, 24h, and 7d windows in /tmp/dotagents-fixtures/dotagents/conversations, found zero conversations in each bounded window, and therefore promoted nothing.",
     },
   ]
 }
@@ -308,7 +308,7 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
     requiredPromptEvidence: [
       "[Older context:",
       "Make sure that we get it in 2K resolution",
-      "created /Users/ajjoobandi/Movies/techfren-latest",
+      "created /tmp/dotagents-fixtures/techfren-latest",
       "Sign in to confirm you are not a bot",
       "did it dl",
     ],
@@ -449,7 +449,7 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
       ["prior conversations", "past conversations", "conversation history", "chat history"],
       ["knowledge notes", "knowledge"],
       ["files", "local files", "Documents"],
-      ["unavailable", "don't have it", "do not have it", "can't find it", "cannot find it"],
+      ["premature unavailable", "concluded unavailable", "claiming unavailable", "said it was unavailable", "before saying unavailable", "before concluding unavailable"],
     ],
   },
   {
@@ -459,13 +459,13 @@ export const autoresearchContinuationCases: AutoresearchContinuationCase[] = [
     transcript: "debug the main issue: the initial conversation-review query should have checked the real app.dotagents conversations store before reporting zero conversations",
     expectedHistoryLength: 67,
     previousHistory: makeInitialConversationReviewPathHistory(),
-    response: "The main issue is the initial conversation-review query itself: it resolved the wrong conversations store. A regression case should prove the agent checks the real app.dotagents app-data store and actual conversation files or index before reporting zero conversations. It should fail if the agent only scans ~/Library/Application Support/dotagents/conversations, sees empty 4h, 24h, and 7d windows, and records a no-op.",
+    response: "The main issue is the initial conversation-review query itself: it resolved the wrong conversations store. A regression case should prove the agent checks the real app.dotagents app-data store and actual conversation files or index before reporting zero conversations. It should fail if the agent only scans /tmp/dotagents-fixtures/dotagents/conversations, sees empty 4h, 24h, and 7d windows, and records a no-op.",
     requiredPromptEvidence: [
       "Review recent DotAgents conversations and promote only durable",
       "Recent conversation files from the DotAgents conversations store",
-      "APPDIR=/Users/ajjoobandi/Library/Application Support/dotagents/conversations",
+      "APPDIR=/tmp/dotagents-fixtures/dotagents/conversations",
       "WINDOW 4 count=0",
-      "prior audit used ~/Library/Application Support/app.dotagents/conversations",
+      "prior audit used /tmp/dotagents-fixtures/app.dotagents/conversations",
       "No-op. I searched the required 4h, 24h, and 7d windows",
       "debug the main issue: the initial conversation-review query should have checked the real app.dotagents conversations store before reporting zero conversations",
     ],
