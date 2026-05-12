@@ -96,3 +96,12 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
 - Full hard-compaction metric versus the latest kept full run: `read_more_context` decreased from 4 to 2, prompt chars decreased from 41,431 to 29,669, and hidden-token correctness stayed pass. Versus the earlier best kept hard-compaction baseline, `read_more_context` stayed 2 and prompt chars were roughly neutral at 28,764 to 29,669.
 - Decision: keep. This is a conservative prompt-size optimization that reduces worst-case search payload without withholding real context reads.
+
+## 2026-05-12T00:12Z - Immediate nudge for intent-only no-tool responses
+
+- Change tried: when a no-tool assistant response is classified as procedural progress text, add the existing intent-only tool-usage nudge immediately instead of waiting for two no-op turns.
+- Deterministic validation: focused replay passed 1/1, then `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts` passed 40/40.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Full live e2e: AutoResearch cases completed 5/5, then the final hard-compaction test failed before an assertion with DNS `ENOTFOUND chatgpt.com`.
+- Partial live AutoResearch metric versus the latest kept full live run: prompt chars increased from 51,854 to 57,922, LLM calls increased from 10 to 11, verifier calls increased from 7 to 9, duration increased from 86,675ms to 132,416ms, and iteration-limit hits increased from 1 to 2.
+- Decision: discard. Immediate nudging made the completed continuation cases slower and did not reduce iteration-limit hits.
