@@ -89,6 +89,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
     `STATUS & CONTINUATION TURNS:
 - When the current user message is asking for status, current state, what happened, why something failed, or the next safe step, answer from existing conversation evidence whenever it is sufficient
+- When the current user message asks to verify/debate/debug a specific issue, answer that issue directly and do not append next-safe-action boilerplate unless the user asks for next steps
 - Do not resume the broader original task or start exploratory work just because tools are available
 - If more evidence is necessary, make at most one narrow read-only probe before responding
 - If an approval boundary is active, mention it explicitly in the status answer and do not offer mutating next actions except as pending approval
@@ -144,7 +145,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   if (hasSetSessionTitle) {
     sections.push(`SESSION TITLE:
 - When the task becomes clear, set a concise useful title with set_session_title early enough to improve the UI
-- Keep titles short and specific; update later only if the conversation topic materially shifts`)
+- Keep titles short and specific; do not call set_session_title again with the same title
+- Update later only if the conversation topic materially shifts and the title should change`)
   }
 
   if (hasReadMoreContext) {
@@ -463,24 +465,29 @@ export function constructMinimalSystemPrompt(
   skillsIndex?: string,
   filesystemContext?: string,
 ): string {
+  const hasExecuteCommand = availableTools?.some((tool) => tool.name === 'execute_command') ?? false
+  const hasReadMoreContext = availableTools?.some((tool) => tool.name === 'read_more_context') ?? false
   // IMPORTANT: This prompt is a last-resort fallback used when the full system prompt
   // cannot fit in the model context window. It must preserve the core policies:
   // - Use tools proactively to complete tasks
   // - Work iteratively until goals are fully achieved
   // - Preserve filesystem skill paths so skills remain discoverable under shrinking
   let prompt =
-    "You are an autonomous AI assistant that uses tools to complete tasks. Work iteratively until goals are fully achieved. " +
-    "Use tools proactively - prefer tools over asking users for information you can gather yourself. " +
-    "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible. " +
-    "You are highly autonomous and proactive. Make as many tool calls as needed to completely finish the task. Do NOT stop to ask the user for permission or confirmation. Keep working, verifying, and checking your own work until you are certain it is done. " +
-    "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, do not ask for permission, only ask the minimum high-signal follow-ups. " +
-    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files. Use execute_command with rg/find/ls/wc/sed/head/tail to discover and read them through the filesystem. For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR instead of expecting list/schema helper tools. Durable knowledge lives in configured knowledge roots, defaulting to global/workspace .agents/knowledge, as notes at <knowledge-root>/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in the runtime-supplied conversations directory; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in layered global/workspace .agents folders; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available read the dotagents-config-admin SKILL.md path before changing unfamiliar DotAgents config."
+    "You are an autonomous AI assistant that uses tools to complete tasks. Use exact tool names and parameter keys, batch independent calls when useful, verify results, and be concise. " +
+    "Respect earlier user constraints and approval boundaries. Answer the latest user request only; do not append workflow recaps, completion summaries, or next safe actions unless the user asks for status or next steps. " +
+    "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, ask only the minimum high-signal follow-up. " +
+    "Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use execute_command with rg/find/ls/wc/sed/head/tail when filesystem paths are available. Inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR for runtime discovery. " +
+    "Durable knowledge lives in configured knowledge roots as <knowledge-root>/<slug>/<slug>.md notes; use context: search-only by default, reserve context: auto for a tiny curated subset, and prefer direct file editing. " +
+    "Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; use index.json then conv_*.json. DotAgents config lives in layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available before unfamiliar config edits."
 
   if (isAgentMode) {
-    prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up. If AJ says to pick up where you left off or find a prior conversation, proactively search the conversation store with python3 or shell tools, read the last relevant messages, and summarize recovered state before asking follow-up questions."
+    prompt += " Agent mode: continue with tools until the requested work is resolved. If AJ asks to resume or find prior context, search the conversation store before asking follow-up questions."
+    if (hasReadMoreContext) {
+      prompt += ' For compacted Context refs, call read_more_context(mode: "search") with the exact needed query when known; once the returned result contains the requested evidence, answer instead of searching again.'
+    }
   }
 
-  if (filesystemContext?.trim()) {
+  if (filesystemContext?.trim() && hasExecuteCommand) {
     prompt += `\n\nFILESYSTEM LOCATIONS:\n${filesystemContext.trim()}`
   }
 

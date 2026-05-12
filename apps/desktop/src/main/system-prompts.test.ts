@@ -213,6 +213,7 @@ describe("constructSystemPrompt", () => {
     expect(withoutTitleTool).not.toContain("SESSION TITLE")
     expect(withTitleTool).toContain("SESSION TITLE")
     expect(withTitleTool).toContain("set a concise useful title with set_session_title early")
+    expect(withTitleTool).toContain("do not call set_session_title again with the same title")
   })
 
   it("prefers direct compacted-context search when the query is known", async () => {

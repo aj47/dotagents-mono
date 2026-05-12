@@ -266,6 +266,7 @@ function makeLiveAutoresearchTranscript(traceCase: AutoresearchContinuationCase)
     "Answer from the existing conversation and tool history only.",
     "Do not claim you need to run a new command when the prior tool evidence already answers the question.",
     "Preserve any approval or no-mutation boundary from previous turns.",
+    "For verify/debate/debug-the-main-issue requests, answer the current issue directly; do not append a next-safe-action line unless the request asks for one.",
     "Be concise and include the current state plus the next safest action when relevant.",
   ].join("\n")
 }

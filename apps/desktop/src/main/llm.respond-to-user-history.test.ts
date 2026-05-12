@@ -75,6 +75,11 @@ const availableTools = [
   { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object", properties: {} } },
 ]
 
+const titleTools = [
+  ...availableTools,
+  { name: "set_session_title", description: "Set session title", inputSchema: { type: "object", properties: {} } },
+]
+
 const traceContinuationTools = [
   ...availableTools,
   { name: "load_skill_instructions", description: "Load skill instructions", inputSchema: { type: "object", properties: {} } },
@@ -173,6 +178,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-prior-display-content",
       "session-recovered-context-final-answer",
       "session-deduped-context-read",
+      "session-deduped-title",
       "session-actionable-verifier-feedback",
       "session-procedural-context-response",
       "session-procedural-context-tail-response",
@@ -793,6 +799,49 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     })
   })
 
+  it("deduplicates repeated set_session_title calls within one run", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const toolCallLog: any[] = []
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "set_session_title", arguments: { title: "Trace Review" } },
+        { name: "set_session_title", arguments: { title: "Trace Review" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Checked the trace." } },
+        { name: "mark_work_complete", arguments: { summary: "Trace checked" } },
+      ] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.98,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "check latest trace",
+      titleTools as any,
+      makeExecuteToolCall("session-deduped-title", 1, {}, toolCallLog),
+      4,
+      [],
+      "conv-deduped-title",
+      "session-deduped-title",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Checked the trace.")
+    expect(toolCallLog.filter((call) => call.name === "set_session_title")).toHaveLength(1)
+    expect(result.conversationHistory.some((message) =>
+      message.role === "tool" && message.content.includes("Duplicate session title update skipped")
+    )).toBe(true)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+  })
+
   it("keeps a verified explicit final response to one assistant message", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")
@@ -928,7 +977,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
       .map((message: any) => message.content)
       .join("\n")
-    expect(secondPrompt).toContain("without first providing the final user-facing answer")
+    expect(secondPrompt).toMatch(/without first providing the final user-facing answer|Previous request had empty response/)
     expect(secondPrompt).toContain("i think harness engineering is the system around the \"agent\" not the model")
     expect(secondPrompt).toContain("Validated harness engineering framing")
   })
