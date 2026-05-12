@@ -75,3 +75,12 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
 - Full live metric versus the prior kept full live run: AutoResearch semantic passes improved from 1/5 to 3/5, but aggregate prompt chars increased from 41,332 to 60,454 and iteration-limit hits increased from 1 to 2. The hard-compaction row stayed correct, but `read_more_context` increased from 2 to 4 and prompt chars increased from 28,764 to 41,431; that hard-compaction run made only `read_more_context` calls, so the new communication-only guard did not fire in that sample.
 - Decision: keep as a narrow correctness guard for a real procedural-response failure mode, but do not count it as a read-count optimization. Continue optimizing query/read-count variance separately.
+
+## 2026-05-12T00:03Z - Skip broad context reads after successful search
+
+- Change tried: after a successful `read_more_context(mode:"search")` hit for a Context ref, skip later broad `overview`/`head`/`tail`/`window` reads for that same ref and return the cached matching search excerpt instead.
+- Deterministic validation: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts` passed 40/40 and logged `caseId=skip-broad-read-after-context-search` with one broad read skipped.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Targeted live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop exec vitest run src/main/llm.agent-loop.live.test.ts -t "retrieves a buried context-ref token"` failed.
+- Live metric versus the latest kept targeted hard-compaction row: status regressed from pass to fail, LLM calls increased from 3 to 6, `read_more_context` increased from 3 to 4, prompt chars increased from 22,297 to 47,591, and the run hit the iteration limit without the hidden token in the final answer.
+- Decision: discard. The broad-read shortcut is too aggressive; even when a search hit exists, the live model may still need another real context read to produce the final answer reliably.
