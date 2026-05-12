@@ -394,19 +394,6 @@ function buildFilesystemContextForPrompt(availableTools?: MCPTool[], sessionId?:
   return locations.join("\n")
 }
 
-function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
-  if (toolName !== "execute_command" || !result.isError) return false
-
-  const errorText = result.content
-    .map((content) => content.text)
-    .join(" ")
-    .toLowerCase()
-
-  return errorText.includes("invalid execute_command.skillid")
-    || errorText.includes("execute_command.skillid is no longer supported")
-    || (errorText.includes("skill not found") && errorText.includes("omit skillid"))
-}
-
 function isLikelyAnswerOnlyContinuationTurn(
   transcript: string,
   previousConversationHistory?: Array<{ role: string; content?: string; toolCalls?: unknown[]; toolResults?: unknown[] }>,
@@ -3332,16 +3319,6 @@ export async function processTranscriptWithAgentMode(
     }
 
     if (hasErrors) {
-      const hasInvalidExecuteCommandSkillIdError = toolResults.some((result, index) =>
-        isInvalidExecuteCommandSkillIdFailure(toolCallsArray[index]?.name, result)
-      )
-      if (hasInvalidExecuteCommandSkillIdError) {
-        addEphemeralMessage(
-          "user",
-          "execute_command.skillId is no longer supported. Skills are filesystem instructions now: read the listed SKILL.md path with execute_command, then run ordinary shell commands with explicit paths or cd."
-        )
-      }
-
       // Track per-tool failures
       for (let i = 0; i < toolResults.length; i++) {
         const result = toolResults[i]

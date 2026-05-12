@@ -1215,7 +1215,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(followupPrompt).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
   })
 
-  it("nudges the model toward filesystem skill paths after legacy execute_command skillId failure", async () => {
+  it("carries tool-provided filesystem guidance after legacy execute_command skillId failure", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
 
     mocks.makeLLMCallWithStreamingAndTools
@@ -1257,8 +1257,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .map((message: any) => message.content)
       .join("\n")
     expect(secondPrompt).toContain("execute_command.skillId is no longer supported")
-    expect(secondPrompt).toContain("read the listed SKILL.md path with execute_command")
-    expect(secondPrompt).toContain("ordinary shell commands with explicit paths or cd")
+    expect(secondPrompt).toContain("Skills are filesystem instructions")
+    expect(secondPrompt).toContain("Use the SKILL.md path shown in Available Skills")
+    expect(secondPrompt).not.toContain("ordinary shell commands with explicit paths or cd")
   })
 
   it("does not inject unrecoverable permissions notes for failed tools", async () => {
