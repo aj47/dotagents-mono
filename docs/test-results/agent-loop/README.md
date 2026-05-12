@@ -12,12 +12,6 @@ AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metri
   pnpm --filter @dotagents/desktop run test:autoresearch-replay
 ```
 
-Open `metrics-dashboard.html` from this directory to inspect the JSONL ledger as
-trend charts, KPI deltas, recent runs, and a metrics table with status and commit
-filters. When
-served over HTTP it auto-loads `2026-05-11-agent-loop-metrics.jsonl`; when opened
-directly as a local file, use the file picker to load the JSONL ledger.
-
 Each row includes the branch, short git SHA, suite name, case id, status, duration,
 LLM call count, verifier call count, tool call count, prompt-size summary, and any
 case-specific recovery checks. Live AutoResearch rows also include
