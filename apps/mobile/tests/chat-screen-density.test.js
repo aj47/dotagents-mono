@@ -69,6 +69,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /agentSelector: \{\s+button: styles\.headerAgentSelectorButton,\s+chip: styles\.headerAgentSelectorChip,\s+label: styles\.headerAgentSelectorText,/);
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderAgentSelector/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderAgentSelector[\s\S]*?activeOpacity=\{renderState\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{labelNumberOfLines\}/);
@@ -671,6 +672,7 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(chatMessageChromeSource, /edgeStyle: styles\.headerEdgeActionButton,\s+pinStyle: styles\.headerPinButton,\s+pinActiveStyle: styles\.headerPinButtonActive,/);
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderIconButton/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderIconButton[\s\S]*?activeOpacity=\{renderState\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint\}/);
   assert.match(chatMessageChromeSource, /style=\{\[style, isActive && activeStyle\]\}/);

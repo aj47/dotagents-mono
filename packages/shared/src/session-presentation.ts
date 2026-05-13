@@ -244,6 +244,7 @@ export interface ChatRuntimeAgentSelectorMobileIconState {
 export interface ChatRuntimeAgentSelectorMobileActionState {
   label: string
   accessibilityRole: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.accessibilityRole
+  pressedOpacity: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.pressedOpacity
   accessibilityLabel: string
   accessibilityHint: string
   icon: ChatRuntimeAgentSelectorMobileIconState
@@ -277,6 +278,7 @@ export interface ChatRuntimeAgentSelectorMobileRenderStateInput {
 export interface ChatRuntimeAgentSelectorMobileRenderState {
   label: ChatRuntimeAgentSelectorMobileActionState["label"]
   accessibilityRole: ChatRuntimeAgentSelectorMobileActionState["accessibilityRole"]
+  pressedOpacity: ChatRuntimeAgentSelectorMobileActionState["pressedOpacity"]
   accessibilityLabel: ChatRuntimeAgentSelectorMobileActionState["accessibilityLabel"]
   accessibilityHint: ChatRuntimeAgentSelectorMobileActionState["accessibilityHint"]
   chip: ChatRuntimeAgentSelectorMobileColors["chip"]
@@ -296,6 +298,7 @@ export interface ChatRuntimeBackMobileIconState {
 
 export interface ChatRuntimeBackMobileActionState {
   accessibilityRole: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.accessibilityRole
+  pressedOpacity: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.pressedOpacity
   accessibilityLabel: string
   accessibilityHint: string
   icon: ChatRuntimeBackMobileIconState
@@ -318,6 +321,7 @@ export interface ChatRuntimeBackMobileRenderStateInput {
 
 export interface ChatRuntimeBackMobileRenderState {
   accessibilityRole: ChatRuntimeBackMobileActionState["accessibilityRole"]
+  pressedOpacity: ChatRuntimeBackMobileActionState["pressedOpacity"]
   accessibilityLabel: ChatRuntimeBackMobileActionState["accessibilityLabel"]
   accessibilityHint: ChatRuntimeBackMobileActionState["accessibilityHint"]
   icon: {
@@ -341,6 +345,7 @@ export interface ChatRuntimePinMobileIconState {
 export interface ChatRuntimePinMobileActionState {
   isPinned: boolean
   accessibilityRole: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.accessibilityRole
+  pressedOpacity: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.pressedOpacity
   accessibilityLabel: string
   accessibilityHint: string
   icon: ChatRuntimePinMobileIconState
@@ -374,6 +379,7 @@ export interface ChatRuntimePinMobileRenderStateInput {
 export interface ChatRuntimePinMobileRenderState {
   isPinned: boolean
   accessibilityRole: ChatRuntimePinMobileActionState["accessibilityRole"]
+  pressedOpacity: ChatRuntimePinMobileActionState["pressedOpacity"]
   accessibilityLabel: ChatRuntimePinMobileActionState["accessibilityLabel"]
   accessibilityHint: ChatRuntimePinMobileActionState["accessibilityHint"]
   button: ChatRuntimePinMobileColors["button"]
@@ -413,6 +419,7 @@ export interface ChatRuntimeHandsFreeMobileActionStateInput {
 export interface ChatRuntimeHandsFreeMobileActionState {
   isEnabled: boolean
   accessibilityRole: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.accessibilityRole
+  pressedOpacity: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.pressedOpacity
   accessibilityLabel: string
   accessibilityHint: string
   accessibilityState: {
@@ -429,6 +436,7 @@ export interface ChatRuntimeHandsFreeMobileRenderStateInput extends ChatRuntimeH
 export interface ChatRuntimeHandsFreeMobileRenderState {
   isEnabled: boolean
   accessibilityRole: ChatRuntimeHandsFreeMobileActionState["accessibilityRole"]
+  pressedOpacity: ChatRuntimeHandsFreeMobileActionState["pressedOpacity"]
   accessibilityLabel: ChatRuntimeHandsFreeMobileActionState["accessibilityLabel"]
   accessibilityHint: ChatRuntimeHandsFreeMobileActionState["accessibilityHint"]
   accessibilityState: ChatRuntimeHandsFreeMobileActionState["accessibilityState"]
@@ -463,6 +471,7 @@ export interface ChatRuntimeKillSwitchMobileColors {
 
 export interface ChatRuntimeKillSwitchMobileActionState {
   accessibilityRole: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.accessibilityRole
+  pressedOpacity: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.pressedOpacity
   accessibilityLabel: string
   accessibilityHint: string
   icon: ChatRuntimeKillSwitchMobileIconState
@@ -474,6 +483,7 @@ export interface ChatRuntimeKillSwitchMobileRenderStateInput {
 
 export interface ChatRuntimeKillSwitchMobileRenderState {
   accessibilityRole: ChatRuntimeKillSwitchMobileActionState["accessibilityRole"]
+  pressedOpacity: ChatRuntimeKillSwitchMobileActionState["pressedOpacity"]
   accessibilityLabel: ChatRuntimeKillSwitchMobileActionState["accessibilityLabel"]
   accessibilityHint: ChatRuntimeKillSwitchMobileActionState["accessibilityHint"]
   button: ChatRuntimeKillSwitchMobileColors["button"]
@@ -1709,10 +1719,12 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     },
     edgeActionButton: {
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       horizontalPadding: 16,
     },
     agentSelectorButton: {
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       alignItems: "center",
       justifyContent: "center",
       height: "100%",
@@ -1741,6 +1753,7 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     },
     pinButton: {
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       horizontalPadding: 10,
       verticalPadding: 8,
       borderRadius: "lg",
@@ -1760,6 +1773,7 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     },
     killSwitchButton: {
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       size: 28,
       borderRadius: 14,
       backgroundColorToken: "destructive",
@@ -1769,6 +1783,7 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     },
     handsFreeButton: {
       accessibilityRole: "switch",
+      pressedOpacity: 0.78,
       size: 24,
       inactiveIconColorToken: "mutedForeground",
       activeIconColorToken: "primary",
@@ -1785,10 +1800,12 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     }
     edgeActionButton: {
       accessibilityRole: string
+      pressedOpacity: number
       horizontalPadding: number
     }
     agentSelectorButton: {
       accessibilityRole: string
+      pressedOpacity: number
       alignItems: string
       justifyContent: string
       height: string
@@ -1817,6 +1834,7 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     }
     pinButton: {
       accessibilityRole: string
+      pressedOpacity: number
       horizontalPadding: number
       verticalPadding: number
       borderRadius: string
@@ -1836,6 +1854,7 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     }
     killSwitchButton: {
       accessibilityRole: string
+      pressedOpacity: number
       size: number
       borderRadius: number
       backgroundColorToken: string
@@ -1845,6 +1864,7 @@ export const CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION = {
     }
     handsFreeButton: {
       accessibilityRole: string
+      pressedOpacity: number
       size: number
       inactiveIconColorToken: string
       activeIconColorToken: string
@@ -4707,6 +4727,7 @@ export function getChatRuntimeAgentSelectorMobileActionState(
   return {
     label: agentLabel,
     accessibilityRole: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.accessibilityRole,
+    pressedOpacity: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.pressedOpacity,
     accessibilityLabel: formatChatRuntimeAgentSelectorAccessibilityLabel(agentLabel),
     accessibilityHint: getChatRuntimeAgentSelectorAccessibilityHint(),
     icon: getChatRuntimeAgentSelectorMobileIconState(),
@@ -4745,6 +4766,7 @@ export function getChatRuntimeAgentSelectorMobileRenderState(
   return {
     label: action.label,
     accessibilityRole: action.accessibilityRole,
+    pressedOpacity: action.pressedOpacity,
     accessibilityLabel: action.accessibilityLabel,
     accessibilityHint: action.accessibilityHint,
     chip: colors.chip,
@@ -4786,6 +4808,7 @@ export function getChatRuntimeBackMobileIconState(): ChatRuntimeBackMobileIconSt
 export function getChatRuntimeBackMobileActionState(): ChatRuntimeBackMobileActionState {
   return {
     accessibilityRole: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.accessibilityRole,
+    pressedOpacity: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.pressedOpacity,
     accessibilityLabel: getChatRuntimeBackAccessibilityLabel(),
     accessibilityHint: getChatRuntimeBackAccessibilityHint(),
     icon: getChatRuntimeBackMobileIconState(),
@@ -4812,6 +4835,7 @@ export function getChatRuntimeBackMobileRenderState(
 
   return {
     accessibilityRole: action.accessibilityRole,
+    pressedOpacity: action.pressedOpacity,
     accessibilityLabel: action.accessibilityLabel,
     accessibilityHint: action.accessibilityHint,
     icon: {
@@ -4857,6 +4881,7 @@ export function getChatRuntimePinMobileActionState(isPinned: boolean): ChatRunti
   return {
     isPinned,
     accessibilityRole: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.accessibilityRole,
+    pressedOpacity: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.pressedOpacity,
     accessibilityLabel: getChatRuntimePinAccessibilityLabel(isPinned),
     accessibilityHint: getChatRuntimePinAccessibilityHint(isPinned),
     icon: getChatRuntimePinMobileIconState(isPinned),
@@ -4893,6 +4918,7 @@ export function getChatRuntimePinMobileRenderState(
   return {
     isPinned,
     accessibilityRole: action.accessibilityRole,
+    pressedOpacity: action.pressedOpacity,
     accessibilityLabel: action.accessibilityLabel,
     accessibilityHint: action.accessibilityHint,
     button: colors.button,
@@ -4937,6 +4963,7 @@ export function getChatRuntimeHandsFreeMobileActionState(
   return {
     isEnabled,
     accessibilityRole: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.accessibilityRole,
+    pressedOpacity: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.pressedOpacity,
     accessibilityLabel: getChatRuntimeHandsFreeAccessibilityLabel(),
     accessibilityHint: getChatRuntimeHandsFreeAccessibilityHint(),
     accessibilityState: { checked: isEnabled },
@@ -4954,6 +4981,7 @@ export function getChatRuntimeHandsFreeMobileRenderState(
   return {
     isEnabled: action.isEnabled,
     accessibilityRole: action.accessibilityRole,
+    pressedOpacity: action.pressedOpacity,
     accessibilityLabel: action.accessibilityLabel,
     accessibilityHint: action.accessibilityHint,
     accessibilityState: action.accessibilityState,
@@ -4977,6 +5005,7 @@ export function getChatRuntimeKillSwitchMobileIconState(): ChatRuntimeKillSwitch
 export function getChatRuntimeKillSwitchMobileActionState(): ChatRuntimeKillSwitchMobileActionState {
   return {
     accessibilityRole: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.accessibilityRole,
+    pressedOpacity: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.pressedOpacity,
     accessibilityLabel: getChatRuntimeKillSwitchAccessibilityLabel(),
     accessibilityHint: getChatRuntimeKillSwitchAccessibilityHint(),
     icon: getChatRuntimeKillSwitchMobileIconState(),
@@ -5007,6 +5036,7 @@ export function getChatRuntimeKillSwitchMobileRenderState(
 
   return {
     accessibilityRole: action.accessibilityRole,
+    pressedOpacity: action.pressedOpacity,
     accessibilityLabel: action.accessibilityLabel,
     accessibilityHint: action.accessibilityHint,
     button: colors.button,

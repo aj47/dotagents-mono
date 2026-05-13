@@ -2408,6 +2408,7 @@ export function ChatRuntimeHeaderAgentSelector({
     <TouchableOpacity
       style={styles.button}
       onPress={onPress}
+      activeOpacity={renderState.pressedOpacity}
       accessibilityRole={renderState.accessibilityRole}
       accessibilityLabel={renderState.accessibilityLabel}
       accessibilityHint={renderState.accessibilityHint}
@@ -2462,6 +2463,7 @@ export function ChatRuntimeHeaderIconButton({
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={renderState.pressedOpacity}
       accessibilityRole={renderState.accessibilityRole}
       accessibilityLabel={renderState.accessibilityLabel}
       accessibilityHint={renderState.accessibilityHint}

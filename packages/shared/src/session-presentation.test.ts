@@ -277,6 +277,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeAgentSelectorMobileActionState("Research")).toEqual({
       label: "Research",
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: "Current agent: Research. Tap to change.",
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.header.agentSelectorAccessibilityHint,
       icon: {
@@ -291,6 +292,7 @@ describe("session presentation semantics", () => {
     })).toEqual({
       label: "Research",
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: "Current agent: Research. Tap to change.",
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.header.agentSelectorAccessibilityHint,
       chip: {
@@ -317,6 +319,7 @@ describe("session presentation semantics", () => {
     })
     expect(getChatRuntimeBackMobileActionState()).toEqual({
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.header.backToHistoryAccessibilityLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.header.backToHistoryAccessibilityHint,
       icon: {
@@ -336,6 +339,7 @@ describe("session presentation semantics", () => {
       colors: { foreground: "#0f172a" },
     })).toEqual({
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.header.backToHistoryAccessibilityLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.header.backToHistoryAccessibilityHint,
       icon: {
@@ -369,6 +373,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeHandsFreeMobileActionState({ isEnabled: false })).toEqual({
       isEnabled: false,
       accessibilityRole: "switch",
+      pressedOpacity: 0.78,
       accessibilityLabel: "Hands-free voice mode toggle",
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.header.handsFreeAccessibilityHint,
       accessibilityState: { checked: false },
@@ -409,6 +414,7 @@ describe("session presentation semantics", () => {
     })).toEqual({
       isEnabled: true,
       accessibilityRole: "switch",
+      pressedOpacity: 0.78,
       accessibilityLabel: "Hands-free voice mode toggle",
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.header.handsFreeAccessibilityHint,
       accessibilityState: { checked: true },
@@ -421,6 +427,7 @@ describe("session presentation semantics", () => {
     })
     expect(getChatRuntimeKillSwitchMobileActionState()).toEqual({
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.killSwitch.buttonAccessibilityLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.killSwitch.buttonAccessibilityHint,
       icon: {
@@ -502,6 +509,7 @@ describe("session presentation semantics", () => {
       colors: { destructive: "#dc2626" },
     })).toEqual({
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.killSwitch.buttonAccessibilityLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.killSwitch.buttonAccessibilityHint,
       button: {
@@ -1070,6 +1078,7 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.justifyContent).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.height).toBe("100%")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.minHeight).toBe(44)
+    expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.pressedOpacity).toBe(0.78)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.flexDirection).toBe("row")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.backgroundColorToken).toBe("primary")
@@ -1092,8 +1101,10 @@ describe("session presentation semantics", () => {
       },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.accessibilityRole).toBe("button")
+    expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.pressedOpacity).toBe(0.78)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.backIcon.colorToken).toBe("foreground")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.accessibilityRole).toBe("button")
+    expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.pressedOpacity).toBe(0.78)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.backgroundColorToken).toBe("background")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.activeBackgroundColorToken).toBe("primary")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.activeBackgroundAlpha).toBe(0.09)
@@ -1128,6 +1139,7 @@ describe("session presentation semantics", () => {
     })).toEqual({
       isPinned: true,
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.pin.unpinChatLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.pin.unpinChatHint,
       button: {
@@ -1158,12 +1170,14 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.accessibilityRole).toBe("button")
+    expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.pressedOpacity).toBe(0.78)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.size).toBe(28)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.backgroundColorToken).toBe("destructive")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.iconColor).toBe("#FFFFFF")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.justifyContent).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.accessibilityRole).toBe("switch")
+    expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.pressedOpacity).toBe(0.78)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.size).toBe(24)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.inactiveIconColorToken).toBe("mutedForeground")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.activeIconColorToken).toBe("primary")
@@ -2773,6 +2787,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimePinMobileActionState(false)).toEqual({
       isPinned: false,
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.pin.pinChatLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.pin.pinChatHint,
       icon: {
@@ -2785,6 +2800,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimePinMobileActionState(true)).toEqual({
       isPinned: true,
       accessibilityRole: "button",
+      pressedOpacity: 0.78,
       accessibilityLabel: CHAT_RUNTIME_PRESENTATION.pin.unpinChatLabel,
       accessibilityHint: CHAT_RUNTIME_PRESENTATION.pin.unpinChatHint,
       icon: {
