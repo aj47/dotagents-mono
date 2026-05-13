@@ -49,6 +49,7 @@ const copiedCodeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState
 
 const ThinkSection: React.FC<{
   content: string;
+  surface: MarkdownThinkSectionMobileSurfaceRenderState['surface'];
   colors: MarkdownThinkSectionMobileSurfaceRenderState['colors'];
   markdownStyles: any;
   markdownRules: any;
@@ -58,6 +59,7 @@ const ThinkSection: React.FC<{
   onToggle?: () => void;
 }> = ({
   content,
+  surface,
   colors,
   markdownStyles,
   markdownRules,
@@ -82,7 +84,7 @@ const ThinkSection: React.FC<{
     <View style={[styles.container, collapsed ? styles.containerCollapsed : styles.containerExpanded]}>
       <Pressable
         onPress={handleToggle}
-        accessibilityRole="button"
+        accessibilityRole={surface.header.accessibilityRole}
         accessibilityLabel={getMarkdownThinkSectionAccessibilityLabel(collapsed)}
         accessibilityState={{ expanded: !collapsed }}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
@@ -260,7 +262,7 @@ const MarkdownCodeBlock: React.FC<{
         {codeContent}
       </Text>
       <Pressable
-        accessibilityRole="button"
+        accessibilityRole={codeBlockCopyButtonState.accessibilityRole}
         accessibilityLabel={copyLabel}
         onPress={handleCopy}
         style={({ pressed }) => [
@@ -587,6 +589,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             <ThinkSection
               key={thinkControl.key}
               content={part.content}
+              surface={thinkSectionRenderState.surface}
               colors={thinkSectionColors}
               markdownStyles={markdownStyles}
               markdownRules={markdownRules}

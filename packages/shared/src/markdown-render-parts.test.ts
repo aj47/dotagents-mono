@@ -71,6 +71,7 @@ describe("markdown render parts", () => {
       backgroundAlpha: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.backgroundAlpha,
       alignItems: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.alignItems,
       justifyContent: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.justifyContent,
+      accessibilityRole: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.accessibilityRole,
       pressedOpacity: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.pressedOpacity,
     })
     expect(getMarkdownCodeBlockCopyMobileButtonState(true)).toMatchObject({
@@ -102,6 +103,7 @@ describe("markdown render parts", () => {
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.size).toBe(24)
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.alignItems).toBe("center")
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.justifyContent).toBe("center")
+    expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.accessibilityRole).toBe("button")
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyIcon.copyName).toBe("copy-outline")
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.blockquote.backgroundColor.darkAlpha).toBe(0.05)
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.blockquote.backgroundColor.lightAlpha).toBe(0.03)
@@ -232,6 +234,7 @@ describe("markdown render parts", () => {
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.container.collapsedBackgroundColor.lightAlpha).toBe(0.45)
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.container.expandedBackgroundColor.darkAlpha).toBe(0.18)
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.header.paddingHorizontal).toBe("sm")
+    expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.header.accessibilityRole).toBe("button")
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.chevron.size).toBe(13)
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.icon.size).toBe(13)
     const lightThinkSectionColors = {

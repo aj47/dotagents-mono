@@ -179,6 +179,7 @@ export const MARKDOWN_CONTENT_SURFACE_PRESENTATION = {
       copiedBackgroundAlpha: 0.16,
       alignItems: "center",
       justifyContent: "center",
+      accessibilityRole: "button",
       pressedOpacity: 0.7,
     },
     codeBlockCopyIcon: {
@@ -311,6 +312,7 @@ export const MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION = {
       gap: 5,
       paddingHorizontal: "sm",
       paddingVertical: 4,
+      accessibilityRole: "button",
       pressedOpacity: 0.7,
     },
     chevron: {
@@ -752,6 +754,7 @@ export function getMarkdownCodeBlockCopyMobileButtonState(isCopied = false) {
     backgroundAlpha: isCopied ? button.copiedBackgroundAlpha : button.backgroundAlpha,
     alignItems: button.alignItems,
     justifyContent: button.justifyContent,
+    accessibilityRole: button.accessibilityRole,
     pressedOpacity: button.pressedOpacity,
   } as const
 }

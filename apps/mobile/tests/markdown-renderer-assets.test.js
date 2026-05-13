@@ -52,6 +52,7 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(rendererSource, /interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions/);
   assert.match(rendererSource, /const createThinkStyles = \(renderState: MarkdownThinkSectionMobileSurfaceRenderState\) =>/);
   assert.match(rendererSource, /const thinkSectionSurface = renderState\.surface;/);
+  assert.match(rendererSource, /surface: MarkdownThinkSectionMobileSurfaceRenderState\['surface'\]/);
   assert.match(rendererSource, /const colors = renderState\.colors;/);
   assert.match(rendererSource, /const thinkSectionRenderState = React\.useMemo\([\s\S]*?getMarkdownThinkSectionMobileSurfaceRenderState\(\{ isDark \}\)/);
   assert.match(rendererSource, /const thinkSectionColors = thinkSectionRenderState\.colors;/);
@@ -64,6 +65,8 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(rendererSource, /size=\{thinkIcon\.size\}/);
   assert.match(rendererSource, /color=\{colors\.chevron\.color\}/);
   assert.match(rendererSource, /color=\{colors\.icon\.color\}/);
+  assert.match(rendererSource, /accessibilityRole=\{surface\.header\.accessibilityRole\}/);
+  assert.match(rendererSource, /surface=\{thinkSectionRenderState\.surface\}/);
   assert.match(rendererSource, /colors=\{thinkSectionColors\}/);
   assert.match(rendererSource, /const thinkControl = getMarkdownThinkSectionControlState\(part\.content, index, \{/);
   assert.match(rendererSource, /key=\{thinkControl\.key\}/);
@@ -94,6 +97,7 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.doesNotMatch(rendererSource, /thinkSectionIcons\.(collapsedName|expandedName|thinkName)/);
   assert.doesNotMatch(rendererSource, /thinkSectionSurface\.(chevron|icon)\.(size|color)/);
   assert.doesNotMatch(rendererSource, /accessibilityLabel=\{collapsed \? 'Show thinking' : 'Hide thinking'\}/);
+  assert.doesNotMatch(rendererSource, /accessibilityRole="button"/);
   assert.doesNotMatch(rendererSource, /\{collapsed \? 'Thinking' : 'Hide thinking'\}/);
   assert.doesNotMatch(rendererSource, /MARKDOWN_THINK_SECTION_PRESENTATION/);
   assert.doesNotMatch(rendererSource, /MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION/);
@@ -124,6 +128,7 @@ test('markdown renderer uses shared compact markdown content surface tokens', ()
   assert.match(rendererSource, /getMarkdownCodeBlockCopyMobileIconState/);
   assert.match(rendererSource, /const codeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState\(\);/);
   assert.match(rendererSource, /const copiedCodeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState\(true\);/);
+  assert.match(rendererSource, /accessibilityRole=\{codeBlockCopyButtonState\.accessibilityRole\}/);
   assert.match(rendererSource, /const codeBlockCopyIcon = getMarkdownCodeBlockCopyMobileIconState\(copied\);/);
   assert.match(rendererSource, /getMarkdownCodeBlockFeedbackResetDelayMs\(\)/);
   assert.match(rendererSource, /Clipboard\.setStringAsync\(codeContent\)/);
