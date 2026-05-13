@@ -30,7 +30,6 @@ import {
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
-  createChatRuntimeDelegationConversationPreviewRoleStyleSlots,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
@@ -116,6 +115,7 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
+  getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDebugState,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationCardMobileState,
@@ -446,7 +446,7 @@ export default function ChatScreen({ route, navigation }: any) {
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
   );
   const delegationConversationPreviewRoleStyles = useMemo(
-    () => createChatRuntimeDelegationConversationPreviewRoleStyleSlots(theme.colors),
+    () => getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(theme.colors),
     [theme.colors],
   );
   const toolExecutionDetailPendingResultState = useMemo(

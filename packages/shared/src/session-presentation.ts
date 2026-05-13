@@ -1620,6 +1620,11 @@ export interface ChatRuntimeDelegationConversationPreviewRoleMobileStyleState {
   color: string
 }
 
+export type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots = Record<
+  ChatRuntimeDelegationConversationPreviewRole,
+  ChatRuntimeDelegationConversationPreviewRoleMobileStyleState
+>
+
 export interface ChatRuntimeActivityStepLike {
   type?: string | null
   title?: string | null
@@ -4213,6 +4218,22 @@ export function getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
     backgroundColor: colors.backgroundColor,
     borderColor: colors.borderColor,
     color: colors.textColor,
+  }
+}
+
+export function getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(
+  colors: ChatRuntimeDelegationConversationPreviewRoleColorPalette,
+): ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots {
+  return {
+    user: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
+      getChatRuntimeDelegationConversationPreviewRoleMobileColors("user", colors),
+    ),
+    assistant: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
+      getChatRuntimeDelegationConversationPreviewRoleMobileColors("assistant", colors),
+    ),
+    tool: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
+      getChatRuntimeDelegationConversationPreviewRoleMobileColors("tool", colors),
+    ),
   }
 }
 

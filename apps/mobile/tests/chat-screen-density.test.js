@@ -422,7 +422,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /getChatRuntimeDelegationStatusMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationStatusMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileColors,/);
-  assert.match(screenSource, /createChatRuntimeDelegationConversationPreviewRoleStyleSlots,/);
+  assert.match(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeDelegationConversationPreviewRoleStyleSlots,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
   assert.match(screenSource, /const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState\(\);/);
   assert.match(screenSource, /const delegationCardState = m\.delegation/);
@@ -438,8 +439,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /mobileRuntimeDelegationCard\.subtitleMaxLength/);
   assert.doesNotMatch(screenSource, /CHAT_RUNTIME_SURFACE_PRESENTATION\.mobile\.delegationCard\.subtitleMaxLength/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileColors,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileColors,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileColors,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
   assert.match(screenSource, /const delegationStatusRenderState = m\.delegation/);
   assert.match(screenSource, /getChatRuntimeDelegationStatusMobileRenderState\(\{\s*status: m\.delegation\.status,\s*colors: theme\.colors,\s*\}\)/);
   assert.match(screenSource, /m\.variant === 'delegation' && m\.delegation && delegationPresentation/);
@@ -479,11 +480,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /conversationPreview\.rows\.length > 0/);
   assert.match(chatMessageChromeSource, /styles\.conversationPreview/);
   assert.match(chatMessageChromeSource, /conversationPreview\.rows\.map\(\(row, rowIndex\) =>/);
-  assert.match(screenSource, /const delegationConversationPreviewRoleStyles = useMemo\(\s+\(\) => createChatRuntimeDelegationConversationPreviewRoleStyleSlots\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(chatMessageChromeSource, /export function createChatRuntimeDelegationConversationPreviewRoleStyleSlots/);
-  assert.match(chatMessageChromeSource, /user: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
-  assert.match(chatMessageChromeSource, /assistant: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
-  assert.match(chatMessageChromeSource, /tool: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
+  assert.match(screenSource, /const delegationConversationPreviewRoleStyles = useMemo\(\s+\(\) => getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatRuntimeDelegationConversationPreviewRoleStyleSlots/);
+  assert.doesNotMatch(chatMessageChromeSource, /user: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
+  assert.doesNotMatch(chatMessageChromeSource, /assistant: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
+  assert.doesNotMatch(chatMessageChromeSource, /tool: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
   assert.doesNotMatch(screenSource, /user: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
   assert.doesNotMatch(screenSource, /assistant: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);
   assert.doesNotMatch(screenSource, /tool: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState\(/);

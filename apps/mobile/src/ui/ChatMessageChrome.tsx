@@ -35,10 +35,6 @@ import type {
 import type { ChatImageAttachmentMobileRenderState } from '@dotagents/shared/conversation-media-assets';
 import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
 import {
-  getChatRuntimeDelegationConversationPreviewRoleMobileColors,
-  getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,
-} from '@dotagents/shared/session-presentation';
-import {
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
@@ -53,7 +49,7 @@ import {
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import type { ToolActivityGroupMobileRenderState } from '@dotagents/shared/tool-activity-grouping';
 import type {
-  ChatRuntimeDelegationConversationPreviewRoleMobileStyleState,
+  ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   ChatRuntimeDelegationMorePreviewActionState,
   ChatRuntimeAgentSelectorMobileRenderState,
   ChatRuntimeBackMobileRenderState,
@@ -497,10 +493,7 @@ type ChatMessageDelegationCardProps = {
   statusStyles?: ChatSessionStatusMobileStyleState | null;
   conversationPreview: {
     rows: AgentDelegationConversationPreviewRow[];
-    roleStyles: Record<
-      AgentDelegationConversationPreviewRow['role'],
-      ChatRuntimeDelegationConversationPreviewRoleMobileStyleState
-    >;
+    roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots;
     hiddenCount: number;
     moreAction: ChatRuntimeDelegationMorePreviewActionState;
     onShowAll?: (event: GestureResponderEvent) => void;
@@ -1155,11 +1148,6 @@ type ChatRuntimeSafeAreaMergedStyleSlots = {
   voiceOverlay: ChatComposerVoiceOverlayStyles;
   inputDock: ChatComposerInputDockStyles;
 };
-
-type ChatRuntimeDelegationConversationPreviewRoleStyleSlots = Record<
-  AgentDelegationConversationPreviewRow['role'],
-  ChatRuntimeDelegationConversationPreviewRoleMobileStyleState
->;
 
 type ChatComposerSpeechPreviewStyles = {
   box: StyleProp<ViewStyle>;
@@ -2047,22 +2035,6 @@ export function createChatRuntimeSafeAreaMergedStyleSlots({
       ],
     },
   } as ChatRuntimeSafeAreaMergedStyleSlots;
-}
-
-export function createChatRuntimeDelegationConversationPreviewRoleStyleSlots(
-  colors: Parameters<typeof getChatRuntimeDelegationConversationPreviewRoleMobileColors>[1],
-): ChatRuntimeDelegationConversationPreviewRoleStyleSlots {
-  return StyleSheet.create({
-    user: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
-      getChatRuntimeDelegationConversationPreviewRoleMobileColors('user', colors),
-    ),
-    assistant: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
-      getChatRuntimeDelegationConversationPreviewRoleMobileColors('assistant', colors),
-    ),
-    tool: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
-      getChatRuntimeDelegationConversationPreviewRoleMobileColors('tool', colors),
-    ),
-  }) as ChatRuntimeDelegationConversationPreviewRoleStyleSlots;
 }
 
 export function createChatMessageToolActivityGroupBoundaryStyles(

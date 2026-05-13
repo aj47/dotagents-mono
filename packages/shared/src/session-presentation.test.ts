@@ -93,6 +93,7 @@ import {
   getChatRuntimeDelegationCardMobileState,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationConversationPreviewRoleMobileColors,
+  getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeDelegationToolPreviewMoreActionState,
@@ -2514,6 +2515,33 @@ describe("session presentation semantics", () => {
       backgroundColor: "rgba(15, 23, 42, 0.1)",
       borderColor: "rgba(15, 23, 42, 0.26)",
       color: "#0f172a",
+    })
+    const delegationConversationPreviewRolePalette = {
+      info: "#2563eb",
+      foreground: "#0f172a",
+      warning: "#d97706",
+    }
+    expect(getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(
+      delegationConversationPreviewRolePalette,
+    )).toEqual({
+      user: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
+        getChatRuntimeDelegationConversationPreviewRoleMobileColors(
+          "user",
+          delegationConversationPreviewRolePalette,
+        ),
+      ),
+      assistant: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
+        getChatRuntimeDelegationConversationPreviewRoleMobileColors(
+          "assistant",
+          delegationConversationPreviewRolePalette,
+        ),
+      ),
+      tool: getChatRuntimeDelegationConversationPreviewRoleMobileStyleState(
+        getChatRuntimeDelegationConversationPreviewRoleMobileColors(
+          "tool",
+          delegationConversationPreviewRolePalette,
+        ),
+      ),
     })
     expect(CHAT_RUNTIME_PRESENTATION.activity.thinkingAccessibilityLabel).toBe("Agent is thinking")
     expect(CHAT_RUNTIME_PRESENTATION.activity.loadingAgentActivityAccessibilityLabel).toBe("Loading agent activity")
