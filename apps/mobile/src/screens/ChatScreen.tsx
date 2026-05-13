@@ -53,7 +53,7 @@ import type {
   ChatMessageScrollViewportRef,
 } from '../ui/ChatMessageChrome';
 import {
-  getMessageQueuePanelMobileSurfaceRenderState,
+  getMessageQueuePanelMobileWrapperRenderState,
 } from '@dotagents/shared/message-queue-utils';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
@@ -4269,10 +4269,8 @@ function createStyles(theme: Theme, screenHeight: number) {
   const promptLibrarySurface = promptLibraryStyleState.surface;
   const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
-  const messageQueuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
-  const messageQueuePanelSurface = messageQueuePanelStyleState.surface;
+  const messageQueuePanelWrapperState = getMessageQueuePanelMobileWrapperRenderState();
+  const messageQueuePanelWrapper = messageQueuePanelWrapperState.wrapper;
   const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState({
     colors: theme.colors,
   });
@@ -4448,8 +4446,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: streamingContentSurfaceColors.caret.backgroundColor,
     },
     messageQueuePanelWrapper: {
-      paddingHorizontal: spacing[messageQueuePanelSurface.wrapper.paddingHorizontal],
-      paddingTop: spacing[messageQueuePanelSurface.wrapper.paddingTop],
+      paddingHorizontal: spacing[messageQueuePanelWrapper.paddingHorizontal],
+      paddingTop: spacing[messageQueuePanelWrapper.paddingTop],
     },
     headerAgentSelectorButton: {
       alignItems: headerSurface.agentSelectorButton.alignItems,

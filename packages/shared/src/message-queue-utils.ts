@@ -492,6 +492,10 @@ export interface MessageQueuePanelMobileSurfaceRenderState {
   colors: MessageQueuePanelMobileSurfaceColors;
 }
 
+export interface MessageQueuePanelMobileWrapperRenderState {
+  wrapper: typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper;
+}
+
 export function getMessageQueuePanelMobileSurfaceColors(
   colors: MessageQueuePanelMobileSurfaceColorPalette,
 ): MessageQueuePanelMobileSurfaceColors {
@@ -580,6 +584,12 @@ export function getMessageQueuePanelMobileSurfaceColors(
 
 export function getMessageQueuePanelMobileSurfaceState(): typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile {
   return MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile;
+}
+
+export function getMessageQueuePanelMobileWrapperRenderState(): MessageQueuePanelMobileWrapperRenderState {
+  return {
+    wrapper: getMessageQueuePanelMobileSurfaceState().wrapper,
+  };
 }
 
 export function getMessageQueuePanelMobileSurfaceRenderState({

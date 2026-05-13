@@ -25,6 +25,7 @@ import {
   getMessageQueuePanelMobileSurfaceColors,
   getMessageQueuePanelMobileSurfaceRenderState,
   getMessageQueuePanelMobileSurfaceState,
+  getMessageQueuePanelMobileWrapperRenderState,
   getMessageQueuePanelRenderItems,
   getMessageQueuePanelState,
   getOperatorMessageQueueTotalMessageCount,
@@ -232,6 +233,9 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel).toBe('Send Next');
     expect(getMessageQueuePanelCopyState()).toBe(MESSAGE_QUEUE_PANEL_PRESENTATION);
     expect(getMessageQueuePanelMobileSurfaceState()).toBe(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile);
+    expect(getMessageQueuePanelMobileWrapperRenderState()).toEqual({
+      wrapper: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper,
+    });
     expect(getMessageQueuePanelDesktopSurfaceState()).toBe(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingHorizontal).toBe('md');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingTop).toBe('sm');
