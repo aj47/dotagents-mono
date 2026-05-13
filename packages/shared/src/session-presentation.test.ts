@@ -1445,7 +1445,6 @@ describe("session presentation semantics", () => {
         foreground: "#0f172a",
       }),
       summaryLabel: "Showing latest 40 of 100 messages. Scroll up to load older messages.",
-      loadEarlierLabel: "Load 30 earlier",
       loadButton: {
         accessibilityRole: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.accessibilityRole,
         accessibilityLabel: "Load 30 earlier",
@@ -1470,7 +1469,6 @@ describe("session presentation semantics", () => {
     })).toMatchObject({
       shouldRender: false,
       summaryLabel: "",
-      loadEarlierLabel: "",
       loadButton: {
         accessibilityLabel: "",
         label: "",

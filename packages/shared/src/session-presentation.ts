@@ -940,7 +940,6 @@ export interface ChatRuntimeMessageHistoryBannerMobileRenderState {
   surface: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner
   colors: ChatRuntimeMessageHistoryBannerMobileColors
   summaryLabel: string
-  loadEarlierLabel: string
   loadButton: {
     accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.accessibilityRole
     accessibilityLabel: string
@@ -5253,7 +5252,6 @@ export function getChatRuntimeMessageHistoryBannerMobileRenderState({
     summaryLabel: shouldRender
       ? formatChatRuntimeConversationHistorySummary(safeVisibleCount, safeTotalCount, { includeScrollHint })
       : "",
-    loadEarlierLabel,
     loadButton: {
       accessibilityRole: surface.loadButton.accessibilityRole,
       accessibilityLabel: loadEarlierLabel,
