@@ -413,9 +413,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /formatChatRuntimeDelegationMessageCount,/);
   assert.match(screenSource, /getChatRuntimeDelegationToolPreviewMoreActionState,/);
   assert.match(screenSource, /formatChatRuntimeDelegationToolCallActivityLabel,/);
-  assert.match(screenSource, /getChatRuntimeDelegationCardMobileColors,/);
+  assert.match(screenSource, /getChatRuntimeDelegationCardMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeDelegationCardMobileState,/);
   assert.match(screenSource, /getChatRuntimeDelegationStatusMobileColors,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileColors,/);
   assert.match(screenSource, /createChatRuntimeDelegationConversationPreviewRoleStyleSlots,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
   assert.match(screenSource, /const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState\(\);/);
@@ -561,8 +562,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationMoreToolActivityLabel,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeEarlierDelegationMessagesLabel\(delegationHiddenConversationCount\)/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationMoreToolActivityLabel\(delegationHiddenToolCount\)/);
-  assert.match(screenSource, /const delegationCardSurface = mobileRuntimeDelegationCard;/);
-  assert.match(screenSource, /const delegationCardSurfaceColors = getChatRuntimeDelegationCardMobileColors\(theme\.colors\);/);
+  assert.match(screenSource, /const delegationCardStyleState = getChatRuntimeDelegationCardMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const delegationCardSurface = delegationCardStyleState\.surface;/);
+  assert.match(screenSource, /const delegationCardSurfaceColors = delegationCardStyleState\.colors;/);
+  assert.doesNotMatch(screenSource, /const delegationCardSurfaceColors = getChatRuntimeDelegationCardMobileColors\(theme\.colors\);/);
   assert.match(screenSource, /delegationCard:\s*\{[\s\S]*?borderColor:\s*delegationCardSurfaceColors\.card\.borderColor,[\s\S]*?backgroundColor:\s*delegationCardSurfaceColors\.card\.backgroundColor/);
   assert.match(screenSource, /delegationHeader:\s*\{[\s\S]*?flexDirection:\s*delegationCardSurface\.headerFlexDirection,[\s\S]*?alignItems:\s*delegationCardSurface\.headerAlignItems,[\s\S]*?minWidth:\s*delegationCardSurface\.headerMinWidth/);
   assert.match(screenSource, /delegationTitle:\s*\{[\s\S]*?flex:\s*delegationCardSurface\.titleFlex,[\s\S]*?minWidth:\s*delegationCardSurface\.titleMinWidth/);

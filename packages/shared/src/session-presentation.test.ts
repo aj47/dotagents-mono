@@ -88,6 +88,7 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
   getChatRuntimeDelegationCardMobileColors,
+  getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationCardMobileState,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationConversationPreviewRoleMobileColors,
@@ -1819,6 +1820,20 @@ describe("session presentation semantics", () => {
       toolPreviewMore: {
         color: "#64748b",
       },
+    })
+    expect(getChatRuntimeDelegationCardMobileRenderState({
+      colors: {
+        foreground: "#0f172a",
+        info: "#2563eb",
+        mutedForeground: "#64748b",
+      },
+    })).toEqual({
+      surface: getChatRuntimeDelegationCardMobileState(),
+      colors: getChatRuntimeDelegationCardMobileColors({
+        foreground: "#0f172a",
+        info: "#2563eb",
+        mutedForeground: "#64748b",
+      }),
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.position).toBe("absolute")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.accessibilityRole).toBe("button")

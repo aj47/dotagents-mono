@@ -680,6 +680,15 @@ export interface ChatRuntimeDelegationCardMobileColors {
   }
 }
 
+export interface ChatRuntimeDelegationCardMobileRenderStateInput {
+  colors: ChatRuntimeDelegationCardMobileColorPalette
+}
+
+export interface ChatRuntimeDelegationCardMobileRenderState {
+  surface: ReturnType<typeof getChatRuntimeDelegationCardMobileState>
+  colors: ChatRuntimeDelegationCardMobileColors
+}
+
 export interface ChatRuntimeDelegationMorePreviewActionState {
   label: string
   accessibilityRole: "button"
@@ -4063,6 +4072,15 @@ export function getChatRuntimeDelegationCardMobileColors(
     toolPreviewMore: {
       color: colors[surface.toolPreviewMoreColorToken],
     },
+  }
+}
+
+export function getChatRuntimeDelegationCardMobileRenderState({
+  colors,
+}: ChatRuntimeDelegationCardMobileRenderStateInput): ChatRuntimeDelegationCardMobileRenderState {
+  return {
+    surface: getChatRuntimeDelegationCardMobileState(),
+    colors: getChatRuntimeDelegationCardMobileColors(colors),
   }
 }
 

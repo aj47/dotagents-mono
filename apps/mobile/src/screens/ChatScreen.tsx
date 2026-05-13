@@ -118,7 +118,7 @@ import {
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDebugState,
-  getChatRuntimeDelegationCardMobileColors,
+  getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationCardMobileState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileColors,
@@ -4246,8 +4246,11 @@ function createStyles(theme: Theme, screenHeight: number) {
   });
   const stepSummarySurface = stepSummaryStyleState.surface;
   const stepSummarySurfaceColors = stepSummaryStyleState.colors;
-  const delegationCardSurface = mobileRuntimeDelegationCard;
-  const delegationCardSurfaceColors = getChatRuntimeDelegationCardMobileColors(theme.colors);
+  const delegationCardStyleState = getChatRuntimeDelegationCardMobileRenderState({
+    colors: theme.colors,
+  });
+  const delegationCardSurface = delegationCardStyleState.surface;
+  const delegationCardSurfaceColors = delegationCardStyleState.colors;
   const scrollToBottomStyleState = getChatRuntimeScrollToBottomMobileRenderState({
     colors: theme.colors,
   });
