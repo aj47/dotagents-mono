@@ -35,10 +35,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileCloseIconState,/);
-  assert.match(screenSource, /getPromptLibraryMobileAddShortcutIconState,/);
-  assert.match(screenSource, /getPromptLibraryMobileLauncherShortcutSourceIconColors,/);
-  assert.match(screenSource, /getPromptLibraryMobileLauncherShortcutSourceIconStates,/);
-  assert.match(screenSource, /getPromptLibraryMobileShortcutActionIconState,/);
+  assert.match(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
   assert.match(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.match(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
@@ -47,11 +44,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
   assert.match(screenSource, /const promptLibraryCopy = getPromptLibraryCopyState\(\);/);
   assert.match(screenSource, /const promptLibraryEditorCloseIcon = getPromptLibraryEditorMobileCloseIconState\(\);/);
-  assert.match(screenSource, /const promptLibraryAddShortcutIcon = getPromptLibraryMobileAddShortcutIconState\(\);/);
-  assert.match(screenSource, /const promptLibraryEditActionIcon = getPromptLibraryMobileShortcutActionIconState\('edit'\);/);
-  assert.match(screenSource, /const promptLibraryDeleteActionIcon = getPromptLibraryMobileShortcutActionIconState\('delete'\);/);
-  assert.match(screenSource, /const promptLibraryShortcutSourceIcons = getPromptLibraryMobileLauncherShortcutSourceIconStates\(\);/);
-  assert.match(screenSource, /const promptLibraryShortcutSourceIconColors = useMemo\(\s+\(\) => getPromptLibraryMobileLauncherShortcutSourceIconColors\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const promptLibraryShortcutChrome = useMemo\(\s+\(\) => getPromptLibraryMobileShortcutChromeState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.match(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /runningTaskId: runningPromptTaskId/);
@@ -96,6 +89,9 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /id: 'action-add-prompt'/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSourceIconState\('command'\)/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\./);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileAddShortcutIconState\(\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutActionIconState\('edit'\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileLauncherShortcutSourceIconColors\(theme\.colors\)/);
   assert.doesNotMatch(chatMessageChromeSource, /PromptLibraryShortcutSource,/);
   assert.doesNotMatch(chatMessageChromeSource, /Extract<\s*PromptLibraryShortcutSource,/);
   assert.doesNotMatch(chatMessageChromeSource, /source: ChatConversationHomeQuickStartSource;/);

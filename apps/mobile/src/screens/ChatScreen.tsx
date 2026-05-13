@@ -256,13 +256,10 @@ import {
   getPromptLibraryEditorMobileCloseIconState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
-  getPromptLibraryMobileAddShortcutIconState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileEmptyLibraryLabel,
   getPromptLibraryMobileIconColors,
-  getPromptLibraryMobileLauncherShortcutSourceIconColors,
-  getPromptLibraryMobileLauncherShortcutSourceIconStates,
-  getPromptLibraryMobileShortcutActionIconState,
+  getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
@@ -349,10 +346,6 @@ const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel();
 const promptLibraryEditorCloseIcon = getPromptLibraryEditorMobileCloseIconState();
-const promptLibraryAddShortcutIcon = getPromptLibraryMobileAddShortcutIconState();
-const promptLibraryEditActionIcon = getPromptLibraryMobileShortcutActionIconState('edit');
-const promptLibraryDeleteActionIcon = getPromptLibraryMobileShortcutActionIconState('delete');
-const promptLibraryShortcutSourceIcons = getPromptLibraryMobileLauncherShortcutSourceIconStates();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -490,24 +483,12 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getPromptLibraryMobileIconColors(promptLibraryEditorCloseIcon, theme.colors),
     [theme.colors],
   );
-  const promptLibraryAddShortcutIconColors = useMemo(
-    () => getPromptLibraryMobileIconColors(promptLibraryAddShortcutIcon, theme.colors),
-    [theme.colors],
-  );
-  const promptLibraryEditActionIconColors = useMemo(
-    () => getPromptLibraryMobileIconColors(promptLibraryEditActionIcon, theme.colors),
-    [theme.colors],
-  );
-  const promptLibraryDeleteActionIconColors = useMemo(
-    () => getPromptLibraryMobileIconColors(promptLibraryDeleteActionIcon, theme.colors),
-    [theme.colors],
-  );
   const promptLibrarySurfaceColors = useMemo(
     () => getPromptLibraryMobileSurfaceColors(theme.colors),
     [theme.colors],
   );
-  const promptLibraryShortcutSourceIconColors = useMemo(
-    () => getPromptLibraryMobileLauncherShortcutSourceIconColors(theme.colors),
+  const promptLibraryShortcutChrome = useMemo(
+    () => getPromptLibraryMobileShortcutChromeState(theme.colors),
     [theme.colors],
   );
   const mobileComposerTextColors = useMemo(
@@ -3763,14 +3744,14 @@ export default function ChatScreen({ route, navigation }: any) {
           sourceLabelNumberOfLines: mobilePromptLibrarySurface.shortcutSourceLabel.numberOfLines,
           titleNumberOfLines: mobilePromptLibrarySurface.shortcutTitle.numberOfLines,
           descriptionNumberOfLines: mobilePromptLibrarySurface.shortcutDescription.numberOfLines,
-          addIcon: promptLibraryAddShortcutIcon,
-          addIconColors: promptLibraryAddShortcutIconColors,
-          editIcon: promptLibraryEditActionIcon,
-          editIconColors: promptLibraryEditActionIconColors,
-          deleteIcon: promptLibraryDeleteActionIcon,
-          deleteIconColors: promptLibraryDeleteActionIconColors,
-          sourceIcons: promptLibraryShortcutSourceIcons,
-          sourceIconColors: promptLibraryShortcutSourceIconColors,
+          addIcon: promptLibraryShortcutChrome.addIcon,
+          addIconColors: promptLibraryShortcutChrome.addIconColors,
+          editIcon: promptLibraryShortcutChrome.editIcon,
+          editIconColors: promptLibraryShortcutChrome.editIconColors,
+          deleteIcon: promptLibraryShortcutChrome.deleteIcon,
+          deleteIconColors: promptLibraryShortcutChrome.deleteIconColors,
+          sourceIcons: promptLibraryShortcutChrome.sourceIcons,
+          sourceIconColors: promptLibraryShortcutChrome.sourceIconColors,
           editLabel: promptLibraryCopy.actions.edit,
           deleteLabel: promptLibraryCopy.actions.delete,
         },

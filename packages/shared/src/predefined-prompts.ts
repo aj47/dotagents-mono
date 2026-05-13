@@ -448,6 +448,17 @@ export type PromptLibraryMobileLauncherShortcutSourceIconColors = Readonly<
   Record<PromptLibraryLauncherShortcutSource, PromptLibraryMobileIconColors>
 >
 
+export interface PromptLibraryMobileShortcutChromeState {
+  addIcon: PromptLibraryMobileAddShortcutIconState
+  addIconColors: PromptLibraryMobileIconColors
+  editIcon: PromptLibraryMobileShortcutActionIconState
+  editIconColors: PromptLibraryMobileIconColors
+  deleteIcon: PromptLibraryMobileShortcutActionIconState
+  deleteIconColors: PromptLibraryMobileIconColors
+  sourceIcons: PromptLibraryMobileLauncherShortcutSourceIconStates
+  sourceIconColors: PromptLibraryMobileLauncherShortcutSourceIconColors
+}
+
 export type PromptLibraryMobileSurfaceColorToken =
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.borderColorToken
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.backgroundColorToken
@@ -650,6 +661,25 @@ export function getPromptLibraryMobileLauncherShortcutSourceIconColors(
     "saved-prompt": getPromptLibraryMobileIconColors(icons["saved-prompt"], colors),
     skill: getPromptLibraryMobileIconColors(icons.skill, colors),
     task: getPromptLibraryMobileIconColors(icons.task, colors),
+  }
+}
+
+export function getPromptLibraryMobileShortcutChromeState(
+  colors: PromptLibraryMobileIconColorPalette,
+): PromptLibraryMobileShortcutChromeState {
+  const addIcon = getPromptLibraryMobileAddShortcutIconState()
+  const editIcon = getPromptLibraryMobileShortcutActionIconState("edit")
+  const deleteIcon = getPromptLibraryMobileShortcutActionIconState("delete")
+
+  return {
+    addIcon,
+    addIconColors: getPromptLibraryMobileIconColors(addIcon, colors),
+    editIcon,
+    editIconColors: getPromptLibraryMobileIconColors(editIcon, colors),
+    deleteIcon,
+    deleteIconColors: getPromptLibraryMobileIconColors(deleteIcon, colors),
+    sourceIcons: getPromptLibraryMobileLauncherShortcutSourceIconStates(),
+    sourceIconColors: getPromptLibraryMobileLauncherShortcutSourceIconColors(colors),
   }
 }
 

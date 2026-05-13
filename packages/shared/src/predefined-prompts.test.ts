@@ -32,6 +32,7 @@ import {
   getPromptLibraryMobileIconColors,
   getPromptLibraryMobileLauncherShortcutSourceIconColors,
   getPromptLibraryMobileLauncherShortcutSourceIconStates,
+  getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileShortcutActionIconState,
   getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
@@ -284,6 +285,38 @@ describe("predefined prompt helpers", () => {
       "saved-prompt": { color: "#64748b" },
       skill: { color: "#64748b" },
       task: { color: "#64748b" },
+    })
+    expect(getPromptLibraryMobileShortcutChromeState({
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      addIcon: {
+        name: "add-circle-outline",
+        size: 18,
+        colorToken: "primary",
+      },
+      addIconColors: { color: "#2563eb" },
+      editIcon: {
+        action: "edit",
+        name: "create-outline",
+        size: 13,
+        colorToken: "primary",
+      },
+      editIconColors: { color: "#2563eb" },
+      deleteIcon: {
+        action: "delete",
+        name: "trash-outline",
+        size: 13,
+        colorToken: "destructive",
+      },
+      deleteIconColors: { color: "#dc2626" },
+      sourceIcons: getPromptLibraryMobileLauncherShortcutSourceIconStates(),
+      sourceIconColors: getPromptLibraryMobileLauncherShortcutSourceIconColors({
+        destructive: "#dc2626",
+        mutedForeground: "#64748b",
+        primary: "#2563eb",
+      }),
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.textTransform).toBe("uppercase")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.numberOfLines).toBe(1)
