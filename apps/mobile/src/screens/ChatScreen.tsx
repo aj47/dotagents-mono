@@ -5371,7 +5371,7 @@ function createStyles(theme: Theme, screenHeight: number) {
 	      gap: spacing[toolApprovalSurface.header.gap],
 	    },
 	    toolApprovalContent: {
-	      gap: spacing[toolApprovalSurface.card.gap],
+	      gap: spacing[toolApprovalSurface.content.gap],
 	    },
 	    toolApprovalContentDisabled: {
 	      opacity: toolApprovalSurface.content.disabledOpacity,

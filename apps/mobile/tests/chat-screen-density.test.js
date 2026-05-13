@@ -316,6 +316,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(screenSource, /const toolApprovalSurface = toolApprovalStyleState\.surface;/);
   assert.match(screenSource, /const toolApprovalSurfaceColors = toolApprovalStyleState\.colors;/);
   assert.match(screenSource, /toolApprovalHeader:\s*\{[\s\S]*?flexDirection:\s*toolApprovalSurface\.header\.flexDirection,[\s\S]*?gap:\s*spacing\[toolApprovalSurface\.header\.gap\]/);
+  assert.match(screenSource, /toolApprovalContent:\s*\{[\s\S]*?gap:\s*spacing\[toolApprovalSurface\.content\.gap\]/);
   assert.match(screenSource, /toolApprovalContentDisabled:\s*\{[\s\S]*?opacity:\s*toolApprovalSurface\.content\.disabledOpacity/);
   assert.match(screenSource, /toolApprovalCard:\s*\{[\s\S]*?gap:\s*spacing\[toolApprovalSurface\.card\.gap\],[\s\S]*?borderColor:\s*toolApprovalSurfaceColors\.card\.borderColor,[\s\S]*?backgroundColor:\s*toolApprovalSurfaceColors\.card\.backgroundColor/);
   assert.match(screenSource, /toolApprovalTitle:\s*\{[\s\S]*?color:\s*toolApprovalSurfaceColors\.title\.color/);
@@ -335,6 +336,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(screenSource, /toolApprovalDenyButtonText:\s*\{[\s\S]*?color:\s*toolApprovalSurfaceColors\.denyButtonText\.color/);
   assert.doesNotMatch(screenSource, /theme\.colors\[toolApprovalSurface\./);
   assert.doesNotMatch(screenSource, /hexToRgba\(\s*theme\.colors\[toolApprovalSurface\./);
+  assert.doesNotMatch(screenSource, /toolApprovalContent:\s*\{[\s\S]*?gap:\s*spacing\[toolApprovalSurface\.card\.gap\]/);
   assert.doesNotMatch(screenSource, /styles\.toolApprovalTitle[\s\S]{0,120}numberOfLines=\{?2\}?/);
   assert.doesNotMatch(screenSource, /styles\.toolApprovalTool[\s\S]{0,120}numberOfLines=\{?2\}?/);
   assert.doesNotMatch(screenSource, /theme\.colors\.warning, toolApprovalSurface\.(argumentsPreview|fullArguments)\./);

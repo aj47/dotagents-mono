@@ -2105,6 +2105,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeToolApprovalSpinnerMobileColors(toolApprovalColors)).toEqual({
       color: "#d97706",
     })
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.content.gap).toBe("xs")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines).toBe(2)
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.colorToken).toBe("foreground")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.fontFamilyByPlatform.ios).toBe("Menlo")

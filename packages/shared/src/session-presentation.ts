@@ -3082,6 +3082,7 @@ export const TOOL_APPROVAL_SURFACE_PRESENTATION = {
       colorToken: "warning",
     },
     content: {
+      gap: "xs",
       disabledOpacity: 0.6,
     },
     title: {
