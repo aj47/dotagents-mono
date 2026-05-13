@@ -126,9 +126,9 @@ import {
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeLatestStepSummary,
+  getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
-  getChatRuntimeMobileActivityAccessibilityState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimePinMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
@@ -286,7 +286,6 @@ const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState()
 const mobileRuntimeDebug = getChatRuntimeDebugState();
 const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
 const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(Platform.OS);
-const mobileRuntimeActivityAccessibility = getChatRuntimeMobileActivityAccessibilityState();
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
@@ -342,7 +341,6 @@ export default function ChatScreen({ route, navigation }: any) {
     [theme.colors],
   );
   const mobileRuntimeViewport = mobileRuntimeViewportRenderState.surface;
-  const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState.loadingState;
   const mobileRuntimeDelegationCardRenderState = useMemo(
     () => getChatRuntimeDelegationCardMobileRenderState({
       colors: theme.colors,
@@ -923,6 +921,13 @@ export default function ChatScreen({ route, navigation }: any) {
     [headerConversationState, theme.colors],
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const mobileRuntimeLoadingRenderState = useMemo(
+    () => getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages: sessionStore.isLoadingMessages,
+      messageCount: messages.length,
+    }),
+    [messages.length, sessionStore.isLoadingMessages],
+  );
   const hasLiveAgentTurn =
     responding ||
     conversationState === 'running' ||
@@ -3692,9 +3697,7 @@ export default function ChatScreen({ route, navigation }: any) {
         onScrollEndDrag: handleScrollEndDrag,
         scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW.scrollEventThrottleMs,
         loadingState: {
-          shouldRender: sessionStore.isLoadingMessages && messages.length === 0,
-          renderState: mobileRuntimeLoadingState,
-          accessibilityLabel: mobileRuntimeActivityAccessibility.loadingMessagesLabel,
+          renderState: mobileRuntimeLoadingRenderState,
           spinnerSource: isDark ? darkSpinner : lightSpinner,
         },
         homeQuickStarts: {

@@ -63,6 +63,7 @@ import type {
   ChatRuntimeTurnDurationHeaderMobileRenderState,
   ChatRuntimeDelegationCardMobileRenderState,
   ChatRuntimeInlineActivityMobileRenderState,
+  ChatRuntimeLoadingStateMobileRenderState,
   ChatSessionStatusMobileRenderState,
   ChatSessionStatusMobileStyleState,
 } from '@dotagents/shared/session-presentation';
@@ -968,16 +969,8 @@ type ChatMessageScrollToBottomButtonProps = {
   style: StyleProp<ViewStyle>;
 };
 
-type ChatMessageLoadingStateRenderState = {
-  accessibilityRole: AccessibilityRole;
-  accessibilityState?: AccessibilityState;
-  spinnerResizeMode: ComponentProps<typeof Image>['resizeMode'];
-};
-
 type ChatMessageLoadingStateProps = {
-  shouldRender: boolean;
-  renderState: ChatMessageLoadingStateRenderState;
-  accessibilityLabel: string;
+  renderState: ChatRuntimeLoadingStateMobileRenderState;
   spinnerSource: ImageSourcePropType;
   style: StyleProp<ViewStyle>;
   spinnerStyle: StyleProp<ImageStyle>;
@@ -4489,20 +4482,18 @@ export function ChatMessageScrollToBottomButton({
 }
 
 export function ChatMessageLoadingState({
-  shouldRender,
   renderState,
-  accessibilityLabel,
   spinnerSource,
   style,
   spinnerStyle,
 }: ChatMessageLoadingStateProps) {
-  if (!shouldRender) return null;
+  if (!renderState.shouldRender) return null;
 
   return (
     <View
       accessible
       accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={renderState.accessibilityLabel}
       accessibilityState={renderState.accessibilityState}
       style={style}
     >

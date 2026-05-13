@@ -121,6 +121,19 @@ export interface ChatRuntimeViewportMobileRenderState {
   colors: ChatRuntimeViewportMobileColors
 }
 
+export interface ChatRuntimeLoadingStateMobileRenderStateInput {
+  isLoadingMessages?: boolean
+  messageCount?: number | null
+}
+
+export interface ChatRuntimeLoadingStateMobileRenderState {
+  shouldRender: boolean
+  accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityRole
+  accessibilityLabel: string
+  accessibilityState: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityState
+  spinnerResizeMode: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerResizeMode
+}
+
 export interface ChatRuntimeInlineActivityMobileMessageLike {
   role?: string | null
   content?: string | null
@@ -5566,6 +5579,21 @@ export function getChatRuntimeViewportMobileRenderState({
 
 export function getChatRuntimeLoadingStateMobileState() {
   return CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState
+}
+
+export function getChatRuntimeLoadingStateMobileRenderState({
+  isLoadingMessages = false,
+  messageCount = 0,
+}: ChatRuntimeLoadingStateMobileRenderStateInput = {}): ChatRuntimeLoadingStateMobileRenderState {
+  const surface = getChatRuntimeLoadingStateMobileState()
+
+  return {
+    shouldRender: isLoadingMessages === true && (messageCount ?? 0) === 0,
+    accessibilityRole: surface.accessibilityRole,
+    accessibilityLabel: CHAT_RUNTIME_PRESENTATION.activity.loadingMessagesAccessibilityLabel,
+    accessibilityState: surface.accessibilityState,
+    spinnerResizeMode: surface.spinnerResizeMode,
+  }
 }
 
 export function getChatRuntimeInlineActivityMobileState() {

@@ -119,6 +119,7 @@ import {
   getChatRuntimeKillSwitchMobileIconState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeLatestStepSummary,
+  getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeLoadingStateMobileState,
   getChatRuntimeMessageHistoryBannerMobileColors,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
@@ -1394,6 +1395,24 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityRole).toBe("progressbar")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityState).toEqual({ busy: true })
     expect(getChatRuntimeLoadingStateMobileState()).toBe(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState)
+    expect(getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages: true,
+      messageCount: 0,
+    })).toEqual({
+      shouldRender: true,
+      accessibilityRole: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityRole,
+      accessibilityLabel: CHAT_RUNTIME_PRESENTATION.activity.loadingMessagesAccessibilityLabel,
+      accessibilityState: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityState,
+      spinnerResizeMode: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerResizeMode,
+    })
+    expect(getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages: true,
+      messageCount: 1,
+    }).shouldRender).toBe(false)
+    expect(getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages: false,
+      messageCount: 0,
+    }).shouldRender).toBe(false)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize).toBe(14)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode).toBe("contain")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.alignItems).toBe("center")
