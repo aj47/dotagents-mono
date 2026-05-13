@@ -9,62 +9,98 @@ const pastSessionsDialogSource = readFileSync(
 describe("saved conversations dialog layout", () => {
   it("keeps the toolbar and session rows usable under narrow widths", () => {
     expect(pastSessionsDialogSource).toContain(
-      'className="flex shrink-0 flex-wrap items-center gap-2"',
+      "const desktopConversationListToolbar = conversationListDesktopSurface.toolbar",
     )
     expect(pastSessionsDialogSource).toContain(
-      'className="relative min-w-0 flex-1"',
+      "const desktopConversationListRow = conversationListDesktopSurface.row",
     )
     expect(pastSessionsDialogSource).toContain(
-      'className="flex flex-wrap items-start gap-2"',
+      "desktopConversationListToolbar.containerClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      'className="min-w-0 flex-1 truncate font-medium"',
+      "desktopConversationListToolbar.searchContainerClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      'className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"',
+      "desktopConversationListRow.headerClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      '{entry.isPinned && (',
+      "desktopConversationListRow.titleClassName",
     )
+    expect(pastSessionsDialogSource).toContain(
+      "desktopConversationListRow.previewClassName",
+    )
+    expect(pastSessionsDialogSource).toContain("{entry.isPinned && (")
   })
 
   it("wraps delete-all confirmation actions instead of clipping them under zoom", () => {
     expect(pastSessionsDialogSource).toContain(
-      'className="flex flex-wrap items-center justify-end gap-2"',
+      "desktopConversationListDeleteAllConfirm.actionsClassName",
     )
   })
 
   it("keeps per-session row actions keyboard-accessible", () => {
     expect(pastSessionsDialogSource).toContain(
-      'focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      "desktopConversationListRow.interactiveClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      'className="ml-auto grid shrink-0 place-items-center self-start"',
+      "desktopConversationListRow.actionSlotClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      'group-hover:opacity-0 group-focus-within:opacity-0',
+      "desktopConversationListRow.timestampClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      'group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto',
+      "desktopConversationListRow.actionsClassName",
     )
     expect(pastSessionsDialogSource).toContain(
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+      "desktopConversationListRow.actionButtonClassName",
     )
-    expect(pastSessionsDialogSource).toContain('aria-label={`Delete ${entry.title}`}')
+    expect(pastSessionsDialogSource).toContain(
+      "desktopConversationListRow.destructiveActionButtonClassName",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "deleteAction.accessibilityLabel",
+    )
   })
 
   it("includes a keyboard-accessible pin action and pinned-first sort for saved conversations", () => {
-    expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst")
-    expect(pastSessionsDialogSource).toContain("const activeConversationsQuery = useQuery<SessionListResponse>({")
-    expect(pastSessionsDialogSource).toContain('entry.kind === "active" ? "Active conversations" : "Saved conversations"')
-    expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst(")
+    expect(pastSessionsDialogSource).toContain(
+      "orderConversationHistoryByPinnedFirst",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "const activeConversationsQuery = useQuery<SessionListResponse>({",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "APP_CONVERSATION_LIST_SECTION_LABELS[entry.kind]",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "orderConversationHistoryByPinnedFirst<",
+    )
     expect(pastSessionsDialogSource).toContain("KEYBOARD_SHORTCUT_HINT")
     expect(pastSessionsDialogSource).toContain("PIN_SHORTCUT_HINT")
     expect(pastSessionsDialogSource).toContain("VOICE_SHORTCUT_HINT")
-    expect(pastSessionsDialogSource).toContain('aria-label={`${entry.isPinned ? "Unpin" : "Pin"} ${entry.title}`}')
-    expect(pastSessionsDialogSource).toContain('onKeyDown={stopConversationRowKeyPropagation}')
-    expect(pastSessionsDialogSource).toContain('data-highlighted={highlightedConversationId === entry.key ? "true" : undefined}')
-    expect(pastSessionsDialogSource).not.toContain('inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground')
+    expect(pastSessionsDialogSource).toContain(
+      "getConversationListDesktopSurfaceState",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "getConversationListPinActionPresentation",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "getConversationListArchiveActionPresentation",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "getConversationListDeleteActionPresentation",
+    )
+    expect(pastSessionsDialogSource).toContain("pinAction.accessibilityLabel")
+    expect(pastSessionsDialogSource).toContain(
+      "archiveAction.accessibilityLabel",
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "stopConversationRowKeyPropagation",
+    )
+    expect(pastSessionsDialogSource).toContain("data-highlighted={")
+    expect(pastSessionsDialogSource).not.toContain(
+      "inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground",
+    )
     expect(pastSessionsDialogSource).not.toContain("CheckCircle2")
   })
 })

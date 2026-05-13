@@ -43,11 +43,15 @@ describe("sessions in-app actions", () => {
   })
 
   it("prefers focused sessions over stale expanded selection and refreshes clear-inactive handlers", () => {
-    expect(
-      sessionsSource.indexOf("if (focusedSessionId && displayedSessionIds.has(focusedSessionId)) return focusedSessionId")
-    ).toBeLessThan(
-      sessionsSource.indexOf("if (expandedSessionId && displayedSessionIds.has(expandedSessionId)) return expandedSessionId")
+    const focusedSelectionIndex = sessionsSource.search(
+      /if \(\s*focusedSessionId && displayedSessionIds\.has\(focusedSessionId\)\s*\)\s*return focusedSessionId/,
     )
+    const expandedSelectionIndex = sessionsSource.search(
+      /if \(\s*expandedSessionId && displayedSessionIds\.has\(expandedSessionId\)\s*\)\s*return expandedSessionId/,
+    )
+    expect(focusedSelectionIndex).toBeGreaterThan(-1)
+    expect(expandedSelectionIndex).toBeGreaterThan(-1)
+    expect(focusedSelectionIndex).toBeLessThan(expandedSelectionIndex)
     expect(sessionsSource).toContain("const handleClearInactiveSessions = useCallback(async () => {")
     expect(sessionsSource).toContain("}, [inactiveSessionCount, handleClearInactiveSessions])")
   })
@@ -65,7 +69,9 @@ describe("sessions in-app actions", () => {
   it("clears stale pending past-session state when returning to an active session", () => {
     expect(appLayoutSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
     expect(sessionsSource).toContain("if (!navigationState?.clearPendingConversation) return")
-    expect(sessionsSource).toContain('navigate(`${location.pathname}${location.search}`, { replace: true, state: null })')
+    expect(sessionsSource).toContain("navigate(`${location.pathname}${location.search}`, {")
+    expect(sessionsSource).toContain("replace: true,")
+    expect(sessionsSource).toContain("state: null,")
   })
 
   it("routes start and prompt controls through the sidebar instead of the sessions top bar", () => {
@@ -123,7 +129,7 @@ describe("sessions in-app actions", () => {
 
   it("keeps pinned tiles at the top of the active sessions grid and exposes a tile pin control", () => {
     expect(sessionsSource).toContain("orderActiveSessionsByPinnedFirst(")
-    expect(agentProgressSource).toContain('title={isPinned ? "Unpin session" : "Pin session"}')
+    expect(agentProgressSource).toContain("getChatRuntimePinAccessibilityLabel(isPinned)")
     expect(agentProgressSource).toContain("togglePinSession(conversationId)")
   })
 
@@ -174,7 +180,7 @@ describe("sessions in-app actions", () => {
     expect(tipcSource).toContain("startSnoozed?: boolean // True background mode")
     expect(tipcSource).toContain("startSnoozed || input.suppressPanelAutoShow === true || input.fromTile === true")
     expect(tipcSource).toContain("suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow")
-    expect(tipcSource).toContain("processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState)")
+    expect(tipcSource).toContain("processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState.startSnoozed)")
   })
 
   it("time-suppresses panel auto-show from explicit launch state without forcing snooze", () => {

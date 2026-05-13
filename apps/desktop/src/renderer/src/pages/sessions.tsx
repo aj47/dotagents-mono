@@ -1,11 +1,25 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
-import { useParams, useOutletContext, useLocation, useNavigate } from "react-router-dom"
+import {
+  useParams,
+  useOutletContext,
+  useLocation,
+  useNavigate,
+} from "react-router-dom"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
+import {
+  MessageCircle,
+  Mic,
+  Plus,
+  CheckCircle2,
+  Keyboard,
+  Clock,
+  Loader2,
+  Pin,
+} from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
@@ -16,11 +30,19 @@ import { logUI } from "@renderer/lib/debug"
 import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
-import { useConfigQuery, useSavedConversationsQuery } from "@renderer/lib/queries"
-import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@dotagents/shared/key-utils"
 import {
-  APP_SHELL_SESSION_START_PRESENTATION,
+  useConfigQuery,
+  useSavedConversationsQuery,
+} from "@renderer/lib/queries"
+import {
+  getAgentShortcutDisplay,
+  getTextInputShortcutDisplay,
+  getDictationShortcutDisplay,
+} from "@dotagents/shared/key-utils"
+import {
   getAppShellHeaderActionDisplayLabel,
+  getAppShellSessionStartCopyState,
+  getAppShellSessionStartDesktopSurfaceState,
 } from "@dotagents/shared/app-shell"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
@@ -85,7 +107,9 @@ type VisibleSessionEntry = {
   sortTimestamp: number
 }
 
-function buildTrackedSessionPlaceholderProgress(session: AgentSession): AgentProgressUpdate {
+function buildTrackedSessionPlaceholderProgress(
+  session: AgentSession,
+): AgentProgressUpdate {
   return {
     sessionId: session.id,
     conversationId: session.conversationId,
@@ -118,6 +142,9 @@ const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 const PENDING_RESUME_HISTORY_MESSAGE_LIMIT = 120
 const PENDING_RESUME_HISTORY_PAGE_SIZE = 120
+const sessionStartCopy = getAppShellSessionStartCopyState()
+const sessionStartDesktopSurface = getAppShellSessionStartDesktopSurfaceState()
+const sessionStartEmptySurface = sessionStartDesktopSurface.empty
 
 type ActiveSessionTileProps = {
   sessionId: string
@@ -140,42 +167,58 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const storeProgress = useAgentSessionProgress(sessionId)
   const baseProgress = storeProgress ?? fallbackProgress
   const conversationIdForHydration = baseProgress?.conversationId ?? null
-  const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
+  const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(
+    PENDING_RESUME_HISTORY_MESSAGE_LIMIT,
+  )
   const queryClient = useQueryClient()
-  const baseConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
+  const baseConversationHistoryCount =
+    baseProgress?.conversationHistory?.length ?? 0
   const needsHydrationFromConversation =
-    !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
+    !!conversationIdForHydration &&
+    !hasConversationHistoryForDisplay(baseProgress)
   // Hydration is sticky per conversationId: once we've loaded the full saved
   // conversation, keep using the hydrate cache slot so a follow-up that yields
   // a short runtime window doesn't drop the displayed history back to thinking-only.
-  const [hasHydratedConversationId, setHasHydratedConversationId] = useState<string | null>(
-    needsHydrationFromConversation ? conversationIdForHydration : null,
-  )
+  const [hasHydratedConversationId, setHasHydratedConversationId] = useState<
+    string | null
+  >(needsHydrationFromConversation ? conversationIdForHydration : null)
   useEffect(() => {
-    if (needsHydrationFromConversation && hasHydratedConversationId !== conversationIdForHydration) {
+    if (
+      needsHydrationFromConversation &&
+      hasHydratedConversationId !== conversationIdForHydration
+    ) {
       setHasHydratedConversationId(conversationIdForHydration)
     }
-  }, [needsHydrationFromConversation, conversationIdForHydration, hasHydratedConversationId])
+  }, [
+    needsHydrationFromConversation,
+    conversationIdForHydration,
+    hasHydratedConversationId,
+  ])
   const shouldHydrateFromConversation =
     needsHydrationFromConversation ||
-    (!!conversationIdForHydration && hasHydratedConversationId === conversationIdForHydration)
+    (!!conversationIdForHydration &&
+      hasHydratedConversationId === conversationIdForHydration)
   const savedConversationQueryKey = [
     "conversation",
     conversationIdForHydration,
     shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
   ] as const
-  const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(savedConversationQueryKey)
+  const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(
+    savedConversationQueryKey,
+  )
   const progressForExpandedHistoryDecision = useMemo(
-    () => baseProgress && cachedSavedConversation
-      ? mergeLoadedConversationIntoProgress(
-          baseProgress,
-          cachedSavedConversation,
-          { replaceExistingHistory: true },
-        )
-      : baseProgress,
+    () =>
+      baseProgress && cachedSavedConversation
+        ? mergeLoadedConversationIntoProgress(
+            baseProgress,
+            cachedSavedConversation,
+            { replaceExistingHistory: true },
+          )
+        : baseProgress,
     [baseProgress, cachedSavedConversation],
   )
-  const displayedConversationHistoryCount = progressForExpandedHistoryDecision?.conversationHistory?.length ?? 0
+  const displayedConversationHistoryCount =
+    progressForExpandedHistoryDecision?.conversationHistory?.length ?? 0
   const displayedConversationHistoryTotalCount = Math.max(
     progressForExpandedHistoryDecision?.conversationHistoryTotalCount ?? 0,
     displayedConversationHistoryCount,
@@ -183,7 +226,8 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const shouldLoadExpandedConversationHistory =
     !!conversationIdForHydration &&
     !shouldHydrateFromConversation &&
-    displayedConversationHistoryTotalCount > displayedConversationHistoryCount &&
+    displayedConversationHistoryTotalCount >
+      displayedConversationHistoryCount &&
     activeHistoryMessageLimit > displayedConversationHistoryCount
   const savedConversationQuery = useQuery({
     queryKey: savedConversationQueryKey,
@@ -191,14 +235,18 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       if (!conversationIdForHydration) return null
       return desktopConversationsClient.loadConversation({
         conversationId: conversationIdForHydration,
-        ...(shouldHydrateFromConversation ? {} : { messageLimit: activeHistoryMessageLimit }),
+        ...(shouldHydrateFromConversation
+          ? {}
+          : { messageLimit: activeHistoryMessageLimit }),
       })
     },
-    enabled: !!conversationIdForHydration && (
-      shouldHydrateFromConversation || shouldLoadExpandedConversationHistory
-    ),
+    enabled:
+      !!conversationIdForHydration &&
+      (shouldHydrateFromConversation || shouldLoadExpandedConversationHistory),
     placeholderData: (previousData: any) =>
-      previousData?.id === conversationIdForHydration ? previousData : undefined,
+      previousData?.id === conversationIdForHydration
+        ? previousData
+        : undefined,
   })
 
   useEffect(() => {
@@ -206,26 +254,29 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   }, [conversationIdForHydration])
 
   const handleLoadEarlierConversationHistory = useCallback(() => {
-    setActiveHistoryMessageLimit((limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE)
+    setActiveHistoryMessageLimit(
+      (limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE,
+    )
   }, [])
 
   const progress = useMemo(
-    () => baseProgress
-      ? mergeLoadedConversationIntoProgress(
-          baseProgress,
-          savedConversationQuery.data,
-          {
-            // In sticky-hydrate mode the loaded conversation may be fuller than the
-            // runtime window (e.g. follow-up just kicked off and progress only
-            // contains the new turn). Always merge so the displayed history covers
-            // both the saved transcript and the new runtime messages.
-            replaceExistingHistory:
-              !!savedConversationQuery.data &&
-              (shouldHydrateFromConversation ||
-                activeHistoryMessageLimit > baseConversationHistoryCount),
-          },
-        )
-      : null,
+    () =>
+      baseProgress
+        ? mergeLoadedConversationIntoProgress(
+            baseProgress,
+            savedConversationQuery.data,
+            {
+              // In sticky-hydrate mode the loaded conversation may be fuller than the
+              // runtime window (e.g. follow-up just kicked off and progress only
+              // contains the new turn). Always merge so the displayed history covers
+              // both the saved transcript and the new runtime messages.
+              replaceExistingHistory:
+                !!savedConversationQuery.data &&
+                (shouldHydrateFromConversation ||
+                  activeHistoryMessageLimit > baseConversationHistoryCount),
+            },
+          )
+        : null,
     [
       activeHistoryMessageLimit,
       baseConversationHistoryCount,
@@ -235,7 +286,9 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
     ],
   )
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
-  const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
+  const setFocusedSessionId = useAgentStore(
+    (state) => state.setFocusedSessionId,
+  )
   const isFocused = focusedSessionId === sessionId
 
   const handleFocusSession = useCallback(async () => {
@@ -248,11 +301,14 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   }, [sessionId, setFocusedSessionId])
 
   const handleDismissSession = useCallback(async () => {
-    const currentProgress = useAgentStore.getState().agentProgressById.get(sessionId)
-    logUI('[Sessions] Dismiss/hide session clicked:', {
+    const currentProgress = useAgentStore
+      .getState()
+      .agentProgressById.get(sessionId)
+    logUI("[Sessions] Dismiss/hide session clicked:", {
       sessionId,
-      status: currentProgress?.isComplete ? 'complete' : 'active',
-      conversationTitle: currentProgress?.conversationHistory?.[0]?.content?.substring(0, 50),
+      status: currentProgress?.isComplete ? "complete" : "active",
+      conversationTitle:
+        currentProgress?.conversationHistory?.[0]?.content?.substring(0, 50),
       conversationId: currentProgress?.conversationId,
     })
     await desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)
@@ -273,14 +329,26 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       onDismiss={handleDismissSession}
       onLoadEarlierConversationHistory={handleLoadEarlierConversationHistory}
       isLoadingEarlierConversationHistory={
-        shouldLoadExpandedConversationHistory && savedConversationQuery.isFetching
+        shouldLoadExpandedConversationHistory &&
+        savedConversationQuery.isFetching
       }
       onVoiceContinue={onVoiceContinue}
     />
   )
 })
 
-function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversationClick, onOpenSavedConversationsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
+function EmptyState({
+  onTextClick,
+  onVoiceClick,
+  onSelectPrompt,
+  onSavedConversationClick,
+  onOpenSavedConversationsDialog,
+  textInputShortcut,
+  voiceInputShortcut,
+  dictationShortcut,
+  selectedAgentId,
+  onSelectAgent,
+}: {
   onTextClick: () => void
   onVoiceClick: () => void
   onSelectPrompt: (content: string) => void
@@ -296,7 +364,11 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
   const togglePinSession = useAgentStore((state) => state.togglePinSession)
   const sortedSavedConversations = useMemo(
-    () => orderConversationHistoryByPinnedFirst(savedConversationsQuery.data ?? [], pinnedSessionIds),
+    () =>
+      orderConversationHistoryByPinnedFirst(
+        savedConversationsQuery.data ?? [],
+        pinnedSessionIds,
+      ),
     [savedConversationsQuery.data, pinnedSessionIds],
   )
   const recentSavedConversations = useMemo(
@@ -305,61 +377,79 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
   )
   const totalCount = savedConversationsQuery.data?.length ?? 0
 
-  const handleTogglePinnedSession = useCallback((conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    togglePinSession(conversationId)
-  }, [togglePinSession])
+  const handleTogglePinnedSession = useCallback(
+    (conversationId: string, e: React.MouseEvent) => {
+      e.stopPropagation()
+      togglePinSession(conversationId)
+    },
+    [togglePinSession],
+  )
 
-  const stopSessionRowKeyPropagation = useCallback((e: React.KeyboardEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-  }, [])
+  const stopSessionRowKeyPropagation = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+    },
+    [],
+  )
 
   return (
-    <div className="flex w-full flex-col items-center px-5 py-6 text-center sm:px-6">
-      <div className="mb-3 rounded-full bg-muted/70 p-2.5">
-        <MessageCircle className="h-5 w-5 text-muted-foreground" />
+    <div className={sessionStartEmptySurface.containerClassName}>
+      <div className={sessionStartEmptySurface.iconContainerClassName}>
+        <MessageCircle className={sessionStartEmptySurface.iconClassName} />
       </div>
-      <h3 className="mb-1.5 text-lg font-semibold">
-        {APP_SHELL_SESSION_START_PRESENTATION.emptyTitle}
+      <h3 className={sessionStartEmptySurface.titleClassName}>
+        {sessionStartCopy.emptyTitle}
       </h3>
-      <p className="mb-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        {APP_SHELL_SESSION_START_PRESENTATION.emptyDescription}
+      <p className={sessionStartEmptySurface.descriptionClassName}>
+        {sessionStartCopy.emptyDescription}
       </p>
-      <div className="flex w-full max-w-md flex-col items-center gap-3">
+      <div className={sessionStartEmptySurface.controlsClassName}>
         <AgentSelector
           selectedAgentId={selectedAgentId}
           onSelectAgent={onSelectAgent}
           compact
         />
-        <div className="flex flex-wrap gap-2 items-center justify-center">
-          <Button onClick={onTextClick} className="gap-2">
-            <Plus className="h-4 w-4" />
+        <div className={sessionStartEmptySurface.actionsClassName}>
+          <Button
+            onClick={onTextClick}
+            className={sessionStartEmptySurface.actionButtonClassName}
+          >
+            <Plus className={sessionStartEmptySurface.actionIconClassName} />
             {getAppShellHeaderActionDisplayLabel("startTextSession")}
           </Button>
-          <Button variant="secondary" onClick={onVoiceClick} className="gap-2">
-            <Mic className="h-4 w-4" />
+          <Button
+            variant="secondary"
+            onClick={onVoiceClick}
+            className={sessionStartEmptySurface.actionButtonClassName}
+          >
+            <Mic className={sessionStartEmptySurface.actionIconClassName} />
             {getAppShellHeaderActionDisplayLabel("startVoiceSession")}
           </Button>
-          <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} buttonSize="sm" />
+          <PredefinedPromptsMenu
+            onSelectPrompt={onSelectPrompt}
+            buttonSize="sm"
+          />
         </div>
         {/* Keybind hints - visible on all screens, wraps on narrow */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Keyboard className="h-3.5 w-3.5 shrink-0" />
-            <span>{APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.text}</span>
-            <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
+        <div className={sessionStartEmptySurface.keybindRowClassName}>
+          <div className={sessionStartEmptySurface.keybindItemClassName}>
+            <Keyboard
+              className={sessionStartEmptySurface.keybindIconClassName}
+            />
+            <span>{sessionStartCopy.keybindLabels.text}</span>
+            <kbd className={sessionStartEmptySurface.keybindKeyClassName}>
               {textInputShortcut}
             </kbd>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span>{APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.voice}</span>
-            <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
+          <div className={sessionStartEmptySurface.keybindItemClassName}>
+            <span>{sessionStartCopy.keybindLabels.voice}</span>
+            <kbd className={sessionStartEmptySurface.keybindKeyClassName}>
               {voiceInputShortcut}
             </kbd>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span>{APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.dictation}</span>
-            <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
+          <div className={sessionStartEmptySurface.keybindItemClassName}>
+            <span>{sessionStartCopy.keybindLabels.dictation}</span>
+            <kbd className={sessionStartEmptySurface.keybindKeyClassName}>
               {dictationShortcut}
             </kbd>
           </div>
@@ -369,15 +459,15 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
       {/* Recent saved conversations */}
       {recentSavedConversations.length > 0 && (
         <div className="mt-6 w-full max-w-md text-left">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h4 className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
               <Clock className="h-3.5 w-3.5" />
               Recent Conversations
             </h4>
             {totalCount > RECENT_SESSIONS_LIMIT && (
               <button
                 onClick={onOpenSavedConversationsDialog}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground text-xs transition-colors"
               >
                 View all ({totalCount})
               </button>
@@ -399,23 +489,29 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
                       onSavedConversationClick(session.id)
                     }
                   }}
-                  className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:ring-ring group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate flex-1">{session.title}</span>
+                  <CheckCircle2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{session.title}</span>
                   <div className="ml-auto flex shrink-0 items-center gap-1">
                     <button
                       type="button"
                       onClick={(e) => handleTogglePinnedSession(session.id, e)}
                       onKeyDown={stopSessionRowKeyPropagation}
-                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                      className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring rounded p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                       title={isPinned ? "Unpin session" : "Pin session"}
                       aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
                       aria-pressed={isPinned}
                     >
-                      <Pin className={isPinned ? "h-3.5 w-3.5 fill-current text-foreground" : "h-3.5 w-3.5"} />
+                      <Pin
+                        className={
+                          isPinned
+                            ? "text-foreground h-3.5 w-3.5 fill-current"
+                            : "h-3.5 w-3.5"
+                        }
+                      />
                     </button>
-                    <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+                    <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
                       {formatTimestamp(session.updatedAt)}
                     </span>
                   </div>
@@ -433,7 +529,8 @@ export function Component() {
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
   const location = useLocation()
   const navigate = useNavigate()
-  const layoutContext = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
+  const layoutContext = (useOutletContext<LayoutContext>() ??
+    {}) as Partial<LayoutContext>
   const {
     onOpenSavedConversationsDialog,
     selectedAgentId = null,
@@ -447,20 +544,33 @@ export function Component() {
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
-  const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
+  const setViewedConversationId = useAgentStore(
+    (s) => s.setViewedConversationId,
+  )
   // Get config for shortcut displays
   const configQuery = useConfigQuery()
-  const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
-  const voiceInputShortcut = getAgentShortcutDisplay(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut, configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut)
-  const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
+  const textInputShortcut = getTextInputShortcutDisplay(
+    configQuery.data?.textInputShortcut,
+    configQuery.data?.customTextInputShortcut,
+  )
+  const voiceInputShortcut = getAgentShortcutDisplay(
+    configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut,
+    configQuery.data?.customAgentShortcut ||
+      configQuery.data?.customMcpToolsShortcut,
+  )
+  const dictationShortcut = getDictationShortcutDisplay(
+    configQuery.data?.shortcut,
+    configQuery.data?.customShortcut,
+  )
 
-  const { data: sessionData, refetch: refetchSessionData } = useQuery<SessionListResponse>({
-    queryKey: ["agentSessions"],
-    queryFn: async () => {
-      return await desktopAgentSessionsClient.getAgentSessions()
-    },
-    refetchOnWindowFocus: false,
-  })
+  const { data: sessionData, refetch: refetchSessionData } =
+    useQuery<SessionListResponse>({
+      queryKey: ["agentSessions"],
+      queryFn: async () => {
+        return await desktopAgentSessionsClient.getAgentSessions()
+      },
+      refetchOnWindowFocus: false,
+    })
 
   useEffect(() => {
     const unlisten = desktopAgentSessionsClient.onAgentSessionsUpdated(() => {
@@ -479,24 +589,38 @@ export function Component() {
    * Returns the timestamp of the most recent activity in a session.
    * Used to sort sessions by last modified time on initial load.
    */
-  const getLastActivityTimestamp = useCallback((progress: AgentProgressUpdate | null | undefined): number => {
-    if (!progress) return 0
-    const lastStepTimestamp = progress.steps?.length > 0
-      ? progress.steps[progress.steps.length - 1].timestamp
-      : 0
-    const history = progress.conversationHistory
-    const lastHistoryTimestamp = history && history.length > 0
-      ? (history[history.length - 1].timestamp ?? 0)
-      : 0
-    return Math.max(lastStepTimestamp, lastHistoryTimestamp)
-  }, [])
+  const getLastActivityTimestamp = useCallback(
+    (progress: AgentProgressUpdate | null | undefined): number => {
+      if (!progress) return 0
+      const lastStepTimestamp =
+        progress.steps?.length > 0
+          ? progress.steps[progress.steps.length - 1].timestamp
+          : 0
+      const history = progress.conversationHistory
+      const lastHistoryTimestamp =
+        history && history.length > 0
+          ? (history[history.length - 1].timestamp ?? 0)
+          : 0
+      return Math.max(lastStepTimestamp, lastHistoryTimestamp)
+    },
+    [],
+  )
 
   // State for resuming a saved conversation before a live session exists.
-  const [pendingResumeConversationId, setPendingResumeConversationId] = useState<string | null>(null)
-  const [pendingContinuationStartedAt, setPendingContinuationStartedAt] = useState<number | null>(null)
-  const [pendingResumeHistoryMessageLimit, setPendingResumeHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
-  const pendingResumeConversationIdRef = useRef<string | null>(pendingResumeConversationId)
-  const pendingContinuationStartedAtRef = useRef<number | null>(pendingContinuationStartedAt)
+  const [pendingResumeConversationId, setPendingResumeConversationId] =
+    useState<string | null>(null)
+  const [pendingContinuationStartedAt, setPendingContinuationStartedAt] =
+    useState<number | null>(null)
+  const [
+    pendingResumeHistoryMessageLimit,
+    setPendingResumeHistoryMessageLimit,
+  ] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
+  const pendingResumeConversationIdRef = useRef<string | null>(
+    pendingResumeConversationId,
+  )
+  const pendingContinuationStartedAtRef = useRef<number | null>(
+    pendingContinuationStartedAt,
+  )
   const navigationState = location.state as SessionsNavigationState | null
 
   useEffect(() => {
@@ -526,7 +650,10 @@ export function Component() {
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
       if (!progress) continue
-      if (pendingResumeConversationId && progress.conversationId === pendingResumeConversationId) {
+      if (
+        pendingResumeConversationId &&
+        progress.conversationId === pendingResumeConversationId
+      ) {
         continue
       }
 
@@ -540,10 +667,14 @@ export function Component() {
         ? {
             ...existing.progress,
             ...progress,
-            conversationId: progress.conversationId ?? existing.progress.conversationId,
-            conversationTitle: progress.conversationTitle ?? existing.progress.conversationTitle,
-            currentIteration: progress.currentIteration ?? existing.progress.currentIteration,
-            maxIterations: progress.maxIterations ?? existing.progress.maxIterations,
+            conversationId:
+              progress.conversationId ?? existing.progress.conversationId,
+            conversationTitle:
+              progress.conversationTitle ?? existing.progress.conversationTitle,
+            currentIteration:
+              progress.currentIteration ?? existing.progress.currentIteration,
+            maxIterations:
+              progress.maxIterations ?? existing.progress.maxIterations,
             isSnoozed: progress.isSnoozed ?? existing.progress.isSnoozed,
           }
         : progress
@@ -599,7 +730,9 @@ export function Component() {
     trackedActiveSessions,
   ])
 
-  const pendingResumeSessionId = pendingResumeConversationId ? `pending-${pendingResumeConversationId}` : null
+  const pendingResumeSessionId = pendingResumeConversationId
+    ? `pending-${pendingResumeConversationId}`
+    : null
   const hasLiveSessionForPendingResume = pendingResumeConversationId
     ? activeSessionEntries.some(
         ({ sessionId, conversationId, progress }) =>
@@ -618,9 +751,11 @@ export function Component() {
   // Sync session order when new sessions appear
   useEffect(() => {
     const currentIds = activeSessionEntries.map(({ sessionId }) => sessionId)
-    const newIds = currentIds.filter(id => !sessionOrder.includes(id))
+    const newIds = currentIds.filter((id) => !sessionOrder.includes(id))
     const sortTimestampBySessionId = new Map<string, number>(
-      activeSessionEntries.map(({ sessionId, sortTimestamp }) => [sessionId, sortTimestamp] as const),
+      activeSessionEntries.map(
+        ({ sessionId, sortTimestamp }) => [sessionId, sortTimestamp] as const,
+      ),
     )
 
     if (newIds.length > 0) {
@@ -630,17 +765,21 @@ export function Component() {
       // freshest sessions appear at the top of the list.
       // When a new session is added during an active view, it still goes to the front.
       const sortedNewIds = isInitialLoad
-        ? [...newIds].sort((a, b) =>
-            (sortTimestampBySessionId.get(b) ?? 0) -
-            (sortTimestampBySessionId.get(a) ?? 0)
+        ? [...newIds].sort(
+            (a, b) =>
+              (sortTimestampBySessionId.get(b) ?? 0) -
+              (sortTimestampBySessionId.get(a) ?? 0),
           )
         : newIds
 
       // Add (sorted) new sessions to the beginning of the order
-      setSessionOrder(prev => [...sortedNewIds, ...prev.filter(id => currentIds.includes(id))])
+      setSessionOrder((prev) => [
+        ...sortedNewIds,
+        ...prev.filter((id) => currentIds.includes(id)),
+      ])
     } else {
       // Remove sessions that no longer exist
-      const validOrder = sessionOrder.filter(id => currentIds.includes(id))
+      const validOrder = sessionOrder.filter((id) => currentIds.includes(id))
       if (validOrder.length !== sessionOrder.length) {
         setSessionOrder(validOrder)
       }
@@ -654,7 +793,10 @@ export function Component() {
   // useParams(), so without this guard the effect would re-fire on every progress update.
   const handledRouteIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (routeHistoryItemId && routeHistoryItemId !== handledRouteIdRef.current) {
+    if (
+      routeHistoryItemId &&
+      routeHistoryItemId !== handledRouteIdRef.current
+    ) {
       handledRouteIdRef.current = routeHistoryItemId
       // Check if this ID matches an active (non-complete) session - if so, focus it.
       // Completed sessions should reload from disk to ensure fresh data,
@@ -675,19 +817,31 @@ export function Component() {
       // Using window.history.replaceState instead of navigate() to avoid clearing local state
       window.history.replaceState(null, "", "/")
     }
-  }, [activeSessionEntries, routeHistoryItemId, setExpandedSessionId, setFocusedSessionId])
+  }, [
+    activeSessionEntries,
+    routeHistoryItemId,
+    setExpandedSessionId,
+    setFocusedSessionId,
+  ])
 
   useEffect(() => {
     if (!navigationState?.clearPendingConversation) return
 
     setPendingContinuationStartedAt(null)
     setPendingResumeConversationId(null)
-    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    })
   }, [location.pathname, location.search, navigationState, navigate])
 
   // Load the saved conversation that is about to be resumed.
   const pendingResumeConversationQuery = useQuery({
-    queryKey: ["conversation", pendingResumeConversationId, pendingResumeHistoryMessageLimit],
+    queryKey: [
+      "conversation",
+      pendingResumeConversationId,
+      pendingResumeHistoryMessageLimit,
+    ],
     queryFn: async () => {
       if (!pendingResumeConversationId) return null
       return desktopConversationsClient.loadConversation({
@@ -697,7 +851,9 @@ export function Component() {
     },
     enabled: !!pendingResumeConversationId,
     placeholderData: (previousData: any) =>
-      previousData?.id === pendingResumeConversationId ? previousData : undefined,
+      previousData?.id === pendingResumeConversationId
+        ? previousData
+        : undefined,
   })
 
   const isPendingResumeConversationMissing =
@@ -709,23 +865,39 @@ export function Component() {
   // state so we do not keep showing a stuck loading tile.
   useEffect(() => {
     if (!pendingResumeConversationId) return
-    if (!pendingResumeConversationQuery.isError && !isPendingResumeConversationMissing) return
+    if (
+      !pendingResumeConversationQuery.isError &&
+      !isPendingResumeConversationMissing
+    )
+      return
 
     if (pendingResumeConversationQuery.isError) {
-      console.error("Failed to load conversation pending resume:", pendingResumeConversationQuery.error)
+      console.error(
+        "Failed to load conversation pending resume:",
+        pendingResumeConversationQuery.error,
+      )
     } else {
-      console.error("Conversation pending resume not found:", pendingResumeConversationId)
+      console.error(
+        "Conversation pending resume not found:",
+        pendingResumeConversationId,
+      )
     }
     toast.error("Unable to load that saved conversation")
     setPendingContinuationStartedAt(null)
     setPendingResumeConversationId(null)
-  }, [pendingResumeConversationId, pendingResumeConversationQuery.isError, pendingResumeConversationQuery.error, isPendingResumeConversationMissing])
+  }, [
+    pendingResumeConversationId,
+    pendingResumeConversationQuery.isError,
+    pendingResumeConversationQuery.error,
+    isPendingResumeConversationMissing,
+  ])
 
   // Create a synthetic AgentProgressUpdate for a saved conversation that the
   // user is about to continue. This keeps saved conversation history distinct
   // from a real active agent session while reusing the same presentation.
   const pendingResumeProgress: AgentProgressUpdate | null = useMemo(() => {
-    if (!pendingResumeConversationId || !pendingResumeConversationQuery.data) return null
+    if (!pendingResumeConversationId || !pendingResumeConversationQuery.data)
+      return null
     const conv = pendingResumeConversationQuery.data
     const isInitializing = pendingContinuationStartedAt !== null
 
@@ -736,24 +908,34 @@ export function Component() {
       currentIteration: isInitializing ? 1 : 0,
       maxIterations: isInitializing ? Infinity : 10,
       steps: isInitializing
-        ? [{
-            id: `pending-start-${pendingResumeConversationId}`,
-            type: "thinking",
-            title: "Starting follow-up",
-            description: "Waiting for session updates...",
-            status: "in_progress",
-            timestamp: pendingContinuationStartedAt,
-          }]
+        ? [
+            {
+              id: `pending-start-${pendingResumeConversationId}`,
+              type: "thinking",
+              title: "Starting follow-up",
+              description: "Waiting for session updates...",
+              status: "in_progress",
+              timestamp: pendingContinuationStartedAt,
+            },
+          ]
         : [],
       isComplete: !isInitializing,
-      conversationHistoryStartIndex: getLoadedConversationHistoryStartIndex(conv),
-      conversationHistoryTotalCount: conv.totalMessageCount ?? conv.messages.length,
+      conversationHistoryStartIndex:
+        getLoadedConversationHistoryStartIndex(conv),
+      conversationHistoryTotalCount:
+        conv.totalMessageCount ?? conv.messages.length,
       conversationHistory: buildConversationHistoryForProgress(conv),
     }
-  }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])
+  }, [
+    pendingResumeConversationId,
+    pendingResumeConversationQuery.data,
+    pendingContinuationStartedAt,
+  ])
 
   const handleLoadEarlierPendingHistory = useCallback(() => {
-    setPendingResumeHistoryMessageLimit((limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE)
+    setPendingResumeHistoryMessageLimit(
+      (limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE,
+    )
   }, [])
 
   // Resume a saved conversation by focusing an existing live session when
@@ -777,7 +959,9 @@ export function Component() {
   }
 
   const handleDismissPendingResume = () => {
-    logUI('[Sessions] Dismissing pending resume tile:', { pendingResumeConversationId })
+    logUI("[Sessions] Dismissing pending resume tile:", {
+      pendingResumeConversationId,
+    })
     setPendingContinuationStartedAt(null)
     setPendingResumeConversationId(null)
   }
@@ -796,13 +980,9 @@ export function Component() {
       ({ sessionId, conversationId, progress, sortTimestamp }) =>
         sessionId !== pendingResumeSessionId &&
         conversationId === pendingResumeConversationId &&
-        (
-          !progress.isComplete ||
-          (
-            pendingContinuationStartedAt !== null &&
-            sortTimestamp >= pendingContinuationStartedAt
-          )
-        )
+        (!progress.isComplete ||
+          (pendingContinuationStartedAt !== null &&
+            sortTimestamp >= pendingContinuationStartedAt)),
     )
 
     if (realEntry) {
@@ -827,7 +1007,8 @@ export function Component() {
   // Safety fallback: if initialization does not produce a real session in time,
   // dismiss the pending tile instead of leaving it stuck indefinitely.
   useEffect(() => {
-    if (!pendingResumeConversationId || pendingContinuationStartedAt === null) return undefined
+    if (!pendingResumeConversationId || pendingContinuationStartedAt === null)
+      return undefined
 
     const timeoutConversationId = pendingResumeConversationId
     const timeoutStartedAt = pendingContinuationStartedAt
@@ -839,10 +1020,13 @@ export function Component() {
         return
       }
 
-      logUI("[Sessions] Pending continuation timed out waiting for real session", {
-        pendingResumeConversationId: timeoutConversationId,
-        pendingContinuationStartedAt: timeoutStartedAt,
-      })
+      logUI(
+        "[Sessions] Pending continuation timed out waiting for real session",
+        {
+          pendingResumeConversationId: timeoutConversationId,
+          pendingContinuationStartedAt: timeoutStartedAt,
+        },
+      )
       toast.error("Session startup timed out. Please try again.")
       setPendingContinuationStartedAt(null)
       setPendingResumeConversationId(null)
@@ -868,30 +1052,33 @@ export function Component() {
     await onStartPromptSession(content)
   }
 
-  const handleOpenVoiceContinuation = useCallback((options: {
-    conversationId?: string
-    sessionId?: string
-    fromTile: boolean
-    continueConversationTitle?: string
-    agentName?: string
-    onSubmitted?: () => void
-  }) => {
-    openSessionActionDialog({
-      mode: "voice",
-      conversationId: options.conversationId,
-      sessionId: options.sessionId,
-      fromTile: options.fromTile,
-      continueConversationTitle: options.continueConversationTitle,
-      agentName: options.agentName,
-      onSubmitted: options.onSubmitted,
-    })
-  }, [openSessionActionDialog])
+  const handleOpenVoiceContinuation = useCallback(
+    (options: {
+      conversationId?: string
+      sessionId?: string
+      fromTile: boolean
+      continueConversationTitle?: string
+      agentName?: string
+      onSubmitted?: () => void
+    }) => {
+      openSessionActionDialog({
+        mode: "voice",
+        conversationId: options.conversationId,
+        sessionId: options.sessionId,
+        fromTile: options.fromTile,
+        continueConversationTitle: options.continueConversationTitle,
+        agentName: options.agentName,
+        onSubmitted: options.onSubmitted,
+      })
+    },
+    [openSessionActionDialog],
+  )
 
   const handleClearInactiveSessions = useCallback(async () => {
     const inactiveSessions = activeSessionEntries
       .filter(({ progress }) => progress.isComplete)
       .map(({ sessionId }) => sessionId)
-    logUI('[Sessions] Clear all inactive sessions clicked:', {
+    logUI("[Sessions] Clear all inactive sessions clicked:", {
       count: inactiveSessions.length,
       sessionIds: inactiveSessions,
     })
@@ -906,7 +1093,9 @@ export function Component() {
   // Count inactive (completed) sessions - for clear inactive button
   const inactiveSessionCount = useMemo(() => {
     // Count from raw progress map so completed sessions without tracker metadata still count.
-    return Array.from(agentProgressById.entries()).filter(([_, progress]) => progress?.isComplete).length
+    return Array.from(agentProgressById.entries()).filter(
+      ([_, progress]) => progress?.isComplete,
+    ).length
   }, [agentProgressById])
 
   const showPendingLoadingTile =
@@ -924,13 +1113,25 @@ export function Component() {
 
   const selectedSessionId = useMemo(() => {
     if (hasPendingTile && pendingResumeSessionId) return pendingResumeSessionId
-    if (focusedSessionId && displayedSessionIds.has(focusedSessionId)) return focusedSessionId
-    if (expandedSessionId && displayedSessionIds.has(expandedSessionId)) return expandedSessionId
+    if (focusedSessionId && displayedSessionIds.has(focusedSessionId))
+      return focusedSessionId
+    if (expandedSessionId && displayedSessionIds.has(expandedSessionId))
+      return expandedSessionId
     return activeSessionEntries[0]?.sessionId ?? null
-  }, [activeSessionEntries, displayedSessionIds, expandedSessionId, focusedSessionId, hasPendingTile, pendingResumeSessionId])
+  }, [
+    activeSessionEntries,
+    displayedSessionIds,
+    expandedSessionId,
+    focusedSessionId,
+    hasPendingTile,
+    pendingResumeSessionId,
+  ])
 
   const selectedSessionEntry = useMemo(
-    () => activeSessionEntries.find(({ sessionId }) => sessionId === selectedSessionId) ?? null,
+    () =>
+      activeSessionEntries.find(
+        ({ sessionId }) => sessionId === selectedSessionId,
+      ) ?? null,
     [activeSessionEntries, selectedSessionId],
   )
 
@@ -958,7 +1159,12 @@ export function Component() {
     if (selectedSessionId && selectedSessionId !== expandedSessionId) {
       setExpandedSessionId(selectedSessionId)
     }
-  }, [expandedSessionId, hasPendingTile, selectedSessionId, setExpandedSessionId])
+  }, [
+    expandedSessionId,
+    hasPendingTile,
+    selectedSessionId,
+    setExpandedSessionId,
+  ])
 
   useEffect(() => {
     if (pendingResumeConversationId) {
@@ -982,7 +1188,7 @@ export function Component() {
   return (
     <div className="group/tile flex h-full flex-col">
       {/* Scrollable content area - flex-1 min-h-0 so it fills remaining height without overflow */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {/* Show empty state when no sessions and no pending */}
         {!hasSessions ? (
           <EmptyState
@@ -990,7 +1196,9 @@ export function Component() {
             onVoiceClick={handleVoiceStart}
             onSelectPrompt={handleSelectPrompt}
             onSavedConversationClick={handleResumeSavedConversation}
-            onOpenSavedConversationsDialog={onOpenSavedConversationsDialog ?? (() => {})}
+            onOpenSavedConversationsDialog={
+              onOpenSavedConversationsDialog ?? (() => {})
+            }
             textInputShortcut={textInputShortcut}
             voiceInputShortcut={voiceInputShortcut}
             dictationShortcut={dictationShortcut}
@@ -1008,20 +1216,26 @@ export function Component() {
                 onFocus={() => {}}
                 onDismiss={handleDismissPendingResume}
                 onFollowUpSent={handlePendingContinuationStarted}
-                isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
-                onLoadEarlierConversationHistory={handleLoadEarlierPendingHistory}
-                isLoadingEarlierConversationHistory={pendingResumeConversationQuery.isFetching}
+                isFollowUpInputInitializing={
+                  pendingContinuationStartedAt !== null
+                }
+                onLoadEarlierConversationHistory={
+                  handleLoadEarlierPendingHistory
+                }
+                isLoadingEarlierConversationHistory={
+                  pendingResumeConversationQuery.isFetching
+                }
                 onVoiceContinue={handleOpenVoiceContinuation}
               />
             ) : showPendingLoadingTile ? (
-              <div className="flex h-full flex-col rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+              <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4">
+                <div className="border-border/60 flex items-center gap-2 border-b pb-3">
+                  <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                  <div className="bg-muted h-4 w-40 animate-pulse rounded" />
                 </div>
                 <div className="mt-4 space-y-2">
-                  <div className="h-3 w-full animate-pulse rounded bg-muted/70" />
-                  <div className="h-3 w-5/6 animate-pulse rounded bg-muted/70" />
+                  <div className="bg-muted/70 h-3 w-full animate-pulse rounded" />
+                  <div className="bg-muted/70 h-3 w-5/6 animate-pulse rounded" />
                 </div>
               </div>
             ) : selectedSessionId ? (
@@ -1034,7 +1248,6 @@ export function Component() {
             ) : null}
           </div>
         )}
-
       </div>
     </div>
   )

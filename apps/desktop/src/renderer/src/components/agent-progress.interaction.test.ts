@@ -11,7 +11,8 @@ describe("agent progress interactions", () => {
     expect(agentProgressSource).toContain(
       "(target as HTMLElement).closest(\"button, a, input, textarea, select, [role='button']\")"
     )
-    expect(agentProgressSource).toContain("const shouldToggleFromContentClick = shouldCollapse && !isExpanded")
+    expect(agentProgressSource).toContain("getChatMessageContentRenderState")
+    expect(agentProgressSource).toContain("const shouldToggleFromContentClick = messageContentRenderState.isCollapsed")
     expect(agentProgressSource).toContain("onClick={shouldToggleFromContentClick ? handleToggleExpand : undefined}")
     expect(agentProgressSource).toContain("e.stopPropagation()")
   })

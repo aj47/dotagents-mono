@@ -28,8 +28,8 @@ describe("agent progress TTS guardrails", () => {
   it("lets unfocused tiles request auto-play while central claims prevent duplicate speech", () => {
     expect(agentProgressSource).toContain('focus no\n  // longer decides whether a tile may request auto-play')
     expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(messageVariant, isSnoozed)')
-    expect(agentProgressSource).toContain('tipcClient.claimTTSPlaybackKeys')
-    expect(agentProgressSource).toContain('tipcClient.requestTTSPlayback({')
+    expect(agentProgressSource).toContain('desktopTtsClient.claimPlaybackKeys')
+    expect(agentProgressSource).toContain('desktopTtsClient.requestPlayback({')
   })
 
   it("keeps response-linked assistant messages replayable but only auto-plays the latest assistant message", () => {

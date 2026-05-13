@@ -7,6 +7,9 @@ import { useTheme } from "@renderer/contexts/theme-context"
 import { Button } from "@renderer/components/ui/button"
 import { X, AlertTriangle } from "lucide-react"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { getChatRuntimeCopyState } from "@dotagents/shared/session-presentation"
+
+const desktopRuntimeCopy = getChatRuntimeCopyState()
 
 interface AgentProcessingViewProps {
   agentProgress: AgentProgressUpdate | null
@@ -83,8 +86,8 @@ export function AgentProcessingView({
               className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
               onClick={handleKillConfirmation}
               disabled={isKilling}
-              title="Stop agent execution"
-              aria-label="Stop agent execution"
+              title={desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle}
+              aria-label={desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle}
             >
               <X className="h-3 w-3" />
             </Button>
@@ -108,10 +111,10 @@ export function AgentProcessingView({
           <div className="bg-background border border-border rounded-lg p-4 max-w-sm mx-4 shadow-lg">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <h3 className="text-sm font-medium">Stop Agent Execution</h3>
+              <h3 className="text-sm font-medium">{desktopRuntimeCopy.killSwitch.sessionTitle}</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              Are you sure you want to stop this session? Other sessions will continue running.
+              {desktopRuntimeCopy.killSwitch.sessionMessageWithOtherSessions}
             </p>
             <div className="flex gap-2 justify-end">
               <Button
@@ -120,7 +123,7 @@ export function AgentProcessingView({
                 onClick={handleCancelKill}
                 disabled={isKilling}
               >
-                Cancel
+                {desktopRuntimeCopy.common.cancel}
               </Button>
               <Button
                 variant="destructive"
@@ -128,7 +131,9 @@ export function AgentProcessingView({
                 onClick={handleKillSwitch}
                 disabled={isKilling}
               >
-                {isKilling ? "Stopping..." : "Stop Agent"}
+                {isKilling
+                  ? desktopRuntimeCopy.killSwitch.sessionPendingActionLabel
+                  : desktopRuntimeCopy.killSwitch.sessionActionLabel}
               </Button>
             </div>
           </div>

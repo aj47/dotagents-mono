@@ -5,6 +5,10 @@ const agentProgressSource = readFileSync(
   new URL("./agent-progress.tsx", import.meta.url),
   "utf8",
 )
+const markdownRendererSource = readFileSync(
+  new URL("./markdown-renderer.tsx", import.meta.url),
+  "utf8",
+)
 const tailwindSource = readFileSync(
   new URL("../css/tailwind.css", import.meta.url),
   "utf8",
@@ -21,7 +25,16 @@ describe("agent progress text selection", () => {
       "hasActiveTextSelection(event.currentTarget)",
     )
     expect(agentProgressSource).toContain(
-      'className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]"',
+      "desktopChatMessageSurface.markdownClassName",
+    )
+    expect(agentProgressSource).toContain(
+      "<MarkdownRenderer content={effectiveContent.trim()} collapsed={messageContentRenderState.isCollapsed} />",
+    )
+    expect(markdownRendererSource).toContain(
+      "const SELECTABLE_MARKDOWN_CLASS_NAME = markdownContentSurface.selectableClassName",
+    )
+    expect(markdownRendererSource).toContain(
+      "className={SELECTABLE_MARKDOWN_CLASS_NAME}",
     )
   })
 })

@@ -155,7 +155,7 @@ function countTextOccurrences(text: string, needle: string) {
 function findToolRow(tree: any, toolName: string) {
   const match = findAll(
     tree,
-    (value) => value?.type === "div"
+    (value) => (value?.type === "div" || value?.type === "button")
       && typeof value?.props?.className === "string"
       && value.props.className.includes("text-[11px]")
       && value.props.className.includes("cursor-pointer")
@@ -197,7 +197,15 @@ async function loadAgentProgress(
     controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
     requestTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
   }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
-  const desktopTtsClientMock = { desktopTtsClient: { generateSpeech: vi.fn() } }
+  const desktopTtsClientMock = {
+    desktopTtsClient: {
+      generateSpeech: vi.fn(),
+      claimPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
+      releasePlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
+      requestPlayback: vi.fn().mockResolvedValue({ success: true }),
+      controlPlayback: vi.fn().mockResolvedValue({ success: true }),
+    },
+  }
   const queriesMock = {
     useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
     useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
@@ -374,18 +382,22 @@ async function loadAgentProgress(
     }
   })
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
-  vi.doMock("@dotagents/shared/message-display-utils", () => ({
-    hasMarkdownMediaPayload: (text: string) =>
-      /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(text) ||
-      /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(text),
-    normalizeAssistantResponseForDedupe: (text: string | undefined) => (text ?? "").replace(/\s+/g, " ").trim(),
-    sanitizeMessageContentForDisplay: (text: string) => text.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/gi, (_match: string, alt: string) => `[Image: ${alt}]`),
-    sanitizeMessageContentForSpeech: (text: string) => text,
-    stripMarkdownMediaPayloads: (text: string) =>
-      text
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-        .replace(/(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi, "$1"),
-  }))
+  vi.doMock("@dotagents/shared/message-display-utils", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@dotagents/shared/message-display-utils")>()
+    return {
+      ...actual,
+      hasMarkdownMediaPayload: (text: string) =>
+        /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(text) ||
+        /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(text),
+      normalizeAssistantResponseForDedupe: (text: string | undefined) => (text ?? "").replace(/\s+/g, " ").trim(),
+      sanitizeMessageContentForDisplay: (text: string) => text.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/gi, (_match: string, alt: string) => `[Image: ${alt}]`),
+      sanitizeMessageContentForSpeech: (text: string) => text,
+      stripMarkdownMediaPayloads: (text: string) =>
+        text
+          .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+          .replace(/(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi, "$1"),
+    }
+  })
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
   const mod = await import("./agent-progress")
@@ -417,7 +429,7 @@ describe("agent progress response history", () => {
     const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
     const text = getTextContent(tree)
 
-    expect(text).toContain("Thinking...")
+    expect(text).toContain("Agent is thinking...")
     expect(text).not.toContain("Generating response...")
   })
 
@@ -1129,7 +1141,7 @@ describe("agent progress response history", () => {
     expect(desktopTtsClientMock.desktopTtsClient.generateSpeech).toHaveBeenCalledWith({
       text: "Mid-conversation answer",
     })
-    expect(tipcMock.tipcClient.claimTTSPlaybackKeys).toHaveBeenCalled()
+    expect(desktopTtsClientMock.desktopTtsClient.claimPlaybackKeys).toHaveBeenCalled()
   })
 
   it("removes tile maximize controls from the simplified session layout", async () => {

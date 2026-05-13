@@ -11,9 +11,13 @@ import { Bot, Check, Edit2, Plus } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 import {
+  formatAgentSelectorEditLabel,
+  formatAgentSelectorSelectedAccessibilityLabel,
   getDefaultAgentProfile,
   getDisplayAgentProfile,
   getEnabledAgentProfiles,
+  getAgentSelectorCommonCopyState,
+  getAgentSelectorDesktopSurfaceState,
   getSelectedAgentProfile,
 } from "@dotagents/shared/agent-selector-options"
 import {
@@ -31,6 +35,9 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu"
 import { Facehash } from "facehash"
+
+const selectorCopy = getAgentSelectorCommonCopyState()
+const selectorSurface = getAgentSelectorDesktopSurfaceState()
 
 function saveSelectedAgentId(agentId: string | null): void {
   saveSelectedAgentIdToStorage(agentId)
@@ -105,46 +112,50 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
 
   // When no agent is explicitly selected, show the default agent's avatar
   const displayAgent = getDisplayAgentProfile(enabledAgents, selectedAgentId)
-  const displayName = displayAgent?.displayName || displayAgent?.name || "Default Agent"
+  const displayName = displayAgent?.displayName || displayAgent?.name || selectorCopy.defaultAgentLabel
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background shadow-sm overflow-hidden hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className={selectorSurface.triggerClassName}
           title={displayName}
-          aria-label={`Selected agent: ${displayName}`}
+          aria-label={formatAgentSelectorSelectedAccessibilityLabel(displayName)}
         >
           {displayAgent?.avatarDataUrl ? (
             <img src={displayAgent.avatarDataUrl} alt={displayName} className="h-full w-full object-cover" />
           ) : displayAgent ? (
-            <Facehash name={displayAgent.id} size={28} colors={getAgentAvatarColors(displayAgent.id)} />
+            <Facehash name={displayAgent.id} size={selectorSurface.triggerAvatarSize} colors={getAgentAvatarColors(displayAgent.id)} />
           ) : (
-            <Bot className="h-4 w-4 text-muted-foreground" />
+            <Bot className={selectorSurface.triggerBotIconClassName} />
           )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className="max-h-[300px] w-[min(24rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-y-auto"
+        className={selectorSurface.contentClassName}
       >
         {/* Default (no specific agent) */}
         <DropdownMenuItem
           onClick={() => onSelectAgent(null)}
-          className="min-w-0 items-center gap-2"
+          className={selectorSurface.itemClassName}
         >
-          <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
+          <div className={selectorSurface.avatarClassName}>
             {defaultAgent?.avatarDataUrl ? (
-              <img src={defaultAgent.avatarDataUrl} alt={defaultAgent?.displayName || "Default Agent"} className="h-full w-full object-cover" />
+              <img
+                src={defaultAgent.avatarDataUrl}
+                alt={defaultAgent?.displayName || selectorCopy.defaultAgentLabel}
+                className="h-full w-full object-cover"
+              />
             ) : defaultAgent ? (
-              <Facehash name={defaultAgent.id} size={20} colors={getAgentAvatarColors(defaultAgent.id)} />
+              <Facehash name={defaultAgent.id} size={selectorSurface.menuAvatarSize} colors={getAgentAvatarColors(defaultAgent.id)} />
             ) : (
-              <Bot className="h-4 w-4 text-muted-foreground" />
+              <Bot className={selectorSurface.menuBotIconClassName} />
             )}
           </div>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">Default Agent</span>
-          <Check className={cn("h-3.5 w-3.5 shrink-0", selectedAgentId === null ? "opacity-100" : "opacity-0")} />
+          <span className={selectorSurface.labelClassName}>{selectorCopy.defaultAgentLabel}</span>
+          <Check className={cn(selectorSurface.checkIconClassName, selectedAgentId === null ? "opacity-100" : "opacity-0")} />
         </DropdownMenuItem>
 
         {enabledAgents.length > 0 && <DropdownMenuSeparator />}
@@ -156,17 +167,17 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
               event.preventDefault()
               onSelectAgent(agent.id)
             }}
-            className="min-w-0 items-center gap-2 pr-1"
+            className={selectorSurface.agentItemClassName}
           >
-            <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
+            <div className={selectorSurface.avatarClassName}>
               {agent.avatarDataUrl ? (
                 <img src={agent.avatarDataUrl} alt={agent.displayName || agent.name} className="h-full w-full object-cover" />
               ) : (
-                <Facehash name={agent.id} size={20} colors={getAgentAvatarColors(agent.id)} />
+                <Facehash name={agent.id} size={selectorSurface.menuAvatarSize} colors={getAgentAvatarColors(agent.id)} />
               )}
             </div>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.displayName || agent.name}</span>
-            <Check className={cn("h-3.5 w-3.5 shrink-0", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
+            <span className={selectorSurface.labelClassName}>{agent.displayName || agent.name}</span>
+            <Check className={cn(selectorSurface.checkIconClassName, selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
             <button
               type="button"
               onClick={(event) => {
@@ -175,11 +186,11 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
                 navigate(`/settings/agents?edit=${encodeURIComponent(agent.id)}`)
               }}
               onPointerDown={(event) => event.stopPropagation()}
-              className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              title={`Edit ${agent.displayName || agent.name}`}
-              aria-label={`Edit ${agent.displayName || agent.name}`}
+              className={selectorSurface.editButtonClassName}
+              title={formatAgentSelectorEditLabel(agent.displayName || agent.name)}
+              aria-label={formatAgentSelectorEditLabel(agent.displayName || agent.name)}
             >
-              <Edit2 className="h-3.5 w-3.5" />
+              <Edit2 className={selectorSurface.editIconClassName} />
             </button>
           </DropdownMenuItem>
         ))}
@@ -188,12 +199,12 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
 
         <DropdownMenuItem
           onSelect={() => navigate("/settings/agents?create=1")}
-          className="min-w-0 items-center gap-2"
+          className={selectorSurface.itemClassName}
         >
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground">
-            <Plus className="h-4 w-4" />
+          <div className={selectorSurface.createActionIconWrapperClassName}>
+            <Plus className={selectorSurface.newAgentIconClassName} />
           </div>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">New agent…</span>
+          <span className={selectorSurface.labelClassName}>{selectorCopy.newAgentLabel}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -3,16 +3,20 @@ import { cn } from "@renderer/lib/utils"
 import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import {
-  MESSAGE_QUEUE_PANEL_PRESENTATION,
-  formatMessageQueueCompactLabel,
-  formatMessageQueuePanelTitle,
-  getMessageQueueListToggleLabel,
+  getMessageQueuePanelCopyState,
+  getMessageQueuePanelDesktopSurfaceState,
+  getMessageQueuePanelState,
   getQueuedMessageItemPresentation,
-  hasProcessingQueuedMessage,
   type QueuedMessage,
 } from "@dotagents/shared/message-queue-utils"
 import { useMutation } from "@tanstack/react-query"
 import { desktopMessageQueueClient } from "@renderer/lib/desktop-message-queue-client"
+
+const desktopMessageQueuePanelCopy = getMessageQueuePanelCopyState()
+const desktopMessageQueuePanelSurface = getMessageQueuePanelDesktopSurfaceState()
+const desktopMessageQueueItemSurface = desktopMessageQueuePanelSurface.item
+const desktopMessageQueueCompactSurface = desktopMessageQueuePanelSurface.compact
+const desktopMessageQueueChromeSurface = desktopMessageQueuePanelSurface.panel
 
 interface MessageQueuePanelProps {
   conversationId: string
@@ -111,19 +115,21 @@ function QueuedMessageItem({
   return (
     <div
       className={cn(
-        "px-2.5 py-1.5",
-        isFailed ? "bg-destructive/10 hover:bg-destructive/15" :
-        isProcessing ? "bg-amber-100/50 dark:bg-amber-900/20" : "hover:bg-amber-100/30 dark:hover:bg-amber-900/10",
-        "transition-colors"
+        desktopMessageQueueItemSurface.containerBaseClassName,
+        isFailed
+          ? desktopMessageQueueItemSurface.failedContainerClassName
+          : isProcessing
+            ? desktopMessageQueueItemSurface.processingContainerClassName
+            : desktopMessageQueueItemSurface.idleContainerClassName,
       )}
     >
       {isEditing ? (
         // Edit mode
-        <div className="space-y-2">
+        <div className={desktopMessageQueueItemSurface.editContainerClassName}>
           <textarea
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
-            className="w-full min-h-[60px] p-2 text-sm rounded border bg-background resize-y"
+            className={desktopMessageQueueItemSurface.editInputClassName}
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Escape") {
@@ -133,50 +139,50 @@ function QueuedMessageItem({
               }
             }}
           />
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className={desktopMessageQueueItemSurface.editActionsClassName}>
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs"
+              className={desktopMessageQueueItemSurface.editButtonClassName}
               onClick={handleCancelEdit}
             >
-              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel}
+              {desktopMessageQueuePanelCopy.actions.cancelLabel}
             </Button>
             <Button
               variant="default"
               size="sm"
-              className="h-6 text-xs"
+              className={desktopMessageQueueItemSurface.editButtonClassName}
               onClick={handleSaveEdit}
               disabled={updateMutation.isPending || !editText.trim()}
             >
-              <Check className="h-3 w-3 mr-1" />
-              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel}
+              <Check className={desktopMessageQueueItemSurface.saveIconClassName} />
+              {desktopMessageQueuePanelCopy.actions.saveLabel}
             </Button>
           </div>
         </div>
       ) : (
         // View mode
-        <div className="flex min-w-0 items-start gap-2">
+        <div className={desktopMessageQueueItemSurface.rowClassName}>
           {isFailed && (
-            <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+            <AlertCircle className={desktopMessageQueueItemSurface.failedIconClassName} />
           )}
           {isProcessing && (
-            <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
+            <Loader2 className={desktopMessageQueueItemSurface.processingIconClassName} />
           )}
-          <div className="flex min-w-0 flex-1 items-start gap-1.5">
-            <div className="min-w-0 flex-1">
+          <div className={desktopMessageQueueItemSurface.bodyClassName}>
+            <div className={desktopMessageQueueItemSurface.contentClassName}>
               <p
                 className={cn(
-                  "text-xs leading-snug",
-                  isFailed && "text-destructive",
-                  isProcessing && "text-primary",
-                  !isExpanded && isLongMessage && "line-clamp-2"
+                  desktopMessageQueueItemSurface.messageBaseClassName,
+                  isFailed && desktopMessageQueueItemSurface.messageFailedClassName,
+                  isProcessing && desktopMessageQueueItemSurface.messageProcessingClassName,
+                  !isExpanded && isLongMessage && desktopMessageQueueItemSurface.messageCollapsedClassName,
                 )}
               >
                 {message.text}
               </p>
               {errorText && (
-                <p className="text-[10px] text-destructive/80 mt-0.5">
+                <p className={desktopMessageQueueItemSurface.errorClassName}>
                   {errorText}
                 </p>
               )}
@@ -184,17 +190,17 @@ function QueuedMessageItem({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-0.5 h-4 px-1 text-xs text-muted-foreground hover:text-foreground"
+                  className={desktopMessageQueueItemSurface.expandButtonClassName}
                   onClick={() => setIsExpanded(!isExpanded)}
                 >
                   {isExpanded ? (
                     <>
-                      <ChevronUp className="h-3 w-3 mr-0.5" />
+                      <ChevronUp className={desktopMessageQueueItemSurface.expandIconClassName} />
                       {expansionLabel}
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="h-3 w-3 mr-0.5" />
+                      <ChevronDown className={desktopMessageQueueItemSurface.expandIconClassName} />
                       {expansionLabel}
                     </>
                   )}
@@ -202,22 +208,27 @@ function QueuedMessageItem({
               )}
             </div>
             {canMutateMessage && (
-              <div className="ml-auto flex shrink-0 items-center gap-0.5 self-start">
+              <div className={desktopMessageQueueItemSurface.actionRailClassName}>
                 {isFailed && (
                   <Button
                     variant="ghost"
                     size="sm-icon"
-                    className="text-primary hover:bg-primary/10 hover:text-primary"
+                    className={desktopMessageQueueItemSurface.retryButtonClassName}
                     onClick={() => retryMutation.mutate()}
                     disabled={retryMutation.isPending}
-                    title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel}
+                    title={desktopMessageQueuePanelCopy.actions.retryAccessibilityLabel}
                     aria-label={
                       retryMutation.isPending
-                        ? MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryPendingAccessibilityLabel
-                        : MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel
+                        ? desktopMessageQueuePanelCopy.actions.retryPendingAccessibilityLabel
+                        : desktopMessageQueuePanelCopy.actions.retryAccessibilityLabel
                     }
                   >
-                    <RotateCcw className={cn("h-3.5 w-3.5", retryMutation.isPending && "animate-spin")} />
+                    <RotateCcw
+                      className={cn(
+                        desktopMessageQueueItemSurface.actionIconClassName,
+                        retryMutation.isPending && desktopMessageQueueItemSurface.pendingIconClassName,
+                      )}
+                    />
                   </Button>
                 )}
                 {canEditMessage && (
@@ -225,22 +236,22 @@ function QueuedMessageItem({
                     variant="ghost"
                     size="sm-icon"
                     onClick={() => setIsEditing(true)}
-                    title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editAccessibilityLabel}
-                    aria-label={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editAccessibilityLabel}
+                    title={desktopMessageQueuePanelCopy.actions.editAccessibilityLabel}
+                    aria-label={desktopMessageQueuePanelCopy.actions.editAccessibilityLabel}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className={desktopMessageQueueItemSurface.actionIconClassName} />
                   </Button>
                 )}
                 <Button
                   variant="ghost"
                   size="sm-icon"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  className={desktopMessageQueueItemSurface.removeButtonClassName}
                   onClick={() => removeMutation.mutate()}
                   disabled={removeMutation.isPending}
-                  title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeFromQueueTitle}
-                  aria-label={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeAccessibilityLabel}
+                  title={desktopMessageQueuePanelCopy.actions.removeFromQueueTitle}
+                  aria-label={desktopMessageQueuePanelCopy.actions.removeAccessibilityLabel}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className={desktopMessageQueueItemSurface.actionIconClassName} />
                 </Button>
               </div>
             )}
@@ -265,7 +276,10 @@ export function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const [isListCollapsed, setIsListCollapsed] = useState(false)
   const messageListId = `message-queue-list-${conversationId}`
-  const listToggleLabel = getMessageQueueListToggleLabel(isListCollapsed)
+  const queuePanelState = getMessageQueuePanelState(messages, {
+    isPaused,
+    isListCollapsed,
+  })
 
   // Reset collapse state when switching to a different conversation.
   useEffect(() => {
@@ -290,11 +304,6 @@ export function MessageQueuePanel({
     },
   })
 
-  // Check if any message is currently being processed
-  // Disable Clear All when processing to prevent confusing UX where user thinks
-  // they cancelled a running prompt while it actually continues running
-  const hasProcessingMessage = hasProcessingQueuedMessage(messages)
-
   if (messages.length === 0) {
     return null
   }
@@ -302,64 +311,66 @@ export function MessageQueuePanel({
   if (compact) {
     return (
       <div className={cn(
-        "flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 text-xs",
-        isPaused
-          ? "bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800"
-          : "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800",
+        desktopMessageQueueCompactSurface.containerBaseClassName,
+        queuePanelState.statusKey === "paused"
+          ? desktopMessageQueueCompactSurface.pausedContainerClassName
+          : desktopMessageQueueCompactSurface.queuedContainerClassName,
         className
       )}>
-        {isPaused ? (
-          <Pause className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+        {queuePanelState.statusKey === "paused" ? (
+          <Pause className={desktopMessageQueueCompactSurface.pausedIconClassName} />
         ) : (
-          <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+          <Clock className={desktopMessageQueueCompactSurface.queuedIconClassName} />
         )}
         <span className={cn(
-          "min-w-0 flex-1",
-          isPaused ? "text-orange-700 dark:text-orange-300" : "text-amber-700 dark:text-amber-300"
+          desktopMessageQueueCompactSurface.labelBaseClassName,
+          queuePanelState.statusKey === "paused"
+            ? desktopMessageQueueCompactSurface.pausedLabelClassName
+            : desktopMessageQueueCompactSurface.queuedLabelClassName,
         )}>
-          {formatMessageQueueCompactLabel(messages.length, isPaused)}
+          {queuePanelState.compactLabel}
         </span>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          {isPaused ? (
+        <div className={desktopMessageQueueCompactSurface.actionsClassName}>
+          {queuePanelState.isPaused ? (
             <Button
               variant="ghost"
               size="sm-icon"
-              className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
+              className={desktopMessageQueueCompactSurface.resumeButtonClassName}
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
-              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.resumeTitle}
+              title={desktopMessageQueuePanelCopy.actions.resumeTitle}
             >
-              <Play className="h-3.5 w-3.5" />
+              <Play className={desktopMessageQueueCompactSurface.actionIconClassName} />
             </Button>
           ) : (
             <Button
               variant="ghost"
               size="sm-icon"
-              className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              className={desktopMessageQueueCompactSurface.pauseButtonClassName}
               onClick={() => pauseMutation.mutate()}
-              disabled={pauseMutation.isPending || hasProcessingMessage}
-              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.pauseTitle}
+              disabled={pauseMutation.isPending || !queuePanelState.canPause}
+              title={desktopMessageQueuePanelCopy.actions.pauseTitle}
             >
-              <Pause className="h-3.5 w-3.5" />
+              <Pause className={desktopMessageQueueCompactSurface.actionIconClassName} />
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm-icon"
             className={cn(
-              isPaused
-                ? "text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
-                : "text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+              queuePanelState.isPaused
+                ? desktopMessageQueueCompactSurface.clearPausedButtonClassName
+                : desktopMessageQueueCompactSurface.clearQueuedButtonClassName,
             )}
             onClick={() => clearMutation.mutate()}
-            disabled={clearMutation.isPending || hasProcessingMessage}
+            disabled={clearMutation.isPending || !queuePanelState.canClear}
             title={
-              hasProcessingMessage
-                ? MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearWhileProcessingTitle
-                : MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearQueueTitle
+              !queuePanelState.canClear
+                ? desktopMessageQueuePanelCopy.actions.clearWhileProcessingTitle
+                : desktopMessageQueuePanelCopy.actions.clearQueueTitle
             }
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className={desktopMessageQueueCompactSurface.actionIconClassName} />
           </Button>
         </div>
       </div>
@@ -369,113 +380,115 @@ export function MessageQueuePanel({
   return (
     <div
       className={cn(
-        "rounded-md border overflow-hidden",
-        isPaused
-          ? "border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/30"
-          : "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30",
+        desktopMessageQueueChromeSurface.containerBaseClassName,
+        queuePanelState.statusKey === "paused"
+          ? desktopMessageQueueChromeSurface.pausedContainerClassName
+          : desktopMessageQueueChromeSurface.queuedContainerClassName,
         className
       )}
     >
       {/* Header */}
       <div className={cn(
-        "flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5",
-        !isListCollapsed && "border-b",
-        isPaused
-          ? "border-orange-200 dark:border-orange-800 bg-orange-100/50 dark:bg-orange-900/30"
-          : "border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/30"
+        desktopMessageQueueChromeSurface.headerBaseClassName,
+        queuePanelState.isExpanded && desktopMessageQueueChromeSurface.headerExpandedClassName,
+        queuePanelState.statusKey === "paused"
+          ? desktopMessageQueueChromeSurface.pausedHeaderClassName
+          : desktopMessageQueueChromeSurface.queuedHeaderClassName,
       )}>
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          {isPaused ? (
-            <Pause className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
+        <div className={desktopMessageQueueChromeSurface.titleGroupClassName}>
+          {queuePanelState.statusKey === "paused" ? (
+            <Pause className={desktopMessageQueueChromeSurface.pausedIconClassName} />
           ) : (
-            <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <Clock className={desktopMessageQueueChromeSurface.queuedIconClassName} />
           )}
           <span className={cn(
-            "min-w-0 text-xs font-medium",
-            isPaused ? "text-orange-800 dark:text-orange-200" : "text-amber-800 dark:text-amber-200"
+            desktopMessageQueueChromeSurface.titleBaseClassName,
+            queuePanelState.statusKey === "paused"
+              ? desktopMessageQueueChromeSurface.pausedTitleClassName
+              : desktopMessageQueueChromeSurface.queuedTitleClassName,
           )}>
-            {formatMessageQueuePanelTitle(messages.length, isPaused)}
+            {queuePanelState.title}
           </span>
         </div>
-        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-          {isPaused ? (
+        <div className={desktopMessageQueueChromeSurface.actionsClassName}>
+          {queuePanelState.isPaused ? (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 hover:bg-green-200/50 dark:hover:bg-green-800/50"
+              className={desktopMessageQueueChromeSurface.resumeButtonClassName}
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
-              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.resumeTitle}
+              title={desktopMessageQueuePanelCopy.actions.resumeTitle}
             >
-              <Play className="h-3 w-3 mr-1" />
-              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.resumeLabel}
+              <Play className={desktopMessageQueueChromeSurface.inlineActionIconClassName} />
+              {desktopMessageQueuePanelCopy.actions.resumeLabel}
             </Button>
           ) : (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-800/50"
+              className={desktopMessageQueueChromeSurface.pauseButtonClassName}
               onClick={() => pauseMutation.mutate()}
-              disabled={pauseMutation.isPending || hasProcessingMessage}
-              title={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.pauseTitle}
+              disabled={pauseMutation.isPending || !queuePanelState.canPause}
+              title={desktopMessageQueuePanelCopy.actions.pauseTitle}
             >
-              <Pause className="h-3 w-3 mr-1" />
-              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.pauseLabel}
+              <Pause className={desktopMessageQueueChromeSurface.inlineActionIconClassName} />
+              {desktopMessageQueuePanelCopy.actions.pauseLabel}
             </Button>
           )}
-          {!isListCollapsed && (
+          {queuePanelState.shouldRenderClear && (
             <Button
               variant="ghost"
               size="sm"
               className={cn(
-                "h-6 text-xs",
-                isPaused
-                  ? "text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-200/50 dark:hover:bg-orange-800/50"
-                  : "text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-800/50"
+                desktopMessageQueueChromeSurface.clearButtonBaseClassName,
+                queuePanelState.statusKey === "paused"
+                  ? desktopMessageQueueChromeSurface.pausedControlButtonClassName
+                  : desktopMessageQueueChromeSurface.queuedControlButtonClassName,
               )}
               onClick={() => clearMutation.mutate()}
-              disabled={clearMutation.isPending || hasProcessingMessage}
-              title={hasProcessingMessage ? MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearWhileProcessingTitle : undefined}
+              disabled={clearMutation.isPending || !queuePanelState.canClear}
+              title={!queuePanelState.canClear ? desktopMessageQueuePanelCopy.actions.clearWhileProcessingTitle : undefined}
             >
-              {MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearAllLabel}
+              {desktopMessageQueuePanelCopy.actions.clearAllLabel}
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm-icon"
             className={cn(
-              isPaused
-                ? "text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-200/50 dark:hover:bg-orange-800/50"
-                : "text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-800/50"
+              queuePanelState.statusKey === "paused"
+                ? desktopMessageQueueChromeSurface.pausedControlButtonClassName
+                : desktopMessageQueueChromeSurface.queuedControlButtonClassName,
             )}
             onClick={() => setIsListCollapsed((prev) => !prev)}
-            aria-expanded={!isListCollapsed}
-            aria-controls={!isListCollapsed ? messageListId : undefined}
-            aria-label={listToggleLabel}
-            title={listToggleLabel}
+            aria-expanded={queuePanelState.isExpanded}
+            aria-controls={queuePanelState.isExpanded ? messageListId : undefined}
+            aria-label={queuePanelState.listToggleLabel}
+            title={queuePanelState.listToggleLabel}
           >
-            {isListCollapsed ? (
-              <ChevronDown className="h-3.5 w-3.5" />
+            {queuePanelState.isListCollapsed ? (
+              <ChevronDown className={desktopMessageQueueChromeSurface.toggleIconClassName} />
             ) : (
-              <ChevronUp className="h-3.5 w-3.5" />
+              <ChevronUp className={desktopMessageQueueChromeSurface.toggleIconClassName} />
             )}
           </Button>
         </div>
       </div>
 
       {/* Paused notice */}
-      {isPaused && !isListCollapsed && (
-        <div className="border-b border-orange-200 bg-orange-100/30 px-2.5 py-1 text-[10px] text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-          {MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice}
+      {queuePanelState.shouldRenderPausedNotice && (
+        <div className={desktopMessageQueueChromeSurface.pausedNoticeClassName}>
+          {desktopMessageQueuePanelCopy.pausedNotice}
         </div>
       )}
 
       {/* Message List */}
-      {!isListCollapsed && (
-        <div id={messageListId} className="divide-y max-h-60 overflow-y-auto">
-          {messages.map((msg) => (
+      {queuePanelState.shouldRenderList && (
+        <div id={messageListId} className={desktopMessageQueueChromeSurface.listClassName}>
+          {queuePanelState.items.map(({ message: msg, key }) => (
             <QueuedMessageItem
-              key={msg.id}
+              key={key}
               message={msg}
               conversationId={conversationId}
             />

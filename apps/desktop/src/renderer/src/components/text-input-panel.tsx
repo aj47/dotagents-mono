@@ -3,7 +3,6 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { AgentProcessingView } from "./agent-processing-view"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { useTheme } from "@renderer/contexts/theme-context"
@@ -81,7 +80,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       // converge even when the first attempt is dropped.
       const ensurePanelFocus = () => {
         try {
-          void tipcClient.setPanelFocusable({ focusable: true, andFocus: true }).catch(() => {
+          void desktopPanelClient.setPanelFocusable({ focusable: true, andFocus: true }).catch(() => {
             // Ignore — textarea retries below may still succeed.
           })
         } catch {

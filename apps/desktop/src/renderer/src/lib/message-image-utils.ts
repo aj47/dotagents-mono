@@ -1,6 +1,6 @@
 import { logUI } from "@renderer/lib/debug"
 import {
-  buildConversationImageMarkdownMessage,
+  buildChatImageAttachmentMessage,
   formatChatImageAttachmentLimitMessage,
   formatChatImageBudgetExceededMessage,
   formatChatImageBudgetReachedMessage,
@@ -152,14 +152,7 @@ export const buildMessageWithImages = (
     })
   }
 
-  return buildConversationImageMarkdownMessage(
-    trimmed,
-    attachments.map((attachment, index) => ({
-      url: attachment.dataUrl,
-      altText: attachment.name,
-      fallbackAltText: `Image ${index + 1}`,
-    }))
-  )
+  return buildChatImageAttachmentMessage(trimmed, attachments)
 }
 
 export type ImageAttachmentInputFiles = FileList | File[]

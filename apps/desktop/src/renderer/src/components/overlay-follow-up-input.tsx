@@ -12,10 +12,17 @@ import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
+  getChatComposerCopyState,
+  getChatComposerDesktopSurfaceState,
+  getChatRuntimeCopyState,
   getFollowUpInputPresentation,
   type FollowUpInputPresentation,
 } from "@dotagents/shared/session-presentation"
-import { formatChatImageAttachmentErrorMessage } from "@dotagents/shared/conversation-media-assets"
+import {
+  formatChatImageAttachmentErrorMessage,
+  getChatImageAttachmentCopyState,
+  getChatImageAttachmentDesktopSurfaceState,
+} from "@dotagents/shared/conversation-media-assets"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,
@@ -25,6 +32,12 @@ import {
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
 import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "@dotagents/shared/mcp-api"
+
+const desktopComposerSurface = getChatComposerDesktopSurfaceState().followUp
+const desktopComposerCopy = getChatComposerCopyState()
+const desktopRuntimeCopy = getChatRuntimeCopyState()
+const desktopImageAttachmentSurface = getChatImageAttachmentDesktopSurfaceState().composerPreview
+const desktopImageAttachmentCopy = getChatImageAttachmentCopyState()
 
 interface OverlayFollowUpInputProps {
   conversationId?: string
@@ -305,42 +318,42 @@ export function OverlayFollowUpInput({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-1.5 border-t bg-muted/30 px-3 py-2 backdrop-blur-sm",
+        desktopComposerSurface.overlayFormClassName,
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Agent indicator - shows which agent is handling this session */}
       {agentName && (
-        <div className="flex min-w-0 items-center gap-1 text-[10px] text-primary/70">
-          <Bot className="h-2.5 w-2.5 shrink-0" />
-          <span className="min-w-0 truncate" title={`Agent: ${agentName}`}>{agentName}</span>
+        <div className={desktopComposerSurface.agentIndicatorClassName}>
+          <Bot className={desktopComposerSurface.agentIconClassName} />
+          <span className={desktopComposerSurface.agentNameClassName} title={`Agent: ${agentName}`}>{agentName}</span>
         </div>
       )}
 
       {imageAttachments.length > 0 && (
-        <div className="flex w-full gap-2 overflow-x-auto pb-1">
+        <div className={desktopImageAttachmentSurface.overlayRowClassName}>
           {imageAttachments.map((attachment) => (
             <div
               key={attachment.id}
-              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border"
+              className={desktopImageAttachmentSurface.overlayPreviewClassName}
             >
-              <img src={attachment.dataUrl} alt={attachment.name} className="h-full w-full object-cover" />
+              <img src={attachment.dataUrl} alt={attachment.name} className={desktopImageAttachmentSurface.imageClassName} />
               <button
                 type="button"
-                className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white"
+                className={desktopImageAttachmentSurface.removeButtonClassName}
                 onClick={() => removeImageAttachment(attachment.id)}
-                title="Remove image"
+                title={desktopImageAttachmentCopy.composerPreview.removeTitle}
               >
-                <X className="h-3 w-3" />
+                <X className={desktopImageAttachmentSurface.overlayRemoveIconClassName} />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex w-full flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-[1_1_10rem]">
+      <div className={desktopComposerSurface.overlayInputRowClassName}>
+        <div className={desktopComposerSurface.overlayInputWrapperClassName}>
           <input
             ref={inputRef}
             type="text"
@@ -351,11 +364,7 @@ export function OverlayFollowUpInput({
             onClick={handleInputInteraction}
             onFocus={handleInputInteraction}
             placeholder={inputPresentation.placeholder}
-            className={cn(
-              "w-full text-sm bg-transparent border-0 outline-none",
-              "placeholder:text-muted-foreground/60",
-              "focus:ring-0"
-            )}
+            className={desktopComposerSurface.textInputClassName}
             disabled={isDisabled}
           />
           <SlashCommandMenu
@@ -364,7 +373,7 @@ export function OverlayFollowUpInput({
             isOpen={isSlashMenuOpen}
             onSelect={handleSlashSelect}
             onClose={closeSlashMenu}
-            className="bottom-full left-0 mb-1"
+            className={desktopComposerSurface.slashMenuClassName}
           />
         </div>
         <input
@@ -372,10 +381,10 @@ export function OverlayFollowUpInput({
           type="file"
           accept="image/*"
           multiple
-          className="hidden"
+          className={desktopComposerSurface.hiddenFileInputClassName}
           onChange={handleImageSelection}
         />
-        <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-2">
+        <div className={desktopComposerSurface.overlayActionsClassName}>
           <PredefinedPromptsMenu
             onSelectPrompt={(content) => setText(content)}
             disabled={isDisabled}
@@ -385,26 +394,26 @@ export function OverlayFollowUpInput({
             type="button"
             size="md-icon"
             variant="ghost"
-            className="flex-shrink-0"
+            className={desktopComposerSurface.buttonClassName}
             disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
             onMouseDown={handleInputInteraction}
             onClick={handleImageButtonClick}
-            title="Attach image"
+            title={desktopComposerCopy.imageAttachment.accessibilityLabel}
           >
-            <ImagePlus className="h-3.5 w-3.5" />
+            <ImagePlus className={desktopComposerSurface.iconClassName} />
           </Button>
           <Button
             type="submit"
             size="md-icon"
             variant="ghost"
-            className="flex-shrink-0"
+            className={desktopComposerSurface.buttonClassName}
             disabled={!hasMessageContent || isDisabled}
             onMouseDown={handleInputInteraction}
             title={inputPresentation.submitTitle}
             aria-label={inputPresentation.submitAriaLabel}
           >
             <Send className={cn(
-              "h-3.5 w-3.5",
+              desktopComposerSurface.iconClassName,
               sendMutation.isPending && "animate-pulse"
             )} />
           </Button>
@@ -412,17 +421,13 @@ export function OverlayFollowUpInput({
             type="button"
             size="md-icon"
             variant="ghost"
-            className={cn(
-              "flex-shrink-0",
-              "hover:bg-red-100 dark:hover:bg-red-900/30",
-              "hover:text-red-600 dark:hover:text-red-400"
-            )}
+            className={desktopComposerSurface.voiceButtonClassName}
             disabled={isVoiceDisabled}
             onMouseDown={handleInputInteraction}
             onClick={handleVoiceClick}
             title={inputPresentation.voiceTitle}
           >
-            <Mic className="h-3.5 w-3.5" />
+            <Mic className={desktopComposerSurface.iconClassName} />
           </Button>
           {/* Kill switch - stop agent button (only show when session is active) */}
           {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
@@ -430,18 +435,14 @@ export function OverlayFollowUpInput({
               type="button"
               size="md-icon"
               variant="ghost"
-              className={cn(
-                "flex-shrink-0",
-                "text-red-500 hover:text-red-600",
-                "hover:bg-red-100 dark:hover:bg-red-950/30"
-              )}
+              className={desktopComposerSurface.killSwitchButtonClassName}
               disabled={isStoppingSession}
               onMouseDown={handleInputInteraction}
               onClick={handleStopSession}
-              title="Stop agent execution"
+              title={desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle}
             >
               <OctagonX className={cn(
-                "h-3.5 w-3.5",
+                desktopComposerSurface.iconClassName,
                 isStoppingSession && "animate-pulse"
               )} />
             </Button>

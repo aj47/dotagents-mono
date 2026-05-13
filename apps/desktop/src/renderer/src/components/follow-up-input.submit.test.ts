@@ -16,6 +16,16 @@ const presentationSource = readFileSync(
   "utf8",
 )
 
+const mediaPresentationSource = readFileSync(
+  new URL("../../../../../../packages/shared/src/conversation-media-assets.ts", import.meta.url),
+  "utf8",
+)
+
+const messageImageUtilsSource = readFileSync(
+  new URL("../lib/message-image-utils.ts", import.meta.url),
+  "utf8",
+)
+
 describe("desktop follow-up input submit guardrails", () => {
   it("adds an immediate in-flight guard to the overlay composer", () => {
     expect(overlaySource).toContain("const [isSubmitting, setIsSubmitting] = useState(false)")
@@ -47,6 +57,14 @@ describe("desktop follow-up input submit guardrails", () => {
   it("centralizes placeholders and button labels through session presentation", () => {
     expect(overlaySource).toContain("getFollowUpInputPresentation")
     expect(tileSource).toContain("getFollowUpInputPresentation")
+    expect(overlaySource).toContain("getChatComposerCopyState")
+    expect(tileSource).toContain("getChatComposerCopyState")
+    expect(overlaySource).toContain("getChatRuntimeCopyState")
+    expect(tileSource).toContain("getChatRuntimeCopyState")
+    expect(overlaySource).toContain("desktopComposerCopy.imageAttachment.accessibilityLabel")
+    expect(tileSource).toContain("desktopComposerCopy.imageAttachment.accessibilityLabel")
+    expect(overlaySource).toContain("desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle")
+    expect(tileSource).toContain("desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle")
     expect(overlaySource).toContain("placeholder={inputPresentation.placeholder}")
     expect(tileSource).toContain("placeholder={inputPresentation.placeholder}")
     expect(overlaySource).toContain("title={inputPresentation.submitTitle}")
@@ -54,5 +72,51 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(presentationSource).toContain('placeholder: "Queue next message..."')
     expect(presentationSource).toContain('placeholder: "Continue conversation..."')
     expect(presentationSource).toContain('submitTitle: "Queue next message"')
+    expect(overlaySource).not.toContain('title="Attach image"')
+    expect(tileSource).not.toContain('title="Attach image"')
+    expect(overlaySource).not.toContain("CHAT_COMPOSER_PRESENTATION")
+    expect(tileSource).not.toContain("CHAT_COMPOSER_PRESENTATION")
+    expect(overlaySource).not.toContain("CHAT_RUNTIME_PRESENTATION")
+    expect(tileSource).not.toContain("CHAT_RUNTIME_PRESENTATION")
+    expect(overlaySource).not.toContain('title="Stop agent execution"')
+    expect(tileSource).not.toContain('title="Stop agent execution"')
+  })
+
+  it("uses shared composer and attachment presentation for desktop follow-up surfaces", () => {
+    expect(overlaySource).toContain("getChatComposerDesktopSurfaceState")
+    expect(tileSource).toContain("getChatComposerDesktopSurfaceState")
+    expect(overlaySource).toContain("getChatComposerDesktopSurfaceState().followUp")
+    expect(tileSource).toContain("getChatComposerDesktopSurfaceState().followUp")
+    expect(overlaySource).toContain("getChatImageAttachmentDesktopSurfaceState")
+    expect(tileSource).toContain("getChatImageAttachmentDesktopSurfaceState")
+    expect(overlaySource).toContain("getChatImageAttachmentDesktopSurfaceState().composerPreview")
+    expect(tileSource).toContain("getChatImageAttachmentDesktopSurfaceState().composerPreview")
+    expect(overlaySource).toContain("getChatImageAttachmentCopyState")
+    expect(tileSource).toContain("getChatImageAttachmentCopyState")
+    expect(overlaySource).toContain("desktopImageAttachmentCopy.composerPreview.removeTitle")
+    expect(tileSource).toContain("desktopImageAttachmentCopy.composerPreview.removeTitle")
+    expect(presentationSource).toContain("overlayFormClassName")
+    expect(presentationSource).toContain("tileFormClassName")
+    expect(mediaPresentationSource).toContain("overlayPreviewClassName")
+    expect(mediaPresentationSource).toContain("tilePreviewClassName")
+    expect(mediaPresentationSource).toContain("getChatImageAttachmentCopyState")
+    expect(overlaySource).not.toContain("CHAT_COMPOSER_SURFACE_PRESENTATION")
+    expect(tileSource).not.toContain("CHAT_COMPOSER_SURFACE_PRESENTATION")
+    expect(overlaySource).not.toContain("CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION")
+    expect(tileSource).not.toContain("CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION")
+    expect(overlaySource).not.toContain("CHAT_IMAGE_ATTACHMENT_PRESENTATION")
+    expect(tileSource).not.toContain("CHAT_IMAGE_ATTACHMENT_PRESENTATION")
+    expect(overlaySource).not.toContain("flex flex-col gap-1.5 border-t bg-muted/30")
+    expect(tileSource).not.toContain("flex flex-col gap-1.5 border-t bg-muted/20")
+    expect(overlaySource).not.toContain('title="Remove image"')
+    expect(tileSource).not.toContain('title="Remove image"')
+  })
+
+  it("uses the shared image attachment message builder for desktop follow-up submissions", () => {
+    expect(messageImageUtilsSource).toContain("buildChatImageAttachmentMessage")
+    expect(messageImageUtilsSource).toContain("return buildChatImageAttachmentMessage(trimmed, attachments)")
+    expect(messageImageUtilsSource).not.toContain("buildConversationImageMarkdownMessage(")
+    expect(messageImageUtilsSource).not.toContain("fallbackAltText: `Image ${index + 1}`")
+    expect(mediaPresentationSource).toContain("buildChatImageAttachmentMessage")
   })
 })

@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import type { ACPDelegationProgress, ACPSubAgentMessage, AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { ACPDelegationProgress, ACPSubAgentMessage, AgentDelegationSummaryEntry, AgentProgressUpdate, AgentRetryInfo } from "@dotagents/shared/agent-progress"
 import type { Config } from "../../../shared/types"
 import {
   DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
   INTERNAL_COMPLETION_NUDGE_TEXT,
 } from "@dotagents/shared/mcp-api"
-import { RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "@dotagents/shared/chat-utils"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
@@ -31,27 +30,32 @@ import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
   extractRespondToUserResponseEvents,
-  formatArgumentsPreview,
   formatToolArguments,
   getToolArgumentEntries,
   getCompactToolExecutionPreview,
-  getExecuteCommandResultPreview,
   getToolResultsSummary,
-  getToolCallPreview,
+  getChatMessageDisplayState,
+  hasVisibleChatMessageContent,
+  isCompletionControlTool,
 } from "@dotagents/shared/chat-utils"
 import {
-  formatAgentDelegationDisplayStatus,
-  getAgentDelegationActivityTimestamp,
+  formatAgentDelegationConversationTranscript,
+  getAgentDelegationConversationMessageDisplayState,
   getAgentDelegationConversationPreview,
+  getAgentDelegationConversationRenderItems,
   getAgentDelegationPresentation,
-  getAgentDelegationSourceLabel,
-  getAgentDelegationSubtitle,
-  getAgentDelegationTrackingLabel,
+  getAgentDelegationSummaryEntries,
+  isAgentDelegationActiveStatus,
   type AgentUserResponseEvent,
 } from "@dotagents/shared/agent-progress"
 import {
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
+  getToolActivityGroupDesktopSurfaceState,
+  getToolActivityGroupCopyState,
+  getToolActivityGroupStateKey,
+  getToolActivityGroupSummaryState,
+  getToolActivityToolCallPreview,
   getToolActivitySummaryLine,
 } from "@dotagents/shared/tool-activity-grouping"
 import {
@@ -71,6 +75,7 @@ import {
   DEFAULT_TTS_AUTO_PLAY,
   DEFAULT_TTS_ENABLED,
 } from "@dotagents/shared/text-to-speech-settings"
+import { createExpandCollapseAccessibilityLabel } from "@dotagents/shared/accessibility-utils"
 import {
   CODEX_TEXT_VERBOSITY_OPTIONS,
   DEFAULT_CODEX_TEXT_VERBOSITY,
@@ -83,26 +88,97 @@ import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
-import { extractSubAgentToolDisplayContent } from "@dotagents/shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey } from "@dotagents/shared/tts-tracking"
 import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
-  hasMarkdownMediaPayload,
+  applyChatDisplayGroupedExpansionInheritance,
+  getChatMessageActionCopyState,
+  getChatMessageActionDesktopSurfaceState,
+  getChatMessageActionLayoutState,
+  getChatDisplayExpansionState,
+  getChatDisplayGroupedExpansionState,
+  getChatMessageContentRenderState,
+  getChatMessageCopyActionState,
+  getChatMessageDesktopSurfaceState,
+  getChatMessageDisplayTone,
+  getChatMessageEffectiveCollapseState,
+  getChatMessageExpansionActionState,
+  getChatMessageExpansionLabel,
+  getChatMessageSpeechActionState,
+  getChatMessageToneDesktopClassName,
+  findLastChatMessageConversationContentIndex,
+  isChatMessageConversationContent,
   normalizeAssistantResponseForDedupe,
   sanitizeMessageContentForDisplay,
   sanitizeMessageContentForSpeech,
+  setChatDisplayExpansionState,
   stripMarkdownMediaPayloads,
+  type ChatMessageActionSlot,
 } from "@dotagents/shared/message-display-utils"
+import { normalizeMarkdownThoughtContent } from "@dotagents/shared/markdown-render-parts"
 import { toast } from "sonner"
 import {
-  CHAT_RUNTIME_PRESENTATION,
+  formatChatRuntimeActivityContent,
+  formatChatRuntimeConversationHistorySummary,
+  formatChatRuntimeDelegationMessageCount,
+  formatChatRuntimeDelegationMessagesLabel,
+  formatChatRuntimeEarlierDelegationMessagesLabel,
+  formatChatRuntimeLoadEarlierLabel,
+  formatChatRuntimeModelPickerTitle,
+  formatChatRuntimeRetryAttemptLabel,
+  formatChatRuntimeRetryCountdownLabel,
+  formatChatRuntimeThinkingPickerTitle,
+  getChatRuntimeToolApprovalArgumentsAccessibilityLabel,
   formatChatRuntimeToolApprovalFailureMessage,
+  formatChatRuntimeVerbosityPickerTitle,
+  formatChatRuntimeVisibleUpdatesSummary,
+  getChatRuntimeBranchActionState,
+  getChatRuntimeCopyState,
+  getChatRuntimeDelegationStatusDesktopClassNames,
+  getChatRuntimeDesktopSurfaceState,
+  getChatRuntimePinAccessibilityLabel,
+  getChatRuntimeStreamingContentTitle,
+  getChatRuntimeToolApprovalDesktopSurfaceState,
+  getChatRuntimeTurnDurationBadgeState,
   getFollowUpInputPresentation,
   getSessionPresentation,
 } from "@dotagents/shared/session-presentation"
-import { computeTurnDurations, formatTurnDuration } from "@dotagents/shared/turn-duration"
+import {
+  formatIndexedToolExecutionLabel,
+  formatToolExecutionCompactAccessibilityLabel,
+  formatToolExecutionCount,
+  getToolExecutionCopyAccessibilityLabel,
+  formatToolExecutionDetailsAccessibilityName,
+  formatToolExecutionHeading,
+  formatToolExecutionSectionLabel,
+  formatToolExecutionStructuredPayloadValue,
+  getToolExecutionCallDisplayState,
+  getToolExecutionCompactDesktopSurfaceState,
+  getToolExecutionDetailCopyState,
+  getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailDesktopSurfaceState,
+  getToolExecutionDetailResultState,
+  getToolExecutionDisplayState,
+  getToolExecutionPayloadValueType,
+  getToolExecutionStatusCopyState,
+  getToolExecutionStatusDesktopClassName,
+  getToolExecutionStructuredPayloadChildEntries,
+  type ToolExecutionStructuredPayloadValue,
+} from "@dotagents/shared/tool-execution-display"
+import { computeTurnDurations } from "@dotagents/shared/turn-duration"
 import { useNowTick } from "@renderer/lib/turn-duration"
+
+const toolActivityGroupCopy = getToolActivityGroupCopyState()
+const desktopToolActivityGroupSurface = getToolActivityGroupDesktopSurfaceState()
+const desktopToolExecutionCompactSurface = getToolExecutionCompactDesktopSurfaceState()
+const desktopToolExecutionDetailSurface = getToolExecutionDetailDesktopSurfaceState()
+const toolExecutionDetailCopy = getToolExecutionDetailCopyState()
+const toolExecutionStatusCopy = getToolExecutionStatusCopyState()
+const chatMessageActionCopy = getChatMessageActionCopyState()
+const desktopChatMessageSurface = getChatMessageDesktopSurfaceState()
+const desktopChatMessageActionSurface = getChatMessageActionDesktopSurfaceState()
+const desktopRuntimeCopy = getChatRuntimeCopyState()
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -141,7 +217,18 @@ interface AgentProgressProps {
   }) => void
 }
 
-const CONVERSATION_HISTORY_PAGE_SIZE = 120
+const desktopRuntimeSurface = getChatRuntimeDesktopSurfaceState()
+const desktopScrollToBottomSurface = desktopRuntimeSurface.scrollToBottom
+const desktopKillSwitchDialogSurface = desktopRuntimeSurface.killSwitchDialog
+const desktopRetryStatusSurface = desktopRuntimeSurface.retryStatus
+const desktopStreamingContentSurface = desktopRuntimeSurface.streamingContent
+const desktopDelegationConversationMessageSurface = desktopRuntimeSurface.delegationConversationMessage
+const desktopDelegationBubbleSurface = desktopRuntimeSurface.delegationBubble
+const desktopDelegationConversationPanelSurface = desktopRuntimeSurface.delegationConversationPanel
+type DelegationConversationMessageTone = keyof typeof desktopDelegationConversationMessageSurface.roleClassNames
+
+const CONVERSATION_HISTORY_PAGE_SIZE =
+  desktopRuntimeSurface.conversationHistoryBanner.pageSize
 
 // Enhanced conversation message component
 
@@ -182,14 +269,7 @@ type DisplayItem =
       toolName: string
       arguments: any
     } }
-  | { kind: "retry_status"; id: string; data: {
-      isRetrying: boolean
-      attempt: number
-      maxAttempts?: number
-      delaySeconds: number
-      reason: string
-      startedAt: number
-    } }
+  | { kind: "retry_status"; id: string; data: AgentRetryInfo }
   | { kind: "streaming"; id: string; data: {
       text: string
       isStreaming: boolean
@@ -243,10 +323,10 @@ const SessionModelPicker: React.FC<{
       } as Config)
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       await queryClient.invalidateQueries({ queryKey: ["available-models"] })
-      toast.success("Agent model updated")
+      toast.success(desktopRuntimeCopy.modelControls.model.updatedToast)
     } catch (error) {
-      console.error("Failed to update agent model:", error)
-      toast.error("Failed to update model")
+      console.error(`${desktopRuntimeCopy.modelControls.model.updateFailedLogPrefix}:`, error)
+      toast.error(desktopRuntimeCopy.modelControls.model.updateFailedToast)
     }
   }, [config, currentValue, providerId])
 
@@ -259,8 +339,8 @@ const SessionModelPicker: React.FC<{
           "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
           compact ? "max-w-[150px] text-[10px]" : "max-w-[170px] text-[10px]",
         )}
-        title={`Change agent model (${providerLabel}/${currentValue})`}
-        aria-label="Change agent model"
+        title={formatChatRuntimeModelPickerTitle(providerLabel, currentValue)}
+        aria-label={desktopRuntimeCopy.modelControls.model.changeAccessibilityLabel}
         onClick={(event) => event.stopPropagation()}
       >
         <SelectValue>
@@ -277,12 +357,12 @@ const SessionModelPicker: React.FC<{
         ))}
         {modelsQuery.isLoading && (
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            Loading models…
+            {desktopRuntimeCopy.modelControls.model.loadingLabel}
           </div>
         )}
         {modelOptions.length === 0 && (
           <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-            No models available
+            {desktopRuntimeCopy.modelControls.model.emptyLabel}
           </div>
         )}
       </SelectContent>
@@ -312,10 +392,10 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
         openaiReasoningEffort: value as OpenAiReasoningEffort,
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
-      toast.success("Thinking level updated")
+      toast.success(desktopRuntimeCopy.modelControls.thinking.updatedToast)
     } catch (error) {
-      console.error("Failed to update thinking level:", error)
-      toast.error("Failed to update thinking level")
+      console.error(`${desktopRuntimeCopy.modelControls.thinking.updateFailedLogPrefix}:`, error)
+      toast.error(desktopRuntimeCopy.modelControls.thinking.updateFailedToast)
     }
   }, [config, currentValue])
 
@@ -330,8 +410,8 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
           "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
           compact ? "text-[10px]" : "text-[10px]",
         )}
-        title={`Thinking level (${currentLabel})`}
-        aria-label="Change thinking level"
+        title={formatChatRuntimeThinkingPickerTitle(currentLabel)}
+        aria-label={desktopRuntimeCopy.modelControls.thinking.changeAccessibilityLabel}
         onClick={(event) => event.stopPropagation()}
       >
         <SelectValue>
@@ -367,10 +447,10 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
         codexTextVerbosity: value as CodexTextVerbosity,
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
-      toast.success("Verbosity updated")
+      toast.success(desktopRuntimeCopy.modelControls.verbosity.updatedToast)
     } catch (error) {
-      console.error("Failed to update verbosity:", error)
-      toast.error("Failed to update verbosity")
+      console.error(`${desktopRuntimeCopy.modelControls.verbosity.updateFailedLogPrefix}:`, error)
+      toast.error(desktopRuntimeCopy.modelControls.verbosity.updateFailedToast)
     }
   }, [config, currentValue])
 
@@ -385,8 +465,8 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
           "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
           compact ? "text-[10px]" : "text-[10px]",
         )}
-        title={`Verbosity (${currentLabel})`}
-        aria-label="Change verbosity"
+        title={formatChatRuntimeVerbosityPickerTitle(currentLabel)}
+        aria-label={desktopRuntimeCopy.modelControls.verbosity.changeAccessibilityLabel}
         onClick={(event) => event.stopPropagation()}
       >
         <SelectValue>
@@ -407,100 +487,31 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
   )
 }
 
-const COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD = 2
-
-type StructuredPayloadValue = {
-  value: unknown
-  expandedText: string
-  compactText: string
-  lineCount: number
-  isStructured: boolean
-  isBlock: boolean
-  isCollapsible: boolean
-}
-
-const countPayloadLines = (text: string): number => text.split(/\r?\n/).length
-
-const toSingleLinePayloadPreview = (text: string): string => text.replace(/\s+/g, " ").trim()
-
-const parseJsonStringPayload = (value: string): unknown => {
-  const trimmed = value.trim()
-  if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) return value
-  try {
-    return JSON.parse(trimmed)
-  } catch {
-    return value
-  }
-}
-
-const stringifyStructuredPayload = (value: unknown, space?: number): string => {
-  if (typeof value === "string") return value
-  if (value === undefined) return "undefined"
-  try {
-    const formatted = JSON.stringify(value, null, space)
-    return formatted ?? String(value)
-  } catch {
-    return String(value)
-  }
-}
-
-const formatStructuredPayloadValue = (value: unknown, fallbackText?: string): StructuredPayloadValue => {
-  const normalizedValue = typeof value === "string" ? parseJsonStringPayload(value) : value
-  const expandedText = fallbackText ?? stringifyStructuredPayload(normalizedValue, 2)
-  const compactText = toSingleLinePayloadPreview(stringifyStructuredPayload(normalizedValue)) || toSingleLinePayloadPreview(expandedText)
-  const lineCount = countPayloadLines(expandedText)
-  const isStructured = normalizedValue !== null && typeof normalizedValue === "object"
-
-  return {
-    value: normalizedValue,
-    expandedText,
-    compactText,
-    lineCount,
-    isStructured,
-    isBlock: isStructured || expandedText.includes("\n") || expandedText.length > 96,
-    isCollapsible: lineCount > COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD,
-  }
-}
-
-const getPayloadValueType = (value: unknown): string => {
-  if (Array.isArray(value)) return `array · ${value.length}`
-  if (value === null) return "null"
-  return typeof value
-}
-
-const getStructuredPayloadChildEntries = (value: unknown): Array<{ key: string; label: string; value: unknown }> => {
-  if (Array.isArray(value)) {
-    return value.map((entry, index) => ({ key: String(index), label: `[${index}]`, value: entry }))
-  }
-  if (!value || typeof value !== "object") return []
-  return Object.entries(value as Record<string, unknown>).map(([key, entry]) => ({ key, label: key, value: entry }))
-}
-
 const StructuredPayloadTree: React.FC<{
-  value: StructuredPayloadValue
+  value: ToolExecutionStructuredPayloadValue
   textClassName: string
   maxHeightClassName: string
 }> = ({ value, textClassName, maxHeightClassName }) => {
-  const childEntries = getStructuredPayloadChildEntries(value.value)
+  const childEntries = getToolExecutionStructuredPayloadChildEntries(value.value)
   if (childEntries.length === 0) {
     return (
-      <div className={cn("px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words", textClassName)}>
+      <div className={cn(desktopToolExecutionDetailSurface.structuredPayloadTreeEmptyClassName, textClassName)}>
         {value.compactText}
       </div>
     )
   }
 
   return (
-    <div className={cn("max-w-full overflow-x-auto overflow-y-auto border-t px-2 py-1.5 scrollbar-thin", maxHeightClassName)}>
-      <div className="space-y-1">
+    <div className={cn(desktopToolExecutionDetailSurface.structuredPayloadTreeContainerClassName, maxHeightClassName)}>
+      <div className={desktopToolExecutionDetailSurface.structuredPayloadTreeListClassName}>
         {childEntries.map((entry) => (
-          <div key={entry.key} className="flex min-w-0 items-start gap-2 rounded border border-border/30 bg-background/30 px-2 py-1">
-            <span className="w-20 shrink-0 truncate font-mono text-[9px] leading-5 opacity-60" title={entry.label}>
+          <div key={entry.key} className={desktopToolExecutionDetailSurface.structuredPayloadTreeEntryClassName}>
+            <span className={desktopToolExecutionDetailSurface.structuredPayloadTreeEntryLabelClassName} title={entry.label}>
               {entry.label}
             </span>
-            <div className="min-w-0 flex-1">
+            <div className={desktopToolExecutionDetailSurface.structuredPayloadTreeEntryValueClassName}>
               <StructuredPayloadValueBlock
-                value={formatStructuredPayloadValue(entry.value)}
+                value={formatToolExecutionStructuredPayloadValue(entry.value)}
                 textClassName={textClassName}
                 maxHeightClassName={maxHeightClassName}
                 nested
@@ -514,28 +525,30 @@ const StructuredPayloadTree: React.FC<{
 }
 
 const StructuredPayloadValueBlock: React.FC<{
-  value: StructuredPayloadValue
+  value: ToolExecutionStructuredPayloadValue
   textClassName: string
   maxHeightClassName: string
   nested?: boolean
 }> = ({ value, textClassName, maxHeightClassName, nested = false }) => {
   if (value.isCollapsible) {
     return (
-      <details className="group" onClick={(event) => event.stopPropagation()}>
+      <details className={desktopToolExecutionDetailSurface.structuredPayloadDetailsClassName} onClick={(event) => event.stopPropagation()}>
         <summary className={cn(
-          "flex cursor-pointer list-none items-center gap-1.5 font-mono text-[10px] leading-relaxed [&::-webkit-details-marker]:hidden",
-          nested ? "py-0.5" : "px-2 py-1.5",
+          desktopToolExecutionDetailSurface.structuredPayloadSummaryClassName,
+          nested
+            ? desktopToolExecutionDetailSurface.structuredPayloadNestedSpacingClassName
+            : desktopToolExecutionDetailSurface.structuredPayloadDefaultSpacingClassName,
           textClassName,
         )}>
-          <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-50 transition-transform group-open:rotate-90" />
-          <span className="min-w-0 flex-1 truncate" title={value.compactText}>{value.compactText}</span>
-          <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{value.lineCount} lines</span>
+          <ChevronRight className={desktopToolExecutionDetailSurface.structuredPayloadToggleIconClassName} />
+          <span className={desktopToolExecutionDetailSurface.structuredPayloadSummaryTextClassName} title={value.compactText}>{value.compactText}</span>
+          <span className={desktopToolExecutionDetailSurface.structuredPayloadLineCountClassName}>{value.lineCount} lines</span>
         </summary>
         {value.isStructured ? (
           <StructuredPayloadTree value={value} maxHeightClassName={maxHeightClassName} textClassName={textClassName} />
         ) : (
           <div className={cn(
-            "max-w-full overflow-x-auto overflow-y-auto border-t p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+            desktopToolExecutionDetailSurface.structuredPayloadExpandedBlockClassName,
             maxHeightClassName,
             textClassName,
           )}>
@@ -548,7 +561,13 @@ const StructuredPayloadValueBlock: React.FC<{
 
   if (value.isStructured) {
     return (
-      <div className={cn("font-mono text-[10px] leading-relaxed break-words", nested ? "py-0.5" : "px-2 py-1.5", textClassName)}>
+      <div className={cn(
+        desktopToolExecutionDetailSurface.structuredPayloadInlineClassName,
+        nested
+          ? desktopToolExecutionDetailSurface.structuredPayloadNestedSpacingClassName
+          : desktopToolExecutionDetailSurface.structuredPayloadDefaultSpacingClassName,
+        textClassName,
+      )}>
         {value.compactText}
       </div>
     )
@@ -557,8 +576,10 @@ const StructuredPayloadValueBlock: React.FC<{
   if (value.isBlock) {
     return (
       <div className={cn(
-        "max-w-full overflow-x-auto overflow-y-auto font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
-        nested ? "py-0.5" : "p-2",
+        desktopToolExecutionDetailSurface.structuredPayloadBlockClassName,
+        nested
+          ? desktopToolExecutionDetailSurface.structuredPayloadNestedSpacingClassName
+          : desktopToolExecutionDetailSurface.structuredPayloadBlockDefaultSpacingClassName,
         maxHeightClassName,
         textClassName,
       )}>
@@ -568,7 +589,13 @@ const StructuredPayloadValueBlock: React.FC<{
   }
 
   return (
-    <div className={cn("font-mono text-[10px] leading-relaxed break-words", nested ? "py-0.5" : "px-2 py-1.5", textClassName)}>
+    <div className={cn(
+      desktopToolExecutionDetailSurface.structuredPayloadInlineClassName,
+      nested
+        ? desktopToolExecutionDetailSurface.structuredPayloadNestedSpacingClassName
+        : desktopToolExecutionDetailSurface.structuredPayloadDefaultSpacingClassName,
+      textClassName,
+    )}>
       {value.expandedText}
     </div>
   )
@@ -581,39 +608,18 @@ const StructuredToolPayload: React.FC<{
   maxHeightClassName?: string
 }> = ({ payload, variant = "default", tone = "neutral", maxHeightClassName = "max-h-48" }) => {
   const entries = getToolArgumentEntries(payload)
-  const formattedFallback = entries.length === 0 ? formatStructuredPayloadValue(payload, formatToolArguments(payload)) : null
+  const formattedFallback = entries.length === 0 ? formatToolExecutionStructuredPayloadValue(payload, formatToolArguments(payload)) : null
   const isApproval = variant === "approval"
-  const fallbackToneClass = isApproval
-    ? "bg-amber-100/70 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
-    : tone === "success"
-      ? "bg-green-50/50 text-foreground dark:bg-green-950/30"
-      : tone === "error"
-        ? "bg-red-50/50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
-        : "bg-muted/40 text-foreground"
-  const entryToneClass = isApproval
-    ? "border-amber-200/70 bg-amber-100/30 dark:border-amber-800/60 dark:bg-amber-900/15"
-    : tone === "success"
-      ? "border-green-200/70 bg-green-50/50 dark:border-green-900/60 dark:bg-green-950/30"
-      : tone === "error"
-        ? "border-red-200/70 bg-red-50/50 dark:border-red-900/60 dark:bg-red-950/30"
-        : "border-border/40 bg-background/40 dark:bg-muted/20"
-  const entryHeaderBorderClass = isApproval
-    ? "border-amber-200/60 dark:border-amber-800/50"
-    : tone === "success"
-      ? "border-green-200/60 dark:border-green-900/50"
-      : tone === "error"
-        ? "border-red-200/60 dark:border-red-900/50"
-        : "border-border/30"
-  const entryTextClass = isApproval
-    ? "text-amber-950 dark:text-amber-100"
-    : tone === "error"
-      ? "text-red-700 dark:text-red-300"
-      : "text-foreground"
+  const payloadTone = isApproval ? "approval" : tone
+  const fallbackToneClass = desktopToolExecutionDetailSurface.structuredPayloadFallbackToneClassNames[payloadTone]
+  const entryToneClass = desktopToolExecutionDetailSurface.structuredPayloadEntryToneClassNames[payloadTone]
+  const entryHeaderBorderClass = desktopToolExecutionDetailSurface.structuredPayloadEntryHeaderBorderClassNames[payloadTone]
+  const entryTextClass = desktopToolExecutionDetailSurface.structuredPayloadEntryTextClassNames[payloadTone]
 
   if (entries.length === 0) {
     if (!formattedFallback?.expandedText) return null
     return (
-      <div className={cn("overflow-hidden rounded", fallbackToneClass)} onClick={(event) => event.stopPropagation()}>
+      <div className={cn(desktopToolExecutionDetailSurface.structuredPayloadFallbackBaseClassName, fallbackToneClass)} onClick={(event) => event.stopPropagation()}>
         <StructuredPayloadValueBlock
           value={formattedFallback}
           maxHeightClassName={maxHeightClassName}
@@ -624,23 +630,23 @@ const StructuredToolPayload: React.FC<{
   }
 
   return (
-    <div className="space-y-1.5" onClick={(event) => event.stopPropagation()}>
+    <div className={desktopToolExecutionDetailSurface.structuredPayloadEntryListClassName} onClick={(event) => event.stopPropagation()}>
       {entries.map(({ key, value }) => {
-        const formattedValue = formatStructuredPayloadValue(value)
+        const formattedValue = formatToolExecutionStructuredPayloadValue(value)
         return (
           <div
             key={key}
             className={cn(
-              "overflow-hidden rounded-md border",
+              desktopToolExecutionDetailSurface.structuredPayloadEntryBaseClassName,
               entryToneClass,
             )}
           >
             <div className={cn(
-              "flex items-center justify-between gap-2 border-b px-2 py-1",
+              desktopToolExecutionDetailSurface.structuredPayloadEntryHeaderClassName,
               entryHeaderBorderClass,
             )}>
-              <span className="min-w-0 truncate font-mono text-[10px] font-semibold">{key}</span>
-              <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{getPayloadValueType(value)}</span>
+              <span className={desktopToolExecutionDetailSurface.structuredPayloadEntryKeyClassName}>{key}</span>
+              <span className={desktopToolExecutionDetailSurface.structuredPayloadEntryTypeClassName}>{getToolExecutionPayloadValueType(value)}</span>
             </div>
             <StructuredPayloadValueBlock
               value={formattedValue}
@@ -652,10 +658,6 @@ const StructuredToolPayload: React.FC<{
       })}
     </div>
   )
-}
-
-function isCompletionControlTool(toolName: string): boolean {
-  return toolName === RESPOND_TO_USER_TOOL || toolName === MARK_WORK_COMPLETE_TOOL
 }
 
 function extractRespondToUserResponsesFromMessages(
@@ -781,7 +783,23 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
   // Effective rendered content: prefer the attached respond_to_user event text
   // (which carries image markdown) over the assistant prose stored on the message.
-  const effectiveContent = message.responseEvent?.text ?? message.content ?? ""
+  const messageDisplayState = getChatMessageDisplayState({
+    ...message,
+    displayContent: message.responseEvent?.text,
+  })
+  const effectiveContent = messageDisplayState.visibleContent
+  const messageBranchAction = getChatRuntimeBranchActionState({
+    conversationId,
+    role: message.role,
+    branchMessageIndex,
+  })
+  const resolvedBranchMessageIndex = messageBranchAction.messageIndex
+  const messageCopyAction = getChatMessageCopyActionState({
+    role: message.role,
+    content: effectiveContent,
+    isAssistantComplete: isComplete,
+    isCopied,
+  })
 
   // Copy to clipboard handler
   const handleCopyResponse = async (e: React.MouseEvent) => {
@@ -793,7 +811,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
       }
-      copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000)
+      copyTimeoutRef.current = setTimeout(
+        () => setIsCopied(false),
+        chatMessageActionCopy.copy.feedbackResetDelayMs,
+      )
     } catch (err) {
       console.error("Failed to copy response:", err)
     }
@@ -802,21 +823,21 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   // Branch conversation from this message
   const handleBranchFromMessage = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!conversationId || branchMessageIndex == null) return
+    if (!conversationId || resolvedBranchMessageIndex == null) return
     try {
-      const branched = await desktopConversationsClient.branchConversation(conversationId, branchMessageIndex)
+      const branched = await desktopConversationsClient.branchConversation(conversationId, resolvedBranchMessageIndex)
       if (branched) {
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
         navigate(`/${branched.id}`)
-        toast.success(CHAT_RUNTIME_PRESENTATION.branch.successToast)
+        toast.success(desktopRuntimeCopy.branch.successToast)
       } else {
-        toast.error(CHAT_RUNTIME_PRESENTATION.branch.failedMessage)
+        toast.error(desktopRuntimeCopy.branch.failedMessage)
       }
     } catch (err) {
-      console.error(`${CHAT_RUNTIME_PRESENTATION.branch.failedMessage}:`, err)
-      toast.error(CHAT_RUNTIME_PRESENTATION.branch.failedMessage)
+      console.error(`${desktopRuntimeCopy.branch.failedMessage}:`, err)
+      toast.error(desktopRuntimeCopy.branch.failedMessage)
     }
-  }, [branchMessageIndex, conversationId, navigate])
+  }, [conversationId, navigate, resolvedBranchMessageIndex])
 
   const displayResults = (message.toolResults || []).filter(
     (r) =>
@@ -826,9 +847,14 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const hasExtras =
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
-  const effectiveTextContentLength = stripMarkdownMediaPayloads(effectiveContent).length
-  const collapseLengthLimit = hasMarkdownMediaPayload(effectiveContent) ? 500 : 100
-  const shouldCollapse = effectiveTextContentLength > collapseLengthLimit || hasExtras
+  const shouldCollapse = getChatMessageEffectiveCollapseState({
+    content: effectiveContent,
+    hasExtras,
+  })
+  const messageExpansionAction = getChatMessageExpansionActionState({
+    shouldCollapse,
+    isExpanded,
+  })
 
   // Track the computed ttsSource (ttsText || effectiveContent) since that's what determines the
   // ttsKey and should also gate async state updates.
@@ -969,13 +995,22 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     !!message.responseEvent ||
     message.isComplete ||
     (isLast && !message.isThinking && (!message.isAssistantThought || isThoughtEligibleForTTS))
-  const shouldShowTTSButton =
-    message.role === "assistant" &&
-    (configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED) &&
-    !!ttsSource &&
-    !message.isThinking &&
-    (!message.isAssistantThought || isThoughtEligibleForTTS) &&
-    canUseTTSForAssistantMessage
+  const messageSpeechAction = getChatMessageSpeechActionState({
+    role: message.role,
+    content: ttsSource,
+    ttsEnabled: configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED,
+    isThinking: message.isThinking,
+    isAssistantThought: message.isAssistantThought,
+    isThoughtEligibleForSpeech: isThoughtEligibleForTTS,
+    isAssistantEligible: canUseTTSForAssistantMessage,
+  })
+  const shouldShowTTSButton = messageSpeechAction.canSpeak
+  const messageTurnDurationBadgeState = getChatRuntimeTurnDurationBadgeState({
+    scope: "message",
+    role: message.role,
+    durationMs: turnDurationMs,
+    isLive: Boolean(turnIsLive),
+  })
   // Auto-play only the latest assistant message. Older response-linked messages
   // remain manually replayable but should not all auto-play after reload/remount.
   const shouldAutoPlayTTS = shouldShowTTSButton && isLast
@@ -1181,18 +1216,13 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, wasStopped, messageVariant, sessionId, ttsSource, message.responseEvent, ttsKeys, hasObservedLiveProgress, parentObservedLiveProgress])
 
   const getRoleStyle = () => {
-    switch (message.role) {
-      case "user":
-        return "border border-blue-200/60 bg-blue-50/50 dark:border-blue-800/50 dark:bg-blue-950/30"
-      case "assistant":
-        return isComplete && isLast && !hasErrors
-          ? "border border-green-200/60 bg-green-50/50 dark:border-green-800/50 dark:bg-green-950/30"
-          : "border border-border/40 bg-muted/30"
-      case "tool":
-        return "border border-amber-200/60 bg-amber-50/40 dark:border-amber-800/50 dark:bg-amber-950/20"
-      default:
-        return "border border-border/40 bg-muted/30"
-    }
+    const tone = getChatMessageDisplayTone({
+      role: message.role,
+      isComplete,
+      isLast,
+      hasErrors,
+    })
+    return getChatMessageToneDesktopClassName(tone)
   }
 
   const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -1217,112 +1247,230 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     onToggleExpand()
   }
 
-  const shouldToggleFromContentClick = shouldCollapse && !isExpanded
+  const messageContentRenderState = getChatMessageContentRenderState({
+    content: effectiveContent,
+    isExpanded,
+    shouldCollapse,
+  })
+  const shouldToggleFromContentClick = messageContentRenderState.isCollapsed
+  const messageActionComponents = {
+    turnDuration: messageTurnDurationBadgeState.canShow && (
+      <span
+        className={cn(
+          desktopChatMessageActionSurface.turnDurationBadgeClassName,
+          messageTurnDurationBadgeState.isLive && desktopChatMessageActionSurface.turnDurationLiveClassName,
+        )}
+        title={messageTurnDurationBadgeState.title ?? undefined}
+      >
+        <Clock className={desktopChatMessageActionSurface.turnDurationIconClassName} aria-hidden="true" />
+        {messageTurnDurationBadgeState.label}
+      </span>
+    ),
+    speech: (isTTSPlaying || isGeneratingAudio) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          void desktopTtsClient.controlPlayback({
+            type: "pause",
+            playbackId,
+            reason: "agent-progress-message-pause",
+          })
+        }}
+        className={cn(
+          desktopChatMessageActionSurface.buttonClassName,
+          isTTSPlaying && desktopChatMessageActionSurface.activeButtonClassName
+        )}
+        title={isGeneratingAudio
+          ? chatMessageActionCopy.speech.generatingAudioTitle
+          : chatMessageActionCopy.speech.pauseLabel}
+        aria-label={isGeneratingAudio
+          ? chatMessageActionCopy.speech.generatingAudioLabel
+          : chatMessageActionCopy.speech.pauseLabel}
+      >
+        {isGeneratingAudio ? (
+          <Loader2 className={desktopChatMessageActionSurface.generatingAudioIconClassName} />
+        ) : (
+          <Volume2 className={desktopChatMessageActionSurface.playingAudioIconClassName} />
+        )}
+      </button>
+    ),
+    branch: messageBranchAction.canBranch && (
+      <button
+        onClick={handleBranchFromMessage}
+        className={desktopChatMessageActionSurface.buttonClassName}
+        title={desktopRuntimeCopy.branch.buttonTitle}
+        aria-label={messageBranchAction.accessibilityLabel ?? desktopRuntimeCopy.branch.buttonAccessibilityLabel}
+      >
+        <GitBranch className={desktopChatMessageActionSurface.branchIconClassName} />
+      </button>
+    ),
+    copy: messageCopyAction.canCopy && (
+      <button
+        onClick={handleCopyResponse}
+        className={desktopChatMessageActionSurface.buttonClassName}
+        title={messageCopyAction.label ?? chatMessageActionCopy.copy.messageLabel}
+        aria-label={messageCopyAction.label ?? chatMessageActionCopy.copy.messageLabel}
+      >
+        {isCopied ? (
+          <CheckCheck className={desktopChatMessageActionSurface.copiedIconClassName} />
+        ) : (
+          <Copy className={desktopChatMessageActionSurface.copyIconClassName} />
+        )}
+      </button>
+    ),
+    expansion: messageExpansionAction.canToggle && (
+      <button
+        onClick={handleChevronClick}
+        className={desktopChatMessageActionSurface.buttonClassName}
+        title={messageExpansionAction.label ?? chatMessageActionCopy.expansion.messageName}
+        aria-label={messageExpansionAction.accessibilityLabel ?? messageExpansionAction.label ?? chatMessageActionCopy.expansion.messageName}
+        aria-expanded={messageExpansionAction.isExpanded}
+      >
+        {isExpanded ? (
+          <ChevronUp className={desktopChatMessageActionSurface.toggleIconClassName} />
+        ) : (
+          <ChevronDown className={desktopChatMessageActionSurface.toggleIconClassName} />
+        )}
+      </button>
+    ),
+  } satisfies Record<ChatMessageActionSlot, React.ReactNode>
+  const messageActionLayout = getChatMessageActionLayoutState({
+    availability: {
+      turnDuration: messageTurnDurationBadgeState.canShow,
+      speech: isTTSPlaying || isGeneratingAudio,
+      branch: messageBranchAction.canBranch,
+      copy: messageCopyAction.canCopy,
+      expansion: messageExpansionAction.canToggle,
+    },
+    renderState: messageContentRenderState,
+  })
+  const visibleMessageActionSlots = messageActionLayout.visibleSlots
 
   return (
     <div className={cn(
-      "relative rounded-md text-xs transition-all duration-200",
+      desktopChatMessageSurface.containerClassName,
       getRoleStyle(),
-      shouldToggleFromContentClick && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer"
+      shouldToggleFromContentClick && desktopChatMessageSurface.collapsedToggleClassName
     )}>
       <div
-        className="flex items-start px-2.5 py-1.5 text-left"
+        className={desktopChatMessageSurface.contentRowClassName}
         onClick={shouldToggleFromContentClick ? handleToggleExpand : undefined}
       >
-        <div className="flex-1 min-w-0">
+        <div className={desktopChatMessageSurface.bodyClassName}>
           <div className={cn(
-            "leading-relaxed text-left",
-            !isExpanded && shouldCollapse && "line-clamp-2"
+            desktopChatMessageSurface.markdownClassName,
+            messageContentRenderState.isCollapsed && desktopChatMessageSurface.collapsedMarkdownClassName
           )}>
-          <MarkdownRenderer content={effectiveContent.trim()} collapsed={!isExpanded && shouldCollapse} />
+          <MarkdownRenderer content={effectiveContent.trim()} collapsed={messageContentRenderState.isCollapsed} />
           </div>
           {hasExtras && isExpanded && (
-            <div className="mt-2 space-y-2 text-left">
+            <div className={desktopToolExecutionDetailSurface.messageExtrasContainerClassName}>
               {message.toolCalls && message.toolCalls.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold opacity-70">Tool Calls ({message.toolCalls.length}):</div>
-                  {message.toolCalls.map((toolCall, index) => (
-                    <div
-                      key={index}
-                      className="rounded-lg border border-border/30 bg-muted/20 p-2 text-xs"
-                    >
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate font-mono font-semibold text-primary" title={toolCall.name}>
-                          {toolCall.name}
-                        </span>
-                        <Badge variant="outline" className="shrink-0 whitespace-nowrap text-xs">
-                          Tool {index + 1}
-                        </Badge>
-                      </div>
-                      {toolCall.arguments && (
-                        <div>
-                          <div className="mb-1 text-xs font-medium opacity-70">
-                            Parameters:
-                          </div>
-                          <StructuredToolPayload payload={toolCall.arguments} maxHeightClassName="max-h-80" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {displayResults.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold opacity-70">Tool Results ({displayResults.length}):</div>
-                  {displayResults.map((result, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "rounded-lg border p-2 text-xs",
-                        result.success
-                          ? "border-green-200/50 bg-green-50/30 text-green-800 dark:border-green-700/50 dark:bg-green-950/40 dark:text-green-200"
-                          : "border-red-200/50 bg-red-50/30 text-red-800 dark:border-red-700/50 dark:bg-red-950/40 dark:text-red-200",
-                      )}
-                    >
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className={cn(
-                          "flex min-w-0 flex-1 items-center gap-1 font-semibold",
-                          result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                        )}>
-                          {result.success ? (
-                            <><Check className="h-3 w-3" /> Success</>
-                          ) : (
-                            <><XCircle className="h-3 w-3" /> Error</>
-                          )}
-                        </span>
-                        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
-                          <span className="whitespace-nowrap font-mono text-[10px] opacity-60">
-                            {(result.content?.length || 0).toLocaleString()} chars
+                <div className={desktopToolExecutionDetailSurface.messageExtrasSectionClassName}>
+                  <div className={desktopToolExecutionDetailSurface.messageExtrasHeadingClassName}>
+                    {formatToolExecutionHeading("tool_call", message.toolCalls.length)}:
+                  </div>
+                  {message.toolCalls.map((toolCall, index) => {
+                    const toolArgumentsDetail = getToolExecutionDetailArgumentsState(toolCall.arguments)
+
+                    return (
+                      <div
+                        key={index}
+                        className={desktopToolExecutionDetailSurface.toolCallCardClassName}
+                      >
+                        <div className={desktopToolExecutionDetailSurface.toolCallHeaderClassName}>
+                          <span className={desktopToolExecutionDetailSurface.toolCallNameClassName} title={toolCall.name}>
+                            {toolCall.name}
                           </span>
-                          <Badge variant="outline" className="shrink-0 whitespace-nowrap text-xs">
-                            Result {index + 1}
+                          <Badge variant="outline" className={desktopToolExecutionDetailSurface.compactBadgeClassName}>
+                            {formatIndexedToolExecutionLabel("tool", index)}
                           </Badge>
                         </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div>
-                          <div className="text-xs font-medium opacity-70 mb-1">
-                            Content:
-                          </div>
-                          <pre className="rounded bg-muted/30 p-2 text-xs whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-w-full max-h-80 scrollbar-thin">
-                            {result.content || "No content returned"}
-                          </pre>
-                        </div>
-
-                        {result.error && (
+                        {toolArgumentsDetail.hasArguments && (
                           <div>
-                            <div className="text-xs font-medium text-destructive mb-1">
-                              Error Details:
+                            <div className={desktopToolExecutionDetailSurface.messageExtrasSectionLabelClassName}>
+                              {formatToolExecutionSectionLabel(toolExecutionDetailCopy.inputLabel)}
                             </div>
-                            <pre className="rounded bg-destructive/10 p-2 text-xs whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-w-full max-h-60 scrollbar-thin">
-                              {result.error}
-                            </pre>
+                            <StructuredToolPayload
+                              payload={toolArgumentsDetail.content}
+                              maxHeightClassName={desktopToolExecutionDetailSurface.toolCallPayloadMaxHeightClassName}
+                            />
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
+                </div>
+              )}
+              {displayResults.length > 0 && (
+                <div className={desktopToolExecutionDetailSurface.messageExtrasSectionClassName}>
+                  <div className={desktopToolExecutionDetailSurface.messageExtrasHeadingClassName}>
+                    {formatToolExecutionHeading("tool_result", displayResults.length)}:
+                  </div>
+                  {displayResults.map((result, index) => {
+                    const resultDetail = getToolExecutionDetailResultState(
+                      result,
+                      toolExecutionDetailCopy.noContentReturnedLabel,
+                    )
+                    const resultState = resultDetail.state
+                    const resultIsSuccess = resultState === "success"
+                    const resultPresentation = toolExecutionStatusCopy[resultState]
+                    const resultStatusTextClass = getToolExecutionStatusDesktopClassName(resultState)
+
+                    return (
+                      <div
+                        key={index}
+                        className={cn(
+                          desktopToolExecutionDetailSurface.resultCardBaseClassName,
+                          desktopToolExecutionDetailSurface.resultCardStatusClassNames[resultState],
+                        )}
+                      >
+                        <div className={desktopToolExecutionDetailSurface.resultHeaderClassName}>
+                          <span className={cn(
+                            desktopToolExecutionDetailSurface.resultStatusClassName,
+                            resultStatusTextClass
+                          )}>
+                            {resultIsSuccess ? (
+                              <Check className={desktopToolExecutionDetailSurface.resultStatusIconClassName} />
+                            ) : (
+                              <XCircle className={desktopToolExecutionDetailSurface.resultStatusIconClassName} />
+                            )}
+                            {resultPresentation.label}
+                          </span>
+                          <div className={desktopToolExecutionDetailSurface.resultMetaClassName}>
+                            <span className={desktopToolExecutionDetailSurface.resultCharacterCountClassName}>
+                              {resultDetail.characterCountLabel}
+                            </span>
+                            <Badge variant="outline" className={desktopToolExecutionDetailSurface.compactBadgeClassName}>
+                              {formatIndexedToolExecutionLabel("result", index)}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className={desktopToolExecutionDetailSurface.resultBodyClassName}>
+                          <div>
+                            <div className={desktopToolExecutionDetailSurface.messageExtrasSectionLabelClassName}>
+                              {formatToolExecutionSectionLabel(toolExecutionDetailCopy.outputLabel)}
+                            </div>
+                            <pre className={desktopToolExecutionDetailSurface.resultOutputBlockClassName}>
+                              {resultDetail.content}
+                            </pre>
+                          </div>
+
+                          {resultDetail.error && (
+                            <div>
+                              <div className={desktopToolExecutionDetailSurface.messageExtrasErrorLabelClassName}>
+                                {formatToolExecutionSectionLabel(toolExecutionDetailCopy.errorDetailsLabel)}
+                              </div>
+                              <pre className={desktopToolExecutionDetailSurface.resultErrorBlockClassName}>
+                                {resultDetail.error}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1351,83 +1499,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Per-turn agent duration — anchored on the user message that started the turn. */}
-          {message.role === "user" && typeof turnDurationMs === "number" && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-0.5 px-1 text-[10px] tabular-nums text-muted-foreground/80",
-                turnIsLive && "animate-pulse text-amber-600 dark:text-amber-400",
-              )}
-              title={turnIsLive ? "Agent turn in progress" : "Agent turn duration"}
-            >
-              <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-              {formatTurnDuration(turnDurationMs)}
-            </span>
-          )}
-          {/* TTS playing indicator — click to pause */}
-          {(isTTSPlaying || isGeneratingAudio) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                void desktopTtsClient.controlPlayback({
-                  type: "pause",
-                  playbackId,
-                  reason: "agent-progress-message-pause",
-                })
-              }}
-              className={cn(
-                "p-1 rounded hover:bg-muted/30 transition-colors",
-                isTTSPlaying && "animate-pulse"
-              )}
-              title={isGeneratingAudio ? "Generating audio…" : "Pause TTS"}
-              aria-label={isGeneratingAudio ? "Generating audio" : "Pause TTS"}
-            >
-              {isGeneratingAudio ? (
-                <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-              ) : (
-                <Volume2 className="h-3 w-3 text-blue-500" />
-              )}
-            </button>
-          )}
-          {/* Branch button for user/assistant messages with a valid conversation */}
-          {conversationId && branchMessageIndex != null && (message.role === "user" || message.role === "assistant") && (
-            <button
-              onClick={handleBranchFromMessage}
-              className="p-1 rounded hover:bg-muted/30 transition-colors"
-              title={CHAT_RUNTIME_PRESENTATION.branch.buttonTitle}
-              aria-label={CHAT_RUNTIME_PRESENTATION.branch.buttonAccessibilityLabel}
-            >
-              <GitBranch className="h-3 w-3 opacity-60 hover:opacity-100" />
-            </button>
-          )}
-          {/* Copy button for user prompts and all completed assistant responses */}
-          {(message.role === "user" || (message.role === "assistant" && isComplete)) && (
-            <button
-              onClick={handleCopyResponse}
-              className="p-1 rounded hover:bg-muted/30 transition-colors"
-              title={isCopied ? "Copied!" : message.role === "user" ? "Copy prompt" : "Copy response"}
-              aria-label={isCopied ? "Copied!" : message.role === "user" ? "Copy prompt" : "Copy response"}
-            >
-              {isCopied ? (
-                <CheckCheck className="h-3 w-3 text-green-500" />
-              ) : (
-                <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
-              )}
-            </button>
-          )}
-          {shouldCollapse && (
-            <button
-              onClick={handleChevronClick}
-              className="p-1 rounded hover:bg-muted/30 transition-colors"
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </button>
-          )}
+        <div className={desktopChatMessageActionSurface.actionRowClassName}>
+          {visibleMessageActionSlots.map((actionSlot) => (
+            <React.Fragment key={actionSlot}>
+              {messageActionComponents[actionSlot]}
+            </React.Fragment>
+          ))}
         </div>
       </div>
       {/* TTS Audio Player - absolutely positioned so it doesn't add vertical space to the message */}
@@ -1505,8 +1582,8 @@ const CompactToolExecutionList: React.FC<{
   results,
   detailsExpanded,
   onToggleDetails,
-  rowClassName = "px-1.5 py-0.5",
-  detailsClassName = "mt-1 ml-3 space-y-1 border-l border-border/50 pl-2",
+  rowClassName = desktopToolExecutionCompactSurface.tileRowClassName,
+  detailsClassName = desktopToolExecutionDetailSurface.detailListClassName,
   executionStats,
 }) => {
   const copy = async (text: string) => {
@@ -1524,46 +1601,55 @@ const CompactToolExecutionList: React.FC<{
 
   return (
     <>
-      <div className="space-y-0.5 text-xs">
+      <div className={desktopToolExecutionCompactSurface.previewListClassName}>
         {toolCallEntries.map(({ call, result }, idx) => {
-          const callIsPending = !result
-          const callSuccess = result?.success
+          const callState = getToolExecutionCallDisplayState(result)
+          const callIsPending = callState === "pending"
+          const callIsSuccess = callState === "success"
+          const callPresentation = toolExecutionStatusCopy[callState]
+          const callStatusTextClass = getToolExecutionStatusDesktopClassName(callState)
           const toolPreview = getCompactToolExecutionPreview(
             { name: call.name, arguments: call.arguments ?? {} },
             result ?? null,
           )
+          const callAccessibilityLabel = formatToolExecutionCompactAccessibilityLabel(
+            callPresentation.label,
+            formatToolExecutionDetailsAccessibilityName(toolPreview),
+          )
 
           return (
             <div key={idx}>
-              <div
+              <button
+                type="button"
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30",
+                  desktopToolExecutionCompactSurface.previewButtonClassName,
                   rowClassName,
-                  callIsPending
-                    ? "text-blue-600 dark:text-blue-400"
-                    : callSuccess
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400",
+                  callStatusTextClass,
                 )}
                 onClick={onToggleDetails}
+                aria-expanded={detailsExpanded}
+                aria-label={createExpandCollapseAccessibilityLabel(
+                  callAccessibilityLabel,
+                  detailsExpanded,
+                )}
               >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={toolPreview}>
+                <span className={desktopToolExecutionCompactSurface.previewNameClassName} title={toolPreview}>
                   {toolPreview}
                 </span>
-                <span className="shrink-0 text-[10px] opacity-60">
+                <span className={desktopToolExecutionCompactSurface.previewStatusIconContainerClassName}>
                   {callIsPending ? (
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                  ) : callSuccess ? (
-                    <Check className="h-2.5 w-2.5" />
+                    <Loader2 className={desktopToolExecutionCompactSurface.previewPendingIconClassName} />
+                  ) : callIsSuccess ? (
+                    <Check className={desktopToolExecutionCompactSurface.previewStatusIconClassName} />
                   ) : (
-                    <XCircle className="h-2.5 w-2.5" />
+                    <XCircle className={desktopToolExecutionCompactSurface.previewStatusIconClassName} />
                   )}
                 </span>
                 <ChevronRight className={cn(
-                  "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
+                  desktopToolExecutionCompactSurface.previewToggleIconClassName,
                   detailsExpanded && "rotate-90"
                 )} />
-              </div>
+              </button>
             </div>
           )
         })}
@@ -1573,50 +1659,73 @@ const CompactToolExecutionList: React.FC<{
         <div className={detailsClassName}>
           {toolCallEntries.map(({ call, result }, idx) => {
             const callIsPending = !result
-            const formattedArguments = formatToolArguments(call.arguments)
+            const toolArgumentsDetail = getToolExecutionDetailArgumentsState(call.arguments)
+            const resultDetail = getToolExecutionDetailResultState(
+              result,
+              toolExecutionDetailCopy.noContentReturnedLabel,
+            )
+            const resultState = resultDetail.hasResult ? resultDetail.state : null
+            const resultIsSuccess = resultState === "success"
+            const resultStatusTextClass = resultState ? getToolExecutionStatusDesktopClassName(resultState) : ""
             return (
-              <div key={idx} className="text-[10px] space-y-1">
-                {formattedArguments && (
+              <div key={idx} className={desktopToolExecutionCompactSurface.detailItemClassName}>
+                {toolArgumentsDetail.hasArguments && (
                   <>
-                    <div className="flex flex-wrap items-center justify-between gap-1.5">
-                      <span className="min-w-0 font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, formattedArguments)}>
-                        <Copy className="h-2 w-2 mr-0.5" /> Copy
+                    <div className={desktopToolExecutionDetailSurface.detailHeaderClassName}>
+                      <span className={desktopToolExecutionCompactSurface.detailSectionLabelClassName}>
+                        {formatToolExecutionSectionLabel(toolExecutionDetailCopy.inputLabel)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={desktopToolExecutionDetailSurface.copyButtonClassName}
+                        onClick={(e) => handleCopy(e, toolArgumentsDetail.content)}
+                        aria-label={getToolExecutionCopyAccessibilityLabel("input", call.name)}
+                      >
+                        <Copy className={desktopToolExecutionDetailSurface.copyIconClassName} /> {toolExecutionDetailCopy.copyLabel}
                       </Button>
                     </div>
-                    <StructuredToolPayload payload={call.arguments} maxHeightClassName="max-h-52" />
+                    <StructuredToolPayload
+                      payload={toolArgumentsDetail.content}
+                      maxHeightClassName={desktopToolExecutionDetailSurface.compactPayloadMaxHeightClassName}
+                    />
                   </>
                 )}
                 {result && (
                   <>
-                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <div className={desktopToolExecutionDetailSurface.detailHeaderClassName}>
                       <span className={cn(
-                        "min-w-0 flex-1 font-medium",
-                        result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                        desktopToolExecutionCompactSurface.detailResultStatusClassName,
+                        resultStatusTextClass
                       )}>
-                        {result.success ? "Result" : "Error"}
+                        {resultIsSuccess
+                          ? formatToolExecutionSectionLabel(toolExecutionDetailCopy.outputLabel)
+                          : formatToolExecutionSectionLabel(toolExecutionStatusCopy.error.label)}
                       </span>
-                      <span className="shrink-0 whitespace-nowrap opacity-50 text-[10px]">{(result.content?.length || 0).toLocaleString()} chars</span>
+                      <span className={desktopToolExecutionCompactSurface.detailCharacterCountClassName}>{resultDetail.characterCountLabel}</span>
                     </div>
-                    {result.error && (
-                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
-                        {result.error}
+                    {resultDetail.error && (
+                      <pre className={desktopToolExecutionDetailSurface.errorBlockClassName}>
+                        {resultDetail.error}
                       </pre>
                     )}
-                    {result.content && (
-                      <StructuredToolPayload payload={result.content} tone={result.success ? "success" : "error"} maxHeightClassName="max-h-52" />
-                    )}
-                    {!result.error && !result.content && (
-                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
-                        No content
-                      </pre>
+                    {resultDetail.content && (
+                      <StructuredToolPayload
+                        payload={resultDetail.content}
+                        tone={resultIsSuccess ? "success" : "error"}
+                        maxHeightClassName={desktopToolExecutionDetailSurface.compactPayloadMaxHeightClassName}
+                      />
                     )}
                   </>
                 )}
                 {callIsPending && (
-                  <div className="text-[10px] opacity-60 italic py-1 flex items-center gap-1" role="status" aria-label="Waiting for response">
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />
-                    <span className="sr-only">Waiting for response</span>
+                  <div
+                    className={desktopToolExecutionCompactSurface.pendingResponseClassName}
+                    role="status"
+                    aria-label={toolExecutionDetailCopy.pendingResponseAccessibilityLabel}
+                  >
+                    <Loader2 className={desktopToolExecutionCompactSurface.pendingResponseIconClassName} aria-hidden="true" />
+                    <span className="sr-only">{toolExecutionDetailCopy.pendingResponseAccessibilityLabel}</span>
                   </div>
                 )}
               </div>
@@ -1647,8 +1756,8 @@ const ToolExecutionBubble: React.FC<{
       results={execution.results}
       detailsExpanded={isExpanded}
       onToggleDetails={onToggleExpand}
-      rowClassName="px-1.5 py-0.5"
-      detailsClassName="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]"
+      rowClassName={desktopToolExecutionCompactSurface.tileRowClassName}
+      detailsClassName={desktopToolExecutionDetailSurface.tileDetailListClassName}
     />
   )
 }
@@ -1657,20 +1766,6 @@ const ToolExecutionBubble: React.FC<{
 // spacing, and no extra surrounds beyond the parent's left-border accent.
 const THOUGHT_MARKDOWN_CLASS =
   "!prose-xs text-[11px] leading-snug [&_p]:my-0.5 [&_p]:text-[11px] [&_p]:leading-snug [&_li]:text-[11px] [&_li]:leading-snug [&_ul]:my-0.5 [&_ol]:my-0.5 [&_pre]:my-1 [&_pre]:text-[10px] [&_code]:text-[10px] [&_h1]:text-[12px] [&_h2]:text-[12px] [&_h3]:text-[11px]"
-
-// Codex reasoning summaries (and similar provider thought streams) often arrive
-// with single newlines between paragraphs. ReactMarkdown ignores single
-// newlines, so we promote them to paragraph breaks while leaving fenced code
-// blocks intact.
-function normalizeThoughtNewlines(text: string): string {
-  if (!text) return text
-  const segments = text.split(/(```[\s\S]*?```)/g)
-  for (let i = 0; i < segments.length; i++) {
-    if (i % 2 === 1) continue
-    segments[i] = segments[i].replace(/([^\n])\n([^\n])/g, "$1\n\n$2")
-  }
-  return segments.join("")
-}
 
 // Unified Assistant + Tool Execution component - combines thought and tool call as one message
 const AssistantWithToolsBubble: React.FC<{
@@ -1693,18 +1788,12 @@ const AssistantWithToolsBubble: React.FC<{
 
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
   const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
-  const isPending = toolCallEntries.some(({ result }) => !result)
-  const hasFailedTool = toolCallEntries.some(({ result }) => result?.success === false)
-  const allToolsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
+  const toolExecutionState = getToolExecutionDisplayState(toolCallEntries.map(({ result }) => result))
+  const isPending = toolExecutionState === "pending"
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
-  const toolStatusTextClass = isPending
-    ? "text-blue-600 dark:text-blue-400"
-    : hasFailedTool
-      ? "text-red-600 dark:text-red-400"
-      : allToolsSucceeded
-        ? "text-green-600 dark:text-green-400"
-        : "text-sky-700 dark:text-sky-300"
+  const toolStatusTextClass = getToolExecutionStatusDesktopClassName(toolExecutionState)
+  const toolExecutionPresentation = toolExecutionStatusCopy[toolExecutionState]
   const collapsedToolPreviewLine = data.calls
     .map((call, idx) => {
       const result = data.results[idx]
@@ -1714,6 +1803,10 @@ const AssistantWithToolsBubble: React.FC<{
       )
     })
     .join(", ")
+  const collapsedToolAccessibilityLabel = formatToolExecutionCompactAccessibilityLabel(
+    toolExecutionPresentation.label,
+    collapsedToolPreviewLine || formatToolExecutionCount("tool_call", data.calls.length),
+  )
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
@@ -1747,7 +1840,7 @@ const AssistantWithToolsBubble: React.FC<{
 
   const longThought = (data.thought?.length ?? 0) > 100
   const thoughtCollapsed = longThought && !isExpanded
-  const thoughtContent = hasThought ? normalizeThoughtNewlines(data.thought.trim()) : ""
+  const thoughtContent = hasThought ? normalizeMarkdownThoughtContent(data.thought.trim()) : ""
 
   return (
     <div className={cn(
@@ -1777,12 +1870,14 @@ const AssistantWithToolsBubble: React.FC<{
             {!showToolDetails ? (
               <button
                 type="button"
-                className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
+                className={cn(desktopToolExecutionCompactSurface.previewButtonClassName, toolStatusTextClass)}
                 onClick={handleToggleToolDetails}
+                aria-expanded={showToolDetails}
+                aria-label={createExpandCollapseAccessibilityLabel(collapsedToolAccessibilityLabel, showToolDetails)}
                 title={collapsedToolPreviewLine}
               >
                 {isPending && <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" aria-hidden="true" />}
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium">
+                <span className={desktopToolExecutionCompactSurface.previewNameClassName}>
                   {collapsedToolPreviewLine}
                 </span>
                 <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-40" aria-hidden="true" />
@@ -1793,8 +1888,8 @@ const AssistantWithToolsBubble: React.FC<{
                 results={data.results}
                 detailsExpanded={showToolDetails}
                 onToggleDetails={handleToggleToolDetails}
-                rowClassName="px-1 py-0.5"
-                detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
+                rowClassName={desktopToolExecutionCompactSurface.rowClassName}
+                detailsClassName={desktopToolExecutionCompactSurface.detailListClassName}
                 executionStats={data.executionStats}
               />
             )}
@@ -1824,66 +1919,71 @@ const ToolActivityGroupBubble: React.FC<{
   /** Render a single child DisplayItem when the group is expanded. */
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
-  const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
-  const callCount = group.callCount
+  const groupSummary = getToolActivityGroupSummaryState({
+    activityCount: group.items.length,
+    toolCallCount: group.callCount,
+    previewLines: group.previewLines,
+  })
 
   return (
     <div className={cn(
-      "rounded-md text-xs transition-all duration-200",
-      "border border-sky-200/60 bg-sky-50/20 dark:border-sky-900/40 dark:bg-sky-950/10",
-      !isExpanded && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer",
+      desktopToolActivityGroupSurface.containerClassName,
+      desktopToolActivityGroupSurface.toneClassName,
+      !isExpanded && desktopToolActivityGroupSurface.collapsedToggleClassName,
     )}>
       {/* Single-line collapsed header */}
       <div
-        className="flex min-w-0 items-center gap-1.5 px-2.5 py-1"
+        className={desktopToolActivityGroupSurface.headerClassName}
         onClick={() => !isExpanded && onToggleExpand()}
       >
-        <Wrench className="h-3 w-3 shrink-0 text-sky-600/80 dark:text-sky-300/80" aria-hidden="true" />
-        {callCount > 0 && (
+        <Wrench className={desktopToolActivityGroupSurface.iconClassName} aria-hidden="true" />
+        {groupSummary.shouldShowToolCallCount && (
           <span
-            className="shrink-0 rounded bg-sky-100/70 px-1 py-px font-mono text-[9px] font-semibold text-sky-800/80 dark:bg-sky-900/40 dark:text-sky-100/80"
-            aria-label={`${callCount} tool call${callCount === 1 ? "" : "s"}`}
-            title={`${callCount} tool call${callCount === 1 ? "" : "s"}`}
+            className={desktopToolActivityGroupSurface.countBadgeClassName}
+            aria-label={groupSummary.toolCallCountLabel}
+            title={groupSummary.toolCallCountLabel}
           >
-            {callCount}
+            {groupSummary.toolCallCount}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-sky-900/80 dark:text-sky-100/80">
-          {collapsedPreviewLine || "Tool activity"}
+        <span className={desktopToolActivityGroupSurface.previewClassName}>
+          {groupSummary.previewText}
         </span>
         {thinkingCount > 0 && (
           <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-          className="shrink-0 p-0.5 rounded hover:bg-muted/30 transition-colors"
-          aria-label={isExpanded ? "Collapse tool group" : "Expand tool group"}
+          className={desktopToolActivityGroupSurface.toggleButtonClassName}
+          aria-label={isExpanded
+            ? toolActivityGroupCopy.collapseAccessibilityLabel
+            : toolActivityGroupCopy.expandAccessibilityLabel}
         >
           {isExpanded ? (
-            <ChevronUp className="h-3 w-3 text-muted-foreground/60" />
+            <ChevronUp className={desktopToolActivityGroupSurface.toggleIconClassName} />
           ) : (
-            <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
+            <ChevronDown className={desktopToolActivityGroupSurface.toggleIconClassName} />
           )}
         </button>
       </div>
 
       {/* Expanded: render all child items */}
       {isExpanded && (
-        <div className="space-y-1 px-1.5 pb-1.5">
-          <div className="space-y-1">
+        <div className={desktopToolActivityGroupSurface.expandedContentClassName}>
+          <div className={desktopToolActivityGroupSurface.expandedItemsClassName}>
             {group.items.map((item, idx) => renderItem(item, idx))}
           </div>
-          <div className="flex justify-end border-t border-sky-200/50 pt-1 dark:border-sky-900/40">
+          <div className={desktopToolActivityGroupSurface.footerClassName}>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-sky-700/75 transition-colors hover:bg-sky-100/70 hover:text-sky-900 dark:text-sky-300/75 dark:hover:bg-sky-950/60 dark:hover:text-sky-100"
-              aria-label="Collapse tool group from bottom"
-              title="Collapse tool group"
+              className={desktopToolActivityGroupSurface.footerButtonClassName}
+              aria-label={toolActivityGroupCopy.collapseFromBottomAccessibilityLabel}
+              title={toolActivityGroupCopy.collapseFromBottomTitle}
             >
               <ChevronUp className="h-3 w-3" aria-hidden="true" />
-              Collapse group
+              {toolActivityGroupCopy.collapseFromBottomLabel}
             </button>
           </div>
         </div>
@@ -1942,26 +2042,29 @@ const ToolApprovalBubble: React.FC<{
   }, [isResponding, onApprove, onDeny])
 
   // Generate preview text for collapsed view hint
-  const argsPreview = formatArgumentsPreview(approval.arguments)
+  const approvalArgumentsDetail = getToolExecutionDetailArgumentsState(approval.arguments)
+  const argsPreview = approvalArgumentsDetail.preview
+  const approvalCopy = desktopRuntimeCopy.approval
+  const approvalSurface = getChatRuntimeToolApprovalDesktopSurfaceState()
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30">
+    <div className={approvalSurface.containerClassName}>
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-100/50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/30">
-        <Shield className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-        <span className="min-w-0 flex-1 text-xs font-medium text-amber-800 dark:text-amber-200">
-          {isResponding ? "Processing..." : "Tool Approval Required"}
+      <div className={approvalSurface.headerClassName}>
+        <Shield className={approvalSurface.iconClassName} />
+        <span className={approvalSurface.titleClassName}>
+          {isResponding ? approvalCopy.processingTitle : approvalCopy.title}
         </span>
         {isResponding && (
-          <Loader2 className="ml-auto h-3 w-3 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+          <Loader2 className={approvalSurface.spinnerClassName} />
         )}
       </div>
 
       {/* Content */}
-      <div ref={containerRef} className={cn("min-w-0 px-3 py-2", isResponding && "opacity-60")}>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="shrink-0 text-xs text-amber-700 dark:text-amber-300">Tool:</span>
-          <code className="max-w-full min-w-0 truncate rounded bg-amber-100 px-1.5 py-0.5 text-xs font-mono font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+      <div ref={containerRef} className={cn(approvalSurface.contentClassName, isResponding && "opacity-60")}>
+        <div className={approvalSurface.toolRowClassName}>
+          <span className={approvalSurface.toolLabelClassName}>{approvalCopy.toolLabel}:</span>
+          <code className={approvalSurface.toolNameClassName}>
             {approval.toolName}
           </code>
         </div>
@@ -1969,7 +2072,7 @@ const ToolApprovalBubble: React.FC<{
         {/* Arguments preview - always visible */}
         {argsPreview && (
           <div
-            className="mb-2 rounded-md border border-amber-200/70 bg-amber-100/40 px-2 py-1.5 text-[11px] font-mono leading-relaxed text-amber-700/80 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300/80 line-clamp-2 break-words [overflow-wrap:anywhere]"
+            className={approvalSurface.argumentsPreviewClassName}
             title={argsPreview}
           >
             {argsPreview}
@@ -1979,70 +2082,76 @@ const ToolApprovalBubble: React.FC<{
         {/* Expandable arguments */}
         <div className="mb-3">
           <button
+            type="button"
             onClick={() => setShowArgs(!showArgs)}
-            className="inline-flex max-w-full items-center gap-1 text-left text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
+            className={approvalSurface.expandButtonClassName}
             disabled={isResponding}
+            aria-expanded={showArgs}
+            aria-label={getChatRuntimeToolApprovalArgumentsAccessibilityLabel(
+              approval.toolName,
+              showArgs,
+            )}
           >
             <ChevronRight className={cn("h-3 w-3 transition-transform", showArgs && "rotate-90")} />
-            {showArgs ? "Hide" : "View"} full arguments
+            {showArgs ? approvalCopy.hideArgumentsLabel : approvalCopy.viewArgumentsLabel}
           </button>
           {showArgs && (
             <div className="mt-1.5">
-              <StructuredToolPayload payload={approval.arguments} variant="approval" maxHeightClassName="max-h-48" />
+              <StructuredToolPayload payload={approvalArgumentsDetail.content} variant="approval" maxHeightClassName="max-h-48" />
             </div>
           )}
         </div>
 
         {/* Action buttons with hotkey hints */}
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className={approvalSurface.actionStackClassName}>
+          <div className={approvalSurface.actionRowClassName}>
             <Button
               variant="outline"
               size="sm"
-              className="h-7 min-w-[7rem] flex-1 border-red-300 text-xs text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+              className={approvalSurface.denyButtonClassName}
               onClick={onDeny}
               disabled={isResponding}
-              title="Press Shift+Space to deny"
+              title={approvalCopy.denyHotkeyTitle}
             >
               <XCircle className="mr-1 h-3 w-3" />
-              Deny
+              {approvalCopy.denyLabel}
             </Button>
             <Button
               size="sm"
               className={cn(
-                "h-7 min-w-[7rem] flex-1 text-xs text-white",
+                approvalSurface.approveButtonClassName,
                 isResponding
-                  ? "cursor-not-allowed bg-green-500"
-                  : "bg-green-600 hover:bg-green-700"
+                  ? approvalSurface.approveButtonProcessingClassName
+                  : approvalSurface.approveButtonReadyClassName
               )}
               onClick={onApprove}
               disabled={isResponding}
-              title="Press Space to approve"
+              title={approvalCopy.approveHotkeyTitle}
             >
               {isResponding ? (
                 <>
                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  Processing...
+                  {approvalCopy.processingLabel}
                 </>
               ) : (
                 <>
                   <Check className="mr-1 h-3 w-3" />
-                  Approve
+                  {approvalCopy.approveLabel}
                 </>
               )}
             </Button>
           </div>
           {!isResponding && (
-            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-amber-700/80 dark:text-amber-300/80">
-              <span className="shrink-0 font-medium uppercase tracking-wider opacity-70">Hotkeys</span>
+            <div className={approvalSurface.hotkeysRowClassName}>
+              <span className={approvalSurface.hotkeysLabelClassName}>{approvalCopy.hotkeysLabel}</span>
               <div className="flex flex-wrap items-center gap-1">
-                <kbd className="rounded bg-green-700 px-1 py-0.5 font-mono text-[10px] text-white">Space</kbd>
-                <span>Approve</span>
+                <kbd className={approvalSurface.approveKeyClassName}>Space</kbd>
+                <span>{approvalCopy.approveHotkeyLabel}</span>
               </div>
               <span className="opacity-40" aria-hidden="true">•</span>
               <div className="flex flex-wrap items-center gap-1">
-                <kbd className="rounded bg-red-100 px-1 py-0.5 font-mono text-[10px] text-red-700 dark:bg-red-900/50 dark:text-red-300">Shift+Space</kbd>
-                <span>Deny</span>
+                <kbd className={approvalSurface.denyKeyClassName}>Shift+Space</kbd>
+                <span>{approvalCopy.denyHotkeyLabel}</span>
               </div>
             </div>
           )}
@@ -2054,14 +2163,7 @@ const ToolApprovalBubble: React.FC<{
 
 // Retry Status Banner - shows when LLM API is being retried (rate limits, network errors)
 const RetryStatusBanner: React.FC<{
-  retryInfo: {
-    isRetrying: boolean
-    attempt: number
-    maxAttempts?: number
-    delaySeconds: number
-    reason: string
-    startedAt: number
-  }
+  retryInfo: AgentRetryInfo
 }> = ({ retryInfo }) => {
   const [countdown, setCountdown] = useState(retryInfo.delaySeconds)
 
@@ -2086,33 +2188,31 @@ const RetryStatusBanner: React.FC<{
 
   if (!retryInfo.isRetrying) return null
 
-  const attemptText = retryInfo.maxAttempts
-    ? `Attempt ${retryInfo.attempt}/${retryInfo.maxAttempts}`
-    : `Attempt ${retryInfo.attempt}`
+  const attemptText = formatChatRuntimeRetryAttemptLabel(retryInfo)
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30">
+    <div className={desktopRetryStatusSurface.containerClassName}>
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-100/50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/30">
-        <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-        <span className="min-w-0 flex-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+      <div className={desktopRetryStatusSurface.headerClassName}>
+        <Clock className={desktopRetryStatusSurface.iconClassName} />
+        <span className={desktopRetryStatusSurface.titleClassName}>
           {retryInfo.reason}
         </span>
-        <Loader2 className="ml-auto h-3 w-3 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+        <Loader2 className={desktopRetryStatusSurface.spinnerClassName} />
       </div>
 
       {/* Content */}
-      <div className="min-w-0 px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="shrink-0 text-xs text-amber-700 dark:text-amber-300">
+      <div className={desktopRetryStatusSurface.contentClassName}>
+        <div className={desktopRetryStatusSurface.metaRowClassName}>
+          <span className={desktopRetryStatusSurface.attemptClassName}>
             {attemptText}
           </span>
-          <span className="max-w-full min-w-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-mono font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
-            Retrying in {countdown}s
+          <span className={desktopRetryStatusSurface.countdownClassName}>
+            {formatChatRuntimeRetryCountdownLabel(countdown)}
           </span>
         </div>
-        <p className="mt-1.5 text-xs text-amber-600 break-words dark:text-amber-400">
-          The agent will automatically retry when the API is available.
+        <p className={desktopRetryStatusSurface.descriptionClassName}>
+          {desktopRuntimeCopy.retryStatus.autoRetryDescription}
         </p>
       </div>
     </div>
@@ -2121,17 +2221,6 @@ const RetryStatusBanner: React.FC<{
 
 // Subagent Conversation Message - individual message in the collapsible conversation
 const DELEGATION_COMPACT_WIDTH = 360
-
-type DelegationSummaryEntry = {
-  delegation: ACPDelegationProgress
-  statusLabel: string
-  subtitle: string
-  sourceLabel: string
-  trackingLabel: string | null
-  messageCount: number
-  isActive: boolean
-  activityTimestamp: number
-}
 
 function useCompactWidth<T extends HTMLElement>(threshold = DELEGATION_COMPACT_WIDTH) {
   const ref = useRef<T | null>(null)
@@ -2187,104 +2276,86 @@ const SubAgentConversationMessage: React.FC<{
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
       }
-      copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000)
+      copyTimeoutRef.current = setTimeout(
+        () => setIsCopied(false),
+        chatMessageActionCopy.copy.feedbackResetDelayMs,
+      )
     } catch (err) {
-      console.error("Failed to copy message:", err)
+      console.error(`${chatMessageActionCopy.copy.failedMessage}:`, err)
     }
   }
 
-  const isLongContent = message.content.length > 300
-  const shouldShowToggle = isLongContent
-  const toolContent = useMemo(() => {
-    if (message.role !== "tool") return null
-
-    return extractSubAgentToolDisplayContent(message.content ?? "")
-  }, [message.content, message.role])
-  const roleMeta = (() => {
-    switch (message.role) {
-      case "user":
-        return {
-          label: "Task",
-          containerClass: "border-blue-200/80 bg-blue-50/70 dark:border-blue-800/60 dark:bg-blue-950/30",
-          badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200",
-          iconClass: "text-blue-600 dark:text-blue-300",
-          Icon: MessageSquare,
-        }
-      case "assistant":
-        return {
-          label: agentName,
-          containerClass: "border-purple-200/80 bg-purple-50/70 dark:border-purple-800/60 dark:bg-purple-950/30",
-          badgeClass: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200",
-          iconClass: "text-purple-600 dark:text-purple-300",
-          Icon: Bot,
-        }
-      case "tool":
-        return {
-          label: message.toolName || toolContent?.toolName || "Tool",
-          containerClass: "border-amber-200/80 bg-amber-50/70 dark:border-amber-800/60 dark:bg-amber-950/30",
-          badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200",
-          iconClass: "text-amber-600 dark:text-amber-300",
-          Icon: Wrench,
-        }
-      default:
-        return {
-          label: "Message",
-          containerClass: "border-gray-200/80 bg-gray-50/70 dark:border-gray-700/60 dark:bg-gray-900/30",
-          badgeClass: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200",
-          iconClass: "text-gray-500 dark:text-gray-300",
-          Icon: MessageSquare,
-        }
-    }
-  })()
-  const RoleIcon = roleMeta.Icon
-  const timestampLabel = message.timestamp
-    ? new Date(message.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-    : null
+  const messageDisplayState = getAgentDelegationConversationMessageDisplayState(message, agentName)
+  const { role: roleState, timestampLabel } = messageDisplayState
+  const roleTone: DelegationConversationMessageTone = roleState.tone
+  const RoleIcon = roleTone === "assistant"
+    ? Bot
+    : roleTone === "tool"
+      ? Wrench
+      : MessageSquare
 
   return (
-    <div className={cn("rounded-md border text-xs transition-all", roleMeta.containerClass)}>
-      <div className="flex items-start gap-1.5 px-2 py-1.5">
-        <div className={cn("mt-0.5 rounded-full p-1 bg-white/70 dark:bg-black/20", roleMeta.iconClass)}>
-          <RoleIcon className="h-3 w-3" />
+    <div className={cn(
+      desktopDelegationConversationMessageSurface.containerBaseClassName,
+      desktopDelegationConversationMessageSurface.roleClassNames[roleTone],
+    )}>
+      <div className={desktopDelegationConversationMessageSurface.rowClassName}>
+        <div className={cn(
+          desktopDelegationConversationMessageSurface.iconShellBaseClassName,
+          desktopDelegationConversationMessageSurface.iconClassNames[roleTone],
+        )}>
+          <RoleIcon className={desktopDelegationConversationMessageSurface.iconClassName} />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className={cn("mb-0.5 flex gap-1.5", isCompact ? "flex-col items-start" : "flex-wrap items-center")}>
-            <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium", roleMeta.badgeClass)}>
-              {roleMeta.label}
+        <div className={desktopDelegationConversationMessageSurface.bodyClassName}>
+          <div className={cn(
+            desktopDelegationConversationMessageSurface.headerBaseClassName,
+            isCompact
+              ? desktopDelegationConversationMessageSurface.headerCompactClassName
+              : desktopDelegationConversationMessageSurface.headerDefaultClassName,
+          )}>
+            <span className={cn(
+              desktopDelegationConversationMessageSurface.badgeBaseClassName,
+              desktopDelegationConversationMessageSurface.badgeRoleClassNames[roleTone],
+            )}>
+              {roleState.label}
             </span>
             {timestampLabel && (
-              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              <span className={desktopDelegationConversationMessageSurface.timestampClassName}>
                 {timestampLabel}
               </span>
             )}
           </div>
-          {message.role === "tool" ? (
-            <div className="space-y-1.5">
+          {messageDisplayState.isToolMessage ? (
+            <div className={desktopDelegationConversationMessageSurface.toolStackClassName}>
               <div
                 className={cn(
-                  "whitespace-pre-wrap break-words text-[11px] leading-[1.2rem] text-gray-700 dark:text-gray-200",
-                  !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+                  desktopDelegationConversationMessageSurface.contentBaseClassName,
+                  !isExpanded && messageDisplayState.isLongContent && (
+                    isCompact
+                      ? desktopDelegationConversationMessageSurface.contentClampCompactClassName
+                      : desktopDelegationConversationMessageSurface.contentClampDefaultClassName
+                  ),
                 )}
               >
-                {toolContent?.summary}
+                {messageDisplayState.toolSummary}
               </div>
-              {message.toolInput && (
-                <div className="space-y-1 rounded-md border border-amber-200/70 bg-white/60 p-1.5 dark:border-amber-800/60 dark:bg-black/20">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">
-                    Tool Input
+              {messageDisplayState.serializedToolInput && (
+                <div className={desktopDelegationConversationMessageSurface.toolInputBlockClassName}>
+                  <div className={desktopDelegationConversationMessageSurface.toolInputLabelClassName}>
+                    {desktopRuntimeCopy.delegation.toolInputLabel}
                   </div>
-                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-50/80 p-1.5 text-[10px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                    {JSON.stringify(message.toolInput, null, 2)}
+                  <pre className={desktopDelegationConversationMessageSurface.toolInputCodeClassName}>
+                    {messageDisplayState.serializedToolInput}
                   </pre>
                 </div>
               )}
-              {isExpanded && toolContent?.rawContent && toolContent.rawContent !== toolContent.summary && (
-                <div className="space-y-1 rounded-md border border-border/60 bg-muted/30 p-1.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Raw Payload
+              {isExpanded && messageDisplayState.shouldShowRawToolPayload && (
+                <div className={desktopDelegationConversationMessageSurface.rawPayloadBlockClassName}>
+                  <div className={desktopDelegationConversationMessageSurface.rawPayloadLabelClassName}>
+                    {desktopRuntimeCopy.delegation.rawPayloadLabel}
                   </div>
-                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-1.5 text-[10px] text-foreground/90">
-                    {toolContent.rawContent}
+                  <pre className={desktopDelegationConversationMessageSurface.rawPayloadCodeClassName}>
+                    {messageDisplayState.rawToolPayload}
                   </pre>
                 </div>
               )}
@@ -2292,37 +2363,43 @@ const SubAgentConversationMessage: React.FC<{
           ) : (
             <div
               className={cn(
-                "whitespace-pre-wrap break-words text-[11px] leading-[1.2rem] text-gray-700 dark:text-gray-200",
-                !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+                desktopDelegationConversationMessageSurface.contentBaseClassName,
+                !isExpanded && messageDisplayState.isLongContent && (
+                  isCompact
+                    ? desktopDelegationConversationMessageSurface.contentClampCompactClassName
+                    : desktopDelegationConversationMessageSurface.contentClampDefaultClassName
+                ),
               )}
             >
-              {message.content}
+              {messageDisplayState.content}
             </div>
           )}
-          {shouldShowToggle && (
+          {messageDisplayState.shouldShowToggle && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-              className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+              className={desktopDelegationConversationMessageSurface.toggleButtonClassName}
             >
               {isExpanded ? (
-                <ChevronUp className="h-3 w-3" />
+                <ChevronUp className={desktopDelegationConversationMessageSurface.toggleIconClassName} />
               ) : (
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className={desktopDelegationConversationMessageSurface.toggleIconClassName} />
               )}
-              {isExpanded ? "Show less" : "Show more"}
+              {getChatMessageExpansionLabel(isExpanded)}
             </button>
           )}
         </div>
-        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+        <div className={desktopDelegationConversationMessageSurface.actionColumnClassName}>
           <button
             onClick={handleCopy}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            title={isCopied ? "Copied!" : "Copy message"}
+            className={desktopDelegationConversationMessageSurface.copyButtonClassName}
+            title={isCopied
+              ? chatMessageActionCopy.copy.copiedLabel
+              : chatMessageActionCopy.copy.messageLabel}
           >
             {isCopied ? (
-              <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+              <CheckCheck className={desktopDelegationConversationMessageSurface.copiedIconClassName} />
             ) : (
-              <Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
+              <Copy className={desktopDelegationConversationMessageSurface.copyIconClassName} />
             )}
           </button>
         </div>
@@ -2330,317 +2407,6 @@ const SubAgentConversationMessage: React.FC<{
     </div>
   )
 }
-
-type SubAgentToolExecutionData = {
-  timestamp: number
-  calls: CompactToolExecutionCall[]
-  results: CompactToolExecutionResult[]
-}
-
-function isDelegationActiveStatus(status: ACPDelegationProgress["status"]): boolean {
-  return status === "pending" || status === "spawning" || status === "running"
-}
-
-type SubAgentConversationRenderItem =
-  | { kind: "message"; key: string; message: ACPSubAgentMessage }
-  | {
-      kind: "tool_execution"
-      key: string
-      execution: SubAgentToolExecutionData
-    }
-
-function normalizeSubAgentToolArguments(toolInput: unknown): Record<string, unknown> {
-  if (toolInput && typeof toolInput === "object" && !Array.isArray(toolInput)) {
-    return toolInput as Record<string, unknown>
-  }
-  if (toolInput === undefined) return {}
-  return { input: toolInput }
-}
-
-function parseDelegatedToolInput(rawInput?: string): unknown {
-  if (!rawInput) return undefined
-  const trimmed = rawInput.trim()
-  if (!trimmed) return undefined
-  try {
-    return JSON.parse(trimmed)
-  } catch {
-    return trimmed
-  }
-}
-
-function parseDelegatedToolUseMessage(
-  message: ACPSubAgentMessage,
-): { toolName?: string; toolInput?: unknown } | null {
-  if (message.role !== "tool") {
-    return null
-  }
-
-  const content = (message.content ?? "").trim()
-  if (!/^using tool:/i.test(content)) {
-    return null
-  }
-
-  const nameMatch = content.match(/^using tool:\s*([^\n]+)/i)
-  const inputMatch = content.match(/\ninput:\s*([\s\S]*)$/i)
-
-  return {
-    toolName: message.toolName || nameMatch?.[1]?.trim() || undefined,
-    toolInput: message.toolInput ?? parseDelegatedToolInput(inputMatch?.[1]),
-  }
-}
-
-function isDelegatedToolUseMessage(message: ACPSubAgentMessage): boolean {
-  return parseDelegatedToolUseMessage(message) !== null
-}
-
-function isDelegatedToolResultMessage(message: ACPSubAgentMessage): boolean {
-  return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())
-}
-
-function isStructuredToolInvocationMessage(message: ACPSubAgentMessage): boolean {
-  if (message.role !== "tool") return false
-  if (isDelegatedToolResultMessage(message)) return false
-  return !!(message.toolName || message.toolInput !== undefined)
-}
-
-function toCompactToolResult(result: { success: boolean; content: string; error?: string }): CompactToolExecutionResult {
-  return {
-    success: result.success,
-    content: result.content,
-    error: result.error,
-  }
-}
-
-function hasStructuredToolError(result: { error?: string }): boolean {
-  return result.error !== undefined && result.error !== null
-}
-
-function normalizeStructuredToolResultContent(result: { success?: boolean; content?: string; error?: string }): string {
-  if (typeof result.content === "string") {
-    return result.content
-  }
-
-  if (result.success === false || hasStructuredToolError(result)) {
-    return "Tool failed"
-  }
-
-  return "Tool completed"
-}
-
-function buildStructuredSubAgentToolExecution(message: ACPSubAgentMessage): SubAgentToolExecutionData | null {
-  const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
-  const toolResults = Array.isArray(message.toolResults) ? message.toolResults : []
-  if (toolCalls.length === 0 && toolResults.length === 0) {
-    return null
-  }
-
-  const maxEntries = Math.max(toolCalls.length, toolResults.length)
-  const calls: CompactToolExecutionCall[] = []
-  const results: CompactToolExecutionResult[] = []
-
-  for (let index = 0; index < maxEntries; index += 1) {
-    const call = toolCalls[index]
-    const result = toolResults[index]
-
-    calls.push({
-      name: call?.name?.trim() || "tool_call",
-      arguments: normalizeSubAgentToolArguments(call?.arguments),
-    })
-
-    if (!result) {
-      results.push(undefined)
-      continue
-    }
-
-    results.push(toCompactToolResult({
-      success: !hasStructuredToolError(result) && result.success !== false,
-      content: normalizeStructuredToolResultContent(result),
-      error: result.error,
-    }))
-  }
-
-  return {
-    timestamp: message.timestamp,
-    calls,
-    results,
-  }
-}
-
-function buildDelegatedToolExecution(
-  message: ACPSubAgentMessage,
-  delegationStatus: ACPDelegationProgress["status"],
-  resultMessage?: ACPSubAgentMessage,
-): SubAgentToolExecutionData {
-  const parsedUseMessage = parseDelegatedToolUseMessage(message)
-  const isStructuredToolUseMessage = isStructuredToolInvocationMessage(message)
-  const parsedMessage = extractSubAgentToolDisplayContent(message.content ?? "")
-  const parsedResult = resultMessage ? extractSubAgentToolDisplayContent(resultMessage.content ?? "") : null
-  const toolName = parsedUseMessage?.toolName
-    || message.toolName
-    || parsedMessage.toolName
-    || resultMessage?.toolName
-    || parsedResult?.toolName
-    || "Tool"
-  const toolInput = parsedUseMessage?.toolInput ?? message.toolInput
-  const isToolUseMessage = !!parsedUseMessage || isStructuredToolUseMessage
-  const isDelegationActive = isDelegationActiveStatus(delegationStatus)
-  const isPending = isToolUseMessage && !resultMessage && isDelegationActive
-
-  let result: CompactToolExecutionResult
-  if (resultMessage) {
-    result = toCompactToolResult({ success: true, content: parsedResult?.summary || "Tool completed" })
-  } else if (!isToolUseMessage) {
-    result = toCompactToolResult({ success: true, content: parsedMessage.summary || "Tool completed" })
-  } else if (!isDelegationActive) {
-    if (delegationStatus === "failed") {
-      result = toCompactToolResult({
-        success: false,
-        content: "",
-        error: "Delegation failed before a tool result was captured.",
-      })
-    } else if (delegationStatus === "cancelled") {
-      result = toCompactToolResult({
-        success: false,
-        content: "",
-        error: "Delegation was cancelled before a tool result was captured.",
-      })
-    } else {
-      result = toCompactToolResult({ success: true, content: "Tool completed" })
-    }
-  } else {
-    result = undefined
-  }
-
-  return {
-    timestamp: resultMessage?.timestamp ?? message.timestamp,
-    calls: [{ name: toolName, arguments: normalizeSubAgentToolArguments(toolInput) }],
-    results: [isPending ? undefined : result],
-  }
-}
-
-function buildSubAgentConversationItems(
-  conversation: ACPSubAgentMessage[],
-  delegationStatus: ACPDelegationProgress["status"],
-): SubAgentConversationRenderItem[] {
-  const items: SubAgentConversationRenderItem[] = []
-  const pendingStructuredResultSlots: Array<{ itemIndex: number; resultIndex: number }> = []
-
-  const hasRenderableStructuredMessageContent = (message: ACPSubAgentMessage): boolean => {
-    const content = (message.content ?? "").trim()
-    if (!content) return false
-    if (message.role !== "tool") return true
-    return !/^using tool:/i.test(content) && !/^tool result:/i.test(content)
-  }
-
-  const attachStructuredResultToPendingExecution = (result: CompactToolExecutionResult): boolean => {
-    while (pendingStructuredResultSlots.length > 0) {
-      const pendingSlot = pendingStructuredResultSlots.shift()
-      if (!pendingSlot) return false
-      const pendingItem = items[pendingSlot.itemIndex]
-      if (!pendingItem || pendingItem.kind !== "tool_execution") {
-        continue
-      }
-      if (pendingItem.execution.results[pendingSlot.resultIndex]) {
-        continue
-      }
-      pendingItem.execution.results[pendingSlot.resultIndex] = result
-      return true
-    }
-    return false
-  }
-
-  const appendToolExecutionItem = (
-    key: string,
-    execution: SubAgentToolExecutionData,
-    trackStructuredPendingSlots = false,
-  ): void => {
-    const itemIndex = items.length
-    items.push({
-      kind: "tool_execution",
-      key,
-      execution,
-    })
-    if (!trackStructuredPendingSlots) {
-      return
-    }
-    execution.results.forEach((result, resultIndex) => {
-      if (!result) {
-        pendingStructuredResultSlots.push({ itemIndex, resultIndex })
-      }
-    })
-  }
-
-  for (let index = 0; index < conversation.length; index += 1) {
-    const message = conversation[index]
-    const structuredToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
-    const structuredToolResults = Array.isArray(message.toolResults) ? message.toolResults : []
-    const hasStructuredToolData = structuredToolCalls.length > 0 || structuredToolResults.length > 0
-
-    if (hasStructuredToolData && structuredToolCalls.length === 0 && structuredToolResults.length > 0) {
-      const unattachedResults: CompactToolExecutionResult[] = []
-      for (const rawResult of structuredToolResults) {
-        if (!rawResult) continue
-        const result = toCompactToolResult({
-          success: !hasStructuredToolError(rawResult) && rawResult.success !== false,
-          content: normalizeStructuredToolResultContent(rawResult),
-          error: rawResult.error,
-        })
-        if (!attachStructuredResultToPendingExecution(result)) {
-          unattachedResults.push(result)
-        }
-      }
-
-      if (hasRenderableStructuredMessageContent(message)) {
-        items.push({ kind: "message", key: `msg-structured-${index}`, message })
-      }
-
-      if (unattachedResults.length > 0) {
-        appendToolExecutionItem(`tool-structured-orphan-${index}`, {
-          timestamp: message.timestamp,
-          calls: unattachedResults.map(() => ({ name: "tool_call", arguments: {} })),
-          results: unattachedResults,
-        }, true)
-      }
-      continue
-    }
-
-    const structuredExecution = buildStructuredSubAgentToolExecution(message)
-    if (structuredExecution) {
-      if (hasRenderableStructuredMessageContent(message)) {
-        items.push({ kind: "message", key: `msg-structured-${index}`, message })
-      }
-      appendToolExecutionItem(`tool-structured-${index}`, structuredExecution, true)
-      continue
-    }
-
-    if (isDelegatedToolUseMessage(message)) {
-      const nextMessage = conversation[index + 1]
-      if (nextMessage && isDelegatedToolResultMessage(nextMessage)) {
-        appendToolExecutionItem(
-          `tool-${index}-${index + 1}`,
-          buildDelegatedToolExecution(message, delegationStatus, nextMessage),
-        )
-        index += 1
-        continue
-      }
-
-      appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
-      continue
-    }
-
-    if (isStructuredToolInvocationMessage(message) || isDelegatedToolResultMessage(message)) {
-      appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
-      continue
-    }
-
-    items.push({ kind: "message", key: `msg-${index}`, message })
-  }
-
-  return items
-}
-
-// Collapsible Subagent Conversation Panel
-const RECENT_MESSAGES_LIMIT = 3
 
 const SubAgentConversationPanel: React.FC<{
   conversation: ACPSubAgentMessage[]
@@ -2659,30 +2425,34 @@ const SubAgentConversationPanel: React.FC<{
   const previousConversationLengthRef = useRef(conversation.length)
   const panelOpen = alwaysOpen || isOpen
   const renderItems = useMemo(
-    () => buildSubAgentConversationItems(conversation, delegationStatus),
+    () => getAgentDelegationConversationRenderItems(conversation, delegationStatus),
     [conversation, delegationStatus],
   )
 
   const toggleMessage = (key: string) => {
-    setExpandedMessages(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }))
+    setExpandedMessages(prev => setChatDisplayExpansionState(
+      prev,
+      key,
+      !getChatDisplayExpansionState(prev, key),
+    ))
   }
 
   const handleCopyAll = async () => {
-    const fullConversation = conversation.map(msg => {
-      const role = msg.role === 'user' ? 'Task' : msg.role === 'assistant' ? agentName : (msg.toolName || 'Tool')
-      return `[${role}]\n${msg.content}`
-    }).join('\n\n---\n\n')
+    const fullConversation = formatAgentDelegationConversationTranscript(conversation, agentName)
     try {
       await copyTextToClipboard(fullConversation)
     } catch (err) {
-      console.error("Failed to copy conversation:", err)
+      console.error(`${desktopRuntimeCopy.delegation.copyConversationLabel} failed:`, err)
     }
   }
 
-  const conversationPreview = getAgentDelegationConversationPreview(conversation, agentName, isCompact ? 72 : 120)
+  const conversationPreview = getAgentDelegationConversationPreview(
+    conversation,
+    agentName,
+    isCompact
+      ? desktopDelegationConversationPanelSurface.compactPreviewMaxLength
+      : desktopDelegationConversationPanelSurface.defaultPreviewMaxLength,
+  )
 
   useEffect(() => {
     if (defaultShowAll) {
@@ -2731,80 +2501,86 @@ const SubAgentConversationPanel: React.FC<{
 
   const visibleItems = showAll
     ? renderItems
-    : renderItems.slice(-RECENT_MESSAGES_LIMIT)
+    : renderItems.slice(-desktopDelegationConversationPanelSurface.recentMessagesLimit)
   const hiddenCount = renderItems.length - visibleItems.length
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+    <div className={desktopDelegationConversationPanelSurface.containerClassName}>
       {/* Collapsible Header */}
       <div
         className={cn(
-          "flex flex-wrap items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800/50 transition-colors",
-          alwaysOpen ? "cursor-default" : "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
+          desktopDelegationConversationPanelSurface.headerBaseClassName,
+          alwaysOpen
+            ? desktopDelegationConversationPanelSurface.headerStaticClassName
+            : desktopDelegationConversationPanelSurface.headerInteractiveClassName,
         )}
         onClick={alwaysOpen ? undefined : onToggle}
       >
-        <div className="min-w-0 flex flex-1 items-center gap-1.5">
-          <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-gray-600 dark:text-gray-400">
-            {panelOpen ? "Activity" : conversationPreview}
+        <div className={desktopDelegationConversationPanelSurface.headerTitleRowClassName}>
+          <span className={desktopDelegationConversationPanelSurface.headerTitleClassName}>
+            {panelOpen ? desktopRuntimeCopy.delegation.activityLabel : conversationPreview}
           </span>
-          <Badge variant="outline" className="h-4 shrink-0 px-1 py-0 text-[9px]">
+          <Badge variant="outline" className={desktopDelegationConversationPanelSurface.countBadgeClassName}>
             {renderItems.length}
           </Badge>
         </div>
-        <div className="ml-auto flex flex-shrink-0 items-center gap-0.5">
+        <div className={desktopDelegationConversationPanelSurface.actionRowClassName}>
           <button
             onClick={(e) => { e.stopPropagation(); void handleCopyAll() }}
-            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            title="Copy conversation"
-            aria-label="Copy conversation"
+            className={desktopDelegationConversationPanelSurface.copyButtonClassName}
+            title={desktopRuntimeCopy.delegation.copyConversationLabel}
+            aria-label={desktopRuntimeCopy.delegation.copyConversationLabel}
           >
-            <Copy className="h-2.5 w-2.5 opacity-60 hover:opacity-100" />
+            <Copy className={desktopDelegationConversationPanelSurface.copyIconClassName} />
           </button>
           {!alwaysOpen && (panelOpen ? (
-            <ChevronUp className="h-3 w-3 text-gray-400" />
+            <ChevronUp className={desktopDelegationConversationPanelSurface.toggleIconClassName} />
           ) : (
-            <ChevronDown className="h-3 w-3 text-gray-400" />
+            <ChevronDown className={desktopDelegationConversationPanelSurface.toggleIconClassName} />
           ))}
         </div>
       </div>
 
       {/* Collapsible Content */}
       {panelOpen && (
-        <div className="relative bg-white/50 dark:bg-black/20">
+        <div className={desktopDelegationConversationPanelSurface.contentContainerClassName}>
           {hiddenCount > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowAll(true) }}
-              className="w-full px-2 py-0.5 text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-center border-b border-gray-100 dark:border-gray-800"
+              className={desktopDelegationConversationPanelSurface.showEarlierButtonClassName}
             >
-              Show {hiddenCount} earlier message{hiddenCount > 1 ? "s" : ""}
+              {formatChatRuntimeEarlierDelegationMessagesLabel(hiddenCount)}
             </button>
           )}
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="overflow-y-auto p-1 space-y-1"
-            style={{ maxHeight: isCompact ? "min(32vh, 220px)" : "min(36vh, 280px)" }}
+            className={desktopDelegationConversationPanelSurface.scrollContainerClassName}
+            style={{
+              maxHeight: isCompact
+                ? desktopDelegationConversationPanelSurface.compactScrollMaxHeight
+                : desktopDelegationConversationPanelSurface.defaultScrollMaxHeight,
+            }}
           >
             {visibleItems.map((item) => {
               if (item.kind === "tool_execution") {
                 return (
-                  <ToolExecutionBubble
-                    key={item.key}
-                    execution={item.execution}
-                    isExpanded={expandedMessages[item.key] ?? false}
-                    onToggleExpand={() => toggleMessage(item.key)}
-                  />
+	                  <ToolExecutionBubble
+	                    key={item.key}
+	                    execution={item.execution}
+	                    isExpanded={getChatDisplayExpansionState(expandedMessages, item.key)}
+	                    onToggleExpand={() => toggleMessage(item.key)}
+	                  />
                 )
               }
 
               return (
                 <SubAgentConversationMessage
                   key={item.key}
-                  message={item.message}
-                  agentName={agentName}
-                  isExpanded={expandedMessages[item.key] ?? false}
-                  onToggleExpand={() => toggleMessage(item.key)}
+	                  message={item.message}
+	                  agentName={agentName}
+	                  isExpanded={getChatDisplayExpansionState(expandedMessages, item.key)}
+	                  onToggleExpand={() => toggleMessage(item.key)}
                   isCompact={isCompact}
                 />
               )
@@ -2812,15 +2588,18 @@ const SubAgentConversationPanel: React.FC<{
           </div>
           {!isPinnedToBottom && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 setIsPinnedToBottom(true)
                 scrollToBottom("smooth")
               }}
-              className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
+              className={desktopScrollToBottomSurface.compactButtonClassName}
+              title={desktopRuntimeCopy.scrollToBottom.accessibilityLabel}
+              aria-label={desktopRuntimeCopy.scrollToBottom.accessibilityLabel}
             >
-              <ChevronDown className="h-2.5 w-2.5" />
-              Latest
+              <ChevronDown className={desktopScrollToBottomSurface.compactIconClassName} />
+              {desktopRuntimeCopy.scrollToBottom.latestLabel}
             </button>
           )}
         </div>
@@ -2909,11 +2688,11 @@ const DelegationBubble: React.FC<{
 }> = ({ delegation, isExpanded = false, onToggleExpand, onOpenDetails }) => {
   const { ref: containerRef, isCompact } = useCompactWidth<HTMLDivElement>()
   const [isConversationOpen, setIsConversationOpen] = useState(false)
-  const isRunning = isDelegationActiveStatus(delegation.status)
+  const isRunning = isAgentDelegationActiveStatus(delegation.status)
   const isCompleted = delegation.status === 'completed'
   const isFailed = delegation.status === 'failed'
-  const isCancelled = delegation.status === 'cancelled'
   const hasConversation = delegation.conversation && delegation.conversation.length > 0
+  const statusClasses = getChatRuntimeDelegationStatusDesktopClassNames(delegation.status)
 
   // Track live elapsed time only while running
   const [liveElapsed, setLiveElapsed] = useState(0)
@@ -2945,49 +2724,22 @@ const DelegationBubble: React.FC<{
       ? liveElapsed
       : 0
 
-  const statusColor = isCompleted
-    ? 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/30'
-    : isFailed
-    ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-950/30'
-    : isCancelled
-    ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30'
-    : 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30'
-
-  const headerColor = isCompleted
-    ? 'bg-green-100/50 dark:bg-green-900/30 border-green-200 dark:border-green-800'
-    : isFailed
-    ? 'bg-red-100/50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
-    : isCancelled
-    ? 'bg-amber-100/50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800'
-    : 'bg-blue-100/50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
-
-  const textColor = isCompleted
-    ? 'text-green-800 dark:text-green-200'
-    : isFailed
-    ? 'text-red-800 dark:text-red-200'
-    : isCancelled
-    ? 'text-amber-800 dark:text-amber-200'
-    : 'text-blue-800 dark:text-blue-200'
-
-  const iconColor = isCompleted
-    ? 'text-green-600 dark:text-green-400'
-    : isFailed
-    ? 'text-red-600 dark:text-red-400'
-    : isCancelled
-    ? 'text-amber-600 dark:text-amber-400'
-    : 'text-blue-600 dark:text-blue-400'
-
   const handleHeaderClick = () => {
     onToggleExpand?.()
   }
 
-  const mutedTextColor = textColor.replace('800', '600').replace('200', '400')
   const {
     statusLabel,
     subtitle,
     sourceLabel,
     trackingLabel,
-  } = getAgentDelegationPresentation(delegation, isCompact ? 72 : 120)
+    messageCount,
+  } = getAgentDelegationPresentation(
+    delegation,
+    isCompact
+      ? desktopDelegationBubbleSurface.compactSubtitleMaxLength
+      : desktopDelegationBubbleSurface.defaultSubtitleMaxLength,
+  )
   const durationLabel = `${duration}s`
 
   useEffect(() => {
@@ -2997,52 +2749,67 @@ const DelegationBubble: React.FC<{
   }, [hasConversation, isExpanded, isRunning])
 
   return (
-    <div ref={containerRef} className={cn("rounded-lg border overflow-hidden", statusColor)}>
+    <div
+      ref={containerRef}
+      className={cn(desktopDelegationBubbleSurface.containerBaseClassName, statusClasses.containerClassName)}
+    >
       {/* Single-line header - agent name leads, then status, duration, subtitle */}
       <div
         className={cn(
-          "flex min-w-0 items-center gap-1.5 px-2 py-1 cursor-pointer hover:opacity-90 transition-opacity",
-          isExpanded && "border-b",
-          headerColor
+          desktopDelegationBubbleSurface.headerBaseClassName,
+          isExpanded && desktopDelegationBubbleSurface.headerExpandedClassName,
+          statusClasses.headerClassName,
         )}
         onClick={handleHeaderClick}
       >
-        <Bot className={cn("h-3 w-3 shrink-0", iconColor)} />
-        <span className={cn("shrink-0 truncate text-[11px] font-medium", textColor)}>
+        <Bot className={cn(desktopDelegationBubbleSurface.statusIconClassName, statusClasses.iconClassName)} />
+        <span className={cn(desktopDelegationBubbleSurface.agentNameClassName, statusClasses.textClassName)}>
           {delegation.agentName}
         </span>
         {isRunning ? (
-          <Loader2 className={cn("h-2.5 w-2.5 shrink-0 animate-spin", iconColor)} aria-hidden="true" />
+          <Loader2
+            className={cn(desktopDelegationBubbleSurface.statusSpinnerClassName, statusClasses.iconClassName)}
+            aria-hidden="true"
+          />
         ) : isCompleted ? (
-          <Check className={cn("h-2.5 w-2.5 shrink-0", iconColor)} aria-hidden="true" />
+          <Check
+            className={cn(desktopDelegationBubbleSurface.statusIconClassName, statusClasses.iconClassName)}
+            aria-hidden="true"
+          />
         ) : isFailed ? (
-          <XCircle className={cn("h-2.5 w-2.5 shrink-0", iconColor)} aria-hidden="true" />
+          <XCircle
+            className={cn(desktopDelegationBubbleSurface.statusIconClassName, statusClasses.iconClassName)}
+            aria-hidden="true"
+          />
         ) : (
-          <OctagonX className={cn("h-2.5 w-2.5 shrink-0", iconColor)} aria-hidden="true" />
+          <OctagonX
+            className={cn(desktopDelegationBubbleSurface.statusIconClassName, statusClasses.iconClassName)}
+            aria-hidden="true"
+          />
         )}
-        <span className={cn("shrink-0 text-[10px]", mutedTextColor)}>
+        <span className={cn(desktopDelegationBubbleSurface.statusMetaClassName, statusClasses.mutedTextClassName)}>
           {statusLabel} · {durationLabel}
         </span>
         {subtitle && (
-          <span className="min-w-0 flex-1 truncate text-[10px] text-gray-600 dark:text-gray-400">
+          <span className={desktopDelegationBubbleSurface.subtitleClassName}>
             {subtitle}
           </span>
         )}
-        {hasConversation && (
-          <span className="shrink-0 text-[10px] text-gray-500 dark:text-gray-400">
-            {delegation.conversation!.length}m
+        {messageCount > 0 && (
+          <span className={desktopDelegationBubbleSurface.messageCountClassName}>
+            {formatChatRuntimeDelegationMessageCount(messageCount)}
           </span>
         )}
         {isExpanded ? (
-          <ChevronUp className="h-3 w-3 shrink-0 text-gray-400" />
+          <ChevronUp className={desktopDelegationBubbleSurface.toggleIconClassName} />
         ) : (
-          <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" />
+          <ChevronDown className={desktopDelegationBubbleSurface.toggleIconClassName} />
         )}
       </div>
 
       {/* Content - only shown when expanded */}
       {isExpanded && (
-        <div className="px-2 py-2 space-y-2">
+        <div className={desktopDelegationBubbleSurface.contentClassName}>
           <DelegationInfoRow content={delegation.task} tone="muted" />
 
           {delegation.progressMessage && (
@@ -3072,18 +2839,27 @@ const DelegationBubble: React.FC<{
           )}
 
           {(hasConversation || onOpenDetails || sourceLabel || trackingLabel) && (
-            <div className={cn("flex items-center justify-between gap-1.5 border-t border-black/5 pt-1.5 dark:border-white/10", isCompact && "flex-col items-stretch")}>
-              <span className={cn("text-[10px] truncate", mutedTextColor)}>
+            <div className={cn(
+              desktopDelegationBubbleSurface.footerClassName,
+              isCompact && desktopDelegationBubbleSurface.footerCompactClassName,
+            )}>
+              <span className={cn(
+                desktopDelegationBubbleSurface.footerMetaClassName,
+                statusClasses.mutedTextClassName,
+              )}>
                 {[sourceLabel, trackingLabel].filter(Boolean).join(" · ")}
               </span>
-              <div className={cn("flex items-center gap-1.5", isCompact && "w-full flex-col items-stretch")}>
+              <div className={cn(
+                desktopDelegationBubbleSurface.footerActionsClassName,
+                isCompact && desktopDelegationBubbleSurface.footerActionsCompactClassName,
+              )}>
                 {hasConversation && !isConversationOpen && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       setIsConversationOpen(true)
                     }}
-                    className="inline-flex h-7 items-center justify-center rounded-md border border-purple-200/80 px-2 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
+                    className={desktopDelegationBubbleSurface.transcriptButtonClassName}
                   >
                     Transcript
                   </button>
@@ -3094,9 +2870,9 @@ const DelegationBubble: React.FC<{
                       e.stopPropagation()
                       onOpenDetails(delegation.runId)
                     }}
-                    className="inline-flex h-7 items-center justify-center rounded-md border border-border px-2 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"
+                    className={desktopDelegationBubbleSurface.detailsButtonClassName}
                   >
-                    Details
+                    {desktopRuntimeCopy.delegation.detailActionLabel}
                   </button>
                 )}
               </div>
@@ -3109,7 +2885,7 @@ const DelegationBubble: React.FC<{
 }
 
 const DelegationSummaryStrip: React.FC<{
-  entries: DelegationSummaryEntry[]
+  entries: AgentDelegationSummaryEntry[]
   maxItems: number
   onOpenDetails: (runId: string) => void
   isCollapsed?: boolean
@@ -3132,7 +2908,9 @@ const DelegationSummaryStrip: React.FC<{
           onToggleCollapsed?.()
         }}
         className="mb-1 flex w-full flex-wrap items-center gap-1 rounded-sm text-left text-[9px] text-muted-foreground transition-colors hover:bg-muted/30"
-        aria-label={isCollapsed ? "Expand delegations" : "Collapse delegations"}
+        aria-label={isCollapsed
+          ? desktopRuntimeCopy.delegation.expandSummaryLabel
+          : desktopRuntimeCopy.delegation.collapseSummaryLabel}
         aria-expanded={!isCollapsed}
       >
         {isCollapsed ? (
@@ -3142,14 +2920,14 @@ const DelegationSummaryStrip: React.FC<{
         )}
         <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
           <Bot className="h-2.5 w-2.5" />
-          Delegations
+          {desktopRuntimeCopy.delegation.summaryTitle}
         </span>
         <Badge variant="secondary" className="h-4 px-1 text-[9px]">
           {entries.length}
         </Badge>
         {activeCount > 0 && (
           <Badge variant="outline" className="h-4 border-blue-200 px-1 text-[9px] text-blue-700 dark:border-blue-800 dark:text-blue-300">
-            {activeCount} live
+            {activeCount} {desktopRuntimeCopy.delegation.liveLabel}
           </Badge>
         )}
         {isCollapsed && hiddenCount > 0 && (
@@ -3189,7 +2967,9 @@ const DelegationSummaryStrip: React.FC<{
               </span>
             )}
             {entry.messageCount > 0 && (
-              <span className="shrink-0 text-[9px] text-muted-foreground/80">{entry.messageCount}m</span>
+              <span className="shrink-0 text-[9px] text-muted-foreground/80">
+                {formatChatRuntimeDelegationMessageCount(entry.messageCount)}
+              </span>
             )}
           </button>
         ))}
@@ -3207,13 +2987,14 @@ const DelegationDetailsDialog: React.FC<{
     return null
   }
 
-  const hasConversation = (delegation.conversation?.length ?? 0) > 0
   const {
     trackingLabel,
     sourceLabel,
     statusLabel,
     subtitle,
+    messageCount,
   } = getAgentDelegationPresentation(delegation, 220)
+  const hasConversation = messageCount > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -3231,21 +3012,23 @@ const DelegationDetailsDialog: React.FC<{
             <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px]">
               <span>{sourceLabel}</span>
               {trackingLabel && <span>{trackingLabel}</span>}
-              {hasConversation && <span>{delegation.conversation!.length} messages</span>}
+              {hasConversation && (
+                <span>{formatChatRuntimeDelegationMessagesLabel(messageCount)}</span>
+              )}
             </span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5 overflow-y-auto pr-0.5">
           <DelegationInfoRow
-            label="Task"
+            label={desktopRuntimeCopy.delegation.taskRoleLabel}
             content={delegation.task}
             tone="muted"
           />
 
           {delegation.progressMessage && (
             <DelegationInfoRow
-              label="Update"
+              label={desktopRuntimeCopy.delegation.updateRoleLabel}
               content={delegation.progressMessage}
               tone="default"
               italic
@@ -3254,7 +3037,7 @@ const DelegationDetailsDialog: React.FC<{
 
           {delegation.resultSummary && (
             <DelegationInfoRow
-              label="Result"
+              label={desktopRuntimeCopy.delegation.resultRoleLabel}
               content={delegation.resultSummary}
               tone="success"
               formatJson
@@ -3263,7 +3046,7 @@ const DelegationDetailsDialog: React.FC<{
 
           {delegation.error && (
             <DelegationInfoRow
-              label="Error"
+              label={desktopRuntimeCopy.delegation.errorRoleLabel}
               content={delegation.error}
               tone="error"
             />
@@ -3299,40 +3082,40 @@ const StreamingContentBubble: React.FC<{
 
   if (streamingContent.isPlaceholder) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-blue-300/70 bg-blue-50/50 px-2.5 py-1.5 text-xs text-blue-800 dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-200">
-        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-blue-600 dark:text-blue-400" aria-hidden="true" />
-        <span className="min-w-0 truncate">{streamingContent.text}</span>
+      <div className={desktopStreamingContentSurface.placeholderClassName}>
+        <Loader2 className={desktopStreamingContentSurface.placeholderSpinnerClassName} aria-hidden="true" />
+        <span className={desktopStreamingContentSurface.placeholderTextClassName}>{streamingContent.text}</span>
       </div>
     )
   }
 
   const contentNode = streamingContent.isStreaming
     ? (
-      <div className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      <div className={desktopStreamingContentSurface.liveTextClassName}>
         {streamingContent.text}
       </div>
     )
     : <MarkdownRenderer content={streamingContent.text} />
 
   return (
-    <div className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 overflow-hidden">
+    <div className={desktopStreamingContentSurface.containerClassName}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-blue-100/50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800">
-        <Activity className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-        <span className="text-xs font-medium text-blue-800 dark:text-blue-200">
-          {streamingContent.isStreaming ? "Generating response..." : "Response"}
+      <div className={desktopStreamingContentSurface.headerClassName}>
+        <Activity className={desktopStreamingContentSurface.iconClassName} />
+        <span className={desktopStreamingContentSurface.titleClassName}>
+          {getChatRuntimeStreamingContentTitle(streamingContent.isStreaming)}
         </span>
         {streamingContent.isStreaming && (
-          <Loader2 className="h-3 w-3 text-blue-600 dark:text-blue-400 animate-spin ml-auto" />
+          <Loader2 className={desktopStreamingContentSurface.spinnerClassName} />
         )}
       </div>
 
       {/* Content */}
-      <div className="px-3 py-2">
-        <div className="text-xs text-blue-900 dark:text-blue-100">
+      <div className={desktopStreamingContentSurface.contentClassName}>
+        <div className={desktopStreamingContentSurface.bodyClassName}>
           {contentNode}
           {streamingContent.isStreaming && (
-            <span className="inline-block w-1.5 h-3.5 bg-blue-600 dark:bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />
+            <span className={desktopStreamingContentSurface.caretClassName} />
           )}
         </div>
       </div>
@@ -3475,13 +3258,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     setExpandedItems(prev => {
       // Use prev[itemKey] if it exists (item was explicitly toggled before),
       // otherwise use the default expanded state for this item type
-      const from = itemKey in prev ? prev[itemKey] : defaultExpanded
+      const from = getChatDisplayExpansionState(prev, itemKey, defaultExpanded)
       const to = !from
       logExpand("AgentProgress", "toggle", { itemKey, from, to })
-      return {
-        ...prev,
-        [itemKey]: to,
-      }
+      return setChatDisplayExpansionState(prev, itemKey, to)
     })
   }
 
@@ -3753,7 +3533,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             message.role === "assistant" &&
             !message.toolCalls?.length &&
             !message.toolResults?.length &&
-            message.content.trim().length > 0
+            hasVisibleChatMessageContent(message)
           ) {
             latestAssistantHistoryMessage = message
             break
@@ -3785,7 +3565,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (!isVerificationStep) {
             nextMessages.push({
               role: "assistant",
-              content: currentThinkingStep.description || "Agent is thinking...",
+              content: formatChatRuntimeActivityContent(currentThinkingStep),
               isComplete: false,
               timestamp: currentThinkingStep.timestamp,
               isThinking: true,
@@ -3811,7 +3591,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             if (!isVerificationStep) {
               nextMessages.push({
                 role: "assistant",
-                content: step.description || "Agent is thinking...",
+                content: formatChatRuntimeActivityContent(step),
                 isComplete: false,
                 timestamp: step.timestamp ?? fallbackBaseTimestamp + index,
                 isThinking: true,
@@ -3910,10 +3690,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const eligibleIndexes = copies
       .map((m, i) => ({ m, i }))
       .filter(({ m }) =>
-        m.role === "assistant" &&
+        isChatMessageConversationContent(m) &&
         !m.toolCalls?.length &&
         !m.toolResults?.length &&
-        m.content.trim().length > 0,
+        hasVisibleChatMessageContent(m),
       )
       .map(({ i }) => i)
 
@@ -3980,6 +3760,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const turnDurations = useMemo(
     () => computeTurnDurations(enrichedMessages, isComplete, turnNow),
     [enrichedMessages, isComplete, turnNow],
+  )
+  const totalTurnDurationBadgeState = useMemo(
+    () => getChatRuntimeTurnDurationBadgeState({
+      scope: "total",
+      durationMs: turnDurations.totalMs,
+      isLive: turnDurations.hasLive,
+    }),
+    [turnDurations.hasLive, turnDurations.totalMs],
   )
   const primaryAgentLabel = useMemo(
     () => acpSessionInfo?.agentTitle ?? acpSessionInfo?.agentName ?? profileName ?? "Agent",
@@ -4049,15 +3837,21 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         // the eventual result timestamp. Otherwise an expanded pending tool row
         // collapses when its result arrives because the key changes.
         const toolExecId = generateToolExecutionId(message.toolCalls, message.timestamp)
-        const toolCallNames = message.toolCalls.map((call) => call.name)
-        const visibleToolCalls = message.toolCalls
-          .map((call, index) => ({ call, result: results[index] }))
-          .filter(({ call }) => !isCompletionControlTool(call.name))
-        const visibleToolNames = visibleToolCalls.map(({ call }) => call.name)
-        const hasCompletionTool = visibleToolCalls.length !== message.toolCalls.length
+        const messageDisplayState = getChatMessageDisplayState(
+          {
+            ...message,
+            toolCalls: message.toolCalls,
+            toolResults: results,
+            displayContent: message.responseEvent?.text,
+          },
+          { includeResultOnlyFallback: false },
+        )
+        const visibleToolEntries = messageDisplayState.visibleToolEntries
+        const visibleToolNames = visibleToolEntries.map(({ toolCall }) => toolCall.name)
+        const hasCompletionTool = visibleToolEntries.length !== message.toolCalls.length
         const suppressThought = hasCompletionTool && !!effectiveUserResponse
 
-        if (visibleToolCalls.length > 0) {
+        if (visibleToolEntries.length > 0) {
           const matchingStep = toolCallSteps.find(
             (step) => step.title?.includes(visibleToolNames[0]) || visibleToolNames.some((name) => step.title?.includes(name)),
           )
@@ -4069,10 +3863,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               thought: suppressThought ? "" : (message.content || ""),
               timestamp: message.timestamp,
               isComplete: message.isComplete,
-              calls: visibleToolCalls.map(({ call }) => call),
+              calls: visibleToolEntries.map(({ toolCall }) => toolCall),
               // Preserve per-call result alignment after hiding completion-control tools.
               // Some visible calls may still be pending while later visible calls already have results.
-              results: visibleToolCalls.map(({ result }) => result),
+              results: visibleToolEntries.map(({ result }) => result),
               executionStats: matchingStep?.executionStats ? {
                 durationMs: matchingStep.executionStats.durationMs,
                 totalTokens: matchingStep.executionStats.totalTokens,
@@ -4080,7 +3874,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               } : undefined,
             },
           })
-        } else if (message.content.trim().length > 0) {
+        } else if (messageDisplayState.shouldRenderSurface) {
           // All tool calls were completion-control (respond_to_user / mark_work_complete).
           // Always render the assistant message content so previous agent responses
           // are visible inline in the conversation timeline.
@@ -4142,7 +3936,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           message.role === "assistant" &&
           !message.toolCalls?.length &&
           !message.toolResults?.length &&
-          message.content.trim().length > 0
+          hasVisibleChatMessageContent(message)
         ) {
           latestAssistantText = message
           break
@@ -4183,9 +3977,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       const isVerificationStep = activeStep?.title?.toLowerCase().includes("verifying")
 
       if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && !isVerificationStep) {
-        const text = activeStep?.type === "tool_call"
-          ? activeStep.title || "Running tool..."
-          : activeStep?.description || "Thinking..."
+        const text = formatChatRuntimeActivityContent(activeStep)
 
         items.push({
           kind: "streaming",
@@ -4271,21 +4063,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (!call) continue
           callCount += 1
           const result = results[k] ?? null
-          const execPreview = getExecuteCommandResultPreview(
+          previewLines.push(getToolActivityToolCallPreview(
             { name: call.name, arguments: call.arguments ?? {} },
             result,
-          )
-          if (execPreview) {
-            previewLines.push(execPreview)
-            continue
-          }
-          const namePreview = getToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
-          if (namePreview) previewLines.push(namePreview)
+          ))
         }
       }
       // Prefix the first child ID so the group stays stable as the run grows
       // without sharing expansion state with any child row.
-      const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`
+      const groupId = getToolActivityGroupStateKey(runItems[0]?.id ?? runStart)
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
@@ -4318,53 +4104,28 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     conversationHistoryTotalCount - loadedConversationHistoryCount,
   )
 
-  const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
-    const firstChildId = item.data.items[0]?.id
-    return !!firstChildId && expandedItems[firstChildId] === true
+  const getToolActivityGroupExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
+    return getChatDisplayGroupedExpansionState({
+      groupState: expandedItems,
+      groupKey: item.id,
+      inheritedKey: item.data.items[0]?.id ?? null,
+    })
   }, [expandedItems])
 
   useEffect(() => {
-    setExpandedItems(prev => {
-      let next = prev
-      for (const item of displayItems) {
-        if (item.kind !== "tool_activity_group" || item.id in prev) continue
-        const firstChildId = item.data.items[0]?.id
-        if (!firstChildId || prev[firstChildId] !== true) continue
-        if (next === prev) next = { ...prev }
-        next[item.id] = true
-      }
-      return next
-    })
+    setExpandedItems(prev => applyChatDisplayGroupedExpansionInheritance({
+      groupState: prev,
+      groups: displayItems
+        .filter((item): item is Extract<DisplayItem, { kind: "tool_activity_group" }> => item.kind === "tool_activity_group")
+        .map((item) => ({
+          groupKey: item.id,
+          inheritedKey: item.data.items[0]?.id ?? null,
+        })),
+    }))
   }, [displayItems])
 
-  const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
-    const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
-
-    for (const step of progress.steps) {
-      if (!step.delegation) continue
-
-      const timestamp = step.timestamp ?? getAgentDelegationActivityTimestamp(step.delegation)
-      const existing = latestByRunId.get(step.delegation.runId)
-      if (!existing || timestamp >= existing.timestamp) {
-        latestByRunId.set(step.delegation.runId, {
-          delegation: step.delegation,
-          timestamp,
-        })
-      }
-    }
-
-    return Array.from(latestByRunId.values())
-      .map(({ delegation, timestamp }) => ({
-        delegation,
-        statusLabel: formatAgentDelegationDisplayStatus(delegation.status),
-        subtitle: getAgentDelegationSubtitle(delegation, 140),
-        sourceLabel: getAgentDelegationSourceLabel(delegation),
-        trackingLabel: getAgentDelegationTrackingLabel(delegation),
-        messageCount: delegation.conversation?.length ?? 0,
-        isActive: isDelegationActiveStatus(delegation.status),
-        activityTimestamp: timestamp,
-      }))
-      .sort((a, b) => b.activityTimestamp - a.activityTimestamp)
+  const delegationSummaryEntries = useMemo<AgentDelegationSummaryEntry[]>(() => {
+    return getAgentDelegationSummaryEntries(progress.steps, { maxSubtitleLength: 140 })
   }, [progress.steps])
 
   const selectedDelegation = useMemo(
@@ -4385,11 +4146,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const delegationSummaryMaxItems = variant === "tile" && !isFocused && !isExpanded ? 1 : 3
 
   const lastAssistantDisplayIndex = useMemo(() => {
-    for (let i = visibleDisplayItems.length - 1; i >= 0; i--) {
-      const item = visibleDisplayItems[i]
-      if (item.kind === "message" && item.data.role === "assistant") return i
-    }
-    return -1
+    return findLastChatMessageConversationContentIndex<DisplayItem>(
+      visibleDisplayItems,
+      (item) => item.kind === "message" ? item.data : null,
+      (item) => item.kind === "message" && hasVisibleChatMessageContent(item.data),
+    )
   }, [visibleDisplayItems])
 
   // Reset auto-scroll tracking refs when session changes
@@ -4722,7 +4483,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   "app-no-drag-region h-6 min-w-0 flex-1 rounded border border-input bg-background px-1.5 font-medium text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring",
                   isCollapsed ? "text-xs" : "text-sm",
                 )}
-                aria-label="Rename conversation title"
+                aria-label={desktopRuntimeCopy.header.renameConversationTitleLabel}
               />
             ) : (
               <span
@@ -4739,7 +4500,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   startTitleEditing(tileTitle)
                 }}
                 className={cn("truncate font-medium min-w-0 cursor-text", isCollapsed ? "text-xs" : "text-sm")}
-                title={conversationId ? "Rename conversation title" : tileTitle}
+                title={conversationId ? desktopRuntimeCopy.header.renameConversationTitleLabel : tileTitle}
               >
                 {tileTitle}
               </span>
@@ -4750,7 +4511,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
             {canCollapseTile && (
-              <Button variant="ghost" size="sm-icon" className="shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
+              <Button
+                variant="ghost"
+                size="sm-icon"
+                className="shrink-0"
+                onClick={handleToggleCollapse}
+                title={isCollapsed
+                  ? desktopRuntimeCopy.header.expandPanelTitle
+                  : desktopRuntimeCopy.header.collapsePanelTitle}
+              >
                 {isCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
               </Button>
             )}
@@ -4764,8 +4533,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   e.stopPropagation()
                   togglePinSession(conversationId)
                 }}
-                title={isPinned ? "Unpin session" : "Pin session"}
-                aria-label={isPinned ? "Unpin session" : "Pin session"}
+                title={getChatRuntimePinAccessibilityLabel(isPinned)}
+                aria-label={getChatRuntimePinAccessibilityLabel(isPinned)}
                 aria-pressed={isPinned}
               >
                 <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current text-foreground")} />
@@ -4773,11 +4542,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
             {/* Combined close button: stops agent if running, dismisses if complete */}
             {!isComplete ? (
-              <Button variant="ghost" size="sm-icon" className="shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title="Stop agent">
+              <Button variant="ghost" size="sm-icon" className="shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title={desktopRuntimeCopy.killSwitch.sessionButtonTitle}>
                 <OctagonX className="h-3.5 w-3.5" />
               </Button>
             ) : onDismiss ? (
-              <Button variant="ghost" size="sm-icon" className="shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title="Dismiss">
+              <Button variant="ghost" size="sm-icon" className="shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title={desktopRuntimeCopy.killSwitch.dismissButtonTitle}>
                 <X className="h-3.5 w-3.5" />
               </Button>
             ) : null}
@@ -4839,13 +4608,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 {visibleDisplayItems.length > 0 ? (
                   <div ref={scrollContentRef} className="space-y-1 p-2">
                     {displayItems.length > visibleDisplayItems.length && (
-                      <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                        Showing latest {visibleDisplayItems.length} updates
+                      <div className={desktopRuntimeSurface.visibleUpdatesSummaryClassName}>
+                        {formatChatRuntimeVisibleUpdatesSummary(visibleDisplayItems.length)}
                       </div>
                     )}
                     {hiddenConversationHistoryCount > 0 && (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
-                        <span>Showing latest {loadedConversationHistoryCount} of {conversationHistoryTotalCount} messages</span>
+                      <div className={desktopRuntimeSurface.conversationHistoryBanner.containerClassName}>
+                        <span>{formatChatRuntimeConversationHistorySummary(loadedConversationHistoryCount, conversationHistoryTotalCount)}</span>
                         {onLoadEarlierConversationHistory && (
                           <button
                             type="button"
@@ -4855,9 +4624,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                               e.stopPropagation()
                               onLoadEarlierConversationHistory()
                             }}
-                            className="rounded px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                            className={desktopRuntimeSurface.conversationHistoryBanner.loadButtonClassName}
                           >
-                            {isLoadingEarlierConversationHistory ? "Loading…" : `Load ${Math.min(hiddenConversationHistoryCount, CONVERSATION_HISTORY_PAGE_SIZE)} earlier`}
+                            {formatChatRuntimeLoadEarlierLabel(
+                              hiddenConversationHistoryCount,
+                              CONVERSATION_HISTORY_PAGE_SIZE,
+                              isLoadingEarlierConversationHistory,
+                            )}
                           </button>
                         )}
                       </div>
@@ -4866,11 +4639,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       const itemKey = item.id
                       // Final assistant message should be expanded by default when agent is complete
                       // Tool executions should be collapsed by default to reduce visual clutter
-                      // unless user has explicitly toggled them (itemKey exists in expandedItems)
+                      // unless the user has explicitly toggled them.
                       const isFinalAssistantMessage = item.kind === "message" && index === lastAssistantDisplayIndex && isComplete
-                      const isExpanded = itemKey in expandedItems
-                        ? expandedItems[itemKey]
-                        : isFinalAssistantMessage // Only final assistant message expanded by default
+                      const isExpanded = getChatDisplayExpansionState(
+                        expandedItems,
+                        itemKey,
+                        isFinalAssistantMessage,
+                      )
                       const isLastAssistant = item.kind === "message" && item.data.role === "assistant" && index === lastAssistantDisplayIndex
 
                       if (item.kind === "message") {
@@ -4923,7 +4698,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       } else if (item.kind === "streaming") {
                         return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
                       } else if (item.kind === "delegation") {
-                        const delegationExpanded = expandedItems[itemKey] ?? false
+                        const delegationExpanded = getChatDisplayExpansionState(expandedItems, itemKey)
                         return (
                           <DelegationBubble
                             key={itemKey}
@@ -4933,9 +4708,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           />
                         )
                       } else if (item.kind === "tool_activity_group") {
-                        const groupExpanded = itemKey in expandedItems
-                          ? expandedItems[itemKey]
-                          : getToolActivityGroupDefaultExpanded(item)
+                        const groupExpanded = getToolActivityGroupExpanded(item)
                         return (
                           <ToolActivityGroupBubble
                             key={itemKey}
@@ -4944,7 +4717,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             onToggleExpand={() => toggleItemExpansion(itemKey, groupExpanded)}
                             renderItem={(child, childIdx) => {
                               const childKey = child.id || `group-child-${childIdx}`
-                              const childExpanded = expandedItems[childKey] ?? false
+                              const childExpanded = getChatDisplayExpansionState(expandedItems, childKey)
                               if (child.kind === "assistant_with_tools") {
                                 return (
                                   <AssistantWithToolsBubble
@@ -4981,7 +4754,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 ) : (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/70" aria-hidden="true" />
-                    <span className="sr-only">Loading agent activity</span>
+                    <span className="sr-only">{desktopRuntimeCopy.activity.loadingAgentActivityAccessibilityLabel}</span>
                   </div>
                 )}
               </div>
@@ -4994,12 +4767,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     setIsUserScrolling(false)
                     scrollToBottom("smooth")
                   }}
-                  className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background"
-                  title="Scroll to bottom"
-                  aria-label="Scroll to bottom"
+                  className={desktopScrollToBottomSurface.buttonClassName}
+                  title={desktopRuntimeCopy.scrollToBottom.accessibilityLabel}
+                  aria-label={desktopRuntimeCopy.scrollToBottom.accessibilityLabel}
                 >
-                  <ChevronDown className="h-3 w-3" />
-                  Latest
+                  <ChevronDown className={desktopScrollToBottomSurface.iconClassName} />
+                  {desktopRuntimeCopy.scrollToBottom.latestLabel}
                 </button>
               )}
             </div>
@@ -5066,16 +4839,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     </div>
                   )}
                 </div>
-                {turnDurations.totalMs > 0 && (
+                {totalTurnDurationBadgeState.canShow && (
                   <span
                     className={cn(
-                      "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
-                      turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+                      desktopRuntimeSurface.turnDurationBadge.compactClassName,
+                      totalTurnDurationBadgeState.isLive && desktopRuntimeSurface.turnDurationBadge.liveClassName,
                     )}
-                    title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+                    title={totalTurnDurationBadgeState.title ?? undefined}
                   >
-                    <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                    {formatTurnDuration(turnDurations.totalMs)}
+                    <Clock className={desktopRuntimeSurface.turnDurationBadge.compactIconClassName} aria-hidden="true" />
+                    {totalTurnDurationBadgeState.label}
                   </span>
                 )}
                 {!isComplete && (
@@ -5116,19 +4889,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
         {/* Kill Switch Confirmation Dialog */}
         {showKillConfirmation && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-background border border-border rounded-lg p-4 max-w-sm mx-4 shadow-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <h3 className="text-sm font-medium">Stop Agent Execution</h3>
+          <div className={desktopKillSwitchDialogSurface.overlayClassName}>
+            <div className={desktopKillSwitchDialogSurface.cardClassName}>
+              <div className={desktopKillSwitchDialogSurface.headerClassName}>
+                <AlertTriangle className={desktopKillSwitchDialogSurface.iconClassName} />
+                <h3 className={desktopKillSwitchDialogSurface.titleClassName}>
+                  {desktopRuntimeCopy.killSwitch.sessionTitle}
+                </h3>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                Are you sure you want to stop this session?
+              <p className={desktopKillSwitchDialogSurface.messageClassName}>
+                {desktopRuntimeCopy.killSwitch.sessionMessage}
               </p>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={handleCancelKill} disabled={isKilling}>Cancel</Button>
+              <div className={desktopKillSwitchDialogSurface.actionsClassName}>
+                <Button variant="outline" size="sm" onClick={handleCancelKill} disabled={isKilling}>
+                  {desktopRuntimeCopy.common.cancel}
+                </Button>
                 <Button variant="destructive" size="sm" onClick={handleKillSwitch} disabled={isKilling}>
-                  {isKilling ? "Stopping..." : "Stop Agent"}
+                  {isKilling
+                    ? desktopRuntimeCopy.killSwitch.sessionPendingActionLabel
+                    : desktopRuntimeCopy.killSwitch.sessionActionLabel}
                 </Button>
               </div>
             </div>
@@ -5198,16 +4977,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </span>
             </div>
           )}
-          {turnDurations.totalMs > 0 && (
+          {totalTurnDurationBadgeState.canShow && (
             <span
               className={cn(
-                "text-xs shrink-0 inline-flex items-center gap-0.5 tabular-nums text-muted-foreground",
-                turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+                desktopRuntimeSurface.turnDurationBadge.fullClassName,
+                totalTurnDurationBadgeState.isLive && desktopRuntimeSurface.turnDurationBadge.liveClassName,
               )}
-              title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+              title={totalTurnDurationBadgeState.title ?? undefined}
             >
-              <Clock className="h-3 w-3" aria-hidden="true" />
-              {formatTurnDuration(turnDurations.totalMs)}
+              <Clock className={desktopRuntimeSurface.turnDurationBadge.fullIconClassName} aria-hidden="true" />
+              {totalTurnDurationBadgeState.label}
             </span>
           )}
           {!isComplete && (
@@ -5222,7 +5001,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               className="h-6 w-6 p-0 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
               onClick={handleKillConfirmation}
               disabled={isKilling}
-              title="Stop agent execution"
+              title={desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle}
             >
               <OctagonX className="h-3 w-3" />
             </Button>
@@ -5232,7 +5011,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               size="sm"
               className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={handleClose}
-              title="Close"
+              title={desktopRuntimeCopy.killSwitch.closeButtonTitle}
             >
               <X className="h-3 w-3" />
             </Button>
@@ -5292,13 +5071,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           {visibleDisplayItems.length > 0 ? (
             <div ref={scrollContentRef} className="space-y-1 p-2">
               {displayItems.length > visibleDisplayItems.length && (
-                <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                  Showing latest {visibleDisplayItems.length} updates
+                <div className={desktopRuntimeSurface.visibleUpdatesSummaryClassName}>
+                  {formatChatRuntimeVisibleUpdatesSummary(visibleDisplayItems.length)}
                 </div>
               )}
               {hiddenConversationHistoryCount > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
-                  <span>Showing latest {loadedConversationHistoryCount} of {conversationHistoryTotalCount} messages</span>
+                <div className={desktopRuntimeSurface.conversationHistoryBanner.containerClassName}>
+                  <span>{formatChatRuntimeConversationHistorySummary(loadedConversationHistoryCount, conversationHistoryTotalCount)}</span>
                   {onLoadEarlierConversationHistory && (
                     <button
                       type="button"
@@ -5308,9 +5087,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         e.stopPropagation()
                         onLoadEarlierConversationHistory()
                       }}
-                      className="rounded px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      className={desktopRuntimeSurface.conversationHistoryBanner.loadButtonClassName}
                     >
-                      {isLoadingEarlierConversationHistory ? "Loading…" : `Load ${Math.min(hiddenConversationHistoryCount, CONVERSATION_HISTORY_PAGE_SIZE)} earlier`}
+                      {formatChatRuntimeLoadEarlierLabel(
+                        hiddenConversationHistoryCount,
+                        CONVERSATION_HISTORY_PAGE_SIZE,
+                        isLoadingEarlierConversationHistory,
+                      )}
                     </button>
                   )}
                 </div>
@@ -5324,11 +5107,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
                 // Final assistant message should be expanded by default when agent is complete
                 // Tool executions should be collapsed by default to reduce visual clutter
-                // unless user has explicitly toggled it (itemKey exists in expandedItems)
+                // unless the user has explicitly toggled it.
                 const isFinalAssistantMessage = item.kind === "message" && index === lastAssistantDisplayIndex && isComplete
-                const isExpanded = itemKey in expandedItems
-                  ? expandedItems[itemKey]
-                  : isFinalAssistantMessage // Only final assistant message expanded by default
+                const isExpanded = getChatDisplayExpansionState(
+                  expandedItems,
+                  itemKey,
+                  isFinalAssistantMessage,
+                )
 
                 if (item.kind === "message") {
                   const isLastAssistant = index === lastAssistantDisplayIndex
@@ -5391,7 +5176,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "delegation") {
-                  const delegationExpanded = expandedItems[itemKey] ?? false
+                  const delegationExpanded = getChatDisplayExpansionState(expandedItems, itemKey)
                   return (
                     <DelegationBubble
                       key={itemKey}
@@ -5402,9 +5187,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "tool_activity_group") {
-                  const groupExpanded = itemKey in expandedItems
-                    ? expandedItems[itemKey]
-                    : getToolActivityGroupDefaultExpanded(item)
+                  const groupExpanded = getToolActivityGroupExpanded(item)
                   return (
                     <ToolActivityGroupBubble
                       key={itemKey}
@@ -5413,7 +5196,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       onToggleExpand={() => toggleItemExpansion(itemKey, groupExpanded)}
                       renderItem={(child, childIdx) => {
                         const childKey = child.id || `group-child-${childIdx}`
-                        const childExpanded = expandedItems[childKey] ?? false
+                        const childExpanded = getChatDisplayExpansionState(expandedItems, childKey)
                         if (child.kind === "assistant_with_tools") {
                           return (
                             <AssistantWithToolsBubble
@@ -5450,7 +5233,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           ) : (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/70" aria-hidden="true" />
-              <span className="sr-only">Loading agent activity</span>
+              <span className="sr-only">{desktopRuntimeCopy.activity.loadingAgentActivityAccessibilityLabel}</span>
             </div>
           )}
         </div>
@@ -5524,23 +5307,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       {/* Kill Switch Confirmation Dialog */}
       {showKillConfirmation && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-background border border-border rounded-lg p-4 max-w-sm mx-4 shadow-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <h3 className="text-sm font-medium">Stop Agent Execution</h3>
+        <div className={desktopKillSwitchDialogSurface.overlayClassName}>
+          <div className={desktopKillSwitchDialogSurface.cardClassName}>
+            <div className={desktopKillSwitchDialogSurface.headerClassName}>
+              <AlertTriangle className={desktopKillSwitchDialogSurface.iconClassName} />
+              <h3 className={desktopKillSwitchDialogSurface.titleClassName}>
+                {desktopRuntimeCopy.killSwitch.sessionTitle}
+              </h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Are you sure you want to stop this session? Other sessions will continue running.
+            <p className={desktopKillSwitchDialogSurface.messageClassName}>
+              {desktopRuntimeCopy.killSwitch.sessionMessageWithOtherSessions}
             </p>
-            <div className="flex gap-2 justify-end">
+            <div className={desktopKillSwitchDialogSurface.actionsClassName}>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCancelKill}
                 disabled={isKilling}
               >
-                Cancel
+                {desktopRuntimeCopy.common.cancel}
               </Button>
               <Button
                 variant="destructive"
@@ -5548,7 +5333,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 onClick={handleKillSwitch}
                 disabled={isKilling}
               >
-                {isKilling ? "Stopping..." : "Stop Agent"}
+                {isKilling
+                  ? desktopRuntimeCopy.killSwitch.sessionPendingActionLabel
+                  : desktopRuntimeCopy.killSwitch.sessionActionLabel}
               </Button>
             </div>
           </div>

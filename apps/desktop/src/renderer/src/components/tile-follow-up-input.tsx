@@ -11,10 +11,17 @@ import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
+  getChatComposerCopyState,
+  getChatComposerDesktopSurfaceState,
+  getChatRuntimeCopyState,
   getFollowUpInputPresentation,
   type FollowUpInputPresentation,
 } from "@dotagents/shared/session-presentation"
-import { formatChatImageAttachmentErrorMessage } from "@dotagents/shared/conversation-media-assets"
+import {
+  formatChatImageAttachmentErrorMessage,
+  getChatImageAttachmentCopyState,
+  getChatImageAttachmentDesktopSurfaceState,
+} from "@dotagents/shared/conversation-media-assets"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,
@@ -24,6 +31,12 @@ import {
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
 import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "@dotagents/shared/mcp-api"
+
+const desktopComposerSurface = getChatComposerDesktopSurfaceState().followUp
+const desktopComposerCopy = getChatComposerCopyState()
+const desktopRuntimeCopy = getChatRuntimeCopyState()
+const desktopImageAttachmentSurface = getChatImageAttachmentDesktopSurfaceState().composerPreview
+const desktopImageAttachmentCopy = getChatImageAttachmentCopyState()
 
 interface TileFollowUpInputProps {
   conversationId?: string
@@ -328,7 +341,7 @@ export function TileFollowUpInput({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5",
+        desktopComposerSurface.tileFormClassName,
         className
       )}
       onClick={(e) => e.stopPropagation()}
@@ -337,28 +350,28 @@ export function TileFollowUpInput({
       {/* agentName was here but is no longer needed */}
 
       {imageAttachments.length > 0 && (
-        <div className="flex w-full gap-1.5 overflow-x-auto pb-1">
+        <div className={desktopImageAttachmentSurface.tileRowClassName}>
           {imageAttachments.map((attachment) => (
             <div
               key={attachment.id}
-              className="relative h-12 w-12 shrink-0 overflow-hidden rounded border border-border"
+              className={desktopImageAttachmentSurface.tilePreviewClassName}
             >
-              <img src={attachment.dataUrl} alt={attachment.name} className="h-full w-full object-cover" />
+              <img src={attachment.dataUrl} alt={attachment.name} className={desktopImageAttachmentSurface.imageClassName} />
               <button
                 type="button"
-                className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white"
+                className={desktopImageAttachmentSurface.removeButtonClassName}
                 onClick={() => removeImageAttachment(attachment.id)}
-                title="Remove image"
+                title={desktopImageAttachmentCopy.composerPreview.removeTitle}
               >
-                <X className="h-2.5 w-2.5" />
+                <X className={desktopImageAttachmentSurface.tileRemoveIconClassName} />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex w-full items-end gap-2">
-        <div className="relative flex-1">
+      <div className={desktopComposerSurface.tileInputRowClassName}>
+        <div className={desktopComposerSurface.tileInputWrapperClassName}>
           <textarea
             ref={textareaRef}
             data-composer="true"
@@ -368,11 +381,7 @@ export function TileFollowUpInput({
             onPaste={handlePaste}
             placeholder={inputPresentation.placeholder}
             rows={1}
-            className={cn(
-              "w-full text-sm bg-transparent border-0 outline-none resize-none",
-              "placeholder:text-muted-foreground/60",
-              "focus:ring-0"
-            )}
+            className={desktopComposerSurface.textareaClassName}
             disabled={isDisabled}
           />
           <SlashCommandMenu
@@ -381,7 +390,7 @@ export function TileFollowUpInput({
             isOpen={isSlashMenuOpen}
             onSelect={handleSlashSelect}
             onClose={closeSlashMenu}
-            className="bottom-full left-0 mb-1"
+            className={desktopComposerSurface.slashMenuClassName}
           />
         </div>
         <input
@@ -389,7 +398,7 @@ export function TileFollowUpInput({
           type="file"
           accept="image/*"
           multiple
-          className="hidden"
+          className={desktopComposerSurface.hiddenFileInputClassName}
           onChange={handleImageSelection}
         />
         <PredefinedPromptsMenu
@@ -401,27 +410,27 @@ export function TileFollowUpInput({
           type="button"
           size="sm-icon"
           variant="ghost"
-          className="flex-shrink-0"
+          className={desktopComposerSurface.buttonClassName}
           disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
           onClick={() => fileInputRef.current?.click()}
-          title="Attach image"
+          title={desktopComposerCopy.imageAttachment.accessibilityLabel}
         >
-          <ImagePlus className="h-3.5 w-3.5" />
+          <ImagePlus className={desktopComposerSurface.iconClassName} />
         </Button>
         <Button
           type="submit"
           size="sm-icon"
           variant="ghost"
-          className="flex-shrink-0"
+          className={desktopComposerSurface.buttonClassName}
           disabled={!hasMessageContent || isDisabled}
           title={inputPresentation.submitTitle}
           aria-label={inputPresentation.submitAriaLabel}
         >
           {isInitializingSession ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            <Loader2 className={cn(desktopComposerSurface.iconClassName, "animate-spin")} aria-hidden="true" />
           ) : (
             <Send className={cn(
-              "h-3.5 w-3.5",
+              desktopComposerSurface.iconClassName,
               sendMutation.isPending && "animate-pulse"
             )} aria-hidden="true" />
           )}
@@ -430,16 +439,12 @@ export function TileFollowUpInput({
           type="button"
           size="sm-icon"
           variant="ghost"
-          className={cn(
-            "flex-shrink-0",
-            "hover:bg-red-100 dark:hover:bg-red-900/30",
-            "hover:text-red-600 dark:hover:text-red-400"
-          )}
+          className={desktopComposerSurface.voiceButtonClassName}
           disabled={isVoiceDisabled}
           onClick={handleVoiceClick}
           title={inputPresentation.voiceTitle}
         >
-          <Mic className="h-3.5 w-3.5" />
+          <Mic className={desktopComposerSurface.iconClassName} />
         </Button>
         {/* Kill switch - stop agent button (only show when session is active) */}
         {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
@@ -447,17 +452,13 @@ export function TileFollowUpInput({
           type="button"
           size="sm-icon"
           variant="ghost"
-          className={cn(
-            "flex-shrink-0",
-            "text-red-500 hover:text-red-600",
-            "hover:bg-red-100 dark:hover:bg-red-950/30"
-          )}
+          className={desktopComposerSurface.killSwitchButtonClassName}
           disabled={isStoppingSession}
           onClick={handleStopSession}
-          title="Stop agent execution"
+          title={desktopRuntimeCopy.killSwitch.sessionExecutionButtonTitle}
         >
           <OctagonX className={cn(
-            "h-3.5 w-3.5",
+            desktopComposerSurface.iconClassName,
             isStoppingSession && "animate-pulse"
           )} />
         </Button>

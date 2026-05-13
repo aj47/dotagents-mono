@@ -5,22 +5,26 @@ const agentSelectorSource = readFileSync(new URL("./agent-selector.tsx", import.
 
 describe("agent selector layout", () => {
   it("keeps the compact trigger bounded and readable in dense session chrome", () => {
-    expect(agentSelectorSource).toContain(
-      'className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background shadow-sm overflow-hidden hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"'
-    )
+    expect(agentSelectorSource).toContain("getAgentSelectorCommonCopyState")
+    expect(agentSelectorSource).toContain("getAgentSelectorDesktopSurfaceState")
+    expect(agentSelectorSource).toContain("const selectorCopy = getAgentSelectorCommonCopyState()")
+    expect(agentSelectorSource).toContain("const selectorSurface = getAgentSelectorDesktopSurfaceState()")
+    expect(agentSelectorSource).toContain("className={selectorSurface.triggerClassName}")
     expect(agentSelectorSource).toContain('title={displayName}')
-    expect(agentSelectorSource).toContain('aria-label={`Selected agent: ${displayName}`}')
-    expect(agentSelectorSource).toContain('<Facehash name={displayAgent.id} size={28}')
-    expect(agentSelectorSource).toContain('<Bot className="h-4 w-4 text-muted-foreground" />')
+    expect(agentSelectorSource).toContain("aria-label={formatAgentSelectorSelectedAccessibilityLabel(displayName)}")
+    expect(agentSelectorSource).toContain("size={selectorSurface.triggerAvatarSize}")
+    expect(agentSelectorSource).toContain("<Bot className={selectorSurface.triggerBotIconClassName} />")
   })
 
   it("protects long agent names and descriptions inside the dropdown", () => {
-    expect(agentSelectorSource).toContain(
-      'className="max-h-[300px] w-[min(24rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-y-auto"'
-    )
-    expect(agentSelectorSource).toContain('className="min-w-0 items-center gap-2"')
-    expect(agentSelectorSource).toContain('className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center"')
-    expect(agentSelectorSource).toContain('className="min-w-0 flex-1 truncate text-sm font-medium"')
-    expect(agentSelectorSource).toContain('className={cn("h-3.5 w-3.5 shrink-0"')
+    expect(agentSelectorSource).toContain("className={selectorSurface.contentClassName}")
+    expect(agentSelectorSource).toContain("className={selectorSurface.itemClassName}")
+    expect(agentSelectorSource).toContain("className={selectorSurface.agentItemClassName}")
+    expect(agentSelectorSource).toContain("className={selectorSurface.avatarClassName}")
+    expect(agentSelectorSource).toContain("className={selectorSurface.labelClassName}")
+    expect(agentSelectorSource).toContain("className={cn(selectorSurface.checkIconClassName")
+    expect(agentSelectorSource).toContain("{selectorCopy.defaultAgentLabel}")
+    expect(agentSelectorSource).toContain("{selectorCopy.newAgentLabel}")
+    expect(agentSelectorSource).not.toContain("AGENT_SELECTOR_PRESENTATION")
   })
 })

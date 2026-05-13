@@ -27,13 +27,14 @@ import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import type { PredefinedPrompt } from "@dotagents/shared/api-types"
 import type { LoopConfig } from "@dotagents/shared/types"
 import {
-  PROMPT_LIBRARY_PRESENTATION,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   filterPromptLibraryItemsByQuery,
   formatPromptLibraryTaskRunningToast,
   formatPromptLibraryTaskUnavailableMessage,
+  getPromptLibraryCopyState,
   getPromptLibraryDeletePromptAccessibilityLabel,
+  getPromptLibraryDesktopSurfaceState,
   getPromptLibraryEditPromptAccessibilityLabel,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
@@ -49,6 +50,9 @@ import {
 } from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
+
+const promptCopy = getPromptLibraryCopyState()
+const promptSurface = getPromptLibraryDesktopSurfaceState()
 
 interface PredefinedPromptsMenuProps {
   onSelectPrompt: (content: string) => void
@@ -86,19 +90,13 @@ export function PredefinedPromptsMenu({
     queryFn: () => desktopLoopsClient.getLoops(),
   })
   const availableTasks = loopsQuery.data ?? []
-  const triggerButtonClassName = buttonSize === "default"
-    ? "h-9 w-9"
-    : buttonSize === "sm" || buttonSize === "md-icon"
-      ? "h-7 w-7"
-      : buttonSize === "sm-icon"
-        ? "h-6 w-6"
-        : "h-8 w-8"
-  const triggerIconClassName = (buttonSize === "sm" || buttonSize === "sm-icon" || buttonSize === "md-icon") ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 shrink-0"
-  const sectionLabelClassName = "px-2 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-  const menuContentClassName = "w-[min(26rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] max-h-[min(32rem,calc(100vh-2rem))] overflow-y-auto"
-  const entryClassName = "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer"
-  const entryTextClassName = "min-w-0 flex-1 space-y-0.5"
-  const secondaryTextClassName = "line-clamp-2 text-xs leading-4 text-muted-foreground [overflow-wrap:anywhere]"
+  const triggerButtonClassName = promptSurface.triggerButtonClassNameBySize[buttonSize]
+  const triggerIconClassName = promptSurface.triggerIconClassNameBySize[buttonSize]
+  const sectionLabelClassName = promptSurface.sectionLabelClassName
+  const menuContentClassName = promptSurface.menuContentClassName
+  const entryClassName = promptSurface.entryClassName
+  const entryTextClassName = promptSurface.entryTextClassName
+  const secondaryTextClassName = promptSurface.secondaryTextClassName
   const filteredPrompts = filterPromptLibraryItemsByQuery(prompts, searchQuery, (prompt) => [
     prompt.name,
     prompt.content,
@@ -127,7 +125,7 @@ export function PredefinedPromptsMenu({
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
       toast.success(formatPromptLibraryTaskRunningToast(task.name))
     } catch {
-      toast.error(PROMPT_LIBRARY_PRESENTATION.feedback.taskTriggerFailed)
+      toast.error(promptCopy.feedback.taskTriggerFailed)
     }
   }
 
@@ -195,17 +193,17 @@ export function PredefinedPromptsMenu({
             type="button"
             size={actualButtonSize}
             variant="ghost"
-            className={cn("shrink-0", triggerButtonClassName, className)}
+            className={cn(promptSurface.triggerBaseClassName, triggerButtonClassName, className)}
             disabled={disabled}
-            title={PROMPT_LIBRARY_PRESENTATION.triggerTitle}
-            aria-label={PROMPT_LIBRARY_PRESENTATION.triggerAccessibilityLabel}
+            title={promptCopy.triggerTitle}
+            aria-label={promptCopy.triggerAccessibilityLabel}
           >
             <BookMarked className={triggerIconClassName} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className={menuContentClassName}>
           <div
-            className="sticky top-0 z-10 border-b bg-popover p-2"
+            className={promptSurface.searchContainerClassName}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
@@ -215,17 +213,17 @@ export function PredefinedPromptsMenu({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={PROMPT_LIBRARY_PRESENTATION.search.placeholder}
-              aria-label={PROMPT_LIBRARY_PRESENTATION.search.accessibilityLabel}
-              wrapperClassName="h-8"
-              className="text-xs"
-              endContent={<Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+              placeholder={promptCopy.search.placeholder}
+              aria-label={promptCopy.search.accessibilityLabel}
+              wrapperClassName={promptSurface.searchWrapperClassName}
+              className={promptSurface.searchInputClassName}
+              endContent={<Search className={promptSurface.searchIconClassName} />}
             />
           </div>
-          <DropdownMenuLabel className={sectionLabelClassName}>{PROMPT_LIBRARY_PRESENTATION.sections.prompts}</DropdownMenuLabel>
+          <DropdownMenuLabel className={sectionLabelClassName}>{promptCopy.sections.prompts}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {filteredPrompts.length === 0 ? (
-            <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            <div className={promptSurface.emptyStateClassName}>
               {getPromptLibraryEmptyPromptLabel(prompts.length > 0)}
             </div>
           ) : (
@@ -236,11 +234,11 @@ export function PredefinedPromptsMenu({
                 onSelect={() => handleSelectPrompt(prompt)}
               >
                 <div className={entryTextClassName}>
-                  <div className="truncate font-medium" title={prompt.name}>{prompt.name}</div>
+                  <div className={promptSurface.entryTitleClassName} title={prompt.name}>{prompt.name}</div>
                   <p className={secondaryTextClassName}>{getPromptLibraryPromptDescription(prompt)}</p>
                 </div>
                 <div
-                  className="mt-0.5 flex shrink-0 items-center gap-1 self-start"
+                  className={promptSurface.itemActionsClassName}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -249,35 +247,35 @@ export function PredefinedPromptsMenu({
                     variant="ghost"
                     size="md-icon"
                     onClick={(e) => handleEdit(e, prompt)}
-                    title={PROMPT_LIBRARY_PRESENTATION.actions.edit}
+                    title={promptCopy.actions.edit}
                     aria-label={getPromptLibraryEditPromptAccessibilityLabel(prompt.name)}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className={promptSurface.itemActionIconClassName} />
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="md-icon"
-                    className="text-destructive hover:text-destructive"
+                    className={promptSurface.destructiveActionClassName}
                     onClick={(e) => handleDelete(e, prompt)}
-                    title={PROMPT_LIBRARY_PRESENTATION.actions.delete}
+                    title={promptCopy.actions.delete}
                     aria-label={getPromptLibraryDeletePromptAccessibilityLabel(prompt.name)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className={promptSurface.itemActionIconClassName} />
                   </Button>
                 </div>
               </DropdownMenuItem>
             ))
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={handleAddNew} className="cursor-pointer">
-            <Plus className="mr-2 h-4 w-4 shrink-0" />
-            {PROMPT_LIBRARY_PRESENTATION.actions.addNewPrompt}
+          <DropdownMenuItem onSelect={handleAddNew} className={promptSurface.addItemClassName}>
+            <Plus className={promptSurface.addItemIconClassName} />
+            {promptCopy.actions.addNewPrompt}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className={sectionLabelClassName}>{PROMPT_LIBRARY_PRESENTATION.sections.skills}</DropdownMenuLabel>
+          <DropdownMenuLabel className={sectionLabelClassName}>{promptCopy.sections.skills}</DropdownMenuLabel>
           {filteredSkills.length === 0 ? (
-            <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            <div className={promptSurface.emptyStateClassName}>
               {getPromptLibraryEmptySkillLabel(availableSkills.length > 0)}
             </div>
           ) : (
@@ -287,9 +285,9 @@ export function PredefinedPromptsMenu({
                 className={entryClassName}
                 onSelect={() => onSelectPrompt(getPromptLibrarySkillContent(skill))}
               >
-                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <Sparkles className={promptSurface.sourceIconClassName} />
                 <div className={entryTextClassName}>
-                  <div className="truncate font-medium" title={skill.name}>{skill.name}</div>
+                  <div className={promptSurface.entryTitleClassName} title={skill.name}>{skill.name}</div>
                   <p className={secondaryTextClassName}>
                     {getPromptLibrarySkillDescription(skill)}
                   </p>
@@ -298,9 +296,9 @@ export function PredefinedPromptsMenu({
             ))
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className={sectionLabelClassName}>{PROMPT_LIBRARY_PRESENTATION.sections.tasks}</DropdownMenuLabel>
+          <DropdownMenuLabel className={sectionLabelClassName}>{promptCopy.sections.tasks}</DropdownMenuLabel>
           {filteredTasks.length === 0 ? (
-            <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            <div className={promptSurface.emptyStateClassName}>
               {getPromptLibraryEmptyTaskLabel(availableTasks.length > 0)}
             </div>
           ) : (
@@ -310,9 +308,9 @@ export function PredefinedPromptsMenu({
                 className={entryClassName}
                 onSelect={() => handleTriggerTask(task)}
               >
-                <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <Clock3 className={promptSurface.sourceIconClassName} />
                 <div className={entryTextClassName}>
-                  <div className="truncate font-medium" title={task.name}>{task.name}</div>
+                  <div className={promptSurface.entryTitleClassName} title={task.name}>{task.name}</div>
                   <p className={secondaryTextClassName}>
                     {getPromptLibraryTaskDescription(task)}
                   </p>
@@ -324,37 +322,37 @@ export function PredefinedPromptsMenu({
       </DropdownMenu>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={promptSurface.dialogContentClassName}>
           <DialogHeader>
             <DialogTitle>{getPromptLibraryEditorTitle(Boolean(editingPrompt))}</DialogTitle>
             <DialogDescription>
-              {PROMPT_LIBRARY_PRESENTATION.editor.description}
+              {promptCopy.editor.description}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="prompt-name">{PROMPT_LIBRARY_PRESENTATION.editor.nameLabel}</Label>
+          <div className={promptSurface.dialogBodyClassName}>
+            <div className={promptSurface.dialogFieldClassName}>
+              <Label htmlFor="prompt-name">{promptCopy.editor.nameLabel}</Label>
               <Input
                 id="prompt-name"
                 value={promptName}
                 onChange={(e) => setPromptName(e.target.value)}
-                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder}
+                placeholder={promptCopy.editor.namePlaceholder}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="prompt-content">{PROMPT_LIBRARY_PRESENTATION.editor.contentLabel}</Label>
+            <div className={promptSurface.dialogFieldClassName}>
+              <Label htmlFor="prompt-content">{promptCopy.editor.contentLabel}</Label>
               <Textarea
                 id="prompt-content"
                 value={promptContent}
                 onChange={(e) => setPromptContent(e.target.value)}
-                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder}
-                className="min-h-[120px] resize-y"
+                placeholder={promptCopy.editor.contentPlaceholder}
+                className={promptSurface.dialogTextareaClassName}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {PROMPT_LIBRARY_PRESENTATION.actions.cancel}
+              {promptCopy.actions.cancel}
             </Button>
             <Button onClick={handleSave} disabled={!promptName.trim() || !promptContent.trim()}>
               {getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt))}

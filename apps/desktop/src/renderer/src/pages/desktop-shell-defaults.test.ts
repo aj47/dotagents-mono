@@ -1,26 +1,50 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
-const settingsGeneralSource = readFileSync(new URL("./settings-general.tsx", import.meta.url), "utf8")
-const panelSource = readFileSync(new URL("./panel.tsx", import.meta.url), "utf8")
-const sessionsSource = readFileSync(new URL("./sessions.tsx", import.meta.url), "utf8")
-const sessionInputSource = readFileSync(new URL("../components/session-input.tsx", import.meta.url), "utf8")
+const settingsGeneralSource = readFileSync(
+  new URL("./settings-general.tsx", import.meta.url),
+  "utf8",
+)
+const panelSource = readFileSync(
+  new URL("./panel.tsx", import.meta.url),
+  "utf8",
+)
+const sessionsSource = readFileSync(
+  new URL("./sessions.tsx", import.meta.url),
+  "utf8",
+)
+const sessionInputSource = readFileSync(
+  new URL("../components/session-input.tsx", import.meta.url),
+  "utf8",
+)
 
 describe("desktop shell renderer defaults", () => {
   it("uses shared defaults in general settings", () => {
     expect(settingsGeneralSource).toContain("DEFAULT_HIDE_DOCK_ICON")
-    expect(settingsGeneralSource).toContain("configQuery.data.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON")
+    expect(settingsGeneralSource).toContain(
+      "configQuery.data.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON",
+    )
     expect(settingsGeneralSource).toContain("DEFAULT_LAUNCH_AT_LOGIN")
-    expect(settingsGeneralSource).toContain("configQuery.data.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN")
+    expect(settingsGeneralSource).toContain(
+      "configQuery.data.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN",
+    )
     expect(settingsGeneralSource).toContain("DEFAULT_PANEL_POSITION")
     expect(settingsGeneralSource).toContain("PANEL_POSITION_OPTIONS")
-    expect(settingsGeneralSource).toContain("configQuery.data?.panelPosition ?? DEFAULT_PANEL_POSITION")
+    expect(settingsGeneralSource).toContain(
+      "configQuery.data?.panelPosition ?? DEFAULT_PANEL_POSITION",
+    )
     expect(settingsGeneralSource).not.toContain('<SelectItem value="top-left">')
     expect(settingsGeneralSource).toContain("DEFAULT_PANEL_DRAG_ENABLED")
-    expect(settingsGeneralSource).toContain("configQuery.data?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED")
+    expect(settingsGeneralSource).toContain(
+      "configQuery.data?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED",
+    )
     expect(settingsGeneralSource).toContain("DEFAULT_FLOATING_PANEL_AUTO_SHOW")
-    expect(settingsGeneralSource).toContain("configQuery.data?.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW")
-    expect(settingsGeneralSource).toContain("DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED")
+    expect(settingsGeneralSource).toContain(
+      "configQuery.data?.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW",
+    )
+    expect(settingsGeneralSource).toContain(
+      "DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED",
+    )
     expect(settingsGeneralSource).toContain(
       "configQuery.data?.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED",
     )
@@ -28,15 +52,45 @@ describe("desktop shell renderer defaults", () => {
 
   it("uses the shared panel drag default in the panel renderer", () => {
     expect(panelSource).toContain("DEFAULT_PANEL_DRAG_ENABLED")
-    expect(panelSource).toContain("(configQuery.data as any)?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED")
+    expect(panelSource).toContain(
+      "(configQuery.data as any)?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED",
+    )
   })
 
   it("uses shared app-shell copy for desktop session start surfaces", () => {
-    expect(sessionsSource).toContain("APP_SHELL_SESSION_START_PRESENTATION")
-    expect(sessionsSource).toContain('getAppShellHeaderActionDisplayLabel("startTextSession")')
-    expect(sessionsSource).toContain('getAppShellHeaderActionDisplayLabel("startVoiceSession")')
-    expect(sessionInputSource).toContain("APP_SHELL_SESSION_START_PRESENTATION")
-    expect(sessionInputSource).toContain("APP_SHELL_SESSION_START_PRESENTATION.textInputPlaceholder")
+    expect(sessionsSource).toContain("getAppShellSessionStartCopyState")
+    expect(sessionsSource).toContain(
+      "getAppShellSessionStartDesktopSurfaceState",
+    )
+    expect(sessionsSource).toContain("sessionStartCopy.emptyTitle")
+    expect(sessionsSource).toContain("sessionStartCopy.emptyDescription")
+    expect(sessionsSource).toContain("sessionStartCopy.keybindLabels.text")
+    expect(sessionsSource).toContain(
+      "sessionStartEmptySurface.containerClassName",
+    )
+    expect(sessionsSource).toContain(
+      "sessionStartEmptySurface.keybindRowClassName",
+    )
+    expect(sessionsSource).toContain(
+      'getAppShellHeaderActionDisplayLabel("startTextSession")',
+    )
+    expect(sessionsSource).toContain(
+      'getAppShellHeaderActionDisplayLabel("startVoiceSession")',
+    )
+    expect(sessionInputSource).toContain("getAppShellSessionStartCopyState")
+    expect(sessionInputSource).toContain(
+      "getAppShellSessionStartDesktopSurfaceState",
+    )
+    expect(sessionInputSource).toContain(
+      "sessionStartCopy.textInputPlaceholder",
+    )
+    expect(sessionInputSource).toContain(
+      "sessionStartExpandedSurface.textAreaClassName",
+    )
+    expect(sessionsSource).not.toContain("APP_SHELL_SESSION_START_PRESENTATION")
+    expect(sessionInputSource).not.toContain(
+      "APP_SHELL_SESSION_START_PRESENTATION",
+    )
     expect(sessionInputSource).not.toContain("Start a new agent session</div>")
   })
 })

@@ -4,25 +4,38 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "lucide-react"
 import {
+  getChatVideoAttachmentCopyState,
+  getChatVideoAttachmentDesktopSurfaceState,
+  getVideoAttachmentLoadAccessibilityLabel,
   getVideoAssetLabel,
   isAllowedMarkdownImageUrl as isSharedAllowedMarkdownImageUrl,
-  isAllowedMarkdownLinkUrl as isSharedAllowedMarkdownLinkUrl,
-  isRenderableVideoUrl,
-  transformMarkdownUrl,
 } from "@dotagents/shared/conversation-media-assets"
+import {
+  getMarkdownCodeBlockCopyLabel,
+  getMarkdownCodeBlockFeedbackResetDelayMs,
+  getMarkdownContentDesktopSurfaceState,
+  getMarkdownImageFallbackLabel,
+  getMarkdownRenderOptions,
+  getMarkdownThinkSectionControlState,
+  getMarkdownThinkSectionDesktopSurfaceState,
+  getMarkdownThinkSectionAccessibilityLabel,
+  getMarkdownThinkSectionDisplayLabel,
+  isAllowedMarkdownContentLinkUrl,
+  isMarkdownContentVideoLinkUrl,
+  splitMarkdownContent,
+  transformMarkdownContentUrl,
+  type MarkdownThinkSectionControlOptions,
+} from "@dotagents/shared/markdown-render-parts"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import "highlight.js/styles/github.css"
 
 import { logExpand, logUI } from "@renderer/lib/debug"
 
-interface MarkdownRendererProps {
+interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   content: string
   className?: string
   collapsed?: boolean
-  getThinkKey?: (content: string, index: number) => string
-  isThinkExpanded?: (key: string) => boolean
-  onToggleThink?: (key: string) => void
 }
 
 interface ThinkSectionProps {
@@ -32,25 +45,21 @@ interface ThinkSectionProps {
   onToggle?: () => void
 }
 
-const COMPACT_PROSE_CLASS_NAME =
-  "prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-headings:mb-2 prose-headings:mt-2 prose-ul:my-2 prose-ol:my-2 prose-blockquote:my-2 prose-pre:my-2 prose-img:my-2"
+const markdownContentSurface = getMarkdownContentDesktopSurfaceState()
+
+const COMPACT_PROSE_CLASS_NAME = markdownContentSurface.compactProseClassName
+
+const thinkSectionSurface = getMarkdownThinkSectionDesktopSurfaceState()
 
 const COMPACT_THINK_PROSE_CLASS_NAME =
-  `${COMPACT_PROSE_CLASS_NAME} prose-amber`
+  `${COMPACT_PROSE_CLASS_NAME} ${thinkSectionSurface.proseAccentClassName}`
 
-const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
+const SELECTABLE_MARKDOWN_CLASS_NAME = markdownContentSurface.selectableClassName
 
-const ALLOWED_RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//
+const videoAttachmentCopy = getChatVideoAttachmentCopyState()
+const videoAttachmentSurface = getChatVideoAttachmentDesktopSurfaceState()
 
-export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
-  return isSharedAllowedMarkdownLinkUrl(rawUrl, { allowRecordingAssetUrls: true })
-}
-
-const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
-  if (!rawUrl) return false
-  const url = rawUrl.trim().toLowerCase()
-  return isRenderableVideoUrl(rawUrl) || ALLOWED_RECORDING_ASSET_URL_REGEX.test(url)
-}
+export const isAllowedMarkdownLinkUrl = isAllowedMarkdownContentLinkUrl
 
 const VideoAttachmentCard = ({
   src,
@@ -63,14 +72,14 @@ const VideoAttachmentCard = ({
   const displayLabel = getVideoAssetLabel(label, src)
 
   return (
-    <span className="not-prose my-3 block overflow-hidden rounded-lg border border-border bg-muted/20">
+    <span className={videoAttachmentSurface.cardClassName}>
       {loaded ? (
         <video
           src={src}
           controls
           playsInline
           preload="metadata"
-          className="block max-h-[30rem] w-full bg-black"
+          className={videoAttachmentSurface.videoClassName}
           onError={() => {
             logUI("[MarkdownRenderer] video failed to render", {
               label: displayLabel,
@@ -82,15 +91,17 @@ const VideoAttachmentCard = ({
         <button
           type="button"
           onClick={() => setLoaded(true)}
-          className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40"
-          aria-label={`Load video ${displayLabel}`}
+          className={videoAttachmentSurface.loadButtonClassName}
+          aria-label={getVideoAttachmentLoadAccessibilityLabel(displayLabel)}
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <PlayCircle className="h-5 w-5" />
+          <span className={videoAttachmentSurface.playIconWrapperClassName}>
+            <PlayCircle className={videoAttachmentSurface.playIconClassName} />
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium text-foreground">{displayLabel}</span>
-            <span className="block text-xs text-muted-foreground">Loads only when you click play</span>
+          <span className={videoAttachmentSurface.textWrapperClassName}>
+            <span className={videoAttachmentSurface.titleClassName}>{displayLabel}</span>
+            <span className={videoAttachmentSurface.subtitleClassName}>
+              {videoAttachmentCopy.labels.desktopLazyLoadSubtitle}
+            </span>
           </span>
         </button>
       )}
@@ -102,9 +113,7 @@ export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
   return isSharedAllowedMarkdownImageUrl(rawUrl)
 }
 
-export const markdownUrlTransform = (url: string, key?: string) => {
-  return transformMarkdownUrl(url, key, { allowRecordingAssetUrls: true })
-}
+export const markdownUrlTransform = transformMarkdownContentUrl
 
 const markdownLinkComponent = ({
   children,
@@ -113,7 +122,7 @@ const markdownLinkComponent = ({
   children?: React.ReactNode
   href?: string
 }) => {
-  if (href && isDesktopRenderableVideoUrl(href)) {
+  if (isMarkdownContentVideoLinkUrl(href)) {
     return <VideoAttachmentCard src={href} label={extractTextContent(children)} />
   }
 
@@ -121,7 +130,7 @@ const markdownLinkComponent = ({
     return (
       <a
         href={href}
-        className="break-words text-primary underline underline-offset-2 hover:text-primary/80 [overflow-wrap:anywhere]"
+        className={markdownContentSurface.linkClassName}
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -141,20 +150,21 @@ const markdownImageComponent = ({
   alt?: string
 }) => {
   if (!src || !isAllowedMarkdownImageUrl(src)) return null
+  const imageLabel = getMarkdownImageFallbackLabel(alt)
 
   return (
     <img
       src={src}
-      alt={alt || "Image"}
+      alt={imageLabel}
       loading="lazy"
       decoding="async"
       onError={() => {
         logUI("[MarkdownRenderer] image failed to render", {
-          alt: alt || "Image",
+          alt: imageLabel,
           srcPreview: src.slice(0, 64),
         })
       }}
-      className="mb-3 max-h-[28rem] w-full rounded-md border border-border bg-muted/20 object-contain"
+      className={markdownContentSurface.imageClassName}
     />
   )
 }
@@ -176,6 +186,7 @@ function extractTextContent(node: React.ReactNode): string {
 const CodeBlockWithCopy: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [copied, setCopied] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const copyLabel = getMarkdownCodeBlockCopyLabel(copied)
 
   const handleCopy = useCallback(async () => {
     const text = extractTextContent(children).replace(/\n$/, "")
@@ -183,25 +194,28 @@ const CodeBlockWithCopy: React.FC<{ children: React.ReactNode }> = ({ children }
       await copyTextToClipboard(text)
       setCopied(true)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => setCopied(false), 2000)
+      timeoutRef.current = setTimeout(
+        () => setCopied(false),
+        getMarkdownCodeBlockFeedbackResetDelayMs(),
+      )
     } catch {
       /* clipboard write failed – swallow */
     }
   }, [children])
 
   return (
-    <pre className="group/codeblock relative mb-3 max-w-full overflow-x-auto rounded-lg border border-border/60 bg-muted/50 p-3 dark:border-white/10 dark:bg-white/5">
+    <pre className={markdownContentSurface.codeBlockPreClassName}>
       <button
         type="button"
         onClick={handleCopy}
-        className="absolute right-2 top-2 rounded-md border border-border/50 bg-background/80 p-1 opacity-0 transition-opacity hover:bg-muted group-hover/codeblock:opacity-100 focus:opacity-100"
-        title={copied ? "Copied!" : "Copy code"}
-        aria-label={copied ? "Copied!" : "Copy code"}
+        className={markdownContentSurface.codeBlockCopyButtonClassName}
+        title={copyLabel}
+        aria-label={copyLabel}
       >
         {copied ? (
-          <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+          <CheckCheck className={markdownContentSurface.codeBlockCopiedIconClassName} />
         ) : (
-          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+          <Copy className={markdownContentSurface.codeBlockCopyIconClassName} />
         )}
       </button>
       {children}
@@ -217,7 +231,7 @@ const sharedMarkdownComponents = {
     if (inline) {
       return (
         <code
-          className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[0.8125rem] text-current dark:bg-white/10 [overflow-wrap:anywhere]"
+          className={markdownContentSurface.inlineCodeClassName}
           {...props}
         >
           {children}
@@ -226,7 +240,7 @@ const sharedMarkdownComponents = {
     }
     return (
       <code
-        className="block min-w-max font-mono text-[0.8125rem] leading-5 text-current"
+        className={markdownContentSurface.codeBlockClassName}
         {...props}
       >
         {children}
@@ -237,19 +251,19 @@ const sharedMarkdownComponents = {
     <CodeBlockWithCopy>{children}</CodeBlockWithCopy>
   ),
   table: ({ children }) => (
-    <div className="mb-3 max-w-full overflow-x-auto rounded-lg border border-border/80">
-      <table className="w-max min-w-full border-collapse text-sm">
+    <div className={markdownContentSurface.tableWrapperClassName}>
+      <table className={markdownContentSurface.tableClassName}>
         {children}
       </table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="whitespace-nowrap border-b border-r border-border bg-muted/50 px-3 py-2 text-left align-top font-semibold last:border-r-0">
+    <th className={markdownContentSurface.tableHeaderCellClassName}>
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border-b border-r border-border px-3 py-2 align-top last:border-r-0 [overflow-wrap:anywhere]">
+    <td className={markdownContentSurface.tableCellClassName}>
       {children}
     </td>
   ),
@@ -279,44 +293,45 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border transition-colors",
+        thinkSectionSurface.containerBaseClassName,
         collapsed
-          ? "my-1 border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
-          : "my-3 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
+          ? thinkSectionSurface.containerCollapsedClassName
+          : thinkSectionSurface.containerExpandedClassName,
       )}
     >
       <button
         onClick={handleToggle}
         className={cn(
-          "flex w-full items-center gap-1.5 text-left transition-colors",
+          thinkSectionSurface.headerBaseClassName,
           collapsed
-            ? "px-2 py-0.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
-            : "px-3 py-2 hover:bg-amber-100 dark:hover:bg-amber-900/30",
+            ? thinkSectionSurface.headerCollapsedClassName
+            : thinkSectionSurface.headerExpandedClassName,
         )}
         aria-expanded={!collapsed}
+        aria-label={getMarkdownThinkSectionAccessibilityLabel(collapsed)}
         aria-controls={`think-content-${uid}`}
       >
         {collapsed ? (
-          <ChevronRight className="h-3 w-3 shrink-0 text-amber-500 dark:text-amber-400" />
+          <ChevronRight className={thinkSectionSurface.chevronCollapsedClassName} />
         ) : (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <ChevronDown className={thinkSectionSurface.chevronExpandedClassName} />
         )}
         <Brain className={cn(
-          "shrink-0 text-amber-600 dark:text-amber-400",
-          collapsed ? "h-3 w-3" : "h-3.5 w-3.5",
+          thinkSectionSurface.iconBaseClassName,
+          collapsed ? thinkSectionSurface.iconCollapsedClassName : thinkSectionSurface.iconExpandedClassName,
         )} />
         <span className={cn(
-          "truncate text-amber-800 dark:text-amber-200",
-          collapsed ? "text-[11px] font-medium opacity-70" : "text-sm font-medium",
+          thinkSectionSurface.labelBaseClassName,
+          collapsed ? thinkSectionSurface.labelCollapsedClassName : thinkSectionSurface.labelExpandedClassName,
         )}>
-          {collapsed ? "Thinking" : "Hide thinking"}
+          {getMarkdownThinkSectionDisplayLabel(collapsed)}
         </span>
       </button>
 
       {!collapsed && (
         <div
           id={`think-content-${uid}`}
-          className="px-3 pb-3 text-sm text-amber-900 dark:text-amber-100"
+          className={thinkSectionSurface.contentClassName}
         >
           <div
             className={cn(
@@ -339,44 +354,6 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
   )
 }
 
-const parseThinkSections = (content: string) => {
-  const parts: Array<{ type: "text" | "think"; content: string }> = []
-  let currentIndex = 0
-
-  // Regex to match <think>...</think> tags (including multiline)
-  const thinkRegex = /<think>([\s\S]*?)<\/think>/gi
-  let match
-
-  while ((match = thinkRegex.exec(content)) !== null) {
-    // Add text before the think section
-    if (match.index > currentIndex) {
-      const textBefore = content.slice(currentIndex, match.index)
-      if (textBefore.trim()) {
-        parts.push({ type: "text", content: textBefore })
-      }
-    }
-
-    // Add the think section content (without the tags)
-    parts.push({ type: "think", content: match[1].trim() })
-    currentIndex = match.index + match[0].length
-  }
-
-  // Add remaining text after the last think section
-  if (currentIndex < content.length) {
-    const remainingText = content.slice(currentIndex)
-    if (remainingText.trim()) {
-      parts.push({ type: "text", content: remainingText })
-    }
-  }
-
-  // If no think sections found, return the original content as text
-  if (parts.length === 0) {
-    parts.push({ type: "text", content })
-  }
-
-  return parts
-}
-
 const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
   content,
   className,
@@ -385,7 +362,7 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
   isThinkExpanded,
   onToggleThink,
 }) => {
-  const parts = parseThinkSections(content)
+  const parts = splitMarkdownContent(content, getMarkdownRenderOptions())
 
   return (
     <div
@@ -393,18 +370,35 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
     >
       {parts.map((part, index) => {
         if (part.type === "think") {
-          const keyBase = getThinkKey ? getThinkKey(part.content, index) : `think-${index}`
-          const isControlled = !!(isThinkExpanded && onToggleThink)
-          const expanded = isControlled ? !!isThinkExpanded!(keyBase) : undefined
+          const thinkControl = getMarkdownThinkSectionControlState(part.content, index, {
+            getThinkKey,
+            isThinkExpanded,
+            onToggleThink,
+          })
           return (
             <ThinkSection
-              key={keyBase}
+              key={thinkControl.key}
               content={part.content}
               defaultCollapsed={true}
-              {...(isControlled ? { isCollapsed: !expanded, onToggle: () => onToggleThink!(keyBase) } : {})}
+              {...(thinkControl.isControlled ? {
+                isCollapsed: thinkControl.isCollapsed,
+                onToggle: thinkControl.onToggle,
+              } : {})}
             />
           )
-        } else {
+        }
+
+        if (part.type === "video") {
+          return (
+            <VideoAttachmentCard
+              key={`video-${index}-${part.url}`}
+              src={part.url}
+              label={part.label}
+            />
+          )
+        }
+
+        if (part.type === "markdown") {
           return (
             <div
               key={`text-${index}`}
@@ -418,40 +412,40 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
                   ...sharedMarkdownComponents,
                   // Custom components for better styling
                   h1: ({ children }) => (
-                    <h1 className={collapsed ? "text-sm font-normal text-foreground" : "mb-3 text-xl font-bold text-foreground"}>
+                    <h1 className={collapsed ? markdownContentSurface.heading1CollapsedClassName : markdownContentSurface.heading1ExpandedClassName}>
                       {children}
                     </h1>
                   ),
                   h2: ({ children }) => (
-                    <h2 className={collapsed ? "text-sm font-normal text-foreground" : "mb-2 text-lg font-semibold text-foreground"}>
+                    <h2 className={collapsed ? markdownContentSurface.heading2CollapsedClassName : markdownContentSurface.heading2ExpandedClassName}>
                       {children}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 className={collapsed ? "text-sm font-normal text-foreground" : "mb-2 text-base font-medium text-foreground"}>
+                    <h3 className={collapsed ? markdownContentSurface.heading3CollapsedClassName : markdownContentSurface.heading3ExpandedClassName}>
                       {children}
                     </h3>
                   ),
                   p: ({ children }) => (
-                    <p className="my-1 leading-normal text-foreground">
+                    <p className={markdownContentSurface.paragraphClassName}>
                       {children}
                     </p>
                   ),
                   ul: ({ children }) => (
-                    <ul className="mb-3 list-outside list-disc space-y-1 pl-5 text-foreground">
+                    <ul className={markdownContentSurface.unorderedListClassName}>
                       {children}
                     </ul>
                   ),
                   ol: ({ children }) => (
-                    <ol className="mb-3 list-outside list-decimal space-y-1 pl-5 text-foreground">
+                    <ol className={markdownContentSurface.orderedListClassName}>
                       {children}
                     </ol>
                   ),
                   li: ({ children }) => (
-                    <li className="break-words pl-0.5 text-foreground">{children}</li>
+                    <li className={markdownContentSurface.listItemClassName}>{children}</li>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="mb-3 border-l-4 border-muted-foreground pl-4 italic text-muted-foreground">
+                    <blockquote className={markdownContentSurface.blockquoteClassName}>
                       {children}
                     </blockquote>
                   ),
@@ -462,6 +456,8 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
             </div>
           )
         }
+
+        return null
       })}
     </div>
   )

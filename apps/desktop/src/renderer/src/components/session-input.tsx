@@ -5,7 +5,15 @@ import { Button } from "@renderer/components/ui/button"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Mic, Send, X, Plus } from "lucide-react"
 import { AgentSelector, useSelectedAgentId } from "./agent-selector"
-import { APP_SHELL_SESSION_START_PRESENTATION } from "@dotagents/shared/app-shell"
+import {
+  getAppShellSessionStartCopyState,
+  getAppShellSessionStartDesktopSurfaceState,
+} from "@dotagents/shared/app-shell"
+
+const sessionStartCopy = getAppShellSessionStartCopyState()
+const sessionStartDesktopSurface = getAppShellSessionStartDesktopSurfaceState()
+const sessionStartExpandedSurface = sessionStartDesktopSurface.expanded
+const sessionStartIdleSurface = sessionStartDesktopSurface.idle
 
 interface SessionInputProps {
   onTextSubmit: (text: string) => void
@@ -77,10 +85,15 @@ export function SessionInput({
 
   if (showTextInput) {
     return (
-      <div className={cn("flex items-center gap-2 p-3 bg-card border-b", className)}>
-        <div className="flex items-center gap-2 self-start pt-1">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {APP_SHELL_SESSION_START_PRESENTATION.agentSelectorLabel}
+      <div
+        className={cn(
+          sessionStartExpandedSurface.containerClassName,
+          className,
+        )}
+      >
+        <div className={sessionStartExpandedSurface.agentPickerClassName}>
+          <span className={sessionStartExpandedSurface.agentLabelClassName}>
+            {sessionStartCopy.agentSelectorLabel}
           </span>
           <AgentSelector
             selectedAgentId={selectedAgentId}
@@ -93,19 +106,21 @@ export function SessionInput({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={APP_SHELL_SESSION_START_PRESENTATION.textInputPlaceholder}
-          className="min-h-[60px] max-h-[120px] flex-1 resize-none"
+          placeholder={sessionStartCopy.textInputPlaceholder}
+          className={sessionStartExpandedSurface.textAreaClassName}
           disabled={isProcessing}
           autoFocus
         />
-        <div className="flex flex-col gap-1">
+        <div className={sessionStartExpandedSurface.actionsClassName}>
           <Button
             size="sm"
-            onClick={() => { void handleSubmit() }}
+            onClick={() => {
+              void handleSubmit()
+            }}
             disabled={!text.trim() || isProcessing}
-            className="h-8"
+            className={sessionStartExpandedSurface.actionButtonClassName}
           >
-            <Send className="h-4 w-4" />
+            <Send className={sessionStartExpandedSurface.actionIconClassName} />
           </Button>
           <Button
             size="sm"
@@ -115,9 +130,9 @@ export function SessionInput({
               setShowTextInput(false)
             }}
             disabled={isProcessing}
-            className="h-8"
+            className={sessionStartExpandedSurface.actionButtonClassName}
           >
-            <X className="h-4 w-4" />
+            <X className={sessionStartExpandedSurface.actionIconClassName} />
           </Button>
         </div>
       </div>
@@ -125,31 +140,38 @@ export function SessionInput({
   }
 
   return (
-    <div className={cn("flex items-center justify-between gap-3 p-3 bg-card border-b", className)}>
-      <div className="flex items-center gap-2">
+    <div className={cn(sessionStartIdleSurface.containerClassName, className)}>
+      <div className={sessionStartIdleSurface.actionsClassName}>
         <Button
           onClick={handleShowTextInput}
           disabled={isProcessing || isRecording}
-          className="gap-2"
+          className={sessionStartIdleSurface.actionButtonClassName}
         >
-          <Plus className="h-4 w-4" />
-          <span>{APP_SHELL_SESSION_START_PRESENTATION.newTextActionLabel}</span>
+          <Plus className={sessionStartIdleSurface.actionIconClassName} />
+          <span>{sessionStartCopy.newTextActionLabel}</span>
         </Button>
         <Button
           variant={isRecording ? "destructive" : "secondary"}
           onClick={handleVoiceClick}
           disabled={isProcessing}
-          className="gap-2"
+          className={sessionStartIdleSurface.actionButtonClassName}
         >
-          <Mic className={cn("h-4 w-4", isRecording && "animate-pulse")} />
+          <Mic
+            className={cn(
+              sessionStartIdleSurface.actionIconClassName,
+              isRecording && sessionStartIdleSurface.recordingIconClassName,
+            )}
+          />
           <span>
-            {isRecording ? "Recording..." : APP_SHELL_SESSION_START_PRESENTATION.voiceActionLabel}
+            {isRecording
+              ? sessionStartCopy.recordingActionLabel
+              : sessionStartCopy.voiceActionLabel}
           </span>
         </Button>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="text-sm text-muted-foreground">
-          {APP_SHELL_SESSION_START_PRESENTATION.idleDescription}
+      <div className={sessionStartIdleSurface.metaClassName}>
+        <div className={sessionStartIdleSurface.descriptionClassName}>
+          {sessionStartCopy.idleDescription}
         </div>
         <AgentSelector
           selectedAgentId={selectedAgentId}
