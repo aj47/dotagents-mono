@@ -44,8 +44,18 @@ import {
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutSourceLabel,
-  type PromptLibraryShortcutSource,
+  type PromptLibraryEditorMobileCloseIconState,
+  type PromptLibraryLauncherShortcutSource,
+  type PromptLibraryMobileAddShortcutIconState,
+  type PromptLibraryMobileIconColors,
+  type PromptLibraryMobileLauncherShortcutSourceIconColors,
+  type PromptLibraryMobileLauncherShortcutSourceIconStates,
+  type PromptLibraryMobileShortcutActionIconState,
+  type PromptLibraryMobileShortcutSourceIconState,
+  type PromptLibraryShortcutItem,
+  type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
+import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import type { ToolActivityGroupMobileRenderState } from '@dotagents/shared/tool-activity-grouping';
 import type {
   ChatRuntimeDelegationConversationPreviewRoleMobileStyleState,
@@ -269,33 +279,20 @@ type ChatRuntimeNavigationHeaderOptions = {
   headerRight: () => ReactNode;
 };
 
-export type ChatConversationHomeQuickStartSource = Extract<
-  PromptLibraryShortcutSource,
-  'command' | 'saved-prompt' | 'skill' | 'task' | 'action'
->;
+export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;
 
 export type ChatConversationHomeQuickStartItem<
-  TPrompt = unknown,
-  TTask extends { id: string } = { id: string },
-> = {
-  id: string;
-  title: string;
-  content: string;
-  description?: string;
-  source: ChatConversationHomeQuickStartSource;
-  action?: 'add-prompt';
-  prompt?: TPrompt;
-  task?: TTask;
-};
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = PromptLibraryShortcutItem<TPrompt, TTask>;
 
-type ChatConversationHomeQuickStartIcon = {
-  name: IoniconName;
-  size: number;
-};
+type ChatConversationHomeQuickStartIcon =
+  | PromptLibraryEditorMobileCloseIconState
+  | PromptLibraryMobileAddShortcutIconState
+  | PromptLibraryMobileShortcutActionIconState
+  | PromptLibraryMobileShortcutSourceIconState;
 
-type ChatConversationHomeQuickStartIconColors = {
-  color: string;
-};
+type ChatConversationHomeQuickStartIconColors = PromptLibraryMobileIconColors;
 
 type ChatConversationHomeQuickStartsStyles = {
   card: StyleProp<ViewStyle>;
@@ -319,8 +316,8 @@ type ChatConversationHomeQuickStartsStyles = {
 };
 
 type ChatConversationHomeQuickStartsProps<
-  TPrompt,
-  TTask extends { id: string },
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
 > = {
   shouldRender: boolean;
   items: readonly ChatConversationHomeQuickStartItem<TPrompt, TTask>[];
@@ -342,8 +339,8 @@ type ChatConversationHomeQuickStartsProps<
   editIconColors: ChatConversationHomeQuickStartIconColors;
   deleteIcon: ChatConversationHomeQuickStartIcon;
   deleteIconColors: ChatConversationHomeQuickStartIconColors;
-  sourceIcons: Record<ChatConversationHomeQuickStartSource, ChatConversationHomeQuickStartIcon>;
-  sourceIconColors: Record<ChatConversationHomeQuickStartSource, ChatConversationHomeQuickStartIconColors>;
+  sourceIcons: PromptLibraryMobileLauncherShortcutSourceIconStates;
+  sourceIconColors: PromptLibraryMobileLauncherShortcutSourceIconColors;
   editLabel: string;
   deleteLabel: string;
   styles: ChatConversationHomeQuickStartsStyles;
@@ -1138,8 +1135,8 @@ type ChatMessageRuntimeViewportStyleSlots = Pick<
 >;
 
 type ChatMessageRuntimeViewportProps<
-  TPrompt,
-  TTask extends { id: string },
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
 > = Omit<
   ChatMessageConversationViewportProps,
   | 'style'
@@ -1227,8 +1224,8 @@ type ChatMessageRuntimeSurfaceStyleSlots = {
 };
 
 type ChatMessageRuntimeSurfaceProps<
-  TPrompt,
-  TTask extends { id: string },
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
 > = {
   frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' | 'keyboardVerticalOffset'>;
   dock: Omit<ChatMessageRuntimeDockProps, 'styles'>;
@@ -2716,8 +2713,8 @@ export function ChatRuntimeHeaderTurnDuration({
 }
 
 export function ChatConversationHomeQuickStarts<
-  TPrompt,
-  TTask extends { id: string },
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
 >({
   shouldRender,
   items,
@@ -4470,8 +4467,8 @@ export function ChatMessageConversationViewport({
 }
 
 export function ChatMessageRuntimeViewport<
-  TPrompt,
-  TTask extends { id: string },
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
 >({
   children,
   loadingState,
@@ -4526,8 +4523,8 @@ export function ChatMessageRuntimeViewport<
 }
 
 export function ChatMessageRuntimeSurface<
-  TPrompt,
-  TTask extends { id: string },
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
 >({
   children,
   frame,

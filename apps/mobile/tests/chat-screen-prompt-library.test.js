@@ -27,6 +27,12 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);
   assert.match(screenSource, /handleRunPromptTask/);
   assert.match(chatMessageChromeSource, /getPromptLibraryShortcutSourceLabel\(item\.source\)/);
+  assert.match(chatMessageChromeSource, /type PromptLibraryLauncherShortcutSource,/);
+  assert.match(chatMessageChromeSource, /type PromptLibraryShortcutItem,/);
+  assert.match(chatMessageChromeSource, /type PromptLibraryMobileLauncherShortcutSourceIconStates,/);
+  assert.match(chatMessageChromeSource, /type PromptLibraryMobileLauncherShortcutSourceIconColors,/);
+  assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;/);
+  assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileCloseIconState,/);
   assert.match(screenSource, /getPromptLibraryMobileAddShortcutIconState,/);
@@ -90,6 +96,9 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /id: 'action-add-prompt'/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSourceIconState\('command'\)/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\./);
+  assert.doesNotMatch(chatMessageChromeSource, /PromptLibraryShortcutSource,/);
+  assert.doesNotMatch(chatMessageChromeSource, /Extract<\s*PromptLibraryShortcutSource,/);
+  assert.doesNotMatch(chatMessageChromeSource, /source: ChatConversationHomeQuickStartSource;/);
   assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_PRESENTATION/);
   assert.match(screenSource, /const promptLibrarySurface = mobilePromptLibrarySurface;/);
   assert.match(screenSource, /const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors\(theme\.colors\);/);
