@@ -325,6 +325,9 @@ export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
       title: {
         colorToken: "foreground",
         flex: 1,
+        fontSize: typography.h2.fontSize,
+        lineHeight: typography.h2.lineHeight,
+        fontWeight: typography.h2.fontWeight,
         marginBottom: 0,
       },
       closeButton: {
@@ -343,6 +346,8 @@ export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
       },
       label: {
         colorToken: "foreground",
+        fontSize: typography.caption.fontSize,
+        lineHeight: typography.caption.lineHeight,
         fontWeight: "600",
         marginBottom: "xs",
       },

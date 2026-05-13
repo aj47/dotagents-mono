@@ -3038,9 +3038,11 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /modalHeader:\s*\{[\s\S]*?flexDirection:\s*promptEditorModalSurface\.header\.flexDirection/);
   assert.match(screenSource, /modalHeader:\s*\{[\s\S]*?marginBottom:\s*spacing\[promptEditorModalSurface\.header\.marginBottom\]/);
   assert.match(screenSource, /modalTitle:\s*\{[\s\S]*?flex:\s*promptEditorModalSurface\.title\.flex/);
+  assert.match(screenSource, /modalTitle:\s*\{[\s\S]*?fontSize:\s*promptEditorModalSurface\.title\.fontSize,[\s\S]*?lineHeight:\s*promptEditorModalSurface\.title\.lineHeight,[\s\S]*?fontWeight:\s*promptEditorModalSurface\.title\.fontWeight/);
   assert.match(screenSource, /modalTitle:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.title\.color/);
   assert.match(screenSource, /modalCloseButton:\s*\{[\s\S]*?width:\s*promptEditorModalSurface\.closeButton\.width/);
   assert.match(screenSource, /modalCloseButton:\s*\{[\s\S]*?justifyContent:\s*promptEditorModalSurface\.closeButton\.justifyContent/);
+  assert.match(screenSource, /modalLabel:\s*\{[\s\S]*?fontSize:\s*promptEditorModalSurface\.label\.fontSize,[\s\S]*?lineHeight:\s*promptEditorModalSurface\.label\.lineHeight/);
   assert.match(screenSource, /modalLabel:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.label\.color/);
   assert.match(screenSource, /modalInput:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.input\.color/);
   assert.match(chatMessageChromeSource, /placeholderTextColor=\{colors\.input\.placeholderColor\}/);
@@ -3076,6 +3078,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /height: 120,/);
   assert.doesNotMatch(screenSource, /textAlignVertical="top"/);
   assert.doesNotMatch(screenSource, /promptEditorModalSurface\.closeIcon\.name/);
+  assert.doesNotMatch(screenSource, /modalTitle:\s*\{[^}]*?\.\.\.theme\.typography\.h2/);
+  assert.doesNotMatch(screenSource, /modalLabel:\s*\{[^}]*?\.\.\.theme\.typography\.caption/);
 });
 
 test('lets mobile branch linked desktop conversations from individual messages', () => {

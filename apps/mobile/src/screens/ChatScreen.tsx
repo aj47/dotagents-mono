@@ -5082,8 +5082,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginBottom: spacing[promptEditorModalSurface.header.marginBottom],
     },
     modalTitle: {
-      ...theme.typography.h2,
       flex: promptEditorModalSurface.title.flex,
+      fontSize: promptEditorModalSurface.title.fontSize,
+      lineHeight: promptEditorModalSurface.title.lineHeight,
+      fontWeight: promptEditorModalSurface.title.fontWeight,
       marginBottom: promptEditorModalSurface.title.marginBottom,
       color: promptLibrarySurfaceColors.editorModal.title.color,
     },
@@ -5095,7 +5097,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       justifyContent: promptEditorModalSurface.closeButton.justifyContent,
     },
     modalLabel: {
-      ...theme.typography.caption,
+      fontSize: promptEditorModalSurface.label.fontSize,
+      lineHeight: promptEditorModalSurface.label.lineHeight,
       fontWeight: promptEditorModalSurface.label.fontWeight,
       color: promptLibrarySurfaceColors.editorModal.label.color,
       marginBottom: spacing[promptEditorModalSurface.label.marginBottom],

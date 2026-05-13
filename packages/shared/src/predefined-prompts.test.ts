@@ -547,6 +547,9 @@ describe("predefined prompt helpers", () => {
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.header.flexDirection).toBe("row")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.header.justifyContent).toBe("space-between")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.title.flex).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.title.fontSize).toBe(18)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.title.lineHeight).toBe(26)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.title.fontWeight).toBe("600")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.width).toBe(32)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.alignItems).toBe("center")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.accessibilityRole).toBe("button")
@@ -612,6 +615,8 @@ describe("predefined prompt helpers", () => {
       copy: getPromptLibraryEditorMobileCopyState(),
       keyboardAvoidingBehavior: "padding",
     })
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.label.fontSize).toBe(12)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.label.lineHeight).toBe(16)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken).toBe("mutedForeground")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.multiline).toBe(true)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.textAlignVertical).toBe("top")
