@@ -35,6 +35,7 @@ import {
   getPromptLibraryMobileLauncherShortcutSourceIconStates,
   getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileShortcutActionIconState,
+  getPromptLibraryMobileShortcutCopyState,
   getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
@@ -69,6 +70,12 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryCopyState()).toBe(PROMPT_LIBRARY_PRESENTATION)
     expect(getPromptLibraryMobileCopyState()).toBe(PROMPT_LIBRARY_PRESENTATION.mobile)
     expect(getPromptLibraryMobileEmptyLibraryLabel()).toBe(PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary)
+    expect(getPromptLibraryMobileShortcutCopyState()).toEqual({
+      loadingLabel: PROMPT_LIBRARY_PRESENTATION.mobile.loadingLibraryLabel,
+      emptyLabel: PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary,
+      editLabel: PROMPT_LIBRARY_PRESENTATION.actions.edit,
+      deleteLabel: PROMPT_LIBRARY_PRESENTATION.actions.delete,
+    })
     expect(getPromptLibraryEditorTitle(false)).toBe("Add New Prompt")
     expect(getPromptLibraryEditorTitle(true)).toBe("Edit Prompt")
     expect(getPromptLibraryEditorSaveActionLabel(false)).toBe("Add Prompt")

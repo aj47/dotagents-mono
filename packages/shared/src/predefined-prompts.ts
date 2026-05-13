@@ -567,6 +567,13 @@ export type PromptLibraryMobileShortcutSurfaceState = Pick<
   "shortcutCard" | "shortcutActionButton" | "shortcutSourceLabel" | "shortcutTitle" | "shortcutDescription"
 >
 
+export interface PromptLibraryMobileShortcutCopyState {
+  loadingLabel: string
+  emptyLabel: string
+  editLabel: string
+  deleteLabel: string
+}
+
 export function getPromptLibraryMobileSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile {
   return PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
 }
@@ -579,6 +586,15 @@ export function getPromptLibraryMobileShortcutSurfaceState(): PromptLibraryMobil
     shortcutSourceLabel: surface.shortcutSourceLabel,
     shortcutTitle: surface.shortcutTitle,
     shortcutDescription: surface.shortcutDescription,
+  }
+}
+
+export function getPromptLibraryMobileShortcutCopyState(): PromptLibraryMobileShortcutCopyState {
+  return {
+    loadingLabel: PROMPT_LIBRARY_PRESENTATION.mobile.loadingLibraryLabel,
+    emptyLabel: PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary,
+    editLabel: PROMPT_LIBRARY_PRESENTATION.actions.edit,
+    deleteLabel: PROMPT_LIBRARY_PRESENTATION.actions.delete,
   }
 }
 

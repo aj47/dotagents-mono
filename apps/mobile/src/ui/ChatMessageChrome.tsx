@@ -47,6 +47,7 @@ import {
   type PromptLibraryEditorMobileChromeState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibraryMobileShortcutChromeState,
+  type PromptLibraryMobileShortcutCopyState,
   type PromptLibraryMobileShortcutSurfaceState,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
@@ -310,16 +311,13 @@ type ChatConversationHomeQuickStartsProps<
   shouldRender: boolean;
   items: readonly ChatConversationHomeQuickStartItem<TPrompt, TTask>[];
   isLoading: boolean;
-  loadingLabel: string;
-  emptyLabel: string;
   runningTaskId?: string | null;
   onPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
   onEditPrompt: (prompt: TPrompt) => void;
   onDeletePrompt: (prompt: TPrompt) => void;
   shortcutSurface: PromptLibraryMobileShortcutSurfaceState;
   shortcutChrome: PromptLibraryMobileShortcutChromeState;
-  editLabel: string;
-  deleteLabel: string;
+  shortcutCopy: PromptLibraryMobileShortcutCopyState;
   styles: ChatConversationHomeQuickStartsStyles;
 };
 
@@ -2691,16 +2689,13 @@ export function ChatConversationHomeQuickStarts<
   shouldRender,
   items,
   isLoading,
-  loadingLabel,
-  emptyLabel,
   runningTaskId,
   onPress,
   onEditPrompt,
   onDeletePrompt,
   shortcutSurface,
   shortcutChrome,
-  editLabel,
-  deleteLabel,
+  shortcutCopy,
   styles,
 }: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
   if (!shouldRender) return null;
@@ -2790,7 +2785,7 @@ export function ChatConversationHomeQuickStarts<
                         size={shortcutChrome.editIcon.size}
                         color={shortcutChrome.editIconColors.color}
                       />
-                      <Text style={styles.actionText}>{editLabel}</Text>
+                      <Text style={styles.actionText}>{shortcutCopy.editLabel}</Text>
                     </Pressable>
                     <Pressable
                       style={({ pressed }) => [
@@ -2809,7 +2804,7 @@ export function ChatConversationHomeQuickStarts<
                         size={shortcutChrome.deleteIcon.size}
                         color={shortcutChrome.deleteIconColors.color}
                       />
-                      <Text style={[styles.actionText, styles.actionDangerText]}>{deleteLabel}</Text>
+                      <Text style={[styles.actionText, styles.actionDangerText]}>{shortcutCopy.deleteLabel}</Text>
                     </Pressable>
                   </View>
                 ) : null}
@@ -2819,7 +2814,7 @@ export function ChatConversationHomeQuickStarts<
         </View>
       ) : (
         <Text style={styles.emptyText}>
-          {isLoading ? loadingLabel : emptyLabel}
+          {isLoading ? shortcutCopy.loadingLabel : shortcutCopy.emptyLabel}
         </Text>
       )}
     </View>

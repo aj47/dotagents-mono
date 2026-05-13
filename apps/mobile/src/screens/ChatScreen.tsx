@@ -257,8 +257,8 @@ import {
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileCopyState,
-  getPromptLibraryMobileEmptyLibraryLabel,
   getPromptLibraryMobileShortcutChromeState,
+  getPromptLibraryMobileShortcutCopyState,
   getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
@@ -344,7 +344,7 @@ const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState();
 const promptEditorKeyboardAvoidingBehavior = getPromptLibraryEditorModalKeyboardAvoidingBehavior(Platform.OS);
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
-const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel();
+const promptLibraryShortcutCopy = getPromptLibraryMobileShortcutCopyState();
 const promptLibraryShortcutSurface = getPromptLibraryMobileShortcutSurfaceState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
@@ -3732,16 +3732,13 @@ export default function ChatScreen({ route, navigation }: any) {
           shouldRender: !sessionStore.isLoadingMessages && messages.length === 0,
           items: promptQuickStarts,
           isLoading: isLoadingQuickStartPrompts,
-          loadingLabel: mobilePromptLibraryCopy.loadingLibraryLabel,
-          emptyLabel: mobilePromptLibraryEmptyLabel,
           runningTaskId: runningPromptTaskId,
           onPress: handleQuickStartPress,
           onEditPrompt: openEditPromptModal,
           onDeletePrompt: handleDeletePrompt,
           shortcutSurface: promptLibraryShortcutSurface,
           shortcutChrome: promptLibraryShortcutChrome,
-          editLabel: promptLibraryCopy.actions.edit,
-          deleteLabel: promptLibraryCopy.actions.delete,
+          shortcutCopy: promptLibraryShortcutCopy,
         },
         historyBanner: {
           renderState: messageHistoryBannerRenderState,
