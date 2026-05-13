@@ -31,6 +31,10 @@ export interface MarkdownThinkSectionControlState {
   onToggle?: () => void
 }
 
+export interface MarkdownThinkSectionAccessibilityState {
+  expanded: boolean
+}
+
 export function normalizeMarkdownThoughtContent(content: string): string {
   if (!content) return content
 
@@ -472,6 +476,12 @@ export function getMarkdownThinkSectionAccessibilityLabel(isCollapsed: boolean):
   return isCollapsed
     ? MARKDOWN_THINK_SECTION_PRESENTATION.accessibility.showLabel
     : MARKDOWN_THINK_SECTION_PRESENTATION.accessibility.hideLabel
+}
+
+export function getMarkdownThinkSectionAccessibilityState(
+  isCollapsed: boolean,
+): MarkdownThinkSectionAccessibilityState {
+  return { expanded: !isCollapsed }
 }
 
 export function getMarkdownThinkSectionDisplayLabel(isCollapsed: boolean): string {

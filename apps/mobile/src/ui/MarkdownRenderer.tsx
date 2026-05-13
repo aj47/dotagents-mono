@@ -24,6 +24,7 @@ import {
   getMarkdownImageUnavailableLabel,
   getMarkdownRenderOptions,
   getMarkdownThinkSectionAccessibilityLabel,
+  getMarkdownThinkSectionAccessibilityState,
   getMarkdownThinkSectionControlState,
   getMarkdownThinkSectionDisplayLabel,
   getMarkdownThinkSectionMobileChevronIconState,
@@ -86,7 +87,7 @@ const ThinkSection: React.FC<{
         onPress={handleToggle}
         accessibilityRole={surface.header.accessibilityRole}
         accessibilityLabel={getMarkdownThinkSectionAccessibilityLabel(collapsed)}
-        accessibilityState={{ expanded: !collapsed }}
+        accessibilityState={getMarkdownThinkSectionAccessibilityState(collapsed)}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
         <Ionicons

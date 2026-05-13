@@ -42,6 +42,7 @@ test('markdown renderer loads conversation image assets through authenticated re
 
 test('markdown renderer uses shared think-section copy and surface tokens', () => {
   assert.match(rendererSource, /getMarkdownThinkSectionAccessibilityLabel\(collapsed\)/);
+  assert.match(rendererSource, /getMarkdownThinkSectionAccessibilityState\(collapsed\)/);
   assert.match(rendererSource, /getMarkdownThinkSectionDisplayLabel\(collapsed\)/);
   assert.match(rendererSource, /getMarkdownThinkSectionMobileChevronIconState/);
   assert.match(rendererSource, /getMarkdownThinkSectionMobileLeadingIconState/);
@@ -66,6 +67,7 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(rendererSource, /color=\{colors\.chevron\.color\}/);
   assert.match(rendererSource, /color=\{colors\.icon\.color\}/);
   assert.match(rendererSource, /accessibilityRole=\{surface\.header\.accessibilityRole\}/);
+  assert.match(rendererSource, /accessibilityState=\{getMarkdownThinkSectionAccessibilityState\(collapsed\)\}/);
   assert.match(rendererSource, /surface=\{thinkSectionRenderState\.surface\}/);
   assert.match(rendererSource, /colors=\{thinkSectionColors\}/);
   assert.match(rendererSource, /const thinkControl = getMarkdownThinkSectionControlState\(part\.content, index, \{/);
@@ -97,6 +99,7 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.doesNotMatch(rendererSource, /thinkSectionIcons\.(collapsedName|expandedName|thinkName)/);
   assert.doesNotMatch(rendererSource, /thinkSectionSurface\.(chevron|icon)\.(size|color)/);
   assert.doesNotMatch(rendererSource, /accessibilityLabel=\{collapsed \? 'Show thinking' : 'Hide thinking'\}/);
+  assert.doesNotMatch(rendererSource, /accessibilityState=\{\{ expanded: !collapsed \}\}/);
   assert.doesNotMatch(rendererSource, /accessibilityRole="button"/);
   assert.doesNotMatch(rendererSource, /\{collapsed \? 'Thinking' : 'Hide thinking'\}/);
   assert.doesNotMatch(rendererSource, /MARKDOWN_THINK_SECTION_PRESENTATION/);

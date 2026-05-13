@@ -20,6 +20,7 @@ import {
   getMarkdownImageUnavailableLabel,
   getMarkdownRenderOptions,
   getMarkdownThinkSectionAccessibilityLabel,
+  getMarkdownThinkSectionAccessibilityState,
   getMarkdownThinkSectionControlState,
   getMarkdownThinkSectionMobileContainerState,
   getMarkdownThinkSectionMobileContentState,
@@ -270,6 +271,8 @@ describe("markdown render parts", () => {
     })
     expect(getMarkdownThinkSectionAccessibilityLabel(true)).toBe("Show thinking")
     expect(getMarkdownThinkSectionAccessibilityLabel(false)).toBe("Hide thinking")
+    expect(getMarkdownThinkSectionAccessibilityState(true)).toEqual({ expanded: false })
+    expect(getMarkdownThinkSectionAccessibilityState(false)).toEqual({ expanded: true })
     expect(getMarkdownThinkSectionDisplayLabel(true)).toBe("Thinking")
     expect(getMarkdownThinkSectionDisplayLabel(false)).toBe("Hide thinking")
     expect(getMarkdownThinkSectionControlState("reasoning", 2)).toEqual({
