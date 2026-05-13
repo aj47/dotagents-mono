@@ -35,6 +35,7 @@ import {
   getPromptLibraryMobileLauncherShortcutSourceIconStates,
   getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileShortcutActionIconState,
+  getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
@@ -330,6 +331,13 @@ describe("predefined prompt helpers", () => {
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.alignItems).toBe("center")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.accessibilityRole).toBe("button")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.pressedOpacity).toBe(0.78)
+    expect(getPromptLibraryMobileShortcutSurfaceState()).toEqual({
+      shortcutCard: PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard,
+      shortcutActionButton: PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton,
+      shortcutSourceLabel: PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel,
+      shortcutTitle: PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutTitle,
+      shortcutDescription: PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutDescription,
+    })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.editName).toBe("create-outline")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.deleteName).toBe("trash-outline")
     expect(getPromptLibraryMobileShortcutActionIconState("edit")).toEqual({

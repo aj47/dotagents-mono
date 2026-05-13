@@ -36,6 +36,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /getPromptLibraryCopyState,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileChromeState,/);
   assert.match(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
+  assert.match(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
   assert.match(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.match(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
@@ -43,13 +44,16 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /getPromptLibraryMobileSurfaceColors,/);
   assert.match(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
   assert.match(screenSource, /const promptLibraryCopy = getPromptLibraryCopyState\(\);/);
+  assert.match(screenSource, /const promptLibraryShortcutSurface = getPromptLibraryMobileShortcutSurfaceState\(\);/);
   assert.match(screenSource, /const promptLibraryEditorChrome = useMemo\(\s+\(\) => getPromptLibraryEditorMobileChromeState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const promptLibraryShortcutChrome = useMemo\(\s+\(\) => getPromptLibraryMobileShortcutChromeState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.match(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /runningTaskId: runningPromptTaskId/);
-  assert.match(screenSource, /sourceLabelNumberOfLines: mobilePromptLibrarySurface\.shortcutSourceLabel\.numberOfLines/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{sourceLabelNumberOfLines\}/);
+  assert.match(screenSource, /shortcutSurface: promptLibraryShortcutSurface/);
+  assert.doesNotMatch(screenSource, /sourceLabelNumberOfLines: mobilePromptLibrarySurface\.shortcutSourceLabel\.numberOfLines/);
+  assert.match(chatMessageChromeSource, /shortcutSurface: PromptLibraryMobileShortcutSurfaceState;/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{shortcutSurface\.shortcutSourceLabel\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.homeQuickStarts\}\s+styles=\{styles\.homeQuickStarts\}/);
   assert.match(screenSource, /shortcutChrome: promptLibraryShortcutChrome/);
   assert.doesNotMatch(screenSource, /addIcon: promptLibraryShortcutChrome\.addIcon/);

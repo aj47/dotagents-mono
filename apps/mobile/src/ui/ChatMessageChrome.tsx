@@ -47,6 +47,7 @@ import {
   type PromptLibraryEditorMobileChromeState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibraryMobileShortcutChromeState,
+  type PromptLibraryMobileShortcutSurfaceState,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
@@ -315,11 +316,7 @@ type ChatConversationHomeQuickStartsProps<
   onPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
   onEditPrompt: (prompt: TPrompt) => void;
   onDeletePrompt: (prompt: TPrompt) => void;
-  shortcutCardAccessibilityRole: AccessibilityRole;
-  shortcutActionAccessibilityRole: AccessibilityRole;
-  sourceLabelNumberOfLines: number;
-  titleNumberOfLines: number;
-  descriptionNumberOfLines: number;
+  shortcutSurface: PromptLibraryMobileShortcutSurfaceState;
   shortcutChrome: PromptLibraryMobileShortcutChromeState;
   editLabel: string;
   deleteLabel: string;
@@ -2700,11 +2697,7 @@ export function ChatConversationHomeQuickStarts<
   onPress,
   onEditPrompt,
   onDeletePrompt,
-  shortcutCardAccessibilityRole,
-  shortcutActionAccessibilityRole,
-  sourceLabelNumberOfLines,
-  titleNumberOfLines,
-  descriptionNumberOfLines,
+  shortcutSurface,
   shortcutChrome,
   editLabel,
   deleteLabel,
@@ -2733,7 +2726,7 @@ export function ChatConversationHomeQuickStarts<
                 ]}
                 onPress={() => onPress(item)}
                 disabled={isTaskRunning}
-                accessibilityRole={shortcutCardAccessibilityRole}
+                accessibilityRole={shortcutSurface.shortcutCard.accessibilityRole}
                 accessibilityLabel={createButtonAccessibilityLabel(
                   getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
                 )}
@@ -2748,7 +2741,7 @@ export function ChatConversationHomeQuickStarts<
                     />
                     <Text
                       style={styles.sourceLabel}
-                      numberOfLines={sourceLabelNumberOfLines}
+                      numberOfLines={shortcutSurface.shortcutSourceLabel.numberOfLines}
                     >
                       {getPromptLibraryShortcutSourceLabel(item.source)}
                     </Text>
@@ -2766,14 +2759,14 @@ export function ChatConversationHomeQuickStarts<
                     styles.title,
                     isAddPrompt && styles.titleAdd,
                   ]}
-                  numberOfLines={titleNumberOfLines}
+                  numberOfLines={shortcutSurface.shortcutTitle.numberOfLines}
                 >
                   {item.title}
                 </Text>
                 {item.description ? (
                   <Text
                     style={styles.description}
-                    numberOfLines={descriptionNumberOfLines}
+                    numberOfLines={shortcutSurface.shortcutDescription.numberOfLines}
                   >
                     {item.description}
                   </Text>
@@ -2789,7 +2782,7 @@ export function ChatConversationHomeQuickStarts<
                         event.stopPropagation();
                         onEditPrompt(item.prompt!);
                       }}
-                      accessibilityRole={shortcutActionAccessibilityRole}
+                      accessibilityRole={shortcutSurface.shortcutActionButton.accessibilityRole}
                       accessibilityLabel={getPromptLibraryEditPromptAccessibilityLabel(item.title)}
                     >
                       <Ionicons
@@ -2808,7 +2801,7 @@ export function ChatConversationHomeQuickStarts<
                         event.stopPropagation();
                         onDeletePrompt(item.prompt!);
                       }}
-                      accessibilityRole={shortcutActionAccessibilityRole}
+                      accessibilityRole={shortcutSurface.shortcutActionButton.accessibilityRole}
                       accessibilityLabel={getPromptLibraryDeletePromptAccessibilityLabel(item.title)}
                     >
                       <Ionicons

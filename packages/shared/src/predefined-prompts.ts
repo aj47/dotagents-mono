@@ -560,8 +560,26 @@ export interface PromptLibraryMobileSurfaceColors {
   }
 }
 
+export type PromptLibraryMobileSurfaceState = typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
+
+export type PromptLibraryMobileShortcutSurfaceState = Pick<
+  PromptLibraryMobileSurfaceState,
+  "shortcutCard" | "shortcutActionButton" | "shortcutSourceLabel" | "shortcutTitle" | "shortcutDescription"
+>
+
 export function getPromptLibraryMobileSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile {
   return PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
+}
+
+export function getPromptLibraryMobileShortcutSurfaceState(): PromptLibraryMobileShortcutSurfaceState {
+  const surface = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
+  return {
+    shortcutCard: surface.shortcutCard,
+    shortcutActionButton: surface.shortcutActionButton,
+    shortcutSourceLabel: surface.shortcutSourceLabel,
+    shortcutTitle: surface.shortcutTitle,
+    shortcutDescription: surface.shortcutDescription,
+  }
 }
 
 export function getPromptLibraryEditorModalKeyboardAvoidingBehavior(platform: string | null | undefined) {

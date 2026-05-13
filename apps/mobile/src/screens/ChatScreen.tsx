@@ -259,6 +259,7 @@ import {
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileEmptyLibraryLabel,
   getPromptLibraryMobileShortcutChromeState,
+  getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
@@ -344,6 +345,7 @@ const promptEditorKeyboardAvoidingBehavior = getPromptLibraryEditorModalKeyboard
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel();
+const promptLibraryShortcutSurface = getPromptLibraryMobileShortcutSurfaceState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -3736,11 +3738,7 @@ export default function ChatScreen({ route, navigation }: any) {
           onPress: handleQuickStartPress,
           onEditPrompt: openEditPromptModal,
           onDeletePrompt: handleDeletePrompt,
-          shortcutCardAccessibilityRole: mobilePromptLibrarySurface.shortcutCard.accessibilityRole,
-          shortcutActionAccessibilityRole: mobilePromptLibrarySurface.shortcutActionButton.accessibilityRole,
-          sourceLabelNumberOfLines: mobilePromptLibrarySurface.shortcutSourceLabel.numberOfLines,
-          titleNumberOfLines: mobilePromptLibrarySurface.shortcutTitle.numberOfLines,
-          descriptionNumberOfLines: mobilePromptLibrarySurface.shortcutDescription.numberOfLines,
+          shortcutSurface: promptLibraryShortcutSurface,
           shortcutChrome: promptLibraryShortcutChrome,
           editLabel: promptLibraryCopy.actions.edit,
           deleteLabel: promptLibraryCopy.actions.delete,
