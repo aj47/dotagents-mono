@@ -36,6 +36,7 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionSet,
   createChatMessageActionStyleSlots,
+  createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -4186,25 +4187,22 @@ export default function ChatScreen({ route, navigation }: any) {
                     renderState: messageInlineActivityRenderState,
                     spinnerSource: isDark ? darkSpinner : lightSpinner,
                   } : null,
-                  conversation: {
-                    content: {
-                      contentState: messageContentRenderState,
-                      slots: messageActionSet.visibleSlots,
-                      components: messageActionSet.components,
-                      expanded: {
-                        streamingRenderState: streamingContentRenderState,
-                        markdownContent: visibleMessageContent,
-                        assetBaseUrl: config.baseUrl,
-                        assetAuthToken: config.apiKey,
-                        spinnerSource: isDark ? darkSpinner : lightSpinner,
-                      },
-                      collapsed: {
-                        renderState: messageRenderState.collapsedPreview,
-                        actionState: messageCollapsedPreviewActionState,
-                        onPress: messageCollapsedPreviewActionState.canToggle
-                          ? () => toggleMessageExpansion(i)
-                          : undefined,
-                      },
+                  conversation: createChatMessageConversationBodyProps({
+                    contentState: messageContentRenderState,
+                    actionSet: messageActionSet,
+                    expanded: {
+                      streamingRenderState: streamingContentRenderState,
+                      markdownContent: visibleMessageContent,
+                      assetBaseUrl: config.baseUrl,
+                      assetAuthToken: config.apiKey,
+                      spinnerSource: isDark ? darkSpinner : lightSpinner,
+                    },
+                    collapsed: {
+                      renderState: messageRenderState.collapsedPreview,
+                      actionState: messageCollapsedPreviewActionState,
+                      onPress: messageCollapsedPreviewActionState.canToggle
+                        ? () => toggleMessageExpansion(i)
+                        : undefined,
                     },
                     toolExecutionStack: {
                       shouldRender: toolExecutionVisibilityRenderState.toolExecutionStack.shouldRender,
@@ -4228,12 +4226,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                       detailRows: toolExecutionDetailRows,
                     },
-                    standaloneActions: {
-                      shouldRender: messageActionSet.shouldRenderStandaloneActions,
-                      slots: messageActionSet.visibleSlots,
-                      components: messageActionSet.components,
-                    },
-                  },
+                  }),
                 }}
               />
             );

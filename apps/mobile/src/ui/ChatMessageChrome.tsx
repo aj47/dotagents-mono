@@ -155,7 +155,7 @@ type ChatMessageActionSetInput = ChatMessageActionComponentsInput & {
   contentRenderState: ChatMessageActionLayoutStateInput['renderState'];
 };
 
-type ChatMessageActionSet = {
+export type ChatMessageActionSet = {
   components: Record<ChatMessageActionSlot, ReactNode>;
   visibleSlots: ChatMessageActionSlot[];
   shouldRenderStandaloneActions: boolean;
@@ -1551,6 +1551,16 @@ type ChatMessageThreadBodyProps = {
   };
 };
 
+export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
+
+export type ChatMessageConversationBodyPropsInput = {
+  contentState: ChatMessageThreadBodyContentProps['contentState'];
+  actionSet: ChatMessageActionSet;
+  expanded: ChatMessageThreadBodyContentProps['expanded'];
+  collapsed: ChatMessageThreadBodyContentProps['collapsed'];
+  toolExecutionStack: ChatMessageConversationBodyProps['toolExecutionStack'];
+};
+
 type ChatMessageRuntimeThreadStyleSlots = {
   surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
   body: ChatMessageThreadBodyStyleSlots;
@@ -1686,6 +1696,30 @@ export function createChatMessageActionSet({
     components,
     visibleSlots: layout.visibleSlots,
     shouldRenderStandaloneActions: layout.shouldRenderStandaloneRow,
+  };
+}
+
+export function createChatMessageConversationBodyProps({
+  contentState,
+  actionSet,
+  expanded,
+  collapsed,
+  toolExecutionStack,
+}: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
+  return {
+    content: {
+      contentState,
+      slots: actionSet.visibleSlots,
+      components: actionSet.components,
+      expanded,
+      collapsed,
+    },
+    toolExecutionStack,
+    standaloneActions: {
+      shouldRender: actionSet.shouldRenderStandaloneActions,
+      slots: actionSet.visibleSlots,
+      components: actionSet.components,
+    },
   };
 }
 
