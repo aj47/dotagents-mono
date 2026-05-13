@@ -234,12 +234,12 @@ import {
   getPromptLibraryCopyState,
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
+  getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
-  isPromptLibraryEditorSaveDisabled,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
 } from '@dotagents/shared/predefined-prompts';
@@ -1659,7 +1659,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handleSavePrompt = async () => {
     const draft = { name: newPromptName, content: newPromptContent };
-    if (!settingsClient || isPromptLibraryEditorSaveDisabled(draft, isSavingPrompt)) return;
+    const saveActionState = getPromptLibraryEditorSaveActionState(
+      draft,
+      Boolean(editingPrompt),
+      isSavingPrompt,
+    );
+    if (!settingsClient || saveActionState.isDisabled) return;
     setIsSavingPrompt(true);
     try {
       const now = Date.now();
