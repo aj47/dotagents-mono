@@ -51,6 +51,7 @@ import {
   getToolExecutionCompactMobileToolIconState,
   getToolExecutionDetailCopyState,
   getToolExecutionResultOnlyFallbackRenderState,
+  getToolExecutionMobileVisibilityRenderState,
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStatusMobileColor,
   getToolExecutionStatusMobileColorMap,
@@ -117,6 +118,30 @@ describe("tool execution display", () => {
       allSuccess: false,
       hasErrors: true,
       isPending: false,
+    })
+    expect(getToolExecutionMobileVisibilityRenderState({ toolCallCount: 2 })).toEqual({
+      hasToolCalls: true,
+      toolPreview: {
+        shouldRender: true,
+      },
+      toolExecutionStack: {
+        shouldRender: true,
+      },
+      emptyState: {
+        shouldRender: false,
+      },
+    })
+    expect(getToolExecutionMobileVisibilityRenderState({ toolCallCount: 0 })).toEqual({
+      hasToolCalls: false,
+      toolPreview: {
+        shouldRender: false,
+      },
+      toolExecutionStack: {
+        shouldRender: false,
+      },
+      emptyState: {
+        shouldRender: true,
+      },
     })
     expect(getToolExecutionDetailArgumentsState(undefined)).toEqual({
       hasArguments: false,

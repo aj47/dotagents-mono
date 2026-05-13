@@ -187,6 +187,7 @@ import {
   getToolExecutionDetailArgumentsState,
   getToolExecutionDetailResultState,
   getToolExecutionCallDisplayState,
+  getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
 } from '@dotagents/shared/tool-execution-display';
@@ -3823,6 +3824,9 @@ export default function ChatScreen({ route, navigation }: any) {
 
             const renderedToolEntries = messageDisplayState.visibleToolEntries;
             const displayToolCallCount = messageDisplayState.displayToolCallCount;
+            const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState({
+              toolCallCount: displayToolCallCount,
+            });
             const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
               isResponding: responding,
               messageIndex: i,
@@ -4164,7 +4168,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                     },
                     toolPreview: {
-                      shouldRender: displayToolCallCount > 0,
+                      shouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
                       label: delegationToolPreviewLabel,
                       rows: delegationToolPreviewRows,
                       hiddenCount: delegationHiddenToolCount,
@@ -4212,7 +4216,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                     },
                     toolExecutionStack: {
-                      shouldRender: displayToolCallCount > 0,
+                      shouldRender: toolExecutionVisibilityRenderState.toolExecutionStack.shouldRender,
                       isExpanded,
                       compact: {
                         renderState: toolExecutionExpandControl,
@@ -4227,7 +4231,7 @@ export default function ChatScreen({ route, navigation }: any) {
                         allSuccess,
                         hasErrors,
                         emptyState: {
-                          shouldRender: displayToolCallCount === 0,
+                          shouldRender: toolExecutionVisibilityRenderState.emptyState.shouldRender,
                           renderState: toolExecutionDetailEmptyState,
                         },
                       },

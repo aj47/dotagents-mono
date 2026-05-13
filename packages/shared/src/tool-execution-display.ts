@@ -109,6 +109,23 @@ export interface ToolExecutionCompactMobileStyleRenderState {
   statusColors: ToolExecutionStatusMobileColorMap
 }
 
+export interface ToolExecutionMobileVisibilityRenderStateInput {
+  toolCallCount?: number | null
+}
+
+export interface ToolExecutionMobileVisibilityRenderState {
+  hasToolCalls: boolean
+  toolPreview: {
+    shouldRender: boolean
+  }
+  toolExecutionStack: {
+    shouldRender: boolean
+  }
+  emptyState: {
+    shouldRender: boolean
+  }
+}
+
 export type ToolExecutionDetailMobileToggleIconPlacement = "header" | "collapse"
 
 export interface ToolExecutionDetailMobileToggleIconStateInput {
@@ -1371,6 +1388,25 @@ export function getToolExecutionSummaryDisplayState(
     allSuccess: hasResults && state === "success",
     hasErrors: state === "error",
     isPending: state === "pending",
+  }
+}
+
+export function getToolExecutionMobileVisibilityRenderState(
+  input: ToolExecutionMobileVisibilityRenderStateInput = {},
+): ToolExecutionMobileVisibilityRenderState {
+  const hasToolCalls = (input.toolCallCount ?? 0) > 0
+
+  return {
+    hasToolCalls,
+    toolPreview: {
+      shouldRender: hasToolCalls,
+    },
+    toolExecutionStack: {
+      shouldRender: hasToolCalls,
+    },
+    emptyState: {
+      shouldRender: !hasToolCalls,
+    },
   }
 }
 
