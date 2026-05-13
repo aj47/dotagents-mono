@@ -137,10 +137,12 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
   assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
+  assert.match(screenSource, /isPromptLibraryEditorSaveDisabled\(draft, isSavingPrompt\)/);
   assert.match(screenSource, /onSave: handleSavePrompt/);
   assert.match(chatMessageChromeSource, /onPress=\{onSave\}/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /getPromptLibrarySaveSuccessMessage\(Boolean\(editingPrompt\)\)/);
+  assert.doesNotMatch(screenSource, /newPrompt(Name|Content)\.trim\(\)/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.match(screenSource, /renderState: promptLibraryEditorRenderState/);

@@ -257,6 +257,7 @@ import {
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
+  isPromptLibraryEditorSaveDisabled,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
 } from '@dotagents/shared/predefined-prompts';
@@ -1660,13 +1661,11 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [isFocused, settingsClient]);
 
   const handleSavePrompt = async () => {
-    if (!settingsClient || !newPromptName.trim() || !newPromptContent.trim()) return;
+    const draft = { name: newPromptName, content: newPromptContent };
+    if (!settingsClient || isPromptLibraryEditorSaveDisabled(draft, isSavingPrompt)) return;
     setIsSavingPrompt(true);
     try {
       const now = Date.now();
-      const name = newPromptName.trim();
-      const content = newPromptContent.trim();
-      const draft = { name, content };
       const updatedPrompts = editingPrompt
         ? updatePredefinedPromptList(predefinedPrompts, editingPrompt.id, draft, now)
         : [
