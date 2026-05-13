@@ -4038,14 +4038,13 @@ export default function ChatScreen({ route, navigation }: any) {
               expansion: messageRenderState.expansion.canToggle,
             });
             const messageActionSet = createChatMessageActionSet({
+              availability: messageActionAvailabilityRenderState,
               contentRenderState: messageContentRenderState,
               turnDuration: {
-                canRender: messageActionAvailabilityRenderState.turnDuration.canRender,
                 renderState: messageTurnDurationRenderState,
                 ...messageActionStyles.turnDuration,
               },
               speech: {
-                canRender: messageActionAvailabilityRenderState.speech.canRender,
                 renderState: messageSpeechRenderState,
                 onPress: () => speakMessage(i, visibleMessageContent),
                 hitSlop: mobileMessageSpeechButton.hitSlop,
@@ -4053,7 +4052,6 @@ export default function ChatScreen({ route, navigation }: any) {
                 isActive: isMessageSpeaking,
               },
               branch: {
-                canRender: messageActionAvailabilityRenderState.branch.canRender,
                 renderState: messageBranchRenderState,
                 onPress: () => {
                   if (messageBranchIndex != null) {
@@ -4064,7 +4062,6 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.branch,
               },
               copy: {
-                canRender: messageActionAvailabilityRenderState.copy.canRender,
                 renderState: messageCopyRenderState,
                 onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
                 hitSlop: mobileMessageActionButton.hitSlop,
@@ -4072,7 +4069,6 @@ export default function ChatScreen({ route, navigation }: any) {
                 isActive: isMessageCopied,
               },
               expansion: {
-                canRender: messageActionAvailabilityRenderState.expansion.canRender,
                 renderState: messageRenderState.expansion,
                 onPress: () => toggleMessageExpansion(i),
                 hitSlop: mobileMessageActionButton.hitSlop,

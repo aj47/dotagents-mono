@@ -23,8 +23,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionLayoutRenderState,
+  type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
 } from '@dotagents/shared/message-display-utils';
@@ -127,7 +127,6 @@ type ChatMessageActionButtonRenderState = {
 };
 
 type ChatMessageActionButtonSpec = {
-  canRender: boolean;
   renderState: ChatMessageActionButtonRenderState;
   onPress?: (event: GestureResponderEvent) => void;
   hitSlop?: number | Insets;
@@ -138,11 +137,10 @@ type ChatMessageActionButtonSpec = {
   isActive?: boolean;
 };
 
-type ChatMessageTurnDurationActionSpec = ChatMessageTurnDurationBadgeProps & {
-  canRender: boolean;
-};
+type ChatMessageTurnDurationActionSpec = ChatMessageTurnDurationBadgeProps;
 
 type ChatMessageActionComponentsInput = {
+  availability: ChatMessageActionAvailabilityRenderState;
   turnDuration: ChatMessageTurnDurationActionSpec;
   speech: ChatMessageActionButtonSpec;
   branch: ChatMessageActionButtonSpec;
@@ -1620,8 +1618,11 @@ export function ChatMessageActionIconButton({
   );
 }
 
-function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
-  if (!spec.canRender) return null;
+function renderChatMessageActionButton(
+  spec: ChatMessageActionButtonSpec,
+  canRender: boolean,
+) {
+  if (!canRender) return null;
 
   return (
     <ChatMessageActionIconButton
@@ -1644,6 +1645,7 @@ function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
 }
 
 export function createChatMessageActionComponents({
+  availability,
   turnDuration,
   speech,
   branch,
@@ -1651,7 +1653,7 @@ export function createChatMessageActionComponents({
   expansion,
 }: ChatMessageActionComponentsInput): Record<ChatMessageActionSlot, ReactNode> {
   return {
-    turnDuration: turnDuration.canRender ? (
+    turnDuration: availability.turnDuration.canRender ? (
       <ChatMessageTurnDurationBadge
         renderState={turnDuration.renderState}
         style={turnDuration.style}
@@ -1660,26 +1662,24 @@ export function createChatMessageActionComponents({
         liveTextStyle={turnDuration.liveTextStyle}
       />
     ) : null,
-    speech: renderChatMessageActionButton(speech),
-    branch: renderChatMessageActionButton(branch),
-    copy: renderChatMessageActionButton(copy),
-    expansion: renderChatMessageActionButton(expansion),
+    speech: renderChatMessageActionButton(speech, availability.speech.canRender),
+    branch: renderChatMessageActionButton(branch, availability.branch.canRender),
+    copy: renderChatMessageActionButton(copy, availability.copy.canRender),
+    expansion: renderChatMessageActionButton(expansion, availability.expansion.canRender),
   };
 }
 
 export function createChatMessageActionSet({
   contentRenderState,
+  availability,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
-  const components = createChatMessageActionComponents(input);
+  const components = createChatMessageActionComponents({
+    availability,
+    ...input,
+  });
   const layout = getChatMessageActionLayoutRenderState({
-    availability: getChatMessageActionAvailabilityRenderState({
-      turnDuration: input.turnDuration.canRender,
-      speech: input.speech.canRender,
-      branch: input.branch.canRender,
-      copy: input.copy.canRender,
-      expansion: input.expansion.canRender,
-    }),
+    availability,
     renderState: contentRenderState,
   });
 
