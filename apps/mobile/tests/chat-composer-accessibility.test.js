@@ -30,7 +30,8 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(screenSource, /getChatComposerEditBeforeSendMobileRenderState/);
   assert.match(screenSource, /const mobileComposerControls = useMemo\(\s+\(\) => getChatComposerMobileControlState\(\),\s+\[\],\s+\);/);
   assert.match(screenSource, /const mobileComposerQueueRenderState = useMemo\(\s+\(\) => getChatComposerQueueMobileRenderState\(\{\s+isDisabled: !composerHasContent,\s+colors: theme\.colors,\s+\}\),\s+\[composerHasContent, theme\.colors\],\s+\);/);
-  assert.match(screenSource, /getChatComposerMobileSurfaceState/);
+  assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
+  assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(screenSource, /getChatRuntimeMobileSafeAreaLayoutState/);
   assert.match(screenSource, /createChatComposerStyleSlots,/);
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
@@ -113,9 +114,9 @@ test('uses shared mobile composer control accessibility state', () => {
 });
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
-  assert.match(screenSource, /getChatComposerMobileSurfaceState,/);
+  assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
   assert.match(screenSource, /getChatComposerMobileSurfaceRenderState,/);
-  assert.match(screenSource, /const mobileComposerSurface = getChatComposerMobileSurfaceState\(\);/);
+  assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);

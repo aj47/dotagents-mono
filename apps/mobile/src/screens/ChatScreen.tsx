@@ -103,7 +103,6 @@ import {
   getChatComposerMobileControlState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
-  getChatComposerMobileSurfaceState,
   getChatComposerQueueMobileRenderState,
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileRenderState,
@@ -287,8 +286,6 @@ const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState();
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
-const mobileComposerSurface = getChatComposerMobileSurfaceState();
-const mobileComposerWebAccessibility = mobileComposerSurface.webAccessibility;
 const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
 const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState();
 const mobileRuntimeViewport = getChatRuntimeViewportMobileState();
@@ -468,6 +465,8 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [theme.colors],
   );
+  const mobileComposerSurface = mobileComposerSurfaceRenderState.surface;
+  const mobileComposerWebAccessibility = mobileComposerSurface.webAccessibility;
   const mobileComposerTextColors = mobileComposerSurfaceRenderState.colors.text;
   const imageAttachmentRenderState = useMemo(
     () => getChatImageAttachmentMobileRenderState({
@@ -3099,7 +3098,7 @@ export default function ChatScreen({ route, navigation }: any) {
       isWebPlatform,
       micWebPressedStyle: composerMicWebPressStyle,
     }),
-    [isWebPlatform, mobileComposerTextColors],
+    [isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility],
   );
 	const composerAccessibilityHint = createChatComposerAccessibilityHint({
 	  handsFree,
