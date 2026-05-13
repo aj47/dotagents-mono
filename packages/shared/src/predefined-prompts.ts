@@ -448,6 +448,11 @@ export type PromptLibraryMobileLauncherShortcutSourceIconColors = Readonly<
   Record<PromptLibraryLauncherShortcutSource, PromptLibraryMobileIconColors>
 >
 
+export interface PromptLibraryEditorMobileChromeState {
+  closeIcon: PromptLibraryEditorMobileCloseIconState
+  closeIconColors: PromptLibraryMobileIconColors
+}
+
 export interface PromptLibraryMobileShortcutChromeState {
   addIcon: PromptLibraryMobileAddShortcutIconState
   addIconColors: PromptLibraryMobileIconColors
@@ -661,6 +666,17 @@ export function getPromptLibraryMobileLauncherShortcutSourceIconColors(
     "saved-prompt": getPromptLibraryMobileIconColors(icons["saved-prompt"], colors),
     skill: getPromptLibraryMobileIconColors(icons.skill, colors),
     task: getPromptLibraryMobileIconColors(icons.task, colors),
+  }
+}
+
+export function getPromptLibraryEditorMobileChromeState(
+  colors: PromptLibraryMobileIconColorPalette,
+): PromptLibraryEditorMobileChromeState {
+  const closeIcon = getPromptLibraryEditorMobileCloseIconState()
+
+  return {
+    closeIcon,
+    closeIconColors: getPromptLibraryMobileIconColors(closeIcon, colors),
   }
 }
 

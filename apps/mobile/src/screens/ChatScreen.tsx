@@ -253,12 +253,11 @@ import {
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
   getPromptLibraryEditorModalKeyboardAvoidingBehavior,
-  getPromptLibraryEditorMobileCloseIconState,
+  getPromptLibraryEditorMobileChromeState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileEmptyLibraryLabel,
-  getPromptLibraryMobileIconColors,
   getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
@@ -345,7 +344,6 @@ const promptEditorKeyboardAvoidingBehavior = getPromptLibraryEditorModalKeyboard
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel();
-const promptLibraryEditorCloseIcon = getPromptLibraryEditorMobileCloseIconState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -479,12 +477,12 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getToolExecutionDetailMobilePendingResultRenderState({ colors: theme.colors }),
     [theme.colors],
   );
-  const promptLibraryEditorCloseIconColors = useMemo(
-    () => getPromptLibraryMobileIconColors(promptLibraryEditorCloseIcon, theme.colors),
-    [theme.colors],
-  );
   const promptLibrarySurfaceColors = useMemo(
     () => getPromptLibraryMobileSurfaceColors(theme.colors),
+    [theme.colors],
+  );
+  const promptLibraryEditorChrome = useMemo(
+    () => getPromptLibraryEditorMobileChromeState(theme.colors),
     [theme.colors],
   );
   const promptLibraryShortcutChrome = useMemo(
@@ -515,15 +513,14 @@ export default function ChatScreen({ route, navigation }: any) {
       surface: promptEditorModalSurface,
       colors: promptLibrarySurfaceColors.editorModal,
       keyboardAvoidingBehavior: promptEditorKeyboardAvoidingBehavior,
-      closeIcon: promptLibraryEditorCloseIcon,
-      closeIconColors: promptLibraryEditorCloseIconColors,
+      editorChrome: promptLibraryEditorChrome,
       closeButtonAccessibilityLabel: promptLibraryCopy.editor.closeAccessibilityLabel,
       styles: promptEditorModalStyles,
     }),
     [
       promptEditorModalSurface,
       promptLibrarySurfaceColors,
-      promptLibraryEditorCloseIconColors,
+      promptLibraryEditorChrome,
       promptEditorModalStyles,
     ],
   );

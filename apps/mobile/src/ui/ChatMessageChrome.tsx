@@ -44,9 +44,8 @@ import {
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutSourceLabel,
-  type PromptLibraryEditorMobileCloseIconState,
+  type PromptLibraryEditorMobileChromeState,
   type PromptLibraryLauncherShortcutSource,
-  type PromptLibraryMobileIconColors,
   type PromptLibraryMobileShortcutChromeState,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
@@ -364,8 +363,7 @@ type ChatConversationHomePromptEditorModalProps = {
   modalTransparent?: ComponentProps<typeof Modal>['transparent'];
   modalAnimationType?: ComponentProps<typeof Modal>['animationType'];
   keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  closeIcon: PromptLibraryEditorMobileCloseIconState;
-  closeIconColors: PromptLibraryMobileIconColors;
+  editorChrome: PromptLibraryEditorMobileChromeState;
   closeButtonPressedOpacity: number;
   closeButtonAccessibilityRole: AccessibilityRole;
   closeButtonAccessibilityLabel: string;
@@ -384,8 +382,7 @@ type ChatConversationHomePromptEditorModalChromeProps = Pick<
   | 'modalTransparent'
   | 'modalAnimationType'
   | 'keyboardAvoidingBehavior'
-  | 'closeIcon'
-  | 'closeIconColors'
+  | 'editorChrome'
   | 'closeButtonPressedOpacity'
   | 'closeButtonAccessibilityRole'
   | 'closeButtonAccessibilityLabel'
@@ -428,8 +425,7 @@ type ChatConversationHomePromptEditorModalChromeInput = {
     };
   };
   keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  closeIcon: PromptLibraryEditorMobileCloseIconState;
-  closeIconColors: PromptLibraryMobileIconColors;
+  editorChrome: PromptLibraryEditorMobileChromeState;
   closeButtonAccessibilityLabel: string;
   styles: ChatConversationHomePromptEditorModalStyles;
 };
@@ -2319,8 +2315,7 @@ export function createChatConversationHomePromptEditorModalChromeProps({
   surface,
   colors,
   keyboardAvoidingBehavior,
-  closeIcon,
-  closeIconColors,
+  editorChrome,
   closeButtonAccessibilityLabel,
   styles,
 }: ChatConversationHomePromptEditorModalChromeInput): ChatConversationHomePromptEditorModalChromeProps {
@@ -2328,8 +2323,7 @@ export function createChatConversationHomePromptEditorModalChromeProps({
     modalTransparent: surface.modal.transparent,
     modalAnimationType: surface.modal.animationType,
     keyboardAvoidingBehavior,
-    closeIcon,
-    closeIconColors,
+    editorChrome,
     closeButtonPressedOpacity: surface.closeButton.pressedOpacity,
     closeButtonAccessibilityRole: surface.closeButton.accessibilityRole,
     closeButtonAccessibilityLabel,
@@ -2858,8 +2852,7 @@ export function ChatConversationHomePromptEditorModal({
   modalTransparent,
   modalAnimationType,
   keyboardAvoidingBehavior,
-  closeIcon,
-  closeIconColors,
+  editorChrome,
   closeButtonPressedOpacity,
   closeButtonAccessibilityRole,
   closeButtonAccessibilityLabel,
@@ -2898,9 +2891,9 @@ export function ChatConversationHomePromptEditorModal({
                 accessibilityLabel={closeButtonAccessibilityLabel}
               >
                 <Ionicons
-                  name={closeIcon.name}
-                  size={closeIcon.size}
-                  color={closeIconColors.color}
+                  name={editorChrome.closeIcon.name}
+                  size={editorChrome.closeIcon.size}
+                  color={editorChrome.closeIconColors.color}
                 />
               </TouchableOpacity>
             </View>

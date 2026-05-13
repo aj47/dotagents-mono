@@ -20,6 +20,7 @@ import {
   getPromptLibraryDesktopSurfaceState,
   getPromptLibraryEditPromptAccessibilityLabel,
   getPromptLibraryEditorModalKeyboardAvoidingBehavior,
+  getPromptLibraryEditorMobileChromeState,
   getPromptLibraryEditorMobileCloseIconState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
@@ -383,6 +384,20 @@ describe("predefined prompt helpers", () => {
       primary: "#2563eb",
     })).toEqual({
       color: "#64748b",
+    })
+    expect(getPromptLibraryEditorMobileChromeState({
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      closeIcon: {
+        name: "close",
+        size: 20,
+        colorToken: "mutedForeground",
+      },
+      closeIconColors: {
+        color: "#64748b",
+      },
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken).toBe("mutedForeground")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.multiline).toBe(true)
