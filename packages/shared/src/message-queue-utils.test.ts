@@ -22,6 +22,7 @@ import {
   getMessageQueuePanelDesktopSurfaceState,
   getMessageQueuePanelMobileIconState,
   getMessageQueuePanelMobileSurfaceColors,
+  getMessageQueuePanelMobileSurfaceRenderState,
   getMessageQueuePanelMobileSurfaceState,
   getMessageQueuePanelRenderItems,
   getMessageQueuePanelState,
@@ -349,6 +350,41 @@ describe('message-queue-utils', () => {
             pausedNoticeBackgroundColor: 'rgba(245, 158, 11, 0.09)',
             pausedNoticeBorderBottomColor: 'rgba(245, 158, 11, 0.38)',
             pausedNoticeTextColor: '#f59e0b',
+          },
+        },
+      },
+    });
+    expect(getMessageQueuePanelMobileSurfaceRenderState({
+      colors: {
+        background: '#ffffff',
+        border: '#d4d4d4',
+        destructive: '#dc2626',
+        foreground: '#171717',
+        mutedForeground: '#737373',
+        primary: '#2563eb',
+        primaryForeground: '#ffffff',
+        success: '#16a34a',
+        warning: '#f59e0b',
+      },
+    })).toMatchObject({
+      surface: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile,
+      colors: {
+        item: {
+          failedColor: '#dc2626',
+          processingColor: '#2563eb',
+          messageColor: '#171717',
+        },
+        actions: {
+          buttonBorderColor: '#d4d4d4',
+          removeTextColor: '#dc2626',
+        },
+        panel: {
+          titleColor: '#171717',
+          status: {
+            queued: {
+              color: '#f59e0b',
+              borderColor: 'rgba(245, 158, 11, 0.27)',
+            },
           },
         },
       },

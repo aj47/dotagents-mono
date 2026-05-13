@@ -20,8 +20,7 @@ import {
   getMessageQueuePanelCopyState,
   getMessageQueuePanelState,
   getMessageQueuePanelMobileIconState,
-  getMessageQueuePanelMobileSurfaceColors,
-  getMessageQueuePanelMobileSurfaceState,
+  getMessageQueuePanelMobileSurfaceRenderState,
   getQueuedMessageItemPresentation,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
@@ -29,7 +28,6 @@ import { useTheme } from './ThemeProvider';
 
 const mobileMessageQueuePanelCopy = getMessageQueuePanelCopyState();
 const mobileMessageQueuePanelIcons = getMessageQueuePanelMobileIconState();
-const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState();
 
 interface MessageQueuePanelProps {
   conversationId: string;
@@ -69,10 +67,13 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     expansionLabel,
     errorText,
   } = messagePresentation;
-  const itemSurface = mobileMessageQueuePanelSurface.item;
-  const actionSurface = mobileMessageQueuePanelSurface.actions;
-  const editSurface = mobileMessageQueuePanelSurface.edit;
-  const queuePanelColors = getMessageQueuePanelMobileSurfaceColors(theme.colors);
+  const queuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const itemSurface = queuePanelStyleState.surface.item;
+  const actionSurface = queuePanelStyleState.surface.actions;
+  const editSurface = queuePanelStyleState.surface.edit;
+  const queuePanelColors = queuePanelStyleState.colors;
   const itemColors = queuePanelColors.item;
   const actionColors = queuePanelColors.actions;
   const editColors = queuePanelColors.edit;
@@ -372,8 +373,11 @@ export function MessageQueuePanel({
     isListCollapsed,
     canProcessNext,
   });
-  const panelSurface = mobileMessageQueuePanelSurface.panel;
-  const queuePanelColors = getMessageQueuePanelMobileSurfaceColors(theme.colors);
+  const queuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const panelSurface = queuePanelStyleState.surface.panel;
+  const queuePanelColors = queuePanelStyleState.colors;
   const panelColors = queuePanelColors.panel;
   const panelStatusColors = panelColors.status[queuePanelState.statusKey];
   const queuePanelIcons = mobileMessageQueuePanelIcons;

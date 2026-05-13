@@ -483,6 +483,15 @@ export interface MessageQueuePanelMobileSurfaceColors {
   };
 }
 
+export interface MessageQueuePanelMobileSurfaceRenderStateInput {
+  colors: MessageQueuePanelMobileSurfaceColorPalette;
+}
+
+export interface MessageQueuePanelMobileSurfaceRenderState {
+  surface: typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile;
+  colors: MessageQueuePanelMobileSurfaceColors;
+}
+
 export function getMessageQueuePanelMobileSurfaceColors(
   colors: MessageQueuePanelMobileSurfaceColorPalette,
 ): MessageQueuePanelMobileSurfaceColors {
@@ -571,6 +580,15 @@ export function getMessageQueuePanelMobileSurfaceColors(
 
 export function getMessageQueuePanelMobileSurfaceState(): typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile {
   return MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile;
+}
+
+export function getMessageQueuePanelMobileSurfaceRenderState({
+  colors,
+}: MessageQueuePanelMobileSurfaceRenderStateInput): MessageQueuePanelMobileSurfaceRenderState {
+  return {
+    surface: getMessageQueuePanelMobileSurfaceState(),
+    colors: getMessageQueuePanelMobileSurfaceColors(colors),
+  };
 }
 
 export function getMessageQueuePanelDesktopSurfaceState(): typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop {

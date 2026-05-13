@@ -2104,10 +2104,12 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 });
 
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
-  assert.match(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
+  assert.match(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.match(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const messageQueuePanelSurface = mobileMessageQueuePanelSurface;/);
+  assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
+  assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
+  assert.match(screenSource, /const messageQueuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const messageQueuePanelSurface = messageQueuePanelStyleState\.surface;/);
   assert.match(screenSource, /const isMessageQueuePaused = messageQueue\.isQueuePaused\(currentConversationId\);/);
   assert.match(screenSource, /const nextQueuedMessage = !responding && !isMessageQueuePaused \? messageQueue\.peek\(currentConversationId\) : null;/);
   assert.match(screenSource, /const handlePauseMessageQueue = useCallback\(\(\) => \{[\s\S]*?messageQueue\.pauseQueue\(currentConversationId\);/);

@@ -53,7 +53,7 @@ import type {
   ChatMessageScrollViewportRef,
 } from '../ui/ChatMessageChrome';
 import {
-  getMessageQueuePanelMobileSurfaceState,
+  getMessageQueuePanelMobileSurfaceRenderState,
 } from '@dotagents/shared/message-queue-utils';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
@@ -287,7 +287,6 @@ const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState();
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
 const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
-const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState();
 const mobileRuntimeViewport = getChatRuntimeViewportMobileState();
 const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(Platform.OS);
 const mobileRuntimeLoadingState = getChatRuntimeLoadingStateMobileState();
@@ -4264,7 +4263,10 @@ function createStyles(theme: Theme, screenHeight: number) {
   const promptLibrarySurface = promptLibraryStyleState.surface;
   const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
-  const messageQueuePanelSurface = mobileMessageQueuePanelSurface;
+  const messageQueuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const messageQueuePanelSurface = messageQueuePanelStyleState.surface;
   const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState({
     colors: theme.colors,
   });
