@@ -1048,6 +1048,8 @@ describe("session presentation semantics", () => {
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.cardMaxWidth).toBe("88%")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.textColorToken).toBe("background")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.textAlign).toBe("center")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.textFontSize).toBe(12)
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.textLineHeight).toBe(16)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.transcriptNumberOfLines).toBe(3)
     expect(getChatComposerMobileSurfaceState()).toBe(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile)
     expect(getChatRuntimeMobileSafeAreaLayoutState(21)).toEqual({

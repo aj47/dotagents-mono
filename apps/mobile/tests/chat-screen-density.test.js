@@ -1361,9 +1361,10 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(screenSource, /overlay:\s*\{[\s\S]*?position:\s*voiceOverlaySurface\.position,[\s\S]*?left:\s*voiceOverlaySurface\.left,[\s\S]*?right:\s*voiceOverlaySurface\.right,[\s\S]*?alignItems:\s*voiceOverlaySurface\.alignItems,/);
   assert.match(screenSource, /overlayCard:\s*\{[\s\S]*?maxWidth:\s*voiceOverlaySurface\.cardMaxWidth,[\s\S]*?paddingHorizontal:\s*voiceOverlaySurface\.cardPaddingHorizontal,[\s\S]*?paddingVertical:\s*voiceOverlaySurface\.cardPaddingVertical,/);
   assert.match(screenSource, /overlayCard:\s*\{[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.voiceOverlay\.cardBackgroundColor/);
-  assert.match(screenSource, /overlayText:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.voiceOverlay\.color,[\s\S]*?textAlign:\s*voiceOverlaySurface\.textAlign/);
+  assert.match(screenSource, /overlayText:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.voiceOverlay\.color,[\s\S]*?fontSize:\s*voiceOverlaySurface\.textFontSize,[\s\S]*?lineHeight:\s*voiceOverlaySurface\.textLineHeight,[\s\S]*?textAlign:\s*voiceOverlaySurface\.textAlign/);
   assert.doesNotMatch(screenSource, /theme\.colors\[voiceOverlaySurface\.cardBackgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /overlayText:\s*\{[^}]*?color:\s*theme\.colors\.background/);
+  assert.doesNotMatch(screenSource, /overlayText:\s*\{\s+\.\.\.theme\.typography\.caption/);
   assert.doesNotMatch(screenSource, /overlayText:\s*\{[^}]*?textAlign:\s*'center'/);
   assert.doesNotMatch(screenSource, /overlay:\s*\{[\s\S]*?position:\s*'absolute'/);
   assert.doesNotMatch(screenSource, /overlay:\s*\{[\s\S]*?alignItems:\s*'center'/);

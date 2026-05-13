@@ -2688,6 +2688,8 @@ export const CHAT_COMPOSER_SURFACE_PRESENTATION = {
       textAlign: "center",
       cardPaddingHorizontal: 12,
       cardPaddingVertical: 8,
+      textFontSize: 12,
+      textLineHeight: 16,
       transcriptNumberOfLines: 3,
       transcriptMarginTop: 4,
       transcriptFontSize: 12,

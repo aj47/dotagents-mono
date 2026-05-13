@@ -5332,8 +5332,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingVertical: voiceOverlaySurface.cardPaddingVertical,
     },
     overlayText: {
-      ...theme.typography.caption,
       color: mobileComposerTextColors.voiceOverlay.color,
+      fontSize: voiceOverlaySurface.textFontSize,
+      lineHeight: voiceOverlaySurface.textLineHeight,
       textAlign: voiceOverlaySurface.textAlign,
     },
     overlayTranscript: {
