@@ -4490,7 +4490,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginHorizontal: sessionStatusSurface.chip.marginHorizontal,
     },
     headerConversationChipText: {
-      ...theme.typography.caption,
+      fontSize: sessionStatusSurface.chipText.fontSize,
+      lineHeight: sessionStatusSurface.chipText.lineHeight,
       fontWeight: sessionStatusSurface.chipText.fontWeight,
     },
     headerConversationSpinner: {

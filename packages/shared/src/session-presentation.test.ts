@@ -2793,6 +2793,8 @@ describe("session presentation semantics", () => {
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.flexDirection).toBe("row")
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.alignItems).toBe("center")
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.borderRadius).toBe(999)
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chipText.fontSize).toBe(12)
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chipText.lineHeight).toBe(16)
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chipText.fontWeight).toBe("700")
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.runningIndicator.size).toBe(14)
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.runningIndicator.resizeMode).toBe("contain")

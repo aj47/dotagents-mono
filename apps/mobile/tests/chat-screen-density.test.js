@@ -136,7 +136,8 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(screenSource, /const sessionStatusSurface = sessionStatusStyleState\.surface;/);
   assert.match(screenSource, /headerActionsRow:\s*\{[\s\S]*?flexDirection:\s*headerSurface\.actionsRow\.flexDirection,[\s\S]*?alignItems:\s*headerSurface\.actionsRow\.alignItems,[\s\S]*?gap:\s*headerSurface\.actionsRow\.gap/);
   assert.match(screenSource, /headerConversationChip:\s*\{[\s\S]*?flexDirection:\s*sessionStatusSurface\.chip\.flexDirection,[\s\S]*?alignItems:\s*sessionStatusSurface\.chip\.alignItems,[\s\S]*?gap:\s*sessionStatusSurface\.chip\.gap,[\s\S]*?borderRadius:\s*sessionStatusSurface\.chip\.borderRadius/);
-  assert.match(screenSource, /headerConversationChipText:\s*\{[\s\S]*?fontWeight:\s*sessionStatusSurface\.chipText\.fontWeight/);
+  assert.match(screenSource, /headerConversationChipText:\s*\{[\s\S]*?fontSize:\s*sessionStatusSurface\.chipText\.fontSize,[\s\S]*?lineHeight:\s*sessionStatusSurface\.chipText\.lineHeight,[\s\S]*?fontWeight:\s*sessionStatusSurface\.chipText\.fontWeight/);
+  assert.doesNotMatch(screenSource, /headerConversationChipText:\s*\{\s+\.\.\.theme\.typography\.caption/);
   assert.match(screenSource, /headerConversationSpinner:\s*\{[\s\S]*?width:\s*sessionStatusSurface\.runningIndicator\.size,[\s\S]*?height:\s*sessionStatusSurface\.runningIndicator\.size/);
   assert.doesNotMatch(screenSource, /getAgentConversationStateLabel/);
   assert.doesNotMatch(screenSource, /getSessionPresentation,/);

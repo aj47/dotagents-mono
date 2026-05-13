@@ -2963,6 +2963,8 @@ export const CHAT_SESSION_STATUS_SURFACE_PRESENTATION = {
       marginHorizontal: 4,
     },
     chipText: {
+      fontSize: 12,
+      lineHeight: 16,
       fontWeight: "700",
     },
     runningIndicator: {
@@ -3010,6 +3012,8 @@ export const CHAT_SESSION_STATUS_SURFACE_PRESENTATION = {
       marginHorizontal: number
     }
     chipText: {
+      fontSize: number
+      lineHeight: number
       fontWeight: string
     }
     runningIndicator: {
