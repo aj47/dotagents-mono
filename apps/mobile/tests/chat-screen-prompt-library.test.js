@@ -141,6 +141,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.match(screenSource, /renderState: promptLibraryEditorRenderState/);
   assert.match(screenSource, /styles: promptEditorModalStyles/);
+  assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /style=\{styles\.header\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.closeButton\}/);
@@ -150,6 +151,11 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /name=\{editorChrome\.closeIcon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{editorChrome\.closeIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{editorChrome\.closeIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /\{copy\.nameLabel\}/);
+  assert.match(chatMessageChromeSource, /placeholder=\{copy\.namePlaceholder\}/);
+  assert.match(chatMessageChromeSource, /\{copy\.contentLabel\}/);
+  assert.match(chatMessageChromeSource, /placeholder=\{copy\.contentPlaceholder\}/);
+  assert.match(chatMessageChromeSource, /\{copy\.cancelLabel\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.keyboardAvoidingView\}/);
   assert.match(screenSource, /promptEditorModalSurface\.keyboardAvoidingView\.flex/);
   assert.match(screenSource, /promptEditorModalSurface\.overlay\.flex/);

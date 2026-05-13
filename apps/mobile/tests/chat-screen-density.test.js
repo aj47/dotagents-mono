@@ -2886,6 +2886,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorChrome:/);
   assert.match(screenSource, /renderState: promptLibraryEditorRenderState/);
+  assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /transparent=\{surface\.modal\.transparent\}/);
   assert.match(chatMessageChromeSource, /animationType=\{surface\.modal\.animationType\}/);
@@ -2904,6 +2905,11 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /name=\{editorChrome\.closeIcon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{editorChrome\.closeIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{editorChrome\.closeIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /\{copy\.nameLabel\}/);
+  assert.match(chatMessageChromeSource, /placeholder=\{copy\.namePlaceholder\}/);
+  assert.match(chatMessageChromeSource, /\{copy\.contentLabel\}/);
+  assert.match(chatMessageChromeSource, /placeholder=\{copy\.contentPlaceholder\}/);
+  assert.match(chatMessageChromeSource, /\{copy\.cancelLabel\}/);
   assert.doesNotMatch(screenSource, /theme\.colors\[(sourceIcon|promptLibraryAddShortcutIcon|promptLibraryEditActionIcon|promptLibraryDeleteActionIcon|promptLibraryEditorCloseIcon)\.colorToken\]/);
   assert.match(screenSource, /createChatConversationHomePromptEditorModalStyleSlots,/);
   assert.match(screenSource, /const promptEditorModalStyles = useMemo\(\s+\(\) => createChatConversationHomePromptEditorModalStyleSlots\(styles\),\s+\[styles\],\s+\);/);

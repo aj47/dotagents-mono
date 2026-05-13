@@ -338,15 +338,10 @@ type ChatConversationHomePromptEditorModalStyles = {
 type ChatConversationHomePromptEditorModalProps = {
   visible: boolean;
   title: string;
-  nameLabel: string;
   nameValue: string;
-  namePlaceholder: string;
   onNameChange: (value: string) => void;
-  contentLabel: string;
   contentValue: string;
-  contentPlaceholder: string;
   onContentChange: (value: string) => void;
-  cancelLabel: string;
   saveLabel: string;
   isSaving: boolean;
   onClose: () => void;
@@ -2722,15 +2717,10 @@ export function ChatConversationHomeQuickStarts<
 export function ChatConversationHomePromptEditorModal({
   visible,
   title,
-  nameLabel,
   nameValue,
-  namePlaceholder,
   onNameChange,
-  contentLabel,
   contentValue,
-  contentPlaceholder,
   onContentChange,
-  cancelLabel,
   saveLabel,
   isSaving,
   onClose,
@@ -2778,21 +2768,21 @@ export function ChatConversationHomePromptEditorModal({
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>{nameLabel}</Text>
+            <Text style={styles.label}>{copy.nameLabel}</Text>
             <TextInput
               style={styles.input}
               value={nameValue}
               onChangeText={onNameChange}
-              placeholder={namePlaceholder}
+              placeholder={copy.namePlaceholder}
               placeholderTextColor={colors.input.placeholderColor}
             />
 
-            <Text style={styles.label}>{contentLabel}</Text>
+            <Text style={styles.label}>{copy.contentLabel}</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
               value={contentValue}
               onChangeText={onContentChange}
-              placeholder={contentPlaceholder}
+              placeholder={copy.contentPlaceholder}
               placeholderTextColor={colors.input.placeholderColor}
               multiline={surface.multilineInput.multiline}
               textAlignVertical={surface.multilineInput.textAlignVertical}
@@ -2806,7 +2796,7 @@ export function ChatConversationHomePromptEditorModal({
                 activeOpacity={surface.cancelButton.pressedOpacity}
                 accessibilityRole={surface.cancelButton.accessibilityRole}
               >
-                <Text style={styles.cancelButtonText}>{cancelLabel}</Text>
+                <Text style={styles.cancelButtonText}>{copy.cancelLabel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
