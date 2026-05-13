@@ -178,6 +178,7 @@ import {
   getFollowUpInputPresentation,
   getSessionStatusMobileColors,
   getSessionStatusMobileRenderState,
+  getSessionStatusMobileStyleRenderState,
   getSessionStatusMobileSurfaceState,
   getSessionPresentation,
   getSidebarStatusPresentation,
@@ -2774,6 +2775,41 @@ describe("session presentation semantics", () => {
       },
       text: {
         color: "#3b82f6",
+      },
+    })
+    expect(getSessionStatusMobileStyleRenderState({
+      colors: sessionStatusMobileColors,
+    })).toMatchObject({
+      surface: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile,
+      colors: {
+        active: {
+          backgroundColor: "rgba(59, 130, 246, 0.12)",
+          borderColor: "rgba(59, 130, 246, 0.35)",
+          textColor: "#3b82f6",
+        },
+        background: {
+          textColor: "#737373",
+        },
+        success: {
+          textColor: "#22c55e",
+        },
+        warning: {
+          textColor: "#f59e0b",
+        },
+        danger: {
+          textColor: "#ef4444",
+        },
+      },
+      styles: {
+        active: {
+          chip: {
+            backgroundColor: "rgba(59, 130, 246, 0.12)",
+            borderColor: "rgba(59, 130, 246, 0.35)",
+          },
+          text: {
+            color: "#3b82f6",
+          },
+        },
       },
     })
     expect(getSessionStatusMobileRenderState({

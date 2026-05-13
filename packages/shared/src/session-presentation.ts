@@ -1584,6 +1584,19 @@ export interface ChatSessionStatusMobileStyleState {
   }
 }
 
+export type ChatSessionStatusMobileColorSlots = Record<SessionPresentationIntent, ChatSessionStatusMobileColors>
+export type ChatSessionStatusMobileStyleSlots = Record<SessionPresentationIntent, ChatSessionStatusMobileStyleState>
+
+export interface ChatSessionStatusMobileStyleRenderStateInput {
+  colors: ChatSessionStatusMobileColorPalette
+}
+
+export interface ChatSessionStatusMobileStyleRenderState {
+  surface: typeof CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile
+  colors: ChatSessionStatusMobileColorSlots
+  styles: ChatSessionStatusMobileStyleSlots
+}
+
 export interface ChatSessionStatusMobileRenderStateInput {
   session?: SessionPresentationInput | null
   colors: ChatSessionStatusMobileColorPalette
@@ -5506,11 +5519,10 @@ export function getSessionPresentation(input: SessionPresentationInput): Session
   return { lifecycleState, attentionState, intent, label, badgeClassName }
 }
 
-export function getSessionStatusMobileColors(
-  input: SessionPresentationInput,
+function getSessionStatusMobileIntentColors(
+  intent: SessionPresentationIntent,
   colors: ChatSessionStatusMobileColorPalette,
 ): ChatSessionStatusMobileColors {
-  const { intent } = getSessionPresentation(input)
   const intentSurface = CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.intents[intent]
   const color = colors[intentSurface.colorToken]
 
@@ -5519,6 +5531,15 @@ export function getSessionStatusMobileColors(
     borderColor: hexToRgba(color, intentSurface.borderAlpha),
     textColor: color,
   }
+}
+
+export function getSessionStatusMobileColors(
+  input: SessionPresentationInput,
+  colors: ChatSessionStatusMobileColorPalette,
+): ChatSessionStatusMobileColors {
+  const { intent } = getSessionPresentation(input)
+
+  return getSessionStatusMobileIntentColors(intent, colors)
 }
 
 export function getChatSessionStatusMobileStyleState(
@@ -5537,6 +5558,34 @@ export function getChatSessionStatusMobileStyleState(
 
 export function getSessionStatusMobileSurfaceState() {
   return CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile
+}
+
+export function getSessionStatusMobileStyleRenderState({
+  colors,
+}: ChatSessionStatusMobileStyleRenderStateInput): ChatSessionStatusMobileStyleRenderState {
+  const activeColors = getSessionStatusMobileIntentColors("active", colors)
+  const backgroundColors = getSessionStatusMobileIntentColors("background", colors)
+  const successColors = getSessionStatusMobileIntentColors("success", colors)
+  const warningColors = getSessionStatusMobileIntentColors("warning", colors)
+  const dangerColors = getSessionStatusMobileIntentColors("danger", colors)
+
+  return {
+    surface: getSessionStatusMobileSurfaceState(),
+    colors: {
+      active: activeColors,
+      background: backgroundColors,
+      success: successColors,
+      warning: warningColors,
+      danger: dangerColors,
+    },
+    styles: {
+      active: getChatSessionStatusMobileStyleState(activeColors),
+      background: getChatSessionStatusMobileStyleState(backgroundColors),
+      success: getChatSessionStatusMobileStyleState(successColors),
+      warning: getChatSessionStatusMobileStyleState(warningColors),
+      danger: getChatSessionStatusMobileStyleState(dangerColors),
+    },
+  }
 }
 
 export function getSessionStatusMobileRenderState({

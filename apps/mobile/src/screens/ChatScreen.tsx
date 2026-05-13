@@ -146,7 +146,7 @@ import {
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
   getSessionStatusMobileRenderState,
-  getSessionStatusMobileSurfaceState,
+  getSessionStatusMobileStyleRenderState,
 } from '@dotagents/shared/session-presentation';
 import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
@@ -297,7 +297,6 @@ const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
-const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState();
 const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
@@ -4274,7 +4273,10 @@ function createStyles(theme: Theme, screenHeight: number) {
   const headerEdgeActionButton = createMinimumTouchTargetStyle({
     horizontalPadding: headerSurface.edgeActionButton.horizontalPadding,
   });
-  const sessionStatusSurface = mobileSessionStatusSurface;
+  const sessionStatusStyleState = getSessionStatusMobileStyleRenderState({
+    colors: theme.colors,
+  });
+  const sessionStatusSurface = sessionStatusStyleState.surface;
   const compactToolExecutionStyleState = getToolExecutionCompactMobileStyleRenderState({
     colors: theme.colors,
   });

@@ -107,8 +107,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
 
 test('shows a conversation-state chip in the mobile chat header while preserving the compact header actions row', () => {
   assert.match(screenSource, /getSessionStatusMobileRenderState,/);
+  assert.match(screenSource, /getSessionStatusMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /getChatSessionStatusMobileStyleState,/);
-  assert.match(screenSource, /getSessionStatusMobileSurfaceState,/);
+  assert.doesNotMatch(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(screenSource, /const headerConversationStatus = useMemo\(\s+\(\) => getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors: theme\.colors,\s+\}\),/);
   assert.match(screenSource, /conversationStatus: \{\s+renderState: headerConversationStatus,\s+spinnerSource: isDark \? darkSpinner : lightSpinner,\s+\}/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderConversationStatus/);
@@ -127,8 +128,9 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(chatMessageChromeSource, /actionsRowStyle: styles\.headerActionsRow,/);
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderActionsRow/);
   assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?\{children\}[\s\S]*?<\/View>/);
-  assert.match(screenSource, /const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const sessionStatusSurface = mobileSessionStatusSurface;/);
+  assert.doesNotMatch(screenSource, /const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState\(\);/);
+  assert.match(screenSource, /const sessionStatusStyleState = getSessionStatusMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const sessionStatusSurface = sessionStatusStyleState\.surface;/);
   assert.match(screenSource, /headerActionsRow:\s*\{[\s\S]*?flexDirection:\s*headerSurface\.actionsRow\.flexDirection,[\s\S]*?alignItems:\s*headerSurface\.actionsRow\.alignItems,[\s\S]*?gap:\s*headerSurface\.actionsRow\.gap/);
   assert.match(screenSource, /headerConversationChip:\s*\{[\s\S]*?flexDirection:\s*sessionStatusSurface\.chip\.flexDirection,[\s\S]*?alignItems:\s*sessionStatusSurface\.chip\.alignItems,[\s\S]*?gap:\s*sessionStatusSurface\.chip\.gap,[\s\S]*?borderRadius:\s*sessionStatusSurface\.chip\.borderRadius/);
   assert.match(screenSource, /headerConversationChipText:\s*\{[\s\S]*?fontWeight:\s*sessionStatusSurface\.chipText\.fontWeight/);
