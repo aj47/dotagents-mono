@@ -694,10 +694,12 @@ export interface MessageQueuePanelActionAccessibilityState {
   disabled: boolean;
 }
 
-export interface QueuedMessageEditSaveActionState {
+export interface MessageQueuePanelActionState {
   isDisabled: boolean;
   accessibilityState: MessageQueuePanelActionAccessibilityState;
 }
+
+export type QueuedMessageEditSaveActionState = MessageQueuePanelActionState;
 
 export interface MessageQueuePanelListToggleAccessibilityState {
   expanded: boolean;
@@ -724,6 +726,8 @@ export interface MessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | 'st
   hasProcessingMessage: boolean;
   canClear: boolean;
   canPause: boolean;
+  clearActionState: MessageQueuePanelActionState;
+  pauseActionState: MessageQueuePanelActionState;
   clearActionAccessibilityState: MessageQueuePanelActionAccessibilityState;
   pauseActionAccessibilityState: MessageQueuePanelActionAccessibilityState;
   canProcessNext: boolean;
@@ -760,6 +764,14 @@ export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   }));
 }
 
+export function getMessageQueuePanelActionState(isEnabled: boolean): MessageQueuePanelActionState {
+  const isDisabled = !isEnabled;
+  return {
+    isDisabled,
+    accessibilityState: { disabled: isDisabled },
+  };
+}
+
 export function getMessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | 'status'>>(
   messages: readonly T[],
   input: MessageQueuePanelStateInput = {},
@@ -772,6 +784,8 @@ export function getMessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | '
   const isExpanded = !isListCollapsed;
   const canClear = !hasProcessingMessage;
   const canPause = !hasProcessingMessage;
+  const clearActionState = getMessageQueuePanelActionState(canClear);
+  const pauseActionState = getMessageQueuePanelActionState(canPause);
 
   return {
     messageCount: messages.length,
@@ -790,8 +804,10 @@ export function getMessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | '
     hasProcessingMessage,
     canClear,
     canPause,
-    clearActionAccessibilityState: { disabled: !canClear },
-    pauseActionAccessibilityState: { disabled: !canPause },
+    clearActionState,
+    pauseActionState,
+    clearActionAccessibilityState: clearActionState.accessibilityState,
+    pauseActionAccessibilityState: pauseActionState.accessibilityState,
     canProcessNext,
     shouldShowCompactProcessNext: !isPaused && canProcessNext,
     shouldShowProcessNext: !isPaused && canProcessNext && isExpanded,
@@ -861,11 +877,7 @@ export interface QueuedMessageItemMobileRenderState {
 }
 
 export function getQueuedMessageEditSaveActionState(text: string): QueuedMessageEditSaveActionState {
-  const isDisabled = !text.trim();
-  return {
-    isDisabled,
-    accessibilityState: { disabled: isDisabled },
-  };
+  return getMessageQueuePanelActionState(!!text.trim());
 }
 
 export function getQueuedMessageItemPresentation(

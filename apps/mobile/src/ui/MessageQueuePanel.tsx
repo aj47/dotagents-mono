@@ -543,16 +543,20 @@ export function MessageQueuePanel({
           <TouchableOpacity
             style={styles.compactAction}
             onPress={onPause}
-            disabled={!queuePanelState.canPause}
+            disabled={queuePanelState.pauseActionState.isDisabled}
             activeOpacity={panelSurface.actionPressedOpacity}
             accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelCopy.actions.pauseTitle}
-            accessibilityState={queuePanelState.pauseActionAccessibilityState}
+            accessibilityState={queuePanelState.pauseActionState.accessibilityState}
           >
             <Ionicons
               name={queuePanelIcons.pauseName}
               size={panelSurface.compactActionIconSize}
-              color={queuePanelState.canPause ? panelStatusColors.color : panelColors.disabledActionColor}
+              color={
+                queuePanelState.pauseActionState.isDisabled
+                  ? panelColors.disabledActionColor
+                  : panelStatusColors.color
+              }
             />
           </TouchableOpacity>
         ) : null}
@@ -574,16 +578,20 @@ export function MessageQueuePanel({
         <TouchableOpacity
           style={styles.compactAction}
           onPress={onClear}
-          disabled={!queuePanelState.canClear}
+          disabled={queuePanelState.clearActionState.isDisabled}
           activeOpacity={panelSurface.actionPressedOpacity}
           accessibilityRole={panelSurface.actionAccessibilityRole}
           accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
-          accessibilityState={queuePanelState.clearActionAccessibilityState}
+          accessibilityState={queuePanelState.clearActionState.accessibilityState}
         >
           <Ionicons
             name={queuePanelIcons.clearName}
             size={panelSurface.compactActionIconSize}
-            color={queuePanelState.canClear ? panelStatusColors.color : panelColors.disabledActionColor}
+            color={
+              queuePanelState.clearActionState.isDisabled
+                ? panelColors.disabledActionColor
+                : panelStatusColors.color
+            }
           />
         </TouchableOpacity>
       </View>
@@ -615,13 +623,18 @@ export function MessageQueuePanel({
             <TouchableOpacity
               style={styles.processButton}
               onPress={onPause}
-              disabled={!queuePanelState.canPause}
+              disabled={queuePanelState.pauseActionState.isDisabled}
               activeOpacity={panelSurface.actionPressedOpacity}
               accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.pauseTitle}
-              accessibilityState={queuePanelState.pauseActionAccessibilityState}
+              accessibilityState={queuePanelState.pauseActionState.accessibilityState}
             >
-              <Text style={[styles.queueControlText, !queuePanelState.canPause && styles.queueControlTextDisabled]}>
+              <Text
+                style={[
+                  styles.queueControlText,
+                  queuePanelState.pauseActionState.isDisabled && styles.queueControlTextDisabled,
+                ]}
+              >
                 {queuePanelCopy.actions.pauseLabel}
               </Text>
             </TouchableOpacity>
@@ -641,11 +654,11 @@ export function MessageQueuePanel({
             <TouchableOpacity
               style={styles.clearButton}
               onPress={onClear}
-              disabled={!queuePanelState.canClear}
+              disabled={queuePanelState.clearActionState.isDisabled}
               activeOpacity={panelSurface.actionPressedOpacity}
               accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
-              accessibilityState={queuePanelState.clearActionAccessibilityState}
+              accessibilityState={queuePanelState.clearActionState.accessibilityState}
             >
               <Text style={styles.clearButtonText}>{queuePanelCopy.actions.clearAllLabel}</Text>
             </TouchableOpacity>

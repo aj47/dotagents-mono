@@ -26,6 +26,7 @@ import {
   getMessageQueuePanelMobileSurfaceRenderState,
   getMessageQueuePanelMobileSurfaceState,
   getMessageQueuePanelMobileWrapperRenderState,
+  getMessageQueuePanelActionState,
   getMessageQueuePanelRenderItems,
   getMessageQueuePanelState,
   getOperatorMessageQueueTotalMessageCount,
@@ -242,6 +243,14 @@ describe('message-queue-utils', () => {
       accessibilityState: { disabled: true },
     });
     expect(getQueuedMessageEditSaveActionState('  retry text  ')).toEqual({
+      isDisabled: false,
+      accessibilityState: { disabled: false },
+    });
+    expect(getMessageQueuePanelActionState(false)).toEqual({
+      isDisabled: true,
+      accessibilityState: { disabled: true },
+    });
+    expect(getMessageQueuePanelActionState(true)).toEqual({
       isDisabled: false,
       accessibilityState: { disabled: false },
     });
@@ -471,6 +480,8 @@ describe('message-queue-utils', () => {
       hasProcessingMessage: false,
       canClear: true,
       canPause: true,
+      clearActionState: { isDisabled: false, accessibilityState: { disabled: false } },
+      pauseActionState: { isDisabled: false, accessibilityState: { disabled: false } },
       clearActionAccessibilityState: { disabled: false },
       pauseActionAccessibilityState: { disabled: false },
       canProcessNext: true,
@@ -498,6 +509,8 @@ describe('message-queue-utils', () => {
       hasProcessingMessage: true,
       canClear: false,
       canPause: false,
+      clearActionState: { isDisabled: true, accessibilityState: { disabled: true } },
+      pauseActionState: { isDisabled: true, accessibilityState: { disabled: true } },
       clearActionAccessibilityState: { disabled: true },
       pauseActionAccessibilityState: { disabled: true },
       canProcessNext: true,

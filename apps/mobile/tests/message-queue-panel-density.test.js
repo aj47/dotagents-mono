@@ -110,10 +110,12 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /getMessageQueuePanelMobileRenderState/);
   assert.match(source, /getQueuedMessageItemMobileRenderState/);
   assert.match(source, /queuePanelState\.hasProcessingMessage/);
-  assert.match(source, /queuePanelState\.canClear/);
-  assert.match(source, /queuePanelState\.canPause/);
-  assert.match(source, /queuePanelState\.clearActionAccessibilityState/);
-  assert.match(source, /queuePanelState\.pauseActionAccessibilityState/);
+  assert.match(source, /queuePanelState\.clearActionState\.isDisabled/);
+  assert.match(source, /queuePanelState\.pauseActionState\.isDisabled/);
+  assert.match(source, /queuePanelState\.clearActionState\.accessibilityState/);
+  assert.match(source, /queuePanelState\.pauseActionState\.accessibilityState/);
+  assert.doesNotMatch(source, /disabled=\{!queuePanelState\.(canClear|canPause)\}/);
+  assert.doesNotMatch(source, /queuePanelState\.(clearActionAccessibilityState|pauseActionAccessibilityState)/);
   assert.match(source, /queuePanelState\.shouldShowCompactProcessNext/);
   assert.match(source, /queuePanelState\.shouldShowProcessNext/);
   assert.match(source, /queuePanelState\.shouldRenderClear/);
