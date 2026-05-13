@@ -139,8 +139,6 @@ import {
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
-  getChatRuntimeTurnDurationHeaderMobileBadgeColors,
-  getChatRuntimeTurnDurationHeaderMobileBadgeState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
@@ -299,10 +297,6 @@ const CHAT_MESSAGE_HISTORY_WINDOW = getChatRuntimeMessageHistoryWindowMobileStat
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState();
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
-const mobileHeaderTurnDurationBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState();
-const mobileHeaderTurnDurationLiveBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState({
-  isLive: true,
-});
 const mobileRuntimeDebug = getChatRuntimeDebugState();
 const mobileComposerSurface = getChatComposerMobileSurfaceState();
 const mobileComposerWebAccessibility = mobileComposerSurface.webAccessibility;
@@ -4320,11 +4314,19 @@ function createStyles(theme: Theme, screenHeight: number) {
   const toolResultBadgeErrorColors = getToolExecutionDetailMobileBadgeColors('error', theme.colors);
   const toolResultErrorColors = getToolExecutionDetailMobileErrorColors(theme.colors);
   const toolExecutionDetailContentColors = getToolExecutionDetailMobileContentColors(theme.colors);
-  const headerTurnDurationColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors({}, theme.colors);
-  const headerTurnDurationLiveColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors(
-    { isLive: true },
-    theme.colors,
-  );
+  const headerTurnDurationStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState({
+    durationMs: 1,
+    colors: theme.colors,
+  });
+  const headerTurnDurationLiveStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState({
+    durationMs: 1,
+    isLive: true,
+    colors: theme.colors,
+  });
+  const headerTurnDurationBadge = headerTurnDurationStyleState.badge;
+  const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState.badge;
+  const headerTurnDurationColors = headerTurnDurationStyleState.colors;
+  const headerTurnDurationLiveColors = headerTurnDurationLiveStyleState.colors;
   const mobileMessageActionButtonStyleState = getChatMessageActionMobileButtonRenderState({
     colors: theme.colors,
   });
@@ -4503,28 +4505,28 @@ function createStyles(theme: Theme, screenHeight: number) {
       height: sessionStatusSurface.runningIndicator.size,
     },
     headerDurationChip: {
-      flexDirection: mobileHeaderTurnDurationBadge.flexDirection,
-      alignItems: mobileHeaderTurnDurationBadge.alignItems,
-      justifyContent: mobileHeaderTurnDurationBadge.justifyContent,
-      gap: mobileHeaderTurnDurationBadge.gap,
-      minHeight: mobileHeaderTurnDurationBadge.minHeight,
-      maxWidth: mobileHeaderTurnDurationBadge.maxWidth,
-      paddingHorizontal: mobileHeaderTurnDurationBadge.paddingHorizontal,
-      borderRadius: mobileHeaderTurnDurationBadge.borderRadius,
+      flexDirection: headerTurnDurationBadge.flexDirection,
+      alignItems: headerTurnDurationBadge.alignItems,
+      justifyContent: headerTurnDurationBadge.justifyContent,
+      gap: headerTurnDurationBadge.gap,
+      minHeight: headerTurnDurationBadge.minHeight,
+      maxWidth: headerTurnDurationBadge.maxWidth,
+      paddingHorizontal: headerTurnDurationBadge.paddingHorizontal,
+      borderRadius: headerTurnDurationBadge.borderRadius,
       backgroundColor: headerTurnDurationColors.chip.backgroundColor,
-      marginHorizontal: mobileHeaderTurnDurationBadge.marginHorizontal,
-      flexShrink: mobileHeaderTurnDurationBadge.flexShrink,
-      opacity: mobileHeaderTurnDurationBadge.opacity,
+      marginHorizontal: headerTurnDurationBadge.marginHorizontal,
+      flexShrink: headerTurnDurationBadge.flexShrink,
+      opacity: headerTurnDurationBadge.opacity,
     } as const,
     headerDurationChipLive: {
       backgroundColor: headerTurnDurationLiveColors.chip.backgroundColor,
-      opacity: mobileHeaderTurnDurationLiveBadge.opacity,
+      opacity: headerTurnDurationLiveBadge.opacity,
     } as const,
     headerDurationChipText: {
-      fontFamily: resolveMobileFontFamily(mobileHeaderTurnDurationBadge.fontFamilyByPlatform),
-      fontSize: mobileHeaderTurnDurationBadge.fontSize,
-      lineHeight: mobileHeaderTurnDurationBadge.lineHeight,
-      fontWeight: mobileHeaderTurnDurationBadge.fontWeight,
+      fontFamily: resolveMobileFontFamily(headerTurnDurationBadge.fontFamilyByPlatform),
+      fontSize: headerTurnDurationBadge.fontSize,
+      lineHeight: headerTurnDurationBadge.lineHeight,
+      fontWeight: headerTurnDurationBadge.fontWeight,
       color: headerTurnDurationColors.text.color,
     },
     headerDurationChipTextLive: {

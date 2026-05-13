@@ -27,7 +27,7 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.match(screenSource, /import \{ resolveMobileFontFamily \} from '\.\.\/ui\/mobileTypography';/);
   assert.match(mobileTypographySource, /export type MobileFontFamilyByPlatform = Readonly<\{/);
   assert.match(mobileTypographySource, /export const resolveMobileFontFamily = \(fontFamilyByPlatform: MobileFontFamilyByPlatform\) =>\s+Platform\.OS === 'ios' \? fontFamilyByPlatform\.ios : fontFamilyByPlatform\.default;/);
-  assert.match(screenSource, /headerDurationChipText:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(mobileHeaderTurnDurationBadge\.fontFamilyByPlatform\)/);
+  assert.match(screenSource, /headerDurationChipText:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(headerTurnDurationBadge\.fontFamilyByPlatform\)/);
   assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(mobileMessageTurnDurationBadge\.fontFamilyByPlatform\)/);
   assert.match(screenSource, /debugText:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform\)/);
   assert.match(screenSource, /toolApprovalTool:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(toolApprovalSurface\.toolName\.fontFamilyByPlatform\)/);
@@ -148,12 +148,12 @@ test('shows a conversation-state chip in the mobile chat header while preserving
 });
 
 test('shows the shared total agent time in the mobile chat header', () => {
-  assert.match(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeColors,/);
-  assert.match(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeColors,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeState,/);
   assert.match(screenSource, /getChatRuntimeTurnDurationHeaderMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
-  assert.match(screenSource, /const mobileHeaderTurnDurationBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\);/);
-  assert.match(screenSource, /const mobileHeaderTurnDurationLiveBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\{\s+isLive: true,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const mobileHeaderTurnDurationBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobileHeaderTurnDurationLiveBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\{\s+isLive: true,\s+\}\);/);
   assert.match(screenSource, /const headerTotalTurnDurationRenderState = useMemo\(\s+\(\) => getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: turnDurations\.totalMs,\s+isLive: turnDurations\.hasLive,\s+colors: theme\.colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /const headerTotalTurnDurationState = useMemo\(\s+\(\) => getChatRuntimeTurnDurationBadgeState\(\{\s+scope: 'total'/);
   assert.doesNotMatch(screenSource, /const headerTotalTurnDurationMobileIcon = useMemo/);
@@ -178,13 +178,17 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(chatMessageChromeSource, /color=\{renderState\.icon\.color\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.badge\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
-  assert.match(screenSource, /const headerTurnDurationColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors\(\{\}, theme\.colors\);/);
-  assert.match(screenSource, /const headerTurnDurationLiveColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors\(\s*\{\s*isLive: true\s*\},\s*theme\.colors,\s*\);/);
-  assert.match(screenSource, /headerDurationChip:\s*\{[\s\S]*?flexDirection:\s*mobileHeaderTurnDurationBadge\.flexDirection,[\s\S]*?alignItems:\s*mobileHeaderTurnDurationBadge\.alignItems,[\s\S]*?justifyContent:\s*mobileHeaderTurnDurationBadge\.justifyContent,[\s\S]*?gap:\s*mobileHeaderTurnDurationBadge\.gap,[\s\S]*?minHeight:\s*mobileHeaderTurnDurationBadge\.minHeight,[\s\S]*?maxWidth:\s*mobileHeaderTurnDurationBadge\.maxWidth,[\s\S]*?backgroundColor:\s*headerTurnDurationColors\.chip\.backgroundColor/);
+  assert.match(screenSource, /const headerTurnDurationStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: 1,\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const headerTurnDurationLiveStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: 1,\s+isLive: true,\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const headerTurnDurationBadge = headerTurnDurationStyleState\.badge;/);
+  assert.match(screenSource, /const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState\.badge;/);
+  assert.match(screenSource, /const headerTurnDurationColors = headerTurnDurationStyleState\.colors;/);
+  assert.match(screenSource, /const headerTurnDurationLiveColors = headerTurnDurationLiveStyleState\.colors;/);
+  assert.match(screenSource, /headerDurationChip:\s*\{[\s\S]*?flexDirection:\s*headerTurnDurationBadge\.flexDirection,[\s\S]*?alignItems:\s*headerTurnDurationBadge\.alignItems,[\s\S]*?justifyContent:\s*headerTurnDurationBadge\.justifyContent,[\s\S]*?gap:\s*headerTurnDurationBadge\.gap,[\s\S]*?minHeight:\s*headerTurnDurationBadge\.minHeight,[\s\S]*?maxWidth:\s*headerTurnDurationBadge\.maxWidth,[\s\S]*?backgroundColor:\s*headerTurnDurationColors\.chip\.backgroundColor/);
   assert.match(screenSource, /headerDurationChipLive:\s*\{[\s\S]*?backgroundColor:\s*headerTurnDurationLiveColors\.chip\.backgroundColor/);
   assert.match(screenSource, /headerDurationChipText:\s*\{[\s\S]*?color:\s*headerTurnDurationColors\.text\.color/);
   assert.match(screenSource, /headerDurationChipTextLive:\s*\{[\s\S]*?color:\s*headerTurnDurationLiveColors\.text\.color/);
-  assert.match(screenSource, /headerDurationChip:\s*\{[\s\S]*?marginHorizontal:\s*mobileHeaderTurnDurationBadge\.marginHorizontal/);
+  assert.match(screenSource, /headerDurationChip:\s*\{[\s\S]*?marginHorizontal:\s*headerTurnDurationBadge\.marginHorizontal/);
   assert.doesNotMatch(screenSource, /theme\.colors\[headerTotalTurnDurationMobileIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /headerTotalTurnDurationRenderState\.shouldRender && \(/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{headerTotalTurnDurationRenderState\.accessibilityRole\}/);
