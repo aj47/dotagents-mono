@@ -28,6 +28,7 @@ import {
   getChatMessageContentRenderState,
   getChatMessageActionCopyState,
   getChatMessageActionDesktopSurfaceState,
+  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionLayoutState,
   getChatMessageActionSequence,
   getChatMessageVisibleActionSlots,
@@ -425,6 +426,29 @@ describe('chat message display presentation', () => {
     })).toEqual({
       visibleSlots: ['turnDuration', 'branch', 'copy'],
       shouldRenderStandaloneRow: false,
+    })
+    expect(getChatMessageActionAvailabilityRenderState({
+      turnDuration: true,
+      speech: true,
+      branch: false,
+      copy: true,
+      expansion: false,
+    })).toEqual({
+      turnDuration: {
+        canRender: true,
+      },
+      speech: {
+        canRender: true,
+      },
+      branch: {
+        canRender: false,
+      },
+      copy: {
+        canRender: true,
+      },
+      expansion: {
+        canRender: false,
+      },
     })
   })
 

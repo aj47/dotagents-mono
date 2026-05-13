@@ -195,6 +195,7 @@ import {
 import {
   getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
+  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageCopyMobileRenderState,
   getChatDisplayExpansionState,
@@ -3824,7 +3825,6 @@ export default function ChatScreen({ route, navigation }: any) {
               isCopied: isMessageCopied,
               colors: theme.colors,
             });
-            const canCopyVisibleContent = messageCopyRenderState.canCopy;
             const messageBranchRenderState = getChatRuntimeBranchMobileRenderState({
               conversationId: currentSession?.serverConversationId,
               role: m.role,
@@ -3833,7 +3833,6 @@ export default function ChatScreen({ route, navigation }: any) {
               pendingMessageIndex: branchingMessageIndex,
               colors: theme.colors,
             });
-            const canBranchFromMessage = messageBranchRenderState.canBranch;
             const messageBranchIndex = messageBranchRenderState.messageIndex;
 
             const renderedToolEntries = messageDisplayState.visibleToolEntries;
@@ -3989,7 +3988,6 @@ export default function ChatScreen({ route, navigation }: any) {
               isSpeaking: isMessageSpeaking,
               colors: theme.colors,
             });
-            const canSpeakVisibleContent = messageSpeechRenderState.canSpeak;
             const messageToneStyle = messageThreadSurfaceStyles.getToneStyle(messageRenderState.toneStyleSlot);
             const messageInlineActivityRenderState = getChatRuntimeInlineActivityMobileRenderState({
               message: m,
@@ -4007,7 +4005,6 @@ export default function ChatScreen({ route, navigation }: any) {
               isExpanded,
               colors: theme.colors,
             });
-            const canToggleVisibleContent = messageExpansionRenderState.canToggle;
             const toolApprovalId = m.toolApproval?.approvalId ?? '';
             const isToolApprovalExpanded = toolApprovalId
               ? getChatDisplayExpansionState(expandedToolApprovals, toolApprovalId)
@@ -4039,15 +4036,22 @@ export default function ChatScreen({ route, navigation }: any) {
               isLive: turnDurationEntry?.isLive,
               colors: theme.colors,
             });
+            const messageActionAvailabilityRenderState = getChatMessageActionAvailabilityRenderState({
+              turnDuration: messageTurnDurationRenderState.shouldRender,
+              speech: messageSpeechRenderState.canSpeak,
+              branch: messageBranchRenderState.canBranch,
+              copy: messageCopyRenderState.canCopy,
+              expansion: messageExpansionRenderState.canToggle,
+            });
             const messageActionSet = createChatMessageActionSet({
               contentRenderState: messageContentRenderState,
               turnDuration: {
-                canRender: messageTurnDurationRenderState.shouldRender,
+                canRender: messageActionAvailabilityRenderState.turnDuration.canRender,
                 renderState: messageTurnDurationRenderState,
                 ...messageActionStyles.turnDuration,
               },
               speech: {
-                canRender: canSpeakVisibleContent,
+                canRender: messageActionAvailabilityRenderState.speech.canRender,
                 renderState: messageSpeechRenderState,
                 onPress: () => speakMessage(i, visibleMessageContent),
                 hitSlop: mobileMessageSpeechButton.hitSlop,
@@ -4055,7 +4059,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 isActive: isMessageSpeaking,
               },
               branch: {
-                canRender: canBranchFromMessage,
+                canRender: messageActionAvailabilityRenderState.branch.canRender,
                 renderState: messageBranchRenderState,
                 onPress: () => {
                   if (messageBranchIndex != null) {
@@ -4066,7 +4070,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.branch,
               },
               copy: {
-                canRender: canCopyVisibleContent,
+                canRender: messageActionAvailabilityRenderState.copy.canRender,
                 renderState: messageCopyRenderState,
                 onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
                 hitSlop: mobileMessageActionButton.hitSlop,
@@ -4074,7 +4078,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 isActive: isMessageCopied,
               },
               expansion: {
-                canRender: canToggleVisibleContent,
+                canRender: messageActionAvailabilityRenderState.expansion.canRender,
                 renderState: messageExpansionRenderState,
                 onPress: () => toggleMessageExpansion(i),
                 hitSlop: mobileMessageActionButton.hitSlop,
@@ -4221,8 +4225,10 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                       collapsed: {
                         renderState: messageRenderState.collapsedPreview,
-                        onPress: canToggleVisibleContent ? () => toggleMessageExpansion(i) : undefined,
-                        disabled: !canToggleVisibleContent,
+                        onPress: messageActionAvailabilityRenderState.expansion.canRender
+                          ? () => toggleMessageExpansion(i)
+                          : undefined,
+                        disabled: !messageActionAvailabilityRenderState.expansion.canRender,
                         accessibilityLabel: messageExpansionRenderState.accessibilityLabel,
                         accessibilityHint: messageExpansionRenderState.accessibilityHint ?? undefined,
                         accessibilityState: messageExpansionRenderState.accessibilityState,
