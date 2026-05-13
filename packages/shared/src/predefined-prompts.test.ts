@@ -544,8 +544,10 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryEditorMobileCopyState()).toEqual({
       closeAccessibilityLabel: "Close prompt editor",
       nameLabel: "Name",
+      nameAccessibilityLabel: "Name input",
       namePlaceholder: "e.g., Code Review Request",
       contentLabel: "Prompt Content",
+      contentAccessibilityLabel: "Prompt Content input",
       contentPlaceholder: "Enter your prompt text...",
       cancelLabel: "Cancel",
       cancelAccessibilityLabel: "Cancel button",

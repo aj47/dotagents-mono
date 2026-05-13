@@ -204,8 +204,10 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /size=\{editorChrome\.closeIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{editorChrome\.closeIconColors\.color\}/);
   assert.match(chatMessageChromeSource, /\{copy\.nameLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.nameAccessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /placeholder=\{copy\.namePlaceholder\}/);
   assert.match(chatMessageChromeSource, /\{copy\.contentLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.contentAccessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /placeholder=\{copy\.contentPlaceholder\}/);
   assert.match(chatMessageChromeSource, /\{copy\.cancelLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.cancelAccessibilityLabel\}/);

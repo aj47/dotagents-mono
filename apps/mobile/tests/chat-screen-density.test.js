@@ -3033,8 +3033,10 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /size=\{editorChrome\.closeIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{editorChrome\.closeIconColors\.color\}/);
   assert.match(chatMessageChromeSource, /\{copy\.nameLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.nameAccessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /placeholder=\{copy\.namePlaceholder\}/);
   assert.match(chatMessageChromeSource, /\{copy\.contentLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.contentAccessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /placeholder=\{copy\.contentPlaceholder\}/);
   assert.match(chatMessageChromeSource, /\{copy\.cancelLabel\}/);
   assert.doesNotMatch(screenSource, /theme\.colors\[(sourceIcon|promptLibraryAddShortcutIcon|promptLibraryEditActionIcon|promptLibraryDeleteActionIcon|promptLibraryEditorCloseIcon)\.colorToken\]/);

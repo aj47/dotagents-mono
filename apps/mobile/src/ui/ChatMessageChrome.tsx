@@ -2759,6 +2759,7 @@ export function ChatConversationHomePromptEditorModal({
               style={styles.input}
               value={nameValue}
               onChangeText={onNameChange}
+              accessibilityLabel={copy.nameAccessibilityLabel}
               placeholder={copy.namePlaceholder}
               placeholderTextColor={colors.input.placeholderColor}
             />
@@ -2768,6 +2769,7 @@ export function ChatConversationHomePromptEditorModal({
               style={[styles.input, styles.inputMultiline]}
               value={contentValue}
               onChangeText={onContentChange}
+              accessibilityLabel={copy.contentAccessibilityLabel}
               placeholder={copy.contentPlaceholder}
               placeholderTextColor={colors.input.placeholderColor}
               multiline={surface.multilineInput.multiline}

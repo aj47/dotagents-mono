@@ -1,5 +1,8 @@
 import type { PredefinedPromptSummary } from "./api-types"
-import { createButtonAccessibilityLabel } from "./accessibility-utils"
+import {
+  createButtonAccessibilityLabel,
+  createTextInputAccessibilityLabel,
+} from "./accessibility-utils"
 import { hexToRgba, typography } from "./colors"
 
 export type PredefinedPromptDraft = {
@@ -480,8 +483,10 @@ export interface PromptLibraryEditorMobileChromeState {
 export interface PromptLibraryEditorMobileCopyState {
   closeAccessibilityLabel: string
   nameLabel: string
+  nameAccessibilityLabel: string
   namePlaceholder: string
   contentLabel: string
+  contentAccessibilityLabel: string
   contentPlaceholder: string
   cancelLabel: string
   cancelAccessibilityLabel: string
@@ -674,8 +679,14 @@ export function getPromptLibraryEditorMobileCopyState(): PromptLibraryEditorMobi
   return {
     closeAccessibilityLabel: PROMPT_LIBRARY_PRESENTATION.editor.closeAccessibilityLabel,
     nameLabel: PROMPT_LIBRARY_PRESENTATION.editor.nameLabel,
+    nameAccessibilityLabel: createTextInputAccessibilityLabel(
+      PROMPT_LIBRARY_PRESENTATION.editor.nameLabel,
+    ),
     namePlaceholder: PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder,
     contentLabel: PROMPT_LIBRARY_PRESENTATION.editor.contentLabel,
+    contentAccessibilityLabel: createTextInputAccessibilityLabel(
+      PROMPT_LIBRARY_PRESENTATION.editor.contentLabel,
+    ),
     contentPlaceholder: PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder,
     cancelLabel: PROMPT_LIBRARY_PRESENTATION.actions.cancel,
     cancelAccessibilityLabel: createButtonAccessibilityLabel(
