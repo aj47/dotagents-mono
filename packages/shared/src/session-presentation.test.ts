@@ -111,6 +111,7 @@ import {
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeInlineActivityMobileState,
   getChatRuntimeKillSwitchMobileActionState,
@@ -1412,6 +1413,20 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeLoadingStateMobileRenderState({
       isLoadingMessages: false,
       messageCount: 0,
+    }).shouldRender).toBe(false)
+    expect(getChatRuntimeHomeQuickStartsMobileRenderState({
+      isLoadingMessages: false,
+      messageCount: 0,
+    })).toEqual({
+      shouldRender: true,
+    })
+    expect(getChatRuntimeHomeQuickStartsMobileRenderState({
+      isLoadingMessages: true,
+      messageCount: 0,
+    }).shouldRender).toBe(false)
+    expect(getChatRuntimeHomeQuickStartsMobileRenderState({
+      isLoadingMessages: false,
+      messageCount: 1,
     }).shouldRender).toBe(false)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize).toBe(14)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode).toBe("contain")

@@ -122,6 +122,7 @@ import {
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
@@ -923,6 +924,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mobileRuntimeLoadingRenderState = useMemo(
     () => getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages: sessionStore.isLoadingMessages,
+      messageCount: messages.length,
+    }),
+    [messages.length, sessionStore.isLoadingMessages],
+  );
+  const mobileRuntimeHomeQuickStartsRenderState = useMemo(
+    () => getChatRuntimeHomeQuickStartsMobileRenderState({
       isLoadingMessages: sessionStore.isLoadingMessages,
       messageCount: messages.length,
     }),
@@ -3701,7 +3709,7 @@ export default function ChatScreen({ route, navigation }: any) {
           spinnerSource: isDark ? darkSpinner : lightSpinner,
         },
         homeQuickStarts: {
-          shouldRender: !sessionStore.isLoadingMessages && messages.length === 0,
+          shouldRender: mobileRuntimeHomeQuickStartsRenderState.shouldRender,
           items: promptQuickStarts,
           isLoading: isLoadingQuickStartPrompts,
           runningTaskId: runningPromptTaskId,

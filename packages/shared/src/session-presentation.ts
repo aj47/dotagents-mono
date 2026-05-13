@@ -134,6 +134,15 @@ export interface ChatRuntimeLoadingStateMobileRenderState {
   spinnerResizeMode: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerResizeMode
 }
 
+export interface ChatRuntimeHomeQuickStartsMobileRenderStateInput {
+  isLoadingMessages?: boolean
+  messageCount?: number | null
+}
+
+export interface ChatRuntimeHomeQuickStartsMobileRenderState {
+  shouldRender: boolean
+}
+
 export interface ChatRuntimeInlineActivityMobileMessageLike {
   role?: string | null
   content?: string | null
@@ -5593,6 +5602,15 @@ export function getChatRuntimeLoadingStateMobileRenderState({
     accessibilityLabel: CHAT_RUNTIME_PRESENTATION.activity.loadingMessagesAccessibilityLabel,
     accessibilityState: surface.accessibilityState,
     spinnerResizeMode: surface.spinnerResizeMode,
+  }
+}
+
+export function getChatRuntimeHomeQuickStartsMobileRenderState({
+  isLoadingMessages = false,
+  messageCount = 0,
+}: ChatRuntimeHomeQuickStartsMobileRenderStateInput = {}): ChatRuntimeHomeQuickStartsMobileRenderState {
+  return {
+    shouldRender: isLoadingMessages !== true && (messageCount ?? 0) === 0,
   }
 }
 
