@@ -122,6 +122,7 @@ import {
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeLatestStepSummary,
@@ -342,7 +343,6 @@ export default function ChatScreen({ route, navigation }: any) {
   );
   const mobileRuntimeViewport = mobileRuntimeViewportRenderState.surface;
   const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState.loadingState;
-  const mobileRuntimeInlineActivity = mobileRuntimeViewportRenderState.inlineActivity;
   const mobileRuntimeDelegationCardRenderState = useMemo(
     () => getChatRuntimeDelegationCardMobileRenderState({
       colors: theme.colors,
@@ -3934,9 +3934,13 @@ export default function ChatScreen({ route, navigation }: any) {
             });
             const canSpeakVisibleContent = messageSpeechRenderState.canSpeak;
             const messageToneStyle = messageThreadSurfaceStyles.getToneStyle(messageRenderState.toneStyleSlot);
-            // Skip empty messages: no visible content AND no tool calls to display
-            // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
-            if (!messageDisplayState.shouldRenderSurface) {
+            const messageInlineActivityRenderState = getChatRuntimeInlineActivityMobileRenderState({
+              message: m,
+              isResponding: responding,
+            });
+            // Skip empty messages unless they are the current shared inline activity row.
+            // Also skip messages that only have toolResults but no toolCalls (raw result blobs).
+            if (!messageDisplayState.shouldRenderSurface && !messageInlineActivityRenderState.shouldRender) {
               return null;
             }
 
@@ -4142,9 +4146,8 @@ export default function ChatScreen({ route, navigation }: any) {
                     onDeny: () => respondToToolApproval(m.toolApproval!.approvalId, false),
                     onApprove: () => respondToToolApproval(m.toolApproval!.approvalId, true),
                   } : null,
-                  inlineActivity: m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? {
-                    renderState: mobileRuntimeInlineActivity,
-                    accessibilityLabel: mobileRuntimeActivityAccessibility.thinkingLabel,
+                  inlineActivity: messageInlineActivityRenderState.shouldRender ? {
+                    renderState: messageInlineActivityRenderState,
                     spinnerSource: isDark ? darkSpinner : lightSpinner,
                   } : null,
                   conversation: {

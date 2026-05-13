@@ -11,6 +11,7 @@ import {
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileTurnDurationBadgeColors,
   getChatMessageActionMobileTurnDurationBadgeState,
+  hasChatMessageDisplayContent,
   shouldShowChatMessageTurnDurationBadge,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
@@ -118,6 +119,26 @@ export interface ChatRuntimeViewportMobileRenderState {
   loadingState: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState
   inlineActivity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity
   colors: ChatRuntimeViewportMobileColors
+}
+
+export interface ChatRuntimeInlineActivityMobileMessageLike {
+  role?: string | null
+  content?: string | null
+  toolCalls?: readonly unknown[] | null
+  toolResults?: readonly unknown[] | null
+}
+
+export interface ChatRuntimeInlineActivityMobileRenderStateInput {
+  isResponding?: boolean
+  message?: ChatRuntimeInlineActivityMobileMessageLike | null
+}
+
+export interface ChatRuntimeInlineActivityMobileRenderState {
+  shouldRender: boolean
+  accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityRole
+  accessibilityLabel: string
+  accessibilityState: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityState
+  spinnerResizeMode: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode
 }
 
 export interface ChatRuntimeTurnDurationHeaderMobileBadgeColors {
@@ -5549,6 +5570,26 @@ export function getChatRuntimeLoadingStateMobileState() {
 
 export function getChatRuntimeInlineActivityMobileState() {
   return CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity
+}
+
+export function getChatRuntimeInlineActivityMobileRenderState({
+  isResponding = false,
+  message,
+}: ChatRuntimeInlineActivityMobileRenderStateInput = {}): ChatRuntimeInlineActivityMobileRenderState {
+  const surface = getChatRuntimeInlineActivityMobileState()
+  const shouldRender = isResponding === true &&
+    message?.role === "assistant" &&
+    !hasChatMessageDisplayContent(message.content) &&
+    (message.toolCalls?.length ?? 0) === 0 &&
+    (message.toolResults?.length ?? 0) === 0
+
+  return {
+    shouldRender,
+    accessibilityRole: surface.accessibilityRole,
+    accessibilityLabel: CHAT_RUNTIME_PRESENTATION.activity.thinkingAccessibilityLabel,
+    accessibilityState: surface.accessibilityState,
+    spinnerResizeMode: surface.spinnerResizeMode,
+  }
 }
 
 export function getChatRuntimeMobileActivityAccessibilityState(): ChatRuntimeMobileActivityAccessibilityState {

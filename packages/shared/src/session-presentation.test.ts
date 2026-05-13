@@ -111,6 +111,7 @@ import {
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeInlineActivityMobileState,
   getChatRuntimeKillSwitchMobileActionState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -1399,6 +1400,33 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityRole).toBe("progressbar")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityState).toEqual({ busy: true })
     expect(getChatRuntimeInlineActivityMobileState()).toBe(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity)
+    expect(getChatRuntimeInlineActivityMobileRenderState({
+      isResponding: true,
+      message: {
+        role: "assistant",
+        content: "",
+        toolCalls: [],
+        toolResults: [],
+      },
+    })).toEqual({
+      shouldRender: true,
+      accessibilityRole: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityRole,
+      accessibilityLabel: CHAT_RUNTIME_PRESENTATION.activity.thinkingAccessibilityLabel,
+      accessibilityState: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityState,
+      spinnerResizeMode: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode,
+    })
+    expect(getChatRuntimeInlineActivityMobileRenderState({
+      isResponding: false,
+      message: { role: "assistant", content: "" },
+    }).shouldRender).toBe(false)
+    expect(getChatRuntimeInlineActivityMobileRenderState({
+      isResponding: true,
+      message: { role: "assistant", content: "Done" },
+    }).shouldRender).toBe(false)
+    expect(getChatRuntimeInlineActivityMobileRenderState({
+      isResponding: true,
+      message: { role: "assistant", content: "", toolCalls: [{ name: "search" }] },
+    }).shouldRender).toBe(false)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.mobileIcon).toMatchObject({
       name: "pulse-outline",
       size: 13,

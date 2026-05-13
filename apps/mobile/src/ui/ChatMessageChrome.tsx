@@ -62,6 +62,7 @@ import type {
   ChatRuntimeToolApprovalMobileRenderState,
   ChatRuntimeTurnDurationHeaderMobileRenderState,
   ChatRuntimeDelegationCardMobileRenderState,
+  ChatRuntimeInlineActivityMobileRenderState,
   ChatSessionStatusMobileRenderState,
   ChatSessionStatusMobileStyleState,
 } from '@dotagents/shared/session-presentation';
@@ -1359,15 +1360,8 @@ type ChatMessageToolActivityGroupThreadSurfaceProps = Omit<
   styles: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
 };
 
-type ChatMessageInlineActivityRenderState = {
-  accessibilityRole: AccessibilityRole;
-  accessibilityState?: AccessibilityState;
-  spinnerResizeMode: ComponentProps<typeof Image>['resizeMode'];
-};
-
 type ChatMessageInlineActivityProps = {
-  renderState: ChatMessageInlineActivityRenderState;
-  accessibilityLabel: string;
+  renderState: ChatRuntimeInlineActivityMobileRenderState;
   spinnerSource: ImageSourcePropType;
   style: StyleProp<ViewStyle>;
   spinnerStyle: StyleProp<ImageStyle>;
@@ -5163,7 +5157,6 @@ export function ChatComposerTextEntry({
 
 export function ChatMessageInlineActivity({
   renderState,
-  accessibilityLabel,
   spinnerSource,
   style,
   spinnerStyle,
@@ -5172,7 +5165,7 @@ export function ChatMessageInlineActivity({
     <View
       accessible
       accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={renderState.accessibilityLabel}
       accessibilityState={renderState.accessibilityState}
       style={style}
     >
