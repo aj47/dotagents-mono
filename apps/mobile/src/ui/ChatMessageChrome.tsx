@@ -43,10 +43,7 @@ import {
   getPromptLibraryEditPromptAccessibilityLabel,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
-  getPromptLibraryShortcutInteractionState,
-  getPromptLibraryShortcutAccessibilityHint,
-  getPromptLibraryShortcutAccessibilityLabel,
-  getPromptLibraryShortcutSourceLabel,
+  getPromptLibraryMobileShortcutItemRenderState,
   isPromptLibraryEditorSaveDisabled,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
@@ -2601,9 +2598,12 @@ export function ChatConversationHomeQuickStarts<
       {items.length > 0 ? (
         <View style={styles.grid}>
           {items.map((item) => {
-            const shortcutInteraction = getPromptLibraryShortcutInteractionState(item, runningTaskId);
-            const sourceIcon = shortcutChrome.sourceIcons[item.source];
-            const shortcutSourceIconColors = shortcutChrome.sourceIconColors[item.source];
+            const shortcutItemRenderState = getPromptLibraryMobileShortcutItemRenderState(
+              item,
+              shortcutRenderState,
+              runningTaskId,
+            );
+            const { interaction: shortcutInteraction } = shortcutItemRenderState;
 
             return (
               <Pressable
@@ -2619,22 +2619,22 @@ export function ChatConversationHomeQuickStarts<
                 accessibilityRole={shortcutSurface.shortcutCard.accessibilityRole}
                 accessibilityState={shortcutInteraction.accessibilityState}
                 accessibilityLabel={createButtonAccessibilityLabel(
-                  getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
+                  shortcutItemRenderState.accessibilityLabel,
                 )}
-                accessibilityHint={getPromptLibraryShortcutAccessibilityHint(item.source, item.action)}
+                accessibilityHint={shortcutItemRenderState.accessibilityHint}
               >
                 {!shortcutInteraction.isAddPrompt ? (
                   <View style={styles.sourcePill}>
                     <Ionicons
-                      name={sourceIcon.name}
-                      size={sourceIcon.size}
-                      color={shortcutSourceIconColors.color}
+                      name={shortcutItemRenderState.sourceIcon.name}
+                      size={shortcutItemRenderState.sourceIcon.size}
+                      color={shortcutItemRenderState.sourceIconColors.color}
                     />
                     <Text
                       style={styles.sourceLabel}
                       numberOfLines={shortcutSurface.shortcutSourceLabel.numberOfLines}
                     >
-                      {getPromptLibraryShortcutSourceLabel(item.source)}
+                      {shortcutItemRenderState.sourceLabel}
                     </Text>
                   </View>
                 ) : (

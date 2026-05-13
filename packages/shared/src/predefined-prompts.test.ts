@@ -39,6 +39,7 @@ import {
   getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileShortcutActionIconState,
   getPromptLibraryMobileShortcutCopyState,
+  getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileShortcutSourceIconState,
@@ -367,6 +368,30 @@ describe("predefined prompt helpers", () => {
         primary: "#2563eb",
       }),
       copy: getPromptLibraryMobileShortcutCopyState(),
+    })
+    const shortcutRenderState = getPromptLibraryMobileShortcutRenderState({
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })
+    expect(getPromptLibraryMobileShortcutItemRenderState({
+      id: "task-daily",
+      title: "Daily",
+      content: "",
+      source: "task",
+      task: { id: "daily", name: "Daily" },
+    }, shortcutRenderState, "daily")).toEqual({
+      interaction: {
+        isAddPrompt: false,
+        isRunning: true,
+        isDisabled: true,
+        accessibilityState: { disabled: true },
+      },
+      sourceIcon: shortcutRenderState.chrome.sourceIcons.task,
+      sourceIconColors: shortcutRenderState.chrome.sourceIconColors.task,
+      sourceLabel: "task",
+      accessibilityLabel: "Run task Daily",
+      accessibilityHint: "Runs this desktop task now.",
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.textTransform).toBe("uppercase")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.numberOfLines).toBe(1)

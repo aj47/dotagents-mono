@@ -1025,6 +1025,15 @@ export interface PromptLibraryShortcutInteractionState {
   accessibilityState?: { disabled: true }
 }
 
+export interface PromptLibraryMobileShortcutItemRenderState {
+  interaction: PromptLibraryShortcutInteractionState
+  sourceIcon: PromptLibraryMobileShortcutSourceIconState
+  sourceIconColors: PromptLibraryMobileIconColors
+  sourceLabel: string
+  accessibilityLabel: string
+  accessibilityHint: string
+}
+
 export type SlashCommandInputState =
   | { mode: "inactive"; query: "" }
   | { mode: "active"; query: string }
@@ -1242,6 +1251,24 @@ export function getPromptLibraryShortcutInteractionState(
     isRunning,
     isDisabled: isRunning,
     accessibilityState: isRunning ? { disabled: true } : undefined,
+  }
+}
+
+export function getPromptLibraryMobileShortcutItemRenderState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>(
+  item: PromptLibraryShortcutItem<TPrompt, TTask>,
+  shortcutRenderState: PromptLibraryMobileShortcutRenderState,
+  runningTaskId?: string | null,
+): PromptLibraryMobileShortcutItemRenderState {
+  return {
+    interaction: getPromptLibraryShortcutInteractionState(item, runningTaskId),
+    sourceIcon: shortcutRenderState.chrome.sourceIcons[item.source],
+    sourceIconColors: shortcutRenderState.chrome.sourceIconColors[item.source],
+    sourceLabel: getPromptLibraryShortcutSourceLabel(item.source),
+    accessibilityLabel: getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
+    accessibilityHint: getPromptLibraryShortcutAccessibilityHint(item.source, item.action),
   }
 }
 
