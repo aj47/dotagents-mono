@@ -54,6 +54,7 @@ import {
   getPromptLibraryShortcutSourceLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
+  isPromptLibraryEditorSaveDisabled,
   isSlashCommandPrompt,
   isSlashCommandPromptName,
   resolveSlashCommandInputState,
@@ -85,6 +86,10 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryEditorSaveActionLabel(false)).toBe("Add Prompt")
     expect(getPromptLibraryEditorSaveActionLabel(true)).toBe("Save Changes")
     expect(getPromptLibraryEditorSaveActionLabel(true, true)).toBe("Saving...")
+    expect(isPromptLibraryEditorSaveDisabled({ name: "", content: "Ship it" })).toBe(true)
+    expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "   " })).toBe(true)
+    expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "Ship it" })).toBe(false)
+    expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "Ship it" }, true)).toBe(true)
     expect(getPromptLibrarySaveSuccessMessage(false)).toBe("Prompt saved to your desktop prompt library.")
     expect(getPromptLibrarySaveSuccessMessage(true)).toBe("Prompt updated in your desktop prompt library.")
     expect(getPromptLibraryEmptyPromptLabel(false)).toBe("No saved prompts yet")

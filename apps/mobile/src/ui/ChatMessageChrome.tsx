@@ -46,6 +46,7 @@ import {
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutSourceLabel,
+  isPromptLibraryEditorSaveDisabled,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibraryMobileShortcutRenderState,
@@ -2728,7 +2729,10 @@ export function ChatConversationHomePromptEditorModal({
   renderState,
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
-  const isSaveDisabled = !nameValue.trim() || !contentValue.trim() || isSaving;
+  const isSaveDisabled = isPromptLibraryEditorSaveDisabled(
+    { name: nameValue, content: contentValue },
+    isSaving,
+  );
   const {
     chrome: editorChrome,
     colors,

@@ -1217,6 +1217,13 @@ export function createPredefinedPromptId(now: number, random: () => number = Mat
   return `prompt-${now}-${random().toString(36).slice(2, 11)}`
 }
 
+export function isPromptLibraryEditorSaveDisabled(
+  draft: PredefinedPromptDraft,
+  isSaving = false,
+): boolean {
+  return !draft.name.trim() || !draft.content.trim() || isSaving
+}
+
 export function createPredefinedPromptRecord(
   draft: PredefinedPromptDraft,
   now: number = Date.now(),

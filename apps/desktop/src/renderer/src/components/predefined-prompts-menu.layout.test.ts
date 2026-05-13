@@ -50,6 +50,8 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain("promptCopy")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibraryEditorTitle(Boolean(editingPrompt))")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt))")
+    expect(predefinedPromptsMenuSource).toContain("isPromptLibraryEditorSaveDisabled")
+    expect(predefinedPromptsMenuSource).toContain("disabled={isSaveDisabled}")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibraryEditPromptAccessibilityLabel(prompt.name)")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibraryDeletePromptAccessibilityLabel(prompt.name)")
     expect(predefinedPromptsMenuSource).toContain("updatePredefinedPromptList(prompts, editingPrompt.id, draft, now)")

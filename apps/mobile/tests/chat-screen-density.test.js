@@ -2952,7 +2952,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /modalSaveButtonText:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.saveButtonText\.color/);
   assert.match(screenSource, /modalSaveButton:\s*\{[\s\S]*?alignItems:\s*promptEditorModalSurface\.saveButton\.alignItems/);
   assert.match(screenSource, /promptEditorModalSurface\.saveButton\.disabledOpacity/);
-  assert.match(chatMessageChromeSource, /const isSaveDisabled = !nameValue\.trim\(\) \|\| !contentValue\.trim\(\) \|\| isSaving;/);
+  assert.match(chatMessageChromeSource, /isPromptLibraryEditorSaveDisabled\(\s*\{ name: nameValue, content: contentValue \},\s*isSaving,\s*\)/);
   assert.match(chatMessageChromeSource, /isSaveDisabled && styles\.saveButtonDisabled/);
   assert.match(chatMessageChromeSource, /disabled=\{isSaveDisabled\}/);
   assert.match(chatMessageChromeSource, /styles\.actions/);
