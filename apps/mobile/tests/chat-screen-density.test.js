@@ -1443,7 +1443,9 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
   assert.doesNotMatch(screenSource, /const shouldCollapse = shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
   assert.match(screenSource, /const messageRenderState = getChatMessageMobileRenderState\(\{[\s\S]*?content: visibleMessageContent,[\s\S]*?shouldCollapse: effectiveShouldCollapse,[\s\S]*?isLiveStreaming: isLiveStreamingAssistantMessage,/);
   assert.match(screenSource, /const messageContentRenderState = messageRenderState\.content;/);
-  assert.match(screenSource, /shouldShowCollapsedTextPreview,\s+shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
+  assert.doesNotMatch(screenSource, /shouldShowCollapsedTextPreview,\s+shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageContentRenderState,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationContentState = Pick<\s+ChatMessageContentRenderState,\s+'shouldRenderExpandedContent' \| 'shouldRenderCollapsedTextPreview'\s+>;/);
   assert.doesNotMatch(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0/);
 });
 
@@ -2034,7 +2036,7 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(screenSource, /const isLiveStreamingAssistantMessage =\s+responding &&/);
   assert.doesNotMatch(screenSource, /i === lastAssistantContentMessageIndex &&\s+isChatMessageConversationContent\(m\)/);
   assert.match(screenSource, /isLiveStreaming: isLiveStreamingAssistantMessage,/);
-  assert.match(screenSource, /shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
+  assert.doesNotMatch(screenSource, /shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
   assert.match(screenSource, /const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming: isLiveStreamingAssistantMessage,\s+content: visibleMessageContent,\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /content: \{\s+contentState: messageContentRenderState,[\s\S]*?expanded: \{[\s\S]*?streamingRenderState: streamingContentRenderState,[\s\S]*?markdownContent: visibleMessageContent,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+streamingRenderState=\{expanded\.streamingRenderState\}[\s\S]*?markdownContent=\{expanded\.markdownContent\}[\s\S]*?spinnerSource=\{expanded\.spinnerSource\}/);

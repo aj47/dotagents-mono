@@ -28,6 +28,7 @@ import {
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
+  type ChatMessageContentRenderState,
 } from '@dotagents/shared/message-display-utils';
 import type {
   AgentDelegationConversationPreviewRow,
@@ -1360,10 +1361,10 @@ type ChatMessageContentRowProps = {
   bodyStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageConversationContentState = {
-  shouldRenderExpandedContent: boolean;
-  shouldRenderCollapsedTextPreview: boolean;
-};
+type ChatMessageConversationContentState = Pick<
+  ChatMessageContentRenderState,
+  'shouldRenderExpandedContent' | 'shouldRenderCollapsedTextPreview'
+>;
 
 type ChatMessageStreamingContentRenderState = {
   shouldRender: boolean;

@@ -3967,12 +3967,6 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const messageContentRenderState = messageRenderState.content;
-            const {
-              shouldShowExpandedContent,
-              shouldShowCollapsedTextPreview,
-              shouldRenderExpandedContent,
-              shouldRenderCollapsedTextPreview,
-            } = messageContentRenderState;
             const isMessageSpeaking = speakingMessageIndex === i;
             const messageSpeechRenderState = getChatMessageSpeechMobileRenderState({
               role: m.role,
