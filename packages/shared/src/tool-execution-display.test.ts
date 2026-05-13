@@ -28,6 +28,7 @@ import {
   getToolExecutionDetailMobilePendingSpinnerColors,
   getToolExecutionDetailMobilePendingSpinnerState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
+  getToolExecutionDetailMobileStyleColors,
   getToolExecutionDetailMobileToggleIconColors,
   getToolExecutionDetailMobileToggleIconState,
   getToolExecutionPayloadValueType,
@@ -904,6 +905,31 @@ describe("tool execution display", () => {
     })).toEqual({
       borderLeftColor: "rgba(59, 130, 246, 0.5)",
       backgroundColor: "rgba(59, 130, 246, 0.02)",
+    })
+    const toolExecutionDetailStylePalette = {
+      info: "#3b82f6",
+      success: "#22c55e",
+      destructive: "#ef4444",
+      mutedForeground: "#737373",
+      primary: "#2563eb",
+      foreground: "#171717",
+      muted: "#e5e5e5",
+    }
+    expect(getToolExecutionDetailMobileStyleColors(toolExecutionDetailStylePalette)).toEqual({
+      payloadPreview: getToolExecutionDetailMobilePayloadPreviewColors(toolExecutionDetailStylePalette),
+      copyButton: getToolExecutionDetailMobileCopyButtonColors(toolExecutionDetailStylePalette),
+      badge: {
+        success: getToolExecutionDetailMobileBadgeColors("success", toolExecutionDetailStylePalette),
+        error: getToolExecutionDetailMobileBadgeColors("error", toolExecutionDetailStylePalette),
+      },
+      error: getToolExecutionDetailMobileErrorColors(toolExecutionDetailStylePalette),
+      content: getToolExecutionDetailMobileContentColors(toolExecutionDetailStylePalette),
+      byState: {
+        idle: getToolExecutionDetailMobileColors("idle", toolExecutionDetailStylePalette),
+        pending: getToolExecutionDetailMobileColors("pending", toolExecutionDetailStylePalette),
+        success: getToolExecutionDetailMobileColors("success", toolExecutionDetailStylePalette),
+        error: getToolExecutionDetailMobileColors("error", toolExecutionDetailStylePalette),
+      },
     })
   })
 

@@ -322,6 +322,20 @@ export interface ToolExecutionDetailMobileContentColors {
   }
 }
 
+export interface ToolExecutionDetailMobileCardColors {
+  borderLeftColor: string
+  backgroundColor: string
+}
+
+export interface ToolExecutionDetailMobileStyleColors {
+  payloadPreview: ToolExecutionDetailMobilePayloadPreviewColors
+  copyButton: ToolExecutionDetailMobileCopyButtonColors
+  badge: Record<ToolExecutionResolvedDisplayState, ToolExecutionDetailMobileBadgeColors>
+  error: ToolExecutionDetailMobileErrorColors
+  content: ToolExecutionDetailMobileContentColors
+  byState: Record<ToolExecutionDisplayState, ToolExecutionDetailMobileCardColors>
+}
+
 export interface ToolExecutionDisplayResultLike {
   success?: boolean
 }
@@ -1916,12 +1930,33 @@ export function getToolExecutionDetailMobileContentColors(
 export function getToolExecutionDetailMobileColors(
   state: ToolExecutionDisplayState,
   colors: ToolExecutionStatusColorPalette,
-): { borderLeftColor: string; backgroundColor: string } {
+): ToolExecutionDetailMobileCardColors {
   const card = TOOL_EXECUTION_DETAIL_SURFACE_PRESENTATION.mobile.card
   const color = colors[card.statusColorTokens[state]]
   return {
     borderLeftColor: hexToRgba(color, card.borderAlpha),
     backgroundColor: hexToRgba(color, card.backgroundAlpha),
+  }
+}
+
+export function getToolExecutionDetailMobileStyleColors(
+  colors: ToolExecutionSurfaceColorPalette,
+): ToolExecutionDetailMobileStyleColors {
+  return {
+    payloadPreview: getToolExecutionDetailMobilePayloadPreviewColors(colors),
+    copyButton: getToolExecutionDetailMobileCopyButtonColors(colors),
+    badge: {
+      success: getToolExecutionDetailMobileBadgeColors("success", colors),
+      error: getToolExecutionDetailMobileBadgeColors("error", colors),
+    },
+    error: getToolExecutionDetailMobileErrorColors(colors),
+    content: getToolExecutionDetailMobileContentColors(colors),
+    byState: {
+      idle: getToolExecutionDetailMobileColors("idle", colors),
+      pending: getToolExecutionDetailMobileColors("pending", colors),
+      success: getToolExecutionDetailMobileColors("success", colors),
+      error: getToolExecutionDetailMobileColors("error", colors),
+    },
   }
 }
 

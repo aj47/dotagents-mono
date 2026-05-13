@@ -174,21 +174,16 @@ import {
 import {
   getToolExecutionCompactMobileRenderState,
   getToolExecutionCompactMobileSurfaceState,
-  getToolExecutionDetailMobileBadgeColors,
   getToolExecutionDetailMobileCollapseControlRenderState,
-  getToolExecutionDetailMobileColors,
-  getToolExecutionDetailMobileContentColors,
-  getToolExecutionDetailMobileCopyButtonColors,
   getToolExecutionDetailMobileCopyButtonRenderState,
   getToolExecutionDetailCopyFailureAlertState,
-  getToolExecutionDetailMobileErrorColors,
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobileHeaderRenderState,
-  getToolExecutionDetailMobilePayloadPreviewColors,
   getToolExecutionDetailMobilePayloadPreviewState,
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
+  getToolExecutionDetailMobileStyleColors,
   getToolExecutionDetailMobileSurfaceState,
   getToolExecutionDetailArgumentsState,
   getToolExecutionDetailResultState,
@@ -4308,12 +4303,13 @@ function createStyles(theme: Theme, screenHeight: number) {
   const mobileMessageCollapsedPreview = mobileMessageStyleState.collapsedPreview;
   const mobileMessageCollapsedPreviewColors = mobileMessageStyleState.colors.collapsedPreview;
   const mobileMessageToneColors = mobileMessageStyleState.colors.tones;
-  const toolPayloadPreviewColors = getToolExecutionDetailMobilePayloadPreviewColors(theme.colors);
-  const toolDetailCopyButtonColors = getToolExecutionDetailMobileCopyButtonColors(theme.colors);
-  const toolResultBadgeSuccessColors = getToolExecutionDetailMobileBadgeColors('success', theme.colors);
-  const toolResultBadgeErrorColors = getToolExecutionDetailMobileBadgeColors('error', theme.colors);
-  const toolResultErrorColors = getToolExecutionDetailMobileErrorColors(theme.colors);
-  const toolExecutionDetailContentColors = getToolExecutionDetailMobileContentColors(theme.colors);
+  const toolExecutionDetailStyleColors = getToolExecutionDetailMobileStyleColors(theme.colors);
+  const toolPayloadPreviewColors = toolExecutionDetailStyleColors.payloadPreview;
+  const toolDetailCopyButtonColors = toolExecutionDetailStyleColors.copyButton;
+  const toolResultBadgeSuccessColors = toolExecutionDetailStyleColors.badge.success;
+  const toolResultBadgeErrorColors = toolExecutionDetailStyleColors.badge.error;
+  const toolResultErrorColors = toolExecutionDetailStyleColors.error;
+  const toolExecutionDetailContentColors = toolExecutionDetailStyleColors.content;
   const headerTurnDurationStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState({
     durationMs: 1,
     colors: theme.colors,
@@ -4371,8 +4367,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
   const getToolExecutionStatusColor = (state: Parameters<typeof getToolExecutionStatusMobileColor>[0]) =>
     getToolExecutionStatusMobileColor(state, theme.colors);
-  const getToolExecutionDetailColors = (state: Parameters<typeof getToolExecutionDetailMobileColors>[0]) =>
-    getToolExecutionDetailMobileColors(state, theme.colors);
+  const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   return StyleSheet.create({
     keyboardAvoidingContainer: {
       flex: viewportSurface.flex,
@@ -5469,12 +5464,12 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginTop: detailedToolExecution.card.marginTop,
       borderRadius: radius[detailedToolExecution.card.borderRadius],
       borderLeftWidth: detailedToolExecution.card.borderLeftWidth,
-      ...getToolExecutionDetailColors('idle'),
+      ...toolExecutionDetailColorsByState.idle,
       overflow: detailedToolExecution.card.overflow,
     },
-    toolExecutionPending: getToolExecutionDetailColors('pending'),
-    toolExecutionSuccess: getToolExecutionDetailColors('success'),
-    toolExecutionError: getToolExecutionDetailColors('error'),
+    toolExecutionPending: toolExecutionDetailColorsByState.pending,
+    toolExecutionSuccess: toolExecutionDetailColorsByState.success,
+    toolExecutionError: toolExecutionDetailColorsByState.error,
     toolExecutionExpandedContainer: {
       position: detailedToolExecution.expandedContainer.position,
     },
