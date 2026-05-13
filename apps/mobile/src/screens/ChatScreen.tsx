@@ -190,7 +190,7 @@ import {
   getToolExecutionCallDisplayState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
-  getToolExecutionStatusMobileColor,
+  getToolExecutionStatusMobileColorMap,
 } from '@dotagents/shared/tool-execution-display';
 import {
   getChatMessageActionCopyState,
@@ -4365,8 +4365,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const mobileMessageTurnDurationLiveBadge = mobileMessageTurnDurationLiveRenderState.badge;
   const mobileMessageTurnDurationBadgeColors = mobileMessageTurnDurationRenderState.colors;
   const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
-  const getToolExecutionStatusColor = (state: Parameters<typeof getToolExecutionStatusMobileColor>[0]) =>
-    getToolExecutionStatusMobileColor(state, theme.colors);
+  const toolExecutionStatusColors = getToolExecutionStatusMobileColorMap(theme.colors);
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   return StyleSheet.create({
     keyboardAvoidingContainer: {
@@ -5507,16 +5506,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontWeight: compactToolExecution.name.fontWeight,
       flexShrink: compactToolExecution.name.flexShrink,
       minWidth: compactToolExecution.name.minWidth,
-      color: getToolExecutionStatusColor('idle'),
+      color: toolExecutionStatusColors.idle,
     },
     toolCallCompactNamePending: {
-      color: getToolExecutionStatusColor('pending'),
+      color: toolExecutionStatusColors.pending,
     },
     toolCallCompactNameSuccess: {
-      color: getToolExecutionStatusColor('success'),
+      color: toolExecutionStatusColors.success,
     },
     toolCallCompactNameError: {
-      color: getToolExecutionStatusColor('error'),
+      color: toolExecutionStatusColors.error,
     },
     toolCallCompactStatusIndicator: {
       width: compactToolExecution.statusIcon.width,
@@ -5531,13 +5530,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       flexShrink: compactToolExecution.iconCell.flexShrink,
     },
     toolCallCompactStatusPending: {
-      color: getToolExecutionStatusColor('pending'),
+      color: toolExecutionStatusColors.pending,
     },
     toolCallCompactStatusSuccess: {
-      color: getToolExecutionStatusColor('success'),
+      color: toolExecutionStatusColors.success,
     },
     toolCallCompactStatusError: {
-      color: getToolExecutionStatusColor('error'),
+      color: toolExecutionStatusColors.error,
     },
     // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
     toolActivityGroupCollapsed: {

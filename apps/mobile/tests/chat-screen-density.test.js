@@ -1436,7 +1436,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobilePayloadPreviewColors,/);
   assert.match(screenSource, /getToolExecutionResultOnlyFallbackRenderState,/);
   assert.match(screenSource, /getToolExecutionSummaryDisplayState,/);
-  assert.match(screenSource, /getToolExecutionStatusMobileColor,/);
+  assert.match(screenSource, /getToolExecutionStatusMobileColorMap,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColor,/);
   assert.doesNotMatch(screenSource, /formatToolExecutionDetailsAccessibilityName,/);
   assert.doesNotMatch(screenSource, /formatToolExecutionSectionLabel,/);
   assert.doesNotMatch(screenSource, /getToolExecutionCopyAccessibilityLabel,/);
@@ -1546,7 +1547,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /\{tcPresentation\.compactLabel\}/);
   assert.match(screenSource, /const compactToolExecution = mobileToolExecutionCompactSurface;/);
   assert.match(screenSource, /const detailedToolExecution = mobileToolExecutionDetailSurface;/);
-  assert.match(screenSource, /const getToolExecutionStatusColor = \(state: Parameters<typeof getToolExecutionStatusMobileColor>\[0\]\) =>\s+getToolExecutionStatusMobileColor\(state, theme\.colors\);/);
+  assert.match(screenSource, /const toolExecutionStatusColors = getToolExecutionStatusMobileColorMap\(theme\.colors\);/);
   assert.match(screenSource, /const toolExecutionDetailStyleColors = getToolExecutionDetailMobileStyleColors\(theme\.colors\);/);
   assert.match(screenSource, /const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors\.byState;/);
   assert.match(screenSource, /toolExecutionCard:\s*\{[\s\S]*?marginTop:\s*detailedToolExecution\.card\.marginTop,[\s\S]*?\.\.\.toolExecutionDetailColorsByState\.idle/);
@@ -2139,8 +2140,8 @@ test('colors compact tool call labels by result status', () => {
   assert.match(chatMessageChromeSource, /nameError: styles\.toolCallCompactNameError/);
   assert.match(chatMessageChromeSource, /renderState\.isSuccess && styles\.nameSuccess/);
   assert.match(chatMessageChromeSource, /renderState\.isError && styles\.nameError/);
-  assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{[\s\S]*?color:\s*getToolExecutionStatusColor\('success'\)/);
-  assert.match(screenSource, /toolCallCompactNameError:\s*\{[\s\S]*?color:\s*getToolExecutionStatusColor\('error'\)/);
+  assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{[\s\S]*?color:\s*toolExecutionStatusColors\.success/);
+  assert.match(screenSource, /toolCallCompactNameError:\s*\{[\s\S]*?color:\s*toolExecutionStatusColors\.error/);
 });
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {

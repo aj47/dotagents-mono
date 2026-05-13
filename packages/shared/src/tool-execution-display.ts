@@ -66,6 +66,8 @@ export interface ToolExecutionCompactMobileSpinnerRenderState {
   color: string
 }
 
+export type ToolExecutionStatusMobileColorMap = Record<ToolExecutionDisplayState, string>
+
 export interface ToolExecutionCompactMobileStatusIconRenderState extends ToolExecutionCompactMobileColoredIconState {
   shouldRender: boolean
   state: ToolExecutionStatusIconState
@@ -1463,6 +1465,17 @@ export function getToolExecutionStatusMobileColor(
   colors: ToolExecutionStatusColorPalette,
 ): string {
   return colors[TOOL_EXECUTION_COMPACT_PRESENTATION.mobile.statusColorTokens[state]]
+}
+
+export function getToolExecutionStatusMobileColorMap(
+  colors: ToolExecutionStatusColorPalette,
+): ToolExecutionStatusMobileColorMap {
+  return {
+    idle: getToolExecutionStatusMobileColor("idle", colors),
+    pending: getToolExecutionStatusMobileColor("pending", colors),
+    success: getToolExecutionStatusMobileColor("success", colors),
+    error: getToolExecutionStatusMobileColor("error", colors),
+  }
 }
 
 export function getToolExecutionCompactMobileStatusColors(

@@ -51,6 +51,7 @@ import {
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStatusMobileColor,
+  getToolExecutionStatusMobileColorMap,
   getToolExecutionStatusCopyState,
   getToolExecutionDisplayState,
   getToolExecutionSummaryDisplayState,
@@ -310,6 +311,17 @@ describe("tool execution display", () => {
       destructive: "#ef4444",
       mutedForeground: "#737373",
     })).toBe("#22c55e")
+    expect(getToolExecutionStatusMobileColorMap({
+      info: "#3b82f6",
+      success: "#22c55e",
+      destructive: "#ef4444",
+      mutedForeground: "#737373",
+    })).toEqual({
+      idle: "#737373",
+      pending: "#3b82f6",
+      success: "#22c55e",
+      error: "#ef4444",
+    })
     expect(getToolExecutionCompactMobileStatusColors("success", {
       info: "#3b82f6",
       success: "#22c55e",
