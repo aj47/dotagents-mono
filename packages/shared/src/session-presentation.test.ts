@@ -109,6 +109,7 @@ import {
   getChatRuntimeHandsFreeMobileIconState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
+  getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeInlineActivityMobileState,
   getChatRuntimeKillSwitchMobileActionState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -1106,6 +1107,21 @@ describe("session presentation semantics", () => {
         size: CHAT_RUNTIME_PRESENTATION.pin.mobileIcon.size,
         color: "#2563eb",
       },
+    })
+    const headerMobileStyleColors = {
+      ...pinMobileColors,
+      destructive: "#dc2626",
+    }
+    expect(getChatRuntimeHeaderMobileStyleRenderState({
+      colors: headerMobileStyleColors,
+    })).toEqual({
+      surface: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile,
+      agentSelector: getChatRuntimeAgentSelectorMobileColors(headerMobileStyleColors),
+      pinButton: {
+        inactive: getChatRuntimePinMobileColors(false, headerMobileStyleColors),
+        active: getChatRuntimePinMobileColors(true, headerMobileStyleColors),
+      },
+      killSwitchButton: getChatRuntimeKillSwitchMobileColors(headerMobileStyleColors),
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)

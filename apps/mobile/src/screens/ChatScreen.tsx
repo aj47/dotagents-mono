@@ -121,6 +121,7 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
+  getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeLatestStepSummary,
@@ -4198,22 +4199,14 @@ export default function ChatScreen({ route, navigation }: any) {
 }
 
 function createStyles(theme: Theme, screenHeight: number) {
-  const headerSurface = mobileHeaderSurface;
-  const headerAgentSelectorRenderState = getChatRuntimeAgentSelectorMobileRenderState({
-    agentLabel: getChatRuntimeCurrentAgentLabel(),
+  const headerStyleState = getChatRuntimeHeaderMobileStyleRenderState({
     colors: theme.colors,
   });
-  const inactiveHeaderPinRenderState = getChatRuntimePinMobileRenderState({
-    isPinned: false,
-    colors: theme.colors,
-  });
-  const activeHeaderPinRenderState = getChatRuntimePinMobileRenderState({
-    isPinned: true,
-    colors: theme.colors,
-  });
-  const headerKillSwitchRenderState = getChatRuntimeKillSwitchMobileRenderState({
-    colors: theme.colors,
-  });
+  const headerSurface = headerStyleState.surface;
+  const headerAgentSelectorColors = headerStyleState.agentSelector;
+  const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
+  const activeHeaderPinButtonColors = headerStyleState.pinButton.active;
+  const headerKillSwitchButtonColors = headerStyleState.killSwitchButton;
   const viewportStyleState = getChatRuntimeViewportMobileRenderState({
     colors: theme.colors,
   });
@@ -4464,19 +4457,19 @@ function createStyles(theme: Theme, screenHeight: number) {
       height: headerSurface.agentSelectorButton.height,
       minHeight: headerSurface.agentSelectorButton.minHeight,
     },
-	    headerAgentSelectorChip: {
-	      flexDirection: headerSurface.agentSelectorChip.flexDirection,
-	      alignItems: headerSurface.agentSelectorChip.alignItems,
-	      backgroundColor: headerAgentSelectorRenderState.chip.backgroundColor,
-	      maxWidth: headerSurface.agentSelectorChip.maxWidth,
-	      paddingHorizontal: headerSurface.agentSelectorChip.paddingHorizontal,
-	      paddingVertical: headerSurface.agentSelectorChip.paddingVertical,
-	      borderRadius: headerSurface.agentSelectorChip.borderRadius,
-	      gap: headerSurface.agentSelectorChip.gap,
-	    },
+    headerAgentSelectorChip: {
+      flexDirection: headerSurface.agentSelectorChip.flexDirection,
+      alignItems: headerSurface.agentSelectorChip.alignItems,
+      backgroundColor: headerAgentSelectorColors.chip.backgroundColor,
+      maxWidth: headerSurface.agentSelectorChip.maxWidth,
+      paddingHorizontal: headerSurface.agentSelectorChip.paddingHorizontal,
+      paddingVertical: headerSurface.agentSelectorChip.paddingVertical,
+      borderRadius: headerSurface.agentSelectorChip.borderRadius,
+      gap: headerSurface.agentSelectorChip.gap,
+    },
     headerAgentSelectorText: {
       fontSize: headerSurface.agentSelectorText.fontSize,
-      color: headerAgentSelectorRenderState.text.color,
+      color: headerAgentSelectorColors.text.color,
       fontWeight: headerSurface.agentSelectorText.fontWeight,
     },
     headerActionsRow: {
@@ -4539,21 +4532,21 @@ function createStyles(theme: Theme, screenHeight: number) {
       }),
       borderRadius: radius[headerSurface.pinButton.borderRadius],
       borderWidth: headerSurface.pinButton.borderWidth,
-      borderColor: inactiveHeaderPinRenderState.button.borderColor,
-      backgroundColor: inactiveHeaderPinRenderState.button.backgroundColor,
+      borderColor: inactiveHeaderPinButtonColors.button.borderColor,
+      backgroundColor: inactiveHeaderPinButtonColors.button.backgroundColor,
     },
     headerPinButtonActive: {
-      borderColor: activeHeaderPinRenderState.button.borderColor,
-      backgroundColor: activeHeaderPinRenderState.button.backgroundColor,
-	    },
-	    headerKillSwitchIconContainer: {
-	      width: headerSurface.killSwitchButton.size,
-	      height: headerSurface.killSwitchButton.size,
-	      borderRadius: headerSurface.killSwitchButton.borderRadius,
-	      backgroundColor: headerKillSwitchRenderState.button.backgroundColor,
-	      alignItems: headerSurface.killSwitchButton.alignItems,
-	      justifyContent: headerSurface.killSwitchButton.justifyContent,
-	    },
+      borderColor: activeHeaderPinButtonColors.button.borderColor,
+      backgroundColor: activeHeaderPinButtonColors.button.backgroundColor,
+    },
+    headerKillSwitchIconContainer: {
+      width: headerSurface.killSwitchButton.size,
+      height: headerSurface.killSwitchButton.size,
+      borderRadius: headerSurface.killSwitchButton.borderRadius,
+      backgroundColor: headerKillSwitchButtonColors.button.backgroundColor,
+      alignItems: headerSurface.killSwitchButton.alignItems,
+      justifyContent: headerSurface.killSwitchButton.justifyContent,
+    },
     headerHandsFreeIconContainer: {
       width: headerSurface.handsFreeButton.size,
       height: headerSurface.handsFreeButton.size,

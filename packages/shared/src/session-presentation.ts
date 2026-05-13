@@ -484,6 +484,28 @@ export interface ChatRuntimeKillSwitchMobileRenderState {
   }
 }
 
+export type ChatRuntimeHeaderMobileStyleColorToken =
+  | ChatRuntimeAgentSelectorMobileColorToken
+  | ChatRuntimePinMobileColorToken
+  | ChatRuntimeKillSwitchMobileColorToken
+
+export type ChatRuntimeHeaderMobileStyleColorPalette =
+  Readonly<Record<ChatRuntimeHeaderMobileStyleColorToken, string>>
+
+export interface ChatRuntimeHeaderMobileStyleRenderStateInput {
+  colors: ChatRuntimeHeaderMobileStyleColorPalette
+}
+
+export interface ChatRuntimeHeaderMobileStyleRenderState {
+  surface: typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile
+  agentSelector: ChatRuntimeAgentSelectorMobileColors
+  pinButton: {
+    inactive: ChatRuntimePinMobileColors
+    active: ChatRuntimePinMobileColors
+  }
+  killSwitchButton: ChatRuntimeKillSwitchMobileColors
+}
+
 export interface ChatRuntimeKillSwitchMobileAlertState {
   confirmation: {
     title: string
@@ -4674,6 +4696,20 @@ export function getChatRuntimeAgentSelectorMobileRenderState(
 
 export function getChatRuntimeHeaderMobileSurfaceState() {
   return CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile
+}
+
+export function getChatRuntimeHeaderMobileStyleRenderState({
+  colors,
+}: ChatRuntimeHeaderMobileStyleRenderStateInput): ChatRuntimeHeaderMobileStyleRenderState {
+  return {
+    surface: getChatRuntimeHeaderMobileSurfaceState(),
+    agentSelector: getChatRuntimeAgentSelectorMobileColors(colors),
+    pinButton: {
+      inactive: getChatRuntimePinMobileColors(false, colors),
+      active: getChatRuntimePinMobileColors(true, colors),
+    },
+    killSwitchButton: getChatRuntimeKillSwitchMobileColors(colors),
+  }
 }
 
 export function getChatRuntimeBackMobileIconState(): ChatRuntimeBackMobileIconState {
