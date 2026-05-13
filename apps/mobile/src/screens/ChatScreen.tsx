@@ -168,8 +168,7 @@ import {
 import {
   getToolActivityGroupExpansionInheritanceItems,
   getToolActivityGroupMobileRenderState,
-  getToolActivityGroupMobileSurfaceColors,
-  getToolActivityGroupMobileSurfaceState,
+  getToolActivityGroupMobileSurfaceRenderState,
   getToolActivityGroupStateKey,
   groupToolActivity,
   type ToolActivityGroup,
@@ -319,7 +318,6 @@ const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertSta
 const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
 const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState();
-const mobileToolActivityGroupSurface = getToolActivityGroupMobileSurfaceState();
 const mobileToolExecutionDetailSurface = getToolExecutionDetailMobileSurfaceState();
 const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState();
 const mobileToolExecutionDetailPayloadPreview = getToolExecutionDetailMobilePayloadPreviewState();
@@ -4297,8 +4295,11 @@ function createStyles(theme: Theme, screenHeight: number) {
   const compactToolExecution = mobileToolExecutionCompactSurface;
   const detailedToolExecution = mobileToolExecutionDetailSurface;
   const viewportSurfaceColors = viewportStyleState.colors;
-  const toolActivityGroupSurface = mobileToolActivityGroupSurface;
-  const toolActivityGroupSurfaceColors = getToolActivityGroupMobileSurfaceColors(theme.colors);
+  const toolActivityGroupStyleState = getToolActivityGroupMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const toolActivityGroupSurface = toolActivityGroupStyleState.surface;
+  const toolActivityGroupSurfaceColors = toolActivityGroupStyleState.colors;
   const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
   const handsFreeSurfaceColors = handsFreeStyleState.colors;
   const toolApprovalStyleState = getChatRuntimeToolApprovalMobileRenderState({

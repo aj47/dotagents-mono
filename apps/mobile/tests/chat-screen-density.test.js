@@ -2140,8 +2140,9 @@ test('colors compact tool call labels by result status', () => {
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
   assert.match(screenSource, /getToolActivityGroupExpansionInheritanceItems,/);
   assert.match(screenSource, /getToolActivityGroupMobileRenderState,/);
-  assert.match(screenSource, /getToolActivityGroupMobileSurfaceColors,/);
-  assert.match(screenSource, /getToolActivityGroupMobileSurfaceState,/);
+  assert.match(screenSource, /getToolActivityGroupMobileSurfaceRenderState,/);
+  assert.doesNotMatch(screenSource, /getToolActivityGroupMobileSurfaceColors,/);
+  assert.doesNotMatch(screenSource, /getToolActivityGroupMobileSurfaceState,/);
   assert.match(screenSource, /getToolActivityGroupStateKey,/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupCopyState,/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupRenderState,/);
@@ -2158,13 +2159,14 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /inheritedKey: group\.startIndex,/);
   assert.doesNotMatch(screenSource, /const getToolActivityGroupKey = useCallback/);
   assert.doesNotMatch(screenSource, /const getToolActivityGroupKey = useCallback\(\(group: ToolActivityGroup\) => `\$\{group\.startIndex\}`/);
-  assert.match(screenSource, /const mobileToolActivityGroupSurface = getToolActivityGroupMobileSurfaceState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobileToolActivityGroupSurface = getToolActivityGroupMobileSurfaceState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolActivityGroupCopy =/);
   assert.doesNotMatch(screenSource, /const mobileToolActivityGroupLeadingIcon =/);
   assert.doesNotMatch(screenSource, /const mobileToolActivityGroup(?:Collapsed|Expanded|Footer)ToggleIcon =/);
   assert.doesNotMatch(screenSource, /const mobileToolActivityGroup(?:LeadingIcon|CollapsedToggleIcon|ExpandedToggleIcon|FooterToggleIcon)Colors = useMemo/);
-  assert.match(screenSource, /const toolActivityGroupSurface = mobileToolActivityGroupSurface;/);
-  assert.match(screenSource, /const toolActivityGroupSurfaceColors = getToolActivityGroupMobileSurfaceColors\(theme\.colors\);/);
+  assert.match(screenSource, /const toolActivityGroupStyleState = getToolActivityGroupMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const toolActivityGroupSurface = toolActivityGroupStyleState\.surface;/);
+  assert.match(screenSource, /const toolActivityGroupSurfaceColors = toolActivityGroupStyleState\.colors;/);
   assert.match(screenSource, /const groupRenderState = group\s+\? getToolActivityGroupMobileRenderState\(\{/);
   assert.match(screenSource, /group,\s+itemIndex: i,\s+groupState: expandedGroups,\s+inheritedState: expandedMessages,\s+colors: theme\.colors,/);
   assert.match(screenSource, /const messageThreadSurfaceStyles = useMemo\(\s+\(\) => createChatMessageToolActivityGroupThreadSurfaceStyleSlots\(styles\),\s+\[styles\],\s+\);/);

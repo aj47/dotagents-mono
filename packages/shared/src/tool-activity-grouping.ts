@@ -99,6 +99,17 @@ export interface ToolActivityGroupMobileSurfaceColors {
   }
 }
 
+export type ToolActivityGroupMobileSurfaceState = typeof TOOL_ACTIVITY_GROUP_SURFACE_PRESENTATION.mobile
+
+export interface ToolActivityGroupMobileSurfaceRenderStateInput {
+  colors: ToolActivityGroupMobileColorPalette
+}
+
+export interface ToolActivityGroupMobileSurfaceRenderState {
+  surface: ToolActivityGroupMobileSurfaceState
+  colors: ToolActivityGroupMobileSurfaceColors
+}
+
 export type ToolActivityGroupMobileToggleIconPlacement = 'header' | 'footer'
 
 export interface ToolActivityGroupMobileToggleIconStateInput {
@@ -462,7 +473,7 @@ export function getToolActivityGroupMobileLeadingIconColors(
   }
 }
 
-export function getToolActivityGroupMobileSurfaceState() {
+export function getToolActivityGroupMobileSurfaceState(): ToolActivityGroupMobileSurfaceState {
   return TOOL_ACTIVITY_GROUP_SURFACE_PRESENTATION.mobile
 }
 
@@ -489,6 +500,15 @@ export function getToolActivityGroupMobileSurfaceColors(
     footerText: {
       color: colors[surface.footerText.colorToken],
     },
+  }
+}
+
+export function getToolActivityGroupMobileSurfaceRenderState({
+  colors,
+}: ToolActivityGroupMobileSurfaceRenderStateInput): ToolActivityGroupMobileSurfaceRenderState {
+  return {
+    surface: getToolActivityGroupMobileSurfaceState(),
+    colors: getToolActivityGroupMobileSurfaceColors(colors),
   }
 }
 
@@ -529,6 +549,9 @@ export function getToolActivityGroupMobileRenderState(
   input: ToolActivityGroupMobileRenderStateInput,
 ): ToolActivityGroupMobileRenderState {
   const renderState = getToolActivityGroupRenderState(input)
+  const surfaceRenderState = getToolActivityGroupMobileSurfaceRenderState({
+    colors: input.colors,
+  })
   const leadingIcon = getToolActivityGroupMobileLeadingIconState()
   const leadingIconColors = getToolActivityGroupMobileLeadingIconColors(input.colors)
   const headerToggleIcon = getToolActivityGroupMobileToggleIconState({
@@ -550,8 +573,8 @@ export function getToolActivityGroupMobileRenderState(
   return {
     ...renderState,
     copy: TOOL_ACTIVITY_GROUP_PRESENTATION,
-    surface: getToolActivityGroupMobileSurfaceState(),
-    colors: getToolActivityGroupMobileSurfaceColors(input.colors),
+    surface: surfaceRenderState.surface,
+    colors: surfaceRenderState.colors,
     leadingIcon: {
       name: leadingIcon.name,
       size: leadingIcon.size,

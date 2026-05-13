@@ -11,6 +11,7 @@ import {
   getToolActivityGroupMobileLeadingIconState,
   getToolActivityGroupMobileRenderState,
   getToolActivityGroupMobileSurfaceColors,
+  getToolActivityGroupMobileSurfaceRenderState,
   getToolActivityGroupMobileSurfaceState,
   getToolActivityGroupMobileToggleIconColors,
   getToolActivityGroupMobileToggleIconState,
@@ -253,10 +254,11 @@ describe('tool activity group presentation', () => {
       color: 'rgba(59, 130, 246, 0.82)',
     })
     expect(getToolActivityGroupMobileSurfaceState()).toBe(TOOL_ACTIVITY_GROUP_SURFACE_PRESENTATION.mobile)
-    expect(getToolActivityGroupMobileSurfaceColors({
+    const toolActivityGroupSurfaceRenderStateColors = {
       info: '#3b82f6',
       mutedForeground: '#737373',
-    })).toEqual({
+    }
+    expect(getToolActivityGroupMobileSurfaceColors(toolActivityGroupSurfaceRenderStateColors)).toEqual({
       collapsed: {
         borderColor: 'rgba(59, 130, 246, 0.18)',
         borderLeftColor: 'rgba(59, 130, 246, 0.42)',
@@ -272,6 +274,14 @@ describe('tool activity group presentation', () => {
       footerText: {
         color: '#3b82f6',
       },
+    })
+    expect(
+      getToolActivityGroupMobileSurfaceRenderState({
+        colors: toolActivityGroupSurfaceRenderStateColors,
+      }),
+    ).toEqual({
+      surface: getToolActivityGroupMobileSurfaceState(),
+      colors: getToolActivityGroupMobileSurfaceColors(toolActivityGroupSurfaceRenderStateColors),
     })
     expect(TOOL_ACTIVITY_GROUP_SURFACE_PRESENTATION.mobile.headerRow).toMatchObject({
       flexDirection: 'row',
