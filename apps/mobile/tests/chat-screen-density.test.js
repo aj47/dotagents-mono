@@ -2834,7 +2834,9 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
   assert.match(screenSource, /sortPredefinedPromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
-  assert.match(screenSource, /isSlashCommandPrompt\(prompt\)/);
+  assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{\s+prompts: predefinedPrompts,/);
+  assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\),/);
+  assert.doesNotMatch(screenSource, /isSlashCommandPrompt\(prompt\)/);
   assert.doesNotMatch(screenSource, /const isSlashCommandPrompt =/);
 });
 
@@ -2846,12 +2848,14 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /onEditPrompt\(item\.prompt!\)/);
   assert.match(chatMessageChromeSource, /onDeletePrompt\(item\.prompt!\)/);
   assert.match(screenSource, /createPredefinedPromptRecord\(draft, now\)/);
-  assert.match(screenSource, /getPromptLibraryPromptContent\(prompt\)/);
-  assert.match(screenSource, /getPromptLibraryPromptDescription\(prompt\)/);
-  assert.match(screenSource, /getPromptLibrarySkillContent\(skill\)/);
-  assert.match(screenSource, /getPromptLibrarySkillDescription\(skill\)/);
-  assert.match(screenSource, /getPromptLibraryTaskContent\(task\)/);
-  assert.match(screenSource, /getPromptLibraryTaskDescription\(task, mobilePromptLibraryCopy\.taskDescriptionFallback\)/);
+  assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{[\s\S]*?prompts: predefinedPrompts,[\s\S]*?skills: availableSkills,[\s\S]*?tasks: availableTasks,/);
+  assert.match(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryPromptContent\(prompt\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryPromptDescription\(prompt\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibrarySkillContent\(skill\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibrarySkillDescription\(skill\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryTaskContent\(task\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryTaskDescription\(task, mobilePromptLibraryCopy\.taskDescriptionFallback\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryShortcutAccessibilityLabel\(item\.source, item\.title, item\.action\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryShortcutAccessibilityHint\(item\.source, item\.action\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditPromptAccessibilityLabel\(item\.title\)/);
@@ -3032,8 +3036,9 @@ test('loads predefined prompts, skills, and tasks directly into mobile quick-sta
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);
   assert.match(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
-  assert.match(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
-  assert.match(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
+  assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{\s+prompts: predefinedPrompts,\s+skills: availableSkills,\s+tasks: availableTasks,/);
+  assert.doesNotMatch(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
+  assert.doesNotMatch(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
   assert.match(screenSource, /handleRunPromptTask\(item\.task\)/);
   assert.doesNotMatch(screenSource, /filteredPromptLibraryPrompts/);
   assert.doesNotMatch(screenSource, /promptLibraryVisible/);

@@ -4,6 +4,7 @@ import {
   PROMPT_LIBRARY_PRESENTATION,
   PROMPT_LIBRARY_SURFACE_PRESENTATION,
   buildPromptLibraryCommandItems,
+  buildPromptLibraryShortcutItems,
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
@@ -432,6 +433,69 @@ describe("predefined prompt helpers", () => {
     ])
     expect(filterPromptLibraryCommandItems(items, "citation").map((item) => item.id)).toEqual(["skill-1"])
     expect(filterPromptLibraryCommandItems(items, "ship").map((item) => item.id)).toEqual(["task-1"])
+  })
+
+  it("builds shared mobile shortcut launchers for prompts, skills, tasks, and add-prompt", () => {
+    const prompt = {
+      id: "prompt-1",
+      name: "/review",
+      content: "Review this diff for regressions.",
+      createdAt: 1,
+      updatedAt: 1,
+    }
+    const task = {
+      id: "task-1",
+      name: "Ship notes",
+      prompt: "",
+    }
+
+    const items = buildPromptLibraryShortcutItems({
+      prompts: [prompt],
+      skills: [{
+        id: "skill-1",
+        name: "Research",
+        instructions: "Find citations before answering.",
+      }],
+      tasks: [task],
+      canAddPrompt: true,
+      addPromptTitle: "+ Add Prompt",
+      addPromptDescription: "Save a reusable prompt.",
+      taskDescriptionFallback: "Run this desktop task now.",
+    })
+
+    expect(items).toEqual([
+      {
+        id: "prompt-1",
+        title: "/review",
+        content: "Review this diff for regressions.",
+        description: "Review this diff for regressions.",
+        source: "command",
+        prompt,
+      },
+      {
+        id: "skill-skill-1",
+        title: "Research",
+        content: "Find citations before answering.",
+        description: "Find citations before answering.",
+        source: "skill",
+      },
+      {
+        id: "task-task-1",
+        title: "Ship notes",
+        content: "",
+        description: "Run this desktop task now.",
+        source: "task",
+        task,
+      },
+      {
+        id: "action-add-prompt",
+        title: "+ Add Prompt",
+        content: "",
+        description: "Save a reusable prompt.",
+        source: "action",
+        action: "add-prompt",
+      },
+    ])
   })
 
   it("creates stable prompt ids and trimmed records", () => {

@@ -14,11 +14,17 @@ const chatMessageChromeSource = fs.readFileSync(
 
 test('shows desktop library items directly in the new-chat prompt launchers', () => {
   assert.match(screenSource, /const promptQuickStarts = useMemo/);
-  assert.match(screenSource, /source: isSlashCommandPrompt\(prompt\) \? 'command' as const : 'saved-prompt' as const/);
+  assert.match(screenSource, /buildPromptLibraryShortcutItems,/);
+  assert.match(screenSource, /\(\) => buildPromptLibraryShortcutItems\(\{/);
+  assert.match(screenSource, /prompts: predefinedPrompts,/);
+  assert.match(screenSource, /skills: availableSkills,/);
+  assert.match(screenSource, /tasks: availableTasks,/);
+  assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\),/);
+  assert.match(screenSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle,/);
+  assert.match(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription,/);
+  assert.match(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback,/);
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);
-  assert.match(screenSource, /source: 'skill' as const/);
-  assert.match(screenSource, /source: 'task' as const/);
   assert.match(screenSource, /handleRunPromptTask/);
   assert.match(chatMessageChromeSource, /getPromptLibraryShortcutSourceLabel\(item\.source\)/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
@@ -77,6 +83,12 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /items\.map\(\(item\) =>/);
   assert.match(screenSource, /mobilePromptLibraryCopy\.loadingLibraryLabel/);
   assert.match(screenSource, /mobilePromptLibraryEmptyLabel/);
+  assert.doesNotMatch(screenSource, /source: isSlashCommandPrompt\(prompt\) \? 'command' as const : 'saved-prompt' as const/);
+  assert.doesNotMatch(screenSource, /source: 'skill' as const/);
+  assert.doesNotMatch(screenSource, /source: 'task' as const/);
+  assert.doesNotMatch(screenSource, /id: `skill-\$\{skill\.id\}`/);
+  assert.doesNotMatch(screenSource, /id: `task-\$\{task\.id\}`/);
+  assert.doesNotMatch(screenSource, /id: 'action-add-prompt'/);
   assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_PRESENTATION/);
   assert.match(screenSource, /const promptLibrarySurface = mobilePromptLibrarySurface;/);
   assert.match(screenSource, /const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors\(theme\.colors\);/);
@@ -95,9 +107,9 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
 });
 
 test('can create a new predefined prompt from mobile and save it to desktop settings', () => {
-  assert.match(screenSource, /id: 'action-add-prompt'/);
-  assert.match(screenSource, /title: mobilePromptLibraryCopy\.addPromptTitle/);
-  assert.match(screenSource, /description: mobilePromptLibraryCopy\.addPromptDescription/);
+  assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\)/);
+  assert.match(screenSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);
+  assert.match(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
   assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
   assert.match(screenSource, /onSave: handleSavePrompt/);

@@ -35,6 +35,10 @@ export type PromptLibraryShortcutSource =
   | "command"
   | "task"
   | "action"
+export type PromptLibraryLauncherShortcutSource = Extract<
+  PromptLibraryShortcutSource,
+  "saved-prompt" | "command" | "skill" | "task" | "action"
+>
 export type PromptLibraryShortcutActionIcon = "edit" | "delete"
 
 export const PROMPT_LIBRARY_PRESENTATION = {
@@ -805,6 +809,22 @@ export interface PromptLibraryCommandItem {
   type: PromptLibraryCommandItemType
 }
 
+export type PromptLibraryShortcutAction = "add-prompt"
+
+export interface PromptLibraryShortcutItem<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> {
+  id: string
+  title: string
+  content: string
+  description?: string
+  source: PromptLibraryLauncherShortcutSource
+  action?: PromptLibraryShortcutAction
+  prompt?: TPrompt
+  task?: TTask
+}
+
 export type SlashCommandInputState =
   | { mode: "inactive"; query: "" }
   | { mode: "active"; query: string }
@@ -900,6 +920,20 @@ export interface BuildPromptLibraryCommandItemsOptions<
   getTaskDescription?: (task: TTask) => string
 }
 
+export interface BuildPromptLibraryShortcutItemsOptions<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string } = PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string } = PromptLibraryTaskLike & { id: string; name: string },
+> {
+  prompts?: readonly TPrompt[]
+  skills?: readonly TSkill[]
+  tasks?: readonly TTask[]
+  canAddPrompt?: boolean
+  addPromptTitle?: string
+  addPromptDescription?: string
+  taskDescriptionFallback?: string
+}
+
 export function buildPromptLibraryCommandItems<
   TPrompt extends PredefinedPromptSummary,
   TSkill extends PromptLibrarySkillLike & { id: string },
@@ -940,6 +974,56 @@ export function filterPromptLibraryCommandItems(
     item.name,
     item.description,
   ])
+}
+
+export function buildPromptLibraryShortcutItems<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>(
+  options: BuildPromptLibraryShortcutItemsOptions<TPrompt, TSkill, TTask>,
+): PromptLibraryShortcutItem<TPrompt, TTask>[] {
+  const prompts = (options.prompts ?? []).map((prompt) => ({
+    id: prompt.id,
+    title: prompt.name,
+    content: getPromptLibraryPromptContent(prompt),
+    description: getPromptLibraryPromptDescription(prompt),
+    source: isSlashCommandPrompt(prompt) ? "command" as const : "saved-prompt" as const,
+    prompt,
+  }))
+
+  const skills = (options.skills ?? []).map((skill) => ({
+    id: `skill-${skill.id}`,
+    title: skill.name,
+    content: getPromptLibrarySkillContent(skill),
+    description: skill.description || skill.instructions || getPromptLibrarySkillDescription(skill),
+    source: "skill" as const,
+  }))
+
+  const tasks = (options.tasks ?? []).map((task) => ({
+    id: `task-${task.id}`,
+    title: task.name,
+    content: getPromptLibraryTaskContent(task),
+    description: getPromptLibraryTaskDescription(task, options.taskDescriptionFallback),
+    source: "task" as const,
+    task,
+  }))
+
+  const addPromptItem: PromptLibraryShortcutItem<TPrompt, TTask>[] = options.canAddPrompt ? [{
+    id: "action-add-prompt",
+    title: options.addPromptTitle ?? PROMPT_LIBRARY_PRESENTATION.mobile.addPromptTitle,
+    content: "",
+    description: options.addPromptDescription ?? PROMPT_LIBRARY_PRESENTATION.mobile.addPromptDescription,
+    source: "action",
+    action: "add-prompt",
+  }] : []
+
+  return [
+    ...prompts,
+    ...skills,
+    ...tasks,
+    ...addPromptItem,
+  ]
 }
 
 export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {

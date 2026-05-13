@@ -245,14 +245,13 @@ import type {
   Skill,
 } from '@dotagents/shared/api-types';
 import {
+  buildPromptLibraryShortcutItems,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   formatPromptLibraryDeletePromptConfirmMessage,
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
-  getPromptLibraryPromptContent,
-  getPromptLibraryPromptDescription,
   getPromptLibraryEditorModalKeyboardAvoidingBehavior,
   getPromptLibraryEditorMobileCloseIconState,
   getPromptLibraryEditorSaveActionLabel,
@@ -266,11 +265,6 @@ import {
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
-  getPromptLibrarySkillContent,
-  getPromptLibrarySkillDescription,
-  getPromptLibraryTaskContent,
-  getPromptLibraryTaskDescription,
-  isSlashCommandPrompt,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
 } from '@dotagents/shared/predefined-prompts';
@@ -3203,50 +3197,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	);
 
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
-    () => {
-      const promptItems = predefinedPrompts
-        .map((prompt) => ({
-          id: prompt.id,
-          title: prompt.name,
-          content: getPromptLibraryPromptContent(prompt),
-          description: getPromptLibraryPromptDescription(prompt),
-          source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
-          prompt,
-        }));
-
-      const skillItems = availableSkills.map((skill) => ({
-        id: `skill-${skill.id}`,
-        title: skill.name,
-        content: getPromptLibrarySkillContent(skill),
-        description: skill.description || skill.instructions || getPromptLibrarySkillDescription(skill),
-        source: 'skill' as const,
-      }));
-
-      const taskItems = availableTasks.map((task) => ({
-        id: `task-${task.id}`,
-        title: task.name,
-        content: getPromptLibraryTaskContent(task),
-        description: getPromptLibraryTaskDescription(task, mobilePromptLibraryCopy.taskDescriptionFallback),
-        source: 'task' as const,
-        task,
-      }));
-
-      const addPromptItem: QuickStartShortcut[] = settingsClient ? [{
-        id: 'action-add-prompt',
-        title: mobilePromptLibraryCopy.addPromptTitle,
-        content: '',
-        description: mobilePromptLibraryCopy.addPromptDescription,
-        source: 'action' as const,
-        action: 'add-prompt' as const,
-      }] : [];
-
-      return [
-        ...promptItems,
-        ...skillItems,
-        ...taskItems,
-        ...addPromptItem,
-      ];
-    },
+    () => buildPromptLibraryShortcutItems({
+      prompts: predefinedPrompts,
+      skills: availableSkills,
+      tasks: availableTasks,
+      canAddPrompt: Boolean(settingsClient),
+      addPromptTitle: mobilePromptLibraryCopy.addPromptTitle,
+      addPromptDescription: mobilePromptLibraryCopy.addPromptDescription,
+      taskDescriptionFallback: mobilePromptLibraryCopy.taskDescriptionFallback,
+    }),
     [availableSkills, availableTasks, predefinedPrompts, settingsClient]
   );
 
