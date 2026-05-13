@@ -4896,14 +4896,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingVertical: spacing[sttPreviewSurface.paddingVertical],
     },
     sttPreviewLabel: {
-      ...theme.typography.caption,
       color: mobileComposerTextColors.sttPreview.labelColor,
       marginBottom: sttPreviewSurface.labelMarginBottom,
+      fontSize: sttPreviewSurface.labelFontSize,
+      lineHeight: sttPreviewSurface.labelLineHeight,
       fontWeight: sttPreviewSurface.labelFontWeight,
     },
     sttPreviewText: {
-      ...theme.typography.body,
       color: mobileComposerTextColors.sttPreview.textColor,
+      fontSize: sttPreviewSurface.textFontSize,
+      lineHeight: sttPreviewSurface.textLineHeight,
     },
     inputRow: {
       flexDirection: composerSurface.inputRow.flexDirection,

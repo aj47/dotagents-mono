@@ -1220,8 +1220,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
   assert.match(screenSource, /const composerTextInputPlatform = composerStyleState\.input;/);
   assert.match(screenSource, /const mobileComposerTextColors = composerStyleState\.colors\.text;/);
-  assert.match(screenSource, /sttPreviewLabel:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.sttPreview\.labelColor/);
-  assert.match(screenSource, /sttPreviewText:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.sttPreview\.textColor/);
+  assert.match(screenSource, /sttPreviewLabel:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.sttPreview\.labelColor,[\s\S]*?marginBottom:\s*sttPreviewSurface\.labelMarginBottom,[\s\S]*?fontSize:\s*sttPreviewSurface\.labelFontSize,[\s\S]*?lineHeight:\s*sttPreviewSurface\.labelLineHeight,[\s\S]*?fontWeight:\s*sttPreviewSurface\.labelFontWeight/);
+  assert.match(screenSource, /sttPreviewText:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.sttPreview\.textColor,[\s\S]*?fontSize:\s*sttPreviewSurface\.textFontSize,[\s\S]*?lineHeight:\s*sttPreviewSurface\.textLineHeight/);
+  assert.doesNotMatch(screenSource, /sttPreview(Label|Text):\s*\{\s+\.\.\.theme\.typography\.(caption|body)/);
   assert.match(screenSource, /const mobileComposerSurfaceColors = composerStyleState\.colors\.surface;/);
   assert.match(screenSource, /composerStyles: chatComposerRuntimeDockStyles/);
   assert.doesNotMatch(screenSource, /chatComposerStyles\.inputDock\.area,\s*mobileSafeAreaStyles\.inputArea,/);

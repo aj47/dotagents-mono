@@ -2566,7 +2566,11 @@ export const CHAT_COMPOSER_SURFACE_PRESENTATION = {
       labelColorToken: "mutedForeground",
       textColorToken: "foreground",
       labelMarginBottom: 2,
+      labelFontSize: 12,
+      labelLineHeight: 16,
       labelFontWeight: "600",
+      textFontSize: 16,
+      textLineHeight: 24,
     },
     inputRow: {
       flexDirection: "row",
