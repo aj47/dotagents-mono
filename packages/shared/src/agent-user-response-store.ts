@@ -95,6 +95,8 @@ export const AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION = {
       marginBottom: 'sm',
     },
     header: {
+      accessibilityRole: 'button',
+      pressedOpacity: 0.78,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -156,6 +158,8 @@ export const AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION = {
       timestampFontSize: 11,
       timestampColorToken: 'mutedForeground',
       speakButtonPadding: 4,
+      speakButtonAccessibilityRole: 'button',
+      speakButtonPressedOpacity: 0.78,
       speakIconSize: 18,
       speakIconColorToken: 'mutedForeground',
       activeSpeakIconColorToken: 'primary',

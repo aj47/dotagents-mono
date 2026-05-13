@@ -17,6 +17,10 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.match(source, /name=\{responseHistoryIcons\.headerName\}/);
   assert.match(source, /name=\{responseHistoryPanelState\.toggleIconName\}/);
   assert.match(source, /name=\{isSpeaking \? responseHistoryIcons\.stopName : responseHistoryIcons\.speakName\}/);
+  assert.match(source, /activeOpacity=\{responseHistorySurface\.header\.pressedOpacity\}/);
+  assert.match(source, /accessibilityRole=\{responseHistorySurface\.header\.accessibilityRole\}/);
+  assert.match(source, /activeOpacity=\{responseHistorySurface\.item\.speakButtonPressedOpacity\}/);
+  assert.match(source, /accessibilityRole=\{responseHistorySurface\.item\.speakButtonAccessibilityRole\}/);
   assert.match(source, /accessibilityLabel=\{responseHistoryPanelState\.toggleAccessibilityLabel\}/);
   assert.match(source, /accessibilityState=\{\{ expanded: responseHistoryPanelState\.isExpanded \}\}/);
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION\.mobileIcon/);
@@ -32,6 +36,7 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /'chevron-up'/);
   assert.doesNotMatch(source, /'volume-medium'/);
   assert.doesNotMatch(source, /'stop-circle'/);
+  assert.doesNotMatch(source, /accessibilityRole="button"/);
   assert.doesNotMatch(source, />Agent Responses<\/Text>/);
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION/);
 });

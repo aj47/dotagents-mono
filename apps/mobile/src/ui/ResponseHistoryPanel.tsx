@@ -304,7 +304,8 @@ export function ResponseHistoryPanel({
       <TouchableOpacity
         style={styles.header}
         onPress={() => setIsCollapsed((prev) => !prev)}
-        accessibilityRole="button"
+        activeOpacity={responseHistorySurface.header.pressedOpacity}
+        accessibilityRole={responseHistorySurface.header.accessibilityRole}
         accessibilityLabel={responseHistoryPanelState.toggleAccessibilityLabel}
         accessibilityState={{ expanded: responseHistoryPanelState.isExpanded }}
       >
@@ -355,6 +356,8 @@ export function ResponseHistoryPanel({
                       <TouchableOpacity
                         style={styles.speakButton}
                         onPress={() => handleSpeak(response.text, item.originalIndex)}
+                        activeOpacity={responseHistorySurface.item.speakButtonPressedOpacity}
+                        accessibilityRole={responseHistorySurface.item.speakButtonAccessibilityRole}
                         accessibilityLabel={getAgentResponseHistorySpeechAccessibilityLabel(isSpeaking)}
                       >
                         <Ionicons

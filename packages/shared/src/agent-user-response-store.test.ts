@@ -56,6 +56,8 @@ describe('agent-user-response-store', () => {
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.container.backgroundAlpha).toBe(0.19);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.container.borderColorToken).toBe('border');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.container.overflow).toBe('hidden');
+    expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.accessibilityRole).toBe('button');
+    expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.pressedOpacity).toBe(0.78);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.flexDirection).toBe('row');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.alignItems).toBe('center');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.justifyContent).toBe('space-between');
@@ -74,6 +76,8 @@ describe('agent-user-response-store', () => {
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.headerFlexDirection).toBe('row');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.headerAlignItems).toBe('center');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.headerJustifyContent).toBe('space-between');
+    expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakButtonAccessibilityRole).toBe('button');
+    expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakButtonPressedOpacity).toBe(0.78);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.activeSpeakIconColorToken).toBe('primary');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewNumberOfLines).toBe(2);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.backgroundAlpha).toBe(0.19);
