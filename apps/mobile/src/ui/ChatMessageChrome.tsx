@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  getChatMessageActionMobileButtonState,
   getChatMessageActionLayoutRenderState,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
@@ -163,10 +164,10 @@ type ChatMessageActionStyleSlots = {
     ChatMessageTurnDurationActionSpec,
     'style' | 'liveStyle' | 'textStyle' | 'liveTextStyle'
   >;
-  speech: Pick<ChatMessageActionButtonSpec, 'style' | 'activeStyle' | 'pressedStyle'>;
-  branch: Pick<ChatMessageActionButtonSpec, 'style' | 'pressedStyle' | 'disabledStyle'>;
-  copy: Pick<ChatMessageActionButtonSpec, 'style' | 'activeStyle' | 'pressedStyle'>;
-  expansion: Pick<ChatMessageActionButtonSpec, 'style' | 'pressedStyle'>;
+  speech: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'activeStyle' | 'pressedStyle'>;
+  branch: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle' | 'disabledStyle'>;
+  copy: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'activeStyle' | 'pressedStyle'>;
+  expansion: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle'>;
 };
 
 type ChatRuntimeHeaderAgentSelectorStyles = {
@@ -1693,6 +1694,10 @@ export function createChatMessageActionSet({
 export function createChatMessageActionStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatMessageActionStyleSlots {
+  const standardButton = getChatMessageActionMobileButtonState();
+  const branchButton = getChatMessageActionMobileButtonState('branch');
+  const speechButton = getChatMessageActionMobileButtonState('speech');
+
   return {
     turnDuration: {
       style: styles.messageTurnDurationBadge,
@@ -1701,21 +1706,25 @@ export function createChatMessageActionStyleSlots(
       liveTextStyle: styles.messageTurnDurationTextLive,
     },
     speech: {
+      hitSlop: speechButton.hitSlop,
       style: styles.speakButton,
       activeStyle: styles.speakButtonActive,
       pressedStyle: styles.speakButtonPressed,
     },
     branch: {
+      hitSlop: branchButton.hitSlop,
       style: styles.messageBranchButton,
       pressedStyle: styles.messageBranchButtonPressed,
       disabledStyle: styles.messageBranchButtonDisabled,
     },
     copy: {
+      hitSlop: standardButton.hitSlop,
       style: styles.messageCopyButton,
       activeStyle: styles.messageCopyButtonCopied,
       pressedStyle: styles.messageCopyButtonPressed,
     },
     expansion: {
+      hitSlop: standardButton.hitSlop,
       style: styles.messageExpandButton,
       pressedStyle: styles.messageExpandButtonPressed,
     },

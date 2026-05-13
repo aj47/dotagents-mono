@@ -453,12 +453,6 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getToolExecutionDetailMobileStyleRenderState({ colors: theme.colors }),
     [theme.colors],
   );
-  const mobileMessageActionStyleState = useMemo(
-    () => getChatMessageActionMobileStyleRenderState({ colors: theme.colors }),
-    [theme.colors],
-  );
-  const mobileMessageActionButton = mobileMessageActionStyleState.buttons.standard.button;
-  const mobileMessageSpeechButton = mobileMessageActionStyleState.buttons.speech.button;
   const promptLibraryEditorRenderState = useMemo(
     () => getPromptLibraryEditorMobileRenderState({
       colors: theme.colors,
@@ -4047,7 +4041,6 @@ export default function ChatScreen({ route, navigation }: any) {
               speech: {
                 renderState: messageSpeechRenderState,
                 onPress: () => speakMessage(i, visibleMessageContent),
-                hitSlop: mobileMessageSpeechButton.hitSlop,
                 ...messageActionStyles.speech,
                 isActive: isMessageSpeaking,
               },
@@ -4058,20 +4051,17 @@ export default function ChatScreen({ route, navigation }: any) {
                     void handleBranchFromMessage(messageBranchIndex);
                   }
                 },
-                hitSlop: mobileMessageActionButton.hitSlop,
                 ...messageActionStyles.branch,
               },
               copy: {
                 renderState: messageCopyRenderState,
                 onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
-                hitSlop: mobileMessageActionButton.hitSlop,
                 ...messageActionStyles.copy,
                 isActive: isMessageCopied,
               },
               expansion: {
                 renderState: messageRenderState.expansion,
                 onPress: () => toggleMessageExpansion(i),
-                hitSlop: mobileMessageActionButton.hitSlop,
                 ...messageActionStyles.expansion,
               },
             });
