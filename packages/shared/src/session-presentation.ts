@@ -829,6 +829,7 @@ export interface ChatRuntimeConnectionBannerMobileRenderState {
     retryButton: {
       label: string
       accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.retryButton.accessibilityRole
+      accessibilityLabel: string
       pressedOpacity: number
     }
   }
@@ -5052,6 +5053,7 @@ export function getChatRuntimeConnectionBannerMobileRenderState({
       retryButton: {
         label: CHAT_RUNTIME_PRESENTATION.connectionBanner.retryLabel,
         accessibilityRole: surface.retryButton.accessibilityRole,
+        accessibilityLabel: CHAT_RUNTIME_PRESENTATION.connectionBanner.retryLabel,
         pressedOpacity: surface.retryButton.pressedOpacity,
       },
     },

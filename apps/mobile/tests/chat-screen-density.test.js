@@ -997,6 +997,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /\{renderState\.failed\.subtitle\}/);
   assert.match(chatMessageChromeSource, /onPress=\{onRetry\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.failed\.retryButton\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.failed\.retryButton\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /activeOpacity=\{renderState\.failed\.retryButton\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.failed\.retryButton\.label\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.subtitleNumberOfLines\}/);
@@ -1031,6 +1032,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(screenSource, /connectionBannerRenderState\.reconnecting\.shouldRender/);
   assert.doesNotMatch(screenSource, /connectionBannerRenderState\.failed\.shouldRender/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{connectionBannerRenderState\.(reconnecting|failed)\.accessibilityRole\}/);
+  assert.doesNotMatch(screenSource, /accessibilityLabel=\{connectionBannerRenderState\.failed\.retryButton\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /name=\{connectionBannerRenderState\.failed\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /activeOpacity=\{connectionBannerRenderState\.failed\.retryButton\.pressedOpacity\}/);
   assert.doesNotMatch(screenSource, /size="small"\s+color=\{theme\.colors\[CHAT_RUNTIME_SURFACE_PRESENTATION\.mobile\.connectionBanner\.reconnecting\.spinnerColorToken\]\}/);

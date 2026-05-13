@@ -1575,6 +1575,7 @@ describe("session presentation semantics", () => {
       retryButton: {
         label: "Retry",
         accessibilityRole: "button",
+        accessibilityLabel: "Retry",
         pressedOpacity: 0.7,
       },
     })

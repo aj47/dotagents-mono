@@ -4745,6 +4745,7 @@ export function ChatMessageConnectionBanner({
               style={styles.retryButton}
               onPress={onRetry}
               accessibilityRole={renderState.failed.retryButton.accessibilityRole}
+              accessibilityLabel={renderState.failed.retryButton.accessibilityLabel}
               activeOpacity={renderState.failed.retryButton.pressedOpacity}
             >
               <Text style={styles.retryButtonText}>
