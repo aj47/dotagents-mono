@@ -35,6 +35,10 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryEditorTitle,/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryEditorSaveActionLabel,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionLabel,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileChromeState,/);
   assert.match(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
@@ -140,8 +144,13 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.match(screenSource, /renderState: promptLibraryEditorRenderState/);
+  assert.match(screenSource, /isEditing: Boolean\(editingPrompt\)/);
   assert.match(screenSource, /styles: promptEditorModalStyles/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
+  assert.doesNotMatch(screenSource, /title: getPromptLibraryEditorTitle\(Boolean\(editingPrompt\)\)/);
+  assert.doesNotMatch(screenSource, /saveLabel: getPromptLibraryEditorSaveActionLabel\(Boolean\(editingPrompt\), isSavingPrompt\)/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle\(isEditing\)/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionLabel\(isEditing, isSaving\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /style=\{styles\.header\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.closeButton\}/);

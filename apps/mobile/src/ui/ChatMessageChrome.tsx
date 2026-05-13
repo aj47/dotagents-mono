@@ -41,6 +41,8 @@ import {
 import {
   getPromptLibraryDeletePromptAccessibilityLabel,
   getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorSaveActionLabel,
+  getPromptLibraryEditorTitle,
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutSourceLabel,
@@ -337,12 +339,11 @@ type ChatConversationHomePromptEditorModalStyles = {
 
 type ChatConversationHomePromptEditorModalProps = {
   visible: boolean;
-  title: string;
+  isEditing: boolean;
   nameValue: string;
   onNameChange: (value: string) => void;
   contentValue: string;
   onContentChange: (value: string) => void;
-  saveLabel: string;
   isSaving: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -2716,12 +2717,11 @@ export function ChatConversationHomeQuickStarts<
 
 export function ChatConversationHomePromptEditorModal({
   visible,
-  title,
+  isEditing,
   nameValue,
   onNameChange,
   contentValue,
   onContentChange,
-  saveLabel,
   isSaving,
   onClose,
   onSave,
@@ -2736,6 +2736,8 @@ export function ChatConversationHomePromptEditorModal({
     keyboardAvoidingBehavior,
     surface,
   } = renderState;
+  const title = getPromptLibraryEditorTitle(isEditing);
+  const saveLabel = getPromptLibraryEditorSaveActionLabel(isEditing, isSaving);
 
   return (
     <Modal
