@@ -185,11 +185,14 @@ describe('conversation video asset utilities', () => {
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.light).toBe('#000000');
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.lightAlpha).toBe(0.03);
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.loadButton.flexDirection).toBe('row');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.loadButton.accessibilityRole).toBe('button');
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.alignItems).toBe('center');
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.justifyContent).toBe('center');
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.backgroundAlpha).toBe(0.09);
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIcon.name).toBe('play-circle');
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.video.height).toBe(220);
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.fallbackLink.accessibilityRole).toBe('link');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.externalLink.accessibilityRole).toBe('link');
     expect(getChatVideoAttachmentMobileSurfaceColors({
       border: '#d4d4d4',
       destructive: '#dc2626',

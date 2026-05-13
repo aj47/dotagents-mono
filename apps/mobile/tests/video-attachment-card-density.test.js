@@ -27,6 +27,11 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
   assert.match(source, /accessibilityLabel=\{getVideoAttachmentLoadAccessibilityLabel\(displayLabel\)\}/);
   assert.match(source, /accessibilityLabel=\{getVideoAttachmentLoadAccessibilityLabel\(displayLabel\)\}[\s\S]{0,220}onPress=\{loadVideo\}/);
   assert.match(source, /accessibilityLabel=\{getVideoAttachmentPlayAccessibilityLabel\(displayLabel\)\}[\s\S]{0,220}player=\{player\}/);
+  assert.match(source, /accessibilityRole=\{videoAttachmentSurface\.loadButton\.accessibilityRole\}/);
+  assert.match(source, /accessibilityRole=\{videoAttachmentSurface\.fallbackLink\.accessibilityRole\}/);
+  assert.match(source, /accessibilityRole=\{videoAttachmentSurface\.externalLink\.accessibilityRole\}/);
+  assert.match(source, /accessibilityLabel=\{getVideoAttachmentOpenLinkAccessibilityLabel\(displayLabel\)\}/);
+  assert.doesNotMatch(source, /accessibilityRole="(button|link)"/);
   assert.doesNotMatch(source, /accessibilityLabel=\{`Open video link:/);
   assert.doesNotMatch(source, /Loads only when you tap play/);
   assert.doesNotMatch(source, /Open externally/);
@@ -49,6 +54,10 @@ test('mobile video attachment card reads compact sizing from shared surface toke
   assert.match(source, /color=\{videoAttachmentSurfaceColors\.playIcon\.color\}/);
   assert.match(source, /height:\s*videoAttachmentSurface\.video\.height/);
   assert.match(source, /<Text style=\{\[styles\.subtitle, styles\.externalLink\]\}>/);
+  assert.match(source, /fallbackLinkPressed:\s*\{[\s\S]*?opacity:\s*videoAttachmentSurface\.fallbackLink\.pressedOpacity/);
+  assert.match(source, /externalLinkPressed:\s*\{[\s\S]*?opacity:\s*videoAttachmentSurface\.externalLink\.pressedOpacity/);
+  assert.match(source, /style=\{\(\{ pressed \}\) => \[styles\.fallbackLink, pressed && styles\.fallbackLinkPressed\]\}/);
+  assert.match(source, /style=\{\(\{ pressed \}\) => pressed && styles\.externalLinkPressed\}/);
   assert.doesNotMatch(source, /\{\s*marginTop:\s*spacing\.xs\s*\}/);
   assert.doesNotMatch(source, /alignItems:\s*'center'/);
   assert.doesNotMatch(source, /justifyContent:\s*'center'/);

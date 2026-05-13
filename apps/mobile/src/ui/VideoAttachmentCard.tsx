@@ -221,6 +221,9 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       paddingVertical: spacing[videoAttachmentSurface.fallbackLink.paddingVertical],
       marginBottom: spacing[videoAttachmentSurface.fallbackLink.marginBottom],
     },
+    fallbackLinkPressed: {
+      opacity: videoAttachmentSurface.fallbackLink.pressedOpacity,
+    },
     fallbackLinkText: {
       color: videoAttachmentSurfaceColors.fallbackLinkText.color,
       fontSize: videoAttachmentSurface.fallbackLinkText.fontSize,
@@ -228,6 +231,9 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     },
     externalLink: {
       marginTop: spacing[videoAttachmentSurface.externalLink.marginTop],
+    },
+    externalLinkPressed: {
+      opacity: videoAttachmentSurface.externalLink.pressedOpacity,
     },
     errorText: {
       color: videoAttachmentSurfaceColors.errorText.color,
@@ -239,10 +245,10 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   if (!canRender) {
     return (
       <Pressable
-        accessibilityRole="link"
+        accessibilityRole={videoAttachmentSurface.fallbackLink.accessibilityRole}
         accessibilityLabel={getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel)}
         onPress={() => Linking.openURL(resolvedUri)}
-        style={styles.fallbackLink}
+        style={({ pressed }) => [styles.fallbackLink, pressed && styles.fallbackLinkPressed]}
       >
         <Text style={styles.fallbackLinkText}>
           {videoAttachmentCopy.glyphs.link} {displayLabel}
@@ -266,7 +272,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       ) : (
         <View style={styles.header}>
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole={videoAttachmentSurface.loadButton.accessibilityRole}
             accessibilityLabel={getVideoAttachmentLoadAccessibilityLabel(displayLabel)}
             accessibilityState={{ busy: loading }}
             onPress={loadVideo}
@@ -303,7 +309,12 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
             <Text style={styles.errorText}>{loadError}</Text>
           ) : null}
           {canOpenExternally ? (
-            <Pressable onPress={() => Linking.openURL(resolvedUri)}>
+            <Pressable
+              accessibilityRole={videoAttachmentSurface.externalLink.accessibilityRole}
+              accessibilityLabel={getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel)}
+              onPress={() => Linking.openURL(resolvedUri)}
+              style={({ pressed }) => pressed && styles.externalLinkPressed}
+            >
               <Text style={[styles.subtitle, styles.externalLink]}>
                 {videoAttachmentCopy.labels.openExternally}
               </Text>

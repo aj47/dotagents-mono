@@ -341,6 +341,7 @@ export const CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION = {
       alignItems: 'center',
       gap: 10,
       padding: 'sm',
+      accessibilityRole: 'button',
       pressedOpacity: 0.72,
       disabledOpacity: 0.65,
     },
@@ -391,8 +392,10 @@ export const CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION = {
       backgroundColor: '#000',
     },
     fallbackLink: {
+      accessibilityRole: 'link',
       paddingVertical: 'xs',
       marginBottom: 'sm',
+      pressedOpacity: 0.72,
     },
     fallbackLinkText: {
       colorToken: 'primary',
@@ -400,7 +403,9 @@ export const CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION = {
       textDecorationLine: 'underline',
     },
     externalLink: {
+      accessibilityRole: 'link',
       marginTop: 'xs',
+      pressedOpacity: 0.72,
     },
     errorText: {
       colorToken: 'destructive',
