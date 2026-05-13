@@ -945,12 +945,12 @@ export interface ChatRuntimeMessageHistoryBannerMobileRenderState {
     accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.accessibilityRole
     accessibilityLabel: string
     label: string
+    icon: {
+      name: typeof CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.loadEarlierName
+      size: number
+      color: string
+    }
     pressedOpacity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.pressedOpacity
-  }
-  loadIcon: {
-    name: typeof CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.loadEarlierName
-    size: number
-    color: string
   }
 }
 
@@ -5258,12 +5258,12 @@ export function getChatRuntimeMessageHistoryBannerMobileRenderState({
       accessibilityRole: surface.loadButton.accessibilityRole,
       accessibilityLabel: loadEarlierLabel,
       label: loadEarlierLabel,
+      icon: {
+        name: loadIcon.name,
+        size: loadIcon.size,
+        color: resolvedColors.loadIcon.color,
+      },
       pressedOpacity: surface.loadButton.pressedOpacity,
-    },
-    loadIcon: {
-      name: loadIcon.name,
-      size: loadIcon.size,
-      color: resolvedColors.loadIcon.color,
     },
   }
 }

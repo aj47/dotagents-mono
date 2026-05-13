@@ -1450,12 +1450,12 @@ describe("session presentation semantics", () => {
         accessibilityRole: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.accessibilityRole,
         accessibilityLabel: "Load 30 earlier",
         label: "Load 30 earlier",
+        icon: {
+          name: CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.loadEarlierName,
+          size: CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.size,
+          color: "#0f172a",
+        },
         pressedOpacity: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.pressedOpacity,
-      },
-      loadIcon: {
-        name: CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.loadEarlierName,
-        size: CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.size,
-        color: "#0f172a",
       },
     })
     expect(getChatRuntimeMessageHistoryBannerMobileRenderState({

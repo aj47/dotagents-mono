@@ -4425,9 +4425,9 @@ export function ChatMessageHistoryBanner({
         ]}
       >
         <Ionicons
-          name={renderState.loadIcon.name}
-          size={renderState.loadIcon.size}
-          color={renderState.loadIcon.color}
+          name={renderState.loadButton.icon.name}
+          size={renderState.loadButton.icon.size}
+          color={renderState.loadButton.icon.color}
         />
         <Text style={styles.loadButtonText}>
           {renderState.loadButton.label}
