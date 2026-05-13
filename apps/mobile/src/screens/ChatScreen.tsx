@@ -3709,9 +3709,15 @@ export default function ChatScreen({ route, navigation }: any) {
             },
             micButton: {
               renderState: mobileComposerMicRenderState,
-              onPressIn: !handsFree ? handlePushToTalkPressIn : undefined,
-              onPressOut: !handsFree ? handlePushToTalkPressOut : undefined,
-              onPress: handsFree ? handleHandsFreePrimaryControl : undefined,
+              onPressIn: mobileComposerVisibilityRenderState.micButton.shouldUsePushToTalk
+                ? handlePushToTalkPressIn
+                : undefined,
+              onPressOut: mobileComposerVisibilityRenderState.micButton.shouldUsePushToTalk
+                ? handlePushToTalkPressOut
+                : undefined,
+              onPress: mobileComposerVisibilityRenderState.micButton.shouldUseHandsFreePrimaryControl
+                ? handleHandsFreePrimaryControl
+                : undefined,
               ...chatComposerRuntimeDockChrome.micButton,
             },
             micWrapperRef: micButtonRef,
@@ -3971,7 +3977,7 @@ export default function ChatScreen({ route, navigation }: any) {
               role: m.role,
               content: visibleMessageContent,
               ttsEnabled,
-              isVisible: shouldRenderExpandedContent || shouldRenderCollapsedTextPreview,
+              isVisible: messageContentRenderState.speech.isVisible,
               isSpeaking: isMessageSpeaking,
               colors: theme.colors,
             });

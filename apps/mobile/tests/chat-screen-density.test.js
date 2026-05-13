@@ -1196,7 +1196,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /composerSubmitMobileIconColors/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ disabled: (!composerHasContent|isComposerSubmitDisabled) \}\}/);
   assert.doesNotMatch(screenSource, /disabled=\{(!composerHasContent|isComposerSubmitDisabled)\}/);
-  assert.match(screenSource, /micButton: \{\s+renderState: mobileComposerMicRenderState,\s+onPressIn: !handsFree \? handlePushToTalkPressIn : undefined,\s+onPressOut: !handsFree \? handlePushToTalkPressOut : undefined,\s+onPress: handsFree \? handleHandsFreePrimaryControl : undefined,\s+\.\.\.chatComposerRuntimeDockChrome\.micButton,/);
+  assert.match(screenSource, /micButton: \{\s+renderState: mobileComposerMicRenderState,\s+onPressIn: mobileComposerVisibilityRenderState\.micButton\.shouldUsePushToTalk\s+\? handlePushToTalkPressIn\s+: undefined,\s+onPressOut: mobileComposerVisibilityRenderState\.micButton\.shouldUsePushToTalk\s+\? handlePushToTalkPressOut\s+: undefined,\s+onPress: mobileComposerVisibilityRenderState\.micButton\.shouldUseHandsFreePrimaryControl\s+\? handleHandsFreePrimaryControl\s+: undefined,\s+\.\.\.chatComposerRuntimeDockChrome\.micButton,/);
+  assert.doesNotMatch(screenSource, /onPress(In|Out)?: !?handsFree \? handle/);
   assert.match(chatMessageChromeSource, /<ChatComposerMicButton\s+\{\.\.\.micButton\}\s+styles=\{styles\.micButton\}/);
   assert.match(chatMessageChromeSource, /micButton: \{\s+button: styles\.mic,\s+activeButton: styles\.micOn,\s+label: styles\.micLabel,\s+activeLabel: styles\.micLabelOn,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerMicButton/);
@@ -2495,7 +2496,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const mobileMessageActionCopy = getChatMessageActionCopyState\(\);/);
   assert.match(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
-  assert.match(screenSource, /const messageSpeechRenderState = getChatMessageSpeechMobileRenderState\(\{\s+role: m\.role,\s+content: visibleMessageContent,\s+ttsEnabled,\s+isVisible: shouldRenderExpandedContent \|\| shouldRenderCollapsedTextPreview,\s+isSpeaking: isMessageSpeaking,\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const messageSpeechRenderState = getChatMessageSpeechMobileRenderState\(\{\s+role: m\.role,\s+content: visibleMessageContent,\s+ttsEnabled,\s+isVisible: messageContentRenderState\.speech\.isVisible,\s+isSpeaking: isMessageSpeaking,\s+colors: theme\.colors,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /isVisible: shouldRenderExpandedContent \|\| shouldRenderCollapsedTextPreview/);
   assert.match(screenSource, /const canSpeakVisibleContent = messageSpeechRenderState\.canSpeak;/);
   assert.match(screenSource, /speech: \{\s+canRender: canSpeakVisibleContent,/);
   assert.match(screenSource, /const mobileMessageContentLayout = mobileMessageStyleState\.contentLayout;/);

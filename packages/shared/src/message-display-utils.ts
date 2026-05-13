@@ -322,6 +322,9 @@ export interface ChatMessageContentRenderState {
   shouldShowCollapsedTextPreview: boolean
   shouldRenderExpandedContent: boolean
   shouldRenderCollapsedTextPreview: boolean
+  speech: {
+    isVisible: boolean
+  }
 }
 
 export interface ChatMessageStandaloneActionRowInput {
@@ -701,6 +704,7 @@ export function getChatMessageContentRenderState(
   const shouldShowCollapsedTextPreview = hasDisplayContent && !isExpanded && shouldCollapse
   const shouldRenderExpandedContent = shouldShowExpandedContent || isLiveStreaming
   const shouldRenderCollapsedTextPreview = shouldShowCollapsedTextPreview && !isLiveStreaming
+  const shouldShowSpeech = shouldRenderExpandedContent || shouldRenderCollapsedTextPreview
 
   return {
     hasDisplayContent,
@@ -709,6 +713,9 @@ export function getChatMessageContentRenderState(
     shouldShowCollapsedTextPreview,
     shouldRenderExpandedContent,
     shouldRenderCollapsedTextPreview,
+    speech: {
+      isVisible: shouldShowSpeech,
+    },
   }
 }
 

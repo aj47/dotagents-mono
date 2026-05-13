@@ -336,6 +336,9 @@ describe('chat message display presentation', () => {
       shouldShowCollapsedTextPreview: false,
       shouldRenderExpandedContent: true,
       shouldRenderCollapsedTextPreview: false,
+      speech: {
+        isVisible: true,
+      },
     })
     expect(getChatMessageContentRenderState({
       content: 'Visible text',
@@ -348,6 +351,9 @@ describe('chat message display presentation', () => {
       shouldShowCollapsedTextPreview: true,
       shouldRenderExpandedContent: false,
       shouldRenderCollapsedTextPreview: true,
+      speech: {
+        isVisible: true,
+      },
     })
     expect(getChatMessageContentRenderState({
       content: 'Visible text',
@@ -358,6 +364,9 @@ describe('chat message display presentation', () => {
       isCollapsed: false,
       shouldRenderExpandedContent: true,
       shouldRenderCollapsedTextPreview: false,
+      speech: {
+        isVisible: true,
+      },
     })
     expect(shouldRenderChatMessageStandaloneActionRow({
       renderState: getChatMessageContentRenderState({

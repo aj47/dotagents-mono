@@ -706,6 +706,10 @@ describe("session presentation semantics", () => {
       queueAction: {
         shouldRender: true,
       },
+      micButton: {
+        shouldUsePushToTalk: false,
+        shouldUseHandsFreePrimaryControl: true,
+      },
     })
     expect(getChatComposerMobileVisibilityRenderState({
       handsFree: false,
@@ -723,6 +727,10 @@ describe("session presentation semantics", () => {
       },
       queueAction: {
         shouldRender: false,
+      },
+      micButton: {
+        shouldUsePushToTalk: true,
+        shouldUseHandsFreePrimaryControl: false,
       },
     })
     expect(getChatComposerMobileControlState()).toEqual({

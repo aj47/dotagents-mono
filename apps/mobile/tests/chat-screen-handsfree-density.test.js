@@ -93,7 +93,7 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(screenSource, /const mobileComposerMicRenderState = useMemo\(\s+\(\) => getChatComposerMicMobileRenderState\(\{[\s\S]*?label: micButtonLabel,[\s\S]*?handsFree,[\s\S]*?listening,[\s\S]*?willCancel,[\s\S]*?colors: theme\.colors,[\s\S]*?\}\),/);
   assert.match(screenSource, /micButton: \{\s+renderState: mobileComposerMicRenderState,/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
-  assert.match(screenSource, /onPress: handsFree \? handleHandsFreePrimaryControl : undefined/);
+  assert.match(screenSource, /onPress: mobileComposerVisibilityRenderState\.micButton\.shouldUseHandsFreePrimaryControl\s+\? handleHandsFreePrimaryControl\s+: undefined/);
   assert.match(screenSource, /flexDirection:\s*handsFreeSurface\.controlsRow\.flexDirection/);
   assert.match(screenSource, /alignItems:\s*handsFreeSurface\.controlsRow\.alignItems/);
   assert.match(screenSource, /gap:\s*spacing\[handsFreeSurface\.controlsRow\.gap\]/);

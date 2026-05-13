@@ -1387,6 +1387,10 @@ export interface ChatComposerMobileVisibilityRenderState {
   queueAction: {
     shouldRender: boolean
   }
+  micButton: {
+    shouldUsePushToTalk: boolean
+    shouldUseHandsFreePrimaryControl: boolean
+  }
 }
 
 export type ChatComposerMobileTextColorToken =
@@ -3466,6 +3470,10 @@ export function getChatComposerMobileVisibilityRenderState({
     },
     queueAction: {
       shouldRender: handsFree && messageQueueEnabled,
+    },
+    micButton: {
+      shouldUsePushToTalk: !handsFree,
+      shouldUseHandsFreePrimaryControl: handsFree,
     },
   }
 }
