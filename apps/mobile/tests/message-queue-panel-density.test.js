@@ -17,6 +17,10 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.retryAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.editAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.removeAccessibilityLabel\}/);
+  assert.match(source, /accessibilityRole=\{actionSurface\.buttonAccessibilityRole\}/);
+  assert.match(source, /activeOpacity=\{actionSurface\.buttonPressedOpacity\}/);
+  assert.match(source, /accessibilityRole=\{editSurface\.buttonAccessibilityRole\}/);
+  assert.match(source, /activeOpacity=\{editSurface\.buttonPressedOpacity\}/);
   assert.doesNotMatch(source, /getMessageQueuePanelCopyState/);
   assert.doesNotMatch(source, /mobileMessageQueuePanelCopy/);
   assert.doesNotMatch(source, /<Ionicons name="refresh" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
@@ -33,6 +37,8 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /actions:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.flexDirection,[\s\S]*?flexWrap:\s*actionSurface\.flexWrap,[\s\S]*?alignItems:\s*actionSurface\.alignItems,[\s\S]*?gap:\s*actionSurface\.gap,[\s\S]*?marginTop:\s*actionSurface\.marginTop,/);
   assert.match(source, /actionButton:\s*\{[\s\S]*?alignSelf:\s*actionSurface\.buttonAlignSelf,[\s\S]*?minHeight:\s*actionSurface\.buttonMinHeight,[\s\S]*?paddingHorizontal:\s*actionSurface\.buttonPaddingHorizontal,[\s\S]*?paddingVertical:\s*actionSurface\.buttonPaddingVertical,[\s\S]*?borderRadius:\s*actionSurface\.buttonBorderRadius,[\s\S]*?justifyContent:\s*actionSurface\.buttonJustifyContent,/);
   assert.match(source, /hitSlop=\{actionSurface\.hitSlop\}/);
+  assert.match(source, /activeOpacity=\{itemSurface\.expandButtonPressedOpacity\}/);
+  assert.match(source, /accessibilityRole=\{itemSurface\.expandButtonAccessibilityRole\}/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);
   assert.doesNotMatch(source, /actions:\s*\{\s*flexDirection:\s*'row',\s*flexWrap:\s*'wrap',/);
   assert.doesNotMatch(source, /actionButton:\s*\{\s*alignSelf:\s*'flex-start',/);
@@ -42,6 +48,8 @@ test('mobile queue panel exposes an explicit send-next action for queued drafts'
   assert.match(source, /onProcessNext\?: \(\) => void;/);
   assert.match(source, /canProcessNext\?: boolean;/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.sendNextAccessibilityLabel\}/);
+  assert.match(source, /activeOpacity=\{panelSurface\.actionPressedOpacity\}/);
+  assert.match(source, /accessibilityRole=\{panelSurface\.actionAccessibilityRole\}/);
   assert.match(source, /<Text style=\{styles\.processButtonText\}>\{queuePanelCopy\.actions\.sendNextLabel\}<\/Text>/);
 });
 
@@ -82,6 +90,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.doesNotMatch(source, /name=\{isListCollapsed \? 'chevron-down' : 'chevron-up'\}/);
   assert.doesNotMatch(source, /MESSAGE_QUEUE_PANEL_PRESENTATION\.mobileIcon/);
   assert.doesNotMatch(source, /MESSAGE_QUEUE_PANEL_PRESENTATION/);
+  assert.doesNotMatch(source, /accessibilityRole="button"/);
   assert.doesNotMatch(source, /toLocaleTimeString/);
   assert.doesNotMatch(source, /•\{' '\}/);
 });

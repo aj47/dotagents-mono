@@ -260,6 +260,8 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.metaFlexWrap).toBe('wrap');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonFlexDirection).toBe('row');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonAlignItems).toBe('center');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonAccessibilityRole).toBe('button');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonPressedOpacity).toBe(0.78);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.flexDirection).toBe('row');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.flexWrap).toBe('wrap');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.alignItems).toBe('center');
@@ -270,12 +272,16 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonGap).toBe(4);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonBackgroundColorToken).toBe('background');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonJustifyContent).toBe('center');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonAccessibilityRole).toBe('button');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonPressedOpacity).toBe(0.78);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.actionIconSize).toBe(13);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.removeTextColorToken).toBe('destructive');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.inputTextColorToken).toBe('foreground');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.inputTextAlignVertical).toBe('top');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.actionsFlexDirection).toBe('row');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.actionsJustifyContent).toBe('flex-end');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonAccessibilityRole).toBe('button');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity).toBe(0.78);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.saveButtonTextColorToken).toBe('primaryForeground');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.overflow).toBe('hidden');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.backgroundAlpha).toBe(0.19);
@@ -290,6 +296,8 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerLeftAlignItems).toBe('center');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerActionsFlexDirection).toBe('row');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerActionsAlignItems).toBe('center');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionAccessibilityRole).toBe('button');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity).toBe(0.78);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.listMaxHeight).toBe(200);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactFlexDirection).toBe('row');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactAlignItems).toBe('center');

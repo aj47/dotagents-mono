@@ -244,6 +244,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             <TouchableOpacity
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
+              activeOpacity={editSurface.buttonPressedOpacity}
+              accessibilityRole={editSurface.buttonAccessibilityRole}
             >
               <Text style={styles.buttonText}>{queuePanelCopy.actions.cancelLabel}</Text>
             </TouchableOpacity>
@@ -251,6 +253,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
               disabled={!editText.trim()}
+              activeOpacity={editSurface.buttonPressedOpacity}
+              accessibilityRole={editSurface.buttonAccessibilityRole}
             >
               <Text style={styles.saveButtonText}>{queuePanelCopy.actions.saveLabel}</Text>
             </TouchableOpacity>
@@ -287,6 +291,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               <TouchableOpacity
                 style={styles.expandButton}
                 onPress={() => setIsExpanded(!isExpanded)}
+                activeOpacity={itemSurface.expandButtonPressedOpacity}
+                accessibilityRole={itemSurface.expandButtonAccessibilityRole}
               >
                 <Ionicons
                   name={isExpanded ? queuePanelIcons.collapseMessageName : queuePanelIcons.expandMessageName}
@@ -305,7 +311,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={onRetry}
-                  accessibilityRole="button"
+                  activeOpacity={actionSurface.buttonPressedOpacity}
+                  accessibilityRole={actionSurface.buttonAccessibilityRole}
                   accessibilityLabel={queuePanelCopy.actions.retryAccessibilityLabel}
                   hitSlop={actionSurface.hitSlop}
                 >
@@ -321,7 +328,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => setIsEditing(true)}
-                  accessibilityRole="button"
+                  activeOpacity={actionSurface.buttonPressedOpacity}
+                  accessibilityRole={actionSurface.buttonAccessibilityRole}
                   accessibilityLabel={queuePanelCopy.actions.editAccessibilityLabel}
                   hitSlop={actionSurface.hitSlop}
                 >
@@ -336,7 +344,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={onRemove}
-                accessibilityRole="button"
+                activeOpacity={actionSurface.buttonPressedOpacity}
+                accessibilityRole={actionSurface.buttonAccessibilityRole}
                 accessibilityLabel={queuePanelCopy.actions.removeAccessibilityLabel}
                 hitSlop={actionSurface.hitSlop}
               >
@@ -512,7 +521,8 @@ export function MessageQueuePanel({
           <TouchableOpacity
             style={styles.compactAction}
             onPress={onResume}
-            accessibilityRole="button"
+            activeOpacity={panelSurface.actionPressedOpacity}
+            accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelCopy.actions.resumeTitle}
           >
             <Ionicons
@@ -527,7 +537,8 @@ export function MessageQueuePanel({
             style={styles.compactAction}
             onPress={onPause}
             disabled={!queuePanelState.canPause}
-            accessibilityRole="button"
+            activeOpacity={panelSurface.actionPressedOpacity}
+            accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelCopy.actions.pauseTitle}
           >
             <Ionicons
@@ -541,7 +552,8 @@ export function MessageQueuePanel({
           <TouchableOpacity
             style={styles.compactAction}
             onPress={onProcessNext}
-            accessibilityRole="button"
+            activeOpacity={panelSurface.actionPressedOpacity}
+            accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelCopy.actions.sendNextAccessibilityLabel}
           >
             <Ionicons
@@ -555,7 +567,8 @@ export function MessageQueuePanel({
           style={styles.compactAction}
           onPress={onClear}
           disabled={!queuePanelState.canClear}
-          accessibilityRole="button"
+          activeOpacity={panelSurface.actionPressedOpacity}
+          accessibilityRole={panelSurface.actionAccessibilityRole}
           accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
         >
           <Ionicons
@@ -582,7 +595,8 @@ export function MessageQueuePanel({
             <TouchableOpacity
               style={styles.processButton}
               onPress={onResume}
-              accessibilityRole="button"
+              activeOpacity={panelSurface.actionPressedOpacity}
+              accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.resumeTitle}
             >
               <Text style={styles.queueControlText}>{queuePanelCopy.actions.resumeLabel}</Text>
@@ -593,7 +607,8 @@ export function MessageQueuePanel({
               style={styles.processButton}
               onPress={onPause}
               disabled={!queuePanelState.canPause}
-              accessibilityRole="button"
+              activeOpacity={panelSurface.actionPressedOpacity}
+              accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.pauseTitle}
             >
               <Text style={[styles.queueControlText, !queuePanelState.canPause && styles.queueControlTextDisabled]}>
@@ -605,7 +620,8 @@ export function MessageQueuePanel({
             <TouchableOpacity
               style={styles.processButton}
               onPress={onProcessNext}
-              accessibilityRole="button"
+              activeOpacity={panelSurface.actionPressedOpacity}
+              accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.sendNextAccessibilityLabel}
             >
               <Text style={styles.processButtonText}>{queuePanelCopy.actions.sendNextLabel}</Text>
@@ -616,7 +632,8 @@ export function MessageQueuePanel({
               style={styles.clearButton}
               onPress={onClear}
               disabled={!queuePanelState.canClear}
-              accessibilityRole="button"
+              activeOpacity={panelSurface.actionPressedOpacity}
+              accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
             >
               <Text style={styles.clearButtonText}>{queuePanelCopy.actions.clearAllLabel}</Text>
@@ -625,7 +642,8 @@ export function MessageQueuePanel({
           <TouchableOpacity
             style={styles.clearButton}
             onPress={() => setIsListCollapsed((prev) => !prev)}
-            accessibilityRole="button"
+            activeOpacity={panelSurface.actionPressedOpacity}
+            accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelState.listToggleLabel}
             accessibilityState={{ expanded: queuePanelState.isExpanded }}
           >
