@@ -252,8 +252,7 @@ import {
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
-  getPromptLibraryEditorModalKeyboardAvoidingBehavior,
-  getPromptLibraryEditorMobileChromeState,
+  getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileCopyState,
@@ -339,7 +338,6 @@ const mobileMessageSpeechButton = getChatMessageActionMobileButtonState('speech'
 const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState('speechActive');
 const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState();
 const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState();
-const promptEditorKeyboardAvoidingBehavior = getPromptLibraryEditorModalKeyboardAvoidingBehavior(Platform.OS);
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 
@@ -475,12 +473,11 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getToolExecutionDetailMobilePendingResultRenderState({ colors: theme.colors }),
     [theme.colors],
   );
-  const promptLibrarySurfaceColors = useMemo(
-    () => getPromptLibraryMobileSurfaceColors(theme.colors),
-    [theme.colors],
-  );
-  const promptLibraryEditorChrome = useMemo(
-    () => getPromptLibraryEditorMobileChromeState(theme.colors),
+  const promptLibraryEditorRenderState = useMemo(
+    () => getPromptLibraryEditorMobileRenderState({
+      colors: theme.colors,
+      platform: Platform.OS,
+    }),
     [theme.colors],
   );
   const promptLibraryShortcutRenderState = useMemo(
@@ -505,20 +502,13 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getChatRuntimeBackMobileRenderState({ colors: theme.colors }),
     [theme.colors],
   );
-  const promptEditorModalSurface = mobilePromptLibrarySurface.editorModal;
   const promptEditorModalChrome = useMemo(
     () => createChatConversationHomePromptEditorModalChromeProps({
-      surface: promptEditorModalSurface,
-      colors: promptLibrarySurfaceColors.editorModal,
-      keyboardAvoidingBehavior: promptEditorKeyboardAvoidingBehavior,
-      editorChrome: promptLibraryEditorChrome,
-      closeButtonAccessibilityLabel: promptLibraryCopy.editor.closeAccessibilityLabel,
+      renderState: promptLibraryEditorRenderState,
       styles: promptEditorModalStyles,
     }),
     [
-      promptEditorModalSurface,
-      promptLibrarySurfaceColors,
-      promptLibraryEditorChrome,
+      promptLibraryEditorRenderState,
       promptEditorModalStyles,
     ],
   );
@@ -3694,15 +3684,15 @@ export default function ChatScreen({ route, navigation }: any) {
           promptEditor: {
             visible: addPromptModalVisible,
             title: getPromptLibraryEditorTitle(Boolean(editingPrompt)),
-            nameLabel: promptLibraryCopy.editor.nameLabel,
+            nameLabel: promptLibraryEditorRenderState.copy.nameLabel,
             nameValue: newPromptName,
-            namePlaceholder: promptLibraryCopy.editor.namePlaceholder,
+            namePlaceholder: promptLibraryEditorRenderState.copy.namePlaceholder,
             onNameChange: setNewPromptName,
-            contentLabel: promptLibraryCopy.editor.contentLabel,
+            contentLabel: promptLibraryEditorRenderState.copy.contentLabel,
             contentValue: newPromptContent,
-            contentPlaceholder: promptLibraryCopy.editor.contentPlaceholder,
+            contentPlaceholder: promptLibraryEditorRenderState.copy.contentPlaceholder,
             onContentChange: setNewPromptContent,
-            cancelLabel: promptLibraryCopy.actions.cancel,
+            cancelLabel: promptLibraryEditorRenderState.copy.cancelLabel,
             saveLabel: getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt), isSavingPrompt),
             isSaving: isSavingPrompt,
             onClose: closePromptModal,

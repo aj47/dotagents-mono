@@ -22,6 +22,9 @@ import {
   getPromptLibraryEditorModalKeyboardAvoidingBehavior,
   getPromptLibraryEditorMobileChromeState,
   getPromptLibraryEditorMobileCloseIconState,
+  getPromptLibraryEditorMobileCopyState,
+  getPromptLibraryEditorMobileRenderState,
+  getPromptLibraryEditorMobileSurfaceState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryEmptyPromptLabel,
@@ -386,6 +389,15 @@ describe("predefined prompt helpers", () => {
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.flex).toBe(1)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform.ios).toBe("padding")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform.default).toBeUndefined()
+    expect(getPromptLibraryEditorMobileSurfaceState()).toBe(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal)
+    expect(getPromptLibraryEditorMobileCopyState()).toEqual({
+      closeAccessibilityLabel: "Close prompt editor",
+      nameLabel: "Name",
+      namePlaceholder: "e.g., Code Review Request",
+      contentLabel: "Prompt Content",
+      contentPlaceholder: "Enter your prompt text...",
+      cancelLabel: "Cancel",
+    })
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("ios")).toBe("padding")
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("android")).toBeUndefined()
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("web")).toBeUndefined()
@@ -427,6 +439,40 @@ describe("predefined prompt helpers", () => {
       closeIconColors: {
         color: "#64748b",
       },
+    })
+    expect(getPromptLibraryEditorMobileRenderState({
+      colors: {
+        background: "#f8fafc",
+        border: "#cbd5e1",
+        card: "#ffffff",
+        destructive: "#dc2626",
+        foreground: "#0f172a",
+        muted: "#e2e8f0",
+        mutedForeground: "#64748b",
+        primary: "#2563eb",
+        primaryForeground: "#ffffff",
+      },
+      platform: "ios",
+    })).toEqual({
+      surface: getPromptLibraryEditorMobileSurfaceState(),
+      colors: getPromptLibraryMobileSurfaceColors({
+        background: "#f8fafc",
+        border: "#cbd5e1",
+        card: "#ffffff",
+        destructive: "#dc2626",
+        foreground: "#0f172a",
+        muted: "#e2e8f0",
+        mutedForeground: "#64748b",
+        primary: "#2563eb",
+        primaryForeground: "#ffffff",
+      }).editorModal,
+      chrome: getPromptLibraryEditorMobileChromeState({
+        destructive: "#dc2626",
+        mutedForeground: "#64748b",
+        primary: "#2563eb",
+      }),
+      copy: getPromptLibraryEditorMobileCopyState(),
+      keyboardAvoidingBehavior: "padding",
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken).toBe("mutedForeground")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.multiline).toBe(true)

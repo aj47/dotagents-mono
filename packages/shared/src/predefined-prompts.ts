@@ -453,6 +453,15 @@ export interface PromptLibraryEditorMobileChromeState {
   closeIconColors: PromptLibraryMobileIconColors
 }
 
+export interface PromptLibraryEditorMobileCopyState {
+  closeAccessibilityLabel: string
+  nameLabel: string
+  namePlaceholder: string
+  contentLabel: string
+  contentPlaceholder: string
+  cancelLabel: string
+}
+
 export interface PromptLibraryMobileShortcutChromeState {
   addIcon: PromptLibraryMobileAddShortcutIconState
   addIconColors: PromptLibraryMobileIconColors
@@ -562,10 +571,14 @@ export interface PromptLibraryMobileSurfaceColors {
 
 export type PromptLibraryMobileSurfaceState = typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
 
+export type PromptLibraryEditorMobileSurfaceState = PromptLibraryMobileSurfaceState["editorModal"]
+
 export type PromptLibraryMobileShortcutSurfaceState = Pick<
   PromptLibraryMobileSurfaceState,
   "shortcutCard" | "shortcutActionButton" | "shortcutSourceLabel" | "shortcutTitle" | "shortcutDescription"
 >
+
+export type PromptLibraryEditorMobileSurfaceColors = PromptLibraryMobileSurfaceColors["editorModal"]
 
 export interface PromptLibraryMobileShortcutCopyState {
   loadingLabel: string
@@ -580,8 +593,26 @@ export interface PromptLibraryMobileShortcutRenderState {
   copy: PromptLibraryMobileShortcutCopyState
 }
 
+type PromptLibraryEditorModalBehaviorByPlatform =
+  typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform
+
+export type PromptLibraryEditorMobileKeyboardAvoidingBehavior =
+  PromptLibraryEditorModalBehaviorByPlatform[keyof PromptLibraryEditorModalBehaviorByPlatform]
+
+export interface PromptLibraryEditorMobileRenderState {
+  surface: PromptLibraryEditorMobileSurfaceState
+  colors: PromptLibraryEditorMobileSurfaceColors
+  chrome: PromptLibraryEditorMobileChromeState
+  copy: PromptLibraryEditorMobileCopyState
+  keyboardAvoidingBehavior: PromptLibraryEditorMobileKeyboardAvoidingBehavior
+}
+
 export function getPromptLibraryMobileSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile {
   return PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
+}
+
+export function getPromptLibraryEditorMobileSurfaceState(): PromptLibraryEditorMobileSurfaceState {
+  return PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal
 }
 
 export function getPromptLibraryMobileShortcutSurfaceState(): PromptLibraryMobileShortcutSurfaceState {
@@ -595,6 +626,17 @@ export function getPromptLibraryMobileShortcutSurfaceState(): PromptLibraryMobil
   }
 }
 
+export function getPromptLibraryEditorMobileCopyState(): PromptLibraryEditorMobileCopyState {
+  return {
+    closeAccessibilityLabel: PROMPT_LIBRARY_PRESENTATION.editor.closeAccessibilityLabel,
+    nameLabel: PROMPT_LIBRARY_PRESENTATION.editor.nameLabel,
+    namePlaceholder: PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder,
+    contentLabel: PROMPT_LIBRARY_PRESENTATION.editor.contentLabel,
+    contentPlaceholder: PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder,
+    cancelLabel: PROMPT_LIBRARY_PRESENTATION.actions.cancel,
+  }
+}
+
 export function getPromptLibraryMobileShortcutCopyState(): PromptLibraryMobileShortcutCopyState {
   return {
     loadingLabel: PROMPT_LIBRARY_PRESENTATION.mobile.loadingLibraryLabel,
@@ -604,7 +646,9 @@ export function getPromptLibraryMobileShortcutCopyState(): PromptLibraryMobileSh
   }
 }
 
-export function getPromptLibraryEditorModalKeyboardAvoidingBehavior(platform: string | null | undefined) {
+export function getPromptLibraryEditorModalKeyboardAvoidingBehavior(
+  platform: string | null | undefined,
+): PromptLibraryEditorMobileKeyboardAvoidingBehavior {
   const behavior = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform
   return platform === "ios" ? behavior.ios : behavior.default
 }
@@ -717,6 +761,22 @@ export function getPromptLibraryEditorMobileChromeState(
   return {
     closeIcon,
     closeIconColors: getPromptLibraryMobileIconColors(closeIcon, colors),
+  }
+}
+
+export function getPromptLibraryEditorMobileRenderState({
+  colors,
+  platform,
+}: {
+  colors: PromptLibraryMobileSurfaceColorPalette
+  platform?: string | null
+}): PromptLibraryEditorMobileRenderState {
+  return {
+    surface: getPromptLibraryEditorMobileSurfaceState(),
+    colors: getPromptLibraryMobileSurfaceColors(colors).editorModal,
+    chrome: getPromptLibraryEditorMobileChromeState(colors),
+    copy: getPromptLibraryEditorMobileCopyState(),
+    keyboardAvoidingBehavior: getPromptLibraryEditorModalKeyboardAvoidingBehavior(platform),
   }
 }
 

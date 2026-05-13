@@ -44,7 +44,7 @@ import {
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutSourceLabel,
-  type PromptLibraryEditorMobileChromeState,
+  type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibraryMobileShortcutRenderState,
   type PromptLibraryShortcutItem,
@@ -354,7 +354,7 @@ type ChatConversationHomePromptEditorModalProps = {
   modalTransparent?: ComponentProps<typeof Modal>['transparent'];
   modalAnimationType?: ComponentProps<typeof Modal>['animationType'];
   keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  editorChrome: PromptLibraryEditorMobileChromeState;
+  editorChrome: PromptLibraryEditorMobileRenderState['chrome'];
   closeButtonPressedOpacity: number;
   closeButtonAccessibilityRole: AccessibilityRole;
   closeButtonAccessibilityLabel: string;
@@ -388,36 +388,7 @@ type ChatConversationHomePromptEditorModalChromeProps = Pick<
 >;
 
 type ChatConversationHomePromptEditorModalChromeInput = {
-  surface: {
-    modal: {
-      transparent?: ComponentProps<typeof Modal>['transparent'];
-      animationType?: ComponentProps<typeof Modal>['animationType'];
-    };
-    closeButton: {
-      pressedOpacity: number;
-      accessibilityRole: AccessibilityRole;
-    };
-    multilineInput: {
-      multiline: boolean;
-      textAlignVertical?: ComponentProps<typeof TextInput>['textAlignVertical'];
-    };
-    cancelButton: {
-      pressedOpacity: number;
-      accessibilityRole: AccessibilityRole;
-    };
-    saveButton: {
-      pressedOpacity: number;
-      accessibilityRole: AccessibilityRole;
-    };
-  };
-  colors: {
-    input: {
-      placeholderColor: string;
-    };
-  };
-  keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  editorChrome: PromptLibraryEditorMobileChromeState;
-  closeButtonAccessibilityLabel: string;
+  renderState: PromptLibraryEditorMobileRenderState;
   styles: ChatConversationHomePromptEditorModalStyles;
 };
 
@@ -2303,13 +2274,17 @@ export function createChatConversationHomePromptEditorModalStyleSlots(
 }
 
 export function createChatConversationHomePromptEditorModalChromeProps({
-  surface,
-  colors,
-  keyboardAvoidingBehavior,
-  editorChrome,
-  closeButtonAccessibilityLabel,
+  renderState,
   styles,
 }: ChatConversationHomePromptEditorModalChromeInput): ChatConversationHomePromptEditorModalChromeProps {
+  const {
+    chrome: editorChrome,
+    colors,
+    copy,
+    keyboardAvoidingBehavior,
+    surface,
+  } = renderState;
+
   return {
     modalTransparent: surface.modal.transparent,
     modalAnimationType: surface.modal.animationType,
@@ -2317,7 +2292,7 @@ export function createChatConversationHomePromptEditorModalChromeProps({
     editorChrome,
     closeButtonPressedOpacity: surface.closeButton.pressedOpacity,
     closeButtonAccessibilityRole: surface.closeButton.accessibilityRole,
-    closeButtonAccessibilityLabel,
+    closeButtonAccessibilityLabel: copy.closeAccessibilityLabel,
     inputPlaceholderTextColor: colors.input.placeholderColor,
     multilineInputMultiline: surface.multilineInput.multiline,
     multilineInputTextAlignVertical: surface.multilineInput.textAlignVertical,
