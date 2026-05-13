@@ -421,6 +421,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /formatChatRuntimeDelegationToolCallActivityLabel,/);
   assert.match(screenSource, /getChatRuntimeDelegationCardMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileState,/);
+  assert.match(chatMessageChromeSource, /ChatRuntimeDelegationCardMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDelegationCardMobileState/);
   assert.match(screenSource, /getChatRuntimeDelegationStatusMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationStatusMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileColors,/);

@@ -62,9 +62,9 @@ import type {
   ChatRuntimeStepSummaryMobileRenderState,
   ChatRuntimeToolApprovalMobileRenderState,
   ChatRuntimeTurnDurationHeaderMobileRenderState,
+  ChatRuntimeDelegationCardMobileRenderState,
   ChatSessionStatusMobileRenderState,
   ChatSessionStatusMobileStyleState,
-  getChatRuntimeDelegationCardMobileState,
 } from '@dotagents/shared/session-presentation';
 import type {
   ToolExecutionCompactMobileRenderState,
@@ -485,7 +485,7 @@ type ChatMessageDelegationToolPreviewRow = {
 };
 
 type ChatMessageDelegationCardProps = {
-  surface: ReturnType<typeof getChatRuntimeDelegationCardMobileState>;
+  surface: ChatRuntimeDelegationCardMobileRenderState['surface'];
   agentName: string;
   presentation: AgentDelegationPresentation;
   accessibilityLabel: string;
