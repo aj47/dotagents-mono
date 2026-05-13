@@ -8,9 +8,21 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
-import { Theme, spacing, radius } from './theme';
+import { spacing, radius } from './theme';
 import { useAudioDevices, AudioInputDevice } from '../lib/voice/useAudioDevices';
+import {
+  getSpeechSelectorCopyState,
+  getSpeechSelectorMobileCloseIconState,
+  getSpeechSelectorMobileSurfaceColors,
+  getSpeechSelectorMobileSurfaceState,
+  type SpeechSelectorMobileSurfaceColors,
+} from '@dotagents/shared/text-to-speech-settings';
+
+const speechSelectorCopy = getSpeechSelectorCopyState();
+const speechSelectorSurface = getSpeechSelectorMobileSurfaceState();
+const speechSelectorCloseIcon = getSpeechSelectorMobileCloseIconState();
 
 type MicrophoneSelectorProps = {
   selectedDeviceId?: string;
@@ -22,7 +34,11 @@ export function MicrophoneSelector({
   onDeviceChange,
 }: MicrophoneSelectorProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const speechSelectorColors = useMemo(
+    () => getSpeechSelectorMobileSurfaceColors(theme.colors),
+    [theme.colors],
+  );
+  const styles = useMemo(() => createStyles(speechSelectorColors), [speechSelectorColors]);
   const [showPicker, setShowPicker] = React.useState(false);
   const { inputDevices, error } = useAudioDevices(true);
 
@@ -30,11 +46,11 @@ export function MicrophoneSelector({
     return (
       <View style={styles.container}>
         <View style={styles.row}>
-          <Text style={styles.label}>Microphone</Text>
-          <Text style={styles.nativeHint}>System Default</Text>
+          <Text style={styles.label}>{speechSelectorCopy.microphone.label}</Text>
+          <Text style={styles.nativeHint}>{speechSelectorCopy.microphone.nativeHint}</Text>
         </View>
         <Text style={styles.helperText}>
-          Microphone selection is managed by your device's OS settings.
+          {speechSelectorCopy.microphone.nativeHelper}
         </Text>
       </View>
     );
@@ -50,17 +66,21 @@ export function MicrophoneSelector({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Text style={styles.label}>Microphone</Text>
+        <Text style={styles.label}>{speechSelectorCopy.microphone.label}</Text>
         <TouchableOpacity
           style={styles.selector}
           onPress={() => setShowPicker(true)}
           accessibilityRole="button"
-          accessibilityLabel="Select microphone"
+          accessibilityLabel={speechSelectorCopy.microphone.selectAccessibilityLabel}
         >
-          <Text style={styles.selectorText} numberOfLines={2}>
-            {selectedDevice?.label || 'System Default'}
+          <Text style={styles.selectorText} numberOfLines={speechSelectorSurface.trigger.textNumberOfLines}>
+            {selectedDevice?.label || speechSelectorCopy.common.systemDefaultLabel}
           </Text>
-          <Text style={styles.chevron}>▼</Text>
+          <Ionicons
+            name={speechSelectorSurface.disclosureIcon.name}
+            size={speechSelectorSurface.disclosureIcon.size}
+            color={speechSelectorColors.disclosureIcon.color}
+          />
         </TouchableOpacity>
       </View>
 
@@ -75,14 +95,19 @@ export function MicrophoneSelector({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Microphone</Text>
+              <Text style={styles.modalTitle}>{speechSelectorCopy.microphone.pickerTitle}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setShowPicker(false)}
+                activeOpacity={speechSelectorSurface.closeButton.pressedOpacity}
                 accessibilityRole="button"
-                accessibilityLabel="Close microphone picker"
+                accessibilityLabel={speechSelectorCopy.microphone.closeAccessibilityLabel}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Ionicons
+                  name={speechSelectorCloseIcon.name}
+                  size={speechSelectorCloseIcon.size}
+                  color={speechSelectorColors.closeIcon.color}
+                />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.deviceList}>
@@ -98,10 +123,17 @@ export function MicrophoneSelector({
                     styles.deviceItemText,
                     !selectedDeviceId && styles.deviceItemTextSelected,
                   ]}
+                  numberOfLines={speechSelectorSurface.itemText.numberOfLines}
                 >
-                  System Default
+                  {speechSelectorCopy.common.systemDefaultLabel}
                 </Text>
-                {!selectedDeviceId && <Text style={styles.checkmark}>✓</Text>}
+                {!selectedDeviceId && (
+                  <Ionicons
+                    name={speechSelectorSurface.selectedIcon.name}
+                    size={speechSelectorSurface.selectedIcon.size}
+                    color={speechSelectorColors.selectedIcon.color}
+                  />
+                )}
               </TouchableOpacity>
 
               {inputDevices
@@ -122,11 +154,16 @@ export function MicrophoneSelector({
                         selectedDeviceId === device.deviceId &&
                           styles.deviceItemTextSelected,
                       ]}
+                      numberOfLines={speechSelectorSurface.itemText.numberOfLines}
                     >
                       {device.label}
                     </Text>
                     {selectedDeviceId === device.deviceId && (
-                      <Text style={styles.checkmark}>✓</Text>
+                      <Ionicons
+                        name={speechSelectorSurface.selectedIcon.name}
+                        size={speechSelectorSurface.selectedIcon.size}
+                        color={speechSelectorColors.selectedIcon.color}
+                      />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -139,126 +176,118 @@ export function MicrophoneSelector({
 }
 
 
-const createStyles = (theme: Theme) =>
+const createStyles = (speechSelectorColors: SpeechSelectorMobileSurfaceColors) =>
   StyleSheet.create({
     container: {
-      marginTop: spacing.sm,
+      marginTop: spacing[speechSelectorSurface.container.marginTop],
     },
     row: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.sm,
+      flexDirection: speechSelectorSurface.row.flexDirection,
+      flexWrap: speechSelectorSurface.row.flexWrap,
+      justifyContent: speechSelectorSurface.row.justifyContent,
+      alignItems: speechSelectorSurface.row.alignItems,
+      gap: spacing[speechSelectorSurface.row.gap],
+      paddingVertical: spacing[speechSelectorSurface.row.paddingVertical],
     },
     label: {
-      fontSize: 16,
-      color: theme.colors.foreground,
-      flexGrow: 1,
-      flexShrink: 1,
+      fontSize: speechSelectorSurface.label.fontSize,
+      color: speechSelectorColors.label.color,
+      flexGrow: speechSelectorSurface.label.flexGrow,
+      flexShrink: speechSelectorSurface.label.flexShrink,
     },
     nativeHint: {
-      fontSize: 14,
-      color: theme.colors.mutedForeground,
+      fontSize: speechSelectorSurface.nativeHint.fontSize,
+      color: speechSelectorColors.nativeHint.color,
     },
     helperText: {
-      fontSize: 12,
-      color: theme.colors.mutedForeground,
-      marginTop: spacing.xs,
+      fontSize: speechSelectorSurface.helperText.fontSize,
+      color: speechSelectorColors.helperText.color,
+      marginTop: spacing[speechSelectorSurface.helperText.marginTop],
     },
     errorText: {
-      fontSize: 12,
-      color: '#ef4444',
-      marginTop: spacing.xs,
+      fontSize: speechSelectorSurface.errorText.fontSize,
+      color: speechSelectorColors.errorText.color,
+      marginTop: spacing[speechSelectorSurface.errorText.marginTop],
     },
     selector: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.colors.muted,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      flexGrow: 1,
-      maxWidth: '100%',
-      minWidth: 140,
+      flexDirection: speechSelectorSurface.trigger.flexDirection,
+      alignItems: speechSelectorSurface.trigger.alignItems,
+      backgroundColor: speechSelectorColors.trigger.backgroundColor,
+      paddingHorizontal: spacing[speechSelectorSurface.trigger.paddingHorizontal],
+      paddingVertical: spacing[speechSelectorSurface.trigger.paddingVertical],
+      borderRadius: radius[speechSelectorSurface.trigger.borderRadius],
+      gap: spacing[speechSelectorSurface.trigger.gap],
+      flexGrow: speechSelectorSurface.trigger.flexGrow,
+      maxWidth: speechSelectorSurface.trigger.maxWidth,
+      minWidth: speechSelectorSurface.trigger.minWidth,
     },
     selectorText: {
-      fontSize: 14,
-      color: theme.colors.foreground,
-      marginRight: spacing.sm,
-      flex: 1,
-      flexShrink: 1,
-    },
-    chevron: {
-      fontSize: 10,
-      color: theme.colors.mutedForeground,
-      flexShrink: 0,
+      fontSize: speechSelectorSurface.triggerText.fontSize,
+      color: speechSelectorColors.triggerText.color,
+      flex: speechSelectorSurface.triggerText.flex,
+      flexShrink: speechSelectorSurface.triggerText.flexShrink,
     },
     modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'flex-end',
+      flex: speechSelectorSurface.modalOverlay.flex,
+      backgroundColor: speechSelectorColors.modalOverlay.backgroundColor,
+      justifyContent: speechSelectorSurface.modalOverlay.justifyContent,
     },
     modalContent: {
-      backgroundColor: theme.colors.background,
-      borderTopLeftRadius: radius.lg,
-      borderTopRightRadius: radius.lg,
-      maxHeight: '70%',
+      backgroundColor: speechSelectorColors.sheet.backgroundColor,
+      borderTopLeftRadius: radius[speechSelectorSurface.sheet.borderTopRadius],
+      borderTopRightRadius: radius[speechSelectorSurface.sheet.borderTopRadius],
+      maxHeight: speechSelectorSurface.sheet.maxHeight,
     },
     modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      flexDirection: speechSelectorSurface.header.flexDirection,
+      justifyContent: speechSelectorSurface.header.justifyContent,
+      alignItems: speechSelectorSurface.header.alignItems,
+      gap: spacing[speechSelectorSurface.header.gap],
+      paddingHorizontal: spacing[speechSelectorSurface.header.paddingHorizontal],
+      paddingVertical: spacing[speechSelectorSurface.header.paddingVertical],
+      borderBottomWidth: speechSelectorSurface.header.borderBottomWidth,
+      borderBottomColor: speechSelectorColors.header.borderBottomColor,
     },
     modalTitle: {
-      flex: 1,
-      flexShrink: 1,
-      fontSize: 18,
-      fontWeight: '600',
-      color: theme.colors.foreground,
-      paddingRight: spacing.xs,
+      flex: speechSelectorSurface.title.flex,
+      flexShrink: speechSelectorSurface.title.flexShrink,
+      fontSize: speechSelectorSurface.title.fontSize,
+      fontWeight: speechSelectorSurface.title.fontWeight,
+      color: speechSelectorColors.title.color,
+      paddingRight: spacing[speechSelectorSurface.title.paddingRight],
     },
     modalCloseButton: {
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-    },
-    modalCloseText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: theme.colors.primary,
+      width: speechSelectorSurface.closeButton.width,
+      height: speechSelectorSurface.closeButton.height,
+      borderRadius: radius[speechSelectorSurface.closeButton.borderRadius],
+      alignItems: speechSelectorSurface.closeButton.alignItems,
+      justifyContent: speechSelectorSurface.closeButton.justifyContent,
+      paddingHorizontal: spacing[speechSelectorSurface.closeButton.paddingHorizontal],
+      paddingVertical: spacing[speechSelectorSurface.closeButton.paddingVertical],
     },
     deviceList: {
-      padding: spacing.md,
+      padding: spacing[speechSelectorSurface.list.padding],
     },
     deviceItem: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radius.md,
+      flexDirection: speechSelectorSurface.item.flexDirection,
+      justifyContent: speechSelectorSurface.item.justifyContent,
+      alignItems: speechSelectorSurface.item.alignItems,
+      paddingVertical: spacing[speechSelectorSurface.item.paddingVertical],
+      paddingHorizontal: spacing[speechSelectorSurface.item.paddingHorizontal],
+      borderRadius: radius[speechSelectorSurface.item.borderRadius],
+      gap: spacing[speechSelectorSurface.item.gap],
     },
     deviceItemSelected: {
-      backgroundColor: theme.colors.primary + '20',
+      backgroundColor: speechSelectorColors.selectedItem.backgroundColor,
     },
     deviceItemText: {
-      fontSize: 16,
-      color: theme.colors.foreground,
+      fontSize: speechSelectorSurface.itemText.fontSize,
+      color: speechSelectorColors.itemText.color,
       flex: 1,
+      minWidth: 0,
     },
     deviceItemTextSelected: {
-      color: theme.colors.primary,
-      fontWeight: '600',
-    },
-    checkmark: {
-      fontSize: 18,
-      color: theme.colors.primary,
+      color: speechSelectorColors.itemText.selectedColor,
+      fontWeight: speechSelectorSurface.itemText.selectedFontWeight,
     },
   });

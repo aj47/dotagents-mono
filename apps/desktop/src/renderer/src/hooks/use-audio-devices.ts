@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
+import { formatSpeechSelectorMicrophoneEnumerationError } from "@dotagents/shared/text-to-speech-settings"
 
 export interface AudioDeviceInfo {
   deviceId: string
@@ -63,7 +64,7 @@ export function useAudioDevices(enabled: boolean = true) {
       setOutputDevices(devices.outputDevices)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to enumerate audio devices")
+      setError(formatSpeechSelectorMicrophoneEnumerationError(err))
     }
   }, [])
 
@@ -80,4 +81,3 @@ export function useAudioDevices(enabled: boolean = true) {
 
   return { inputDevices, outputDevices, error, refresh: enumerate }
 }
-

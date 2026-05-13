@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
+import {
+  formatSpeechSelectorMicrophoneEnumerationError,
+  getSpeechSelectorCopyState,
+} from '@dotagents/shared/text-to-speech-settings';
 
 export type AudioInputDevice = {
   deviceId: string;
   label: string;
 };
+
+const speechSelectorCopy = getSpeechSelectorCopyState();
 
 /**
  * Hook to enumerate available audio input (microphone) devices.
@@ -37,7 +43,7 @@ export function useAudioDevices(enabled: boolean = true) {
       }
 
       if (!navigator.mediaDevices?.enumerateDevices) {
-        setError('Audio device enumeration not supported');
+        setError(speechSelectorCopy.microphone.enumerationUnsupportedMessage);
         return;
       }
 
@@ -52,7 +58,7 @@ export function useAudioDevices(enabled: boolean = true) {
       setInputDevices(inputs);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to enumerate audio devices');
+      setError(formatSpeechSelectorMicrophoneEnumerationError(err));
     }
   }, []);
 
