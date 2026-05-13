@@ -32,6 +32,7 @@ import {
   getChatMessageActionSequence,
   getChatMessageVisibleActionSlots,
   getChatMessageActionMobileButtonColors,
+  getChatMessageActionMobileButtonRenderState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileRowState,
@@ -764,41 +765,40 @@ describe('chat message display presentation', () => {
       justifyContent: CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.speechButton.justifyContent,
       flexShrink: CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.speechButton.flexShrink,
     })
-    expect(getChatMessageActionMobileButtonColors('standard', {
+    const actionButtonRenderStateColors = {
       mutedForeground: '#737373',
       primary: '#2563eb',
       success: '#22c55e',
       warning: '#f59e0b',
-    })).toEqual({
+    }
+    expect(getChatMessageActionMobileButtonColors('standard', actionButtonRenderStateColors)).toEqual({
       backgroundColor: 'rgba(115, 115, 115, 0.08)',
       color: '#737373',
     })
-    expect(getChatMessageActionMobileButtonColors('branch', {
-      mutedForeground: '#737373',
-      primary: '#2563eb',
-      success: '#22c55e',
-      warning: '#f59e0b',
-    })).toEqual({
+    expect(getChatMessageActionMobileButtonColors('branch', actionButtonRenderStateColors)).toEqual({
       backgroundColor: 'rgba(37, 99, 235, 0.08)',
       color: '#2563eb',
     })
-    expect(getChatMessageActionMobileButtonColors('copied', {
-      mutedForeground: '#737373',
-      primary: '#2563eb',
-      success: '#22c55e',
-      warning: '#f59e0b',
-    })).toEqual({
+    expect(getChatMessageActionMobileButtonColors('copied', actionButtonRenderStateColors)).toEqual({
       backgroundColor: 'rgba(34, 197, 94, 0.08)',
       color: '#22c55e',
     })
-    expect(getChatMessageActionMobileButtonColors('speechActive', {
-      mutedForeground: '#737373',
-      primary: '#2563eb',
-      success: '#22c55e',
-      warning: '#f59e0b',
-    })).toEqual({
+    expect(getChatMessageActionMobileButtonColors('speechActive', actionButtonRenderStateColors)).toEqual({
       backgroundColor: 'rgba(37, 99, 235, 0.15)',
       color: '#2563eb',
+    })
+    expect(getChatMessageActionMobileButtonRenderState({
+      colors: actionButtonRenderStateColors,
+    })).toEqual({
+      button: getChatMessageActionMobileButtonState(),
+      colors: getChatMessageActionMobileButtonColors('standard', actionButtonRenderStateColors),
+    })
+    expect(getChatMessageActionMobileButtonRenderState({
+      kind: 'speechActive',
+      colors: actionButtonRenderStateColors,
+    })).toEqual({
+      button: getChatMessageActionMobileButtonState('speechActive'),
+      colors: getChatMessageActionMobileButtonColors('speechActive', actionButtonRenderStateColors),
     })
     expect(getChatMessageActionMobileIconColors(getChatMessageCopyMobileIconState(true), {
       mutedForeground: '#737373',

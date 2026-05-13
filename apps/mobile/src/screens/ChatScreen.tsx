@@ -202,7 +202,7 @@ import {
 import {
   getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
-  getChatMessageActionMobileButtonColors,
+  getChatMessageActionMobileButtonRenderState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionMobileRowState,
   getChatMessageCopyMobileRenderState,
@@ -328,9 +328,7 @@ const mobileMessageActionCopy = getChatMessageActionCopyState();
 const mobileMessageActionRow = getChatMessageActionMobileRowState();
 const mobileMessageActionButton = getChatMessageActionMobileButtonState();
 const mobileMessageBranchButton = getChatMessageActionMobileButtonState('branch');
-const mobileMessageCopiedButton = getChatMessageActionMobileButtonState('copied');
 const mobileMessageSpeechButton = getChatMessageActionMobileButtonState('speech');
-const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState('speechActive');
 const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState();
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
@@ -4327,11 +4325,33 @@ function createStyles(theme: Theme, screenHeight: number) {
     { isLive: true },
     theme.colors,
   );
-  const mobileMessageActionButtonColors = getChatMessageActionMobileButtonColors('standard', theme.colors);
-  const mobileMessageBranchButtonColors = getChatMessageActionMobileButtonColors('branch', theme.colors);
-  const mobileMessageCopiedButtonColors = getChatMessageActionMobileButtonColors('copied', theme.colors);
-  const mobileMessageSpeechButtonColors = getChatMessageActionMobileButtonColors('speech', theme.colors);
-  const mobileMessageSpeechActiveButtonColors = getChatMessageActionMobileButtonColors('speechActive', theme.colors);
+  const mobileMessageActionButtonStyleState = getChatMessageActionMobileButtonRenderState({
+    colors: theme.colors,
+  });
+  const mobileMessageBranchButtonStyleState = getChatMessageActionMobileButtonRenderState({
+    kind: 'branch',
+    colors: theme.colors,
+  });
+  const mobileMessageCopiedButtonStyleState = getChatMessageActionMobileButtonRenderState({
+    kind: 'copied',
+    colors: theme.colors,
+  });
+  const mobileMessageSpeechButtonStyleState = getChatMessageActionMobileButtonRenderState({
+    kind: 'speech',
+    colors: theme.colors,
+  });
+  const mobileMessageSpeechActiveButtonStyleState = getChatMessageActionMobileButtonRenderState({
+    kind: 'speechActive',
+    colors: theme.colors,
+  });
+  const mobileMessageActionButton = mobileMessageActionButtonStyleState.button;
+  const mobileMessageBranchButton = mobileMessageBranchButtonStyleState.button;
+  const mobileMessageSpeechButton = mobileMessageSpeechButtonStyleState.button;
+  const mobileMessageActionButtonColors = mobileMessageActionButtonStyleState.colors;
+  const mobileMessageBranchButtonColors = mobileMessageBranchButtonStyleState.colors;
+  const mobileMessageCopiedButtonColors = mobileMessageCopiedButtonStyleState.colors;
+  const mobileMessageSpeechButtonColors = mobileMessageSpeechButtonStyleState.colors;
+  const mobileMessageSpeechActiveButtonColors = mobileMessageSpeechActiveButtonStyleState.colors;
   const mobileMessageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
     role: 'user',
     durationMs: 1,

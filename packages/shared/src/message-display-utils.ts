@@ -871,6 +871,16 @@ export interface ChatMessageActionMobileColors {
   color: string
 }
 
+export interface ChatMessageActionMobileButtonRenderStateInput {
+  kind?: ChatMessageActionMobileButtonKind
+  colors: ChatMessageActionMobileColorPalette
+}
+
+export interface ChatMessageActionMobileButtonRenderState {
+  button: ReturnType<typeof getChatMessageActionMobileButtonState>
+  colors: ChatMessageActionMobileColors
+}
+
 export interface ChatMessageActionMobileIconState {
   colorToken: ChatMessageActionMobileColorToken
 }
@@ -1009,6 +1019,16 @@ export function getChatMessageActionMobileButtonColors(
   return {
     backgroundColor: hexToRgba(colors[state.backgroundColorToken], state.backgroundAlpha),
     color: colors[state.colorToken],
+  }
+}
+
+export function getChatMessageActionMobileButtonRenderState({
+  kind = "standard",
+  colors,
+}: ChatMessageActionMobileButtonRenderStateInput): ChatMessageActionMobileButtonRenderState {
+  return {
+    button: getChatMessageActionMobileButtonState(kind),
+    colors: getChatMessageActionMobileButtonColors(kind, colors),
   }
 }
 
