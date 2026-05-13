@@ -21,11 +21,11 @@ test('deletes linked desktop conversations before removing mobile chat rows', ()
 });
 
 test('renames linked desktop conversations before updating mobile chat titles', () => {
-  assert.match(sessionListSource, /const \[renameSession, setRenameSession\] = useState<SessionListItem \| null>\(null\);/);
-  assert.match(sessionListSource, /normalizeConversationTitleText\(renameTitleDraft, \{ maxChars: 80 \}\)/);
-  assert.match(sessionListSource, /settingsClient\.updateConversation\(serverConversationId, \{ title: nextTitle \}\)/);
+  assert.match(sessionListSource, /const \[renameSession, setRenameSession\] = useState<SessionListItem \| null>\(\s*null,\s*\)/);
+  assert.match(sessionListSource, /normalizeConversationTitleText\(renameTitleDraft,\s*\{\s*maxChars:\s*80,\s*\}\)/);
+  assert.match(sessionListSource, /settingsClient\.updateConversation\(\s*serverConversationId,\s*\{\s*title:\s*nextTitle\s*\},\s*\)/);
   assert.match(sessionListSource, /await sessionStore\.renameSessionTitle\(renameSession\.id, updatedTitle\)/);
-  assert.match(sessionListSource, /<Text style=\{styles\.renameModalTitle\}>Rename Chat<\/Text>/);
+  assert.match(sessionListSource, /conversationListSurface\.renameDialog\.title/);
 });
 
 test('clear all chats deletes connected desktop conversations before clearing local chats', () => {

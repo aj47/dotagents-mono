@@ -10,11 +10,11 @@ const screenSource = fs.readFileSync(
 
 test('adds a mobile chat search field with a search-specific empty state', () => {
   assert.match(screenSource, /placeholder=\{APP_CONVERSATION_LIST_COPY\.searchPlaceholder\}/);
-  assert.match(screenSource, /accessibilityHint=\{APP_CONVERSATION_LIST_COPY\.searchAccessibilityHint\}/);
+  assert.match(screenSource, /accessibilityHint=\{[\s\S]*?APP_CONVERSATION_LIST_COPY\.searchAccessibilityHint[\s\S]*?\}/);
   assert.match(screenSource, /getConversationListEmptyState\(\{[\s\S]*?hasActiveSearch: true,/);
   assert.match(screenSource, /ListEmptyComponent=\{hasActiveSearch \? SearchEmptyState : EmptyState\}/);
 });
 
 test('shows matched message snippets in search results when available', () => {
-  assert.match(screenSource, /normalizeConversationListPreviewText\(item\.searchPreview \?\? item\.preview\)/);
+  assert.match(screenSource, /normalizeConversationListPreviewText\(\s*item\.searchPreview \?\? item\.preview,\s*\)/);
 });
