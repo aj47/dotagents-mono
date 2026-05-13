@@ -54,6 +54,7 @@ import {
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutInteractionState,
+  getPromptLibraryShortcutPressIntent,
   getPromptLibraryShortcutSourceLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
@@ -754,6 +755,21 @@ describe("predefined prompt helpers", () => {
         action: "add-prompt",
       },
     ])
+    expect(getPromptLibraryShortcutPressIntent(items[0])).toEqual({
+      kind: "insert-content",
+      content: "Review this diff for regressions.",
+    })
+    expect(getPromptLibraryShortcutPressIntent(items[1])).toEqual({
+      kind: "insert-content",
+      content: "Find citations before answering.",
+    })
+    expect(getPromptLibraryShortcutPressIntent(items[2])).toEqual({
+      kind: "run-task",
+      task,
+    })
+    expect(getPromptLibraryShortcutPressIntent(items[3])).toEqual({
+      kind: "add-prompt",
+    })
   })
 
   it("creates stable prompt ids and trimmed records", () => {

@@ -2732,6 +2732,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileRenderState,/);
+  assert.match(screenSource, /getPromptLibraryShortcutPressIntent,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileIconColors,/);
   assert.match(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
@@ -2744,6 +2745,14 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /const promptLibraryEditorRenderState = useMemo\(\s+\(\) => getPromptLibraryEditorMobileRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const promptLibraryShortcutRenderState = useMemo\(\s+\(\) => getPromptLibraryMobileShortcutRenderState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
+  assert.match(screenSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
+  assert.match(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
+  assert.match(screenSource, /if \(pressIntent\.kind === 'run-task'\)/);
+  assert.match(screenSource, /handleRunPromptTask\(pressIntent\.task\)/);
+  assert.match(screenSource, /handleInsertQuickStartPrompt\(pressIntent\.content\)/);
+  assert.doesNotMatch(screenSource, /item\.action === 'add-prompt'/);
+  assert.doesNotMatch(screenSource, /item\.source === 'task' && item\.task/);
+  assert.doesNotMatch(screenSource, /handleInsertQuickStartPrompt\(item\.content\)/);
   assert.doesNotMatch(screenSource, /shortcutCopy: promptLibraryShortcutCopy/);
   assert.doesNotMatch(screenSource, /loadingLabel: mobilePromptLibraryCopy\.loadingLibraryLabel/);
   assert.doesNotMatch(screenSource, /emptyLabel: mobilePromptLibraryEmptyLabel/);
@@ -3045,7 +3054,7 @@ test('loads predefined prompts, skills, and tasks directly into mobile quick-sta
   assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{\s+prompts: predefinedPrompts,\s+skills: availableSkills,\s+tasks: availableTasks,/);
   assert.doesNotMatch(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
   assert.doesNotMatch(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
-  assert.match(screenSource, /handleRunPromptTask\(item\.task\)/);
+  assert.match(screenSource, /handleRunPromptTask\(pressIntent\.task\)/);
   assert.doesNotMatch(screenSource, /filteredPromptLibraryPrompts/);
   assert.doesNotMatch(screenSource, /promptLibraryVisible/);
 });

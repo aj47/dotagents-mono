@@ -36,6 +36,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileRenderState,/);
+  assert.match(screenSource, /getPromptLibraryShortcutPressIntent,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorTitle,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorSaveActionLabel,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle,/);
@@ -58,6 +59,14 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /runningTaskId: runningPromptTaskId/);
   assert.match(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
+  assert.match(screenSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
+  assert.match(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
+  assert.match(screenSource, /if \(pressIntent\.kind === 'run-task'\)/);
+  assert.match(screenSource, /handleRunPromptTask\(pressIntent\.task\)/);
+  assert.match(screenSource, /handleInsertQuickStartPrompt\(pressIntent\.content\)/);
+  assert.doesNotMatch(screenSource, /item\.action === 'add-prompt'/);
+  assert.doesNotMatch(screenSource, /item\.source === 'task' && item\.task/);
+  assert.doesNotMatch(screenSource, /handleInsertQuickStartPrompt\(item\.content\)/);
   assert.doesNotMatch(screenSource, /shortcutCopy: promptLibraryShortcutCopy/);
   assert.doesNotMatch(screenSource, /loadingLabel: mobilePromptLibraryCopy\.loadingLibraryLabel/);
   assert.doesNotMatch(screenSource, /emptyLabel: mobilePromptLibraryEmptyLabel/);

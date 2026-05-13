@@ -1012,6 +1012,13 @@ export interface PromptLibraryShortcutItem<
   task?: TTask
 }
 
+export type PromptLibraryShortcutPressIntent<
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> =
+  | { kind: "add-prompt" }
+  | { kind: "run-task"; task: TTask }
+  | { kind: "insert-content"; content: string }
+
 export interface PromptLibraryShortcutInteractionItem {
   source: PromptLibraryLauncherShortcutSource
   action?: PromptLibraryShortcutAction
@@ -1246,6 +1253,17 @@ export function buildPromptLibraryShortcutItems<
     ...tasks,
     ...addPromptItem,
   ]
+}
+
+export function getPromptLibraryShortcutPressIntent<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>(
+  item: PromptLibraryShortcutItem<TPrompt, TTask>,
+): PromptLibraryShortcutPressIntent<TTask> {
+  if (item.action === "add-prompt") return { kind: "add-prompt" }
+  if (item.source === "task" && item.task) return { kind: "run-task", task: item.task }
+  return { kind: "insert-content", content: item.content }
 }
 
 export function getPromptLibraryShortcutInteractionState(

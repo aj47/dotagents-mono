@@ -257,6 +257,7 @@ import {
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
+  getPromptLibraryShortcutPressIntent,
   isPromptLibraryEditorSaveDisabled,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
@@ -830,15 +831,16 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [isSavingPrompt]);
 
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
-    if (item.action === 'add-prompt') {
+    const pressIntent = getPromptLibraryShortcutPressIntent(item);
+    if (pressIntent.kind === 'add-prompt') {
       openAddPromptModal();
       return;
     }
-    if (item.source === 'task' && item.task) {
-      void handleRunPromptTask(item.task);
+    if (pressIntent.kind === 'run-task') {
+      void handleRunPromptTask(pressIntent.task);
       return;
     }
-    handleInsertQuickStartPrompt(item.content);
+    handleInsertQuickStartPrompt(pressIntent.content);
   }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
