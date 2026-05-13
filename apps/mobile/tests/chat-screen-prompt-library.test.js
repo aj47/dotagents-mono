@@ -31,6 +31,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /type PromptLibraryShortcutItem,/);
   assert.match(chatMessageChromeSource, /type PromptLibraryEditorMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type PromptLibraryMobileShortcutRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryShortcutInteractionState,/);
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;/);
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
@@ -71,6 +72,11 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /sourceIcons: promptLibraryShortcutChrome\.sourceIcons/);
   assert.match(chatMessageChromeSource, /const sourceIcon = shortcutChrome\.sourceIcons\[item\.source\];/);
   assert.match(chatMessageChromeSource, /const shortcutSourceIconColors = shortcutChrome\.sourceIconColors\[item\.source\];/);
+  assert.match(chatMessageChromeSource, /const shortcutInteraction = getPromptLibraryShortcutInteractionState\(item, runningTaskId\);/);
+  assert.match(chatMessageChromeSource, /disabled=\{shortcutInteraction\.isDisabled\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{shortcutInteraction\.accessibilityState\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const isAddPrompt = item\.action === 'add-prompt'/);
+  assert.doesNotMatch(chatMessageChromeSource, /const isTaskRunning = item\.source === 'task' && runningTaskId === item\.task\?\.id/);
   assert.match(chatMessageChromeSource, /name=\{sourceIcon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{sourceIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{shortcutSourceIconColors\.color\}/);

@@ -1012,6 +1012,19 @@ export interface PromptLibraryShortcutItem<
   task?: TTask
 }
 
+export interface PromptLibraryShortcutInteractionItem {
+  source: PromptLibraryLauncherShortcutSource
+  action?: PromptLibraryShortcutAction
+  task?: { id: string }
+}
+
+export interface PromptLibraryShortcutInteractionState {
+  isAddPrompt: boolean
+  isRunning: boolean
+  isDisabled: boolean
+  accessibilityState?: { disabled: true }
+}
+
 export type SlashCommandInputState =
   | { mode: "inactive"; query: "" }
   | { mode: "active"; query: string }
@@ -1211,6 +1224,25 @@ export function buildPromptLibraryShortcutItems<
     ...tasks,
     ...addPromptItem,
   ]
+}
+
+export function getPromptLibraryShortcutInteractionState(
+  item: PromptLibraryShortcutInteractionItem,
+  runningTaskId?: string | null,
+): PromptLibraryShortcutInteractionState {
+  const isAddPrompt = item.action === "add-prompt"
+  const isRunning =
+    item.source === "task" &&
+    typeof runningTaskId === "string" &&
+    runningTaskId.length > 0 &&
+    item.task?.id === runningTaskId
+
+  return {
+    isAddPrompt,
+    isRunning,
+    isDisabled: isRunning,
+    accessibilityState: isRunning ? { disabled: true } : undefined,
+  }
 }
 
 export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {

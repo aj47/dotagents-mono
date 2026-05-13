@@ -51,6 +51,7 @@ import {
   getPromptLibrarySkillDescription,
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
+  getPromptLibraryShortcutInteractionState,
   getPromptLibraryShortcutSourceLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
@@ -110,6 +111,24 @@ describe("predefined prompt helpers", () => {
       "Create a predefined prompt and save it to desktop.",
     )
     expect(getPromptLibraryShortcutAccessibilityHint("task")).toBe("Runs this desktop task now.")
+    expect(getPromptLibraryShortcutInteractionState({ source: "action", action: "add-prompt" })).toEqual({
+      isAddPrompt: true,
+      isRunning: false,
+      isDisabled: false,
+      accessibilityState: undefined,
+    })
+    expect(getPromptLibraryShortcutInteractionState({ source: "task", task: { id: "daily" } }, "daily")).toEqual({
+      isAddPrompt: false,
+      isRunning: true,
+      isDisabled: true,
+      accessibilityState: { disabled: true },
+    })
+    expect(getPromptLibraryShortcutInteractionState({ source: "task", task: { id: "daily" } }, "weekly")).toEqual({
+      isAddPrompt: false,
+      isRunning: false,
+      isDisabled: false,
+      accessibilityState: undefined,
+    })
     expect(formatPromptLibraryDeletePromptWebConfirmMessage("Review")).toBe('Delete prompt "Review"?')
     expect(formatPromptLibraryDeletePromptConfirmMessage("Review")).toBe(
       'Delete "Review" from your desktop prompt library?',

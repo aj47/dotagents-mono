@@ -43,6 +43,7 @@ import {
   getPromptLibraryEditPromptAccessibilityLabel,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
+  getPromptLibraryShortcutInteractionState,
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryShortcutSourceLabel,
@@ -2600,8 +2601,7 @@ export function ChatConversationHomeQuickStarts<
       {items.length > 0 ? (
         <View style={styles.grid}>
           {items.map((item) => {
-            const isAddPrompt = item.action === 'add-prompt';
-            const isTaskRunning = item.source === 'task' && runningTaskId === item.task?.id;
+            const shortcutInteraction = getPromptLibraryShortcutInteractionState(item, runningTaskId);
             const sourceIcon = shortcutChrome.sourceIcons[item.source];
             const shortcutSourceIconColors = shortcutChrome.sourceIconColors[item.source];
 
@@ -2610,19 +2610,20 @@ export function ChatConversationHomeQuickStarts<
                 key={item.id}
                 style={({ pressed }) => [
                   styles.shortcutCard,
-                  isAddPrompt && styles.shortcutCardAdd,
-                  isTaskRunning && styles.shortcutCardDisabled,
+                  shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
+                  shortcutInteraction.isRunning && styles.shortcutCardDisabled,
                   pressed && styles.shortcutCardPressed,
                 ]}
                 onPress={() => onPress(item)}
-                disabled={isTaskRunning}
+                disabled={shortcutInteraction.isDisabled}
                 accessibilityRole={shortcutSurface.shortcutCard.accessibilityRole}
+                accessibilityState={shortcutInteraction.accessibilityState}
                 accessibilityLabel={createButtonAccessibilityLabel(
                   getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
                 )}
                 accessibilityHint={getPromptLibraryShortcutAccessibilityHint(item.source, item.action)}
               >
-                {!isAddPrompt ? (
+                {!shortcutInteraction.isAddPrompt ? (
                   <View style={styles.sourcePill}>
                     <Ionicons
                       name={sourceIcon.name}
@@ -2647,7 +2648,7 @@ export function ChatConversationHomeQuickStarts<
                 <Text
                   style={[
                     styles.title,
-                    isAddPrompt && styles.titleAdd,
+                    shortcutInteraction.isAddPrompt && styles.titleAdd,
                   ]}
                   numberOfLines={shortcutSurface.shortcutTitle.numberOfLines}
                 >
