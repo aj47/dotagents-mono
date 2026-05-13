@@ -30,6 +30,8 @@ import {
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileEmptyLibraryLabel,
   getPromptLibraryMobileIconColors,
+  getPromptLibraryMobileLauncherShortcutSourceIconColors,
+  getPromptLibraryMobileLauncherShortcutSourceIconStates,
   getPromptLibraryMobileShortcutActionIconState,
   getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
@@ -233,12 +235,55 @@ describe("predefined prompt helpers", () => {
       size: 10,
       colorToken: "mutedForeground",
     })
+    expect(getPromptLibraryMobileLauncherShortcutSourceIconStates()).toEqual({
+      action: {
+        source: "action",
+        name: "add",
+        size: 10,
+        colorToken: "primary",
+      },
+      command: {
+        source: "command",
+        name: "terminal-outline",
+        size: 10,
+        colorToken: "mutedForeground",
+      },
+      "saved-prompt": {
+        source: "saved-prompt",
+        name: "bookmark-outline",
+        size: 10,
+        colorToken: "mutedForeground",
+      },
+      skill: {
+        source: "skill",
+        name: "sparkles-outline",
+        size: 10,
+        colorToken: "mutedForeground",
+      },
+      task: {
+        source: "task",
+        name: "time-outline",
+        size: 10,
+        colorToken: "mutedForeground",
+      },
+    })
     expect(getPromptLibraryMobileIconColors(getPromptLibraryMobileShortcutSourceIconState("command"), {
       destructive: "#dc2626",
       mutedForeground: "#64748b",
       primary: "#2563eb",
     })).toEqual({
       color: "#64748b",
+    })
+    expect(getPromptLibraryMobileLauncherShortcutSourceIconColors({
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      action: { color: "#2563eb" },
+      command: { color: "#64748b" },
+      "saved-prompt": { color: "#64748b" },
+      skill: { color: "#64748b" },
+      task: { color: "#64748b" },
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.textTransform).toBe("uppercase")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.numberOfLines).toBe(1)

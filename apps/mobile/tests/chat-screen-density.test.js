@@ -2734,8 +2734,9 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /getPromptLibraryEditorMobileCloseIconState,/);
   assert.match(screenSource, /getPromptLibraryMobileAddShortcutIconState,/);
   assert.match(screenSource, /getPromptLibraryMobileIconColors,/);
+  assert.match(screenSource, /getPromptLibraryMobileLauncherShortcutSourceIconColors,/);
+  assert.match(screenSource, /getPromptLibraryMobileLauncherShortcutSourceIconStates,/);
   assert.match(screenSource, /getPromptLibraryMobileShortcutActionIconState,/);
-  assert.match(screenSource, /getPromptLibraryMobileShortcutSourceIconState,/);
   assert.match(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.match(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
@@ -2747,11 +2748,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /const promptLibraryEditActionIconColors = useMemo\(\s+\(\) => getPromptLibraryMobileIconColors\(promptLibraryEditActionIcon, theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const promptLibraryDeleteActionIcon = getPromptLibraryMobileShortcutActionIconState\('delete'\);/);
   assert.match(screenSource, /const promptLibraryDeleteActionIconColors = useMemo\(\s+\(\) => getPromptLibraryMobileIconColors\(promptLibraryDeleteActionIcon, theme\.colors\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(screenSource, /command: getPromptLibraryMobileShortcutSourceIconState\('command'\)/);
-  assert.match(screenSource, /'saved-prompt': getPromptLibraryMobileShortcutSourceIconState\('saved-prompt'\)/);
-  assert.match(screenSource, /skill: getPromptLibraryMobileShortcutSourceIconState\('skill'\)/);
-  assert.match(screenSource, /task: getPromptLibraryMobileShortcutSourceIconState\('task'\)/);
-  assert.match(screenSource, /const promptLibraryShortcutSourceIconColors = useMemo\(\s+\(\) => \(\{\s+action: getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\.action, theme\.colors\),\s+command: getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\.command, theme\.colors\),\s+'saved-prompt': getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\['saved-prompt'\], theme\.colors\),\s+skill: getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\.skill, theme\.colors\),\s+task: getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\.task, theme\.colors\),\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const promptLibraryShortcutSourceIcons = getPromptLibraryMobileLauncherShortcutSourceIconStates\(\);/);
+  assert.match(screenSource, /const promptLibraryShortcutSourceIconColors = useMemo\(\s+\(\) => getPromptLibraryMobileLauncherShortcutSourceIconColors\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /loadingLabel: mobilePromptLibraryCopy\.loadingLibraryLabel/);
   assert.match(screenSource, /emptyLabel: mobilePromptLibraryEmptyLabel/);
   assert.match(screenSource, /shortcutCardAccessibilityRole: mobilePromptLibrarySurface\.shortcutCard\.accessibilityRole/);
@@ -2822,6 +2820,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(screenSource, /promptLibrarySurface\.shortcutActionIcon\.editName/);
   assert.doesNotMatch(screenSource, /promptLibrarySurface\.shortcutSourceIcon\.skillName/);
   assert.doesNotMatch(screenSource, /promptLibrarySurface\.addShortcutIcon\.name/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSourceIconState\('command'\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileIconColors\(promptLibraryShortcutSourceIcons\./);
   assert.doesNotMatch(screenSource, /chatHomeScanButtonText/);
   assert.doesNotMatch(screenSource, /Loading desktop library…/);
   assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_PRESENTATION\.empty\.mobileLibrary/);

@@ -260,8 +260,9 @@ import {
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileEmptyLibraryLabel,
   getPromptLibraryMobileIconColors,
+  getPromptLibraryMobileLauncherShortcutSourceIconColors,
+  getPromptLibraryMobileLauncherShortcutSourceIconStates,
   getPromptLibraryMobileShortcutActionIconState,
-  getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
@@ -351,13 +352,7 @@ const promptLibraryEditorCloseIcon = getPromptLibraryEditorMobileCloseIconState(
 const promptLibraryAddShortcutIcon = getPromptLibraryMobileAddShortcutIconState();
 const promptLibraryEditActionIcon = getPromptLibraryMobileShortcutActionIconState('edit');
 const promptLibraryDeleteActionIcon = getPromptLibraryMobileShortcutActionIconState('delete');
-const promptLibraryShortcutSourceIcons = {
-  action: getPromptLibraryMobileShortcutSourceIconState('action'),
-  command: getPromptLibraryMobileShortcutSourceIconState('command'),
-  'saved-prompt': getPromptLibraryMobileShortcutSourceIconState('saved-prompt'),
-  skill: getPromptLibraryMobileShortcutSourceIconState('skill'),
-  task: getPromptLibraryMobileShortcutSourceIconState('task'),
-} as const;
+const promptLibraryShortcutSourceIcons = getPromptLibraryMobileLauncherShortcutSourceIconStates();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -512,13 +507,7 @@ export default function ChatScreen({ route, navigation }: any) {
     [theme.colors],
   );
   const promptLibraryShortcutSourceIconColors = useMemo(
-    () => ({
-      action: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.action, theme.colors),
-      command: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.command, theme.colors),
-      'saved-prompt': getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons['saved-prompt'], theme.colors),
-      skill: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.skill, theme.colors),
-      task: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.task, theme.colors),
-    }),
+    () => getPromptLibraryMobileLauncherShortcutSourceIconColors(theme.colors),
     [theme.colors],
   );
   const mobileComposerTextColors = useMemo(

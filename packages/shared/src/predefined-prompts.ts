@@ -423,6 +423,10 @@ export interface PromptLibraryMobileShortcutSourceIconState {
     | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.actionColorToken
 }
 
+export type PromptLibraryMobileLauncherShortcutSourceIconStates = Readonly<
+  Record<PromptLibraryLauncherShortcutSource, PromptLibraryMobileShortcutSourceIconState>
+>
+
 export type PromptLibraryMobileIconColorToken =
   | PromptLibraryEditorMobileCloseIconState["colorToken"]
   | PromptLibraryMobileAddShortcutIconState["colorToken"]
@@ -439,6 +443,10 @@ export interface PromptLibraryMobileIconState {
 export interface PromptLibraryMobileIconColors {
   color: string
 }
+
+export type PromptLibraryMobileLauncherShortcutSourceIconColors = Readonly<
+  Record<PromptLibraryLauncherShortcutSource, PromptLibraryMobileIconColors>
+>
 
 export type PromptLibraryMobileSurfaceColorToken =
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.borderColorToken
@@ -613,12 +621,35 @@ export function getPromptLibraryMobileShortcutSourceIconState(
   }
 }
 
+export function getPromptLibraryMobileLauncherShortcutSourceIconStates(): PromptLibraryMobileLauncherShortcutSourceIconStates {
+  return {
+    action: getPromptLibraryMobileShortcutSourceIconState("action"),
+    command: getPromptLibraryMobileShortcutSourceIconState("command"),
+    "saved-prompt": getPromptLibraryMobileShortcutSourceIconState("saved-prompt"),
+    skill: getPromptLibraryMobileShortcutSourceIconState("skill"),
+    task: getPromptLibraryMobileShortcutSourceIconState("task"),
+  }
+}
+
 export function getPromptLibraryMobileIconColors(
   icon: PromptLibraryMobileIconState,
   colors: PromptLibraryMobileIconColorPalette,
 ): PromptLibraryMobileIconColors {
   return {
     color: colors[icon.colorToken],
+  }
+}
+
+export function getPromptLibraryMobileLauncherShortcutSourceIconColors(
+  colors: PromptLibraryMobileIconColorPalette,
+): PromptLibraryMobileLauncherShortcutSourceIconColors {
+  const icons = getPromptLibraryMobileLauncherShortcutSourceIconStates()
+  return {
+    action: getPromptLibraryMobileIconColors(icons.action, colors),
+    command: getPromptLibraryMobileIconColors(icons.command, colors),
+    "saved-prompt": getPromptLibraryMobileIconColors(icons["saved-prompt"], colors),
+    skill: getPromptLibraryMobileIconColors(icons.skill, colors),
+    task: getPromptLibraryMobileIconColors(icons.task, colors),
   }
 }
 
