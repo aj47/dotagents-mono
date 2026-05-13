@@ -266,6 +266,8 @@ export interface AgentResponseHistoryMobileRenderItem<T> extends AgentResponseHi
 }
 
 export interface AgentResponseHistoryMobileRenderState<T> {
+  shouldRender: boolean;
+  shouldRenderList: boolean;
   panel: AgentResponseHistoryPanelState<T>;
   items: AgentResponseHistoryMobileRenderItem<T>[];
   surface: AgentResponseHistoryMobileSurfaceRenderState['surface'];
@@ -404,6 +406,8 @@ export function getAgentResponseHistoryMobileRenderState<T extends { id?: string
   });
 
   return {
+    shouldRender: panel.responseCount > 0,
+    shouldRenderList: panel.responseCount > 0 && panel.isExpanded,
     panel,
     items: panel.items.map((item) => ({
       ...item,

@@ -277,6 +277,8 @@ describe('agent-user-response-store', () => {
       animateNewest: true,
       speakingIndex: 1,
     })).toMatchObject({
+      shouldRender: true,
+      shouldRenderList: false,
       panel: {
         title: 'Agent Responses',
         isExpanded: false,
@@ -325,6 +327,44 @@ describe('agent-user-response-store', () => {
         newestInitialOpacity: 0,
         visibleOpacity: 1,
         newestFadeDurationMs: 300,
+      },
+    });
+    expect(getAgentResponseHistoryMobileRenderState({
+      responses,
+      colors: {
+        border: '#d4d4d4',
+        foreground: '#171717',
+        muted: '#e5e5e5',
+        mutedForeground: '#737373',
+        primary: '#2563eb',
+        primaryForeground: '#ffffff',
+      },
+      isCollapsed: false,
+    })).toMatchObject({
+      shouldRender: true,
+      shouldRenderList: true,
+      panel: {
+        isExpanded: true,
+      },
+    });
+    expect(getAgentResponseHistoryMobileRenderState({
+      responses: [],
+      colors: {
+        border: '#d4d4d4',
+        foreground: '#171717',
+        muted: '#e5e5e5',
+        mutedForeground: '#737373',
+        primary: '#2563eb',
+        primaryForeground: '#ffffff',
+      },
+      isCollapsed: false,
+    })).toMatchObject({
+      shouldRender: false,
+      shouldRenderList: false,
+      items: [],
+      panel: {
+        responseCount: 0,
+        isExpanded: true,
       },
     });
   });

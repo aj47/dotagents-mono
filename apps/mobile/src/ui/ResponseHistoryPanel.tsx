@@ -148,7 +148,7 @@ export function ResponseHistoryPanel({
     prevCountRef.current = responses.length;
   }, [responses.length]);
 
-  if (responses.length === 0) {
+  if (!responseHistoryRenderState.shouldRender) {
     return null;
   }
 
@@ -339,7 +339,7 @@ export function ResponseHistoryPanel({
           </Text>
         </View>
       )}
-      {!isCollapsed && (
+      {responseHistoryRenderState.shouldRenderList && (
         <ScrollView style={styles.list}>
           {responseHistoryRenderState.items.map((item) => {
             const response = item.entry;

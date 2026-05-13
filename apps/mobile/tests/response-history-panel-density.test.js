@@ -12,6 +12,7 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors: theme\.colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
   assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
+  assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
   assert.match(source, /const responseHistoryIcons = responseHistoryRenderState\.icons;/);
   assert.match(source, /name=\{responseHistoryIcons\.headerName\}/);
   assert.match(source, /name=\{responseHistoryPanelState\.toggleIconName\}/);
@@ -32,6 +33,7 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /getAgentResponseHistorySpeechAccessibilityLabel\(isSpeaking\)/);
   assert.doesNotMatch(source, /getAgentResponseHistorySpeechActionState\(/);
   assert.doesNotMatch(source, /getAgentResponseHistoryTitle\(\)/);
+  assert.doesNotMatch(source, /if \(responses\.length === 0\) \{[\s\S]*?return null;/);
   assert.doesNotMatch(source, /accessibilityLabel=\{isCollapsed \? 'Show agent responses' : 'Hide agent responses'\}/);
   assert.doesNotMatch(source, /accessibilityLabel=\{isSpeaking \? 'Stop speaking' : 'Speak this response'\}/);
   assert.doesNotMatch(source, /name="chatbubbles-outline"/);
@@ -115,7 +117,7 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.match(source, /const response = item\.entry;/);
   assert.match(source, /const speechActionState = item\.speechActionState;/);
   assert.match(source, /useEffect\(\(\) => \{[\s\S]*?prevCountRef\.current = responses\.length;/);
-  assert.match(source, /if \(responses\.length === 0\) \{[\s\S]*?return null;/);
+  assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
   assert.match(source, /\{responseHistoryRenderState\.items\.map\(\(item\) => \{/);
   assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
   assert.match(source, /\{item\.displayIndex > 0 && <View style=\{styles\.separator\} \/>/);
@@ -131,4 +133,6 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.doesNotMatch(source, /formatAgentResponseHistoryTimestamp/);
   assert.doesNotMatch(source, /getLatestAgentResponseHistoryEntry/);
   assert.doesNotMatch(source, /const isSpeaking = speakingIndex === item\.originalIndex;/);
+  assert.doesNotMatch(source, /!\s*isCollapsed && \(/);
+  assert.match(source, /\{responseHistoryRenderState\.shouldRenderList && \(/);
 });
