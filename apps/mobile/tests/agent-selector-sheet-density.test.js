@@ -14,6 +14,7 @@ test('keeps the mobile agent selector close affordance in a compact header inste
   assert.match(sheetSource, /const agentSelectorCloseIcon = getAgentSelectorMobileCloseIconState\(\);/);
   assert.match(sheetSource, /accessibilityLabel=\{agentSelectorCopy\.closeAccessibilityLabel\}/);
   assert.match(sheetSource, /activeOpacity=\{agentSelectorSurface\.headerCloseButton\.pressedOpacity\}/);
+  assert.match(sheetSource, /accessibilityRole=\{agentSelectorSurface\.headerCloseButton\.accessibilityRole\}/);
   assert.match(sheetSource, /name=\{agentSelectorCloseIcon\.name\}/);
   assert.match(sheetSource, /size=\{agentSelectorCloseIcon\.size\}/);
   assert.match(sheetSource, /color=\{agentSelectorColors\.headerCloseIcon\.color\}/);
@@ -47,6 +48,9 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.match(sheetSource, /getAgentSelectorSheetTitle\(selectorMode\)/);
   assert.match(sheetSource, /getAgentSelectorSheetEmptyLabel\(selectorMode\)/);
   assert.match(sheetSource, /formatAgentSelectorSelectAccessibilityLabel\(item\.name\)/);
+  assert.match(sheetSource, /activeOpacity=\{agentSelectorSurface\.profileItem\.pressedOpacity\}/);
+  assert.match(sheetSource, /accessibilityRole=\{agentSelectorSurface\.profileItem\.accessibilityRole\}/);
+  assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching \}\}/);
   assert.match(sheetSource, /getAgentAvatarColors\(item\.id\)\[0\]/);
   assert.match(sheetSource, /getAgentSelectorMobileFallbackAvatarBackgroundColor\(fallbackAvatarColor\)/);
   assert.match(sheetSource, /<Image[\s\S]*?source=\{\{ uri: item\.avatarDataUrl \}\}/);
@@ -79,6 +83,7 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.doesNotMatch(sheetSource, /hexToRgba\(/);
   assert.doesNotMatch(sheetSource, /theme\.colors\[[^\]]+\]/);
   assert.doesNotMatch(sheetSource, /backgroundColor:\s*'rgba\(0, 0, 0, 0\.4\)'/);
+  assert.doesNotMatch(sheetSource, /accessibilityRole="button"/);
   assert.doesNotMatch(sheetSource, /accessibilityLabel=\{`Select \$\{item\.name\} agent`\}/);
   assert.doesNotMatch(sheetSource, /agentSelectorSurface\.headerCloseIcon\.(name|size|colorToken)/);
 });

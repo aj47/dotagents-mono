@@ -139,9 +139,10 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         style={[styles.profileItem, isSelected && styles.profileItemSelected]}
         onPress={() => handleSelectProfile(item)}
         disabled={isSwitching}
-        accessibilityRole="button"
+        activeOpacity={agentSelectorSurface.profileItem.pressedOpacity}
+        accessibilityRole={agentSelectorSurface.profileItem.accessibilityRole}
         accessibilityLabel={formatAgentSelectorSelectAccessibilityLabel(item.name)}
-        accessibilityState={{ selected: isSelected }}
+        accessibilityState={{ selected: isSelected, disabled: isSwitching }}
       >
         <View
           style={[
@@ -212,7 +213,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             style={styles.headerCloseButton}
             onPress={onClose}
             activeOpacity={agentSelectorSurface.headerCloseButton.pressedOpacity}
-            accessibilityRole="button"
+            accessibilityRole={agentSelectorSurface.headerCloseButton.accessibilityRole}
             accessibilityLabel={agentSelectorCopy.closeAccessibilityLabel}
           >
             <Ionicons

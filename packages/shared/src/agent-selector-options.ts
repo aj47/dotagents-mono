@@ -129,6 +129,7 @@ export const AGENT_SELECTOR_PRESENTATION = {
       paddingHorizontal: "xs",
       paddingVertical: "xs",
       negativeMarginRight: "xs",
+      accessibilityRole: "button",
     },
     headerCloseIcon: {
       name: "close",
@@ -149,6 +150,8 @@ export const AGENT_SELECTOR_PRESENTATION = {
       marginBottom: "xs",
       selectedBackgroundColorToken: "primary",
       selectedBackgroundAlpha: 0.12,
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     avatar: {
       size: 28,
