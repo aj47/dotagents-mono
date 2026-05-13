@@ -22,7 +22,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createButtonAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
 import {
   getChatMessageActionLayoutState,
   type ChatMessageActionLayoutStateInput,
@@ -2592,11 +2591,9 @@ export function ChatConversationHomeQuickStarts<
                 ]}
                 onPress={() => onPress(item)}
                 disabled={shortcutInteraction.isDisabled}
-                accessibilityRole={shortcutSurface.shortcutCard.accessibilityRole}
+                accessibilityRole={shortcutItemRenderState.accessibilityRole}
                 accessibilityState={shortcutInteraction.accessibilityState}
-                accessibilityLabel={createButtonAccessibilityLabel(
-                  shortcutItemRenderState.accessibilityLabel,
-                )}
+                accessibilityLabel={shortcutItemRenderState.accessibilityLabel}
                 accessibilityHint={shortcutItemRenderState.accessibilityHint}
               >
                 {!shortcutInteraction.isAddPrompt ? (
@@ -2649,7 +2646,7 @@ export function ChatConversationHomeQuickStarts<
                         event.stopPropagation();
                         onEditPrompt(item.prompt!);
                       }}
-                      accessibilityRole={shortcutSurface.shortcutActionButton.accessibilityRole}
+                      accessibilityRole={promptActions.edit.accessibilityRole}
                       accessibilityLabel={promptActions.edit.accessibilityLabel}
                     >
                       <Ionicons
@@ -2668,7 +2665,7 @@ export function ChatConversationHomeQuickStarts<
                         event.stopPropagation();
                         onDeletePrompt(item.prompt!);
                       }}
-                      accessibilityRole={shortcutSurface.shortcutActionButton.accessibilityRole}
+                      accessibilityRole={promptActions.delete.accessibilityRole}
                       accessibilityLabel={promptActions.delete.accessibilityLabel}
                     >
                       <Ionicons

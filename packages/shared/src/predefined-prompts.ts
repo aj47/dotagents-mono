@@ -1,4 +1,5 @@
 import type { PredefinedPromptSummary } from "./api-types"
+import { createButtonAccessibilityLabel } from "./accessibility-utils"
 import { hexToRgba, typography } from "./colors"
 
 export type PredefinedPromptDraft = {
@@ -1098,6 +1099,7 @@ export interface PromptLibraryMobileShortcutPromptActionRenderState {
   icon: PromptLibraryMobileShortcutActionIconState
   iconColors: PromptLibraryMobileIconColors
   label: string
+  accessibilityRole: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.accessibilityRole
   accessibilityLabel: string
 }
 
@@ -1120,6 +1122,7 @@ export interface PromptLibraryMobileShortcutItemRenderState {
   sourceIcon: PromptLibraryMobileShortcutSourceIconState
   sourceIconColors: PromptLibraryMobileIconColors
   sourceLabel: string
+  accessibilityRole: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.accessibilityRole
   accessibilityLabel: string
   accessibilityHint: string
   addAction?: PromptLibraryMobileShortcutAddActionRenderState
@@ -1366,12 +1369,14 @@ export function getPromptLibraryMobileShortcutPromptActionsRenderState(
       icon: shortcutRenderState.chrome.editIcon,
       iconColors: shortcutRenderState.chrome.editIconColors,
       label: shortcutRenderState.copy.editLabel,
+      accessibilityRole: shortcutRenderState.surface.shortcutActionButton.accessibilityRole,
       accessibilityLabel: getPromptLibraryEditPromptAccessibilityLabel(title),
     },
     delete: {
       icon: shortcutRenderState.chrome.deleteIcon,
       iconColors: shortcutRenderState.chrome.deleteIconColors,
       label: shortcutRenderState.copy.deleteLabel,
+      accessibilityRole: shortcutRenderState.surface.shortcutActionButton.accessibilityRole,
       accessibilityLabel: getPromptLibraryDeletePromptAccessibilityLabel(title),
     },
   }
@@ -1401,7 +1406,10 @@ export function getPromptLibraryMobileShortcutItemRenderState<
     sourceIcon: shortcutRenderState.chrome.sourceIcons[item.source],
     sourceIconColors: shortcutRenderState.chrome.sourceIconColors[item.source],
     sourceLabel: getPromptLibraryShortcutSourceLabel(item.source),
-    accessibilityLabel: getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
+    accessibilityRole: shortcutRenderState.surface.shortcutCard.accessibilityRole,
+    accessibilityLabel: createButtonAccessibilityLabel(
+      getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
+    ),
     accessibilityHint: getPromptLibraryShortcutAccessibilityHint(item.source, item.action),
     ...(interaction.isAddPrompt
       ? {

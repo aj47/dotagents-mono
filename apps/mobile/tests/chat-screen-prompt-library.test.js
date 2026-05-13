@@ -90,7 +90,10 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /const promptActions = shortcutItemRenderState\.promptActions;/);
   assert.match(chatMessageChromeSource, /disabled=\{shortcutInteraction\.isDisabled\}/);
   assert.match(chatMessageChromeSource, /accessibilityState=\{shortcutInteraction\.accessibilityState\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{shortcutItemRenderState\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{shortcutItemRenderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityHint=\{shortcutItemRenderState\.accessibilityHint\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /createButtonAccessibilityLabel/);
   assert.doesNotMatch(chatMessageChromeSource, /const isAddPrompt = item\.action === 'add-prompt'/);
   assert.doesNotMatch(chatMessageChromeSource, /const isTaskRunning = item\.source === 'task' && runningTaskId === item\.task\?\.id/);
   assert.match(chatMessageChromeSource, /name=\{shortcutItemRenderState\.sourceIcon\.name\}/);
@@ -104,11 +107,13 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
   assert.match(chatMessageChromeSource, /pressed && styles\.actionButtonPressed/);
   assert.match(chatMessageChromeSource, /\{item\.prompt && promptActions \? \(/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{promptActions\.edit\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{promptActions\.edit\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /name=\{promptActions\.edit\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{promptActions\.edit\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{promptActions\.edit\.iconColors\.color\}/);
   assert.match(chatMessageChromeSource, /\{promptActions\.edit\.label\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{promptActions\.delete\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{promptActions\.delete\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /name=\{promptActions\.delete\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{promptActions\.delete\.icon\.size\}/);

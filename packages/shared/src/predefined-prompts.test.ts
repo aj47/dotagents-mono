@@ -409,12 +409,14 @@ describe("predefined prompt helpers", () => {
         icon: shortcutRenderState.chrome.editIcon,
         iconColors: shortcutRenderState.chrome.editIconColors,
         label: PROMPT_LIBRARY_PRESENTATION.actions.edit,
+        accessibilityRole: "button",
         accessibilityLabel: "Edit predefined prompt Review",
       },
       delete: {
         icon: shortcutRenderState.chrome.deleteIcon,
         iconColors: shortcutRenderState.chrome.deleteIconColors,
         label: PROMPT_LIBRARY_PRESENTATION.actions.delete,
+        accessibilityRole: "button",
         accessibilityLabel: "Delete predefined prompt Review",
       },
     })
@@ -434,7 +436,8 @@ describe("predefined prompt helpers", () => {
       sourceIcon: shortcutRenderState.chrome.sourceIcons.task,
       sourceIconColors: shortcutRenderState.chrome.sourceIconColors.task,
       sourceLabel: "task",
-      accessibilityLabel: "Run task Daily",
+      accessibilityRole: "button",
+      accessibilityLabel: "Run task Daily button",
       accessibilityHint: "Runs this desktop task now.",
     })
     expect(getPromptLibraryMobileShortcutItemRenderState({
@@ -453,7 +456,8 @@ describe("predefined prompt helpers", () => {
       sourceIcon: shortcutRenderState.chrome.sourceIcons.action,
       sourceIconColors: shortcutRenderState.chrome.sourceIconColors.action,
       sourceLabel: "action",
-      accessibilityLabel: "Add new prompt",
+      accessibilityRole: "button",
+      accessibilityLabel: "Add new prompt button",
       accessibilityHint: "Create a predefined prompt and save it to desktop.",
       addAction: {
         icon: shortcutRenderState.chrome.addIcon,
@@ -482,7 +486,8 @@ describe("predefined prompt helpers", () => {
       sourceIcon: shortcutRenderState.chrome.sourceIcons["saved-prompt"],
       sourceIconColors: shortcutRenderState.chrome.sourceIconColors["saved-prompt"],
       sourceLabel: "prompt",
-      accessibilityLabel: "Insert prompt Review",
+      accessibilityRole: "button",
+      accessibilityLabel: "Insert prompt Review button",
       accessibilityHint: "Inserts this desktop library item into the composer.",
       promptActions: getPromptLibraryMobileShortcutPromptActionsRenderState("Review", shortcutRenderState),
     })

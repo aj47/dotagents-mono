@@ -2866,13 +2866,17 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /size=\{addAction\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{addAction\.iconColors\.color\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.addIcon\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{shortcutSurface\.shortcutCard\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{shortcutItemRenderState\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{shortcutItemRenderState\.accessibilityLabel\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /createButtonAccessibilityLabel/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{shortcutSurface\.shortcutTitle\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{shortcutSurface\.shortcutSourceLabel\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{shortcutSurface\.shortcutDescription\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(edit|delete)Label/);
   assert.match(chatMessageChromeSource, /\{item\.prompt && promptActions \? \(/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{promptActions\.edit\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{promptActions\.edit\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{promptActions\.delete\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{promptActions\.delete\.accessibilityLabel\}/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(loading|empty)Label/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
@@ -2909,7 +2913,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /chatHomeShortcutActionButton:\s*\{[\s\S]*?justifyContent:\s*promptLibrarySurface\.shortcutActionButton\.justifyContent/);
   assert.match(screenSource, /chatHomeShortcutActionButton:\s*\{[\s\S]*?flexDirection:\s*promptLibrarySurface\.shortcutActionButton\.flexDirection/);
   assert.match(screenSource, /chatHomeShortcutActionButton:\s*\{[\s\S]*?alignItems:\s*promptLibrarySurface\.shortcutActionButton\.alignItems/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{shortcutSurface\.shortcutActionButton\.accessibilityRole\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /accessibilityRole=\{shortcutSurface\.shortcutActionButton\.accessibilityRole\}/);
   assert.match(screenSource, /chatHomeShortcutActionButtonPressed:\s*\{[\s\S]*?opacity:\s*promptLibrarySurface\.shortcutActionButton\.pressedOpacity/);
   assert.match(screenSource, /promptLibrarySurface\.shortcutCard\.pressedScale/);
   assert.doesNotMatch(screenSource, /chatHomeCard:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.card/);
