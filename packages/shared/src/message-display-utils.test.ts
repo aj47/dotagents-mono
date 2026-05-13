@@ -36,6 +36,7 @@ import {
   getChatMessageActionMobileButtonState,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileRowState,
+  getChatMessageActionMobileStyleRenderState,
   getChatMessageActionMobileTurnDurationBadgeColors,
   getChatMessageActionMobileTurnDurationBadgeState,
   getChatMessageCopyLabel,
@@ -799,6 +800,32 @@ describe('chat message display presentation', () => {
     })).toEqual({
       button: getChatMessageActionMobileButtonState('speechActive'),
       colors: getChatMessageActionMobileButtonColors('speechActive', actionButtonRenderStateColors),
+    })
+    expect(getChatMessageActionMobileStyleRenderState({
+      colors: actionButtonRenderStateColors,
+    })).toEqual({
+      row: getChatMessageActionMobileRowState(),
+      buttons: {
+        standard: getChatMessageActionMobileButtonRenderState({
+          colors: actionButtonRenderStateColors,
+        }),
+        branch: getChatMessageActionMobileButtonRenderState({
+          kind: 'branch',
+          colors: actionButtonRenderStateColors,
+        }),
+        copied: getChatMessageActionMobileButtonRenderState({
+          kind: 'copied',
+          colors: actionButtonRenderStateColors,
+        }),
+        speech: getChatMessageActionMobileButtonRenderState({
+          kind: 'speech',
+          colors: actionButtonRenderStateColors,
+        }),
+        speechActive: getChatMessageActionMobileButtonRenderState({
+          kind: 'speechActive',
+          colors: actionButtonRenderStateColors,
+        }),
+      },
     })
     expect(getChatMessageActionMobileIconColors(getChatMessageCopyMobileIconState(true), {
       mutedForeground: '#737373',

@@ -191,9 +191,7 @@ import {
 import {
   getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
-  getChatMessageActionMobileButtonRenderState,
-  getChatMessageActionMobileButtonState,
-  getChatMessageActionMobileRowState,
+  getChatMessageActionMobileStyleRenderState,
   getChatMessageCopyMobileRenderState,
   getChatDisplayExpansionState,
   getChatMessageExpansionMobileRenderState,
@@ -307,10 +305,6 @@ const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRend
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
 const mobileMessageActionCopy = getChatMessageActionCopyState();
-const mobileMessageActionRow = getChatMessageActionMobileRowState();
-const mobileMessageActionButton = getChatMessageActionMobileButtonState();
-const mobileMessageBranchButton = getChatMessageActionMobileButtonState('branch');
-const mobileMessageSpeechButton = getChatMessageActionMobileButtonState('speech');
 const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState();
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
@@ -451,6 +445,12 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getToolExecutionDetailMobileStyleRenderState({ colors: theme.colors }),
     [theme.colors],
   );
+  const mobileMessageActionStyleState = useMemo(
+    () => getChatMessageActionMobileStyleRenderState({ colors: theme.colors }),
+    [theme.colors],
+  );
+  const mobileMessageActionButton = mobileMessageActionStyleState.buttons.standard.button;
+  const mobileMessageSpeechButton = mobileMessageActionStyleState.buttons.speech.button;
   const promptLibraryEditorRenderState = useMemo(
     () => getPromptLibraryEditorMobileRenderState({
       colors: theme.colors,
@@ -4326,33 +4326,18 @@ function createStyles(theme: Theme, screenHeight: number) {
   const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState.badge;
   const headerTurnDurationColors = headerTurnDurationStyleState.colors;
   const headerTurnDurationLiveColors = headerTurnDurationLiveStyleState.colors;
-  const mobileMessageActionButtonStyleState = getChatMessageActionMobileButtonRenderState({
+  const mobileMessageActionStyleState = getChatMessageActionMobileStyleRenderState({
     colors: theme.colors,
   });
-  const mobileMessageBranchButtonStyleState = getChatMessageActionMobileButtonRenderState({
-    kind: 'branch',
-    colors: theme.colors,
-  });
-  const mobileMessageCopiedButtonStyleState = getChatMessageActionMobileButtonRenderState({
-    kind: 'copied',
-    colors: theme.colors,
-  });
-  const mobileMessageSpeechButtonStyleState = getChatMessageActionMobileButtonRenderState({
-    kind: 'speech',
-    colors: theme.colors,
-  });
-  const mobileMessageSpeechActiveButtonStyleState = getChatMessageActionMobileButtonRenderState({
-    kind: 'speechActive',
-    colors: theme.colors,
-  });
-  const mobileMessageActionButton = mobileMessageActionButtonStyleState.button;
-  const mobileMessageBranchButton = mobileMessageBranchButtonStyleState.button;
-  const mobileMessageSpeechButton = mobileMessageSpeechButtonStyleState.button;
-  const mobileMessageActionButtonColors = mobileMessageActionButtonStyleState.colors;
-  const mobileMessageBranchButtonColors = mobileMessageBranchButtonStyleState.colors;
-  const mobileMessageCopiedButtonColors = mobileMessageCopiedButtonStyleState.colors;
-  const mobileMessageSpeechButtonColors = mobileMessageSpeechButtonStyleState.colors;
-  const mobileMessageSpeechActiveButtonColors = mobileMessageSpeechActiveButtonStyleState.colors;
+  const mobileMessageActionRow = mobileMessageActionStyleState.row;
+  const mobileMessageActionButton = mobileMessageActionStyleState.buttons.standard.button;
+  const mobileMessageBranchButton = mobileMessageActionStyleState.buttons.branch.button;
+  const mobileMessageSpeechButton = mobileMessageActionStyleState.buttons.speech.button;
+  const mobileMessageActionButtonColors = mobileMessageActionStyleState.buttons.standard.colors;
+  const mobileMessageBranchButtonColors = mobileMessageActionStyleState.buttons.branch.colors;
+  const mobileMessageCopiedButtonColors = mobileMessageActionStyleState.buttons.copied.colors;
+  const mobileMessageSpeechButtonColors = mobileMessageActionStyleState.buttons.speech.colors;
+  const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState.buttons.speechActive.colors;
   const mobileMessageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
     role: 'user',
     durationMs: 1,

@@ -881,6 +881,15 @@ export interface ChatMessageActionMobileButtonRenderState {
   colors: ChatMessageActionMobileColors
 }
 
+export interface ChatMessageActionMobileStyleRenderStateInput {
+  colors: ChatMessageActionMobileColorPalette
+}
+
+export interface ChatMessageActionMobileStyleRenderState {
+  row: ReturnType<typeof getChatMessageActionMobileRowState>
+  buttons: Record<ChatMessageActionMobileButtonKind, ChatMessageActionMobileButtonRenderState>
+}
+
 export interface ChatMessageActionMobileIconState {
   colorToken: ChatMessageActionMobileColorToken
 }
@@ -1029,6 +1038,21 @@ export function getChatMessageActionMobileButtonRenderState({
   return {
     button: getChatMessageActionMobileButtonState(kind),
     colors: getChatMessageActionMobileButtonColors(kind, colors),
+  }
+}
+
+export function getChatMessageActionMobileStyleRenderState({
+  colors,
+}: ChatMessageActionMobileStyleRenderStateInput): ChatMessageActionMobileStyleRenderState {
+  return {
+    row: getChatMessageActionMobileRowState(),
+    buttons: {
+      standard: getChatMessageActionMobileButtonRenderState({ colors }),
+      branch: getChatMessageActionMobileButtonRenderState({ kind: "branch", colors }),
+      copied: getChatMessageActionMobileButtonRenderState({ kind: "copied", colors }),
+      speech: getChatMessageActionMobileButtonRenderState({ kind: "speech", colors }),
+      speechActive: getChatMessageActionMobileButtonRenderState({ kind: "speechActive", colors }),
+    },
   }
 }
 
