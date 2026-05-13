@@ -4503,13 +4503,13 @@ export function ChatMessageScrollToBottomButton({
       onPress={onPress}
       activeOpacity={renderState.button.pressedOpacity}
       accessibilityRole={renderState.button.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint}
+      accessibilityLabel={renderState.button.accessibilityLabel}
+      accessibilityHint={renderState.button.accessibilityHint}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={renderState.button.icon.name}
+        size={renderState.button.icon.size}
+        color={renderState.button.icon.color}
       />
     </TouchableOpacity>
   );

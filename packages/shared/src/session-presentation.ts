@@ -718,16 +718,16 @@ export interface ChatRuntimeScrollToBottomMobileRenderState {
   shouldRender: boolean
   surface: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom
   colors: ChatRuntimeScrollToBottomMobileColors
-  accessibilityLabel: string
-  accessibilityHint: string
   button: {
     accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.accessibilityRole
+    accessibilityLabel: string
+    accessibilityHint: string
+    icon: {
+      name: typeof CHAT_RUNTIME_PRESENTATION.scrollToBottom.mobileIcon.name
+      size: number
+      color: string
+    }
     pressedOpacity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.pressedOpacity
-  }
-  icon: {
-    name: typeof CHAT_RUNTIME_PRESENTATION.scrollToBottom.mobileIcon.name
-    size: number
-    color: string
   }
 }
 
@@ -4887,16 +4887,16 @@ export function getChatRuntimeScrollToBottomMobileRenderState({
     shouldRender: isVisible,
     surface,
     colors: resolvedColors,
-    accessibilityLabel: CHAT_RUNTIME_PRESENTATION.scrollToBottom.accessibilityLabel,
-    accessibilityHint: CHAT_RUNTIME_PRESENTATION.scrollToBottom.accessibilityHint,
     button: {
       accessibilityRole: surface.accessibilityRole,
+      accessibilityLabel: CHAT_RUNTIME_PRESENTATION.scrollToBottom.accessibilityLabel,
+      accessibilityHint: CHAT_RUNTIME_PRESENTATION.scrollToBottom.accessibilityHint,
+      icon: {
+        name: icon.name,
+        size: icon.size,
+        color: resolvedColors.icon.color,
+      },
       pressedOpacity: surface.pressedOpacity,
-    },
-    icon: {
-      name: icon.name,
-      size: icon.size,
-      color: resolvedColors.icon.color,
     },
   }
 }

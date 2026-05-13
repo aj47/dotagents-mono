@@ -1853,16 +1853,16 @@ describe("session presentation semantics", () => {
         primary: "#111827",
         primaryForeground: "#f8fafc",
       }),
-      accessibilityLabel: "Scroll to bottom",
-      accessibilityHint: "Scrolls to the latest messages",
       button: {
         accessibilityRole: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.accessibilityRole,
+        accessibilityLabel: "Scroll to bottom",
+        accessibilityHint: "Scrolls to the latest messages",
+        icon: {
+          name: CHAT_RUNTIME_PRESENTATION.scrollToBottom.mobileIcon.name,
+          size: CHAT_RUNTIME_PRESENTATION.scrollToBottom.mobileIcon.size,
+          color: "#f8fafc",
+        },
         pressedOpacity: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.pressedOpacity,
-      },
-      icon: {
-        name: CHAT_RUNTIME_PRESENTATION.scrollToBottom.mobileIcon.name,
-        size: CHAT_RUNTIME_PRESENTATION.scrollToBottom.mobileIcon.size,
-        color: "#f8fafc",
       },
     })
     expect(getChatRuntimeScrollToBottomMobileRenderState({
