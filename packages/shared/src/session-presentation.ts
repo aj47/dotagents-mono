@@ -1291,6 +1291,7 @@ export interface ChatComposerEditBeforeSendMobileRenderState {
 export type ChatComposerMobileTextColorToken =
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.labelColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.textColorToken
+  | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.textColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.placeholderColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.textColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.foregroundColorToken
@@ -1307,6 +1308,7 @@ export interface ChatComposerMobileTextColors {
     textColor: string
   }
   input: {
+    color: string
     placeholderColor: string
   }
   queueButton: {
@@ -1327,6 +1329,8 @@ export interface ChatComposerMobileTextColors {
 export type ChatComposerMobileSurfaceColorToken =
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.borderColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.backgroundColorToken
+  | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.borderColorToken
+  | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.backgroundColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.borderColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.backgroundColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.accessoryButton.borderColorToken
@@ -1347,6 +1351,10 @@ export type ChatComposerMobileSurfaceColorPalette =
 
 export interface ChatComposerMobileSurfaceColors {
   inputArea: {
+    borderColor: string
+    backgroundColor: string
+  }
+  input: {
     borderColor: string
     backgroundColor: string
   }
@@ -1387,10 +1395,18 @@ export type ChatComposerMobileSurfaceRenderStateColorPalette =
 
 export interface ChatComposerMobileSurfaceRenderStateInput {
   colors: ChatComposerMobileSurfaceRenderStateColorPalette
+  platform?: string | null
+}
+
+export interface ChatComposerMobileTextInputPlatformState {
+  paddingVertical: typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.paddingVerticalByPlatform[
+    keyof typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.paddingVerticalByPlatform
+  ]
 }
 
 export interface ChatComposerMobileSurfaceRenderState {
   surface: typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile
+  input: ChatComposerMobileTextInputPlatformState
   colors: {
     surface: ChatComposerMobileSurfaceColors
     text: ChatComposerMobileTextColors
@@ -2560,7 +2576,19 @@ export const CHAT_COMPOSER_SURFACE_PRESENTATION = {
     input: {
       flex: 1,
       maxHeight: 120,
+      borderWidth: 1,
+      borderColorToken: "input",
+      borderRadius: "lg",
+      paddingHorizontal: "md",
+      paddingVerticalByPlatform: {
+        ios: 10,
+        android: 8,
+        default: 10,
+      },
+      backgroundColorToken: "background",
+      textColorToken: "foreground",
       placeholderColorToken: "mutedForeground",
+      fontSize: 16,
     },
     visuallyHiddenComposerHint: {
       position: "absolute",
@@ -3590,6 +3618,7 @@ export function getChatComposerMobileTextColors(
       textColor: colors[surface.sttPreview.textColorToken],
     },
     input: {
+      color: colors[surface.input.textColorToken],
       placeholderColor: colors[surface.input.placeholderColorToken],
     },
     queueButton: {
@@ -3616,6 +3645,10 @@ export function getChatComposerMobileSurfaceColors(
     inputArea: {
       borderColor: colors[surface.inputArea.borderColorToken],
       backgroundColor: colors[surface.inputArea.backgroundColorToken],
+    },
+    input: {
+      borderColor: colors[surface.input.borderColorToken],
+      backgroundColor: colors[surface.input.backgroundColorToken],
     },
     sttPreview: {
       borderColor: colors[surface.sttPreview.borderColorToken],
@@ -3651,13 +3684,29 @@ export function getChatComposerMobileSurfaceColors(
 
 export function getChatComposerMobileSurfaceRenderState({
   colors,
+  platform,
 }: ChatComposerMobileSurfaceRenderStateInput): ChatComposerMobileSurfaceRenderState {
   return {
     surface: getChatComposerMobileSurfaceState(),
+    input: getChatComposerMobileTextInputPlatformState(platform),
     colors: {
       surface: getChatComposerMobileSurfaceColors(colors),
       text: getChatComposerMobileTextColors(colors),
     },
+  }
+}
+
+export function getChatComposerMobileTextInputPlatformState(
+  platform: string | null | undefined,
+): ChatComposerMobileTextInputPlatformState {
+  const paddingVerticalByPlatform = CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.paddingVerticalByPlatform
+  return {
+    paddingVertical:
+      platform === "android"
+        ? paddingVerticalByPlatform.android
+        : platform === "ios"
+          ? paddingVerticalByPlatform.ios
+          : paddingVerticalByPlatform.default,
   }
 }
 

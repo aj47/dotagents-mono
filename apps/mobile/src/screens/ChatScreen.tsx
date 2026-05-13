@@ -467,6 +467,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const mobileComposerSurfaceRenderState = useMemo(
     () => getChatComposerMobileSurfaceRenderState({
       colors: theme.colors,
+      platform: Platform.OS,
     }),
     [theme.colors],
   );
@@ -4252,8 +4253,11 @@ function createStyles(theme: Theme, screenHeight: number) {
   const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;
   const composerStyleState = getChatComposerMobileSurfaceRenderState({
     colors: theme.colors,
+    platform: Platform.OS,
   });
   const composerSurface = composerStyleState.surface;
+  const composerTextInputSurface = composerSurface.input;
+  const composerTextInputPlatform = composerStyleState.input;
   const mobileComposerSurfaceColors = composerStyleState.colors.surface;
   const mobileComposerTextColors = composerStyleState.colors.text;
   const inputAreaSurface = composerSurface.inputArea;
@@ -5130,9 +5134,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontWeight: promptEditorModalSurface.actionText.fontWeight,
     },
     input: {
-      ...theme.input,
-      flex: composerSurface.input.flex,
-      maxHeight: composerSurface.input.maxHeight,
+      borderWidth: composerTextInputSurface.borderWidth,
+      borderColor: mobileComposerSurfaceColors.input.borderColor,
+      borderRadius: radius[composerTextInputSurface.borderRadius],
+      paddingHorizontal: spacing[composerTextInputSurface.paddingHorizontal],
+      paddingVertical: composerTextInputPlatform.paddingVertical,
+      backgroundColor: mobileComposerSurfaceColors.input.backgroundColor,
+      color: mobileComposerTextColors.input.color,
+      fontSize: composerTextInputSurface.fontSize,
+      flex: composerTextInputSurface.flex,
+      maxHeight: composerTextInputSurface.maxHeight,
     },
     visuallyHiddenComposerHint: {
       position: composerSurface.visuallyHiddenComposerHint.position,

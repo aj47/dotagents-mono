@@ -119,8 +119,10 @@ test('keeps the chat composer send control at a mobile-friendly minimum touch ta
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
   assert.match(screenSource, /getChatComposerMobileSurfaceRenderState,/);
   assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
-  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
+  assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
+  assert.match(screenSource, /const composerTextInputPlatform = composerStyleState\.input;/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?alignItems:\s*composerSurface\.submitButton\.alignItems,[\s\S]*?justifyContent:\s*composerSurface\.submitButton\.justifyContent,/);
   assert.match(screenSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);
@@ -141,6 +143,8 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(screenSource, /ttsToggleOn:\s*\{[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.accessoryButton\.activeBackgroundColor,[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.accessoryButton\.activeBorderColor/);
   assert.match(screenSource, /\.\.\.chatComposerRuntimeDockChrome\.textEntry/);
   assert.match(chatMessageChromeSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);
+  assert.match(screenSource, /\n    input:\s*\{[\s\S]*?borderWidth:\s*composerTextInputSurface\.borderWidth,[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.input\.borderColor,[\s\S]*?borderRadius:\s*radius\[composerTextInputSurface\.borderRadius\],[\s\S]*?paddingHorizontal:\s*spacing\[composerTextInputSurface\.paddingHorizontal\],[\s\S]*?paddingVertical:\s*composerTextInputPlatform\.paddingVertical,[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.input\.backgroundColor,[\s\S]*?color:\s*mobileComposerTextColors\.input\.color,[\s\S]*?fontSize:\s*composerTextInputSurface\.fontSize/);
+  assert.doesNotMatch(screenSource, /\n    input:\s*\{\s+\.\.\.theme\.input/);
   assert.match(screenSource, /getChatComposerImageAttachmentMobileRenderState,/);
   assert.match(screenSource, /getChatComposerTextToSpeechMobileRenderState,/);
   assert.match(screenSource, /getChatComposerEditBeforeSendMobileRenderState,/);

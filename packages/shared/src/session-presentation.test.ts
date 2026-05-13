@@ -59,6 +59,7 @@ import {
   getChatComposerMobileSurfaceState,
   getChatComposerMobileSurfaceColors,
   getChatComposerMobileTextColors,
+  getChatComposerMobileTextInputPlatformState,
   getChatComposerQueueMobileActionState,
   getChatComposerQueueMobileIconState,
   getChatComposerQueueMobileRenderState,
@@ -726,6 +727,7 @@ describe("session presentation semantics", () => {
         textColor: "#0f172a",
       },
       input: {
+        color: "#0f172a",
         placeholderColor: "#64748b",
       },
       queueButton: {
@@ -747,12 +749,17 @@ describe("session presentation semantics", () => {
       border: "#cbd5e1",
       card: "#ffffff",
       foreground: "#0f172a",
+      input: "#cbd5e1",
       muted: "#e2e8f0",
       primary: "#2563eb",
     })).toEqual({
       inputArea: {
         borderColor: "#cbd5e1",
         backgroundColor: "#ffffff",
+      },
+      input: {
+        borderColor: "#cbd5e1",
+        backgroundColor: "#f8fafc",
       },
       sttPreview: {
         borderColor: "#cbd5e1",
@@ -786,6 +793,7 @@ describe("session presentation semantics", () => {
       border: "#cbd5e1",
       card: "#ffffff",
       foreground: "#0f172a",
+      input: "#cbd5e1",
       muted: "#e2e8f0",
       mutedForeground: "#64748b",
       primary: "#2563eb",
@@ -793,13 +801,18 @@ describe("session presentation semantics", () => {
     }
     expect(getChatComposerMobileSurfaceRenderState({
       colors: composerSurfaceRenderStateColors,
+      platform: "android",
     })).toEqual({
       surface: getChatComposerMobileSurfaceState(),
+      input: getChatComposerMobileTextInputPlatformState("android"),
       colors: {
         surface: getChatComposerMobileSurfaceColors(composerSurfaceRenderStateColors),
         text: getChatComposerMobileTextColors(composerSurfaceRenderStateColors),
       },
     })
+    expect(getChatComposerMobileTextInputPlatformState("ios")).toEqual({ paddingVertical: 10 })
+    expect(getChatComposerMobileTextInputPlatformState("android")).toEqual({ paddingVertical: 8 })
+    expect(getChatComposerMobileTextInputPlatformState("web")).toEqual({ paddingVertical: 10 })
     expect(CHAT_COMPOSER_PRESENTATION.submit.sendLabel).toBe("Send")
     expect(CHAT_COMPOSER_PRESENTATION.submit.mobileIcon.name).toBe("send-outline")
     expect(getChatComposerSubmitMobileActionState({
@@ -975,6 +988,18 @@ describe("session presentation semantics", () => {
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputRow.alignItems).toBe("center")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.flex).toBe(1)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.maxHeight).toBe(120)
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.borderWidth).toBe(1)
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.borderColorToken).toBe("input")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.borderRadius).toBe("lg")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.paddingHorizontal).toBe("md")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.paddingVerticalByPlatform).toEqual({
+      ios: 10,
+      android: 8,
+      default: 10,
+    })
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.backgroundColorToken).toBe("background")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.textColorToken).toBe("foreground")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.input.fontSize).toBe(16)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.visuallyHiddenComposerHint.position).toBe("absolute")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.visuallyHiddenComposerHint.left).toBe(-10000)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.visuallyHiddenComposerHint.width).toBe(1)

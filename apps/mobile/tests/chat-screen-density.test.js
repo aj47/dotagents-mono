@@ -1108,7 +1108,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /const mobileComposerControls = useMemo\(\s+\(\) => getChatComposerMobileControlState\(\),\s+\[\],\s+\);/);
   assert.match(screenSource, /const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState\(\) as any;/);
   assert.match(screenSource, /const mobileComposerQueueRenderState = useMemo\(\s+\(\) => getChatComposerQueueMobileRenderState\(\{\s+isDisabled: !composerHasContent,\s+colors: theme\.colors,\s+\}\),\s+\[composerHasContent, theme\.colors\],\s+\);/);
-  assert.match(screenSource, /const mobileComposerSurfaceRenderState = useMemo\(\s+\(\) => getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const mobileComposerSurfaceRenderState = useMemo\(\s+\(\) => getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(screenSource, /const mobileComposerWebAccessibility = mobileComposerSurface\.webAccessibility;/);
   assert.match(screenSource, /const mobileComposerTextColors = mobileComposerSurfaceRenderState\.colors\.text;/);
@@ -1214,9 +1214,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /aria-live=\{voiceStatusAriaLive\}/);
   assert.doesNotMatch(screenSource, /<TextInput[\s\S]{0,500}accessibilityLabel=\{mobileComposerControls\.field\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /nativeID=\{mobileComposerWebAccessibility\.inputDescriptionNativeId\}/);
-  assert.match(screenSource, /\n    input:\s*\{[\s\S]*?flex:\s*composerSurface\.input\.flex,[\s\S]*?maxHeight:\s*composerSurface\.input\.maxHeight/);
-  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /\n    input:\s*\{[\s\S]*?borderWidth:\s*composerTextInputSurface\.borderWidth,[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.input\.borderColor,[\s\S]*?paddingVertical:\s*composerTextInputPlatform\.paddingVertical,[\s\S]*?flex:\s*composerTextInputSurface\.flex,[\s\S]*?maxHeight:\s*composerTextInputSurface\.maxHeight/);
+  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
+  assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
+  assert.match(screenSource, /const composerTextInputPlatform = composerStyleState\.input;/);
   assert.match(screenSource, /const mobileComposerTextColors = composerStyleState\.colors\.text;/);
   assert.match(screenSource, /sttPreviewLabel:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.sttPreview\.labelColor/);
   assert.match(screenSource, /sttPreviewText:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.sttPreview\.textColor/);
@@ -1227,6 +1229,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /inputDock: safeAreaStyles\.inputDock,/);
   assert.match(chatMessageChromeSource, /inputDock: \{\s+area: styles\.inputArea,\s+row: styles\.inputRow,\s+micWrapper: styles\.micWrapper,\s+\}/);
   assert.match(screenSource, /inputArea:\s*\{[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.inputArea\.borderColor,[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.inputArea\.backgroundColor/);
+  assert.match(screenSource, /input:\s*\{[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.input\.borderColor,[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.input\.backgroundColor,[\s\S]*?color:\s*mobileComposerTextColors\.input\.color/);
   assert.match(screenSource, /sttPreviewBox:\s*\{[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.sttPreview\.borderColor,[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.sttPreview\.backgroundColor/);
   assert.match(screenSource, /micLabel:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.micButton\.color/);
   assert.match(screenSource, /micLabelOn:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.micButton\.activeColor/);
@@ -1250,6 +1253,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /mobileComposerSurface\.accessoryButton\.activeIconColorToken[\s\S]{0,80}: mobileComposerSurface\.accessoryButton\.inactiveIconColorToken/);
   assert.doesNotMatch(screenSource, /mobileComposerSurface\.micButton\.activeForegroundColorToken[\s\S]{0,80}: mobileComposerSurface\.micButton\.inactiveForegroundColorToken/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileComposerSurface\.input\.placeholderColorToken\]/);
+  assert.doesNotMatch(screenSource, /\n    input:\s*\{\s+\.\.\.theme\.input/);
   assert.doesNotMatch(screenSource, /theme\.colors\[sttPreviewSurface\.(labelColorToken|textColorToken)\]/);
   assert.doesNotMatch(screenSource, /theme\.colors\[composerSurface\.(queueButton\.textColorToken|submitButton\.foregroundColorToken|micButton\.(inactiveForegroundColorToken|activeForegroundColorToken))\]/);
   assert.doesNotMatch(screenSource, /theme\.colors\[inputAreaSurface\.(borderColorToken|backgroundColorToken)\]/);
