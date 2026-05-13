@@ -35,12 +35,12 @@ test('mobile response history panel uses shared copy and accessibility labels', 
 });
 
 test('mobile response history panel reads compact sizing from shared surface tokens', () => {
-  assert.match(source, /getAgentResponseHistoryMobileSurfaceState,/);
-  assert.match(source, /getAgentResponseHistoryMobileSurfaceColors,/);
+  assert.match(source, /getAgentResponseHistoryMobileSurfaceRenderState,/);
   assert.match(source, /getAgentResponseHistoryNewestInitialOpacity,/);
   assert.match(source, /getAgentResponseHistoryVisibleOpacity,/);
-  assert.match(source, /const responseHistorySurface = getAgentResponseHistoryMobileSurfaceState\(\);/);
-  assert.match(source, /const responseHistorySurfaceColors = getAgentResponseHistoryMobileSurfaceColors\(theme\.colors\);/);
+  assert.match(source, /const responseHistoryStyleState = getAgentResponseHistoryMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(source, /const responseHistorySurface = responseHistoryStyleState\.surface;/);
+  assert.match(source, /const responseHistorySurfaceColors = responseHistoryStyleState\.colors;/);
   assert.match(source, /new Animated\.Value\([\s\S]*?getAgentResponseHistoryNewestInitialOpacity\(\)[\s\S]*?: getAgentResponseHistoryVisibleOpacity\(\)/);
   assert.match(source, /const animatedStyle = useMemo\(\(\) => \(\{ opacity: fadeAnim \}\), \[fadeAnim\]\);/);
   assert.match(source, /duration: getAgentResponseHistoryNewestFadeDurationMs\(\)/);
@@ -71,6 +71,8 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.match(source, /fontSize:\s*responseHistorySurface\.collapsedPreview\.previewFontSize/);
   assert.match(source, /color:\s*responseHistorySurfaceColors\.collapsedPreview\.previewColor/);
   assert.doesNotMatch(source, /theme\.colors\[responseHistorySurface\./);
+  assert.doesNotMatch(source, /getAgentResponseHistoryMobileSurfaceState\(\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryMobileSurfaceColors\(theme\.colors\)/);
   assert.doesNotMatch(source, /hexToRgba\(/);
   assert.doesNotMatch(source, /overflow:\s*'hidden'/);
   assert.doesNotMatch(source, /header:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',\s*justifyContent:\s*'space-between',/);

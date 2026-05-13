@@ -18,8 +18,7 @@ import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   getAgentResponseHistoryMobileIconState,
-  getAgentResponseHistoryMobileSurfaceColors,
-  getAgentResponseHistoryMobileSurfaceState,
+  getAgentResponseHistoryMobileSurfaceRenderState,
   getAgentResponseHistoryNewestFadeDurationMs,
   getAgentResponseHistoryNewestInitialOpacity,
   getAgentResponseHistoryPanelState,
@@ -104,8 +103,11 @@ export function ResponseHistoryPanel({
   const isMountedRef = useRef(true);
   const speechRequestIdRef = useRef(0);
   const prevCountRef = useRef(responses.length);
-  const responseHistorySurface = getAgentResponseHistoryMobileSurfaceState();
-  const responseHistorySurfaceColors = getAgentResponseHistoryMobileSurfaceColors(theme.colors);
+  const responseHistoryStyleState = getAgentResponseHistoryMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const responseHistorySurface = responseHistoryStyleState.surface;
+  const responseHistorySurfaceColors = responseHistoryStyleState.colors;
   const responseHistoryIcons = getAgentResponseHistoryMobileIconState();
   const shouldAnimateNewest = responses.length > prevCountRef.current;
   const responseHistoryPanelState = getAgentResponseHistoryPanelState(responses, {

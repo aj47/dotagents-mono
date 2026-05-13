@@ -215,6 +215,15 @@ export interface AgentResponseHistoryMobileSurfaceColors {
   };
 }
 
+export interface AgentResponseHistoryMobileSurfaceRenderStateInput {
+  colors: AgentResponseHistoryMobileSurfaceColorPalette;
+}
+
+export interface AgentResponseHistoryMobileSurfaceRenderState {
+  surface: typeof AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile;
+  colors: AgentResponseHistoryMobileSurfaceColors;
+}
+
 const NO_RUN_ORDINAL_KEY = 'no-run';
 
 export function getAgentResponseHistoryToggleAccessibilityLabel(isCollapsed: boolean): string {
@@ -296,6 +305,15 @@ export function getAgentResponseHistoryMobileSurfaceColors(
       speakIconColor: colors[surface.item.speakIconColorToken],
       activeSpeakIconColor: colors[surface.item.activeSpeakIconColorToken],
     },
+  };
+}
+
+export function getAgentResponseHistoryMobileSurfaceRenderState({
+  colors,
+}: AgentResponseHistoryMobileSurfaceRenderStateInput): AgentResponseHistoryMobileSurfaceRenderState {
+  return {
+    surface: getAgentResponseHistoryMobileSurfaceState(),
+    colors: getAgentResponseHistoryMobileSurfaceColors(colors),
   };
 }
 

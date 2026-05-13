@@ -10,6 +10,7 @@ import {
   formatAgentResponseHistoryTimestamp,
   getAgentResponseHistoryMobileIconState,
   getAgentResponseHistoryMobileSurfaceColors,
+  getAgentResponseHistoryMobileSurfaceRenderState,
   getAgentResponseHistoryMobileSurfaceState,
   getAgentResponseHistoryNewestFadeDurationMs,
   getAgentResponseHistoryNewestInitialOpacity,
@@ -70,14 +71,15 @@ describe('agent-user-response-store', () => {
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewNumberOfLines).toBe(2);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.backgroundAlpha).toBe(0.19);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewColorToken).toBe('foreground');
-    expect(getAgentResponseHistoryMobileSurfaceColors({
+    const responseHistoryPalette = {
       border: '#d4d4d4',
       foreground: '#171717',
       muted: '#e5e5e5',
       mutedForeground: '#737373',
       primary: '#2563eb',
       primaryForeground: '#ffffff',
-    })).toEqual({
+    };
+    const responseHistorySurfaceColors = {
       container: {
         borderColor: '#d4d4d4',
         backgroundColor: 'rgba(229, 229, 229, 0.19)',
@@ -106,6 +108,13 @@ describe('agent-user-response-store', () => {
         speakIconColor: '#737373',
         activeSpeakIconColor: '#2563eb',
       },
+    };
+    expect(getAgentResponseHistoryMobileSurfaceColors(responseHistoryPalette)).toEqual(responseHistorySurfaceColors);
+    expect(getAgentResponseHistoryMobileSurfaceRenderState({
+      colors: responseHistoryPalette,
+    })).toEqual({
+      surface: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile,
+      colors: responseHistorySurfaceColors,
     });
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.preview.maxLength).toBe(110);
     expect(getAgentResponseHistoryToggleAccessibilityLabel(true)).toBe('Show agent responses');
