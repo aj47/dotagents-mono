@@ -126,6 +126,8 @@ export const SPEECH_SELECTOR_PRESENTATION = {
       maxWidth: "100%",
       minWidth: 140,
       textNumberOfLines: 2,
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     triggerText: {
       fontSize: 14,
@@ -160,6 +162,8 @@ export const SPEECH_SELECTOR_PRESENTATION = {
       borderRadius: "md",
       alignItems: "center",
       marginTop: "sm",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     testButtonText: {
       fontSize: 14,
@@ -210,6 +214,7 @@ export const SPEECH_SELECTOR_PRESENTATION = {
       borderRadius: "md",
       alignItems: "center",
       justifyContent: "center",
+      accessibilityRole: "button",
       pressedOpacity: 0.72,
       paddingHorizontal: "sm",
       paddingVertical: "xs",
@@ -240,6 +245,8 @@ export const SPEECH_SELECTOR_PRESENTATION = {
       paddingHorizontal: "sm",
       borderRadius: "md",
       gap: "sm",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     selectedItem: {
       backgroundColorToken: "primary",

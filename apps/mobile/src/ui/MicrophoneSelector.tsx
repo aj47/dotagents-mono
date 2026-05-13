@@ -70,7 +70,8 @@ export function MicrophoneSelector({
         <TouchableOpacity
           style={styles.selector}
           onPress={() => setShowPicker(true)}
-          accessibilityRole="button"
+          activeOpacity={speechSelectorSurface.trigger.pressedOpacity}
+          accessibilityRole={speechSelectorSurface.trigger.accessibilityRole}
           accessibilityLabel={speechSelectorCopy.microphone.selectAccessibilityLabel}
         >
           <Text style={styles.selectorText} numberOfLines={speechSelectorSurface.trigger.textNumberOfLines}>
@@ -100,7 +101,7 @@ export function MicrophoneSelector({
                 style={styles.modalCloseButton}
                 onPress={() => setShowPicker(false)}
                 activeOpacity={speechSelectorSurface.closeButton.pressedOpacity}
-                accessibilityRole="button"
+                accessibilityRole={speechSelectorSurface.closeButton.accessibilityRole}
                 accessibilityLabel={speechSelectorCopy.microphone.closeAccessibilityLabel}
               >
                 <Ionicons
@@ -117,6 +118,9 @@ export function MicrophoneSelector({
                   !selectedDeviceId && styles.deviceItemSelected,
                 ]}
                 onPress={() => handleSelect(null)}
+                activeOpacity={speechSelectorSurface.item.pressedOpacity}
+                accessibilityRole={speechSelectorSurface.item.accessibilityRole}
+                accessibilityState={{ selected: !selectedDeviceId }}
               >
                 <Text
                   style={[
@@ -147,6 +151,9 @@ export function MicrophoneSelector({
                         styles.deviceItemSelected,
                     ]}
                     onPress={() => handleSelect(device)}
+                    activeOpacity={speechSelectorSurface.item.pressedOpacity}
+                    accessibilityRole={speechSelectorSurface.item.accessibilityRole}
+                    accessibilityState={{ selected: selectedDeviceId === device.deviceId }}
                   >
                     <Text
                       style={[

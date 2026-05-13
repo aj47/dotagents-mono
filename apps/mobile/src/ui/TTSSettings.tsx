@@ -213,6 +213,8 @@ export function TTSSettings({
         <TouchableOpacity
           style={styles.voiceSelector}
           onPress={() => setShowVoicePicker(true)}
+          activeOpacity={speechSelectorSurface.trigger.pressedOpacity}
+          accessibilityRole={speechSelectorSurface.trigger.accessibilityRole}
         >
           <Text style={styles.voiceSelectorText} numberOfLines={speechSelectorSurface.trigger.textNumberOfLines}>
             {selectedVoice?.name || speechSelectorCopy.common.systemDefaultLabel}
@@ -267,7 +269,8 @@ export function TTSSettings({
       <TouchableOpacity
         style={styles.testButton}
         onPress={testVoice}
-        accessibilityRole="button"
+        activeOpacity={speechSelectorSurface.testButton.pressedOpacity}
+        accessibilityRole={speechSelectorSurface.testButton.accessibilityRole}
         accessibilityLabel={speechSelectorCopy.voice.testVoiceAccessibilityLabel}
       >
         <Text style={styles.testButtonText}>{speechSelectorCopy.voice.testVoiceLabel}</Text>
@@ -288,7 +291,7 @@ export function TTSSettings({
                 style={styles.modalCloseButton}
                 onPress={() => setShowVoicePicker(false)}
                 activeOpacity={speechSelectorSurface.closeButton.pressedOpacity}
-                accessibilityRole="button"
+                accessibilityRole={speechSelectorSurface.closeButton.accessibilityRole}
                 accessibilityLabel={speechSelectorCopy.voice.closeAccessibilityLabel}
               >
                 <Ionicons
@@ -306,6 +309,9 @@ export function TTSSettings({
                   !selectedVoice && styles.voiceItemSelected,
                 ]}
                 onPress={() => handleVoiceSelect(null)}
+                activeOpacity={speechSelectorSurface.item.pressedOpacity}
+                accessibilityRole={speechSelectorSurface.item.accessibilityRole}
+                accessibilityState={{ selected: !selectedVoice }}
               >
                 <Text style={[
                   styles.voiceItemText,
@@ -328,6 +334,9 @@ export function TTSSettings({
                         key={`edge-${voice.identifier}`}
                         style={[styles.voiceItem, isSelected && styles.voiceItemSelected]}
                         onPress={() => handleVoiceSelect(voice)}
+                        activeOpacity={speechSelectorSurface.item.pressedOpacity}
+                        accessibilityRole={speechSelectorSurface.item.accessibilityRole}
+                        accessibilityState={{ selected: isSelected }}
                       >
                         <View style={styles.voiceItemBody}>
                           <Text
@@ -371,6 +380,9 @@ export function TTSSettings({
                   <TouchableOpacity
                     key={`native-${voice.identifier}`}
                     style={[styles.voiceItem, isSelected && styles.voiceItemSelected]}
+                    activeOpacity={speechSelectorSurface.item.pressedOpacity}
+                    accessibilityRole={speechSelectorSurface.item.accessibilityRole}
+                    accessibilityState={{ selected: isSelected }}
                     onPress={() =>
                       handleVoiceSelect({
                         provider: 'native',

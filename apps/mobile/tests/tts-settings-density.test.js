@@ -20,6 +20,8 @@ function extractBetween(startMarker, endMarker) {
 
 test('keeps mobile TTS settings actions explicit while using shared icon chrome for modal close', () => {
   assert.doesNotMatch(ttsSettingsSource, /🔊 Test Voice/);
+  assert.match(ttsSettingsSource, /activeOpacity=\{speechSelectorSurface\.testButton\.pressedOpacity\}/);
+  assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.testButton\.accessibilityRole\}/);
   assert.match(ttsSettingsSource, /<Text style=\{styles\.testButtonText\}>\{speechSelectorCopy\.voice\.testVoiceLabel\}<\/Text>/);
 
   assert.doesNotMatch(ttsSettingsSource, />✕<\/Text>/);
@@ -27,12 +29,14 @@ test('keeps mobile TTS settings actions explicit while using shared icon chrome 
   assert.match(ttsSettingsSource, /getSpeechSelectorMobileCloseIconState/);
   assert.match(ttsSettingsSource, /const speechSelectorCloseIcon = getSpeechSelectorMobileCloseIconState\(\);/);
   assert.match(ttsSettingsSource, /activeOpacity=\{speechSelectorSurface\.closeButton\.pressedOpacity\}/);
+  assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.closeButton\.accessibilityRole\}/);
   assert.match(ttsSettingsSource, /name=\{speechSelectorCloseIcon\.name\}/);
   assert.match(ttsSettingsSource, /size=\{speechSelectorCloseIcon\.size\}/);
   assert.match(ttsSettingsSource, /color=\{speechSelectorColors\.closeIcon\.color\}/);
   assert.doesNotMatch(ttsSettingsSource, /modalCloseText/);
   assert.doesNotMatch(ttsSettingsSource, /speechSelectorCopy\.common\.closeLabel/);
   assert.doesNotMatch(ttsSettingsSource, /speechSelectorSurface\.closeIcon\.(name|size|colorToken)/);
+  assert.doesNotMatch(ttsSettingsSource, /accessibilityRole="button"/);
 });
 
 test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () => {
@@ -56,6 +60,12 @@ test('uses the shared speech selector presentation for the mobile voice picker',
   assert.match(ttsSettingsSource, /const speechSelectorSurface = getSpeechSelectorMobileSurfaceState\(\)/);
   assert.match(ttsSettingsSource, /const speechSelectorColors = useMemo\(\s*\(\) => getSpeechSelectorMobileSurfaceColors\(theme\.colors\),/);
   assert.match(ttsSettingsSource, /<Text style=\{styles\.label\}>\{speechSelectorCopy\.voice\.label\}<\/Text>/);
+  assert.match(ttsSettingsSource, /activeOpacity=\{speechSelectorSurface\.trigger\.pressedOpacity\}/);
+  assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.trigger\.accessibilityRole\}/);
+  assert.match(ttsSettingsSource, /activeOpacity=\{speechSelectorSurface\.item\.pressedOpacity\}/);
+  assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.item\.accessibilityRole\}/);
+  assert.match(ttsSettingsSource, /accessibilityState=\{\{ selected: !selectedVoice \}\}/);
+  assert.match(ttsSettingsSource, /accessibilityState=\{\{ selected: isSelected \}\}/);
   assert.match(ttsSettingsSource, /container:\s*\{[\s\S]*?marginTop:\s*spacing\[speechSelectorSurface\.container\.marginTop\]/);
   assert.match(ttsSettingsSource, /flexDirection:\s*speechSelectorSurface\.row\.flexDirection/);
   assert.match(ttsSettingsSource, /gap:\s*spacing\[speechSelectorSurface\.row\.gap\]/);

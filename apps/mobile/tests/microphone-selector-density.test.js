@@ -22,10 +22,17 @@ test('uses the shared speech selector presentation for the mobile microphone pic
   assert.match(microphoneSelectorSource, /const speechSelectorCloseIcon = getSpeechSelectorMobileCloseIconState\(\)/);
   assert.match(microphoneSelectorSource, /const speechSelectorColors = useMemo\(\s*\(\) => getSpeechSelectorMobileSurfaceColors\(theme\.colors\),/);
   assert.match(microphoneSelectorSource, /<Text style=\{styles\.label\}>\{speechSelectorCopy\.microphone\.label\}<\/Text>/);
+  assert.match(microphoneSelectorSource, /activeOpacity=\{speechSelectorSurface\.trigger\.pressedOpacity\}/);
+  assert.match(microphoneSelectorSource, /accessibilityRole=\{speechSelectorSurface\.trigger\.accessibilityRole\}/);
   assert.match(microphoneSelectorSource, /accessibilityLabel=\{speechSelectorCopy\.microphone\.selectAccessibilityLabel\}/);
   assert.match(microphoneSelectorSource, /<Text style=\{styles\.modalTitle\}>\{speechSelectorCopy\.microphone\.pickerTitle\}<\/Text>/);
   assert.match(microphoneSelectorSource, /accessibilityLabel=\{speechSelectorCopy\.microphone\.closeAccessibilityLabel\}/);
   assert.match(microphoneSelectorSource, /activeOpacity=\{speechSelectorSurface\.closeButton\.pressedOpacity\}/);
+  assert.match(microphoneSelectorSource, /accessibilityRole=\{speechSelectorSurface\.closeButton\.accessibilityRole\}/);
+  assert.match(microphoneSelectorSource, /activeOpacity=\{speechSelectorSurface\.item\.pressedOpacity\}/);
+  assert.match(microphoneSelectorSource, /accessibilityRole=\{speechSelectorSurface\.item\.accessibilityRole\}/);
+  assert.match(microphoneSelectorSource, /accessibilityState=\{\{ selected: !selectedDeviceId \}\}/);
+  assert.match(microphoneSelectorSource, /accessibilityState=\{\{ selected: selectedDeviceId === device\.deviceId \}\}/);
   assert.match(microphoneSelectorSource, /name=\{speechSelectorCloseIcon\.name\}/);
   assert.match(microphoneSelectorSource, /size=\{speechSelectorCloseIcon\.size\}/);
   assert.match(microphoneSelectorSource, /color=\{speechSelectorColors\.closeIcon\.color\}/);
@@ -58,6 +65,7 @@ test('uses the shared speech selector presentation for the mobile microphone pic
   assert.doesNotMatch(microphoneSelectorSource, /modalCloseText/);
   assert.doesNotMatch(microphoneSelectorSource, /speechSelectorCopy\.common\.closeLabel/);
   assert.doesNotMatch(microphoneSelectorSource, /speechSelectorSurface\.closeIcon\.(name|size|colorToken)/);
+  assert.doesNotMatch(microphoneSelectorSource, /accessibilityRole="button"/);
   assert.doesNotMatch(microphoneSelectorSource, /color:\s*'#ef4444'/);
   assert.doesNotMatch(microphoneSelectorSource, /backgroundColor:\s*'rgba\(0, 0, 0, 0\.5\)'/);
   assert.doesNotMatch(microphoneSelectorSource, /justifyContent:\s*'flex-end'/);
