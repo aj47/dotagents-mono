@@ -232,6 +232,8 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.editName).toBe('create-outline');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.removeName).toBe('trash-outline');
     expect(getMessageQueuePanelMobileIconState()).toBe(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon);
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel).toBe('Cancel queued message edit');
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel).toBe('Save queued message edit');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel).toBe('Retry queued message');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel).toBe('Send Next');
     expect(getMessageQueuePanelCopyState()).toBe(MESSAGE_QUEUE_PANEL_PRESENTATION);

@@ -246,6 +246,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               onPress={handleCancelEdit}
               activeOpacity={editSurface.buttonPressedOpacity}
               accessibilityRole={editSurface.buttonAccessibilityRole}
+              accessibilityLabel={queuePanelCopy.actions.cancelAccessibilityLabel}
             >
               <Text style={styles.buttonText}>{queuePanelCopy.actions.cancelLabel}</Text>
             </TouchableOpacity>
@@ -255,6 +256,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               disabled={!editText.trim()}
               activeOpacity={editSurface.buttonPressedOpacity}
               accessibilityRole={editSurface.buttonAccessibilityRole}
+              accessibilityLabel={queuePanelCopy.actions.saveAccessibilityLabel}
+              accessibilityState={{ disabled: !editText.trim() }}
             >
               <Text style={styles.saveButtonText}>{queuePanelCopy.actions.saveLabel}</Text>
             </TouchableOpacity>

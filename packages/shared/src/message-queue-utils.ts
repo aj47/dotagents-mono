@@ -142,7 +142,9 @@ export const MESSAGE_QUEUE_PANEL_PRESENTATION = {
   },
   actions: {
     cancelLabel: 'Cancel',
+    cancelAccessibilityLabel: 'Cancel queued message edit',
     saveLabel: 'Save',
+    saveAccessibilityLabel: 'Save queued message edit',
     retryLabel: 'Retry',
     retryAccessibilityLabel: 'Retry queued message',
     retryPendingAccessibilityLabel: 'Retrying queued message',
