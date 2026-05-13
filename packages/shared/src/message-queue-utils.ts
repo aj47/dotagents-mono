@@ -683,6 +683,20 @@ export interface MessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | 'st
   items: MessageQueuePanelRenderItem<T>[];
 }
 
+export interface MessageQueuePanelMobileRenderStateInput<T extends Pick<QueuedMessage, 'id' | 'status'>>
+  extends MessageQueuePanelStateInput {
+  messages: readonly T[];
+  colors: MessageQueuePanelMobileSurfaceColorPalette;
+}
+
+export interface MessageQueuePanelMobileRenderState<T extends Pick<QueuedMessage, 'id' | 'status'>> {
+  panel: MessageQueuePanelState<T>;
+  surface: MessageQueuePanelMobileSurfaceRenderState['surface'];
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors'];
+  icons: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -731,6 +745,28 @@ export function getMessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | '
   };
 }
 
+export function getMessageQueuePanelMobileRenderState<T extends Pick<QueuedMessage, 'id' | 'status'>>({
+  messages,
+  colors,
+  isPaused,
+  isListCollapsed,
+  canProcessNext,
+}: MessageQueuePanelMobileRenderStateInput<T>): MessageQueuePanelMobileRenderState<T> {
+  const surfaceState = getMessageQueuePanelMobileSurfaceRenderState({ colors });
+
+  return {
+    panel: getMessageQueuePanelState(messages, {
+      isPaused,
+      isListCollapsed,
+      canProcessNext,
+    }),
+    surface: surfaceState.surface,
+    colors: surfaceState.colors,
+    icons: getMessageQueuePanelMobileIconState(),
+    copy: getMessageQueuePanelCopyState(),
+  };
+}
+
 export type QueuedMessageItemPresentation = {
   isLongMessage: boolean;
   isFailed: boolean;
@@ -740,6 +776,30 @@ export type QueuedMessageItemPresentation = {
   statusLabel: string;
   expansionLabel: string;
   errorText?: string;
+}
+
+export interface QueuedMessageItemMobileRenderStateInput {
+  message: Pick<QueuedMessage, 'status' | 'addedToHistory' | 'text' | 'errorMessage'>;
+  isExpanded: boolean;
+  colors: MessageQueuePanelMobileSurfaceColorPalette;
+}
+
+export interface QueuedMessageItemMobileRenderState {
+  presentation: QueuedMessageItemPresentation;
+  surface: {
+    item: MessageQueuePanelMobileSurfaceRenderState['surface']['item'];
+    actions: MessageQueuePanelMobileSurfaceRenderState['surface']['actions'];
+    edit: MessageQueuePanelMobileSurfaceRenderState['surface']['edit'];
+  };
+  colors: {
+    item: MessageQueuePanelMobileSurfaceRenderState['colors']['item'];
+    actions: MessageQueuePanelMobileSurfaceRenderState['colors']['actions'];
+    edit: MessageQueuePanelMobileSurfaceRenderState['colors']['edit'];
+  };
+  icons: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+  statusColor: string;
+  statusMetaColor: string;
 }
 
 export function getQueuedMessageItemPresentation(
@@ -759,6 +819,42 @@ export function getQueuedMessageItemPresentation(
     errorText: isFailed && message.errorMessage
       ? formatQueuedMessageError(message.errorMessage)
       : undefined,
+  };
+}
+
+export function getQueuedMessageItemMobileRenderState({
+  message,
+  isExpanded,
+  colors,
+}: QueuedMessageItemMobileRenderStateInput): QueuedMessageItemMobileRenderState {
+  const presentation = getQueuedMessageItemPresentation(message, isExpanded);
+  const surfaceState = getMessageQueuePanelMobileSurfaceRenderState({ colors });
+  const itemColors = surfaceState.colors.item;
+
+  return {
+    presentation,
+    surface: {
+      item: surfaceState.surface.item,
+      actions: surfaceState.surface.actions,
+      edit: surfaceState.surface.edit,
+    },
+    colors: {
+      item: itemColors,
+      actions: surfaceState.colors.actions,
+      edit: surfaceState.colors.edit,
+    },
+    icons: getMessageQueuePanelMobileIconState(),
+    copy: getMessageQueuePanelCopyState(),
+    statusColor: presentation.isFailed
+      ? itemColors.failedColor
+      : presentation.isProcessing
+        ? itemColors.processingColor
+        : itemColors.messageColor,
+    statusMetaColor: presentation.isFailed
+      ? itemColors.failedMetaColor
+      : presentation.isProcessing
+        ? itemColors.processingMetaColor
+        : itemColors.metaColor,
   };
 }
 

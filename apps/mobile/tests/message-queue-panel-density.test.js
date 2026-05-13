@@ -9,28 +9,31 @@ const source = fs.readFileSync(
 );
 
 test('mobile queued-message rows use text-first actions with explicit accessibility labels', () => {
-  assert.match(source, /getMessageQueuePanelCopyState/);
-  assert.match(source, /const mobileMessageQueuePanelCopy = getMessageQueuePanelCopyState\(\);/);
-  assert.match(source, /<Text style=\{styles\.retryActionText\}>\{mobileMessageQueuePanelCopy\.actions\.retryLabel\}<\/Text>/);
-  assert.match(source, /<Text style=\{styles\.editActionText\}>\{mobileMessageQueuePanelCopy\.actions\.editLabel\}<\/Text>/);
-  assert.match(source, /<Text style=\{styles\.removeActionText\}>\{mobileMessageQueuePanelCopy\.actions\.removeLabel\}<\/Text>/);
-  assert.match(source, /accessibilityLabel=\{mobileMessageQueuePanelCopy\.actions\.retryAccessibilityLabel\}/);
-  assert.match(source, /accessibilityLabel=\{mobileMessageQueuePanelCopy\.actions\.editAccessibilityLabel\}/);
-  assert.match(source, /accessibilityLabel=\{mobileMessageQueuePanelCopy\.actions\.removeAccessibilityLabel\}/);
+  assert.match(source, /getQueuedMessageItemMobileRenderState/);
+  assert.match(source, /const queuePanelCopy = queuedMessageRenderState\.copy;/);
+  assert.match(source, /<Text style=\{styles\.retryActionText\}>\{queuePanelCopy\.actions\.retryLabel\}<\/Text>/);
+  assert.match(source, /<Text style=\{styles\.editActionText\}>\{queuePanelCopy\.actions\.editLabel\}<\/Text>/);
+  assert.match(source, /<Text style=\{styles\.removeActionText\}>\{queuePanelCopy\.actions\.removeLabel\}<\/Text>/);
+  assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.retryAccessibilityLabel\}/);
+  assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.editAccessibilityLabel\}/);
+  assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.removeAccessibilityLabel\}/);
+  assert.doesNotMatch(source, /getMessageQueuePanelCopyState/);
+  assert.doesNotMatch(source, /mobileMessageQueuePanelCopy/);
   assert.doesNotMatch(source, /<Ionicons name="refresh" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
   assert.doesNotMatch(source, /<Ionicons name="pencil" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
   assert.doesNotMatch(source, /<Ionicons name="close" size=\{16\} color=\{theme\.colors\.foreground\} \/>/);
 });
 
 test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny side icon rail', () => {
-  assert.match(source, /getMessageQueuePanelMobileSurfaceRenderState/);
+  assert.match(source, /getQueuedMessageItemMobileRenderState/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceState/);
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
-  assert.match(source, /const queuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(source, /const actionSurface = queuePanelStyleState\.surface\.actions;/);
+  assert.match(source, /const queuedMessageRenderState = getQueuedMessageItemMobileRenderState\(\{[\s\S]*?message,[\s\S]*?isExpanded,[\s\S]*?colors: theme\.colors,/);
+  assert.match(source, /const actionSurface = queuedMessageRenderState\.surface\.actions;/);
   assert.match(source, /actions:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.flexDirection,[\s\S]*?flexWrap:\s*actionSurface\.flexWrap,[\s\S]*?alignItems:\s*actionSurface\.alignItems,[\s\S]*?gap:\s*actionSurface\.gap,[\s\S]*?marginTop:\s*actionSurface\.marginTop,/);
   assert.match(source, /actionButton:\s*\{[\s\S]*?alignSelf:\s*actionSurface\.buttonAlignSelf,[\s\S]*?minHeight:\s*actionSurface\.buttonMinHeight,[\s\S]*?paddingHorizontal:\s*actionSurface\.buttonPaddingHorizontal,[\s\S]*?paddingVertical:\s*actionSurface\.buttonPaddingVertical,[\s\S]*?borderRadius:\s*actionSurface\.buttonBorderRadius,[\s\S]*?justifyContent:\s*actionSurface\.buttonJustifyContent,/);
   assert.match(source, /hitSlop=\{actionSurface\.hitSlop\}/);
+  assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);
   assert.doesNotMatch(source, /actions:\s*\{\s*flexDirection:\s*'row',\s*flexWrap:\s*'wrap',/);
   assert.doesNotMatch(source, /actionButton:\s*\{\s*alignSelf:\s*'flex-start',/);
 });
@@ -38,26 +41,25 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
 test('mobile queue panel exposes an explicit send-next action for queued drafts', () => {
   assert.match(source, /onProcessNext\?: \(\) => void;/);
   assert.match(source, /canProcessNext\?: boolean;/);
-  assert.match(source, /accessibilityLabel=\{mobileMessageQueuePanelCopy\.actions\.sendNextAccessibilityLabel\}/);
-  assert.match(source, /<Text style=\{styles\.processButtonText\}>\{mobileMessageQueuePanelCopy\.actions\.sendNextLabel\}<\/Text>/);
+  assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.sendNextAccessibilityLabel\}/);
+  assert.match(source, /<Text style=\{styles\.processButtonText\}>\{queuePanelCopy\.actions\.sendNextLabel\}<\/Text>/);
 });
 
 test('mobile queue panel mirrors desktop paused queue chrome with shared copy', () => {
   assert.match(source, /isPaused\?: boolean;/);
   assert.match(source, /onPause\?: \(\) => void;/);
   assert.match(source, /onResume\?: \(\) => void;/);
-  assert.match(source, /getMessageQueuePanelState/);
-  assert.match(source, /const queuePanelState = getMessageQueuePanelState\(messages, \{[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
+  assert.match(source, /getMessageQueuePanelMobileRenderState/);
+  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors: theme\.colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
+  assert.match(source, /const queuePanelState = queuePanelRenderState\.panel;/);
   assert.match(source, /const panelStatusColors = panelColors\.status\[queuePanelState\.statusKey\];/);
   assert.match(source, /\{queuePanelState\.compactLabel\}/);
   assert.match(source, /\{queuePanelState\.title\}/);
   assert.match(source, /name=\{queuePanelState\.statusIconName\}/);
   assert.match(source, /formatQueuedMessageMetaLabel\(message\.createdAt, statusLabel\)/);
-  assert.match(source, /mobileMessageQueuePanelCopy\.actions\.pauseLabel/);
-  assert.match(source, /mobileMessageQueuePanelCopy\.actions\.resumeLabel/);
-  assert.match(source, /getMessageQueuePanelMobileIconState/);
-  assert.match(source, /const mobileMessageQueuePanelIcons = getMessageQueuePanelMobileIconState\(\);/);
-  assert.match(source, /const queuePanelIcons = mobileMessageQueuePanelIcons;/);
+  assert.match(source, /queuePanelCopy\.actions\.pauseLabel/);
+  assert.match(source, /queuePanelCopy\.actions\.resumeLabel/);
+  assert.match(source, /const queuePanelIcons = queuePanelRenderState\.icons;/);
   assert.match(source, /name=\{queuePanelIcons\.failedName\}/);
   assert.match(source, /name=\{isExpanded \? queuePanelIcons\.collapseMessageName : queuePanelIcons\.expandMessageName\}/);
   assert.match(source, /name=\{queuePanelIcons\.resumeName\}/);
@@ -66,8 +68,10 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /name=\{queuePanelIcons\.clearName\}/);
   assert.match(source, /name=\{queuePanelState\.toggleIconName\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelState\.listToggleLabel\}/);
-  assert.match(source, /mobileMessageQueuePanelCopy\.pausedNotice/);
+  assert.match(source, /queuePanelCopy\.pausedNotice/);
   assert.match(source, /panelSurface\.pausedNoticeFontSize/);
+  assert.doesNotMatch(source, /getMessageQueuePanelState\(messages/);
+  assert.doesNotMatch(source, /getMessageQueuePanelMobileIconState\(\)/);
   assert.doesNotMatch(source, /formatMessageQueueCompactLabel\(messages\.length, isPaused\)/);
   assert.doesNotMatch(source, /formatMessageQueuePanelTitle\(messages\.length, isPaused\)/);
   assert.doesNotMatch(source, /name="alert-circle"/);
@@ -83,9 +87,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
 });
 
 test('mobile queue panel uses shared queued-message eligibility rules', () => {
-  assert.match(source, /getMessageQueuePanelCopyState/);
-  assert.match(source, /getMessageQueuePanelMobileSurfaceRenderState/);
-  assert.match(source, /getMessageQueuePanelState/);
+  assert.match(source, /getMessageQueuePanelMobileRenderState/);
+  assert.match(source, /getQueuedMessageItemMobileRenderState/);
   assert.match(source, /queuePanelState\.hasProcessingMessage/);
   assert.match(source, /queuePanelState\.canClear/);
   assert.match(source, /queuePanelState\.canPause/);
@@ -96,8 +99,7 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /queuePanelState\.shouldRenderList/);
   assert.match(source, /queuePanelState\.items\.map/);
   assert.match(source, /item\.shouldRenderSeparator/);
-  assert.match(source, /getQueuedMessageItemPresentation\(message, isExpanded\)/);
-  assert.match(source, /messagePresentation/);
+  assert.match(source, /const messagePresentation = queuedMessageRenderState\.presentation;/);
   assert.match(source, /statusLabel,/);
   assert.match(source, /errorText,/);
 
@@ -106,6 +108,7 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.doesNotMatch(source, /formatMessageQueueCompactLabel\(messages\.length, isPaused\)/);
   assert.doesNotMatch(source, /formatMessageQueuePanelTitle\(messages\.length, isPaused\)/);
   assert.doesNotMatch(source, /getMessageQueueListToggleLabel\(isListCollapsed\)/);
+  assert.doesNotMatch(source, /getQueuedMessageItemPresentation\(message, isExpanded\)/);
   assert.doesNotMatch(source, /hasProcessingQueuedMessage\(messages\)/);
   assert.doesNotMatch(source, /message\.status === ['"]processing['"]/);
   assert.doesNotMatch(source, /message\.status === ['"]failed['"]/);
@@ -118,16 +121,16 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
 test('mobile queue panel reads compact panel sizing from shared surface tokens', () => {
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceColors/);
-  assert.match(source, /const queuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(source, /const queuePanelColors = queuePanelStyleState\.colors;/);
-  assert.match(source, /const itemSurface = queuePanelStyleState\.surface\.item;/);
-  assert.match(source, /const editSurface = queuePanelStyleState\.surface\.edit;/);
-  assert.match(source, /const panelSurface = queuePanelStyleState\.surface\.panel;/);
-  assert.match(source, /const itemColors = queuePanelColors\.item;/);
-  assert.match(source, /const actionColors = queuePanelColors\.actions;/);
-  assert.match(source, /const editColors = queuePanelColors\.edit;/);
+  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?colors: theme\.colors,/);
+  assert.match(source, /const queuePanelColors = queuePanelRenderState\.colors;/);
+  assert.match(source, /const itemSurface = queuedMessageRenderState\.surface\.item;/);
+  assert.match(source, /const editSurface = queuedMessageRenderState\.surface\.edit;/);
+  assert.match(source, /const panelSurface = queuePanelRenderState\.surface\.panel;/);
+  assert.match(source, /const itemColors = queuedMessageRenderState\.colors\.item;/);
+  assert.match(source, /const actionColors = queuedMessageRenderState\.colors\.actions;/);
+  assert.match(source, /const editColors = queuedMessageRenderState\.colors\.edit;/);
   assert.match(source, /const panelColors = queuePanelColors\.panel;/);
-  assert.match(source, /const statusColor = isFailed[\s\S]*?itemColors\.failedColor[\s\S]*?itemColors\.processingColor[\s\S]*?itemColors\.messageColor;/);
+  assert.match(source, /const statusColor = queuedMessageRenderState\.statusColor;/);
   assert.match(source, /container:\s*\{[\s\S]*?paddingHorizontal:\s*itemSurface\.paddingHorizontal,[\s\S]*?paddingVertical:\s*itemSurface\.paddingVertical,/);
   assert.match(source, /row:\s*\{[\s\S]*?flexDirection:\s*itemSurface\.rowFlexDirection,[\s\S]*?alignItems:\s*itemSurface\.rowAlignItems,[\s\S]*?gap:\s*itemSurface\.rowGap,/);
   assert.match(source, /content:\s*\{[\s\S]*?flex:\s*itemSurface\.contentFlex,[\s\S]*?minWidth:\s*itemSurface\.contentMinWidth,/);
@@ -135,7 +138,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /messageText:\s*\{[\s\S]*?fontSize:\s*itemSurface\.message\.fontSize,[\s\S]*?color:\s*statusColor/);
   assert.match(source, /numberOfLines=\{isExpanded \? undefined : itemSurface\.message\.collapsedNumberOfLines\}/);
   assert.match(source, /metaRow:\s*\{[\s\S]*?flexDirection:\s*itemSurface\.metaFlexDirection,[\s\S]*?alignItems:\s*itemSurface\.metaAlignItems,[\s\S]*?flexWrap:\s*itemSurface\.metaFlexWrap,/);
-  assert.match(source, /const statusMetaColor = isFailed[\s\S]*?itemColors\.failedMetaColor[\s\S]*?itemColors\.processingMetaColor[\s\S]*?itemColors\.metaColor;/);
+  assert.match(source, /const statusMetaColor = queuedMessageRenderState\.statusMetaColor;/);
   assert.match(source, /metaText:\s*\{[\s\S]*?color:\s*statusMetaColor/);
   assert.match(source, /expandButton:\s*\{[\s\S]*?flexDirection:\s*itemSurface\.expandButtonFlexDirection,[\s\S]*?alignItems:\s*itemSurface\.expandButtonAlignItems,/);
   assert.match(source, /borderColor:\s*actionColors\.buttonBorderColor/);
@@ -163,6 +166,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /compactText:\s*\{[\s\S]*?flex:\s*panelSurface\.compactTextFlex,[\s\S]*?fontSize:\s*panelSurface\.compactFontSize,/);
   assert.doesNotMatch(source, /import \{ hexToRgba \} from '\.\/theme';/);
   assert.doesNotMatch(source, /hexToRgba\(/);
+  assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);
   assert.doesNotMatch(source, /theme\.colors\[[^\]]+\]/);
   assert.doesNotMatch(source, /row:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'flex-start',/);
   assert.doesNotMatch(source, /content:\s*\{\s*flex:\s*1,\s*minWidth:\s*0,/);

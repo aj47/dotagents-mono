@@ -17,17 +17,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   formatQueuedMessageMetaLabel,
-  getMessageQueuePanelCopyState,
-  getMessageQueuePanelState,
-  getMessageQueuePanelMobileIconState,
-  getMessageQueuePanelMobileSurfaceRenderState,
-  getQueuedMessageItemPresentation,
+  getMessageQueuePanelMobileRenderState,
+  getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
 import { useTheme } from './ThemeProvider';
-
-const mobileMessageQueuePanelCopy = getMessageQueuePanelCopyState();
-const mobileMessageQueuePanelIcons = getMessageQueuePanelMobileIconState();
 
 interface MessageQueuePanelProps {
   conversationId: string;
@@ -56,7 +50,12 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
-  const messagePresentation = getQueuedMessageItemPresentation(message, isExpanded);
+  const queuedMessageRenderState = getQueuedMessageItemMobileRenderState({
+    message,
+    isExpanded,
+    colors: theme.colors,
+  });
+  const messagePresentation = queuedMessageRenderState.presentation;
   const {
     isLongMessage,
     isFailed,
@@ -67,27 +66,16 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     expansionLabel,
     errorText,
   } = messagePresentation;
-  const queuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
-  const itemSurface = queuePanelStyleState.surface.item;
-  const actionSurface = queuePanelStyleState.surface.actions;
-  const editSurface = queuePanelStyleState.surface.edit;
-  const queuePanelColors = queuePanelStyleState.colors;
-  const itemColors = queuePanelColors.item;
-  const actionColors = queuePanelColors.actions;
-  const editColors = queuePanelColors.edit;
-  const queuePanelIcons = mobileMessageQueuePanelIcons;
-  const statusColor = isFailed
-    ? itemColors.failedColor
-    : isProcessing
-    ? itemColors.processingColor
-    : itemColors.messageColor;
-  const statusMetaColor = isFailed
-    ? itemColors.failedMetaColor
-    : isProcessing
-    ? itemColors.processingMetaColor
-    : itemColors.metaColor;
+  const itemSurface = queuedMessageRenderState.surface.item;
+  const actionSurface = queuedMessageRenderState.surface.actions;
+  const editSurface = queuedMessageRenderState.surface.edit;
+  const itemColors = queuedMessageRenderState.colors.item;
+  const actionColors = queuedMessageRenderState.colors.actions;
+  const editColors = queuedMessageRenderState.colors.edit;
+  const queuePanelIcons = queuedMessageRenderState.icons;
+  const queuePanelCopy = queuedMessageRenderState.copy;
+  const statusColor = queuedMessageRenderState.statusColor;
+  const statusMetaColor = queuedMessageRenderState.statusMetaColor;
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -254,14 +242,14 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
             >
-              <Text style={styles.buttonText}>{mobileMessageQueuePanelCopy.actions.cancelLabel}</Text>
+              <Text style={styles.buttonText}>{queuePanelCopy.actions.cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
               disabled={!editText.trim()}
             >
-              <Text style={styles.saveButtonText}>{mobileMessageQueuePanelCopy.actions.saveLabel}</Text>
+              <Text style={styles.saveButtonText}>{queuePanelCopy.actions.saveLabel}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -315,10 +303,10 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   style={styles.actionButton}
                   onPress={onRetry}
                   accessibilityRole="button"
-                  accessibilityLabel={mobileMessageQueuePanelCopy.actions.retryAccessibilityLabel}
+                  accessibilityLabel={queuePanelCopy.actions.retryAccessibilityLabel}
                   hitSlop={actionSurface.hitSlop}
                 >
-                  <Text style={styles.retryActionText}>{mobileMessageQueuePanelCopy.actions.retryLabel}</Text>
+                  <Text style={styles.retryActionText}>{queuePanelCopy.actions.retryLabel}</Text>
                 </TouchableOpacity>
               )}
               {canEditMessage && (
@@ -326,20 +314,20 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   style={styles.actionButton}
                   onPress={() => setIsEditing(true)}
                   accessibilityRole="button"
-                  accessibilityLabel={mobileMessageQueuePanelCopy.actions.editAccessibilityLabel}
+                  accessibilityLabel={queuePanelCopy.actions.editAccessibilityLabel}
                   hitSlop={actionSurface.hitSlop}
                 >
-                  <Text style={styles.editActionText}>{mobileMessageQueuePanelCopy.actions.editLabel}</Text>
+                  <Text style={styles.editActionText}>{queuePanelCopy.actions.editLabel}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={onRemove}
                 accessibilityRole="button"
-                accessibilityLabel={mobileMessageQueuePanelCopy.actions.removeAccessibilityLabel}
+                accessibilityLabel={queuePanelCopy.actions.removeAccessibilityLabel}
                 hitSlop={actionSurface.hitSlop}
               >
-                <Text style={styles.removeActionText}>{mobileMessageQueuePanelCopy.actions.removeLabel}</Text>
+                <Text style={styles.removeActionText}>{queuePanelCopy.actions.removeLabel}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -368,19 +356,20 @@ export function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
-  const queuePanelState = getMessageQueuePanelState(messages, {
+  const queuePanelRenderState = getMessageQueuePanelMobileRenderState({
+    messages,
+    colors: theme.colors,
     isPaused,
     isListCollapsed,
     canProcessNext,
   });
-  const queuePanelStyleState = getMessageQueuePanelMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
-  const panelSurface = queuePanelStyleState.surface.panel;
-  const queuePanelColors = queuePanelStyleState.colors;
+  const queuePanelState = queuePanelRenderState.panel;
+  const panelSurface = queuePanelRenderState.surface.panel;
+  const queuePanelColors = queuePanelRenderState.colors;
   const panelColors = queuePanelColors.panel;
   const panelStatusColors = panelColors.status[queuePanelState.statusKey];
-  const queuePanelIcons = mobileMessageQueuePanelIcons;
+  const queuePanelIcons = queuePanelRenderState.icons;
+  const queuePanelCopy = queuePanelRenderState.copy;
 
   useEffect(() => {
     setIsListCollapsed(false);
@@ -506,7 +495,7 @@ export function MessageQueuePanel({
             style={styles.compactAction}
             onPress={onResume}
             accessibilityRole="button"
-            accessibilityLabel={mobileMessageQueuePanelCopy.actions.resumeTitle}
+            accessibilityLabel={queuePanelCopy.actions.resumeTitle}
           >
             <Ionicons
               name={queuePanelIcons.resumeName}
@@ -521,7 +510,7 @@ export function MessageQueuePanel({
             onPress={onPause}
             disabled={!queuePanelState.canPause}
             accessibilityRole="button"
-            accessibilityLabel={mobileMessageQueuePanelCopy.actions.pauseTitle}
+            accessibilityLabel={queuePanelCopy.actions.pauseTitle}
           >
             <Ionicons
               name={queuePanelIcons.pauseName}
@@ -535,7 +524,7 @@ export function MessageQueuePanel({
             style={styles.compactAction}
             onPress={onProcessNext}
             accessibilityRole="button"
-            accessibilityLabel={mobileMessageQueuePanelCopy.actions.sendNextAccessibilityLabel}
+            accessibilityLabel={queuePanelCopy.actions.sendNextAccessibilityLabel}
           >
             <Ionicons
               name={queuePanelIcons.sendNextName}
@@ -549,7 +538,7 @@ export function MessageQueuePanel({
           onPress={onClear}
           disabled={!queuePanelState.canClear}
           accessibilityRole="button"
-          accessibilityLabel={mobileMessageQueuePanelCopy.actions.clearQueueTitle}
+          accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
         >
           <Ionicons
             name={queuePanelIcons.clearName}
@@ -576,9 +565,9 @@ export function MessageQueuePanel({
               style={styles.processButton}
               onPress={onResume}
               accessibilityRole="button"
-              accessibilityLabel={mobileMessageQueuePanelCopy.actions.resumeTitle}
+              accessibilityLabel={queuePanelCopy.actions.resumeTitle}
             >
-              <Text style={styles.queueControlText}>{mobileMessageQueuePanelCopy.actions.resumeLabel}</Text>
+              <Text style={styles.queueControlText}>{queuePanelCopy.actions.resumeLabel}</Text>
             </TouchableOpacity>
           ) : null}
           {!isPaused && onPause ? (
@@ -587,10 +576,10 @@ export function MessageQueuePanel({
               onPress={onPause}
               disabled={!queuePanelState.canPause}
               accessibilityRole="button"
-              accessibilityLabel={mobileMessageQueuePanelCopy.actions.pauseTitle}
+              accessibilityLabel={queuePanelCopy.actions.pauseTitle}
             >
               <Text style={[styles.queueControlText, !queuePanelState.canPause && styles.queueControlTextDisabled]}>
-                {mobileMessageQueuePanelCopy.actions.pauseLabel}
+                {queuePanelCopy.actions.pauseLabel}
               </Text>
             </TouchableOpacity>
           ) : null}
@@ -599,9 +588,9 @@ export function MessageQueuePanel({
               style={styles.processButton}
               onPress={onProcessNext}
               accessibilityRole="button"
-              accessibilityLabel={mobileMessageQueuePanelCopy.actions.sendNextAccessibilityLabel}
+              accessibilityLabel={queuePanelCopy.actions.sendNextAccessibilityLabel}
             >
-              <Text style={styles.processButtonText}>{mobileMessageQueuePanelCopy.actions.sendNextLabel}</Text>
+              <Text style={styles.processButtonText}>{queuePanelCopy.actions.sendNextLabel}</Text>
             </TouchableOpacity>
           ) : null}
           {queuePanelState.shouldRenderClear && (
@@ -610,9 +599,9 @@ export function MessageQueuePanel({
               onPress={onClear}
               disabled={!queuePanelState.canClear}
               accessibilityRole="button"
-              accessibilityLabel={mobileMessageQueuePanelCopy.actions.clearQueueTitle}
+              accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
             >
-              <Text style={styles.clearButtonText}>{mobileMessageQueuePanelCopy.actions.clearAllLabel}</Text>
+              <Text style={styles.clearButtonText}>{queuePanelCopy.actions.clearAllLabel}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -632,7 +621,7 @@ export function MessageQueuePanel({
       </View>
       {queuePanelState.shouldRenderPausedNotice && (
         <View style={styles.pausedNotice}>
-          <Text style={styles.pausedNoticeText}>{mobileMessageQueuePanelCopy.pausedNotice}</Text>
+          <Text style={styles.pausedNoticeText}>{queuePanelCopy.pausedNotice}</Text>
         </View>
       )}
       {queuePanelState.shouldRenderList && (

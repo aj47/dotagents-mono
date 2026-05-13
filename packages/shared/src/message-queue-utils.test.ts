@@ -21,6 +21,7 @@ import {
   getMessageQueuePanelCopyState,
   getMessageQueuePanelDesktopSurfaceState,
   getMessageQueuePanelMobileIconState,
+  getMessageQueuePanelMobileRenderState,
   getMessageQueuePanelMobileSurfaceColors,
   getMessageQueuePanelMobileSurfaceRenderState,
   getMessageQueuePanelMobileSurfaceState,
@@ -28,6 +29,7 @@ import {
   getMessageQueuePanelState,
   getOperatorMessageQueueTotalMessageCount,
   getQueuedMessageItemPresentation,
+  getQueuedMessageItemMobileRenderState,
   getQueuedMessages,
   getQueuedMessageStatusLabel,
   getQueuedMessageExpansionLabel,
@@ -63,6 +65,18 @@ const makeMessage = (id: string, overrides: Partial<ReturnType<typeof buildQueue
     }),
     ...overrides,
   });
+
+const mobileMessageQueuePalette = {
+  background: '#ffffff',
+  border: '#d4d4d4',
+  destructive: '#dc2626',
+  foreground: '#171717',
+  mutedForeground: '#737373',
+  primary: '#2563eb',
+  primaryForeground: '#ffffff',
+  success: '#16a34a',
+  warning: '#f59e0b',
+};
 
 describe('message-queue-utils', () => {
   it('enqueues, lists, peeks, and removes messages by conversation', () => {
@@ -282,17 +296,7 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.status.paused.headerBackgroundAlpha).toBe(0.13);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.pausedNoticeFontSize).toBe(11);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.pausedNoticeBackgroundAlpha).toBe(0.09);
-    expect(getMessageQueuePanelMobileSurfaceColors({
-      background: '#ffffff',
-      border: '#d4d4d4',
-      destructive: '#dc2626',
-      foreground: '#171717',
-      mutedForeground: '#737373',
-      primary: '#2563eb',
-      primaryForeground: '#ffffff',
-      success: '#16a34a',
-      warning: '#f59e0b',
-    })).toEqual({
+    expect(getMessageQueuePanelMobileSurfaceColors(mobileMessageQueuePalette)).toEqual({
       item: {
         failedBackgroundColor: 'rgba(220, 38, 38, 0.08)',
         processingBackgroundColor: 'rgba(37, 99, 235, 0.08)',
@@ -355,17 +359,7 @@ describe('message-queue-utils', () => {
       },
     });
     expect(getMessageQueuePanelMobileSurfaceRenderState({
-      colors: {
-        background: '#ffffff',
-        border: '#d4d4d4',
-        destructive: '#dc2626',
-        foreground: '#171717',
-        mutedForeground: '#737373',
-        primary: '#2563eb',
-        primaryForeground: '#ffffff',
-        success: '#16a34a',
-        warning: '#f59e0b',
-      },
+      colors: mobileMessageQueuePalette,
     })).toMatchObject({
       surface: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile,
       colors: {
@@ -473,12 +467,45 @@ describe('message-queue-utils', () => {
       shouldRenderPausedNotice: false,
       shouldRenderList: true,
     });
+    expect(getMessageQueuePanelMobileRenderState({
+      messages: [pendingMessage, failedMessage],
+      colors: mobileMessageQueuePalette,
+      isPaused: true,
+      isListCollapsed: true,
+      canProcessNext: true,
+    })).toMatchObject({
+      panel: {
+        messageCount: 2,
+        isPaused: true,
+        statusKey: 'paused',
+        title: 'Paused Messages (2)',
+        toggleIconName: 'chevron-down',
+      },
+      surface: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile,
+      colors: {
+        item: {
+          failedColor: '#dc2626',
+          messageColor: '#171717',
+        },
+        panel: {
+          titleColor: '#171717',
+          status: {
+            paused: {
+              borderColor: 'rgba(245, 158, 11, 0.44)',
+            },
+          },
+        },
+      },
+      icons: MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon,
+      copy: MESSAGE_QUEUE_PANEL_PRESENTATION,
+    });
 
-    expect(getQueuedMessageItemPresentation(makeMessage('msg-1', {
+    const longFailedMessage = makeMessage('msg-1', {
       status: 'failed',
       text: 'x'.repeat(101),
       errorMessage: 'timeout',
-    }), false)).toMatchObject({
+    });
+    expect(getQueuedMessageItemPresentation(longFailedMessage, false)).toMatchObject({
       isLongMessage: true,
       isFailed: true,
       isProcessing: false,
@@ -487,6 +514,37 @@ describe('message-queue-utils', () => {
       statusLabel: 'Failed',
       expansionLabel: 'More',
       errorText: 'Error: timeout',
+    });
+    expect(getQueuedMessageItemMobileRenderState({
+      message: longFailedMessage,
+      isExpanded: false,
+      colors: mobileMessageQueuePalette,
+    })).toMatchObject({
+      presentation: {
+        isLongMessage: true,
+        isFailed: true,
+        statusLabel: 'Failed',
+        errorText: 'Error: timeout',
+      },
+      surface: {
+        item: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item,
+        actions: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions,
+        edit: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit,
+      },
+      colors: {
+        item: {
+          failedColor: '#dc2626',
+          failedMetaColor: 'rgba(220, 38, 38, 0.7)',
+        },
+        actions: {
+          retryTextColor: '#2563eb',
+          removeTextColor: '#dc2626',
+        },
+      },
+      icons: MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon,
+      copy: MESSAGE_QUEUE_PANEL_PRESENTATION,
+      statusColor: '#dc2626',
+      statusMetaColor: 'rgba(220, 38, 38, 0.7)',
     });
   });
 
