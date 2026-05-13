@@ -1452,7 +1452,7 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 test('uses shared media sanitization for collapsed mobile message previews', () => {
   assert.match(screenSource, /getChatMessageMobileRenderState,/);
   assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,/);
-  assert.match(screenSource, /collapsed: \{\s+renderState: messageRenderState\.collapsedPreview,/);
+  assert.match(screenSource, /collapsed: createChatMessageCollapsedPreviewProps\(\{\s+renderState: messageRenderState\.collapsedPreview,/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+renderState=\{collapsed\.renderState\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.text\}/);
   assert.doesNotMatch(screenSource, /const getCollapsedMessagePreview = \(content: string\) =>/);
@@ -2616,7 +2616,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /messageExpansionAction\.accessibilityLabel \?\?\s+messageExpansionAction\.label \?\?\s+mobileMessageActionCopy\.expansion\.messageName/);
   assert.equal((screenSource.match(/accessibilityLabel=\{messageRenderState\.expansion\.accessibilityLabel\}/g) ?? []).length, 0);
   assert.doesNotMatch(screenSource, /accessibilityLabel: messageRenderState\.expansion\.accessibilityLabel/);
-  assert.match(screenSource, /const messageCollapsedPreviewActionState = messageRenderState\.collapsedPreviewAction;/);
+  assert.doesNotMatch(screenSource, /const messageCollapsedPreviewActionState = messageRenderState\.collapsedPreviewAction;/);
+  assert.match(screenSource, /createChatMessageCollapsedPreviewProps,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps/);
+  assert.match(chatMessageChromeSource, /onPress: actionState\.canToggle \? onToggle : undefined,/);
   assert.match(screenSource, /messageExpandButton:\s*\{[\s\S]*?alignSelf:\s*mobileMessageActionButton\.alignSelf,[\s\S]*?width:\s*mobileMessageActionButton\.width,[\s\S]*?backgroundColor:\s*mobileMessageActionButtonColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageActionButton\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageActionButton\.justifyContent,[\s\S]*?flexShrink:\s*mobileMessageActionButton\.flexShrink/);
   assert.doesNotMatch(screenSource, /messageExpandButtonText:/);
   assert.doesNotMatch(screenSource, /messageBranchButtonText:/);
@@ -2757,8 +2760,9 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(screenSource, /messageContentBody:\s*\{[\s\S]*?flex:\s*mobileMessageContentLayout\.body\.flex,[\s\S]*?minWidth:\s*mobileMessageContentLayout\.body\.minWidth/);
   assert.doesNotMatch(screenSource, /messageSurface\.contentRow\.(flexDirection|alignItems|gap|width)/);
   assert.doesNotMatch(screenSource, /messageSurface\.contentBody\.(flex|minWidth)/);
-  assert.match(screenSource, /const messageCollapsedPreviewActionState = messageRenderState\.collapsedPreviewAction;/);
-  assert.match(screenSource, /collapsed: \{\s+renderState: messageRenderState\.collapsedPreview,\s+actionState: messageCollapsedPreviewActionState,\s+onPress: messageCollapsedPreviewActionState\.canToggle\s+\? \(\) => toggleMessageExpansion\(i\)\s+: undefined,/);
+  assert.doesNotMatch(screenSource, /const messageCollapsedPreviewActionState = messageRenderState\.collapsedPreviewAction;/);
+  assert.match(screenSource, /collapsed: createChatMessageCollapsedPreviewProps\(\{\s+renderState: messageRenderState\.collapsedPreview,\s+actionState: messageRenderState\.collapsedPreviewAction,\s+onToggle: \(\) => toggleMessageExpansion\(i\),\s+\}\),/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps\(\{[\s\S]*?onPress: actionState\.canToggle \? onToggle : undefined,/);
   assert.doesNotMatch(screenSource, /onPress: messageActionAvailabilityRenderState\.expansion\.canRender/);
   assert.doesNotMatch(screenSource, /accessibilityLabel: messageRenderState\.expansion\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /style: styles\.collapsedMessagePreviewToggle/);

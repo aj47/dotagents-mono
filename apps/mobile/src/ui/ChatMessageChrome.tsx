@@ -1419,6 +1419,13 @@ type ChatMessageCollapsedPreviewProps = {
   textStyle: StyleProp<TextStyle>;
 };
 
+type ChatMessageCollapsedPreviewPropsInput = Pick<
+  ChatMessageCollapsedPreviewProps,
+  'renderState' | 'actionState'
+> & {
+  onToggle?: ChatMessageCollapsedPreviewProps['onPress'];
+};
+
 type ChatMessageConversationContentProps = {
   contentState: ChatMessageConversationContentState;
   rowStyle: StyleProp<ViewStyle>;
@@ -1720,6 +1727,18 @@ export function createChatMessageConversationBodyProps({
       slots: actionSet.visibleSlots,
       components: actionSet.components,
     },
+  };
+}
+
+export function createChatMessageCollapsedPreviewProps({
+  renderState,
+  actionState,
+  onToggle,
+}: ChatMessageCollapsedPreviewPropsInput): ChatMessageThreadBodyContentProps['collapsed'] {
+  return {
+    renderState,
+    actionState,
+    onPress: actionState.canToggle ? onToggle : undefined,
   };
 }
 

@@ -36,6 +36,7 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionSet,
   createChatMessageActionStyleSlots,
+  createChatMessageCollapsedPreviewProps,
   createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -3968,7 +3969,6 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const messageContentRenderState = messageRenderState.content;
-            const messageCollapsedPreviewActionState = messageRenderState.collapsedPreviewAction;
             const isMessageSpeaking = speakingMessageIndex === i;
             const messageSpeechRenderState = getChatMessageSpeechMobileRenderState({
               role: m.role,
@@ -4197,13 +4197,11 @@ export default function ChatScreen({ route, navigation }: any) {
                       assetAuthToken: config.apiKey,
                       spinnerSource: isDark ? darkSpinner : lightSpinner,
                     },
-                    collapsed: {
+                    collapsed: createChatMessageCollapsedPreviewProps({
                       renderState: messageRenderState.collapsedPreview,
-                      actionState: messageCollapsedPreviewActionState,
-                      onPress: messageCollapsedPreviewActionState.canToggle
-                        ? () => toggleMessageExpansion(i)
-                        : undefined,
-                    },
+                      actionState: messageRenderState.collapsedPreviewAction,
+                      onToggle: () => toggleMessageExpansion(i),
+                    }),
                     toolExecutionStack: {
                       shouldRender: toolExecutionVisibilityRenderState.toolExecutionStack.shouldRender,
                       isExpanded,
