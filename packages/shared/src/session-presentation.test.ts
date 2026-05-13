@@ -60,6 +60,7 @@ import {
   getChatComposerMobileSurfaceColors,
   getChatComposerMobileTextColors,
   getChatComposerMobileTextInputPlatformState,
+  getChatComposerMobileVisibilityRenderState,
   getChatComposerQueueMobileActionState,
   getChatComposerQueueMobileIconState,
   getChatComposerQueueMobileRenderState,
@@ -686,6 +687,42 @@ describe("session presentation semantics", () => {
         name: CHAT_COMPOSER_PRESENTATION.queue.mobileIcon.name,
         size: CHAT_COMPOSER_PRESENTATION.queue.mobileIcon.size,
         color: "#2563eb",
+      },
+    })
+    expect(getChatComposerMobileVisibilityRenderState({
+      handsFree: true,
+      listening: true,
+      messageQueueEnabled: true,
+    })).toEqual({
+      voiceOverlay: {
+        isVisible: true,
+      },
+      handsFreeControls: {
+        isVisible: true,
+      },
+      editBeforeSendControl: {
+        shouldRender: false,
+      },
+      queueAction: {
+        shouldRender: true,
+      },
+    })
+    expect(getChatComposerMobileVisibilityRenderState({
+      handsFree: false,
+      listening: false,
+      messageQueueEnabled: true,
+    })).toEqual({
+      voiceOverlay: {
+        isVisible: false,
+      },
+      handsFreeControls: {
+        isVisible: false,
+      },
+      editBeforeSendControl: {
+        shouldRender: true,
+      },
+      queueAction: {
+        shouldRender: false,
       },
     })
     expect(getChatComposerMobileControlState()).toEqual({

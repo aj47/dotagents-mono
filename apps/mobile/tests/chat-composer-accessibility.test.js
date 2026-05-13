@@ -92,7 +92,7 @@ test('uses shared session presentation for mobile composer copy and disabled sta
 });
 
 test('exposes the handsfree queue control as an accessible button', () => {
-  assert.match(screenSource, /queueAction: \{\s+shouldRender: handsFree && messageQueueEnabled,\s+renderState: mobileComposerQueueRenderState,/);
+  assert.match(screenSource, /queueAction: \{\s+shouldRender: mobileComposerVisibilityRenderState\.queueAction\.shouldRender,\s+renderState: mobileComposerQueueRenderState,/);
   assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.queueAction\}\s+styles=\{styles\.queueAction\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);

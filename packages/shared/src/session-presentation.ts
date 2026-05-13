@@ -1368,6 +1368,27 @@ export interface ChatComposerEditBeforeSendMobileRenderState {
   }
 }
 
+export interface ChatComposerMobileVisibilityRenderStateInput {
+  handsFree?: boolean
+  listening?: boolean
+  messageQueueEnabled?: boolean
+}
+
+export interface ChatComposerMobileVisibilityRenderState {
+  voiceOverlay: {
+    isVisible: boolean
+  }
+  handsFreeControls: {
+    isVisible: boolean
+  }
+  editBeforeSendControl: {
+    shouldRender: boolean
+  }
+  queueAction: {
+    shouldRender: boolean
+  }
+}
+
 export type ChatComposerMobileTextColorToken =
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.labelColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.textColorToken
@@ -3426,6 +3447,27 @@ export function getChatComposerVoiceOverlayLabel({
   return willCancel
     ? CHAT_COMPOSER_PRESENTATION.voiceOverlay.releaseToEditLabel
     : CHAT_COMPOSER_PRESENTATION.voiceOverlay.releaseToSendLabel
+}
+
+export function getChatComposerMobileVisibilityRenderState({
+  handsFree = false,
+  listening = false,
+  messageQueueEnabled = false,
+}: ChatComposerMobileVisibilityRenderStateInput = {}): ChatComposerMobileVisibilityRenderState {
+  return {
+    voiceOverlay: {
+      isVisible: listening,
+    },
+    handsFreeControls: {
+      isVisible: handsFree,
+    },
+    editBeforeSendControl: {
+      shouldRender: !handsFree,
+    },
+    queueAction: {
+      shouldRender: handsFree && messageQueueEnabled,
+    },
+  }
 }
 
 export function getChatComposerCopyState(): typeof CHAT_COMPOSER_PRESENTATION {

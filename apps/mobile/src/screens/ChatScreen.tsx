@@ -102,6 +102,7 @@ import {
   getChatComposerImageAttachmentMobileRenderState,
   getChatComposerMicMobileRenderState,
   getChatComposerMobileControlState,
+  getChatComposerMobileVisibilityRenderState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
   getChatComposerQueueMobileRenderState,
@@ -3438,6 +3439,14 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [handsFree, listening, micButtonLabel, theme.colors, willCancel],
   );
+  const mobileComposerVisibilityRenderState = useMemo(
+    () => getChatComposerMobileVisibilityRenderState({
+      handsFree,
+      listening,
+      messageQueueEnabled,
+    }),
+    [handsFree, listening, messageQueueEnabled],
+  );
 	const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({ handsFree, willCancel });
   const connectionBannerRenderState = useMemo(
     () => getChatRuntimeConnectionBannerMobileRenderState({
@@ -3604,7 +3613,7 @@ export default function ChatScreen({ route, navigation }: any) {
             },
           },
           voiceOverlay: {
-            isVisible: listening,
+            isVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
             label: voiceOverlayLabel,
             transcript: liveTranscript,
             transcriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
@@ -3646,7 +3655,7 @@ export default function ChatScreen({ route, navigation }: any) {
               onRemove: removePendingImage,
             },
             handsFreeControls: {
-              isVisible: handsFree,
+              isVisible: mobileComposerVisibilityRenderState.handsFreeControls.isVisible,
               status: {
                 phase: handsFreeController.state.phase,
                 label: handsFreeController.statusLabel,
@@ -3670,7 +3679,7 @@ export default function ChatScreen({ route, navigation }: any) {
               ...chatComposerRuntimeDockChrome.textToSpeechControl,
             },
             editBeforeSendControl: {
-              shouldRender: !handsFree,
+              shouldRender: mobileComposerVisibilityRenderState.editBeforeSendControl.shouldRender,
               renderState: mobileComposerEditBeforeSendRenderState,
               onPress: () => setWillCancel((current) => !current),
               ...chatComposerRuntimeDockChrome.editBeforeSendControl,
@@ -3687,7 +3696,7 @@ export default function ChatScreen({ route, navigation }: any) {
               ...chatComposerRuntimeDockChrome.textEntry,
             },
             queueAction: {
-              shouldRender: handsFree && messageQueueEnabled,
+              shouldRender: mobileComposerVisibilityRenderState.queueAction.shouldRender,
               renderState: mobileComposerQueueRenderState,
               onPress: queueComposerInput,
               ...chatComposerRuntimeDockChrome.queueAction,
