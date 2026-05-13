@@ -39,6 +39,7 @@ import {
   createChatMessageCollapsedPreviewProps,
   createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
+  createChatMessageToolExecutionStackProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -4202,28 +4203,25 @@ export default function ChatScreen({ route, navigation }: any) {
                       actionState: messageRenderState.collapsedPreviewAction,
                       onToggle: () => toggleMessageExpansion(i),
                     }),
-                    toolExecutionStack: {
-                      shouldRender: toolExecutionVisibilityRenderState.toolExecutionStack.shouldRender,
+                    toolExecutionStack: createChatMessageToolExecutionStackProps({
+                      visibility: toolExecutionVisibilityRenderState,
                       isExpanded,
                       compact: {
                         renderState: toolExecutionExpandControl,
                         rows: compactToolExecutionRows,
-                        onPress: () => toggleMessageExpansion(i),
+                        onToggle: () => toggleMessageExpansion(i),
                       },
                       expanded: {
                         topCollapseRenderState: toolExecutionTopCollapseControl,
                         bottomCollapseRenderState: toolExecutionBottomCollapseControl,
-                        onCollapsePress: () => toggleMessageExpansion(i),
+                        onToggle: () => toggleMessageExpansion(i),
                         isPending,
                         allSuccess,
                         hasErrors,
-                        emptyState: {
-                          shouldRender: toolExecutionVisibilityRenderState.emptyState.shouldRender,
-                          renderState: toolExecutionDetailEmptyState,
-                        },
+                        emptyStateRenderState: toolExecutionDetailEmptyState,
                       },
                       detailRows: toolExecutionDetailRows,
-                    },
+                    }),
                   }),
                 }}
               />

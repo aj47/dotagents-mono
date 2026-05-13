@@ -81,6 +81,7 @@ import type {
   ToolExecutionDetailMobileHeaderRenderState,
   ToolExecutionDetailMobilePendingResultRenderState,
   ToolExecutionDetailMobileSectionHeaderRenderState,
+  ToolExecutionMobileVisibilityRenderState,
 } from '@dotagents/shared/tool-execution-display';
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
@@ -665,6 +666,26 @@ type ChatMessageToolExecutionStackProps = {
   };
   detailRows: readonly ChatMessageToolExecutionCallListRow[];
   styles: ChatMessageToolExecutionStackStyles;
+};
+
+type ChatMessageToolExecutionStackPropsInput = {
+  visibility: Pick<ToolExecutionMobileVisibilityRenderState, 'toolExecutionStack' | 'emptyState'>;
+  isExpanded: ChatMessageToolExecutionStackProps['isExpanded'];
+  compact: Pick<ChatMessageToolExecutionStackProps['compact'], 'renderState' | 'rows'> & {
+    onToggle?: ChatMessageToolExecutionStackProps['compact']['onPress'];
+  };
+  expanded: Pick<
+    ChatMessageToolExecutionStackProps['expanded'],
+    | 'topCollapseRenderState'
+    | 'bottomCollapseRenderState'
+    | 'isPending'
+    | 'allSuccess'
+    | 'hasErrors'
+  > & {
+    emptyStateRenderState: ToolExecutionDetailMobileEmptyStateRenderState;
+    onToggle?: ChatMessageToolExecutionStackProps['expanded']['onCollapsePress'];
+  };
+  detailRows: ChatMessageToolExecutionStackProps['detailRows'];
 };
 
 type ChatMessageToolExecutionCopyButtonStyles = {
@@ -1739,6 +1760,35 @@ export function createChatMessageCollapsedPreviewProps({
     renderState,
     actionState,
     onPress: actionState.canToggle ? onToggle : undefined,
+  };
+}
+
+export function createChatMessageToolExecutionStackProps({
+  visibility,
+  isExpanded,
+  compact,
+  expanded,
+  detailRows,
+}: ChatMessageToolExecutionStackPropsInput): ChatMessageConversationBodyProps['toolExecutionStack'] {
+  const { onToggle: onCompactToggle, ...compactProps } = compact;
+  const { emptyStateRenderState, onToggle: onExpandedToggle, ...expandedProps } = expanded;
+
+  return {
+    shouldRender: visibility.toolExecutionStack.shouldRender,
+    isExpanded,
+    compact: {
+      ...compactProps,
+      onPress: onCompactToggle,
+    },
+    expanded: {
+      ...expandedProps,
+      onCollapsePress: onExpandedToggle,
+      emptyState: {
+        shouldRender: visibility.emptyState.shouldRender,
+        renderState: emptyStateRenderState,
+      },
+    },
+    detailRows,
   };
 }
 

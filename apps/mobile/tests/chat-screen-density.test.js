@@ -1552,7 +1552,11 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /const compactRenderState = getToolExecutionCompactMobileRenderState\(\{\s*state: tcState,\s*preview: toolPreview,\s*colors: theme\.colors,\s*\}\);/);
   assert.match(screenSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
   assert.match(screenSource, /toolPreview: \{\s+shouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,\s+label: delegationToolPreviewLabel,/);
-  assert.match(screenSource, /toolExecutionStack: \{\s+shouldRender: toolExecutionVisibilityRenderState\.toolExecutionStack\.shouldRender,\s+isExpanded,\s+compact: \{\s+renderState: toolExecutionExpandControl,\s+rows: compactToolExecutionRows,\s+onPress: \(\) => toggleMessageExpansion\(i\),/);
+  assert.match(screenSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(\{\s+visibility: toolExecutionVisibilityRenderState,\s+isExpanded,\s+compact: \{\s+renderState: toolExecutionExpandControl,\s+rows: compactToolExecutionRows,\s+onToggle: \(\) => toggleMessageExpansion\(i\),/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
+  assert.match(chatMessageChromeSource, /shouldRender: visibility\.toolExecutionStack\.shouldRender,[\s\S]*?emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,/);
+  assert.doesNotMatch(screenSource, /shouldRender: toolExecutionVisibilityRenderState\.toolExecutionStack\.shouldRender/);
+  assert.doesNotMatch(screenSource, /shouldRender: toolExecutionVisibilityRenderState\.emptyState\.shouldRender/);
   assert.doesNotMatch(screenSource, /shouldRender: displayToolCallCount > 0/);
   assert.match(chatMessageChromeSource, /compactGroup: \{\s+container: styles\.toolCallCompactContainer,\s+pressed: styles\.toolCallCompactPressed,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionStack/);
@@ -1613,8 +1617,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /toolExecutionPending:\s*toolExecutionDetailColorsByState\.pending/);
   assert.match(screenSource, /toolExecutionSuccess:\s*toolExecutionDetailColorsByState\.success/);
   assert.match(screenSource, /toolExecutionError:\s*toolExecutionDetailColorsByState\.error/);
-  assert.match(screenSource, /expanded: \{\s+topCollapseRenderState: toolExecutionTopCollapseControl,\s+bottomCollapseRenderState: toolExecutionBottomCollapseControl,\s+onCollapsePress: \(\) => toggleMessageExpansion\(i\),\s+isPending,\s+allSuccess,\s+hasErrors,/);
-  assert.match(screenSource, /emptyState: \{\s+shouldRender: toolExecutionVisibilityRenderState\.emptyState\.shouldRender,\s+renderState: toolExecutionDetailEmptyState,\s+\}/);
+  assert.match(screenSource, /expanded: \{\s+topCollapseRenderState: toolExecutionTopCollapseControl,\s+bottomCollapseRenderState: toolExecutionBottomCollapseControl,\s+onToggle: \(\) => toggleMessageExpansion\(i\),\s+isPending,\s+allSuccess,\s+hasErrors,\s+emptyStateRenderState: toolExecutionDetailEmptyState,/);
+  assert.match(chatMessageChromeSource, /emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,\s+\}/);
+  assert.doesNotMatch(screenSource, /emptyState: \{\s+shouldRender: toolExecutionVisibilityRenderState\.emptyState\.shouldRender/);
   assert.doesNotMatch(screenSource, /shouldRender: displayToolCallCount === 0/);
   assert.match(chatMessageChromeSource, /container: styles\.toolExecutionExpandedContainer,\s+card: styles\.toolExecutionCard,\s+pending: styles\.toolExecutionPending,\s+success: styles\.toolExecutionSuccess,\s+error: styles\.toolExecutionError,/);
   assert.match(chatMessageChromeSource, /collapseButton: styles\.toolCallCompactContainer,\s+collapsePressed: styles\.toolCallCompactPressed,\s+collapseTopPlacement: styles\.toolExecutionCollapseTopButton,\s+collapseBottomPlacement: styles\.toolExecutionCollapseBottomButton,\s+collapseText: styles\.toolCallCompactName,/);
@@ -2499,6 +2504,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.match(screenSource, /createChatMessageActionSet,/);
   assert.match(screenSource, /createChatMessageConversationBodyProps,/);
+  assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const mobileMessageActionCopy = getChatMessageActionCopyState\(\);/);
@@ -2514,6 +2520,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageActionComponents/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionSet/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /turnDuration: availability\.turnDuration\.canRender \? \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
