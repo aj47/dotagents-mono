@@ -31,6 +31,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /type PromptLibraryShortcutItem,/);
   assert.match(chatMessageChromeSource, /type PromptLibraryEditorMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type PromptLibraryMobileShortcutRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileShortcutEmptyRenderState,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryMobileShortcutItemRenderState,/);
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;/);
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
@@ -73,7 +74,8 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /shortcutSurface: promptLibraryShortcutSurface/);
   assert.doesNotMatch(screenSource, /sourceLabelNumberOfLines: mobilePromptLibrarySurface\.shortcutSourceLabel\.numberOfLines/);
   assert.match(chatMessageChromeSource, /shortcutRenderState: PromptLibraryMobileShortcutRenderState;/);
-  assert.match(chatMessageChromeSource, /const \{ chrome: shortcutChrome, copy: shortcutCopy, surface: shortcutSurface \} = shortcutRenderState;/);
+  assert.match(chatMessageChromeSource, /const \{ surface: shortcutSurface \} = shortcutRenderState;/);
+  assert.match(chatMessageChromeSource, /const shortcutEmptyRenderState = getPromptLibraryMobileShortcutEmptyRenderState\(shortcutRenderState, isLoading\);/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{shortcutSurface\.shortcutSourceLabel\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.homeQuickStarts\}\s+styles=\{styles\.homeQuickStarts\}/);
   assert.doesNotMatch(screenSource, /shortcutChrome: promptLibraryShortcutChrome/);
@@ -83,6 +85,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(chatMessageChromeSource, /const shortcutSourceIconColors = shortcutChrome\.sourceIconColors\[item\.source\];/);
   assert.match(chatMessageChromeSource, /const shortcutItemRenderState = getPromptLibraryMobileShortcutItemRenderState\(\s+item,\s+shortcutRenderState,\s+runningTaskId,\s+\);/);
   assert.match(chatMessageChromeSource, /const \{ interaction: shortcutInteraction \} = shortcutItemRenderState;/);
+  assert.match(chatMessageChromeSource, /const addAction = shortcutItemRenderState\.addAction;/);
   assert.match(chatMessageChromeSource, /const promptActions = shortcutItemRenderState\.promptActions;/);
   assert.match(chatMessageChromeSource, /disabled=\{shortcutInteraction\.isDisabled\}/);
   assert.match(chatMessageChromeSource, /accessibilityState=\{shortcutInteraction\.accessibilityState\}/);
@@ -92,10 +95,12 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /name=\{shortcutItemRenderState\.sourceIcon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{shortcutItemRenderState\.sourceIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{shortcutItemRenderState\.sourceIconColors\.color\}/);
-  assert.match(chatMessageChromeSource, /name=\{shortcutChrome\.addIcon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{shortcutChrome\.addIcon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{shortcutChrome\.addIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /name=\{addAction\.icon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{addAction\.icon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{addAction\.iconColors\.color\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.addIcon\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
+  assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
   assert.match(chatMessageChromeSource, /pressed && styles\.actionButtonPressed/);
   assert.match(chatMessageChromeSource, /\{item\.prompt && promptActions \? \(/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{promptActions\.edit\.accessibilityLabel\}/);
@@ -125,7 +130,8 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /availableTasks\.slice/);
   assert.match(chatMessageChromeSource, /items\.map\(\(item\) =>/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(edit|delete)Label/);
-  assert.match(chatMessageChromeSource, /\{isLoading \? shortcutCopy\.loadingLabel : shortcutCopy\.emptyLabel\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(loading|empty)Label/);
+  assert.match(chatMessageChromeSource, /\{shortcutEmptyRenderState\.label\}/);
   assert.doesNotMatch(screenSource, /source: isSlashCommandPrompt\(prompt\) \? 'command' as const : 'saved-prompt' as const/);
   assert.doesNotMatch(screenSource, /source: 'skill' as const/);
   assert.doesNotMatch(screenSource, /source: 'task' as const/);

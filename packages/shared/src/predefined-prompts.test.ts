@@ -39,6 +39,7 @@ import {
   getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileShortcutActionIconState,
   getPromptLibraryMobileShortcutCopyState,
+  getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileShortcutPromptActionsRenderState,
   getPromptLibraryMobileShortcutRenderState,
@@ -376,6 +377,12 @@ describe("predefined prompt helpers", () => {
       mutedForeground: "#64748b",
       primary: "#2563eb",
     })
+    expect(getPromptLibraryMobileShortcutEmptyRenderState(shortcutRenderState, true)).toEqual({
+      label: PROMPT_LIBRARY_PRESENTATION.mobile.loadingLibraryLabel,
+    })
+    expect(getPromptLibraryMobileShortcutEmptyRenderState(shortcutRenderState, false)).toEqual({
+      label: PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary,
+    })
     expect(getPromptLibraryMobileShortcutPromptActionsRenderState("Review", shortcutRenderState)).toEqual({
       edit: {
         icon: shortcutRenderState.chrome.editIcon,
@@ -408,6 +415,29 @@ describe("predefined prompt helpers", () => {
       sourceLabel: "task",
       accessibilityLabel: "Run task Daily",
       accessibilityHint: "Runs this desktop task now.",
+    })
+    expect(getPromptLibraryMobileShortcutItemRenderState({
+      id: "action-add-prompt",
+      title: "+ Add Prompt",
+      content: "",
+      source: "action",
+      action: "add-prompt",
+    }, shortcutRenderState)).toEqual({
+      interaction: {
+        isAddPrompt: true,
+        isRunning: false,
+        isDisabled: false,
+        accessibilityState: undefined,
+      },
+      sourceIcon: shortcutRenderState.chrome.sourceIcons.action,
+      sourceIconColors: shortcutRenderState.chrome.sourceIconColors.action,
+      sourceLabel: "action",
+      accessibilityLabel: "Add new prompt",
+      accessibilityHint: "Create a predefined prompt and save it to desktop.",
+      addAction: {
+        icon: shortcutRenderState.chrome.addIcon,
+        iconColors: shortcutRenderState.chrome.addIconColors,
+      },
     })
     expect(getPromptLibraryMobileShortcutItemRenderState({
       id: "prompt-1",

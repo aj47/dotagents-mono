@@ -41,6 +41,7 @@ import {
 import {
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
+  getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   isPromptLibraryEditorSaveDisabled,
   type PromptLibraryEditorMobileRenderState,
@@ -2589,7 +2590,8 @@ export function ChatConversationHomeQuickStarts<
   styles,
 }: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
   if (!shouldRender) return null;
-  const { chrome: shortcutChrome, copy: shortcutCopy, surface: shortcutSurface } = shortcutRenderState;
+  const { surface: shortcutSurface } = shortcutRenderState;
+  const shortcutEmptyRenderState = getPromptLibraryMobileShortcutEmptyRenderState(shortcutRenderState, isLoading);
 
   return (
     <View style={styles.card}>
@@ -2602,6 +2604,7 @@ export function ChatConversationHomeQuickStarts<
               runningTaskId,
             );
             const { interaction: shortcutInteraction } = shortcutItemRenderState;
+            const addAction = shortcutItemRenderState.addAction;
             const promptActions = shortcutItemRenderState.promptActions;
 
             return (
@@ -2636,14 +2639,14 @@ export function ChatConversationHomeQuickStarts<
                       {shortcutItemRenderState.sourceLabel}
                     </Text>
                   </View>
-                ) : (
+                ) : addAction ? (
                   <Ionicons
-                    name={shortcutChrome.addIcon.name}
-                    size={shortcutChrome.addIcon.size}
-                    color={shortcutChrome.addIconColors.color}
+                    name={addAction.icon.name}
+                    size={addAction.icon.size}
+                    color={addAction.iconColors.color}
                     style={styles.addIcon}
                   />
-                )}
+                ) : null}
                 <Text
                   style={[
                     styles.title,
@@ -2709,7 +2712,7 @@ export function ChatConversationHomeQuickStarts<
         </View>
       ) : (
         <Text style={styles.emptyText}>
-          {isLoading ? shortcutCopy.loadingLabel : shortcutCopy.emptyLabel}
+          {shortcutEmptyRenderState.label}
         </Text>
       )}
     </View>

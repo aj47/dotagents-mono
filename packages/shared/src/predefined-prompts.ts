@@ -1044,6 +1044,15 @@ export interface PromptLibraryMobileShortcutPromptActionsRenderState {
   delete: PromptLibraryMobileShortcutPromptActionRenderState
 }
 
+export interface PromptLibraryMobileShortcutAddActionRenderState {
+  icon: PromptLibraryMobileAddShortcutIconState
+  iconColors: PromptLibraryMobileIconColors
+}
+
+export interface PromptLibraryMobileShortcutEmptyRenderState {
+  label: string
+}
+
 export interface PromptLibraryMobileShortcutItemRenderState {
   interaction: PromptLibraryShortcutInteractionState
   sourceIcon: PromptLibraryMobileShortcutSourceIconState
@@ -1051,6 +1060,7 @@ export interface PromptLibraryMobileShortcutItemRenderState {
   sourceLabel: string
   accessibilityLabel: string
   accessibilityHint: string
+  addAction?: PromptLibraryMobileShortcutAddActionRenderState
   promptActions?: PromptLibraryMobileShortcutPromptActionsRenderState
 }
 
@@ -1305,6 +1315,15 @@ export function getPromptLibraryMobileShortcutPromptActionsRenderState(
   }
 }
 
+export function getPromptLibraryMobileShortcutEmptyRenderState(
+  shortcutRenderState: PromptLibraryMobileShortcutRenderState,
+  isLoading: boolean,
+): PromptLibraryMobileShortcutEmptyRenderState {
+  return {
+    label: isLoading ? shortcutRenderState.copy.loadingLabel : shortcutRenderState.copy.emptyLabel,
+  }
+}
+
 export function getPromptLibraryMobileShortcutItemRenderState<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
@@ -1313,13 +1332,23 @@ export function getPromptLibraryMobileShortcutItemRenderState<
   shortcutRenderState: PromptLibraryMobileShortcutRenderState,
   runningTaskId?: string | null,
 ): PromptLibraryMobileShortcutItemRenderState {
+  const interaction = getPromptLibraryShortcutInteractionState(item, runningTaskId)
+
   return {
-    interaction: getPromptLibraryShortcutInteractionState(item, runningTaskId),
+    interaction,
     sourceIcon: shortcutRenderState.chrome.sourceIcons[item.source],
     sourceIconColors: shortcutRenderState.chrome.sourceIconColors[item.source],
     sourceLabel: getPromptLibraryShortcutSourceLabel(item.source),
     accessibilityLabel: getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
     accessibilityHint: getPromptLibraryShortcutAccessibilityHint(item.source, item.action),
+    ...(interaction.isAddPrompt
+      ? {
+          addAction: {
+            icon: shortcutRenderState.chrome.addIcon,
+            iconColors: shortcutRenderState.chrome.addIconColors,
+          },
+        }
+      : {}),
     ...(item.prompt
       ? { promptActions: getPromptLibraryMobileShortcutPromptActionsRenderState(item.title, shortcutRenderState) }
       : {}),
