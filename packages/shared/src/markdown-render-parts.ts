@@ -416,6 +416,16 @@ export interface MarkdownContentMobileSurfaceColors {
   horizontalRule: { backgroundColor: string }
 }
 
+export interface MarkdownContentMobileSurfaceRenderStateInput {
+  colors: MarkdownContentMobileSurfaceColorPalette
+  isDark?: boolean
+}
+
+export interface MarkdownContentMobileSurfaceRenderState {
+  surface: typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile
+  colors: MarkdownContentMobileSurfaceColors
+}
+
 export interface MarkdownThinkSectionMobileSurfaceColors {
   collapsedContainer: {
     borderColor: string
@@ -428,6 +438,15 @@ export interface MarkdownThinkSectionMobileSurfaceColors {
   chevron: { color: string }
   icon: { color: string }
   label: { color: string }
+}
+
+export interface MarkdownThinkSectionMobileSurfaceRenderStateInput {
+  isDark?: boolean
+}
+
+export interface MarkdownThinkSectionMobileSurfaceRenderState {
+  surface: typeof MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile
+  colors: MarkdownThinkSectionMobileSurfaceColors
 }
 
 function resolveMarkdownMobileThemedColor(
@@ -557,6 +576,16 @@ export function getMarkdownContentMobileSurfaceColors(
   }
 }
 
+export function getMarkdownContentMobileSurfaceRenderState({
+  colors,
+  isDark,
+}: MarkdownContentMobileSurfaceRenderStateInput): MarkdownContentMobileSurfaceRenderState {
+  return {
+    surface: getMarkdownContentMobileSurfaceState(),
+    colors: getMarkdownContentMobileSurfaceColors(colors, { isDark }),
+  }
+}
+
 export function getMarkdownContentDesktopSurfaceState(): typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop {
   return MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop
 }
@@ -601,6 +630,15 @@ export function getMarkdownThinkSectionMobileSurfaceColors(
     label: {
       color: resolveMarkdownMobileThemedColor(surface.label.color, isDark),
     },
+  }
+}
+
+export function getMarkdownThinkSectionMobileSurfaceRenderState({
+  isDark,
+}: MarkdownThinkSectionMobileSurfaceRenderStateInput = {}): MarkdownThinkSectionMobileSurfaceRenderState {
+  return {
+    surface: getMarkdownThinkSectionMobileSurfaceState(),
+    colors: getMarkdownThinkSectionMobileSurfaceColors({ isDark }),
   }
 }
 

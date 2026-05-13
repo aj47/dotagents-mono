@@ -11,6 +11,7 @@ import {
   getMarkdownCodeBlockCopyMobileIconState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownContentMobileSurfaceColors,
+  getMarkdownContentMobileSurfaceRenderState,
   getMarkdownContentDesktopSurfaceState,
   getMarkdownContentMobileSurfaceState,
   getMarkdownImageFallbackLabel,
@@ -30,6 +31,7 @@ import {
   getMarkdownThinkSectionMobileLabelState,
   getMarkdownThinkSectionMobileLeadingIconState,
   getMarkdownThinkSectionMobileSurfaceColors,
+  getMarkdownThinkSectionMobileSurfaceRenderState,
   getMarkdownThinkSectionMobileSurfaceState,
   isAllowedMarkdownContentLinkUrl,
   isMarkdownContentVideoLinkUrl,
@@ -105,7 +107,7 @@ describe("markdown render parts", () => {
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.blockquote.backgroundColor.lightAlpha).toBe(0.03)
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.image.maxHeight).toBe(320)
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.tableCell.headerFontWeight).toBe("600")
-    expect(getMarkdownContentMobileSurfaceColors({
+    const markdownContentPalette = {
       background: "#ffffff",
       border: "#d4d4d4",
       foreground: "#171717",
@@ -113,7 +115,8 @@ describe("markdown render parts", () => {
       mutedForeground: "#737373",
       primary: "#2563eb",
       success: "#16a34a",
-    }, { isDark: false })).toEqual({
+    }
+    const markdownContentSurfaceColors = {
       body: { color: "#171717" },
       heading1: { color: "#171717" },
       heading2: { color: "#171717" },
@@ -148,6 +151,14 @@ describe("markdown render parts", () => {
       tableHead: { backgroundColor: "#e5e5e5" },
       tableCell: { borderColor: "#d4d4d4" },
       horizontalRule: { backgroundColor: "#d4d4d4" },
+    }
+    expect(getMarkdownContentMobileSurfaceColors(markdownContentPalette, { isDark: false })).toEqual(markdownContentSurfaceColors)
+    expect(getMarkdownContentMobileSurfaceRenderState({
+      colors: markdownContentPalette,
+      isDark: false,
+    })).toEqual({
+      surface: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile,
+      colors: markdownContentSurfaceColors,
     })
     expect(getMarkdownContentMobileSurfaceColors({
       background: "#050505",
@@ -223,7 +234,7 @@ describe("markdown render parts", () => {
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.header.paddingHorizontal).toBe("sm")
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.chevron.size).toBe(13)
     expect(MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.icon.size).toBe(13)
-    expect(getMarkdownThinkSectionMobileSurfaceColors({ isDark: false })).toEqual({
+    const lightThinkSectionColors = {
       collapsedContainer: {
         borderColor: "rgba(245, 158, 11, 0.35)",
         backgroundColor: "rgba(254, 243, 199, 0.45)",
@@ -235,6 +246,11 @@ describe("markdown render parts", () => {
       chevron: { color: "#d97706" },
       icon: { color: "#d97706" },
       label: { color: "#92400e" },
+    }
+    expect(getMarkdownThinkSectionMobileSurfaceColors({ isDark: false })).toEqual(lightThinkSectionColors)
+    expect(getMarkdownThinkSectionMobileSurfaceRenderState({ isDark: false })).toEqual({
+      surface: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile,
+      colors: lightThinkSectionColors,
     })
     expect(getMarkdownThinkSectionMobileSurfaceColors({ isDark: true })).toEqual({
       collapsedContainer: {

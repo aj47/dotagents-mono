@@ -17,8 +17,7 @@ import {
   getMarkdownCodeBlockCopyMobileButtonState,
   getMarkdownCodeBlockCopyMobileIconState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
-  getMarkdownContentMobileSurfaceColors,
-  getMarkdownContentMobileSurfaceState,
+  getMarkdownContentMobileSurfaceRenderState,
   getMarkdownImageFallbackLabel,
   getMarkdownImageInvalidAssetUrlMessage,
   getMarkdownImageLoadErrorFallback,
@@ -28,17 +27,13 @@ import {
   getMarkdownThinkSectionControlState,
   getMarkdownThinkSectionDisplayLabel,
   getMarkdownThinkSectionMobileChevronIconState,
-  getMarkdownThinkSectionMobileContainerState,
-  getMarkdownThinkSectionMobileContentState,
-  getMarkdownThinkSectionMobileHeaderState,
-  getMarkdownThinkSectionMobileLabelState,
   getMarkdownThinkSectionMobileLeadingIconState,
-  getMarkdownThinkSectionMobileSurfaceColors,
+  getMarkdownThinkSectionMobileSurfaceRenderState,
   isAllowedMarkdownContentLinkUrl,
   splitMarkdownContent,
-  type MarkdownContentMobileSurfaceColors,
+  type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionControlOptions,
-  type MarkdownThinkSectionMobileSurfaceColors,
+  type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/markdown-render-parts';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { resolveMobileFontFamily } from './mobileTypography';
@@ -49,18 +44,12 @@ interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   assetAuthToken?: string;
 }
 
-const markdownContentSurface = getMarkdownContentMobileSurfaceState();
 const codeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState();
 const copiedCodeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState(true);
-const collapsedThinkSectionContainerState = getMarkdownThinkSectionMobileContainerState(true);
-const expandedThinkSectionContainerState = getMarkdownThinkSectionMobileContainerState(false);
-const thinkSectionHeaderState = getMarkdownThinkSectionMobileHeaderState();
-const thinkSectionLabelState = getMarkdownThinkSectionMobileLabelState();
-const thinkSectionContentState = getMarkdownThinkSectionMobileContentState();
 
 const ThinkSection: React.FC<{
   content: string;
-  colors: MarkdownThinkSectionMobileSurfaceColors;
+  colors: MarkdownThinkSectionMobileSurfaceRenderState['colors'];
   markdownStyles: any;
   markdownRules: any;
   styles: any;
@@ -231,7 +220,7 @@ function getMarkdownCodeContent(node: any): string {
 const MarkdownCodeBlock: React.FC<{
   node: any;
   styles: any;
-  colors: MarkdownContentMobileSurfaceColors;
+  colors: MarkdownContentMobileSurfaceRenderState['colors'];
 }> = ({ node, styles, colors }) => {
   const [copied, setCopied] = React.useState(false);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -290,44 +279,49 @@ const MarkdownCodeBlock: React.FC<{
   );
 };
 
-const createThinkStyles = (colors: MarkdownThinkSectionMobileSurfaceColors) => StyleSheet.create({
-  container: {
-    overflow: collapsedThinkSectionContainerState.overflow,
-    borderRadius: radius[collapsedThinkSectionContainerState.borderRadius],
-    borderWidth: collapsedThinkSectionContainerState.borderWidth,
-    marginVertical: resolveMobileMarkdownSpacing(collapsedThinkSectionContainerState.marginVertical),
-  },
-  containerCollapsed: {
-    borderColor: colors.collapsedContainer.borderColor,
-    backgroundColor: colors.collapsedContainer.backgroundColor,
-  },
-  containerExpanded: {
-    borderColor: colors.expandedContainer.borderColor,
-    backgroundColor: colors.expandedContainer.backgroundColor,
-    marginVertical: resolveMobileMarkdownSpacing(expandedThinkSectionContainerState.marginVertical),
-  },
-  header: {
-    minHeight: thinkSectionHeaderState.minHeight,
-    flexDirection: thinkSectionHeaderState.flexDirection,
-    alignItems: thinkSectionHeaderState.alignItems,
-    gap: thinkSectionHeaderState.gap,
-    paddingHorizontal: spacing[thinkSectionHeaderState.paddingHorizontal],
-    paddingVertical: thinkSectionHeaderState.paddingVertical,
-  },
-  headerPressed: {
-    opacity: thinkSectionHeaderState.pressedOpacity,
-  },
-  label: {
-    color: colors.label.color,
-    fontSize: thinkSectionLabelState.fontSize,
-    fontWeight: thinkSectionLabelState.fontWeight,
-    flex: thinkSectionLabelState.flex,
-  },
-  content: {
-    paddingHorizontal: spacing[thinkSectionContentState.paddingHorizontal],
-    paddingBottom: spacing[thinkSectionContentState.paddingBottom],
-  },
-});
+const createThinkStyles = (renderState: MarkdownThinkSectionMobileSurfaceRenderState) => {
+  const thinkSectionSurface = renderState.surface;
+  const colors = renderState.colors;
+
+  return StyleSheet.create({
+    container: {
+      overflow: thinkSectionSurface.container.overflow,
+      borderRadius: radius[thinkSectionSurface.container.borderRadius],
+      borderWidth: thinkSectionSurface.container.borderWidth,
+      marginVertical: resolveMobileMarkdownSpacing(thinkSectionSurface.container.collapsedMarginVertical),
+    },
+    containerCollapsed: {
+      borderColor: colors.collapsedContainer.borderColor,
+      backgroundColor: colors.collapsedContainer.backgroundColor,
+    },
+    containerExpanded: {
+      borderColor: colors.expandedContainer.borderColor,
+      backgroundColor: colors.expandedContainer.backgroundColor,
+      marginVertical: resolveMobileMarkdownSpacing(thinkSectionSurface.container.expandedMarginVertical),
+    },
+    header: {
+      minHeight: thinkSectionSurface.header.minHeight,
+      flexDirection: thinkSectionSurface.header.flexDirection,
+      alignItems: thinkSectionSurface.header.alignItems,
+      gap: thinkSectionSurface.header.gap,
+      paddingHorizontal: spacing[thinkSectionSurface.header.paddingHorizontal],
+      paddingVertical: thinkSectionSurface.header.paddingVertical,
+    },
+    headerPressed: {
+      opacity: thinkSectionSurface.header.pressedOpacity,
+    },
+    label: {
+      color: colors.label.color,
+      fontSize: thinkSectionSurface.label.fontSize,
+      fontWeight: thinkSectionSurface.label.fontWeight,
+      flex: thinkSectionSurface.label.flex,
+    },
+    content: {
+      paddingHorizontal: spacing[thinkSectionSurface.content.paddingHorizontal],
+      paddingBottom: spacing[thinkSectionSurface.content.paddingBottom],
+    },
+  });
+};
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
@@ -338,17 +332,23 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   onToggleThink,
 }) => {
   const { theme, isDark } = useTheme();
-  const markdownContentColors = React.useMemo(
-    () => getMarkdownContentMobileSurfaceColors(theme.colors, { isDark }),
+  const markdownContentRenderState = React.useMemo(
+    () => getMarkdownContentMobileSurfaceRenderState({
+      colors: theme.colors,
+      isDark,
+    }),
     [isDark, theme.colors],
   );
-  const thinkSectionColors = React.useMemo(
-    () => getMarkdownThinkSectionMobileSurfaceColors({ isDark }),
+  const markdownContentSurface = markdownContentRenderState.surface;
+  const markdownContentColors = markdownContentRenderState.colors;
+  const thinkSectionRenderState = React.useMemo(
+    () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
     [isDark],
   );
+  const thinkSectionColors = thinkSectionRenderState.colors;
   const thinkStyles = React.useMemo(
-    () => createThinkStyles(thinkSectionColors),
-    [thinkSectionColors],
+    () => createThinkStyles(thinkSectionRenderState),
+    [thinkSectionRenderState],
   );
 
   // Compact markdown styles matching desktop's tight layout
