@@ -952,7 +952,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /<ChatMessageHistoryBanner\s+\{\.\.\.historyBanner\}\s+styles=\{styles\.historyBanner\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageDebugPanelStack\s+\{\.\.\.debugPanels\}\s+panelStyle=\{styles\.debugPanels\.panelStyle\}\s+textStyle=\{styles\.debugPanels\.textStyle\}/);
-  assert.match(screenSource, /dock=\{\{[\s\S]*?responseHistoryPanel: \{\s+shouldRender: respondToUserHistory\.length > 0,[\s\S]*?scrollToBottomButton: \{[\s\S]*?voiceOverlay: \{[\s\S]*?queuePanel: \{[\s\S]*?connectionBanner: \{[\s\S]*?composer: \{/);
+  assert.match(screenSource, /dock=\{\{[\s\S]*?responseHistoryPanel: \{\s+responses: respondToUserHistory,[\s\S]*?scrollToBottomButton: \{[\s\S]*?voiceOverlay: \{[\s\S]*?queuePanel: \{[\s\S]*?connectionBanner: \{[\s\S]*?composer: \{/);
+  assert.doesNotMatch(screenSource, /shouldRender: respondToUserHistory\.length > 0/);
   assert.doesNotMatch(screenSource, /<ChatMessageRuntimeDock/);
   assert.doesNotMatch(screenSource, /<\/ChatMessageConversationViewport>\s*<ChatMessageConversationDock/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeDock/);
@@ -2398,6 +2399,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivity/);
   assert.match(chatMessageChromeSource, /export function ChatMessageResponseHistoryPanelDock/);
+  assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel>;/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageResponseHistoryPanelDock\(panelProps: ChatMessageResponseHistoryPanelDockProps\) \{\s+return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageQueuePanelDock/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewport/);

@@ -3555,7 +3555,6 @@ export default function ChatScreen({ route, navigation }: any) {
       }}
       dock={{
         responseHistoryPanel: {
-            shouldRender: respondToUserHistory.length > 0,
             responses: respondToUserHistory,
             ttsProvider: effectiveTtsProvider,
             remoteTtsVoice: effectiveRemoteTtsVoice,

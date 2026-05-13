@@ -1033,9 +1033,7 @@ type ChatMessageRuntimeViewportProps<
   styles: ChatMessageRuntimeViewportStyleSlots;
 };
 
-type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel> & {
-  shouldRender: boolean;
-};
+type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel>;
 
 type ChatMessageQueuePanelDockProps = {
   shouldRender: boolean;
@@ -4621,12 +4619,7 @@ export function ChatMessageRuntimeDock({
   );
 }
 
-export function ChatMessageResponseHistoryPanelDock({
-  shouldRender,
-  ...panelProps
-}: ChatMessageResponseHistoryPanelDockProps) {
-  if (!shouldRender) return null;
-
+export function ChatMessageResponseHistoryPanelDock(panelProps: ChatMessageResponseHistoryPanelDockProps) {
   return <ResponseHistoryPanel {...panelProps} />;
 }
 
