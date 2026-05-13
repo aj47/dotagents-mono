@@ -101,6 +101,7 @@ import {
   getChatRuntimeDesktopSurfaceState,
   isChatRuntimeBranchableMessageRole,
   getChatComposerVoiceOverlayLabel,
+  getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationStatusMobileColors,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeAccessibilityHint,
@@ -1428,6 +1429,28 @@ describe("session presentation semantics", () => {
       isLoadingMessages: false,
       messageCount: 1,
     }).shouldRender).toBe(false)
+    expect(getChatRuntimeDebugPanelsMobileRenderState({
+      requestDebugText: "Request sent",
+      voiceDebugEnabled: true,
+      voiceEntryCount: 1,
+      voiceRows: [{ key: "voice-1", text: "Listening" }],
+    })).toEqual({
+      requestShouldRender: true,
+      requestRows: [{ key: "request-debug", text: "Request sent" }],
+      voiceShouldRender: true,
+      voiceRows: [{ key: "voice-1", text: "Listening" }],
+    })
+    expect(getChatRuntimeDebugPanelsMobileRenderState({
+      requestDebugText: "",
+      voiceDebugEnabled: true,
+      voiceEntryCount: 0,
+      voiceRows: [{ key: "voice-title", text: "Voice events" }],
+    })).toEqual({
+      requestShouldRender: false,
+      requestRows: [],
+      voiceShouldRender: false,
+      voiceRows: [{ key: "voice-title", text: "Voice events" }],
+    })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize).toBe(14)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode).toBe("contain")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.alignItems).toBe("center")

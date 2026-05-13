@@ -143,6 +143,25 @@ export interface ChatRuntimeHomeQuickStartsMobileRenderState {
   shouldRender: boolean
 }
 
+export interface ChatRuntimeDebugPanelMobileRow {
+  key: string
+  text: string
+}
+
+export interface ChatRuntimeDebugPanelsMobileRenderStateInput {
+  requestDebugText?: string | null
+  voiceDebugEnabled?: boolean
+  voiceEntryCount?: number | null
+  voiceRows?: readonly ChatRuntimeDebugPanelMobileRow[] | null
+}
+
+export interface ChatRuntimeDebugPanelsMobileRenderState {
+  requestShouldRender: boolean
+  requestRows: ChatRuntimeDebugPanelMobileRow[]
+  voiceShouldRender: boolean
+  voiceRows: ChatRuntimeDebugPanelMobileRow[]
+}
+
 export interface ChatRuntimeInlineActivityMobileMessageLike {
   role?: string | null
   content?: string | null
@@ -5611,6 +5630,23 @@ export function getChatRuntimeHomeQuickStartsMobileRenderState({
 }: ChatRuntimeHomeQuickStartsMobileRenderStateInput = {}): ChatRuntimeHomeQuickStartsMobileRenderState {
   return {
     shouldRender: isLoadingMessages !== true && (messageCount ?? 0) === 0,
+  }
+}
+
+export function getChatRuntimeDebugPanelsMobileRenderState({
+  requestDebugText = "",
+  voiceDebugEnabled = false,
+  voiceEntryCount = 0,
+  voiceRows = [],
+}: ChatRuntimeDebugPanelsMobileRenderStateInput = {}): ChatRuntimeDebugPanelsMobileRenderState {
+  const requestText = requestDebugText ?? ""
+  const resolvedVoiceRows = voiceRows ? Array.from(voiceRows) : []
+
+  return {
+    requestShouldRender: requestText.length > 0,
+    requestRows: requestText.length > 0 ? [{ key: "request-debug", text: requestText }] : [],
+    voiceShouldRender: voiceDebugEnabled === true && (voiceEntryCount ?? 0) > 0,
+    voiceRows: resolvedVoiceRows,
   }
 }
 

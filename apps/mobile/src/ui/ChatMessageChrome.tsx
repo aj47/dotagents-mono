@@ -62,6 +62,7 @@ import type {
   ChatRuntimeToolApprovalMobileRenderState,
   ChatRuntimeTurnDurationHeaderMobileRenderState,
   ChatRuntimeDelegationCardMobileRenderState,
+  ChatRuntimeDebugPanelsMobileRenderState,
   ChatRuntimeInlineActivityMobileRenderState,
   ChatRuntimeLoadingStateMobileRenderState,
   ChatSessionStatusMobileRenderState,
@@ -976,10 +977,7 @@ type ChatMessageLoadingStateProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
-type ChatMessageDebugPanelRow = {
-  key: string;
-  text: string;
-};
+type ChatMessageDebugPanelRow = ChatRuntimeDebugPanelsMobileRenderState['requestRows'][number];
 
 type ChatMessageDebugPanelProps = {
   shouldRender: boolean;
@@ -988,11 +986,7 @@ type ChatMessageDebugPanelProps = {
   textStyle: StyleProp<TextStyle>;
 };
 
-type ChatMessageDebugPanelStackProps = {
-  requestShouldRender: boolean;
-  requestRows: readonly ChatMessageDebugPanelRow[];
-  voiceShouldRender: boolean;
-  voiceRows: readonly ChatMessageDebugPanelRow[];
+type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState & {
   panelStyle: StyleProp<ViewStyle>;
   textStyle: StyleProp<TextStyle>;
 };

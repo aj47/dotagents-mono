@@ -117,6 +117,7 @@ import {
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDebugState,
+  getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
@@ -2178,6 +2179,21 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [messageQueueEnabled, queuedMessages.length],
   );
+  const mobileRuntimeDebugPanelsRenderState = useMemo(
+    () => getChatRuntimeDebugPanelsMobileRenderState({
+      requestDebugText: debugInfo,
+      voiceDebugEnabled: handsFreeDebugEnabled,
+      voiceEntryCount: voiceEvents.length,
+      voiceRows: [
+        { key: 'voice-debug-title', text: handsFreeCopy.debug.voiceDebugTitle },
+        ...voiceEvents.slice(0, 6).map((entry) => ({
+          key: entry.id,
+          text: formatVoiceDebugEntry(entry),
+        })),
+      ],
+    }),
+    [debugInfo, handsFreeCopy.debug.voiceDebugTitle, handsFreeDebugEnabled, voiceEvents],
+  );
 
   const handlePickImages = useCallback(async () => {
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
@@ -3732,18 +3748,7 @@ export default function ChatScreen({ route, navigation }: any) {
         stepSummary: {
           renderState: latestStepSummaryRenderState,
         },
-        debugPanels: {
-          requestShouldRender: Boolean(debugInfo),
-          requestRows: debugInfo ? [{ key: 'request-debug', text: debugInfo }] : [],
-          voiceShouldRender: handsFreeDebugEnabled && voiceEvents.length > 0,
-          voiceRows: [
-            { key: 'voice-debug-title', text: handsFreeCopy.debug.voiceDebugTitle },
-            ...voiceEvents.slice(0, 6).map((entry) => ({
-              key: entry.id,
-              text: formatVoiceDebugEntry(entry),
-            })),
-          ],
-        },
+        debugPanels: mobileRuntimeDebugPanelsRenderState,
       }}
       styles={chatMessageRuntimeSurfaceStyles}
     >
