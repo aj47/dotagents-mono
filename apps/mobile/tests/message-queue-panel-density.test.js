@@ -20,7 +20,11 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.editInputAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.cancelAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.saveAccessibilityLabel\}/);
-  assert.match(source, /accessibilityState=\{\{ disabled: !editText\.trim\(\) \}\}/);
+  assert.match(source, /getQueuedMessageEditSaveActionState/);
+  assert.match(source, /const editSaveActionState = getQueuedMessageEditSaveActionState\(editText\);/);
+  assert.match(source, /disabled=\{editSaveActionState\.isDisabled\}/);
+  assert.match(source, /accessibilityState=\{editSaveActionState\.accessibilityState\}/);
+  assert.doesNotMatch(source, /accessibilityState=\{\{ disabled: !editText\.trim\(\) \}\}/);
   assert.match(source, /accessibilityRole=\{actionSurface\.buttonAccessibilityRole\}/);
   assert.match(source, /activeOpacity=\{actionSurface\.buttonPressedOpacity\}/);
   assert.match(source, /accessibilityRole=\{editSurface\.buttonAccessibilityRole\}/);

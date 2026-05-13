@@ -694,6 +694,11 @@ export interface MessageQueuePanelActionAccessibilityState {
   disabled: boolean;
 }
 
+export interface QueuedMessageEditSaveActionState {
+  isDisabled: boolean;
+  accessibilityState: MessageQueuePanelActionAccessibilityState;
+}
+
 export interface MessageQueuePanelListToggleAccessibilityState {
   expanded: boolean;
 }
@@ -853,6 +858,14 @@ export interface QueuedMessageItemMobileRenderState {
   copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
   statusColor: string;
   statusMetaColor: string;
+}
+
+export function getQueuedMessageEditSaveActionState(text: string): QueuedMessageEditSaveActionState {
+  const isDisabled = !text.trim();
+  return {
+    isDisabled,
+    accessibilityState: { disabled: isDisabled },
+  };
 }
 
 export function getQueuedMessageItemPresentation(

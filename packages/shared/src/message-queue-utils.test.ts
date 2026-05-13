@@ -31,6 +31,7 @@ import {
   getOperatorMessageQueueTotalMessageCount,
   getQueuedMessageItemPresentation,
   getQueuedMessageItemMobileRenderState,
+  getQueuedMessageEditSaveActionState,
   getQueuedMessages,
   getQueuedMessageStatusLabel,
   getQueuedMessageExpansionAccessibilityLabel,
@@ -236,6 +237,14 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel).toBe('Cancel queued message edit');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel).toBe('Save queued message edit');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editInputAccessibilityLabel).toBe('Queued message edit input');
+    expect(getQueuedMessageEditSaveActionState('')).toEqual({
+      isDisabled: true,
+      accessibilityState: { disabled: true },
+    });
+    expect(getQueuedMessageEditSaveActionState('  retry text  ')).toEqual({
+      isDisabled: false,
+      accessibilityState: { disabled: false },
+    });
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel).toBe('Retry queued message');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel).toBe('Send Next');
     expect(getQueuedMessageExpansionAccessibilityLabel(false)).toBe('Expand queued message');

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
+  getQueuedMessageEditSaveActionState,
   getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
@@ -76,6 +77,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const queuePanelCopy = queuedMessageRenderState.copy;
   const statusColor = queuedMessageRenderState.statusColor;
   const statusMetaColor = queuedMessageRenderState.statusMetaColor;
+  const editSaveActionState = getQueuedMessageEditSaveActionState(editText);
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -254,11 +256,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             <TouchableOpacity
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
-              disabled={!editText.trim()}
+              disabled={editSaveActionState.isDisabled}
               activeOpacity={editSurface.buttonPressedOpacity}
               accessibilityRole={editSurface.buttonAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.saveAccessibilityLabel}
-              accessibilityState={{ disabled: !editText.trim() }}
+              accessibilityState={editSaveActionState.accessibilityState}
             >
               <Text style={styles.saveButtonText}>{queuePanelCopy.actions.saveLabel}</Text>
             </TouchableOpacity>
