@@ -76,6 +76,8 @@ export const SPLIT_PANE_PRESENTATION = {
       textColorToken: "foreground",
       activeTextColorToken: "primary",
       fontWeight: "600",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
       active: {
         borderColorToken: "primary",
         backgroundColorToken: "primary",
@@ -154,6 +156,8 @@ export const SPLIT_PANE_PRESENTATION = {
       iconColorToken: "foreground",
       chooseIconName: "list-outline",
       openIconName: "expand-outline",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     emptyState: {
       flex: 1,
@@ -191,6 +195,8 @@ export const SPLIT_PANE_PRESENTATION = {
       iconName: "chatbubbles-outline",
       iconSize: 15,
       iconColorToken: "background",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     secondaryButton: {
       flexDirection: "row",
@@ -208,6 +214,8 @@ export const SPLIT_PANE_PRESENTATION = {
       iconName: "add-circle-outline",
       iconSize: 15,
       iconColorToken: "foreground",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     modalOverlay: {
       flex: 1,
@@ -245,6 +253,8 @@ export const SPLIT_PANE_PRESENTATION = {
         colorToken: "mutedForeground",
         numberOfLines: 2,
       },
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
       active: {
         borderColorToken: "primary",
         backgroundColorToken: "primary",
@@ -260,6 +270,8 @@ export const SPLIT_PANE_PRESENTATION = {
       iconName: "add-circle-outline",
       iconSize: 16,
       iconColorToken: "primary",
+      accessibilityRole: "button",
+      pressedOpacity: 0.78,
     },
     newChatOptionText: {
       colorToken: "primary",

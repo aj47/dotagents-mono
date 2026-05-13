@@ -184,7 +184,8 @@ export default function SplitChatScreen({ navigation }: Props) {
             <TouchableOpacity
               onPress={() => setPickerPane(pane)}
               style={styles.toolbarButton}
-              accessibilityRole="button"
+              activeOpacity={splitPaneSurface.toolbarButton.pressedOpacity}
+              accessibilityRole={splitPaneSurface.toolbarButton.accessibilityRole}
               accessibilityLabel={createButtonAccessibilityLabel(formatSplitPaneChooseAccessibilityLabel(pane))}
             >
               <Ionicons
@@ -198,8 +199,10 @@ export default function SplitChatScreen({ navigation }: Props) {
               onPress={() => openFullScreenChat(sessionId)}
               disabled={!sessionId}
               style={[styles.toolbarButton, !sessionId && styles.toolbarButtonDisabled]}
-              accessibilityRole="button"
+              activeOpacity={splitPaneSurface.toolbarButton.pressedOpacity}
+              accessibilityRole={splitPaneSurface.toolbarButton.accessibilityRole}
               accessibilityLabel={createButtonAccessibilityLabel(formatSplitPaneOpenAccessibilityLabel(pane))}
+              accessibilityState={{ disabled: !sessionId }}
             >
               <Ionicons
                 name={splitPaneToolbarOpenIcon.name}
@@ -222,7 +225,13 @@ export default function SplitChatScreen({ navigation }: Props) {
                 {splitPaneCopy.emptyState.copy}
               </Text>
               <View style={styles.emptyStateActions}>
-                <TouchableOpacity style={styles.primaryButton} onPress={() => setPickerPane(pane)}>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => setPickerPane(pane)}
+                  activeOpacity={splitPaneSurface.primaryButton.pressedOpacity}
+                  accessibilityRole={splitPaneSurface.primaryButton.accessibilityRole}
+                  accessibilityLabel={createButtonAccessibilityLabel(splitPaneCopy.emptyState.chooseLabel)}
+                >
                   <Ionicons
                     name={splitPaneEmptyChooseIcon.name}
                     size={splitPaneEmptyChooseIcon.size}
@@ -230,7 +239,13 @@ export default function SplitChatScreen({ navigation }: Props) {
                   />
                   <Text style={styles.primaryButtonText}>{splitPaneCopy.emptyState.chooseLabel}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => createSessionForPane(pane)}>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => createSessionForPane(pane)}
+                  activeOpacity={splitPaneSurface.secondaryButton.pressedOpacity}
+                  accessibilityRole={splitPaneSurface.secondaryButton.accessibilityRole}
+                  accessibilityLabel={createButtonAccessibilityLabel(splitPaneCopy.emptyState.newChatLabel)}
+                >
                   <Ionicons
                     name={splitPaneEmptyNewChatIcon.name}
                     size={splitPaneEmptyNewChatIcon.size}
@@ -253,17 +268,26 @@ export default function SplitChatScreen({ navigation }: Props) {
           <Text style={styles.controlBarTitle}>{splitPaneCopy.title}</Text>
           <Text style={styles.controlBarCopy}>{splitPaneCopy.description}</Text>
           <View style={styles.segmentedRow}>
-            {(['auto', 'horizontal', 'vertical'] as SplitOrientationPreference[]).map((option) => (
-              <Pressable
-                key={option}
-                onPress={() => setLayoutPreference(option)}
-                style={[styles.segmentButton, layoutPreference === option && styles.segmentButtonActive]}
-              >
-                <Text style={[styles.segmentButtonText, layoutPreference === option && styles.segmentButtonTextActive]}>
-                  {splitPaneCopy.orientationLabel[option]}
-                </Text>
-              </Pressable>
-            ))}
+            {(['auto', 'horizontal', 'vertical'] as SplitOrientationPreference[]).map((option) => {
+              const isSelected = layoutPreference === option;
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() => setLayoutPreference(option)}
+                  accessibilityRole={splitPaneSurface.segmentButton.accessibilityRole}
+                  accessibilityState={{ selected: isSelected }}
+                  style={({ pressed }) => [
+                    styles.segmentButton,
+                    isSelected && styles.segmentButtonActive,
+                    pressed && { opacity: splitPaneSurface.segmentButton.pressedOpacity },
+                  ]}
+                >
+                  <Text style={[styles.segmentButtonText, isSelected && styles.segmentButtonTextActive]}>
+                    {splitPaneCopy.orientationLabel[option]}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -284,6 +308,9 @@ export default function SplitChatScreen({ navigation }: Props) {
                   return (
                     <TouchableOpacity
                       style={[styles.sessionOption, isSelected && styles.sessionOptionActive]}
+                      activeOpacity={splitPaneSurface.sessionOption.pressedOpacity}
+                      accessibilityRole={splitPaneSurface.sessionOption.accessibilityRole}
+                      accessibilityState={{ selected: isSelected }}
                       onPress={() => {
                         if (pickerPane === 'primary') setPrimarySessionId(item.id);
                         if (pickerPane === 'secondary') setSecondarySessionId(item.id);
@@ -298,6 +325,9 @@ export default function SplitChatScreen({ navigation }: Props) {
                 ListFooterComponent={(
                   <TouchableOpacity
                     style={styles.newChatOption}
+                    activeOpacity={splitPaneSurface.newChatOption.pressedOpacity}
+                    accessibilityRole={splitPaneSurface.newChatOption.accessibilityRole}
+                    accessibilityLabel={createButtonAccessibilityLabel(splitPaneCopy.modal.createNewChatLabel)}
                     onPress={() => {
                       if (pickerPane) createSessionForPane(pickerPane);
                       setPickerPane(null);

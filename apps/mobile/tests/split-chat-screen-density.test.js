@@ -95,6 +95,29 @@ test('uses shared split-pane mobile icons for toolbar and pane action buttons', 
   assert.doesNotMatch(screenSource, /name="(list-outline|expand-outline|chatbubbles-outline|add-circle-outline)"/);
 });
 
+test('uses shared split-pane touch semantics for mobile controls', () => {
+  assert.match(sharedSplitPaneSource, /accessibilityRole:\s*"button"/);
+  assert.match(sharedSplitPaneSource, /pressedOpacity:\s*0\.78/);
+  assert.match(screenSource, /accessibilityRole=\{splitPaneSurface\.toolbarButton\.accessibilityRole\}/);
+  assert.match(screenSource, /activeOpacity=\{splitPaneSurface\.toolbarButton\.pressedOpacity\}/);
+  assert.match(screenSource, /accessibilityRole=\{splitPaneSurface\.primaryButton\.accessibilityRole\}/);
+  assert.match(screenSource, /activeOpacity=\{splitPaneSurface\.primaryButton\.pressedOpacity\}/);
+  assert.match(screenSource, /accessibilityRole=\{splitPaneSurface\.secondaryButton\.accessibilityRole\}/);
+  assert.match(screenSource, /activeOpacity=\{splitPaneSurface\.secondaryButton\.pressedOpacity\}/);
+  assert.match(screenSource, /accessibilityRole=\{splitPaneSurface\.segmentButton\.accessibilityRole\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected: isSelected \}\}/);
+  assert.match(screenSource, /pressed && \{ opacity: splitPaneSurface\.segmentButton\.pressedOpacity \}/);
+  assert.match(screenSource, /accessibilityRole=\{splitPaneSurface\.sessionOption\.accessibilityRole\}/);
+  assert.match(screenSource, /activeOpacity=\{splitPaneSurface\.sessionOption\.pressedOpacity\}/);
+  assert.match(screenSource, /accessibilityRole=\{splitPaneSurface\.newChatOption\.accessibilityRole\}/);
+  assert.match(screenSource, /activeOpacity=\{splitPaneSurface\.newChatOption\.pressedOpacity\}/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\(splitPaneCopy\.emptyState\.chooseLabel\)\}/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\(splitPaneCopy\.emptyState\.newChatLabel\)\}/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\(splitPaneCopy\.modal\.createNewChatLabel\)\}/);
+  assert.doesNotMatch(screenSource, /accessibilityRole="button"/);
+  assert.doesNotMatch(screenSource, /activeOpacity=\{0\.78\}/);
+});
+
 test('uses shared split-pane presentation for the mobile picker modal and session rows', () => {
   assert.match(sharedSplitPaneSource, /modalCard:\s*\{/);
   assert.match(sharedSplitPaneSource, /modalTitle:\s*\{/);

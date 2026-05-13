@@ -90,6 +90,8 @@ describe("split pane selection", () => {
     expect(SPLIT_PANE_PRESENTATION.mobile.segmentedRow.flexDirection).toBe("row")
     expect(SPLIT_PANE_PRESENTATION.mobile.segmentButton.borderColorToken).toBe("border")
     expect(SPLIT_PANE_PRESENTATION.mobile.segmentButton.fontWeight).toBe("600")
+    expect(SPLIT_PANE_PRESENTATION.mobile.segmentButton.accessibilityRole).toBe("button")
+    expect(SPLIT_PANE_PRESENTATION.mobile.segmentButton.pressedOpacity).toBe(0.78)
     expect(SPLIT_PANE_PRESENTATION.mobile.segmentButton.active).toMatchObject({
       borderColorToken: "primary",
       backgroundColorToken: "primary",
@@ -101,14 +103,22 @@ describe("split pane selection", () => {
     expect(SPLIT_PANE_PRESENTATION.mobile.toolbarButton.alignItems).toBe("center")
     expect(SPLIT_PANE_PRESENTATION.mobile.toolbarButton.iconSize).toBe(14)
     expect(SPLIT_PANE_PRESENTATION.mobile.toolbarButton.disabledOpacity).toBe(0.45)
+    expect(SPLIT_PANE_PRESENTATION.mobile.toolbarButton.accessibilityRole).toBe("button")
+    expect(SPLIT_PANE_PRESENTATION.mobile.toolbarButton.pressedOpacity).toBe(0.78)
     expect(SPLIT_PANE_PRESENTATION.mobile.emptyStateCopy.maxWidth).toBe(360)
     expect(SPLIT_PANE_PRESENTATION.mobile.primaryButton.flexDirection).toBe("row")
     expect(SPLIT_PANE_PRESENTATION.mobile.primaryButton.gap).toBe("xs")
     expect(SPLIT_PANE_PRESENTATION.mobile.primaryButton.iconName).toBe("chatbubbles-outline")
     expect(SPLIT_PANE_PRESENTATION.mobile.primaryButton.fontWeight).toBe("700")
+    expect(SPLIT_PANE_PRESENTATION.mobile.primaryButton.accessibilityRole).toBe("button")
+    expect(SPLIT_PANE_PRESENTATION.mobile.primaryButton.pressedOpacity).toBe(0.78)
     expect(SPLIT_PANE_PRESENTATION.mobile.secondaryButton.iconName).toBe("add-circle-outline")
     expect(SPLIT_PANE_PRESENTATION.mobile.secondaryButton.borderColorToken).toBe("border")
+    expect(SPLIT_PANE_PRESENTATION.mobile.secondaryButton.accessibilityRole).toBe("button")
+    expect(SPLIT_PANE_PRESENTATION.mobile.secondaryButton.pressedOpacity).toBe(0.78)
     expect(SPLIT_PANE_PRESENTATION.mobile.paneTitle.numberOfLines).toBe(1)
+    expect(SPLIT_PANE_PRESENTATION.mobile.sessionOption.accessibilityRole).toBe("button")
+    expect(SPLIT_PANE_PRESENTATION.mobile.sessionOption.pressedOpacity).toBe(0.78)
     expect(SPLIT_PANE_PRESENTATION.mobile.sessionOption.active).toMatchObject({
       borderColorToken: "primary",
       backgroundColorToken: "primary",
@@ -126,6 +136,8 @@ describe("split pane selection", () => {
     expect(SPLIT_PANE_PRESENTATION.mobile.newChatOption.justifyContent).toBe("center")
     expect(SPLIT_PANE_PRESENTATION.mobile.newChatOption.flexDirection).toBe("row")
     expect(SPLIT_PANE_PRESENTATION.mobile.newChatOption.iconName).toBe("add-circle-outline")
+    expect(SPLIT_PANE_PRESENTATION.mobile.newChatOption.accessibilityRole).toBe("button")
+    expect(SPLIT_PANE_PRESENTATION.mobile.newChatOption.pressedOpacity).toBe(0.78)
     expect(SPLIT_PANE_PRESENTATION.mobile.newChatOptionText.fontWeight).toBe("700")
     expect(SPLIT_PANE_PRESENTATION.mobile.modalOverlay).toMatchObject({
       flex: 1,
