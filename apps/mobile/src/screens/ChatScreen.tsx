@@ -101,6 +101,7 @@ import {
   getChatComposerEditBeforeSendMobileRenderState,
   getChatComposerImageAttachmentMobileRenderState,
   getChatComposerMicMobileRenderState,
+  getChatComposerMobileActionAvailabilityRenderState,
   getChatComposerMobileControlState,
   getChatComposerMobileVisibilityRenderState,
   getChatComposerMicMobileWebPressStyleState,
@@ -3199,22 +3200,29 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
-	const isComposerSubmitDisabled = !composerHasContent || (!handsFree && composerPresentation.isDisabled);
+  const mobileComposerActionAvailabilityRenderState = useMemo(
+    () => getChatComposerMobileActionAvailabilityRenderState({
+      hasContent: composerHasContent,
+      handsFree,
+      presentation: composerPresentation,
+    }),
+    [composerHasContent, composerPresentation, handsFree],
+  );
   const mobileComposerQueueRenderState = useMemo(
     () => getChatComposerQueueMobileRenderState({
-      isDisabled: !composerHasContent,
+      isDisabled: mobileComposerActionAvailabilityRenderState.queueAction.isDisabled,
       colors: theme.colors,
     }),
-    [composerHasContent, theme.colors],
+    [mobileComposerActionAvailabilityRenderState.queueAction.isDisabled, theme.colors],
   );
   const composerSubmitRenderState = useMemo(
     () => getChatComposerSubmitMobileRenderState({
       presentation: composerPresentation,
       isHandsFree: handsFree,
-      isDisabled: isComposerSubmitDisabled,
+      isDisabled: mobileComposerActionAvailabilityRenderState.submitAction.isDisabled,
       colors: theme.colors,
     }),
-    [composerPresentation, handsFree, isComposerSubmitDisabled, theme.colors],
+    [composerPresentation, handsFree, mobileComposerActionAvailabilityRenderState.submitAction.isDisabled, theme.colors],
   );
   const mobileComposerImageAttachmentRenderState = useMemo(
     () => getChatComposerImageAttachmentMobileRenderState({

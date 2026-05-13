@@ -53,6 +53,7 @@ import {
   getChatComposerMicMobileIconState,
   getChatComposerMicMobileRenderState,
   getChatComposerMicMobileWebPressStyleState,
+  getChatComposerMobileActionAvailabilityRenderState,
   getChatComposerMobileControlState,
   getChatComposerMobileIconColors,
   getChatComposerMobileSurfaceRenderState,
@@ -731,6 +732,42 @@ describe("session presentation semantics", () => {
       micButton: {
         shouldUsePushToTalk: true,
         shouldUseHandsFreePrimaryControl: false,
+      },
+    })
+    expect(getChatComposerMobileActionAvailabilityRenderState({
+      hasContent: false,
+      handsFree: false,
+      presentation: { isDisabled: false },
+    })).toEqual({
+      queueAction: {
+        isDisabled: true,
+      },
+      submitAction: {
+        isDisabled: true,
+      },
+    })
+    expect(getChatComposerMobileActionAvailabilityRenderState({
+      hasContent: true,
+      handsFree: false,
+      presentation: { isDisabled: true },
+    })).toEqual({
+      queueAction: {
+        isDisabled: false,
+      },
+      submitAction: {
+        isDisabled: true,
+      },
+    })
+    expect(getChatComposerMobileActionAvailabilityRenderState({
+      hasContent: true,
+      handsFree: true,
+      presentation: { isDisabled: true },
+    })).toEqual({
+      queueAction: {
+        isDisabled: false,
+      },
+      submitAction: {
+        isDisabled: false,
       },
     })
     expect(getChatComposerMobileControlState()).toEqual({

@@ -1393,6 +1393,21 @@ export interface ChatComposerMobileVisibilityRenderState {
   }
 }
 
+export interface ChatComposerMobileActionAvailabilityRenderStateInput {
+  hasContent?: boolean
+  handsFree?: boolean
+  presentation?: Pick<FollowUpInputPresentation, "isDisabled">
+}
+
+export interface ChatComposerMobileActionAvailabilityRenderState {
+  queueAction: {
+    isDisabled: boolean
+  }
+  submitAction: {
+    isDisabled: boolean
+  }
+}
+
 export type ChatComposerMobileTextColorToken =
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.labelColorToken
   | typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.textColorToken
@@ -3474,6 +3489,22 @@ export function getChatComposerMobileVisibilityRenderState({
     micButton: {
       shouldUsePushToTalk: !handsFree,
       shouldUseHandsFreePrimaryControl: handsFree,
+    },
+  }
+}
+
+export function getChatComposerMobileActionAvailabilityRenderState({
+  hasContent = false,
+  handsFree = false,
+  presentation,
+}: ChatComposerMobileActionAvailabilityRenderStateInput = {}): ChatComposerMobileActionAvailabilityRenderState {
+  const lacksContent = !hasContent
+  return {
+    queueAction: {
+      isDisabled: lacksContent,
+    },
+    submitAction: {
+      isDisabled: lacksContent || (!handsFree && presentation?.isDisabled === true),
     },
   }
 }

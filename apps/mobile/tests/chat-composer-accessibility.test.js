@@ -24,12 +24,14 @@ test('exposes the chat composer send control as an accessible button', () => {
 test('uses shared session presentation for mobile composer copy and disabled state', () => {
   assert.match(screenSource, /getFollowUpInputPresentation/);
   assert.match(screenSource, /getChatComposerMobileControlState/);
+  assert.match(screenSource, /getChatComposerMobileActionAvailabilityRenderState/);
   assert.match(screenSource, /getChatComposerQueueMobileRenderState/);
   assert.match(screenSource, /getChatComposerSubmitMobileRenderState/);
   assert.match(screenSource, /getChatComposerTextToSpeechMobileRenderState/);
   assert.match(screenSource, /getChatComposerEditBeforeSendMobileRenderState/);
   assert.match(screenSource, /const mobileComposerControls = useMemo\(\s+\(\) => getChatComposerMobileControlState\(\),\s+\[\],\s+\);/);
-  assert.match(screenSource, /const mobileComposerQueueRenderState = useMemo\(\s+\(\) => getChatComposerQueueMobileRenderState\(\{\s+isDisabled: !composerHasContent,\s+colors: theme\.colors,\s+\}\),\s+\[composerHasContent, theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const mobileComposerActionAvailabilityRenderState = useMemo\(\s+\(\) => getChatComposerMobileActionAvailabilityRenderState\(\{\s+hasContent: composerHasContent,\s+handsFree,\s+presentation: composerPresentation,\s+\}\),\s+\[composerHasContent, composerPresentation, handsFree\],\s+\);/);
+  assert.match(screenSource, /const mobileComposerQueueRenderState = useMemo\(\s+\(\) => getChatComposerQueueMobileRenderState\(\{\s+isDisabled: mobileComposerActionAvailabilityRenderState\.queueAction\.isDisabled,\s+colors: theme\.colors,\s+\}\),\s+\[mobileComposerActionAvailabilityRenderState\.queueAction\.isDisabled, theme\.colors\],\s+\);/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
   assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(screenSource, /getChatRuntimeMobileSafeAreaLayoutState/);
@@ -72,8 +74,9 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.doesNotMatch(screenSource, /visuallyHiddenComposerHint:\s*\{\s*position:\s*'absolute',\s*left:\s*-10000,\s*width:\s*1,\s*height:\s*1,/);
   assert.match(screenSource, /conversationState: conversationState \?\? \(responding \? 'running' : 'complete'\)/);
   assert.match(screenSource, /composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
-  assert.match(screenSource, /composerPresentation\.isDisabled/);
-  assert.match(screenSource, /getChatComposerSubmitMobileRenderState\(\{\s+presentation: composerPresentation,\s+isHandsFree: handsFree,\s+isDisabled: isComposerSubmitDisabled,\s+colors: theme\.colors,\s+\}\)/);
+  assert.match(screenSource, /getChatComposerMobileActionAvailabilityRenderState\(\{\s+hasContent: composerHasContent,\s+handsFree,\s+presentation: composerPresentation,\s+\}\)/);
+  assert.match(screenSource, /getChatComposerSubmitMobileRenderState\(\{\s+presentation: composerPresentation,\s+isHandsFree: handsFree,\s+isDisabled: mobileComposerActionAvailabilityRenderState\.submitAction\.isDisabled,\s+colors: theme\.colors,\s+\}\)/);
+  assert.doesNotMatch(screenSource, /const isComposerSubmitDisabled =/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
   assert.doesNotMatch(screenSource, /composerSubmitAction/);
   assert.match(screenSource, /queueAction: \{[\s\S]*?renderState: mobileComposerQueueRenderState,/);
@@ -222,4 +225,6 @@ test('exposes composer queue and submit disabled state through shared actions', 
   assert.doesNotMatch(screenSource, /mobileComposerQueueAction/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ disabled: (!composerHasContent|isComposerSubmitDisabled) \}\}/);
   assert.doesNotMatch(screenSource, /disabled=\{(!composerHasContent|isComposerSubmitDisabled)\}/);
+  assert.doesNotMatch(screenSource, /isDisabled: !composerHasContent/);
+  assert.doesNotMatch(screenSource, /isDisabled: isComposerSubmitDisabled/);
 });
