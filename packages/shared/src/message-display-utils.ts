@@ -194,10 +194,12 @@ export type ChatMessageDisplayTone = "user" | "assistant" | "assistant_final" | 
 export type ChatMessageToneMobileStyleSlot = "user" | "assistant" | "assistantFinal" | "tool"
 export type ChatMessageToneColorToken = "info" | "success" | "warning" | "border" | "muted"
 export type ChatMessageToneColorPalette = Readonly<Record<ChatMessageToneColorToken, string>>
-export type ChatMessageMobileRenderColorPalette =
-  ChatMessageToneColorPalette & ChatMessageMobileCollapsedPreviewColorPalette
 export type ChatMessageActionMobileColorToken = "mutedForeground" | "primary" | "success" | "warning"
 export type ChatMessageActionMobileColorPalette = Readonly<Record<ChatMessageActionMobileColorToken, string>>
+export type ChatMessageMobileRenderColorPalette =
+  ChatMessageToneColorPalette &
+  ChatMessageMobileCollapsedPreviewColorPalette &
+  ChatMessageActionMobileColorPalette
 export type ChatMessageRuntimeVariant = "delegation" | "approval" | "retry"
 
 export type ChatMessageConversationContentLike = {
@@ -352,7 +354,8 @@ export interface ChatMessageActionLayoutState {
 
 export interface ChatMessageMobileRenderStateInput
   extends ChatMessageContentRenderStateInput,
-    ChatMessageDisplayToneInput {
+    ChatMessageDisplayToneInput,
+    ChatMessageExpansionActionInput {
   colors: ChatMessageMobileRenderColorPalette
 }
 
@@ -368,6 +371,7 @@ export interface ChatMessageMobileRenderState {
     text: string
   }
   content: ChatMessageContentRenderState
+  expansion: ChatMessageExpansionMobileRenderState
   tone: ChatMessageDisplayTone
   toneStyleSlot: ChatMessageToneMobileStyleSlot
   colors: ChatMessageMobileRenderColors
@@ -817,6 +821,12 @@ export function getChatMessageMobileRenderState(
       text: getChatMessageCollapsedPreview(input.content ?? ""),
     },
     content: getChatMessageContentRenderState(input),
+    expansion: getChatMessageExpansionMobileRenderState({
+      shouldCollapse: input.shouldCollapse,
+      isToolOnly: input.isToolOnly,
+      isExpanded: input.isExpanded,
+      colors: input.colors,
+    }),
     tone,
     toneStyleSlot: getChatMessageToneMobileStyleSlot(tone),
     colors: {

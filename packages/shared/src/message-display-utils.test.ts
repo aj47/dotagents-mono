@@ -1061,6 +1061,8 @@ describe('chat message display presentation', () => {
     })
     const mobileRenderColors = {
       foreground: '#0f172a',
+      mutedForeground: '#64748b',
+      primary: '#2563eb',
       info: '#3b82f6',
       success: '#22c55e',
       warning: '#f59e0b',
@@ -1087,6 +1089,11 @@ describe('chat message display presentation', () => {
         content: '# Title\nBody',
         isExpanded: false,
         shouldCollapse: true,
+      }),
+      expansion: getChatMessageExpansionMobileRenderState({
+        shouldCollapse: true,
+        isExpanded: false,
+        colors: mobileRenderColors,
       }),
       tone: 'assistant_final',
       toneStyleSlot: 'assistantFinal',

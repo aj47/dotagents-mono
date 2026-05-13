@@ -199,7 +199,6 @@ import {
   getChatMessageActionMobileStyleRenderState,
   getChatMessageCopyMobileRenderState,
   getChatDisplayExpansionState,
-  getChatMessageExpansionMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
   findLastChatMessageConversationContentIndex,
@@ -3969,6 +3968,7 @@ export default function ChatScreen({ route, navigation }: any) {
               content: visibleMessageContent,
               isExpanded,
               shouldCollapse: effectiveShouldCollapse,
+              isToolOnly: messageDisplayState.isToolOnly,
               isLiveStreaming: isLiveStreamingAssistantMessage,
               colors: theme.colors,
             });
@@ -3999,12 +3999,6 @@ export default function ChatScreen({ route, navigation }: any) {
               return null;
             }
 
-            const messageExpansionRenderState = getChatMessageExpansionMobileRenderState({
-              shouldCollapse: effectiveShouldCollapse,
-              isToolOnly: messageDisplayState.isToolOnly,
-              isExpanded,
-              colors: theme.colors,
-            });
             const toolApprovalId = m.toolApproval?.approvalId ?? '';
             const isToolApprovalExpanded = toolApprovalId
               ? getChatDisplayExpansionState(expandedToolApprovals, toolApprovalId)
@@ -4041,7 +4035,7 @@ export default function ChatScreen({ route, navigation }: any) {
               speech: messageSpeechRenderState.canSpeak,
               branch: messageBranchRenderState.canBranch,
               copy: messageCopyRenderState.canCopy,
-              expansion: messageExpansionRenderState.canToggle,
+              expansion: messageRenderState.expansion.canToggle,
             });
             const messageActionSet = createChatMessageActionSet({
               contentRenderState: messageContentRenderState,
@@ -4079,7 +4073,7 @@ export default function ChatScreen({ route, navigation }: any) {
               },
               expansion: {
                 canRender: messageActionAvailabilityRenderState.expansion.canRender,
-                renderState: messageExpansionRenderState,
+                renderState: messageRenderState.expansion,
                 onPress: () => toggleMessageExpansion(i),
                 hitSlop: mobileMessageActionButton.hitSlop,
                 ...messageActionStyles.expansion,
@@ -4229,10 +4223,10 @@ export default function ChatScreen({ route, navigation }: any) {
                           ? () => toggleMessageExpansion(i)
                           : undefined,
                         disabled: !messageActionAvailabilityRenderState.expansion.canRender,
-                        accessibilityLabel: messageExpansionRenderState.accessibilityLabel,
-                        accessibilityHint: messageExpansionRenderState.accessibilityHint ?? undefined,
-                        accessibilityState: messageExpansionRenderState.accessibilityState,
-                        ariaExpanded: messageExpansionRenderState.ariaExpanded,
+                        accessibilityLabel: messageRenderState.expansion.accessibilityLabel,
+                        accessibilityHint: messageRenderState.expansion.accessibilityHint ?? undefined,
+                        accessibilityState: messageRenderState.expansion.accessibilityState,
+                        ariaExpanded: messageRenderState.expansion.ariaExpanded,
                       },
                     },
                     toolExecutionStack: {
