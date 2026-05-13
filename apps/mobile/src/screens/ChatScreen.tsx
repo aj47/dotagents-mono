@@ -179,11 +179,9 @@ import {
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobileHeaderRenderState,
-  getToolExecutionDetailMobilePayloadPreviewState,
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
-  getToolExecutionDetailMobileStyleColors,
-  getToolExecutionDetailMobileSurfaceState,
+  getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailArgumentsState,
   getToolExecutionDetailResultState,
   getToolExecutionCallDisplayState,
@@ -306,9 +304,7 @@ const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertSta
 const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
 const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState();
-const mobileToolExecutionDetailSurface = getToolExecutionDetailMobileSurfaceState();
 const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState();
-const mobileToolExecutionDetailPayloadPreview = getToolExecutionDetailMobilePayloadPreviewState();
 const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
@@ -451,6 +447,10 @@ export default function ChatScreen({ route, navigation }: any) {
   );
   const toolExecutionDetailPendingResultState = useMemo(
     () => getToolExecutionDetailMobilePendingResultRenderState({ colors: theme.colors }),
+    [theme.colors],
+  );
+  const toolExecutionDetailStyleState = useMemo(
+    () => getToolExecutionDetailMobileStyleRenderState({ colors: theme.colors }),
     [theme.colors],
   );
   const promptLibraryEditorRenderState = useMemo(
@@ -3865,7 +3865,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   compactText: toolArgumentsPayload?.compactText,
                   content: toolArgumentsText,
                   isExpanded: isToolCallFullyExpanded,
-                  previewNumberOfLines: mobileToolExecutionDetailPayloadPreview.numberOfLines,
+                  previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
                   copyButtonRenderState: toolInputCopyButtonState,
                   onCopyPress: () => { void handleCopyToolPayload(toolArgumentsText); },
                 } : null,
@@ -3876,7 +3876,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   resultCompactText: toolResultPayload?.compactText,
                   resultContent: toolResultContent,
                   isExpanded: isToolCallFullyExpanded,
-                  previewNumberOfLines: mobileToolExecutionDetailPayloadPreview.numberOfLines,
+                  previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
                   copyButtonRenderState: toolOutputCopyButtonState,
                   onCopyPress: () => { void handleCopyToolPayload(toolResultContent); },
                   errorRenderState: toolErrorHeaderState,
@@ -4279,7 +4279,10 @@ function createStyles(theme: Theme, screenHeight: number) {
   });
   const sessionStatusSurface = mobileSessionStatusSurface;
   const compactToolExecution = mobileToolExecutionCompactSurface;
-  const detailedToolExecution = mobileToolExecutionDetailSurface;
+  const toolExecutionDetailStyleState = getToolExecutionDetailMobileStyleRenderState({
+    colors: theme.colors,
+  });
+  const detailedToolExecution = toolExecutionDetailStyleState.surface;
   const viewportSurfaceColors = viewportStyleState.colors;
   const toolActivityGroupStyleState = getToolActivityGroupMobileSurfaceRenderState({
     colors: theme.colors,
@@ -4302,7 +4305,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const mobileMessageCollapsedPreview = mobileMessageStyleState.collapsedPreview;
   const mobileMessageCollapsedPreviewColors = mobileMessageStyleState.colors.collapsedPreview;
   const mobileMessageToneColors = mobileMessageStyleState.colors.tones;
-  const toolExecutionDetailStyleColors = getToolExecutionDetailMobileStyleColors(theme.colors);
+  const toolExecutionDetailStyleColors = toolExecutionDetailStyleState.colors;
   const toolPayloadPreviewColors = toolExecutionDetailStyleColors.payloadPreview;
   const toolDetailCopyButtonColors = toolExecutionDetailStyleColors.copyButton;
   const toolResultBadgeSuccessColors = toolExecutionDetailStyleColors.badge.success;

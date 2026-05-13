@@ -338,6 +338,16 @@ export interface ToolExecutionDetailMobileStyleColors {
   byState: Record<ToolExecutionDisplayState, ToolExecutionDetailMobileCardColors>
 }
 
+export interface ToolExecutionDetailMobileStyleRenderStateInput {
+  colors: ToolExecutionSurfaceColorPalette
+}
+
+export interface ToolExecutionDetailMobileStyleRenderState {
+  surface: typeof TOOL_EXECUTION_DETAIL_SURFACE_PRESENTATION.mobile
+  payloadPreview: ToolExecutionDetailMobilePayloadPreviewState
+  colors: ToolExecutionDetailMobileStyleColors
+}
+
 export interface ToolExecutionDisplayResultLike {
   success?: boolean
 }
@@ -1970,6 +1980,16 @@ export function getToolExecutionDetailMobileStyleColors(
       success: getToolExecutionDetailMobileColors("success", colors),
       error: getToolExecutionDetailMobileColors("error", colors),
     },
+  }
+}
+
+export function getToolExecutionDetailMobileStyleRenderState({
+  colors,
+}: ToolExecutionDetailMobileStyleRenderStateInput): ToolExecutionDetailMobileStyleRenderState {
+  return {
+    surface: getToolExecutionDetailMobileSurfaceState(),
+    payloadPreview: getToolExecutionDetailMobilePayloadPreviewState(),
+    colors: getToolExecutionDetailMobileStyleColors(colors),
   }
 }
 

@@ -1422,11 +1422,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /getToolExecutionDetailMobileEmptyStateRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileExpandControlRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileHeaderRenderState,/);
-  assert.match(screenSource, /getToolExecutionDetailMobilePayloadPreviewState,/);
   assert.match(screenSource, /getToolExecutionDetailMobilePendingResultRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileSectionHeaderRenderState,/);
-  assert.match(screenSource, /getToolExecutionDetailMobileStyleColors,/);
-  assert.match(screenSource, /getToolExecutionDetailMobileSurfaceState,/);
+  assert.match(screenSource, /getToolExecutionDetailMobileStyleRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailResultState,/);
   assert.match(screenSource, /getToolExecutionCallDisplayState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileBadgeColors,/);
@@ -1435,6 +1433,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileCopyButtonColors,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileErrorColors,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobilePayloadPreviewColors,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionDetailMobilePayloadPreviewState,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileStyleColors,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileSurfaceState,/);
   assert.match(screenSource, /getToolExecutionResultOnlyFallbackRenderState,/);
   assert.match(screenSource, /getToolExecutionSummaryDisplayState,/);
   assert.match(screenSource, /getToolExecutionStatusMobileColorMap,/);
@@ -1464,7 +1465,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /TOOL_EXECUTION_DETAIL_PRESENTATION/);
   assert.doesNotMatch(screenSource, /TOOL_EXECUTION_STATUS_PRESENTATION/);
   assert.match(screenSource, /const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const mobileToolExecutionDetailSurface = getToolExecutionDetailMobileSurfaceState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailSurface = getToolExecutionDetailMobileSurfaceState\(\);/);
   assert.match(screenSource, /const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState\(\);/);
   assert.match(screenSource, /const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState\(\);/);
   assert.match(screenSource, /const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState\(\);/);
@@ -1473,12 +1474,13 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToggleIcon = getToolExecutionCompactMobileToggleIconState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailCollapseIcon = getToolExecutionDetailMobileToggleIconState\(\{ placement: 'collapse' \}\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailCopyIcon = getToolExecutionDetailMobileCopyIconState\(\);/);
-  assert.match(screenSource, /const mobileToolExecutionDetailPayloadPreview = getToolExecutionDetailMobilePayloadPreviewState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailPayloadPreview = getToolExecutionDetailMobilePayloadPreviewState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailPendingSpinner = getToolExecutionDetailMobilePendingSpinnerState\(\);/);
   assert.doesNotMatch(screenSource, /const toolExecutionDetailCopyButtonColors = useMemo\(\s+\(\) => getToolExecutionDetailMobileCopyButtonColors\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToggleIconColors = useMemo\(\s+\(\) => getToolExecutionCompactMobileToggleIconColors\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailCollapseIconColors = useMemo\(\s+\(\) => getToolExecutionDetailMobileToggleIconColors\(\{ placement: 'collapse' \}, theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const toolExecutionDetailPendingResultState = useMemo\(\s+\(\) => getToolExecutionDetailMobilePendingResultRenderState\(\{ colors: theme\.colors \}\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const toolExecutionDetailStyleState = useMemo\(\s+\(\) => getToolExecutionDetailMobileStyleRenderState\(\{ colors: theme\.colors \}\),\s+\[theme\.colors\],\s+\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailPendingSpinnerColors = useMemo\(\s+\(\) => getToolExecutionDetailMobilePendingSpinnerColors\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailCopyState,/);
   assert.doesNotMatch(screenSource, /const toolExecutionDetailCopy = getToolExecutionDetailCopyState\(\);/);
@@ -1547,9 +1549,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /mobileToolExecutionCompactSurface\.(toolIcon|toggleIcon|statusIcon|pendingSpinner)\.(name|size|colorToken|opacity)/);
   assert.doesNotMatch(screenSource, /\{tcPresentation\.compactLabel\}/);
   assert.match(screenSource, /const compactToolExecution = mobileToolExecutionCompactSurface;/);
-  assert.match(screenSource, /const detailedToolExecution = mobileToolExecutionDetailSurface;/);
+  assert.match(screenSource, /const detailedToolExecution = toolExecutionDetailStyleState\.surface;/);
   assert.match(screenSource, /const toolExecutionStatusColors = getToolExecutionStatusMobileColorMap\(theme\.colors\);/);
-  assert.match(screenSource, /const toolExecutionDetailStyleColors = getToolExecutionDetailMobileStyleColors\(theme\.colors\);/);
+  assert.match(screenSource, /const toolExecutionDetailStyleColors = toolExecutionDetailStyleState\.colors;/);
   assert.match(screenSource, /const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors\.byState;/);
   assert.match(screenSource, /toolExecutionCard:\s*\{[\s\S]*?marginTop:\s*detailedToolExecution\.card\.marginTop,[\s\S]*?\.\.\.toolExecutionDetailColorsByState\.idle/);
   assert.match(screenSource, /toolExecutionPending:\s*toolExecutionDetailColorsByState\.pending/);
@@ -1730,7 +1732,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /\{badge\.label\}/);
   assert.doesNotMatch(screenSource, /theme\.colors\[toolDetailToggleIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /toolDetailToggleIcon\.opacity/);
-  assert.match(screenSource, /input: toolArgumentsDetail\.hasArguments \? \{\s+payloadRenderState: toolInputHeaderState,\s+compactText: toolArgumentsPayload\?\.compactText,\s+content: toolArgumentsText,\s+isExpanded: isToolCallFullyExpanded,\s+previewNumberOfLines: mobileToolExecutionDetailPayloadPreview\.numberOfLines,\s+copyButtonRenderState: toolInputCopyButtonState,/);
+  assert.match(screenSource, /input: toolArgumentsDetail\.hasArguments \? \{\s+payloadRenderState: toolInputHeaderState,\s+compactText: toolArgumentsPayload\?\.compactText,\s+content: toolArgumentsText,\s+isExpanded: isToolCallFullyExpanded,\s+previewNumberOfLines: toolExecutionDetailStyleState\.payloadPreview\.numberOfLines,\s+copyButtonRenderState: toolInputCopyButtonState,/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadSection\s+payloadRenderState=\{input\.payloadRenderState\}\s+compactText=\{input\.compactText\}/);
   assert.match(chatMessageChromeSource, /payloadSection: \{\s+section: styles\.toolParamsSection,\s+headerRow: styles\.toolDetailHeaderRow,\s+payloadMeta: \{\s+row: styles\.toolPayloadMetaRow,\s+label: styles\.toolSectionLabel,\s+payloadType: styles\.toolPayloadType,\s+\},\s+copyButton: \{/);
   assert.match(chatMessageChromeSource, /payloadBlock: \{\s+preview: styles\.toolPayloadPreview,\s+scroll: styles\.toolParamsScroll,\s+scrollExpanded: styles\.toolParamsScrollExpanded,\s+code: styles\.toolParamsCode,/);
@@ -1755,8 +1757,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /<Text style=\{styles\.toolCallCompactStatus\}>▲<\/Text>/);
   assert.doesNotMatch(screenSource, /`▼ \$\{toolExecutionDetailCopy\.collapseLabel\}`/);
   assert.doesNotMatch(screenSource, /`▶ \$\{toolExecutionDetailCopy\.detailsLabel\}`/);
-  assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadBlock\s+compactText=\{toolArgumentsPayload\?\.compactText\}\s+content=\{toolArgumentsText\}\s+isExpanded=\{isToolCallFullyExpanded\}\s+previewNumberOfLines=\{mobileToolExecutionDetailPayloadPreview\.numberOfLines\}/);
-  assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadBlock\s+compactText=\{toolResultPayload\?\.compactText\}\s+content=\{toolResultContent\}\s+isExpanded=\{isToolCallFullyExpanded\}\s+previewNumberOfLines=\{mobileToolExecutionDetailPayloadPreview\.numberOfLines\}/);
+  assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadBlock\s+compactText=\{toolArgumentsPayload\?\.compactText\}\s+content=\{toolArgumentsText\}\s+isExpanded=\{isToolCallFullyExpanded\}\s+previewNumberOfLines=\{toolExecutionDetailStyleState\.payloadPreview\.numberOfLines\}/);
+  assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadBlock\s+compactText=\{toolResultPayload\?\.compactText\}\s+content=\{toolResultContent\}\s+isExpanded=\{isToolCallFullyExpanded\}\s+previewNumberOfLines=\{toolExecutionDetailStyleState\.payloadPreview\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadBlock/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{previewNumberOfLines\}/);
   assert.match(chatMessageChromeSource, /style=\{isExpanded \? styles\.scrollExpanded : styles\.scroll\}/);

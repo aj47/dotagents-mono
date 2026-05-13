@@ -29,6 +29,7 @@ import {
   getToolExecutionDetailMobilePendingSpinnerState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailMobileStyleColors,
+  getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailMobileToggleIconColors,
   getToolExecutionDetailMobileToggleIconState,
   getToolExecutionPayloadValueType,
@@ -942,6 +943,13 @@ describe("tool execution display", () => {
         success: getToolExecutionDetailMobileColors("success", toolExecutionDetailStylePalette),
         error: getToolExecutionDetailMobileColors("error", toolExecutionDetailStylePalette),
       },
+    })
+    expect(getToolExecutionDetailMobileStyleRenderState({
+      colors: toolExecutionDetailStylePalette,
+    })).toEqual({
+      surface: getToolExecutionDetailMobileSurfaceState(),
+      payloadPreview: getToolExecutionDetailMobilePayloadPreviewState(),
+      colors: getToolExecutionDetailMobileStyleColors(toolExecutionDetailStylePalette),
     })
   })
 
