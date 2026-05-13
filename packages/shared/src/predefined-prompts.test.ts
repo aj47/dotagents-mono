@@ -40,6 +40,7 @@ import {
   getPromptLibraryMobileShortcutActionIconState,
   getPromptLibraryMobileShortcutCopyState,
   getPromptLibraryMobileShortcutItemRenderState,
+  getPromptLibraryMobileShortcutPromptActionsRenderState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileShortcutSourceIconState,
@@ -374,6 +375,20 @@ describe("predefined prompt helpers", () => {
       mutedForeground: "#64748b",
       primary: "#2563eb",
     })
+    expect(getPromptLibraryMobileShortcutPromptActionsRenderState("Review", shortcutRenderState)).toEqual({
+      edit: {
+        icon: shortcutRenderState.chrome.editIcon,
+        iconColors: shortcutRenderState.chrome.editIconColors,
+        label: PROMPT_LIBRARY_PRESENTATION.actions.edit,
+        accessibilityLabel: "Edit predefined prompt Review",
+      },
+      delete: {
+        icon: shortcutRenderState.chrome.deleteIcon,
+        iconColors: shortcutRenderState.chrome.deleteIconColors,
+        label: PROMPT_LIBRARY_PRESENTATION.actions.delete,
+        accessibilityLabel: "Delete predefined prompt Review",
+      },
+    })
     expect(getPromptLibraryMobileShortcutItemRenderState({
       id: "task-daily",
       title: "Daily",
@@ -392,6 +407,32 @@ describe("predefined prompt helpers", () => {
       sourceLabel: "task",
       accessibilityLabel: "Run task Daily",
       accessibilityHint: "Runs this desktop task now.",
+    })
+    expect(getPromptLibraryMobileShortcutItemRenderState({
+      id: "prompt-1",
+      title: "Review",
+      content: "Review this diff.",
+      source: "saved-prompt",
+      prompt: {
+        id: "prompt-1",
+        name: "Review",
+        content: "Review this diff.",
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    }, shortcutRenderState)).toEqual({
+      interaction: {
+        isAddPrompt: false,
+        isRunning: false,
+        isDisabled: false,
+        accessibilityState: undefined,
+      },
+      sourceIcon: shortcutRenderState.chrome.sourceIcons["saved-prompt"],
+      sourceIconColors: shortcutRenderState.chrome.sourceIconColors["saved-prompt"],
+      sourceLabel: "prompt",
+      accessibilityLabel: "Insert prompt Review",
+      accessibilityHint: "Inserts this desktop library item into the composer.",
+      promptActions: getPromptLibraryMobileShortcutPromptActionsRenderState("Review", shortcutRenderState),
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.textTransform).toBe("uppercase")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.numberOfLines).toBe(1)

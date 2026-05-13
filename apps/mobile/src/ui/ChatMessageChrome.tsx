@@ -39,8 +39,6 @@ import {
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,
 } from '@dotagents/shared/session-presentation';
 import {
-  getPromptLibraryDeletePromptAccessibilityLabel,
-  getPromptLibraryEditPromptAccessibilityLabel,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutItemRenderState,
@@ -2604,6 +2602,7 @@ export function ChatConversationHomeQuickStarts<
               runningTaskId,
             );
             const { interaction: shortcutInteraction } = shortcutItemRenderState;
+            const promptActions = shortcutItemRenderState.promptActions;
 
             return (
               <Pressable
@@ -2662,7 +2661,7 @@ export function ChatConversationHomeQuickStarts<
                     {item.description}
                   </Text>
                 ) : null}
-                {item.prompt ? (
+                {item.prompt && promptActions ? (
                   <View style={styles.actions}>
                     <Pressable
                       style={({ pressed }) => [
@@ -2674,14 +2673,14 @@ export function ChatConversationHomeQuickStarts<
                         onEditPrompt(item.prompt!);
                       }}
                       accessibilityRole={shortcutSurface.shortcutActionButton.accessibilityRole}
-                      accessibilityLabel={getPromptLibraryEditPromptAccessibilityLabel(item.title)}
+                      accessibilityLabel={promptActions.edit.accessibilityLabel}
                     >
                       <Ionicons
-                        name={shortcutChrome.editIcon.name}
-                        size={shortcutChrome.editIcon.size}
-                        color={shortcutChrome.editIconColors.color}
+                        name={promptActions.edit.icon.name}
+                        size={promptActions.edit.icon.size}
+                        color={promptActions.edit.iconColors.color}
                       />
-                      <Text style={styles.actionText}>{shortcutCopy.editLabel}</Text>
+                      <Text style={styles.actionText}>{promptActions.edit.label}</Text>
                     </Pressable>
                     <Pressable
                       style={({ pressed }) => [
@@ -2693,14 +2692,14 @@ export function ChatConversationHomeQuickStarts<
                         onDeletePrompt(item.prompt!);
                       }}
                       accessibilityRole={shortcutSurface.shortcutActionButton.accessibilityRole}
-                      accessibilityLabel={getPromptLibraryDeletePromptAccessibilityLabel(item.title)}
+                      accessibilityLabel={promptActions.delete.accessibilityLabel}
                     >
                       <Ionicons
-                        name={shortcutChrome.deleteIcon.name}
-                        size={shortcutChrome.deleteIcon.size}
-                        color={shortcutChrome.deleteIconColors.color}
+                        name={promptActions.delete.icon.name}
+                        size={promptActions.delete.icon.size}
+                        color={promptActions.delete.iconColors.color}
                       />
-                      <Text style={[styles.actionText, styles.actionDangerText]}>{shortcutCopy.deleteLabel}</Text>
+                      <Text style={[styles.actionText, styles.actionDangerText]}>{promptActions.delete.label}</Text>
                     </Pressable>
                   </View>
                 ) : null}

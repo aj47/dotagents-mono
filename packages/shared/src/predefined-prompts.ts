@@ -1025,6 +1025,18 @@ export interface PromptLibraryShortcutInteractionState {
   accessibilityState?: { disabled: true }
 }
 
+export interface PromptLibraryMobileShortcutPromptActionRenderState {
+  icon: PromptLibraryMobileShortcutActionIconState
+  iconColors: PromptLibraryMobileIconColors
+  label: string
+  accessibilityLabel: string
+}
+
+export interface PromptLibraryMobileShortcutPromptActionsRenderState {
+  edit: PromptLibraryMobileShortcutPromptActionRenderState
+  delete: PromptLibraryMobileShortcutPromptActionRenderState
+}
+
 export interface PromptLibraryMobileShortcutItemRenderState {
   interaction: PromptLibraryShortcutInteractionState
   sourceIcon: PromptLibraryMobileShortcutSourceIconState
@@ -1032,6 +1044,7 @@ export interface PromptLibraryMobileShortcutItemRenderState {
   sourceLabel: string
   accessibilityLabel: string
   accessibilityHint: string
+  promptActions?: PromptLibraryMobileShortcutPromptActionsRenderState
 }
 
 export type SlashCommandInputState =
@@ -1254,6 +1267,26 @@ export function getPromptLibraryShortcutInteractionState(
   }
 }
 
+export function getPromptLibraryMobileShortcutPromptActionsRenderState(
+  title: string,
+  shortcutRenderState: PromptLibraryMobileShortcutRenderState,
+): PromptLibraryMobileShortcutPromptActionsRenderState {
+  return {
+    edit: {
+      icon: shortcutRenderState.chrome.editIcon,
+      iconColors: shortcutRenderState.chrome.editIconColors,
+      label: shortcutRenderState.copy.editLabel,
+      accessibilityLabel: getPromptLibraryEditPromptAccessibilityLabel(title),
+    },
+    delete: {
+      icon: shortcutRenderState.chrome.deleteIcon,
+      iconColors: shortcutRenderState.chrome.deleteIconColors,
+      label: shortcutRenderState.copy.deleteLabel,
+      accessibilityLabel: getPromptLibraryDeletePromptAccessibilityLabel(title),
+    },
+  }
+}
+
 export function getPromptLibraryMobileShortcutItemRenderState<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
@@ -1269,6 +1302,9 @@ export function getPromptLibraryMobileShortcutItemRenderState<
     sourceLabel: getPromptLibraryShortcutSourceLabel(item.source),
     accessibilityLabel: getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action),
     accessibilityHint: getPromptLibraryShortcutAccessibilityHint(item.source, item.action),
+    ...(item.prompt
+      ? { promptActions: getPromptLibraryMobileShortcutPromptActionsRenderState(item.title, shortcutRenderState) }
+      : {}),
   }
 }
 
