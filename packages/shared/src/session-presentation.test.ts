@@ -2021,7 +2021,7 @@ describe("session presentation semantics", () => {
     const toolApprovalColors = {
       warning: "#d97706",
       destructive: "#dc2626",
-      primaryForeground: "#ffffff",
+      successForeground: "#ffffff",
     }
     expect(getChatRuntimeToolApprovalHeaderMobileIconColors(toolApprovalColors)).toEqual({
       color: "#d97706",
@@ -2030,8 +2030,8 @@ describe("session presentation semantics", () => {
       warning: "#d97706",
       foreground: "#0f172a",
       mutedForeground: "#64748b",
-      primary: "#2563eb",
-      primaryForeground: "#ffffff",
+      success: "#16a34a",
+      successForeground: "#ffffff",
       destructive: "#dc2626",
       background: "#020617",
     }
@@ -2063,7 +2063,7 @@ describe("session presentation semantics", () => {
         color: "#0f172a",
       },
       approveButton: {
-        backgroundColor: "#2563eb",
+        backgroundColor: "#16a34a",
       },
       approveButtonText: {
         color: "#ffffff",
@@ -2116,13 +2116,14 @@ describe("session presentation semantics", () => {
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolRow.flexWrap).toBe("wrap")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonIcon.approveName).toBe("checkmark-circle")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.button.accessibilityRole).toBe("button")
-    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonVariants.approve.foregroundColorToken).toBe("primaryForeground")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonVariants.approve.backgroundColorToken).toBe("success")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonVariants.approve.foregroundColorToken).toBe("successForeground")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonVariants.deny.borderColorToken).toBe("destructive")
     expect(getChatRuntimeToolApprovalActionMobileIconState("approve")).toEqual({
       action: "approve",
       name: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonIcon.approveName,
       size: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonIcon.size,
-      colorToken: "primaryForeground",
+      colorToken: "successForeground",
     })
     expect(getChatRuntimeToolApprovalActionMobileIconState("deny")).toEqual({
       action: "deny",
@@ -2136,7 +2137,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeToolApprovalActionMobileIconColors("deny", toolApprovalColors)).toEqual({
       color: "#dc2626",
     })
-    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonSpinner.colorToken).toBe("primaryForeground")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.buttonSpinner.colorToken).toBe("successForeground")
     expect(getChatRuntimeToolApprovalButtonSpinnerMobileColors(toolApprovalColors)).toEqual({
       color: "#ffffff",
     })

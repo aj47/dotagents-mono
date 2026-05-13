@@ -3190,8 +3190,8 @@ export const TOOL_APPROVAL_SURFACE_PRESENTATION = {
     },
     buttonVariants: {
       approve: {
-        backgroundColorToken: "primary",
-        foregroundColorToken: "primaryForeground",
+        backgroundColorToken: "success",
+        foregroundColorToken: "successForeground",
       },
       deny: {
         borderWidth: 1,
@@ -3207,7 +3207,7 @@ export const TOOL_APPROVAL_SURFACE_PRESENTATION = {
     },
     buttonSpinner: {
       size: "small",
-      colorToken: "primaryForeground",
+      colorToken: "successForeground",
     },
     disabledOpacity: 0.6,
     buttonText: {
