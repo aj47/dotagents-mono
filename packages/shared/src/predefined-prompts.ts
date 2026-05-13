@@ -1,5 +1,5 @@
 import type { PredefinedPromptSummary } from "./api-types"
-import { hexToRgba } from "./colors"
+import { hexToRgba, typography } from "./colors"
 
 export type PredefinedPromptDraft = {
   name: string
@@ -167,6 +167,8 @@ export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
     },
     emptyText: {
       colorToken: "mutedForeground",
+      fontSize: typography.caption.fontSize,
+      lineHeight: typography.caption.lineHeight,
       textAlign: "center",
       paddingVertical: "md",
     },
@@ -240,11 +242,14 @@ export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
     },
     shortcutTitle: {
       colorToken: "foreground",
+      fontSize: typography.body.fontSize,
+      lineHeight: typography.body.lineHeight,
       fontWeight: "600",
       numberOfLines: 2,
     },
     shortcutDescription: {
       colorToken: "mutedForeground",
+      fontSize: typography.caption.fontSize,
       marginTop: 3,
       lineHeight: 15,
       numberOfLines: 2,
@@ -280,6 +285,8 @@ export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
     shortcutActionText: {
       colorToken: "primary",
       destructiveColorToken: "destructive",
+      fontSize: typography.caption.fontSize,
+      lineHeight: typography.caption.lineHeight,
       fontWeight: "600",
     },
     editorModal: {

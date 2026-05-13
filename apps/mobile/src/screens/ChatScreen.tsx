@@ -4953,8 +4953,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: spacing[promptLibrarySurface.quickStartCard.gap],
     },
     chatHomeEmptyText: {
-      ...theme.typography.caption,
       color: promptLibrarySurfaceColors.emptyText.color,
+      fontSize: promptLibrarySurface.emptyText.fontSize,
+      lineHeight: promptLibrarySurface.emptyText.lineHeight,
       textAlign: promptLibrarySurface.emptyText.textAlign,
       paddingVertical: spacing[promptLibrarySurface.emptyText.paddingVertical],
     },
@@ -5011,8 +5012,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       textTransform: promptLibrarySurface.shortcutSourceLabel.textTransform,
     },
     chatHomeShortcutTitle: {
-      ...theme.typography.body,
       color: promptLibrarySurfaceColors.shortcutTitle.color,
+      fontSize: promptLibrarySurface.shortcutTitle.fontSize,
+      lineHeight: promptLibrarySurface.shortcutTitle.lineHeight,
       fontWeight: promptLibrarySurface.shortcutTitle.fontWeight,
     },
     chatHomeShortcutTitleAdd: {
@@ -5020,8 +5022,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       textAlign: promptLibrarySurface.addShortcutCard.titleTextAlign,
     },
     chatHomeShortcutDescription: {
-      ...theme.typography.caption,
       color: promptLibrarySurfaceColors.shortcutDescription.color,
+      fontSize: promptLibrarySurface.shortcutDescription.fontSize,
       marginTop: promptLibrarySurface.shortcutDescription.marginTop,
       lineHeight: promptLibrarySurface.shortcutDescription.lineHeight,
     },
@@ -5048,8 +5050,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       opacity: promptLibrarySurface.shortcutActionButton.pressedOpacity,
     },
     chatHomeShortcutActionText: {
-      ...theme.typography.caption,
       color: promptLibrarySurfaceColors.shortcutActionText.color,
+      fontSize: promptLibrarySurface.shortcutActionText.fontSize,
+      lineHeight: promptLibrarySurface.shortcutActionText.lineHeight,
       fontWeight: promptLibrarySurface.shortcutActionText.fontWeight,
     },
     chatHomeShortcutActionDangerText: {

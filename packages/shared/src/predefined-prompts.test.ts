@@ -147,6 +147,8 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryMobileSurfaceState()).toBe(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.borderRadius).toBe("lg")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.backgroundColorToken).toBe("card")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.emptyText.fontSize).toBe(12)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.emptyText.lineHeight).toBe(16)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutGrid.flexDirection).toBe("row")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutGrid.flexWrap).toBe("wrap")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.minHeight).toBe(84)
@@ -160,6 +162,11 @@ describe("predefined prompt helpers", () => {
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutCard.titleTextAlign).toBe("center")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.name).toBe("add-circle-outline")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.marginBottom).toBe(2)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutTitle.fontSize).toBe(16)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutTitle.lineHeight).toBe(24)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutDescription.fontSize).toBe(12)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionText.fontSize).toBe(12)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionText.lineHeight).toBe(16)
     expect(getPromptLibraryMobileAddShortcutIconState()).toEqual({
       name: "add-circle-outline",
       size: 18,
