@@ -45,6 +45,7 @@ import {
   getToolExecutionCompactMobilePendingSpinnerState,
   getToolExecutionCompactMobileStatusIconState,
   getToolExecutionCompactMobileSurfaceState,
+  getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionCompactMobileToggleIconColors,
   getToolExecutionCompactMobileToggleIconState,
   getToolExecutionCompactMobileToolIconState,
@@ -322,6 +323,18 @@ describe("tool execution display", () => {
       pending: "#3b82f6",
       success: "#22c55e",
       error: "#ef4444",
+    })
+    const toolExecutionCompactStylePalette = {
+      info: "#3b82f6",
+      success: "#22c55e",
+      destructive: "#ef4444",
+      mutedForeground: "#737373",
+    }
+    expect(getToolExecutionCompactMobileStyleRenderState({
+      colors: toolExecutionCompactStylePalette,
+    })).toEqual({
+      surface: getToolExecutionCompactMobileSurfaceState(),
+      statusColors: getToolExecutionStatusMobileColorMap(toolExecutionCompactStylePalette),
     })
     expect(getToolExecutionCompactMobileStatusColors("success", {
       info: "#3b82f6",

@@ -172,7 +172,7 @@ import {
 } from '@dotagents/shared/tool-activity-grouping';
 import {
   getToolExecutionCompactMobileRenderState,
-  getToolExecutionCompactMobileSurfaceState,
+  getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
   getToolExecutionDetailCopyFailureAlertState,
@@ -187,7 +187,6 @@ import {
   getToolExecutionCallDisplayState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
-  getToolExecutionStatusMobileColorMap,
 } from '@dotagents/shared/tool-execution-display';
 import {
   getChatMessageActionCopyState,
@@ -304,7 +303,6 @@ const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertSta
 const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
 const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState();
-const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState();
 const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
@@ -4278,7 +4276,10 @@ function createStyles(theme: Theme, screenHeight: number) {
     horizontalPadding: headerSurface.edgeActionButton.horizontalPadding,
   });
   const sessionStatusSurface = mobileSessionStatusSurface;
-  const compactToolExecution = mobileToolExecutionCompactSurface;
+  const compactToolExecutionStyleState = getToolExecutionCompactMobileStyleRenderState({
+    colors: theme.colors,
+  });
+  const compactToolExecution = compactToolExecutionStyleState.surface;
   const toolExecutionDetailStyleState = getToolExecutionDetailMobileStyleRenderState({
     colors: theme.colors,
   });
@@ -4367,7 +4368,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const mobileMessageTurnDurationLiveBadge = mobileMessageTurnDurationLiveRenderState.badge;
   const mobileMessageTurnDurationBadgeColors = mobileMessageTurnDurationRenderState.colors;
   const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
-  const toolExecutionStatusColors = getToolExecutionStatusMobileColorMap(theme.colors);
+  const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   return StyleSheet.create({
     keyboardAvoidingContainer: {

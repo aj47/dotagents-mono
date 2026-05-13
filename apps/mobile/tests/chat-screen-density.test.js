@@ -1415,7 +1415,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /formatToolExecutionCount,/);
   assert.match(screenSource, /getToolExecutionDetailArgumentsState,/);
   assert.match(screenSource, /getToolExecutionCompactMobileRenderState,/);
-  assert.match(screenSource, /getToolExecutionCompactMobileSurfaceState,/);
+  assert.match(screenSource, /getToolExecutionCompactMobileStyleRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileCopyButtonRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailCopyFailureAlertState,/);
@@ -1438,7 +1438,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileSurfaceState,/);
   assert.match(screenSource, /getToolExecutionResultOnlyFallbackRenderState,/);
   assert.match(screenSource, /getToolExecutionSummaryDisplayState,/);
-  assert.match(screenSource, /getToolExecutionStatusMobileColorMap,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionCompactMobileSurfaceState,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColorMap,/);
   assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColor,/);
   assert.doesNotMatch(screenSource, /formatToolExecutionDetailsAccessibilityName,/);
   assert.doesNotMatch(screenSource, /formatToolExecutionSectionLabel,/);
@@ -1464,7 +1465,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /TOOL_EXECUTION_DETAIL_SURFACE_PRESENTATION,/);
   assert.doesNotMatch(screenSource, /TOOL_EXECUTION_DETAIL_PRESENTATION/);
   assert.doesNotMatch(screenSource, /TOOL_EXECUTION_STATUS_PRESENTATION/);
-  assert.match(screenSource, /const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionDetailSurface = getToolExecutionDetailMobileSurfaceState\(\);/);
   assert.match(screenSource, /const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState\(\);/);
   assert.match(screenSource, /const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState\(\);/);
@@ -1548,9 +1549,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /mobileToolExecutionCompactToggleIcon\.opacity/);
   assert.doesNotMatch(screenSource, /mobileToolExecutionCompactSurface\.(toolIcon|toggleIcon|statusIcon|pendingSpinner)\.(name|size|colorToken|opacity)/);
   assert.doesNotMatch(screenSource, /\{tcPresentation\.compactLabel\}/);
-  assert.match(screenSource, /const compactToolExecution = mobileToolExecutionCompactSurface;/);
+  assert.match(screenSource, /const compactToolExecutionStyleState = getToolExecutionCompactMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const compactToolExecution = compactToolExecutionStyleState\.surface;/);
   assert.match(screenSource, /const detailedToolExecution = toolExecutionDetailStyleState\.surface;/);
-  assert.match(screenSource, /const toolExecutionStatusColors = getToolExecutionStatusMobileColorMap\(theme\.colors\);/);
+  assert.match(screenSource, /const toolExecutionStatusColors = compactToolExecutionStyleState\.statusColors;/);
   assert.match(screenSource, /const toolExecutionDetailStyleColors = toolExecutionDetailStyleState\.colors;/);
   assert.match(screenSource, /const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors\.byState;/);
   assert.match(screenSource, /toolExecutionCard:\s*\{[\s\S]*?marginTop:\s*detailedToolExecution\.card\.marginTop,[\s\S]*?\.\.\.toolExecutionDetailColorsByState\.idle/);

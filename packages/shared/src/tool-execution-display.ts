@@ -100,6 +100,15 @@ export interface ToolExecutionCompactMobileRenderState {
   toggleIcon: ToolExecutionCompactMobileColoredIconState
 }
 
+export interface ToolExecutionCompactMobileStyleRenderStateInput {
+  colors: ToolExecutionStatusColorPalette
+}
+
+export interface ToolExecutionCompactMobileStyleRenderState {
+  surface: typeof TOOL_EXECUTION_COMPACT_PRESENTATION.mobile
+  statusColors: ToolExecutionStatusMobileColorMap
+}
+
 export type ToolExecutionDetailMobileToggleIconPlacement = "header" | "collapse"
 
 export interface ToolExecutionDetailMobileToggleIconStateInput {
@@ -1515,6 +1524,15 @@ export function getToolExecutionDetailCopyState(): typeof TOOL_EXECUTION_DETAIL_
 
 export function getToolExecutionCompactMobileSurfaceState(): typeof TOOL_EXECUTION_COMPACT_PRESENTATION.mobile {
   return TOOL_EXECUTION_COMPACT_PRESENTATION.mobile
+}
+
+export function getToolExecutionCompactMobileStyleRenderState({
+  colors,
+}: ToolExecutionCompactMobileStyleRenderStateInput): ToolExecutionCompactMobileStyleRenderState {
+  return {
+    surface: getToolExecutionCompactMobileSurfaceState(),
+    statusColors: getToolExecutionStatusMobileColorMap(colors),
+  }
 }
 
 export function getToolExecutionCompactDesktopSurfaceState(): typeof TOOL_EXECUTION_COMPACT_PRESENTATION.desktop {
