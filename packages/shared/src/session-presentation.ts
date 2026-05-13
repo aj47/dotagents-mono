@@ -1354,6 +1354,25 @@ export interface ChatComposerMobileSurfaceColors {
   }
 }
 
+export type ChatComposerMobileSurfaceRenderStateColorToken =
+  | ChatComposerMobileSurfaceColorToken
+  | ChatComposerMobileTextColorToken
+
+export type ChatComposerMobileSurfaceRenderStateColorPalette =
+  Readonly<Record<ChatComposerMobileSurfaceRenderStateColorToken, string>>
+
+export interface ChatComposerMobileSurfaceRenderStateInput {
+  colors: ChatComposerMobileSurfaceRenderStateColorPalette
+}
+
+export interface ChatComposerMobileSurfaceRenderState {
+  surface: typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile
+  colors: {
+    surface: ChatComposerMobileSurfaceColors
+    text: ChatComposerMobileTextColors
+  }
+}
+
 export interface ChatComposerSubmitMobileIconStateInput {
   mode?: FollowUpInputMode
   isHandsFree?: boolean
@@ -3573,6 +3592,18 @@ export function getChatComposerMobileSurfaceColors(
         colors[surface.voiceOverlay.cardBackgroundColorToken],
         surface.voiceOverlay.cardBackgroundAlpha,
       ),
+    },
+  }
+}
+
+export function getChatComposerMobileSurfaceRenderState({
+  colors,
+}: ChatComposerMobileSurfaceRenderStateInput): ChatComposerMobileSurfaceRenderState {
+  return {
+    surface: getChatComposerMobileSurfaceState(),
+    colors: {
+      surface: getChatComposerMobileSurfaceColors(colors),
+      text: getChatComposerMobileTextColors(colors),
     },
   }
 }

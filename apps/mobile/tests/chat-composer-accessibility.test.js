@@ -114,8 +114,10 @@ test('uses shared mobile composer control accessibility state', () => {
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
   assert.match(screenSource, /getChatComposerMobileSurfaceState,/);
+  assert.match(screenSource, /getChatComposerMobileSurfaceRenderState,/);
   assert.match(screenSource, /const mobileComposerSurface = getChatComposerMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const composerSurface = mobileComposerSurface;/);
+  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?alignItems:\s*composerSurface\.submitButton\.alignItems,[\s\S]*?justifyContent:\s*composerSurface\.submitButton\.justifyContent,/);
   assert.match(screenSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);
@@ -128,7 +130,7 @@ test('keeps the chat composer send control at a mobile-friendly minimum touch ta
 
 test('keeps the chat composer accessory controls at a mobile-friendly touch target size', () => {
   assert.match(screenSource, /ttsToggle:\s*\{[\s\S]*?width:\s*composerSurface\.accessoryButton\.size,[\s\S]*?height:\s*composerSurface\.accessoryButton\.size,[\s\S]*?borderRadius:\s*composerSurface\.accessoryButton\.borderRadius,/);
-  assert.match(screenSource, /const mobileComposerSurfaceColors = getChatComposerMobileSurfaceColors\(theme\.colors\);/);
+  assert.match(screenSource, /const mobileComposerSurfaceColors = composerStyleState\.colors\.surface;/);
   assert.match(screenSource, /borderColor:\s*mobileComposerSurfaceColors\.accessoryButton\.borderColor/);
   assert.match(screenSource, /backgroundColor:\s*mobileComposerSurfaceColors\.accessoryButton\.backgroundColor/);
   assert.match(screenSource, /alignItems:\s*composerSurface\.accessoryButton\.alignItems/);

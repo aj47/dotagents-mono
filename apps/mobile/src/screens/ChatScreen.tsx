@@ -103,9 +103,8 @@ import {
   getChatComposerMicMobileRenderState,
   getChatComposerMobileControlState,
   getChatComposerMicMobileWebPressStyleState,
+  getChatComposerMobileSurfaceRenderState,
   getChatComposerMobileSurfaceState,
-  getChatComposerMobileSurfaceColors,
-  getChatComposerMobileTextColors,
   getChatComposerQueueMobileRenderState,
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileRenderState,
@@ -483,10 +482,13 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getPromptLibraryMobileShortcutRenderState(theme.colors),
     [theme.colors],
   );
-  const mobileComposerTextColors = useMemo(
-    () => getChatComposerMobileTextColors(theme.colors),
+  const mobileComposerSurfaceRenderState = useMemo(
+    () => getChatComposerMobileSurfaceRenderState({
+      colors: theme.colors,
+    }),
     [theme.colors],
   );
+  const mobileComposerTextColors = mobileComposerSurfaceRenderState.colors.text;
   const imageAttachmentRenderState = useMemo(
     () => getChatImageAttachmentMobileRenderState({
       colors: theme.colors,
@@ -4265,9 +4267,12 @@ function createStyles(theme: Theme, screenHeight: number) {
   const messageHistoryBannerSurface = messageHistoryBannerStyleState.surface;
   const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState.colors;
   const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;
-  const composerSurface = mobileComposerSurface;
-  const mobileComposerSurfaceColors = getChatComposerMobileSurfaceColors(theme.colors);
-  const mobileComposerTextColors = getChatComposerMobileTextColors(theme.colors);
+  const composerStyleState = getChatComposerMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const composerSurface = composerStyleState.surface;
+  const mobileComposerSurfaceColors = composerStyleState.colors.surface;
+  const mobileComposerTextColors = composerStyleState.colors.text;
   const inputAreaSurface = composerSurface.inputArea;
   const sttPreviewSurface = composerSurface.sttPreview;
   const voiceOverlaySurface = composerSurface.voiceOverlay;

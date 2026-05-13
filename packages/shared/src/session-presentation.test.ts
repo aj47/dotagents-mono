@@ -55,6 +55,7 @@ import {
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileControlState,
   getChatComposerMobileIconColors,
+  getChatComposerMobileSurfaceRenderState,
   getChatComposerMobileSurfaceState,
   getChatComposerMobileSurfaceColors,
   getChatComposerMobileTextColors,
@@ -774,6 +775,25 @@ describe("session presentation semantics", () => {
       },
       voiceOverlay: {
         cardBackgroundColor: "rgba(15, 23, 42, 0.72)",
+      },
+    })
+    const composerSurfaceRenderStateColors = {
+      background: "#f8fafc",
+      border: "#cbd5e1",
+      card: "#ffffff",
+      foreground: "#0f172a",
+      muted: "#e2e8f0",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+      primaryForeground: "#ffffff",
+    }
+    expect(getChatComposerMobileSurfaceRenderState({
+      colors: composerSurfaceRenderStateColors,
+    })).toEqual({
+      surface: getChatComposerMobileSurfaceState(),
+      colors: {
+        surface: getChatComposerMobileSurfaceColors(composerSurfaceRenderStateColors),
+        text: getChatComposerMobileTextColors(composerSurfaceRenderStateColors),
       },
     })
     expect(CHAT_COMPOSER_PRESENTATION.submit.sendLabel).toBe("Send")
