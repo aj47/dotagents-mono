@@ -15,6 +15,10 @@ const chatMessageChromeSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
   'utf8'
 );
+const messageQueuePanelSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'MessageQueuePanel.tsx'),
+  'utf8'
+);
 const clientSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'lib', 'openaiClient.ts'),
   'utf8'
@@ -2148,6 +2152,10 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /export function ChatMessageQueuePanelDock/);
   assert.match(chatMessageChromeSource, /if \(!shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?<MessageQueuePanel \{\.\.\.panel\} \/>[\s\S]*?<\/View>/);
+  assert.match(messageQueuePanelSource, /actionButton:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.buttonFlexDirection,[\s\S]*?alignItems:\s*actionSurface\.buttonAlignItems,[\s\S]*?gap:\s*actionSurface\.buttonGap/);
+  assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
+  assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);
+  assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.removeName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.removeTextColor\}/);
   assert.doesNotMatch(screenSource, /import \{ MessageQueuePanel \} from '\.\.\/ui\/MessageQueuePanel';/);
   assert.doesNotMatch(screenSource, /import \{ ResponseHistoryPanel \} from '\.\.\/ui\/ResponseHistoryPanel';/);
   assert.match(chatMessageChromeSource, /import \{ MessageQueuePanel \} from '\.\/MessageQueuePanel';/);

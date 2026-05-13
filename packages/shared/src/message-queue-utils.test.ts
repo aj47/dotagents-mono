@@ -228,6 +228,9 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.pauseName).toBe('pause');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.sendNextName).toBe('play');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.clearName).toBe('trash-outline');
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.retryName).toBe('refresh');
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.editName).toBe('create-outline');
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.removeName).toBe('trash-outline');
     expect(getMessageQueuePanelMobileIconState()).toBe(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon);
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel).toBe('Retry queued message');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel).toBe('Send Next');
@@ -262,8 +265,12 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.alignItems).toBe('center');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonAlignSelf).toBe('flex-start');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonMinHeight).toBe(28);
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonFlexDirection).toBe('row');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonAlignItems).toBe('center');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonGap).toBe(4);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonBackgroundColorToken).toBe('background');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonJustifyContent).toBe('center');
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.actionIconSize).toBe(13);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.removeTextColorToken).toBe('destructive');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.inputTextColorToken).toBe('foreground');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.inputTextAlignVertical).toBe('top');

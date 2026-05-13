@@ -163,8 +163,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     actionButton: {
       alignSelf: actionSurface.buttonAlignSelf,
       minHeight: actionSurface.buttonMinHeight,
+      flexDirection: actionSurface.buttonFlexDirection,
+      alignItems: actionSurface.buttonAlignItems,
       paddingHorizontal: actionSurface.buttonPaddingHorizontal,
       paddingVertical: actionSurface.buttonPaddingVertical,
+      gap: actionSurface.buttonGap,
       borderRadius: actionSurface.buttonBorderRadius,
       borderWidth: actionSurface.buttonBorderWidth,
       borderColor: actionColors.buttonBorderColor,
@@ -306,6 +309,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   accessibilityLabel={queuePanelCopy.actions.retryAccessibilityLabel}
                   hitSlop={actionSurface.hitSlop}
                 >
+                  <Ionicons
+                    name={queuePanelIcons.retryName}
+                    size={actionSurface.actionIconSize}
+                    color={actionColors.retryTextColor}
+                  />
                   <Text style={styles.retryActionText}>{queuePanelCopy.actions.retryLabel}</Text>
                 </TouchableOpacity>
               )}
@@ -317,6 +325,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   accessibilityLabel={queuePanelCopy.actions.editAccessibilityLabel}
                   hitSlop={actionSurface.hitSlop}
                 >
+                  <Ionicons
+                    name={queuePanelIcons.editName}
+                    size={actionSurface.actionIconSize}
+                    color={actionColors.editTextColor}
+                  />
                   <Text style={styles.editActionText}>{queuePanelCopy.actions.editLabel}</Text>
                 </TouchableOpacity>
               )}
@@ -327,6 +340,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 accessibilityLabel={queuePanelCopy.actions.removeAccessibilityLabel}
                 hitSlop={actionSurface.hitSlop}
               >
+                <Ionicons
+                  name={queuePanelIcons.removeName}
+                  size={actionSurface.actionIconSize}
+                  color={actionColors.removeTextColor}
+                />
                 <Text style={styles.removeActionText}>{queuePanelCopy.actions.removeLabel}</Text>
               </TouchableOpacity>
             </View>
