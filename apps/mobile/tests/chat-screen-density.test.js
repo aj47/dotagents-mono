@@ -1083,7 +1083,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /const chatComposerStyles = useMemo\(\s+\(\) => createChatComposerStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const chatComposerRuntimeDockStyles = useMemo\(\s+\(\) => createChatComposerRuntimeDockStyleSlots\(\{/);
-  assert.match(screenSource, /const chatComposerRuntimeDockChrome = useMemo\(\s+\(\) => createChatComposerRuntimeDockChromeProps\(\{\s+composerSurface: mobileComposerSurface,\s+composerTextColors: mobileComposerTextColors,\s+handsFreeSurface: mobileHandsFreeSurface,\s+webAccessibility: mobileComposerWebAccessibility,\s+isWebPlatform,\s+micWebPressedStyle: composerMicWebPressStyle,\s+\}\),\s+\[isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility\],\s+\);/);
+  assert.match(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo\(\s+\(\) => getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
+  assert.match(screenSource, /const chatComposerRuntimeDockChrome = useMemo\(\s+\(\) => createChatComposerRuntimeDockChromeProps\(\{\s+composerSurface: mobileComposerSurface,\s+composerTextColors: mobileComposerTextColors,\s+handsFreeSurface: mobileHandsFreeSurface,\s+webAccessibility: mobileComposerWebAccessibility,\s+isWebPlatform,\s+micWebPressedStyle: composerMicWebPressStyle,\s+\}\),\s+\[isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility, mobileHandsFreeSurface\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockChromeProps/);

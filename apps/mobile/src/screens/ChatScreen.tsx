@@ -260,7 +260,6 @@ import {
   getHandsFreeComposerCopyState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeComposerMobileSurfaceRenderState,
-  getHandsFreeComposerMobileSurfaceState,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
 } from '@dotagents/shared/hands-free-controller';
@@ -294,7 +293,6 @@ const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRend
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
 const mobileMessageActionCopy = getChatMessageActionCopyState();
-const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState();
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 
@@ -469,6 +467,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const mobileComposerSurface = mobileComposerSurfaceRenderState.surface;
   const mobileComposerWebAccessibility = mobileComposerSurface.webAccessibility;
   const mobileComposerTextColors = mobileComposerSurfaceRenderState.colors.text;
+  const mobileHandsFreeSurfaceRenderState = useMemo(
+    () => getHandsFreeComposerMobileSurfaceRenderState({
+      colors: theme.colors,
+    }),
+    [theme.colors],
+  );
+  const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState.surface;
   const imageAttachmentRenderState = useMemo(
     () => getChatImageAttachmentMobileRenderState({
       colors: theme.colors,
@@ -3099,7 +3104,7 @@ export default function ChatScreen({ route, navigation }: any) {
       isWebPlatform,
       micWebPressedStyle: composerMicWebPressStyle,
     }),
-    [isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility],
+    [isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility, mobileHandsFreeSurface],
   );
 	const composerAccessibilityHint = createChatComposerAccessibilityHint({
 	  handsFree,
