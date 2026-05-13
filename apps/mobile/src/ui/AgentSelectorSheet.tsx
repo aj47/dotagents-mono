@@ -13,31 +13,51 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
-import { spacing, radius, Theme } from './theme';
+import { spacing, radius } from './theme';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
 import {
   buildSelectorProfiles,
+  formatAgentSelectorSelectAccessibilityLabel,
+  getAgentSelectorMobileFallbackAvatarBackgroundColor,
+  getAgentSelectorMobileCloseIconState,
+  getAgentSelectorMobileSurfaceColors,
+  getAgentSelectorMobileSurfaceState,
+  getAgentSelectorSheetCopyState,
+  getAgentSelectorSheetEmptyLabel,
+  getAgentSelectorSheetTitle,
+  type AgentSelectorMobileSurfaceColors,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/agent-selector-options';
+import { getAgentAvatarColors } from '@dotagents/shared/agent-avatar-colors';
 
 interface AgentSelectorSheetProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const agentSelectorCopy = getAgentSelectorSheetCopyState();
+const agentSelectorSurface = getAgentSelectorMobileSurfaceState();
+const agentSelectorCloseIcon = getAgentSelectorMobileCloseIconState();
+
 export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
   const { currentProfile, setCurrentProfile } = useProfile();
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const agentSelectorColors = React.useMemo(
+    () => getAgentSelectorMobileSurfaceColors(theme.colors),
+    [theme.colors],
+  );
+  const styles = React.useMemo(() => createStyles(agentSelectorColors), [agentSelectorColors]);
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
-  const missingConfigError = 'Configure server URL and API key to switch agents';
+  const missingConfigError = agentSelectorCopy.missingConfigError;
 
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +87,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       setProfiles(nextState.profiles);
     } catch (err: any) {
       console.warn('[AgentSelectorSheet] Failed to fetch profiles:', err);
-      setError(err?.message || 'Failed to load agents');
+      setError(err?.message || agentSelectorCopy.loadFailed);
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +123,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       onClose();
     } catch (err: any) {
       console.error('[AgentSelectorSheet] Failed to switch profile:', err);
-      setError(err?.message || 'Failed to switch agent');
+      setError(err?.message || agentSelectorCopy.switchFailed);
     } finally {
       setIsSwitching(false);
     }
@@ -111,26 +131,63 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
+    const profileSummary = item.description || item.guidelines;
+    const fallbackAvatarColor = getAgentAvatarColors(item.id)[0];
+    const fallbackAvatarBackgroundColor = getAgentSelectorMobileFallbackAvatarBackgroundColor(fallbackAvatarColor);
     return (
       <TouchableOpacity
         style={[styles.profileItem, isSelected && styles.profileItemSelected]}
         onPress={() => handleSelectProfile(item)}
         disabled={isSwitching}
         accessibilityRole="button"
-        accessibilityLabel={`Select ${item.name} agent`}
+        accessibilityLabel={formatAgentSelectorSelectAccessibilityLabel(item.name)}
         accessibilityState={{ selected: isSelected }}
       >
+        <View
+          style={[
+            styles.profileAvatar,
+            !item.avatarDataUrl && {
+              backgroundColor: fallbackAvatarBackgroundColor,
+            },
+          ]}
+        >
+          {item.avatarDataUrl ? (
+            <Image
+              source={{ uri: item.avatarDataUrl }}
+              style={styles.profileAvatarImage}
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <Ionicons
+              name={agentSelectorSurface.avatar.fallbackIconName}
+              size={agentSelectorSurface.avatar.fallbackIconSize}
+              color={agentSelectorColors.avatar.fallbackIconColor}
+            />
+          )}
+        </View>
         <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, isSelected && styles.profileNameSelected]}>
+          <Text
+            style={[styles.profileName, isSelected && styles.profileNameSelected]}
+            numberOfLines={agentSelectorSurface.profileName.numberOfLines}
+          >
             {item.name}
           </Text>
-          {(item.description || item.guidelines) && (
-            <Text style={styles.profileDescription} numberOfLines={1}>
-              {item.description || item.guidelines}
+          {profileSummary && (
+            <Text
+              style={styles.profileDescription}
+              numberOfLines={agentSelectorSurface.profileDescription.numberOfLines}
+            >
+              {profileSummary}
             </Text>
           )}
         </View>
-        {isSelected && <Text style={styles.checkmark}>✓</Text>}
+        {isSelected && (
+          <Ionicons
+            name={agentSelectorSurface.checkIcon.name}
+            size={agentSelectorSurface.checkIcon.size}
+            color={agentSelectorColors.checkIcon.color}
+          />
+        )}
       </TouchableOpacity>
     );
   };
@@ -143,39 +200,44 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <View style={{ flex: 1 }} />
+        <View style={styles.backdropSpacer} />
       </Pressable>
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[agentSelectorSurface.sheet.bottomPadding] }]}>
         <View style={styles.handle} />
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
-            {selectorMode === 'acpx' ? 'Select Main Agent' : 'Select Agent'}
+          <Text style={styles.title} numberOfLines={agentSelectorSurface.title.numberOfLines}>
+            {getAgentSelectorSheetTitle(selectorMode)}
           </Text>
           <TouchableOpacity
             style={styles.headerCloseButton}
             onPress={onClose}
+            activeOpacity={agentSelectorSurface.headerCloseButton.pressedOpacity}
             accessibilityRole="button"
-            accessibilityLabel="Close agent selector"
+            accessibilityLabel={agentSelectorCopy.closeAccessibilityLabel}
           >
-            <Text style={styles.headerCloseButtonText}>Close</Text>
+            <Ionicons
+              name={agentSelectorCloseIcon.name}
+              size={agentSelectorCloseIcon.size}
+              color={agentSelectorColors.headerCloseIcon.color}
+            />
           </TouchableOpacity>
         </View>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading agents...</Text>
+            <ActivityIndicator size="small" color={agentSelectorColors.activityIndicator.color} />
+            <Text style={styles.loadingText}>{agentSelectorCopy.loadingLabel}</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={fetchProfiles}>
-              <Text style={styles.retryButtonText}>Retry</Text>
+              <Text style={styles.retryButtonText}>{agentSelectorCopy.retryLabel}</Text>
             </TouchableOpacity>
           </View>
         ) : profiles.length === 0 ? (
           <Text style={styles.emptyText}>
-            {selectorMode === 'acpx' ? 'No acpx agents available' : 'No agents available'}
+            {getAgentSelectorSheetEmptyLabel(selectorMode)}
           </Text>
         ) : (
           <FlatList
@@ -191,118 +253,130 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   );
 }
 
-function createStyles(theme: Theme) {
+function createStyles(agentSelectorColors: AgentSelectorMobileSurfaceColors) {
   return StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+      backgroundColor: agentSelectorColors.backdrop.backgroundColor,
+    },
+    backdropSpacer: {
+      flex: agentSelectorSurface.backdropSpacer.flex,
     },
     sheet: {
-      backgroundColor: theme.colors.card,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
-      maxHeight: '60%',
+      backgroundColor: agentSelectorColors.sheet.backgroundColor,
+      borderTopLeftRadius: radius[agentSelectorSurface.sheet.borderTopRadius],
+      borderTopRightRadius: radius[agentSelectorSurface.sheet.borderTopRadius],
+      paddingHorizontal: spacing[agentSelectorSurface.sheet.paddingHorizontal],
+      paddingTop: spacing[agentSelectorSurface.sheet.paddingTop],
+      maxHeight: agentSelectorSurface.sheet.maxHeight,
     },
     handle: {
-      width: 36,
-      height: 4,
-      backgroundColor: theme.colors.border,
-      borderRadius: 2,
-      alignSelf: 'center',
-      marginBottom: spacing.sm,
+      width: agentSelectorSurface.handle.width,
+      height: agentSelectorSurface.handle.height,
+      backgroundColor: agentSelectorColors.handle.backgroundColor,
+      borderRadius: agentSelectorSurface.handle.borderRadius,
+      alignSelf: agentSelectorSurface.handle.alignSelf,
+      marginBottom: spacing[agentSelectorSurface.handle.marginBottom],
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      marginBottom: spacing.md,
+      flexDirection: agentSelectorSurface.header.flexDirection,
+      alignItems: agentSelectorSurface.header.alignItems,
+      gap: spacing[agentSelectorSurface.header.gap],
+      marginBottom: spacing[agentSelectorSurface.header.marginBottom],
     },
     title: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: 18,
-      fontWeight: '600',
-      lineHeight: 22,
-      color: theme.colors.foreground,
+      flex: agentSelectorSurface.title.flex,
+      minWidth: agentSelectorSurface.title.minWidth,
+      fontSize: agentSelectorSurface.title.fontSize,
+      fontWeight: agentSelectorSurface.title.fontWeight,
+      lineHeight: agentSelectorSurface.title.lineHeight,
+      color: agentSelectorColors.title.color,
     },
     headerCloseButton: {
-      paddingHorizontal: spacing.xs,
-      paddingVertical: spacing.xs,
-      marginRight: -spacing.xs,
-    },
-    headerCloseButtonText: {
-      color: theme.colors.primary,
-      fontSize: 14,
-      fontWeight: '500',
+      width: agentSelectorSurface.headerCloseButton.width,
+      height: agentSelectorSurface.headerCloseButton.height,
+      borderRadius: radius[agentSelectorSurface.headerCloseButton.borderRadius],
+      alignItems: agentSelectorSurface.headerCloseButton.alignItems,
+      justifyContent: agentSelectorSurface.headerCloseButton.justifyContent,
+      paddingHorizontal: spacing[agentSelectorSurface.headerCloseButton.paddingHorizontal],
+      paddingVertical: spacing[agentSelectorSurface.headerCloseButton.paddingVertical],
+      marginRight: -spacing[agentSelectorSurface.headerCloseButton.negativeMarginRight],
     },
     list: {
-      maxHeight: 300,
+      maxHeight: agentSelectorSurface.list.maxHeight,
     },
     profileItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radius.lg,
-      marginBottom: spacing.xs,
+      flexDirection: agentSelectorSurface.profileItem.flexDirection,
+      alignItems: agentSelectorSurface.profileItem.alignItems,
+      justifyContent: agentSelectorSurface.profileItem.justifyContent,
+      gap: spacing[agentSelectorSurface.profileItem.gap],
+      paddingVertical: spacing[agentSelectorSurface.profileItem.paddingVertical],
+      paddingHorizontal: spacing[agentSelectorSurface.profileItem.paddingHorizontal],
+      borderRadius: radius[agentSelectorSurface.profileItem.borderRadius],
+      marginBottom: spacing[agentSelectorSurface.profileItem.marginBottom],
     },
     profileItemSelected: {
-      backgroundColor: theme.colors.primary + '20',
+      backgroundColor: agentSelectorColors.profileItem.selectedBackgroundColor,
+    },
+    profileAvatar: {
+      width: agentSelectorSurface.avatar.size,
+      height: agentSelectorSurface.avatar.size,
+      borderRadius: radius[agentSelectorSurface.avatar.borderRadius],
+      alignItems: agentSelectorSurface.avatar.alignItems,
+      justifyContent: agentSelectorSurface.avatar.justifyContent,
+      overflow: agentSelectorSurface.avatar.overflow,
+      flexShrink: agentSelectorSurface.avatar.flexShrink,
+    },
+    profileAvatarImage: {
+      width: agentSelectorSurface.avatarImage.width,
+      height: agentSelectorSurface.avatarImage.height,
     },
     profileInfo: {
-      flex: 1,
-      marginRight: spacing.sm,
+      flex: agentSelectorSurface.profileInfo.flex,
+      minWidth: agentSelectorSurface.profileInfo.minWidth,
     },
     profileName: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: theme.colors.foreground,
+      fontSize: agentSelectorSurface.profileName.fontSize,
+      fontWeight: agentSelectorSurface.profileName.fontWeight,
+      color: agentSelectorColors.profileName.color,
     },
     profileNameSelected: {
-      color: theme.colors.primary,
-      fontWeight: '600',
+      color: agentSelectorColors.profileName.selectedColor,
+      fontWeight: agentSelectorSurface.profileName.selectedFontWeight,
     },
     profileDescription: {
-      fontSize: 12,
-      color: theme.colors.mutedForeground,
-      marginTop: 2,
-    },
-    checkmark: {
-      fontSize: 18,
-      color: theme.colors.primary,
-      fontWeight: '600',
+      fontSize: agentSelectorSurface.profileDescription.fontSize,
+      color: agentSelectorColors.profileDescription.color,
+      marginTop: agentSelectorSurface.profileDescription.marginTop,
     },
     loadingContainer: {
-      alignItems: 'center',
-      paddingVertical: spacing.xl,
+      alignItems: agentSelectorSurface.loadingContainer.alignItems,
+      paddingVertical: spacing[agentSelectorSurface.loadingContainer.paddingVertical],
+      gap: spacing[agentSelectorSurface.loadingContainer.gap],
     },
     loadingText: {
-      marginTop: spacing.sm,
-      color: theme.colors.mutedForeground,
+      color: agentSelectorColors.loadingText.color,
     },
     errorContainer: {
-      alignItems: 'center',
-      paddingVertical: spacing.lg,
+      alignItems: agentSelectorSurface.errorContainer.alignItems,
+      paddingVertical: spacing[agentSelectorSurface.errorContainer.paddingVertical],
+      gap: spacing[agentSelectorSurface.errorContainer.gap],
     },
     errorText: {
-      color: theme.colors.destructive,
-      marginBottom: spacing.sm,
+      color: agentSelectorColors.errorText.color,
     },
     retryButton: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing[agentSelectorSurface.retryButton.paddingHorizontal],
+      paddingVertical: spacing[agentSelectorSurface.retryButton.paddingVertical],
     },
     retryButtonText: {
-      color: theme.colors.primary,
-      fontWeight: '500',
+      color: agentSelectorColors.retryButtonText.color,
+      fontWeight: agentSelectorSurface.retryButtonText.fontWeight,
     },
     emptyText: {
-      textAlign: 'center',
-      color: theme.colors.mutedForeground,
-      paddingVertical: spacing.lg,
+      textAlign: agentSelectorSurface.emptyText.textAlign,
+      color: agentSelectorColors.emptyText.color,
+      paddingVertical: spacing[agentSelectorSurface.emptyText.paddingVertical],
     },
   });
 }

@@ -1,5 +1,10 @@
+import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { HandsFreePhase } from '@dotagents/shared/types';
+import {
+  getHandsFreeComposerMobileSurfaceState,
+  getHandsFreeStatusChipMobileColors,
+} from '@dotagents/shared/hands-free-controller';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 
@@ -9,43 +14,37 @@ type HandsFreeStatusChipProps = {
   subtitle?: string;
 };
 
-function getPhaseColors(phase: HandsFreePhase, colors: ReturnType<typeof useTheme>['theme']['colors']) {
-  switch (phase) {
-    case 'sleeping':
-      return { backgroundColor: colors.secondary, borderColor: colors.border, textColor: colors.foreground };
-    case 'waking':
-    case 'listening':
-      return { backgroundColor: colors.primary, borderColor: colors.primary, textColor: colors.primaryForeground };
-    case 'processing':
-      return { backgroundColor: '#f59e0b', borderColor: '#f59e0b', textColor: '#111827' };
-    case 'speaking':
-      return { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', textColor: '#ffffff' };
-    case 'paused':
-      return { backgroundColor: colors.muted, borderColor: colors.border, textColor: colors.foreground };
-    case 'error':
-      return { backgroundColor: colors.destructive, borderColor: colors.destructive, textColor: colors.primaryForeground };
-    default:
-      return { backgroundColor: colors.secondary, borderColor: colors.border, textColor: colors.foreground };
-  }
-}
+const statusChipSurface = getHandsFreeComposerMobileSurfaceState().statusChip;
 
 export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusChipProps) {
   const { theme } = useTheme();
-  const colors = getPhaseColors(phase, theme.colors);
+  const colors = useMemo(
+    () => getHandsFreeStatusChipMobileColors(phase, theme.colors),
+    [phase, theme.colors],
+  );
+  const colorStyles = useMemo(
+    () => StyleSheet.create({
+      container: {
+        backgroundColor: colors.backgroundColor,
+        borderColor: colors.borderColor,
+      },
+      text: {
+        color: colors.textColor,
+      },
+    }),
+    [colors],
+  );
 
   return (
     <View
       style={[
         styles.container,
-        {
-          backgroundColor: colors.backgroundColor,
-          borderColor: colors.borderColor,
-        },
+        colorStyles.container,
       ]}
     >
-      <Text style={[styles.label, { color: colors.textColor }]}>{label}</Text>
+      <Text style={[styles.label, colorStyles.text]}>{label}</Text>
       {subtitle ? (
-        <Text style={[styles.subtitle, { color: colors.textColor }]} numberOfLines={2}>
+        <Text style={[styles.subtitle, colorStyles.text]} numberOfLines={statusChipSurface.subtitle.numberOfLines}>
           {subtitle}
         </Text>
       ) : null}
@@ -55,20 +54,20 @@ export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusC
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radius.full,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
+    borderRadius: radius[statusChipSurface.borderRadius],
+    borderWidth: statusChipSurface.borderWidth,
+    paddingHorizontal: spacing[statusChipSurface.paddingHorizontal],
+    paddingVertical: spacing[statusChipSurface.paddingVertical],
+    alignSelf: statusChipSurface.alignSelf,
+    maxWidth: statusChipSurface.maxWidth,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: statusChipSurface.label.fontSize,
+    fontWeight: statusChipSurface.label.fontWeight,
   },
   subtitle: {
-    fontSize: 11,
-    marginTop: 2,
-    opacity: 0.92,
+    fontSize: statusChipSurface.subtitle.fontSize,
+    marginTop: statusChipSurface.subtitle.marginTop,
+    opacity: statusChipSurface.subtitle.opacity,
   },
 });

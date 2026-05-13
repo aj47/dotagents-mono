@@ -1,4 +1,5 @@
 import type { PredefinedPromptSummary } from "./api-types"
+import { hexToRgba } from "./colors"
 
 export type PredefinedPromptDraft = {
   name: string
@@ -34,6 +35,7 @@ export type PromptLibraryShortcutSource =
   | "command"
   | "task"
   | "action"
+export type PromptLibraryShortcutActionIcon = "edit" | "delete"
 
 export const PROMPT_LIBRARY_PRESENTATION = {
   triggerTitle: "Predefined prompts",
@@ -69,6 +71,7 @@ export const PROMPT_LIBRARY_PRESENTATION = {
   editor: {
     addTitle: "Add New Prompt",
     editTitle: "Edit Prompt",
+    closeAccessibilityLabel: "Close prompt editor",
     description: "Save a frequently used prompt for quick access.",
     nameLabel: "Name",
     namePlaceholder: "e.g., Code Review Request",
@@ -83,6 +86,7 @@ export const PROMPT_LIBRARY_PRESENTATION = {
     insertItemHint: "Inserts this desktop library item into the composer.",
     taskHint: "Runs this desktop task now.",
     taskDescriptionFallback: "Run this desktop task now.",
+    loadingLibraryLabel: "Loading desktop library...",
   },
   feedback: {
     successTitle: "Success",
@@ -106,6 +110,589 @@ export const PROMPT_LIBRARY_PRESENTATION = {
     task: "task",
   },
 } as const
+
+export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
+  desktop: {
+    triggerBaseClassName: "shrink-0",
+    triggerButtonClassNameBySize: {
+      default: "h-9 w-9",
+      sm: "h-7 w-7",
+      icon: "h-8 w-8",
+      "sm-icon": "h-6 w-6",
+      "md-icon": "h-7 w-7",
+    },
+    triggerIconClassNameBySize: {
+      default: "h-4 w-4 shrink-0",
+      sm: "h-3.5 w-3.5 shrink-0",
+      icon: "h-4 w-4 shrink-0",
+      "sm-icon": "h-3.5 w-3.5 shrink-0",
+      "md-icon": "h-3.5 w-3.5 shrink-0",
+    },
+    sectionLabelClassName: "px-2 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground",
+    menuContentClassName: "w-[min(26rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] max-h-[min(32rem,calc(100vh-2rem))] overflow-y-auto",
+    entryClassName: "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer",
+    entryTextClassName: "min-w-0 flex-1 space-y-0.5",
+    entryTitleClassName: "truncate font-medium",
+    secondaryTextClassName: "line-clamp-2 text-xs leading-4 text-muted-foreground [overflow-wrap:anywhere]",
+    searchContainerClassName: "sticky top-0 z-10 border-b bg-popover p-2",
+    searchWrapperClassName: "h-8",
+    searchInputClassName: "text-xs",
+    searchIconClassName: "h-3.5 w-3.5 shrink-0 text-muted-foreground",
+    emptyStateClassName: "px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]",
+    itemActionsClassName: "mt-0.5 flex shrink-0 items-center gap-1 self-start",
+    itemActionIconClassName: "h-3.5 w-3.5",
+    destructiveActionClassName: "text-destructive hover:text-destructive",
+    addItemClassName: "cursor-pointer",
+    addItemIconClassName: "mr-2 h-4 w-4 shrink-0",
+    sourceIconClassName: "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground",
+    dialogContentClassName: "sm:max-w-md",
+    dialogBodyClassName: "space-y-4 py-4",
+    dialogFieldClassName: "space-y-2",
+    dialogTextareaClassName: "min-h-[120px] resize-y",
+  },
+  mobile: {
+    quickStartCard: {
+      marginHorizontal: "sm",
+      marginTop: "md",
+      padding: "md",
+      borderRadius: "lg",
+      borderWidth: 1,
+      borderColorToken: "border",
+      backgroundColorToken: "card",
+      gap: "sm",
+    },
+    emptyText: {
+      colorToken: "mutedForeground",
+      textAlign: "center",
+      paddingVertical: "md",
+    },
+    shortcutGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: "sm",
+    },
+    shortcutCard: {
+      accessibilityRole: "button",
+      minHeight: 84,
+      minWidth: "47%",
+      flexGrow: 1,
+      flexBasis: "47%",
+      paddingHorizontal: "sm",
+      paddingVertical: "sm",
+      borderRadius: "md",
+      borderWidth: 1,
+      borderColorToken: "border",
+      backgroundColorToken: "background",
+      justifyContent: "center",
+      gap: "xs",
+      disabledOpacity: 0.5,
+      pressedOpacity: 0.88,
+      pressedScale: 0.99,
+    },
+    addShortcutCard: {
+      borderStyle: "dashed",
+      borderColorToken: "primary",
+      backgroundColor: "transparent",
+      alignItems: "center",
+      titleColorToken: "primary",
+      titleTextAlign: "center",
+    },
+    addShortcutIcon: {
+      name: "add-circle-outline",
+      size: 18,
+      colorToken: "primary",
+      marginBottom: 2,
+    },
+    shortcutSourcePill: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: "xs",
+      paddingHorizontal: "xs",
+      paddingVertical: 2,
+      borderRadius: "sm",
+      backgroundColorToken: "muted",
+      backgroundAlpha: 0.45,
+    },
+    shortcutSourceIcon: {
+      commandName: "terminal-outline",
+      promptName: "bookmark-outline",
+      savedPromptName: "bookmark-outline",
+      skillName: "sparkles-outline",
+      taskName: "time-outline",
+      loopName: "time-outline",
+      actionName: "add",
+      size: 10,
+      colorToken: "mutedForeground",
+      actionColorToken: "primary",
+    },
+    shortcutSourceLabel: {
+      colorToken: "mutedForeground",
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0,
+      numberOfLines: 1,
+      textTransform: "uppercase",
+    },
+    shortcutTitle: {
+      colorToken: "foreground",
+      fontWeight: "600",
+      numberOfLines: 2,
+    },
+    shortcutDescription: {
+      colorToken: "mutedForeground",
+      marginTop: 3,
+      lineHeight: 15,
+      numberOfLines: 2,
+    },
+    shortcutActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: "xs",
+      marginTop: "xs",
+    },
+    shortcutActionButton: {
+      accessibilityRole: "button",
+      minHeight: 32,
+      paddingHorizontal: "sm",
+      paddingVertical: 5,
+      borderRadius: "sm",
+      borderWidth: 1,
+      borderColorToken: "border",
+      backgroundColorToken: "card",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "xs",
+      pressedOpacity: 0.78,
+    },
+    shortcutActionIcon: {
+      editName: "create-outline",
+      deleteName: "trash-outline",
+      size: 13,
+      colorToken: "primary",
+      destructiveColorToken: "destructive",
+    },
+    shortcutActionText: {
+      colorToken: "primary",
+      destructiveColorToken: "destructive",
+      fontWeight: "600",
+    },
+    editorModal: {
+      modal: {
+        transparent: true,
+        animationType: "slide",
+      },
+      keyboardAvoidingView: {
+        flex: 1,
+        behaviorByPlatform: {
+          ios: "padding",
+          default: undefined,
+        },
+      },
+      overlay: {
+        flex: 1,
+        backgroundColor: "#000000",
+        backgroundAlpha: 0.5,
+        justifyContent: "center",
+        padding: "lg",
+      },
+      content: {
+        borderRadius: "xl",
+        padding: "lg",
+        borderWidth: 1,
+        backgroundColorToken: "background",
+        borderColorToken: "border",
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "sm",
+        marginBottom: "md",
+      },
+      title: {
+        colorToken: "foreground",
+        flex: 1,
+        marginBottom: 0,
+      },
+      closeButton: {
+        accessibilityRole: "button",
+        width: 32,
+        height: 32,
+        borderRadius: "md",
+        alignItems: "center",
+        justifyContent: "center",
+        pressedOpacity: 0.72,
+      },
+      closeIcon: {
+        name: "close",
+        size: 20,
+        colorToken: "mutedForeground",
+      },
+      label: {
+        colorToken: "foreground",
+        fontWeight: "600",
+        marginBottom: "xs",
+      },
+      input: {
+        colorToken: "foreground",
+        placeholderColorToken: "mutedForeground",
+        marginBottom: "md",
+      },
+      multilineInput: {
+        multiline: true,
+        textAlignVertical: "top",
+        height: 120,
+        paddingTop: "sm",
+        paddingBottom: "sm",
+      },
+      actions: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        gap: "sm",
+        marginTop: "sm",
+      },
+      cancelButton: {
+        accessibilityRole: "button",
+        paddingHorizontal: "md",
+        paddingVertical: "sm",
+        borderRadius: "md",
+        textColorToken: "mutedForeground",
+        pressedOpacity: 0.78,
+      },
+      saveButton: {
+        accessibilityRole: "button",
+        paddingHorizontal: "lg",
+        paddingVertical: "sm",
+        borderRadius: "md",
+        minWidth: 100,
+        backgroundColorToken: "primary",
+        textColorToken: "primaryForeground",
+        alignItems: "center",
+        pressedOpacity: 0.78,
+        disabledOpacity: 0.5,
+      },
+      actionText: {
+        fontWeight: "600",
+      },
+    },
+  },
+} as const
+
+export interface PromptLibraryEditorMobileCloseIconState {
+  name: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeIcon.name
+  size: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeIcon.size
+  colorToken: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeIcon.colorToken
+}
+
+export interface PromptLibraryMobileShortcutActionIconState {
+  action: PromptLibraryShortcutActionIcon
+  name:
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.editName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.deleteName
+  size: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.size
+  colorToken:
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.colorToken
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.destructiveColorToken
+}
+
+export interface PromptLibraryMobileAddShortcutIconState {
+  name: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.name
+  size: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.size
+  colorToken: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.colorToken
+}
+
+export interface PromptLibraryMobileShortcutSourceIconState {
+  source: PromptLibraryShortcutSource
+  name:
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.commandName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.promptName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.savedPromptName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.skillName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.taskName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.loopName
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.actionName
+  size: typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.size
+  colorToken:
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.colorToken
+    | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.actionColorToken
+}
+
+export type PromptLibraryMobileIconColorToken =
+  | PromptLibraryEditorMobileCloseIconState["colorToken"]
+  | PromptLibraryMobileAddShortcutIconState["colorToken"]
+  | PromptLibraryMobileShortcutActionIconState["colorToken"]
+  | PromptLibraryMobileShortcutSourceIconState["colorToken"]
+
+export type PromptLibraryMobileIconColorPalette =
+  Readonly<Record<PromptLibraryMobileIconColorToken, string>>
+
+export interface PromptLibraryMobileIconState {
+  colorToken: PromptLibraryMobileIconColorToken
+}
+
+export interface PromptLibraryMobileIconColors {
+  color: string
+}
+
+export type PromptLibraryMobileSurfaceColorToken =
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.borderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.backgroundColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.emptyText.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.borderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.backgroundColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutCard.borderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutCard.titleColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.backgroundColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutTitle.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutDescription.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.borderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.backgroundColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionText.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionText.destructiveColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.content.backgroundColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.content.borderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.title.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.label.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.colorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.cancelButton.textColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.backgroundColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.textColorToken
+
+export type PromptLibraryMobileSurfaceColorPalette =
+  Readonly<Record<PromptLibraryMobileSurfaceColorToken, string>>
+
+export interface PromptLibraryMobileSurfaceColors {
+  quickStartCard: {
+    borderColor: string
+    backgroundColor: string
+  }
+  emptyText: {
+    color: string
+  }
+  shortcutCard: {
+    borderColor: string
+    backgroundColor: string
+  }
+  addShortcutCard: {
+    borderColor: string
+    backgroundColor: string
+    titleColor: string
+  }
+  shortcutSourcePill: {
+    backgroundColor: string
+  }
+  shortcutSourceLabel: {
+    color: string
+  }
+  shortcutTitle: {
+    color: string
+  }
+  shortcutDescription: {
+    color: string
+  }
+  shortcutActionButton: {
+    borderColor: string
+    backgroundColor: string
+  }
+  shortcutActionText: {
+    color: string
+    destructiveColor: string
+  }
+  editorModal: {
+    overlay: {
+      backgroundColor: string
+    }
+    content: {
+      backgroundColor: string
+      borderColor: string
+    }
+    title: {
+      color: string
+    }
+    label: {
+      color: string
+    }
+    input: {
+      color: string
+      placeholderColor: string
+    }
+    cancelButtonText: {
+      color: string
+    }
+    saveButton: {
+      backgroundColor: string
+    }
+    saveButtonText: {
+      color: string
+    }
+  }
+}
+
+export function getPromptLibraryMobileSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile {
+  return PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
+}
+
+export function getPromptLibraryEditorModalKeyboardAvoidingBehavior(platform: string | null | undefined) {
+  const behavior = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform
+  return platform === "ios" ? behavior.ios : behavior.default
+}
+
+export function getPromptLibraryDesktopSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.desktop {
+  return PROMPT_LIBRARY_SURFACE_PRESENTATION.desktop
+}
+
+export function getPromptLibraryCopyState(): typeof PROMPT_LIBRARY_PRESENTATION {
+  return PROMPT_LIBRARY_PRESENTATION
+}
+
+export function getPromptLibraryMobileCopyState(): typeof PROMPT_LIBRARY_PRESENTATION.mobile {
+  return PROMPT_LIBRARY_PRESENTATION.mobile
+}
+
+export function getPromptLibraryMobileEmptyLibraryLabel(): string {
+  return PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary
+}
+
+export function getPromptLibraryEditorMobileCloseIconState(): PromptLibraryEditorMobileCloseIconState {
+  const closeIcon = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeIcon
+  return {
+    name: closeIcon.name,
+    size: closeIcon.size,
+    colorToken: closeIcon.colorToken,
+  }
+}
+
+export function getPromptLibraryMobileShortcutActionIconState(
+  action: PromptLibraryShortcutActionIcon,
+): PromptLibraryMobileShortcutActionIconState {
+  const icon = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon
+  return {
+    action,
+    name: action === "delete" ? icon.deleteName : icon.editName,
+    size: icon.size,
+    colorToken: action === "delete" ? icon.destructiveColorToken : icon.colorToken,
+  }
+}
+
+export function getPromptLibraryMobileAddShortcutIconState(): PromptLibraryMobileAddShortcutIconState {
+  const icon = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon
+  return {
+    name: icon.name,
+    size: icon.size,
+    colorToken: icon.colorToken,
+  }
+}
+
+export function getPromptLibraryMobileShortcutSourceIconState(
+  source: PromptLibraryShortcutSource,
+): PromptLibraryMobileShortcutSourceIconState {
+  const icon = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon
+  const nameBySource = {
+    action: icon.actionName,
+    command: icon.commandName,
+    loop: icon.loopName,
+    prompt: icon.promptName,
+    "saved-prompt": icon.savedPromptName,
+    skill: icon.skillName,
+    task: icon.taskName,
+  } as const satisfies Record<PromptLibraryShortcutSource, PromptLibraryMobileShortcutSourceIconState["name"]>
+
+  return {
+    source,
+    name: nameBySource[source],
+    size: icon.size,
+    colorToken: source === "action" ? icon.actionColorToken : icon.colorToken,
+  }
+}
+
+export function getPromptLibraryMobileIconColors(
+  icon: PromptLibraryMobileIconState,
+  colors: PromptLibraryMobileIconColorPalette,
+): PromptLibraryMobileIconColors {
+  return {
+    color: colors[icon.colorToken],
+  }
+}
+
+export function getPromptLibraryMobileSurfaceColors(
+  colors: PromptLibraryMobileSurfaceColorPalette,
+): PromptLibraryMobileSurfaceColors {
+  const surface = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
+  const editorModal = surface.editorModal
+  return {
+    quickStartCard: {
+      borderColor: colors[surface.quickStartCard.borderColorToken],
+      backgroundColor: colors[surface.quickStartCard.backgroundColorToken],
+    },
+    emptyText: {
+      color: colors[surface.emptyText.colorToken],
+    },
+    shortcutCard: {
+      borderColor: colors[surface.shortcutCard.borderColorToken],
+      backgroundColor: colors[surface.shortcutCard.backgroundColorToken],
+    },
+    addShortcutCard: {
+      borderColor: colors[surface.addShortcutCard.borderColorToken],
+      backgroundColor: surface.addShortcutCard.backgroundColor,
+      titleColor: colors[surface.addShortcutCard.titleColorToken],
+    },
+    shortcutSourcePill: {
+      backgroundColor: hexToRgba(
+        colors[surface.shortcutSourcePill.backgroundColorToken],
+        surface.shortcutSourcePill.backgroundAlpha,
+      ),
+    },
+    shortcutSourceLabel: {
+      color: colors[surface.shortcutSourceLabel.colorToken],
+    },
+    shortcutTitle: {
+      color: colors[surface.shortcutTitle.colorToken],
+    },
+    shortcutDescription: {
+      color: colors[surface.shortcutDescription.colorToken],
+    },
+    shortcutActionButton: {
+      borderColor: colors[surface.shortcutActionButton.borderColorToken],
+      backgroundColor: colors[surface.shortcutActionButton.backgroundColorToken],
+    },
+    shortcutActionText: {
+      color: colors[surface.shortcutActionText.colorToken],
+      destructiveColor: colors[surface.shortcutActionText.destructiveColorToken],
+    },
+    editorModal: {
+      overlay: {
+        backgroundColor: hexToRgba(editorModal.overlay.backgroundColor, editorModal.overlay.backgroundAlpha),
+      },
+      content: {
+        backgroundColor: colors[editorModal.content.backgroundColorToken],
+        borderColor: colors[editorModal.content.borderColorToken],
+      },
+      title: {
+        color: colors[editorModal.title.colorToken],
+      },
+      label: {
+        color: colors[editorModal.label.colorToken],
+      },
+      input: {
+        color: colors[editorModal.input.colorToken],
+        placeholderColor: colors[editorModal.input.placeholderColorToken],
+      },
+      cancelButtonText: {
+        color: colors[editorModal.cancelButton.textColorToken],
+      },
+      saveButton: {
+        backgroundColor: colors[editorModal.saveButton.backgroundColorToken],
+      },
+      saveButtonText: {
+        color: colors[editorModal.saveButton.textColorToken],
+      },
+    },
+  }
+}
 
 export function getPromptLibraryEditorTitle(isEditing: boolean): string {
   return isEditing
@@ -167,6 +754,12 @@ export function getPromptLibraryShortcutAccessibilityLabel(
   if (action === "add-prompt") return PROMPT_LIBRARY_PRESENTATION.actions.addNewPrompt
   if (source === "task" || source === "loop") return `Run task ${title}`
   return `Insert ${PROMPT_LIBRARY_PRESENTATION.sourceLabels[source]} ${title}`
+}
+
+export function getPromptLibraryShortcutSourceLabel(
+  source: PromptLibraryShortcutSource,
+): string {
+  return PROMPT_LIBRARY_PRESENTATION.sourceLabels[source]
 }
 
 export function getPromptLibraryShortcutAccessibilityHint(

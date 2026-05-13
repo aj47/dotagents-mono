@@ -205,10 +205,20 @@ export const APP_SHELL_HEADER_ACTIONS = {
   openSplitView: {
     label: "Open split view",
     hint: "Opens two chats at once for comparison",
+    mobileIcon: {
+      name: "git-compare-outline",
+      size: 18,
+      colorToken: "foreground",
+    },
   },
   openSettings: {
     label: "Open settings",
     hint: "Opens app settings.",
+    mobileIcon: {
+      name: "settings-outline",
+      size: 20,
+      colorToken: "foreground",
+    },
   },
   closeSettings: {
     label: "Close settings",
@@ -227,6 +237,7 @@ export const APP_SHELL_SESSION_START_PRESENTATION = {
   idleDescription: "Start a new agent session",
   newTextActionLabel: "New Text",
   voiceActionLabel: "Voice",
+  recordingActionLabel: "Recording...",
   textInputPlaceholder:
     "Type your message... (Enter to send, Shift+Enter for new line, Esc to cancel)",
   keybindLabels: {
@@ -236,12 +247,85 @@ export const APP_SHELL_SESSION_START_PRESENTATION = {
   },
 } as const
 
+export function getAppShellSessionStartCopyState(): typeof APP_SHELL_SESSION_START_PRESENTATION {
+  return APP_SHELL_SESSION_START_PRESENTATION
+}
+
+export const APP_SHELL_SESSION_START_SURFACE_PRESENTATION = {
+  desktop: {
+    empty: {
+      containerClassName:
+        "flex w-full flex-col items-center px-5 py-6 text-center sm:px-6",
+      iconContainerClassName: "mb-3 rounded-full bg-muted/70 p-2.5",
+      iconClassName: "h-5 w-5 text-muted-foreground",
+      titleClassName: "mb-1.5 text-lg font-semibold",
+      descriptionClassName:
+        "mb-5 max-w-sm text-sm leading-relaxed text-muted-foreground",
+      controlsClassName: "flex w-full max-w-md flex-col items-center gap-3",
+      actionsClassName: "flex flex-wrap gap-2 items-center justify-center",
+      actionButtonClassName: "gap-2",
+      actionIconClassName: "h-4 w-4",
+      keybindRowClassName:
+        "flex flex-wrap items-center justify-center gap-2.5 text-xs text-muted-foreground",
+      keybindItemClassName: "flex items-center gap-1.5",
+      keybindIconClassName: "h-3.5 w-3.5 shrink-0",
+      keybindKeyClassName:
+        "px-1.5 py-0.5 font-semibold bg-muted border rounded",
+    },
+    expanded: {
+      containerClassName: "flex items-center gap-2 p-3 bg-card border-b",
+      agentPickerClassName: "flex items-center gap-2 self-start pt-1",
+      agentLabelClassName:
+        "text-[11px] uppercase tracking-wide text-muted-foreground",
+      textAreaClassName: "min-h-[60px] max-h-[120px] flex-1 resize-none",
+      actionsClassName: "flex flex-col gap-1",
+      actionButtonClassName: "h-8",
+      actionIconClassName: "h-4 w-4",
+    },
+    idle: {
+      containerClassName:
+        "flex items-center justify-between gap-3 p-3 bg-card border-b",
+      actionsClassName: "flex items-center gap-2",
+      actionButtonClassName: "gap-2",
+      actionIconClassName: "h-4 w-4",
+      recordingIconClassName: "animate-pulse",
+      metaClassName: "flex items-center gap-2",
+      descriptionClassName: "text-sm text-muted-foreground",
+    },
+  },
+} as const
+
+export function getAppShellSessionStartDesktopSurfaceState(): typeof APP_SHELL_SESSION_START_SURFACE_PRESENTATION.desktop {
+  return APP_SHELL_SESSION_START_SURFACE_PRESENTATION.desktop
+}
+
 export type AppShellHeaderActionId = keyof typeof APP_SHELL_HEADER_ACTIONS
+export type AppShellHeaderActionWithMobileIconId = {
+  [K in AppShellHeaderActionId]: (typeof APP_SHELL_HEADER_ACTIONS)[K] extends {
+    mobileIcon: object
+  }
+    ? K
+    : never
+}[AppShellHeaderActionId]
+export type AppShellHeaderActionMobileIconState =
+  (typeof APP_SHELL_HEADER_ACTIONS)[AppShellHeaderActionWithMobileIconId]["mobileIcon"]
+export type AppShellHeaderActionMobileIconColorPalette = Readonly<
+  Record<string, string>
+>
+
+export interface AppShellHeaderActionMobileIconColors {
+  color: string
+}
 
 type AppShellHeaderActionPresentation = {
   label: string
   displayLabel?: string
   hint?: string
+  mobileIcon?: {
+    name: string
+    size: number
+    colorToken: string
+  }
 }
 
 export function getAppShellHeaderActionLabel(
@@ -266,6 +350,22 @@ export function getAppShellHeaderActionHint(
     id
   ] as AppShellHeaderActionPresentation
   return action.hint
+}
+
+export function getAppShellHeaderActionMobileIconState(
+  id: AppShellHeaderActionWithMobileIconId,
+): AppShellHeaderActionMobileIconState {
+  return APP_SHELL_HEADER_ACTIONS[id].mobileIcon
+}
+
+export function getAppShellHeaderActionMobileIconColors(
+  colors: AppShellHeaderActionMobileIconColorPalette,
+  id: AppShellHeaderActionWithMobileIconId,
+): AppShellHeaderActionMobileIconColors {
+  const icon = getAppShellHeaderActionMobileIconState(id)
+  return {
+    color: colors[icon.colorToken],
+  }
 }
 
 export function getAppShellGlobalTtsToggleLabel(isEnabled: boolean): string {
@@ -486,7 +586,8 @@ export const APP_SHELL_SKILL_ACTION_LABELS = {
 } as const
 
 export const APP_SHELL_SKILL_EDITOR_PRESENTATION = {
-  createDescription: "Create a skill with specialized instructions for the agent.",
+  createDescription:
+    "Create a skill with specialized instructions for the agent.",
   editDescription: "Update the skill name, description, and instructions.",
   loadingLabel: "Loading skill...",
   unavailableLoadSaveError:
@@ -525,8 +626,10 @@ export const APP_SHELL_SKILL_EDITOR_PRESENTATION = {
     instructions: {
       label: "Instructions",
       requiredLabel: "Instructions *",
-      placeholder: "Enter the instructions for this skill in markdown format...",
-      helper: "Skill files are saved by the desktop server under .agents/skills.",
+      placeholder:
+        "Enter the instructions for this skill in markdown format...",
+      helper:
+        "Skill files are saved by the desktop server under .agents/skills.",
     },
   },
 } as const
@@ -534,9 +637,7 @@ export const APP_SHELL_SKILL_EDITOR_PRESENTATION = {
 export type AppShellSkillActionLabelId =
   keyof typeof APP_SHELL_SKILL_ACTION_LABELS
 
-export type AppShellSkillBulkActionLabelId =
-  | "deleteSelected"
-  | "exportBundle"
+export type AppShellSkillBulkActionLabelId = "deleteSelected" | "exportBundle"
 
 export type AppShellSkillItemActionLabelId =
   | "actions"
@@ -635,7 +736,9 @@ export function getAppShellSkillDeleteConfirmTitle(selected = false): string {
     : APP_SHELL_SKILL_DELETE_PRESENTATION.singleTitle
 }
 
-export function getAppShellSkillDeleteConfirmMessage(skillName: string): string {
+export function getAppShellSkillDeleteConfirmMessage(
+  skillName: string,
+): string {
   return `Are you sure you want to delete the skill "${skillName}"?`
 }
 
@@ -764,8 +867,7 @@ export const APP_SHELL_KNOWLEDGE_NOTE_EDITOR_PRESENTATION = {
     summary: {
       label: "Summary",
       placeholder: "Short note summary",
-      helper:
-        "Canonical files live at .agents/knowledge/<slug>/<slug>.md.",
+      helper: "Canonical files live at .agents/knowledge/<slug>/<slug>.md.",
     },
     body: {
       label: "Body",
@@ -899,15 +1001,11 @@ export function getAppShellBundleActionLabel(
   return APP_SHELL_BUNDLE_ACTION_LABELS[id]
 }
 
-export function getAppShellBundleImportActionLabel(
-  isPending: boolean,
-): string {
+export function getAppShellBundleImportActionLabel(isPending: boolean): string {
   return getAppShellBundleActionLabel(isPending ? "importing" : "importBundle")
 }
 
-export function getAppShellBundleExportActionLabel(
-  isPending: boolean,
-): string {
+export function getAppShellBundleExportActionLabel(isPending: boolean): string {
   return getAppShellBundleActionLabel(isPending ? "exporting" : "exportBundle")
 }
 
@@ -1013,7 +1111,9 @@ export function formatAppShellBundleComponentSummary(
     : itemSummary
 }
 
-export function formatAppShellBundleCreatedDateLabel(dateLabel: string): string {
+export function formatAppShellBundleCreatedDateLabel(
+  dateLabel: string,
+): string {
   return `${APP_SHELL_BUNDLE_IMPORT_PRESENTATION.fields.created}: ${dateLabel}`
 }
 
@@ -1033,7 +1133,9 @@ export function formatAppShellBundleImportStatus(count: number): string {
   return `Imported ${count} bundle item${count === 1 ? "" : "s"}`
 }
 
-export function formatAppShellBundleImportCompleteMessage(count: number): string {
+export function formatAppShellBundleImportCompleteMessage(
+  count: number,
+): string {
   return `Imported ${formatAppShellBundleItemCount(count)} from the bundle.`
 }
 
@@ -1059,9 +1161,7 @@ export function getAppShellAgentActionLabel(
   return APP_SHELL_AGENT_ACTION_LABELS[id]
 }
 
-export function getAppShellAgentRescanActionLabel(
-  isPending: boolean,
-): string {
+export function getAppShellAgentRescanActionLabel(isPending: boolean): string {
   return getAppShellAgentActionLabel(isPending ? "rescanning" : "rescanFiles")
 }
 
@@ -1168,19 +1268,24 @@ export function getAppShellModelPresetEditorTitle(
   mode: AppShellModelPresetEditorMode,
   isBuiltIn = false,
 ): string {
-  if (mode === "create") return APP_SHELL_MODEL_PRESET_PRESENTATION.editor.createTitle
+  if (mode === "create")
+    return APP_SHELL_MODEL_PRESET_PRESENTATION.editor.createTitle
   return isBuiltIn
     ? APP_SHELL_MODEL_PRESET_PRESENTATION.editor.configureTitle
     : APP_SHELL_MODEL_PRESET_PRESENTATION.editor.editTitle
 }
 
-export function getAppShellModelPresetEditorDescription(isBuiltIn: boolean): string {
+export function getAppShellModelPresetEditorDescription(
+  isBuiltIn: boolean,
+): string {
   return isBuiltIn
     ? APP_SHELL_MODEL_PRESET_PRESENTATION.editor.configureDescription
     : APP_SHELL_MODEL_PRESET_PRESENTATION.editor.editDescription
 }
 
-export function getAppShellModelPresetDeleteConfirmMessage(presetName: string): string {
+export function getAppShellModelPresetDeleteConfirmMessage(
+  presetName: string,
+): string {
   return `Are you sure you want to delete "${presetName}"?`
 }
 
@@ -1447,8 +1552,10 @@ export function getAppShellAgentListBadges(
   profile: AppShellAgentListProfile,
 ): string[] {
   const badges: string[] = []
-  if (profile.isBuiltIn) badges.push(APP_SHELL_AGENT_LIST_PRESENTATION.badges.builtIn)
-  if (profile.isDefault) badges.push(APP_SHELL_AGENT_LIST_PRESENTATION.badges.default)
+  if (profile.isBuiltIn)
+    badges.push(APP_SHELL_AGENT_LIST_PRESENTATION.badges.builtIn)
+  if (profile.isDefault)
+    badges.push(APP_SHELL_AGENT_LIST_PRESENTATION.badges.default)
   if (profile.enabled === false) {
     badges.push(APP_SHELL_AGENT_LIST_PRESENTATION.badges.disabled)
   }
@@ -1649,7 +1756,8 @@ export function getAppShellMcpServerEditorSaveActionLabel(
 ): string {
   if (isPending) return getAppShellMcpServerActionLabel("saving")
   if (mode === "edit") return getAppShellMcpServerActionLabel("updateServer")
-  if (mode === "replace") return getAppShellMcpServerActionLabel("replaceServer")
+  if (mode === "replace")
+    return getAppShellMcpServerActionLabel("replaceServer")
   return getAppShellMcpServerActionLabel("addServer")
 }
 
@@ -1687,7 +1795,8 @@ export function getAppShellMcpServerItemActionAccessibilityLabel(
 ): string {
   if (action === "actions") return `Actions for ${serverName} server`
   if (action === "replace") return `Replace MCP server ${serverName} config`
-  if (action === "revokeOAuth") return `Revoke OAuth for MCP server ${serverName}`
+  if (action === "revokeOAuth")
+    return `Revoke OAuth for MCP server ${serverName}`
   if (action === "startOAuth") return `Start OAuth for MCP server ${serverName}`
   if (action === "toggleDetails") return `Toggle ${serverName} server details`
   return `Delete MCP server ${serverName}`
@@ -1769,7 +1878,10 @@ export const APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION = {
   },
 } as const
 
-function appendAppShellMcpFeedbackDetail(prefix: string, detail?: string): string {
+function appendAppShellMcpFeedbackDetail(
+  prefix: string,
+  detail?: string,
+): string {
   return detail ? `${prefix}: ${detail}` : prefix
 }
 
@@ -1910,7 +2022,8 @@ export function formatAppShellMcpServerImportConfigFailedMessage(
   detail?: string,
 ): string {
   return appendAppShellMcpFeedbackDetail(
-    APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.importConfigFailedPrefix,
+    APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport
+      .importConfigFailedPrefix,
     detail,
   )
 }
@@ -1919,7 +2032,8 @@ export function formatAppShellMcpServerExportConfigFailedMessage(
   detail?: string,
 ): string {
   return appendAppShellMcpFeedbackDetail(
-    APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportConfigFailedPrefix,
+    APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport
+      .exportConfigFailedPrefix,
     detail,
   )
 }
@@ -2057,7 +2171,8 @@ export const APP_SHELL_LOOP_EDITOR_PRESENTATION = {
   loadingLabel: "Loading loop...",
   unavailableLoadSaveError:
     "Configure Base URL and API key to load and save loops",
-  unavailableSaveError: "Configure Base URL and API key in Settings before saving",
+  unavailableSaveError:
+    "Configure Base URL and API key in Settings before saving",
   unavailableSaveHelper:
     "Configure Base URL and API key in Settings to save changes.",
   errors: {
@@ -2169,7 +2284,8 @@ export const APP_SHELL_LOOP_EDITOR_PRESENTATION = {
   },
 } as const
 
-export type AppShellLoopActionLabelId = keyof typeof APP_SHELL_LOOP_ACTION_LABELS
+export type AppShellLoopActionLabelId =
+  keyof typeof APP_SHELL_LOOP_ACTION_LABELS
 
 export function getAppShellLoopActionLabel(
   id: AppShellLoopActionLabelId,
@@ -2292,7 +2408,9 @@ export function formatAppShellLoopImportedStatus(loopName: string): string {
   return `Imported task "${loopName}"`
 }
 
-export function formatAppShellLoopImportCompleteMessage(loopName: string): string {
+export function formatAppShellLoopImportCompleteMessage(
+  loopName: string,
+): string {
   return `${formatAppShellLoopImportedStatus(loopName)}.`
 }
 
@@ -2320,7 +2438,9 @@ export function formatAppShellLoopRunningMessage(loopName: string): string {
   return `Running "${loopName}"...`
 }
 
-export function formatAppShellLoopTriggerUnavailableMessage(loopName: string): string {
+export function formatAppShellLoopTriggerUnavailableMessage(
+  loopName: string,
+): string {
   return `Could not trigger "${loopName}" right now`
 }
 

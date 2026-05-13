@@ -2,8 +2,23 @@ import { describe, expect, it } from "vitest"
 
 import {
   createInitialHandsFreeState,
+  formatHandsFreeActivePlaceholder,
+  formatHandsFreeListeningSubtitle,
+  formatHandsFreeRecognizerErrorDebugMessage,
+  formatHandsFreeSleepingDebugMessage,
+  formatHandsFreeSleepingSubtitle,
+  getHandsFreeComposerCopyState,
+  getHandsFreeComposerControlState,
+  getHandsFreeComposerPlaceholder,
+  getHandsFreeComposerMobileSurfaceColors,
+  getHandsFreeComposerMobileSurfaceState,
+  getHandsFreeMicButtonLabel,
+  getHandsFreePauseResumeLabel,
+  getHandsFreeStatusSubtitle,
+  getHandsFreeStatusChipMobileColors,
   getHandsFreeResumePhase,
   getHandsFreeStatusLabel,
+  HANDS_FREE_COMPOSER_PRESENTATION,
   resolveHandsFreeUtterance,
   transitionHandsFreeToSleeping,
 } from "./hands-free-controller"
@@ -29,6 +44,189 @@ describe("hands-free controller", () => {
     expect(getHandsFreeStatusLabel("speaking")).toBe("Speaking")
     expect(getHandsFreeStatusLabel("paused")).toBe("Paused")
     expect(getHandsFreeStatusLabel("error")).toBe("Voice error")
+  })
+
+  it("centralizes hands-free composer labels and phase copy", () => {
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.controls.wakeLabel).toBe("Wake")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.controls.holdLabel).toBe("Hold")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.debug.awake).toBe("Handsfree awake. Listening for your request.")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.debug.transcriptAdded).toBe("Voice transcript added to the composer.")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.debug.permissionDenied).toBe("Speech recognition permission denied.")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.debug.voiceDebugTitle).toBe("Voice debug")
+    expect(getHandsFreeComposerCopyState()).toBe(HANDS_FREE_COMPOSER_PRESENTATION)
+    expect(getHandsFreeComposerMobileSurfaceState()).toBe(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlsRow.flexDirection).toBe("row")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlsRow.alignItems).toBe("center")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.flex).toBe(1)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.minHeight).toBe(36)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.backgroundColorToken).toBe("background")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.borderColorToken).toBe("border")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.pressedOpacity).toBe(0.7)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.alignItems).toBe("center")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.justifyContent).toBe("center")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButtonText.colorToken).toBe("foreground")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButtonText.fontWeight).toBe("600")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.debugPanel.backgroundColorToken).toBe("muted")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.debugPanel.borderLeftWidth).toBe(4)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.debugPanel.borderLeftColorToken).toBe("primary")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.debugText.colorToken).toBe("mutedForeground")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.borderRadius).toBe("full")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.label.fontSize).toBe(12)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.label.fontWeight).toBe("700")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.alignSelf).toBe("flex-start")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.subtitle.opacity).toBe(0.92)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.subtitle.numberOfLines).toBe(2)
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.phaseColors.listening.backgroundColorToken).toBe("primary")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.phaseColors.processing.backgroundColor).toBe("#f59e0b")
+    expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip.phaseColors.speaking.backgroundColor).toBe("#8b5cf6")
+    expect(getHandsFreeComposerMobileSurfaceColors({
+      background: "#ffffff",
+      border: "#d4d4d4",
+      foreground: "#171717",
+      muted: "#e5e5e5",
+      mutedForeground: "#737373",
+      primary: "#2563eb",
+    })).toEqual({
+      controlButton: {
+        borderColor: "#d4d4d4",
+        backgroundColor: "#ffffff",
+      },
+      controlButtonText: {
+        color: "#171717",
+      },
+      debugPanel: {
+        backgroundColor: "#e5e5e5",
+        borderLeftColor: "#2563eb",
+      },
+      debugText: {
+        color: "#737373",
+      },
+    })
+    expect(formatHandsFreeSleepingDebugMessage("hey dot agents")).toBe(
+      "Handsfree sleeping. Say “hey dot agents” or tap Wake to begin.",
+    )
+    expect(formatHandsFreeRecognizerErrorDebugMessage("Mic unavailable")).toBe("Voice error: Mic unavailable")
+    expect(formatHandsFreeSleepingSubtitle("hey dot agents")).toBe(
+      "Say “hey dot agents” or tap Wake to wake the assistant.",
+    )
+    expect(formatHandsFreeListeningSubtitle("go to sleep")).toBe("Say “go to sleep” to return to sleep.")
+    expect(formatHandsFreeActivePlaceholder("hey dot agents")).toBe("Say “hey dot agents” or type a message")
+    expect(getHandsFreePauseResumeLabel("paused")).toBe("Resume")
+    expect(getHandsFreePauseResumeLabel("listening")).toBe("Pause")
+    expect(getHandsFreeComposerControlState("sleeping")).toEqual({
+      primary: {
+        action: "wake",
+        label: "Wake",
+      },
+      secondary: {
+        action: "pause",
+        label: "Pause",
+      },
+    })
+    expect(getHandsFreeComposerControlState("paused")).toEqual({
+      primary: {
+        action: "sleep",
+        label: "Sleep",
+      },
+      secondary: {
+        action: "resume",
+        label: "Resume",
+      },
+    })
+    expect(getHandsFreeComposerControlState("listening")).toEqual({
+      primary: {
+        action: "sleep",
+        label: "Sleep",
+      },
+      secondary: {
+        action: "pause",
+        label: "Pause",
+      },
+    })
+    expect(getHandsFreeMicButtonLabel({ handsFree: true, phase: "sleeping", listening: false })).toBe("Wake")
+    expect(getHandsFreeMicButtonLabel({ handsFree: true, phase: "paused", listening: false })).toBe("Resume")
+    expect(getHandsFreeMicButtonLabel({ handsFree: false, phase: "sleeping", listening: true })).toBe("...")
+    expect(getHandsFreeMicButtonLabel({ handsFree: false, phase: "sleeping", listening: false })).toBe("Hold")
+  })
+
+  it("resolves hands-free status chip phase colors from shared tokens", () => {
+    const colors = {
+      secondary: "#f5f5f5",
+      border: "#e5e5e5",
+      foreground: "#111111",
+      primary: "#171717",
+      primaryForeground: "#fafafa",
+      muted: "#eeeeee",
+      destructive: "#ef4444",
+    }
+
+    expect(getHandsFreeStatusChipMobileColors("sleeping", colors)).toEqual({
+      backgroundColor: "#f5f5f5",
+      borderColor: "#e5e5e5",
+      textColor: "#111111",
+    })
+    expect(getHandsFreeStatusChipMobileColors("listening", colors)).toEqual({
+      backgroundColor: "#171717",
+      borderColor: "#171717",
+      textColor: "#fafafa",
+    })
+    expect(getHandsFreeStatusChipMobileColors("processing", colors)).toEqual({
+      backgroundColor: "#f59e0b",
+      borderColor: "#f59e0b",
+      textColor: "#111827",
+    })
+    expect(getHandsFreeStatusChipMobileColors("speaking", colors)).toEqual({
+      backgroundColor: "#8b5cf6",
+      borderColor: "#8b5cf6",
+      textColor: "#ffffff",
+    })
+    expect(getHandsFreeStatusChipMobileColors("error", colors)).toEqual({
+      backgroundColor: "#ef4444",
+      borderColor: "#ef4444",
+      textColor: "#fafafa",
+    })
+  })
+
+  it("formats hands-free subtitles and placeholders from phase state", () => {
+    expect(getHandsFreeStatusSubtitle({
+      phase: "sleeping",
+      wakePhrase: "hey dot agents",
+      sleepPhrase: "go to sleep",
+      foregroundOnly: true,
+    })).toBe("Say “hey dot agents” or tap Wake to wake the assistant.")
+    expect(getHandsFreeStatusSubtitle({
+      phase: "listening",
+      wakePhrase: "hey dot agents",
+      sleepPhrase: "go to sleep",
+      foregroundOnly: true,
+    })).toBe("Say “go to sleep” to return to sleep.")
+    expect(getHandsFreeStatusSubtitle({
+      phase: "error",
+      wakePhrase: "hey dot agents",
+      sleepPhrase: "go to sleep",
+      lastError: "Mic unavailable",
+      foregroundOnly: true,
+    })).toBe("Mic unavailable")
+    expect(getHandsFreeStatusSubtitle({
+      phase: "error",
+      wakePhrase: "hey dot agents",
+      sleepPhrase: "go to sleep",
+      foregroundOnly: true,
+    })).toBe("Voice recognition is recovering.")
+    expect(getHandsFreeComposerPlaceholder({
+      handsFree: true,
+      phase: "paused",
+      wakePhrase: "hey dot agents",
+      listening: false,
+      fallback: "Continue conversation...",
+    })).toBe("Handsfree paused — tap mic to resume or type a message")
+    expect(getHandsFreeComposerPlaceholder({
+      handsFree: false,
+      phase: "sleeping",
+      wakePhrase: "hey dot agents",
+      listening: true,
+      fallback: "Continue conversation...",
+    })).toBe("Listening…")
   })
 
   it("resolves resumable phases from active states", () => {

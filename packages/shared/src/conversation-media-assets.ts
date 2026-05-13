@@ -1,4 +1,5 @@
 import { assertSafeConversationId } from './conversation-id';
+import { hexToRgba } from './colors';
 import { REMOTE_SERVER_API_BUILDERS } from './remote-server-api';
 
 export const CONVERSATION_VIDEO_ASSET_HOST = 'conversation-video';
@@ -94,7 +95,440 @@ export const CHAT_IMAGE_ATTACHMENT_PRESENTATION = {
     attachFailed: 'Failed to attach image.',
     pickerFailed: 'Unable to select images right now.',
   },
+  composerPreview: {
+    removeTitle: 'Remove image',
+  },
 } as const;
+
+export const CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION = {
+  desktop: {
+    composerPreview: {
+      overlayRowClassName: 'flex w-full gap-2 overflow-x-auto pb-1',
+      tileRowClassName: 'flex w-full gap-1.5 overflow-x-auto pb-1',
+      overlayPreviewClassName: 'relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border',
+      tilePreviewClassName: 'relative h-12 w-12 shrink-0 overflow-hidden rounded border border-border',
+      imageClassName: 'h-full w-full object-cover',
+      removeButtonClassName: 'absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white',
+      overlayRemoveIconClassName: 'h-3 w-3',
+      tileRemoveIconClassName: 'h-2.5 w-2.5',
+    },
+  },
+  mobile: {
+    row: {
+      paddingHorizontal: 'sm',
+      paddingTop: 'xs',
+      paddingBottom: 2,
+      gap: 'xs',
+      showsHorizontalScrollIndicator: false,
+    },
+    preview: {
+      size: 56,
+      borderRadius: 'md',
+      borderWidth: 1,
+      borderColorToken: 'border',
+      backgroundColorToken: 'muted',
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    previewImage: {
+      width: '100%',
+      height: '100%',
+    },
+    removeButton: {
+      accessibilityRole: 'button',
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      size: 18,
+      borderRadius: 9,
+      backgroundColor: '#000000',
+      backgroundAlpha: 0.7,
+      pressedOpacity: 0.8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    removeIcon: {
+      name: 'close',
+      color: '#FFFFFF',
+      size: 13,
+    },
+  },
+} as const;
+
+export interface ChatImageAttachmentMobileRemoveIconState {
+  name: typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon.name;
+  size: number;
+  color: string;
+}
+
+export type ChatImageAttachmentMobileSurfaceColorToken =
+  | typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.borderColorToken
+  | typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.backgroundColorToken;
+
+export type ChatImageAttachmentMobileSurfaceColorPalette =
+  Readonly<Record<ChatImageAttachmentMobileSurfaceColorToken, string>>;
+
+export interface ChatImageAttachmentMobileSurfaceColors {
+  preview: {
+    borderColor: string;
+    backgroundColor: string;
+  };
+  removeButton: {
+    backgroundColor: string;
+  };
+}
+
+export interface ChatImageAttachmentMobileRenderStateInput {
+  colors: ChatImageAttachmentMobileSurfaceColorPalette;
+}
+
+export interface ChatImageAttachmentMobileRenderState {
+  copy: typeof CHAT_IMAGE_ATTACHMENT_PRESENTATION;
+  surface: typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+  colors: ChatImageAttachmentMobileSurfaceColors;
+  removeButton: {
+    accessibilityRole: typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.accessibilityRole;
+    accessibilityLabel: typeof CHAT_IMAGE_ATTACHMENT_PRESENTATION.composerPreview.removeTitle;
+    pressedOpacity: typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.pressedOpacity;
+  };
+  removeIcon: ChatImageAttachmentMobileRemoveIconState;
+}
+
+export interface ChatImageAttachmentMobileAlertState {
+  title: string;
+  message: string;
+}
+
+export type ChatImageAttachmentMobileAlertInput =
+  | {
+      reason: 'limitReached';
+      maxImages?: number;
+    }
+  | {
+      reason: 'budgetReached';
+      maxBytes?: number;
+    }
+  | {
+      reason: 'missingData';
+      names: readonly string[];
+    }
+  | {
+      reason: 'selectionTooLarge';
+      names: readonly string[];
+      maxBytes?: number;
+    }
+  | {
+      reason: 'unsupportedFormat';
+      names: readonly string[];
+    }
+  | {
+      reason: 'budgetExceeded';
+      names: readonly string[];
+      maxBytes?: number;
+    }
+  | {
+      reason: 'pickerError';
+      error: unknown;
+      fallback?: string;
+    };
+
+export function getChatImageAttachmentDesktopSurfaceState(): typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop {
+  return CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop;
+}
+
+export function getChatImageAttachmentMobileSurfaceState(): typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile {
+  return CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+}
+
+export function getChatImageAttachmentCopyState(): typeof CHAT_IMAGE_ATTACHMENT_PRESENTATION {
+  return CHAT_IMAGE_ATTACHMENT_PRESENTATION;
+}
+
+export function getChatImageAttachmentMobileRemoveIconState(): ChatImageAttachmentMobileRemoveIconState {
+  const removeIcon = CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon;
+
+  return {
+    name: removeIcon.name,
+    size: removeIcon.size,
+    color: removeIcon.color,
+  };
+}
+
+export function getChatImageAttachmentMobileSurfaceColors(
+  colors: ChatImageAttachmentMobileSurfaceColorPalette,
+): ChatImageAttachmentMobileSurfaceColors {
+  const surface = CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+
+  return {
+    preview: {
+      borderColor: colors[surface.preview.borderColorToken],
+      backgroundColor: colors[surface.preview.backgroundColorToken],
+    },
+    removeButton: {
+      backgroundColor: hexToRgba(surface.removeButton.backgroundColor, surface.removeButton.backgroundAlpha),
+    },
+  };
+}
+
+export function getChatImageAttachmentMobileRenderState({
+  colors,
+}: ChatImageAttachmentMobileRenderStateInput): ChatImageAttachmentMobileRenderState {
+  const surface = getChatImageAttachmentMobileSurfaceState();
+  const copy = getChatImageAttachmentCopyState();
+
+  return {
+    copy,
+    surface,
+    colors: getChatImageAttachmentMobileSurfaceColors(colors),
+    removeButton: {
+      accessibilityRole: surface.removeButton.accessibilityRole,
+      accessibilityLabel: copy.composerPreview.removeTitle,
+      pressedOpacity: surface.removeButton.pressedOpacity,
+    },
+    removeIcon: getChatImageAttachmentMobileRemoveIconState(),
+  };
+}
+
+export const CHAT_VIDEO_ATTACHMENT_PRESENTATION = {
+  labels: {
+    play: 'Play video',
+    loading: 'Loading…',
+    openExternally: 'Open externally',
+    desktopLazyLoadSubtitle: 'Loads only when you click play',
+    mobileLazyLoadSubtitle: 'Loads only when you tap play',
+  },
+  errors: {
+    missingCredentials: 'Missing video asset credentials.',
+    loadFallback: 'Unable to load this video.',
+  },
+  glyphs: {
+    link: '🔗',
+    video: '🎬',
+  },
+} as const;
+
+export const CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION = {
+  desktop: {
+    cardClassName: 'not-prose my-3 block overflow-hidden rounded-lg border border-border bg-muted/20',
+    videoClassName: 'block max-h-[30rem] w-full bg-black',
+    loadButtonClassName: 'flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40',
+    playIconWrapperClassName: 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary',
+    playIconClassName: 'h-5 w-5',
+    textWrapperClassName: 'min-w-0 flex-1',
+    titleClassName: 'block truncate text-sm font-medium text-foreground',
+    subtitleClassName: 'block text-xs text-muted-foreground',
+  },
+  mobile: {
+    card: {
+      borderWidth: 1,
+      borderColorToken: 'border',
+      borderRadius: 'lg',
+      backgroundColor: {
+        dark: '#ffffff',
+        darkAlpha: 0.04,
+        light: '#000000',
+        lightAlpha: 0.03,
+      },
+      overflow: 'hidden',
+      marginBottom: 'sm',
+    },
+    header: {
+      padding: 'sm',
+      gap: 2,
+    },
+    loadButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      padding: 'sm',
+      pressedOpacity: 0.72,
+      disabledOpacity: 0.65,
+    },
+    playIconWrapper: {
+      size: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColorToken: 'primary',
+      backgroundAlpha: 0.09,
+    },
+    playIcon: {
+      name: 'play-circle',
+      size: 22,
+      colorToken: 'primary',
+    },
+    textWrapper: {
+      flex: 1,
+      minWidth: 0,
+    },
+    title: {
+      colorToken: 'foreground',
+      fontWeight: '600',
+      fontSize: 13,
+      numberOfLines: 1,
+    },
+    subtitle: {
+      colorToken: 'mutedForeground',
+      fontSize: 11,
+      numberOfLines: 1,
+    },
+    button: {
+      marginTop: 'xs',
+      alignSelf: 'flex-start',
+      borderRadius: 'md',
+      backgroundColorToken: 'primary',
+      paddingHorizontal: 'sm',
+      paddingVertical: 6,
+    },
+    buttonText: {
+      colorToken: 'primaryForeground',
+      fontWeight: '700',
+      fontSize: 12,
+    },
+    video: {
+      width: '100%',
+      height: 220,
+      backgroundColor: '#000',
+    },
+    fallbackLink: {
+      paddingVertical: 'xs',
+      marginBottom: 'sm',
+    },
+    fallbackLinkText: {
+      colorToken: 'primary',
+      fontSize: 13,
+      textDecorationLine: 'underline',
+    },
+    externalLink: {
+      marginTop: 'xs',
+    },
+    errorText: {
+      colorToken: 'destructive',
+      fontSize: 11,
+      marginTop: 'xs',
+    },
+  },
+} as const;
+
+export function getChatVideoAttachmentMobileSurfaceState(): typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile {
+  return CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+}
+
+export function getChatVideoAttachmentDesktopSurfaceState(): typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop {
+  return CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop;
+}
+
+export function getChatVideoAttachmentCopyState(): typeof CHAT_VIDEO_ATTACHMENT_PRESENTATION {
+  return CHAT_VIDEO_ATTACHMENT_PRESENTATION;
+}
+
+export type ChatVideoAttachmentMobileSurfaceColorToken =
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.borderColorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.backgroundColorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIcon.colorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.title.colorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.subtitle.colorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.button.backgroundColorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.buttonText.colorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.fallbackLinkText.colorToken
+  | typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.errorText.colorToken;
+
+export type ChatVideoAttachmentMobileSurfaceColorPalette =
+  Readonly<Record<ChatVideoAttachmentMobileSurfaceColorToken, string>>;
+
+export interface ChatVideoAttachmentMobileSurfaceColors {
+  card: {
+    borderColor: string;
+    backgroundColor: string;
+  };
+  playIconWrapper: {
+    backgroundColor: string;
+  };
+  playIcon: {
+    color: string;
+  };
+  title: {
+    color: string;
+  };
+  subtitle: {
+    color: string;
+  };
+  button: {
+    backgroundColor: string;
+  };
+  buttonText: {
+    color: string;
+  };
+  fallbackLinkText: {
+    color: string;
+  };
+  errorText: {
+    color: string;
+  };
+}
+
+export function getChatVideoAttachmentMobileSurfaceColors(
+  colors: ChatVideoAttachmentMobileSurfaceColorPalette,
+  input: { isDark?: boolean } = {},
+): ChatVideoAttachmentMobileSurfaceColors {
+  const surface = CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+  const cardBackground = input.isDark
+    ? surface.card.backgroundColor.dark
+    : surface.card.backgroundColor.light;
+  const cardBackgroundAlpha = input.isDark
+    ? surface.card.backgroundColor.darkAlpha
+    : surface.card.backgroundColor.lightAlpha;
+
+  return {
+    card: {
+      borderColor: colors[surface.card.borderColorToken],
+      backgroundColor: hexToRgba(cardBackground, cardBackgroundAlpha),
+    },
+    playIconWrapper: {
+      backgroundColor: hexToRgba(
+        colors[surface.playIconWrapper.backgroundColorToken],
+        surface.playIconWrapper.backgroundAlpha,
+      ),
+    },
+    playIcon: {
+      color: colors[surface.playIcon.colorToken],
+    },
+    title: {
+      color: colors[surface.title.colorToken],
+    },
+    subtitle: {
+      color: colors[surface.subtitle.colorToken],
+    },
+    button: {
+      backgroundColor: colors[surface.button.backgroundColorToken],
+    },
+    buttonText: {
+      color: colors[surface.buttonText.colorToken],
+    },
+    fallbackLinkText: {
+      color: colors[surface.fallbackLinkText.colorToken],
+    },
+    errorText: {
+      color: colors[surface.errorText.colorToken],
+    },
+  };
+}
+
+export function getVideoAttachmentLoadAccessibilityLabel(displayLabel: string): string {
+  return `Load video ${displayLabel}`;
+}
+
+export function getVideoAttachmentPlayAccessibilityLabel(displayLabel: string): string {
+  return `Play video ${displayLabel}`;
+}
+
+export function getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel: string): string {
+  return `Open video link: ${displayLabel}`;
+}
+
+export function formatVideoAttachmentRequestFailedMessage(status: number): string {
+  return `Video request failed (${status})`;
+}
 
 function formatChatImageNameList(names: readonly string[]): string {
   return names.join(', ');
@@ -168,6 +602,53 @@ export function formatChatImageAttachmentErrorMessage(
   return fallback;
 }
 
+export function getChatImageAttachmentMobileAlertState(
+  input: ChatImageAttachmentMobileAlertInput,
+): ChatImageAttachmentMobileAlertState {
+  const copy = CHAT_IMAGE_ATTACHMENT_PRESENTATION;
+
+  switch (input.reason) {
+    case 'limitReached':
+      return {
+        title: copy.titles.limitReached,
+        message: formatChatImageAttachmentLimitMessage(input.maxImages),
+      };
+    case 'budgetReached':
+      return {
+        title: copy.titles.budgetReached,
+        message: formatChatImageBudgetReachedMessage(input.maxBytes),
+      };
+    case 'missingData':
+      return {
+        title: copy.titles.skipped,
+        message: formatChatImageMissingDataMessage(input.names),
+      };
+    case 'selectionTooLarge':
+      return {
+        title: copy.titles.tooLarge,
+        message: formatChatImageSelectionTooLargeMessage(input.names, input.maxBytes),
+      };
+    case 'unsupportedFormat':
+      return {
+        title: copy.titles.unsupportedFormat,
+        message: formatChatImageUnsupportedFormatMessage(input.names),
+      };
+    case 'budgetExceeded':
+      return {
+        title: copy.titles.budgetReached,
+        message: formatChatImageBudgetExceededMessage(input.names, input.maxBytes),
+      };
+    case 'pickerError':
+      return {
+        title: copy.titles.pickerError,
+        message: formatChatImageAttachmentErrorMessage(
+          input.error,
+          input.fallback ?? copy.errors.pickerFailed,
+        ),
+      };
+  }
+}
+
 export interface ConversationVideoAssetRef {
   conversationId: string;
   fileName: string;
@@ -213,6 +694,11 @@ export interface ConversationImageMarkdownInput {
   url: string;
   altText?: string | null;
   fallbackAltText?: string | null;
+}
+
+export interface ChatImageAttachmentMessageInput {
+  dataUrl: string;
+  name?: string | null;
 }
 
 export interface ImageMimeTypeSource {
@@ -804,6 +1290,20 @@ export function buildConversationImageMarkdownMessage(
   const trimmedText = text.trim();
   const imageMarkdown = images.map(buildConversationImageMarkdownReference).join('\n\n');
   return [trimmedText, imageMarkdown].filter(Boolean).join('\n\n');
+}
+
+export function buildChatImageAttachmentMessage(
+  text: string,
+  attachments: readonly ChatImageAttachmentMessageInput[],
+): string {
+  return buildConversationImageMarkdownMessage(
+    text,
+    attachments.map((attachment, index) => ({
+      url: attachment.dataUrl,
+      altText: attachment.name,
+      fallbackAltText: `Image ${index + 1}`,
+    })),
+  );
 }
 
 export function getDecodedBase64ByteLength(rawBase64: string): number {

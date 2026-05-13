@@ -1,0 +1,114 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ResponseHistoryPanel.tsx'),
+  'utf8'
+);
+
+test('mobile response history panel uses shared copy and accessibility labels', () => {
+  assert.match(source, /getAgentResponseHistoryPanelState,/);
+  assert.match(source, /getAgentResponseHistorySpeechAccessibilityLabel\(isSpeaking\)/);
+  assert.match(source, /getAgentResponseHistoryMobileIconState,/);
+  assert.match(source, /const responseHistoryPanelState = getAgentResponseHistoryPanelState\(responses, \{\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+\}\);/);
+  assert.match(source, /const responseHistoryIcons = getAgentResponseHistoryMobileIconState\(\);/);
+  assert.match(source, /name=\{responseHistoryIcons\.headerName\}/);
+  assert.match(source, /name=\{responseHistoryPanelState\.toggleIconName\}/);
+  assert.match(source, /name=\{isSpeaking \? responseHistoryIcons\.stopName : responseHistoryIcons\.speakName\}/);
+  assert.match(source, /accessibilityLabel=\{responseHistoryPanelState\.toggleAccessibilityLabel\}/);
+  assert.match(source, /accessibilityState=\{\{ expanded: responseHistoryPanelState\.isExpanded \}\}/);
+  assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION\.mobileIcon/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryToggleAccessibilityLabel\(isCollapsed\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryTitle\(\)/);
+  assert.doesNotMatch(source, /accessibilityLabel=\{isCollapsed \? 'Show agent responses' : 'Hide agent responses'\}/);
+  assert.doesNotMatch(source, /accessibilityLabel=\{isSpeaking \? 'Stop speaking' : 'Speak this response'\}/);
+  assert.doesNotMatch(source, /name="chatbubbles-outline"/);
+  assert.doesNotMatch(source, /name=\{isCollapsed \? responseHistoryIcons\.expandName : responseHistoryIcons\.collapseName\}/);
+  assert.doesNotMatch(source, /'chevron-down'/);
+  assert.doesNotMatch(source, /'chevron-up'/);
+  assert.doesNotMatch(source, /'volume-medium'/);
+  assert.doesNotMatch(source, /'stop-circle'/);
+  assert.doesNotMatch(source, />Agent Responses<\/Text>/);
+  assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION/);
+});
+
+test('mobile response history panel reads compact sizing from shared surface tokens', () => {
+  assert.match(source, /getAgentResponseHistoryMobileSurfaceState,/);
+  assert.match(source, /getAgentResponseHistoryMobileSurfaceColors,/);
+  assert.match(source, /getAgentResponseHistoryNewestInitialOpacity,/);
+  assert.match(source, /getAgentResponseHistoryVisibleOpacity,/);
+  assert.match(source, /const responseHistorySurface = getAgentResponseHistoryMobileSurfaceState\(\);/);
+  assert.match(source, /const responseHistorySurfaceColors = getAgentResponseHistoryMobileSurfaceColors\(theme\.colors\);/);
+  assert.match(source, /new Animated\.Value\([\s\S]*?getAgentResponseHistoryNewestInitialOpacity\(\)[\s\S]*?: getAgentResponseHistoryVisibleOpacity\(\)/);
+  assert.match(source, /const animatedStyle = useMemo\(\(\) => \(\{ opacity: fadeAnim \}\), \[fadeAnim\]\);/);
+  assert.match(source, /duration: getAgentResponseHistoryNewestFadeDurationMs\(\)/);
+  assert.match(source, /toValue: getAgentResponseHistoryVisibleOpacity\(\)/);
+  assert.match(source, /<Animated\.View style=\{animatedStyle\}>/);
+  assert.match(source, /import \{ spacing, radius \} from '\.\/theme';/);
+  assert.match(source, /borderRadius:\s*radius\[responseHistorySurface\.container\.borderRadius\]/);
+  assert.match(source, /borderColor:\s*responseHistorySurfaceColors\.container\.borderColor/);
+  assert.match(source, /backgroundColor:\s*responseHistorySurfaceColors\.container\.backgroundColor/);
+  assert.match(source, /overflow:\s*responseHistorySurface\.container\.overflow/);
+  assert.match(source, /header:\s*\{[\s\S]*?flexDirection:\s*responseHistorySurface\.header\.flexDirection,[\s\S]*?alignItems:\s*responseHistorySurface\.header\.alignItems,[\s\S]*?justifyContent:\s*responseHistorySurface\.header\.justifyContent,/);
+  assert.match(source, /borderBottomWidth:\s*responseHistoryPanelState\.headerBorderBottomWidth/);
+  assert.match(source, /backgroundColor:\s*responseHistorySurfaceColors\.header\.backgroundColor/);
+  assert.match(source, /headerLeft:\s*\{[\s\S]*?flexDirection:\s*responseHistorySurface\.header\.leftFlexDirection,[\s\S]*?alignItems:\s*responseHistorySurface\.header\.leftAlignItems,/);
+  assert.match(source, /paddingHorizontal:\s*responseHistorySurface\.header\.paddingHorizontal/);
+  assert.match(source, /color:\s*responseHistorySurfaceColors\.header\.titleColor/);
+  assert.match(source, /backgroundColor:\s*responseHistorySurfaceColors\.badge\.backgroundColor/);
+  assert.match(source, /badge:\s*\{[\s\S]*?alignItems:\s*responseHistorySurface\.badge\.alignItems,[\s\S]*?justifyContent:\s*responseHistorySurface\.badge\.justifyContent,/);
+  assert.match(source, /color:\s*responseHistorySurfaceColors\.badge\.textColor/);
+  assert.match(source, /maxHeight:\s*responseHistorySurface\.list\.maxHeight/);
+  assert.match(source, /responseHeader:\s*\{[\s\S]*?flexDirection:\s*responseHistorySurface\.item\.headerFlexDirection,[\s\S]*?alignItems:\s*responseHistorySurface\.item\.headerAlignItems,[\s\S]*?justifyContent:\s*responseHistorySurface\.item\.headerJustifyContent,/);
+  assert.match(source, /size=\{responseHistorySurface\.item\.speakIconSize\}/);
+  assert.match(source, /color=\{responseHistorySurfaceColors\.header\.iconColor\}/);
+  assert.match(source, /color=\{responseHistorySurfaceColors\.header\.toggleIconColor\}/);
+  assert.match(source, /isSpeaking[\s\S]*?responseHistorySurfaceColors\.item\.activeSpeakIconColor[\s\S]*?: responseHistorySurfaceColors\.item\.speakIconColor/);
+  assert.match(source, /collapsedPreview:\s*\{[\s\S]*?paddingHorizontal:\s*responseHistorySurface\.collapsedPreview\.paddingHorizontal,[\s\S]*?backgroundColor:\s*responseHistorySurfaceColors\.collapsedPreview\.backgroundColor/);
+  assert.match(source, /numberOfLines=\{responseHistorySurface\.collapsedPreview\.previewNumberOfLines\}/);
+  assert.match(source, /fontSize:\s*responseHistorySurface\.collapsedPreview\.previewFontSize/);
+  assert.match(source, /color:\s*responseHistorySurfaceColors\.collapsedPreview\.previewColor/);
+  assert.doesNotMatch(source, /theme\.colors\[responseHistorySurface\./);
+  assert.doesNotMatch(source, /hexToRgba\(/);
+  assert.doesNotMatch(source, /overflow:\s*'hidden'/);
+  assert.doesNotMatch(source, /header:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',\s*justifyContent:\s*'space-between',/);
+  assert.doesNotMatch(source, /headerLeft:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',/);
+  assert.doesNotMatch(source, /badge:\s*\{[\s\S]*?alignItems:\s*'center',\s*justifyContent:\s*'center',/);
+  assert.doesNotMatch(source, /responseHeader:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',\s*justifyContent:\s*'space-between',/);
+  assert.doesNotMatch(source, /duration:\s*300/);
+  assert.doesNotMatch(source, /new Animated\.Value\(isNewest \? 0 : 1\)/);
+  assert.doesNotMatch(source, /<Animated\.View style=\{\{ opacity: fadeAnim \}\}>/);
+  assert.doesNotMatch(source, /\[\.\.\.responses\]\.reverse\(\)\.map/);
+  assert.doesNotMatch(source, /Math\.max\(\.\.\.responses\.map/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryRenderItems/);
+  assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION/);
+  assert.doesNotMatch(source, /maxHeight:\s*300/);
+  assert.doesNotMatch(source, /size=\{18\}/);
+  assert.doesNotMatch(source, /backgroundAlphaHex/);
+  assert.doesNotMatch(source, /theme\.colors\.(background|foreground|card|border|muted|mutedForeground|primary|primaryForeground|destructive|success|warning|info)/);
+  assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION/);
+});
+
+test('mobile response history keeps hook state stable while adding collapsed latest-preview chrome', () => {
+  assert.match(source, /const prevCountRef = useRef\(responses\.length\);/);
+  assert.match(source, /const response = item\.entry;/);
+  assert.match(source, /const isSpeaking = speakingIndex === item\.originalIndex;/);
+  assert.match(source, /useEffect\(\(\) => \{[\s\S]*?prevCountRef\.current = responses\.length;/);
+  assert.match(source, /if \(responses\.length === 0\) \{[\s\S]*?return null;/);
+  assert.match(source, /\{responseHistoryPanelState\.items\.map\(\(item\) => \{/);
+  assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
+  assert.match(source, /\{item\.displayIndex > 0 && <View style=\{styles\.separator\} \/>/);
+  assert.match(source, /<AnimatedResponseItem isNewest=\{item\.isNewest\}>/);
+  assert.match(source, /\{item\.timestampLabel\}/);
+  assert.match(source, /onPress=\{\(\) => handleSpeak\(response\.text, item\.originalIndex\)\}/);
+  assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.shouldRender && \(/);
+  assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.timestampLabel\}/);
+  assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.text\}/);
+  assert.match(source, /styles\.collapsedPreviewTimestamp/);
+  assert.match(source, /styles\.collapsedPreviewText/);
+  assert.doesNotMatch(source, /formatAgentResponseHistoryPreviewText/);
+  assert.doesNotMatch(source, /formatAgentResponseHistoryTimestamp/);
+  assert.doesNotMatch(source, /getLatestAgentResponseHistoryEntry/);
+});

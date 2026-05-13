@@ -12,6 +12,167 @@ export type ConnectionStatus =
   | 'disconnected'
   | 'failed';
 
+export const CONNECTION_STATUS_INDICATOR_PRESENTATION = {
+  labels: {
+    connected: 'Connected',
+    connecting: 'Connecting...',
+    reconnecting: 'Reconnecting...',
+    disconnected: 'Disconnected',
+    failed: 'Connection failed',
+    unknown: 'Unknown',
+  },
+} as const;
+
+export const CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION = {
+  mobile: {
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      compactPaddingVertical: 2,
+      compactPaddingHorizontal: 4,
+    },
+    dotContainer: {
+      position: 'relative',
+      size: 10,
+      marginRight: 6,
+    },
+    dot: {
+      position: 'absolute',
+      size: 8,
+      borderRadius: 4,
+      offset: 1,
+      pulsingOpacity: 1,
+    },
+    pulse: {
+      position: 'absolute',
+      size: 10,
+      borderRadius: 5,
+      top: 0,
+      left: 0,
+      minOpacity: 0.3,
+      maxOpacity: 0.8,
+      durationMs: 800,
+    },
+    text: {
+      fontSize: 12,
+      fontWeight: '500',
+      colorToken: 'mutedForeground',
+    },
+    statusColorTokenByStatus: {
+      connected: 'success',
+      connecting: 'warning',
+      reconnecting: 'warning',
+      disconnected: 'mutedForeground',
+      failed: 'destructive',
+    },
+  },
+} as const;
+
+export type ConnectionStatusIndicatorMobileColorToken =
+  (typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus)[ConnectionStatus];
+
+export type ConnectionStatusIndicatorMobileSurfaceColorToken =
+  | ConnectionStatusIndicatorMobileColorToken
+  | typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.text.colorToken;
+
+export type ConnectionStatusIndicatorMobileSurfaceColorPalette =
+  Readonly<Record<ConnectionStatusIndicatorMobileSurfaceColorToken, string>>;
+
+export interface ConnectionStatusIndicatorMobileSurfaceColors {
+  textColor: string;
+  statusColorByStatus: Record<ConnectionStatus, string>;
+}
+
+export interface ConnectionStatusIndicatorMobileVisualColors {
+  dot: {
+    backgroundColor: string;
+  };
+  pulse: {
+    backgroundColor: string;
+  };
+  text: {
+    color: string;
+  };
+}
+
+export interface ConnectionStatusIndicatorMobileRenderStateInput {
+  status: ConnectionStatus;
+  retryCount?: number;
+  compact?: boolean;
+  colors: ConnectionStatusIndicatorMobileSurfaceColorPalette;
+}
+
+export interface ConnectionStatusIndicatorMobileRenderState {
+  statusText: string;
+  accessibilityLabel: string;
+  isPulsing: boolean;
+  shouldRenderPulse: boolean;
+  shouldRenderText: boolean;
+  colors: ConnectionStatusIndicatorMobileVisualColors;
+}
+
+export function getConnectionStatusIndicatorMobileSurfaceState(): typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile {
+  return CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile;
+}
+
+export function getConnectionStatusIndicatorMobileSurfaceColors(
+  colors: ConnectionStatusIndicatorMobileSurfaceColorPalette,
+): ConnectionStatusIndicatorMobileSurfaceColors {
+  const surface = CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile;
+
+  return {
+    textColor: colors[surface.text.colorToken],
+    statusColorByStatus: {
+      connected: colors[surface.statusColorTokenByStatus.connected],
+      connecting: colors[surface.statusColorTokenByStatus.connecting],
+      reconnecting: colors[surface.statusColorTokenByStatus.reconnecting],
+      disconnected: colors[surface.statusColorTokenByStatus.disconnected],
+      failed: colors[surface.statusColorTokenByStatus.failed],
+    },
+  };
+}
+
+export function getConnectionStatusIndicatorMobileVisualColors(
+  state: ConnectionStatus,
+  colors: ConnectionStatusIndicatorMobileSurfaceColorPalette,
+): ConnectionStatusIndicatorMobileVisualColors {
+  const surfaceColors = getConnectionStatusIndicatorMobileSurfaceColors(colors);
+  const statusColor = surfaceColors.statusColorByStatus[state];
+
+  return {
+    dot: {
+      backgroundColor: statusColor,
+    },
+    pulse: {
+      backgroundColor: statusColor,
+    },
+    text: {
+      color: surfaceColors.textColor,
+    },
+  };
+}
+
+export function getConnectionStatusIndicatorMobileRenderState({
+  status,
+  retryCount = 0,
+  compact = false,
+  colors,
+}: ConnectionStatusIndicatorMobileRenderStateInput): ConnectionStatusIndicatorMobileRenderState {
+  const statusText = formatConnectionStatusIndicatorLabel(status, retryCount);
+  const isPulsing = isConnectionStatusIndicatorPulsing(status);
+
+  return {
+    statusText,
+    accessibilityLabel: statusText,
+    isPulsing,
+    shouldRenderPulse: isPulsing,
+    shouldRenderText: !compact,
+    colors: getConnectionStatusIndicatorMobileVisualColors(status, colors),
+  };
+}
+
 export type ConnectionRecoveryConfig = {
   maxRetries: number;
   initialDelayMs: number;
@@ -211,6 +372,31 @@ export function formatConnectionStatus(state: RecoveryState): string {
     default:
       return 'Unknown';
   }
+}
+
+export function formatConnectionStatusIndicatorLabel(
+  status: ConnectionStatus,
+  retryCount: number = 0,
+): string {
+  if (status === 'reconnecting') {
+    return retryCount > 0
+      ? `Reconnecting (${retryCount})...`
+      : CONNECTION_STATUS_INDICATOR_PRESENTATION.labels.reconnecting;
+  }
+
+  return CONNECTION_STATUS_INDICATOR_PRESENTATION.labels[status]
+    ?? CONNECTION_STATUS_INDICATOR_PRESENTATION.labels.unknown;
+}
+
+export function isConnectionStatusIndicatorPulsing(status: ConnectionStatus): boolean {
+  return status === 'connecting' || status === 'reconnecting';
+}
+
+export function getConnectionStatusIndicatorMobileColorToken(
+  status: ConnectionStatus,
+): ConnectionStatusIndicatorMobileColorToken {
+  return CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus[status]
+    ?? CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus.disconnected;
 }
 
 /**

@@ -61,6 +61,8 @@ describe('createDelegationProgressMessages', () => {
     expect(messages).toHaveLength(2);
     expect(messages[0].id).toBe('delegation-run-1');
     expect(messages[0].variant).toBe('delegation');
+    expect(messages[0].delegation.runId).toBe('run-1');
+    expect(messages[0].delegation.agentName).toBe('Planner');
     expect(messages[0].content).toContain('Delegated to Planner · Completed');
     expect(messages[0].content).toContain('Built a 5-step plan');
 

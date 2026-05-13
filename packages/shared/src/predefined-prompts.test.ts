@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   PROMPT_LIBRARY_PRESENTATION,
+  PROMPT_LIBRARY_SURFACE_PRESENTATION,
   buildPromptLibraryCommandItems,
   createPredefinedPromptId,
   createPredefinedPromptRecord,
@@ -13,13 +14,25 @@ import {
   formatPromptLibraryTaskRunningToast,
   formatPromptLibraryTaskStartedMessage,
   formatPromptLibraryTaskUnavailableMessage,
+  getPromptLibraryCopyState,
   getPromptLibraryDeletePromptAccessibilityLabel,
+  getPromptLibraryDesktopSurfaceState,
   getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorModalKeyboardAvoidingBehavior,
+  getPromptLibraryEditorMobileCloseIconState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryEmptyPromptLabel,
   getPromptLibraryEmptySkillLabel,
   getPromptLibraryEmptyTaskLabel,
+  getPromptLibraryMobileAddShortcutIconState,
+  getPromptLibraryMobileCopyState,
+  getPromptLibraryMobileEmptyLibraryLabel,
+  getPromptLibraryMobileIconColors,
+  getPromptLibraryMobileShortcutActionIconState,
+  getPromptLibraryMobileShortcutSourceIconState,
+  getPromptLibraryMobileSurfaceColors,
+  getPromptLibraryMobileSurfaceState,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
   getPromptLibrarySaveSuccessMessage,
@@ -27,6 +40,7 @@ import {
   getPromptLibrarySkillDescription,
   getPromptLibraryShortcutAccessibilityHint,
   getPromptLibraryShortcutAccessibilityLabel,
+  getPromptLibraryShortcutSourceLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
@@ -44,6 +58,11 @@ describe("predefined prompt helpers", () => {
     expect(PROMPT_LIBRARY_PRESENTATION.triggerAccessibilityLabel).toBe("Open predefined prompts")
     expect(PROMPT_LIBRARY_PRESENTATION.search.placeholder).toBe("Search prompts, skills, tasks...")
     expect(PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder).toBe("e.g., Code Review Request")
+    expect(PROMPT_LIBRARY_PRESENTATION.editor.closeAccessibilityLabel).toBe("Close prompt editor")
+    expect(PROMPT_LIBRARY_PRESENTATION.mobile.loadingLibraryLabel).toBe("Loading desktop library...")
+    expect(getPromptLibraryCopyState()).toBe(PROMPT_LIBRARY_PRESENTATION)
+    expect(getPromptLibraryMobileCopyState()).toBe(PROMPT_LIBRARY_PRESENTATION.mobile)
+    expect(getPromptLibraryMobileEmptyLibraryLabel()).toBe(PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary)
     expect(getPromptLibraryEditorTitle(false)).toBe("Add New Prompt")
     expect(getPromptLibraryEditorTitle(true)).toBe("Edit Prompt")
     expect(getPromptLibraryEditorSaveActionLabel(false)).toBe("Add Prompt")
@@ -62,6 +81,9 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryShortcutAccessibilityLabel("action", "+ Add Prompt", "add-prompt")).toBe("Add new prompt")
     expect(getPromptLibraryShortcutAccessibilityLabel("task", "Daily")).toBe("Run task Daily")
     expect(getPromptLibraryShortcutAccessibilityLabel("saved-prompt", "Review")).toBe("Insert prompt Review")
+    expect(getPromptLibraryShortcutSourceLabel("command")).toBe("command")
+    expect(getPromptLibraryShortcutSourceLabel("skill")).toBe("skill")
+    expect(getPromptLibraryShortcutSourceLabel("task")).toBe("task")
     expect(getPromptLibraryShortcutAccessibilityHint("action", "add-prompt")).toBe(
       "Create a predefined prompt and save it to desktop.",
     )
@@ -73,6 +95,228 @@ describe("predefined prompt helpers", () => {
     expect(formatPromptLibraryTaskUnavailableMessage("Daily")).toBe('Could not trigger "Daily" right now')
     expect(formatPromptLibraryTaskRunningToast("Daily")).toBe('Running "Daily"...')
     expect(formatPromptLibraryTaskStartedMessage("Daily")).toBe('Running "Daily" on desktop.')
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.desktop.menuContentClassName).toContain("w-[min(26rem")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.desktop.triggerButtonClassNameBySize["sm-icon"]).toBe("h-6 w-6")
+    expect(getPromptLibraryDesktopSurfaceState()).toBe(PROMPT_LIBRARY_SURFACE_PRESENTATION.desktop)
+    expect(getPromptLibraryMobileSurfaceState()).toBe(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.borderRadius).toBe("lg")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.quickStartCard.backgroundColorToken).toBe("card")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutGrid.flexDirection).toBe("row")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutGrid.flexWrap).toBe("wrap")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.minHeight).toBe(84)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.flexGrow).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.borderColorToken).toBe("border")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.backgroundColorToken).toBe("background")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.justifyContent).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutCard.accessibilityRole).toBe("button")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutCard.alignItems).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutCard.titleColorToken).toBe("primary")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutCard.titleTextAlign).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.name).toBe("add-circle-outline")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.addShortcutIcon.marginBottom).toBe(2)
+    expect(getPromptLibraryMobileAddShortcutIconState()).toEqual({
+      name: "add-circle-outline",
+      size: 18,
+      colorToken: "primary",
+    })
+    expect(getPromptLibraryMobileIconColors(getPromptLibraryMobileAddShortcutIconState(), {
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      color: "#2563eb",
+    })
+    expect(getPromptLibraryMobileSurfaceColors({
+      background: "#f8fafc",
+      border: "#cbd5e1",
+      card: "#ffffff",
+      destructive: "#dc2626",
+      foreground: "#0f172a",
+      muted: "#e2e8f0",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+      primaryForeground: "#ffffff",
+    })).toEqual({
+      quickStartCard: {
+        borderColor: "#cbd5e1",
+        backgroundColor: "#ffffff",
+      },
+      emptyText: {
+        color: "#64748b",
+      },
+      shortcutCard: {
+        borderColor: "#cbd5e1",
+        backgroundColor: "#f8fafc",
+      },
+      addShortcutCard: {
+        borderColor: "#2563eb",
+        backgroundColor: "transparent",
+        titleColor: "#2563eb",
+      },
+      shortcutSourcePill: {
+        backgroundColor: "rgba(226, 232, 240, 0.45)",
+      },
+      shortcutSourceLabel: {
+        color: "#64748b",
+      },
+      shortcutTitle: {
+        color: "#0f172a",
+      },
+      shortcutDescription: {
+        color: "#64748b",
+      },
+      shortcutActionButton: {
+        borderColor: "#cbd5e1",
+        backgroundColor: "#ffffff",
+      },
+      shortcutActionText: {
+        color: "#2563eb",
+        destructiveColor: "#dc2626",
+      },
+      editorModal: {
+        overlay: {
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+        },
+        content: {
+          backgroundColor: "#f8fafc",
+          borderColor: "#cbd5e1",
+        },
+        title: {
+          color: "#0f172a",
+        },
+        label: {
+          color: "#0f172a",
+        },
+        input: {
+          color: "#0f172a",
+          placeholderColor: "#64748b",
+        },
+        cancelButtonText: {
+          color: "#64748b",
+        },
+        saveButton: {
+          backgroundColor: "#2563eb",
+        },
+        saveButtonText: {
+          color: "#ffffff",
+        },
+      },
+    })
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.alignSelf).toBe("flex-start")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.flexDirection).toBe("row")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.alignItems).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.backgroundColorToken).toBe("muted")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.skillName).toBe("sparkles-outline")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceIcon.taskName).toBe("time-outline")
+    expect(getPromptLibraryMobileShortcutSourceIconState("command")).toEqual({
+      source: "command",
+      name: "terminal-outline",
+      size: 10,
+      colorToken: "mutedForeground",
+    })
+    expect(getPromptLibraryMobileShortcutSourceIconState("saved-prompt")).toEqual({
+      source: "saved-prompt",
+      name: "bookmark-outline",
+      size: 10,
+      colorToken: "mutedForeground",
+    })
+    expect(getPromptLibraryMobileShortcutSourceIconState("skill")).toEqual({
+      source: "skill",
+      name: "sparkles-outline",
+      size: 10,
+      colorToken: "mutedForeground",
+    })
+    expect(getPromptLibraryMobileShortcutSourceIconState("task")).toEqual({
+      source: "task",
+      name: "time-outline",
+      size: 10,
+      colorToken: "mutedForeground",
+    })
+    expect(getPromptLibraryMobileIconColors(getPromptLibraryMobileShortcutSourceIconState("command"), {
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      color: "#64748b",
+    })
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.textTransform).toBe("uppercase")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.numberOfLines).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutTitle.numberOfLines).toBe(2)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutDescription.colorToken).toBe("mutedForeground")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActions.flexDirection).toBe("row")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActions.flexWrap).toBe("wrap")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.justifyContent).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.flexDirection).toBe("row")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.alignItems).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.accessibilityRole).toBe("button")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionButton.pressedOpacity).toBe(0.78)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.editName).toBe("create-outline")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionIcon.deleteName).toBe("trash-outline")
+    expect(getPromptLibraryMobileShortcutActionIconState("edit")).toEqual({
+      action: "edit",
+      name: "create-outline",
+      size: 13,
+      colorToken: "primary",
+    })
+    expect(getPromptLibraryMobileShortcutActionIconState("delete")).toEqual({
+      action: "delete",
+      name: "trash-outline",
+      size: 13,
+      colorToken: "destructive",
+    })
+    expect(getPromptLibraryMobileIconColors(getPromptLibraryMobileShortcutActionIconState("delete"), {
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      color: "#dc2626",
+    })
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutActionText.destructiveColorToken).toBe("destructive")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.modal.transparent).toBe(true)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.modal.animationType).toBe("slide")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.flex).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform.ios).toBe("padding")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform.default).toBeUndefined()
+    expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("ios")).toBe("padding")
+    expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("android")).toBeUndefined()
+    expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("web")).toBeUndefined()
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.overlay.flex).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.overlay.backgroundColor).toBe("#000000")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.overlay.backgroundAlpha).toBe(0.5)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.content.borderRadius).toBe("xl")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.content.backgroundColorToken).toBe("background")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.header.flexDirection).toBe("row")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.header.justifyContent).toBe("space-between")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.title.flex).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.width).toBe(32)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.alignItems).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.accessibilityRole).toBe("button")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeButton.pressedOpacity).toBe(0.72)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.closeIcon.name).toBe("close")
+    expect(getPromptLibraryEditorMobileCloseIconState()).toEqual({
+      name: "close",
+      size: 20,
+      colorToken: "mutedForeground",
+    })
+    expect(getPromptLibraryMobileIconColors(getPromptLibraryEditorMobileCloseIconState(), {
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      color: "#64748b",
+    })
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken).toBe("mutedForeground")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.multiline).toBe(true)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.textAlignVertical).toBe("top")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.height).toBe(120)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.actions.flexDirection).toBe("row")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.cancelButton.accessibilityRole).toBe("button")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.cancelButton.pressedOpacity).toBe(0.78)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.accessibilityRole).toBe("button")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.alignItems).toBe("center")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.textColorToken).toBe("primaryForeground")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.pressedOpacity).toBe(0.78)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.disabledOpacity).toBe(0.5)
   })
 
   it("classifies slash command prompt names", () => {

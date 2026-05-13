@@ -10,7 +10,14 @@ import type { AgentRunExecutor } from './agent-run-utils';
 import type { ModelInfo, ModelsResponse, OpenAICompatibleModelSummary, OpenAICompatibleModelsResponse } from './api-types';
 import { CHAT_PROVIDER_IDS, isChatProviderId, type CHAT_PROVIDER_ID } from './providers';
 import { resolveActiveModelId, type ActiveModelConfigLike } from './model-presets';
-import { stripMarkdownImageReferences } from './conversation-media-assets';
+import {
+  hasChatDisplayExpansionState,
+  getChatMessageEffectiveCollapseState,
+  hasChatMessageDisplayContent,
+  shouldCollapseChatMessageContent,
+  shouldRenderChatMessageSurface,
+} from './message-display-utils';
+import { formatToolExecutionArgumentsPreview } from './tool-execution-display';
 import type { ConversationHistoryMessage, ToolCall, ToolResult } from './types';
 
 export type ChatRequestMessageLike = {
@@ -20,6 +27,11 @@ export type ChatRequestMessageLike = {
   toolCalls?: ToolCall[];
   toolResults?: Array<ToolResult | null | undefined>;
   toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
+  variant?: string;
+  toolApproval?: unknown;
+  retryInfo?: unknown;
+  delegation?: unknown;
+  branchMessageIndex?: number;
 };
 
 export type ConversationHistoryForApiEntryLike = {
@@ -366,7 +378,6 @@ export type RespondToUserConversationHistoryLike = Array<{
   toolCalls?: RespondToUserToolCallLike[];
 }>;
 
-const COLLAPSE_THRESHOLD = 200;
 const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
 const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
 const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
@@ -391,10 +402,7 @@ export function shouldCollapseMessage(
   toolResults?: ToolResult[]
 ): boolean {
   const hasExtras = (toolCalls?.length ?? 0) > 0 || (toolResults?.length ?? 0) > 0;
-  const contentLength = content
-    ? stripMarkdownImageReferences(content, { mediaOnly: true }).length
-    : 0;
-  return contentLength > COLLAPSE_THRESHOLD || hasExtras;
+  return shouldCollapseChatMessageContent(content, hasExtras);
 }
 
 export function sanitizeMessagesForRequest<T extends ChatRequestMessageLike>(messages: T[]): T[] {
@@ -402,6 +410,11 @@ export function sanitizeMessagesForRequest<T extends ChatRequestMessageLike>(mes
     const requestMessage = { ...message };
     delete requestMessage.toolExecutions;
     delete requestMessage.displayContent;
+    delete requestMessage.variant;
+    delete requestMessage.toolApproval;
+    delete requestMessage.retryInfo;
+    delete requestMessage.delegation;
+    delete requestMessage.branchMessageIndex;
 
     if (message.toolExecutions?.length) {
       delete requestMessage.toolCalls;
@@ -1593,27 +1606,7 @@ export function getToolArgumentEntries(args: unknown): ToolArgumentEntry[] {
  * @returns A compact preview string like "path: /foo/bar, content: Hello..."
  */
 export function formatArgumentsPreview(args: unknown): string {
-  const normalizedArgs = normalizeToolArguments(args);
-  if (!normalizedArgs) return '';
-  const entries = Object.entries(normalizedArgs);
-  if (entries.length === 0) return '';
-
-  const preview = entries.slice(0, 3).map(([key, value]) => {
-    let displayValue: string;
-    if (typeof value === 'string') {
-      displayValue = truncatePreview(value, 30);
-    } else if (typeof value === 'object') {
-      displayValue = value === null ? 'null' : Array.isArray(value) ? `[${value.length} items]` : '{...}';
-    } else {
-      displayValue = String(value);
-    }
-    return `${key}: ${displayValue}`;
-  }).join(', ');
-
-  if (entries.length > 3) {
-    return preview + ` (+${entries.length - 3} more)`;
-  }
-  return preview;
+  return formatToolExecutionArgumentsPreview(args);
 }
 
 // ============================================================================
@@ -1626,7 +1619,7 @@ export const MARK_WORK_COMPLETE_TOOL = 'mark_work_complete';
 
 const sanitizeRespondToUserMarkdownLabel = (label: string) => label.replace(/[\[\]\(\)`\\]/g, '').trim();
 
-function isCompletionControlTool(name: string | undefined): boolean {
+export function isCompletionControlTool(name: string | undefined): boolean {
   return name === RESPOND_TO_USER_TOOL || name === MARK_WORK_COMPLETE_TOOL;
 }
 
@@ -2028,6 +2021,12 @@ export function getVisibleMessageContent(message: {
     return getRenderableMessageContent(message);
   }
 
+  const renderContent = getRenderableMessageContent(message);
+  if (message.displayContent != null && renderContent.trim().length > 0) {
+    const strippedDisplayContent = stripRawToolTextFromContent(renderContent);
+    return strippedDisplayContent.length > 0 ? strippedDisplayContent : renderContent;
+  }
+
   const respondToUserContent = getRespondToUserContentFromMessage(
     message as { role: 'user' | 'assistant' | 'tool'; toolCalls?: Array<{ name: string; arguments: unknown }> },
   );
@@ -2038,7 +2037,6 @@ export function getVisibleMessageContent(message: {
   const hasToolMetadata =
     (message.toolCalls?.length ?? 0) > 0 ||
     (message.toolResults?.length ?? 0) > 0;
-  const renderContent = getRenderableMessageContent(message);
   const displayMessage = { ...message, content: renderContent };
 
   if (isToolOnlyMessage(displayMessage)) {
@@ -2059,6 +2057,245 @@ export function getVisibleMessageContent(message: {
   }
 
   return stripped === renderContent ? renderContent : '';
+}
+
+export function hasVisibleChatMessageContent(message: ChatDisplayMessageLike): boolean {
+  return hasChatMessageDisplayContent(getVisibleMessageContent(message));
+}
+
+export type ChatDisplayMessageLike = {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  displayContent?: string;
+  toolCalls?: Array<{ name: string; arguments?: unknown }>;
+  toolResults?: Array<unknown>;
+};
+
+export interface ChatMessageToolEntriesMessageLike {
+  toolCalls?: ToolCall[];
+  toolResults?: Array<ToolResult | null | undefined>;
+  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult | null }>;
+}
+
+export interface ChatMessageDisplayToolEntry {
+  toolCall: ToolCall;
+  label?: string;
+  origIdx: number;
+  result?: ToolResult | null | undefined;
+}
+
+export interface ChatMessageDisplayToolEntriesOptions {
+  resultOnlyToolLabel?: string;
+  resultOnlyToolName?: string;
+  includeResultOnlyFallback?: boolean;
+}
+
+export type ChatMessageDisplayStateMessageLike =
+  ChatDisplayMessageLike &
+  ChatMessageToolEntriesMessageLike;
+
+export interface ChatMessageDisplayStateOptions extends ChatMessageDisplayToolEntriesOptions {}
+
+export interface ChatMessageDisplayState {
+  visibleContent: string;
+  visibleToolEntries: ChatMessageDisplayToolEntry[];
+  displayToolCallCount: number;
+  shouldCollapse: boolean;
+  isToolOnly: boolean;
+  shouldRenderSurface: boolean;
+}
+
+export function shouldTreatChatMessageAsToolOnly(message: ChatDisplayMessageLike): boolean {
+  const hasToolMetadata =
+    (message.toolCalls?.length ?? 0) > 0 ||
+    (message.toolResults?.length ?? 0) > 0;
+
+  if (looksLikeToolPayloadContent(getRenderableMessageContent(message))) {
+    return true;
+  }
+
+  return hasToolMetadata && getVisibleMessageContent(message).trim().length === 0;
+}
+
+export function applyChatMessageAutoExpansionState<T extends ChatDisplayMessageLike>(
+  current: Readonly<Record<number, boolean>>,
+  messages: readonly T[],
+  options: { isResponding: boolean },
+): Record<number, boolean> {
+  let next: Record<number, boolean> | null = null;
+  const setExpansion = (index: number, isExpanded: boolean): void => {
+    if (current[index] === isExpanded) return;
+    if (!next) next = { ...current };
+    next[index] = isExpanded;
+  };
+
+  messages.forEach((message, index) => {
+    if (message.role !== 'assistant') return;
+    if (!shouldTreatChatMessageAsToolOnly(message)) return;
+    if (hasChatDisplayExpansionState(current, index)) return;
+    setExpansion(index, false);
+  });
+
+  let lastAssistantIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.role === 'assistant') {
+      lastAssistantIndex = index;
+    }
+  });
+
+  if (lastAssistantIndex < 0) {
+    return next ?? current;
+  }
+
+  let lastVisibleAssistantIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.role === 'assistant' && hasVisibleChatMessageContent(message)) {
+      lastVisibleAssistantIndex = index;
+    }
+  });
+
+  if (!options.isResponding && lastVisibleAssistantIndex >= 0) {
+    setExpansion(lastVisibleAssistantIndex, true);
+  } else if (!hasChatDisplayExpansionState(current, lastAssistantIndex)) {
+    setExpansion(lastAssistantIndex, false);
+  }
+
+  return next ?? current;
+}
+
+export function getVisibleChatMessageToolEntries(
+  message: ChatMessageToolEntriesMessageLike,
+  options: ChatMessageDisplayToolEntriesOptions = {},
+): ChatMessageDisplayToolEntry[] {
+  const toolCalls = message.toolCalls ?? [];
+  const toolResults = message.toolResults ?? [];
+  const entries = message.toolExecutions?.length
+    ? message.toolExecutions.map((execution, origIdx) => ({
+        toolCall: execution.toolCall,
+        origIdx,
+        result: execution.result,
+      }))
+    : toolCalls.map((toolCall, origIdx) => ({
+        toolCall,
+        origIdx,
+        result: toolResults[origIdx],
+      }));
+  const visibleEntries = entries.filter((entry) => !isCompletionControlTool(entry.toolCall.name));
+
+  if (
+    visibleEntries.length > 0 ||
+    toolResults.length === 0 ||
+    options.includeResultOnlyFallback === false
+  ) {
+    return visibleEntries;
+  }
+
+  return toolResults.map((result, origIdx) => ({
+    toolCall: {
+      name: options.resultOnlyToolName ?? 'tool_call',
+      arguments: {},
+    },
+    label: options.resultOnlyToolLabel,
+    origIdx,
+    result,
+  }));
+}
+
+export function getChatMessageDisplayState(
+  message: ChatMessageDisplayStateMessageLike,
+  options: ChatMessageDisplayStateOptions = {},
+): ChatMessageDisplayState {
+  const visibleContent = getVisibleMessageContent(message);
+  const visibleToolEntries = getVisibleChatMessageToolEntries(message, options);
+  const displayToolCallCount = visibleToolEntries.length;
+
+  return {
+    visibleContent,
+    visibleToolEntries,
+    displayToolCallCount,
+    shouldCollapse: shouldCollapseVisibleChatMessageContent(message, visibleContent),
+    isToolOnly: shouldTreatChatMessageAsToolOnly(message),
+    shouldRenderSurface: shouldRenderChatMessageSurface({
+      content: visibleContent,
+      displayToolCallCount,
+    }),
+  };
+}
+
+export function shouldCollapseVisibleChatMessageContent(
+  message: ChatDisplayMessageLike,
+  visibleContent = getVisibleMessageContent(message),
+): boolean {
+  const hasToolMetadata =
+    (message.toolCalls?.length ?? 0) > 0 ||
+    (message.toolResults?.length ?? 0) > 0;
+  const hasRespondToUserContent = !!getRespondToUserContentFromMessage(
+    message as { role: 'user' | 'assistant' | 'tool'; toolCalls?: Array<{ name: string; arguments: unknown }> },
+  );
+
+  return getChatMessageEffectiveCollapseState({
+    content: message.role === 'assistant' ? visibleContent : message.content,
+    hasExtras: message.role === 'assistant' ? false : hasToolMetadata,
+    suppressCollapse: hasRespondToUserContent,
+  });
+}
+
+export function preserveChatMessageDisplayContentFromProgress<T extends ChatDisplayMessageLike>(
+  finalMessages: readonly T[],
+  progressMessages: readonly ChatDisplayMessageLike[],
+): T[] {
+  if (progressMessages.length === 0) return [...finalMessages];
+
+  return finalMessages.map((message, index) => {
+    if (message.displayContent) return message;
+    const progressMessage = progressMessages[index];
+    if (message.role !== 'assistant' || !progressMessage?.displayContent) {
+      return message;
+    }
+    return { ...message, displayContent: progressMessage.displayContent } as T;
+  });
+}
+
+export function applyUserResponseToChatMessages<T extends ChatDisplayMessageLike>(
+  messages: readonly T[],
+  userResponse?: string,
+): T[] {
+  const trimmedResponse = userResponse?.trim();
+  if (!trimmedResponse) {
+    return [...messages];
+  }
+
+  const updatedMessages = [...messages];
+  for (let i = updatedMessages.length - 1; i >= 0; i -= 1) {
+    const message = updatedMessages[i];
+    if (message.role !== 'assistant') {
+      continue;
+    }
+
+    const hasToolMetadata =
+      (message.toolCalls?.length ?? 0) > 0 ||
+      (message.toolResults?.length ?? 0) > 0;
+    const shouldReplaceToolContent =
+      hasToolMetadata &&
+      (
+        isToolOnlyMessage(message) ||
+        looksLikeToolPayloadContent(message.content) ||
+        !!getRespondToUserContentFromMessage(message as {
+          role: 'user' | 'assistant' | 'tool';
+          toolCalls?: Array<{ name: string; arguments: unknown }>;
+        })
+      );
+
+    if (hasToolMetadata && !shouldReplaceToolContent) {
+      continue;
+    }
+
+    updatedMessages[i] = { ...message, content: trimmedResponse, displayContent: undefined } as T;
+    return updatedMessages;
+  }
+
+  updatedMessages.push({ role: 'assistant', content: trimmedResponse } as T);
+  return updatedMessages;
 }
 
 export function filterVisibleChatMessages<

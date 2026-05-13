@@ -10,6 +10,7 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from './conversation-state'
+import { extractSubAgentToolDisplayContent } from './delegation-tool-display'
 
 // ---------------------------------------------------------------------------
 // ACP (Agent Communication Protocol) related types
@@ -432,6 +433,7 @@ export interface AgentDelegationProgressMessage {
   role: "assistant"
   content: string
   timestamp: number
+  delegation: ACPDelegationProgress
   toolCalls?: ToolCall[]
   toolResults?: ToolResult[]
   /** Render-only aligned call/result pairs for pending delegation tool activity. */
@@ -445,6 +447,56 @@ export interface AgentDelegationPresentation {
   sourceLabel: string
   trackingLabel: string | null
   activityTimestamp: number
+  messageCount: number
+  isActive: boolean
+}
+
+export interface AgentDelegationSummaryEntry extends AgentDelegationPresentation {
+  delegation: ACPDelegationProgress
+}
+
+export interface AgentDelegationCardState<TToolEntry> {
+  presentation: AgentDelegationPresentation
+  conversationPreview: AgentDelegationConversationPreviewState
+  toolPreview: AgentDelegationToolPreviewState<TToolEntry>
+}
+
+export interface AgentDelegationConversationPreviewRow {
+  role: ACPSubAgentMessage["role"]
+  roleLabel: string
+  content: string
+  timestamp: number
+  timestampLabel: string | null
+}
+
+export interface AgentDelegationConversationPreviewState {
+  rows: AgentDelegationConversationPreviewRow[]
+  hiddenCount: number
+}
+
+export interface AgentDelegationToolPreviewState<TEntry> {
+  rows: TEntry[]
+  hiddenCount: number
+}
+
+export type AgentDelegationConversationMessageRoleTone = "user" | "assistant" | "tool" | "default"
+
+export interface AgentDelegationConversationMessageRoleState {
+  label: string
+  tone: AgentDelegationConversationMessageRoleTone
+}
+
+export interface AgentDelegationConversationMessageDisplayState {
+  role: AgentDelegationConversationMessageRoleState
+  timestampLabel: string | null
+  isToolMessage: boolean
+  content: string
+  isLongContent: boolean
+  shouldShowToggle: boolean
+  toolSummary: string | null
+  serializedToolInput: string | null
+  rawToolPayload: string | null
+  shouldShowRawToolPayload: boolean
 }
 
 function formatAgentDelegationStatus(status: ACPDelegationProgress["status"]): string {
@@ -483,11 +535,99 @@ export function formatAgentDelegationDisplayStatus(status: ACPDelegationProgress
   }
 }
 
+export function isAgentDelegationActiveStatus(status: ACPDelegationProgress["status"]): boolean {
+  return status === "pending" || status === "spawning" || status === "running"
+}
+
 function truncateAgentDelegationPreview(text: string | undefined, maxLength: number): string {
   const normalized = (text ?? "").trim().replace(/\s+/g, " ")
   if (!normalized) return ""
   if (normalized.length <= maxLength) return normalized
   return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`
+}
+
+export function formatAgentDelegationConversationTimestamp(timestamp?: number | null): string | null {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) {
+    return null
+  }
+
+  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+}
+
+export function getAgentDelegationConversationMessageRoleState(
+  message: ACPSubAgentMessage,
+  agentName: string,
+): AgentDelegationConversationMessageRoleState {
+  if (message.role === "assistant") {
+    return {
+      label: agentName,
+      tone: "assistant",
+    }
+  }
+
+  if (message.role === "tool") {
+    const parsedToolUse = parseAgentDelegationToolUseMessage(message)
+    const parsedToolResult = extractSubAgentToolDisplayContent(message.content ?? "")
+    return {
+      label: message.toolName || parsedToolUse?.toolName || parsedToolResult.toolName || "Tool",
+      tone: "tool",
+    }
+  }
+
+  if (message.role === "user") {
+    return {
+      label: "Task",
+      tone: "user",
+    }
+  }
+
+  return {
+    label: "Message",
+    tone: "default",
+  }
+}
+
+function getAgentDelegationConversationMessagePreviewContent(
+  message: ACPSubAgentMessage,
+  maxLength: number,
+): string {
+  if (message.role === "tool" && message.content?.trim()) {
+    const parsedToolResult = extractSubAgentToolDisplayContent(message.content)
+    if (parsedToolResult.summary.trim()) {
+      return truncateAgentDelegationPreview(parsedToolResult.summary, maxLength)
+    }
+  }
+
+  if (message.content?.trim()) {
+    return truncateAgentDelegationPreview(message.content, maxLength)
+  }
+
+  if (message.toolInput !== undefined) {
+    try {
+      return truncateAgentDelegationPreview(JSON.stringify(message.toolInput), maxLength)
+    } catch {
+      return truncateAgentDelegationPreview(String(message.toolInput), maxLength)
+    }
+  }
+
+  return ""
+}
+
+function getAgentDelegationConversationPreviewRow(
+  message: ACPSubAgentMessage,
+  agentName: string,
+  maxLength: number,
+): AgentDelegationConversationPreviewRow | null {
+  const content = getAgentDelegationConversationMessagePreviewContent(message, maxLength)
+  if (!content) return null
+
+  return {
+    role: message.role,
+    roleLabel: getAgentDelegationConversationMessageRoleState(message, agentName).label,
+    content,
+    timestamp: message.timestamp,
+    timestampLabel: formatAgentDelegationConversationTimestamp(message.timestamp),
+  }
 }
 
 export function getAgentDelegationConversationPreview(
@@ -498,13 +638,137 @@ export function getAgentDelegationConversationPreview(
   const lastMessage = conversation?.[conversation.length - 1]
   if (!lastMessage) return "No conversation yet"
 
-  const roleLabel = lastMessage.role === "assistant"
-    ? agentName
-    : lastMessage.role === "tool"
-      ? lastMessage.toolName || "Tool"
-      : "Task"
+  const roleLabel = getAgentDelegationConversationMessageRoleState(lastMessage, agentName).label
+  const content = getAgentDelegationConversationMessagePreviewContent(lastMessage, maxLength)
 
-  return truncateAgentDelegationPreview(`${roleLabel}: ${lastMessage.content}`, maxLength)
+  return truncateAgentDelegationPreview(`${roleLabel}: ${content}`, maxLength)
+}
+
+export function formatAgentDelegationConversationTranscript(
+  conversation: ACPSubAgentMessage[] | undefined,
+  agentName: string,
+): string {
+  return (conversation ?? [])
+    .map((message) => {
+      const role = getAgentDelegationConversationMessageRoleState(message, agentName)
+      return `[${role.label}]\n${message.content}`
+    })
+    .join("\n\n---\n\n")
+}
+
+function formatAgentDelegationToolInputForDisplay(toolInput: unknown): string | null {
+  if (toolInput === undefined) {
+    return null
+  }
+
+  try {
+    return JSON.stringify(toolInput, null, 2)
+  } catch {
+    return String(toolInput)
+  }
+}
+
+export function getAgentDelegationConversationMessageDisplayState(
+  message: ACPSubAgentMessage,
+  agentName: string,
+  options: { longContentThreshold?: number } = {},
+): AgentDelegationConversationMessageDisplayState {
+  const isToolMessage = message.role === "tool"
+  const role = getAgentDelegationConversationMessageRoleState(message, agentName)
+  const timestampLabel = formatAgentDelegationConversationTimestamp(message.timestamp)
+  const longContentThreshold = Math.max(0, Math.floor(options.longContentThreshold ?? 300))
+  const toolContent = isToolMessage
+    ? extractSubAgentToolDisplayContent(message.content ?? "")
+    : null
+  const content = toolContent?.summary ?? message.content
+  const rawToolPayload = toolContent?.rawContent && toolContent.rawContent !== toolContent.summary
+    ? toolContent.rawContent
+    : null
+  const isLongContent = content.length > longContentThreshold
+
+  return {
+    role,
+    timestampLabel,
+    isToolMessage,
+    content,
+    isLongContent,
+    shouldShowToggle: isLongContent,
+    toolSummary: toolContent?.summary ?? null,
+    serializedToolInput: formatAgentDelegationToolInputForDisplay(message.toolInput),
+    rawToolPayload,
+    shouldShowRawToolPayload: !!rawToolPayload,
+  }
+}
+
+export function getAgentDelegationConversationPreviewRows(
+  conversation: ACPSubAgentMessage[] | undefined,
+  agentName: string,
+  options: {
+    maxRows?: number
+    maxLength?: number
+    includeAll?: boolean
+  } = {},
+): AgentDelegationConversationPreviewRow[] {
+  return getAgentDelegationConversationPreviewState(conversation, agentName, options).rows
+}
+
+export function getAgentDelegationConversationPreviewState(
+  conversation: ACPSubAgentMessage[] | undefined,
+  agentName: string,
+  options: {
+    maxRows?: number
+    maxLength?: number
+    includeAll?: boolean
+  } = {},
+): AgentDelegationConversationPreviewState {
+  const maxRows = Math.max(0, Math.floor(options.maxRows ?? 2))
+  const maxLength = Math.max(1, Math.floor(options.maxLength ?? 96))
+  if (!conversation?.length) return { rows: [], hiddenCount: 0 }
+
+  const renderableRows: AgentDelegationConversationPreviewRow[] = []
+  for (let index = 0; index < conversation.length; index += 1) {
+    const message = conversation[index]
+    if (!message) continue
+
+    const row = getAgentDelegationConversationPreviewRow(message, agentName, maxLength)
+    if (row) renderableRows.push(row)
+  }
+
+  const rows = options.includeAll
+    ? renderableRows
+    : maxRows === 0
+      ? []
+      : renderableRows.slice(-maxRows)
+  return {
+    rows,
+    hiddenCount: Math.max(0, renderableRows.length - rows.length),
+  }
+}
+
+export function getAgentDelegationToolPreviewState<TEntry>(
+  entries: readonly TEntry[] | undefined,
+  options: {
+    maxRows?: number
+    includeAll?: boolean
+  } = {},
+): AgentDelegationToolPreviewState<TEntry> {
+  const allEntries = entries ? Array.from(entries) : []
+  if (allEntries.length === 0) return { rows: [], hiddenCount: 0 }
+
+  const rawMaxRows = options.maxRows ?? 3
+  const maxRows = Number.isFinite(rawMaxRows)
+    ? Math.max(0, Math.floor(rawMaxRows))
+    : 3
+  const rows = options.includeAll
+    ? allEntries
+    : maxRows === 0
+      ? []
+      : allEntries.slice(0, maxRows)
+
+  return {
+    rows,
+    hiddenCount: Math.max(0, allEntries.length - rows.length),
+  }
 }
 
 export function getAgentDelegationSubtitle(delegation: ACPDelegationProgress, maxLength: number): string {
@@ -561,6 +825,68 @@ export function getAgentDelegationPresentation(
     sourceLabel: getAgentDelegationSourceLabel(delegation),
     trackingLabel: getAgentDelegationTrackingLabel(delegation),
     activityTimestamp: getAgentDelegationActivityTimestamp(delegation),
+    messageCount: delegation.conversation?.length ?? 0,
+    isActive: isAgentDelegationActiveStatus(delegation.status),
+  }
+}
+
+export function getAgentDelegationSummaryEntries(
+  steps: AgentProgressStep[] | undefined,
+  options: { maxSubtitleLength?: number } = {},
+): AgentDelegationSummaryEntry[] {
+  const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
+
+  for (const step of steps ?? []) {
+    if (!step.delegation) continue
+
+    const timestamp = step.timestamp ?? getAgentDelegationActivityTimestamp(step.delegation)
+    const existing = latestByRunId.get(step.delegation.runId)
+    if (!existing || timestamp >= existing.timestamp) {
+      latestByRunId.set(step.delegation.runId, {
+        delegation: step.delegation,
+        timestamp,
+      })
+    }
+  }
+
+  const maxSubtitleLength = Math.max(0, Math.floor(options.maxSubtitleLength ?? 140))
+
+  return Array.from(latestByRunId.values())
+    .map(({ delegation, timestamp }) => ({
+      delegation,
+      ...getAgentDelegationPresentation(delegation, maxSubtitleLength),
+      activityTimestamp: timestamp,
+    }))
+    .sort((a, b) => b.activityTimestamp - a.activityTimestamp)
+}
+
+export function getAgentDelegationCardState<TToolEntry>(
+  delegation: ACPDelegationProgress,
+  toolEntries: readonly TToolEntry[] | undefined,
+  options: {
+    maxSubtitleLength: number
+    conversationPreviewMaxRows: number
+    conversationPreviewMaxLength: number
+    includeAllConversationPreview?: boolean
+    toolPreviewMaxRows: number
+    includeAllToolPreview?: boolean
+  },
+): AgentDelegationCardState<TToolEntry> {
+  return {
+    presentation: getAgentDelegationPresentation(delegation, options.maxSubtitleLength),
+    conversationPreview: getAgentDelegationConversationPreviewState(
+      delegation.conversation,
+      delegation.agentName,
+      {
+        maxRows: options.conversationPreviewMaxRows,
+        maxLength: options.conversationPreviewMaxLength,
+        includeAll: options.includeAllConversationPreview,
+      },
+    ),
+    toolPreview: getAgentDelegationToolPreviewState(toolEntries, {
+      maxRows: options.toolPreviewMaxRows,
+      includeAll: options.includeAllToolPreview,
+    }),
   }
 }
 
@@ -584,6 +910,20 @@ type DelegationToolEntry = {
   result?: ToolResult
   source: "structured" | "legacy"
 }
+
+export interface AgentDelegationToolExecutionData {
+  timestamp: number
+  calls: ToolCall[]
+  results: Array<ToolResult | undefined>
+}
+
+export type AgentDelegationConversationRenderItem =
+  | { kind: "message"; key: string; message: ACPSubAgentMessage }
+  | {
+      kind: "tool_execution"
+      key: string
+      execution: AgentDelegationToolExecutionData
+    }
 
 function normalizeDelegationToolArguments(input: unknown): Record<string, unknown> {
   if (input && typeof input === "object" && !Array.isArray(input)) {
@@ -644,6 +984,283 @@ function normalizeDelegationToolResult(result: Partial<ToolResult>): ToolResult 
     content: defaultDelegationToolResultContent(result),
     error: result.error,
   }
+}
+
+function parseAgentDelegationToolUseMessage(
+  message: ACPSubAgentMessage,
+): { toolName?: string; toolInput?: unknown } | null {
+  if (message.role !== "tool") {
+    return null
+  }
+
+  const parsed = parseDelegationToolUsePayload(message.content)
+  if (!parsed) {
+    return null
+  }
+
+  return {
+    toolName: message.toolName || parsed.name,
+    toolInput: message.toolInput ?? parsed.input,
+  }
+}
+
+function isAgentDelegationToolUseMessage(message: ACPSubAgentMessage): boolean {
+  return parseAgentDelegationToolUseMessage(message) !== null
+}
+
+function isAgentDelegationToolResultMessage(message: ACPSubAgentMessage): boolean {
+  return message.role === "tool" && TOOL_RESULT_PREFIX.test((message.content ?? "").trim())
+}
+
+function isAgentDelegationStructuredToolInvocationMessage(message: ACPSubAgentMessage): boolean {
+  if (message.role !== "tool") return false
+  if (isAgentDelegationToolResultMessage(message)) return false
+  return !!(message.toolName || message.toolInput !== undefined)
+}
+
+function toAgentDelegationToolExecutionResult(
+  result: { success: boolean; content: string; error?: string },
+): ToolResult {
+  return {
+    success: result.success,
+    content: result.content,
+    error: result.error,
+  }
+}
+
+function normalizeAgentDelegationStructuredToolResultContent(
+  result: { success?: boolean; content?: string; error?: string },
+): string {
+  if (typeof result.content === "string") {
+    return result.content
+  }
+
+  if (result.success === false || hasDelegationToolError(result)) {
+    return "Tool failed"
+  }
+
+  return "Tool completed"
+}
+
+function buildAgentDelegationStructuredToolExecution(
+  message: ACPSubAgentMessage,
+): AgentDelegationToolExecutionData | null {
+  const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+  const toolResults = Array.isArray(message.toolResults) ? message.toolResults : []
+  if (toolCalls.length === 0 && toolResults.length === 0) {
+    return null
+  }
+
+  const maxEntries = Math.max(toolCalls.length, toolResults.length)
+  const calls: ToolCall[] = []
+  const results: Array<ToolResult | undefined> = []
+
+  for (let index = 0; index < maxEntries; index += 1) {
+    const call = toolCalls[index]
+    const result = toolResults[index]
+
+    calls.push({
+      name: call?.name?.trim() || "tool_call",
+      arguments: normalizeDelegationToolArguments(call?.arguments),
+    })
+
+    if (!result) {
+      results.push(undefined)
+      continue
+    }
+
+    results.push(toAgentDelegationToolExecutionResult({
+      success: !hasDelegationToolError(result) && result.success !== false,
+      content: normalizeAgentDelegationStructuredToolResultContent(result),
+      error: result.error,
+    }))
+  }
+
+  return {
+    timestamp: message.timestamp,
+    calls,
+    results,
+  }
+}
+
+function buildAgentDelegationLegacyToolExecution(
+  message: ACPSubAgentMessage,
+  delegationStatus: ACPDelegationProgress["status"],
+  resultMessage?: ACPSubAgentMessage,
+): AgentDelegationToolExecutionData {
+  const parsedUseMessage = parseAgentDelegationToolUseMessage(message)
+  const isStructuredToolUseMessage = isAgentDelegationStructuredToolInvocationMessage(message)
+  const parsedMessage = extractSubAgentToolDisplayContent(message.content ?? "")
+  const parsedResult = resultMessage ? extractSubAgentToolDisplayContent(resultMessage.content ?? "") : null
+  const toolName = parsedUseMessage?.toolName
+    || message.toolName
+    || parsedMessage.toolName
+    || resultMessage?.toolName
+    || parsedResult?.toolName
+    || "Tool"
+  const toolInput = parsedUseMessage?.toolInput ?? message.toolInput
+  const isToolUseMessage = !!parsedUseMessage || isStructuredToolUseMessage
+  const isDelegationActive = isAgentDelegationActiveStatus(delegationStatus)
+  const isPending = isToolUseMessage && !resultMessage && isDelegationActive
+
+  let result: ToolResult | undefined
+  if (resultMessage) {
+    result = toAgentDelegationToolExecutionResult({
+      success: true,
+      content: parsedResult?.summary || "Tool completed",
+    })
+  } else if (!isToolUseMessage) {
+    result = toAgentDelegationToolExecutionResult({
+      success: true,
+      content: parsedMessage.summary || "Tool completed",
+    })
+  } else if (!isDelegationActive) {
+    if (delegationStatus === "failed") {
+      result = toAgentDelegationToolExecutionResult({
+        success: false,
+        content: "",
+        error: "Delegation failed before a tool result was captured.",
+      })
+    } else if (delegationStatus === "cancelled") {
+      result = toAgentDelegationToolExecutionResult({
+        success: false,
+        content: "",
+        error: "Delegation was cancelled before a tool result was captured.",
+      })
+    } else {
+      result = toAgentDelegationToolExecutionResult({
+        success: true,
+        content: "Tool completed",
+      })
+    }
+  }
+
+  return {
+    timestamp: resultMessage?.timestamp ?? message.timestamp,
+    calls: [{ name: toolName, arguments: normalizeDelegationToolArguments(toolInput) }],
+    results: [isPending ? undefined : result],
+  }
+}
+
+export function getAgentDelegationConversationRenderItems(
+  conversation: ACPSubAgentMessage[],
+  delegationStatus: ACPDelegationProgress["status"],
+): AgentDelegationConversationRenderItem[] {
+  const items: AgentDelegationConversationRenderItem[] = []
+  const pendingStructuredResultSlots: Array<{ itemIndex: number; resultIndex: number }> = []
+
+  const hasRenderableStructuredMessageContent = (message: ACPSubAgentMessage): boolean => {
+    const content = (message.content ?? "").trim()
+    if (!content) return false
+    if (message.role !== "tool") return true
+    return !TOOL_USE_PREFIX.test(content) && !TOOL_RESULT_PREFIX.test(content)
+  }
+
+  const attachStructuredResultToPendingExecution = (result: ToolResult): boolean => {
+    while (pendingStructuredResultSlots.length > 0) {
+      const pendingSlot = pendingStructuredResultSlots.shift()
+      if (!pendingSlot) return false
+      const pendingItem = items[pendingSlot.itemIndex]
+      if (!pendingItem || pendingItem.kind !== "tool_execution") {
+        continue
+      }
+      if (pendingItem.execution.results[pendingSlot.resultIndex]) {
+        continue
+      }
+      pendingItem.execution.results[pendingSlot.resultIndex] = result
+      return true
+    }
+    return false
+  }
+
+  const appendToolExecutionItem = (
+    key: string,
+    execution: AgentDelegationToolExecutionData,
+    trackStructuredPendingSlots = false,
+  ): void => {
+    const itemIndex = items.length
+    items.push({
+      kind: "tool_execution",
+      key,
+      execution,
+    })
+    if (!trackStructuredPendingSlots) {
+      return
+    }
+    execution.results.forEach((result, resultIndex) => {
+      if (!result) {
+        pendingStructuredResultSlots.push({ itemIndex, resultIndex })
+      }
+    })
+  }
+
+  for (let index = 0; index < conversation.length; index += 1) {
+    const message = conversation[index]
+    const structuredToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+    const structuredToolResults = Array.isArray(message.toolResults) ? message.toolResults : []
+    const hasStructuredToolData = structuredToolCalls.length > 0 || structuredToolResults.length > 0
+
+    if (hasStructuredToolData && structuredToolCalls.length === 0 && structuredToolResults.length > 0) {
+      const unattachedResults: ToolResult[] = []
+      for (const rawResult of structuredToolResults) {
+        if (!rawResult) continue
+        const result = toAgentDelegationToolExecutionResult({
+          success: !hasDelegationToolError(rawResult) && rawResult.success !== false,
+          content: normalizeAgentDelegationStructuredToolResultContent(rawResult),
+          error: rawResult.error,
+        })
+        if (!attachStructuredResultToPendingExecution(result)) {
+          unattachedResults.push(result)
+        }
+      }
+
+      if (hasRenderableStructuredMessageContent(message)) {
+        items.push({ kind: "message", key: `msg-structured-${index}`, message })
+      }
+
+      if (unattachedResults.length > 0) {
+        appendToolExecutionItem(`tool-structured-orphan-${index}`, {
+          timestamp: message.timestamp,
+          calls: unattachedResults.map(() => ({ name: "tool_call", arguments: {} })),
+          results: unattachedResults,
+        }, true)
+      }
+      continue
+    }
+
+    const structuredExecution = buildAgentDelegationStructuredToolExecution(message)
+    if (structuredExecution) {
+      if (hasRenderableStructuredMessageContent(message)) {
+        items.push({ kind: "message", key: `msg-structured-${index}`, message })
+      }
+      appendToolExecutionItem(`tool-structured-${index}`, structuredExecution, true)
+      continue
+    }
+
+    if (isAgentDelegationToolUseMessage(message)) {
+      const nextMessage = conversation[index + 1]
+      if (nextMessage && isAgentDelegationToolResultMessage(nextMessage)) {
+        appendToolExecutionItem(
+          `tool-${index}-${index + 1}`,
+          buildAgentDelegationLegacyToolExecution(message, delegationStatus, nextMessage),
+        )
+        index += 1
+        continue
+      }
+
+      appendToolExecutionItem(`tool-${index}`, buildAgentDelegationLegacyToolExecution(message, delegationStatus))
+      continue
+    }
+
+    if (isAgentDelegationStructuredToolInvocationMessage(message) || isAgentDelegationToolResultMessage(message)) {
+      appendToolExecutionItem(`tool-${index}`, buildAgentDelegationLegacyToolExecution(message, delegationStatus))
+      continue
+    }
+
+    items.push({ kind: "message", key: `msg-${index}`, message })
+  }
+
+  return items
 }
 
 function attachResultToPendingDelegationToolEntry(
@@ -831,6 +1448,7 @@ export function createAgentDelegationProgressMessages(
         variant: "delegation",
         timestamp,
         content: fallbackContent,
+        delegation,
         ...getAgentDelegationToolMetadata(delegation),
       }
     })

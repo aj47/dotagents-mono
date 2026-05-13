@@ -51,6 +51,15 @@ export interface MessageQueueStore {
   
   /** Reset a failed message to pending for retry */
   resetToPending: (conversationId: string, messageId: string) => boolean;
+
+  /** Pause queue processing for a conversation */
+  pauseQueue: (conversationId: string) => void;
+
+  /** Resume queue processing for a conversation */
+  resumeQueue: (conversationId: string) => void;
+
+  /** Check if a conversation queue is paused */
+  isQueuePaused: (conversationId: string) => boolean;
   
   /** Check if a conversation has queued messages */
   hasQueuedMessages: (conversationId: string) => boolean;
@@ -138,6 +147,20 @@ export function useMessageQueue(): MessageQueueStore {
     return true;
   }, [queueStore]);
 
+  const pauseQueue = useCallback((conversationId: string): void => {
+    queueStore.pauseQueue(conversationId);
+    console.log('[MessageQueue] Paused queue for:', conversationId);
+  }, [queueStore]);
+
+  const resumeQueue = useCallback((conversationId: string): void => {
+    queueStore.resumeQueue(conversationId);
+    console.log('[MessageQueue] Resumed queue for:', conversationId);
+  }, [queueStore]);
+
+  const isQueuePaused = useCallback((conversationId: string): boolean => {
+    return queueStore.isQueuePaused(conversationId);
+  }, [queueStore]);
+
   const hasQueuedMessages = useCallback((conversationId: string): boolean => {
     return queueStore.hasQueuedMessages(conversationId);
   }, [queueStore]);
@@ -154,6 +177,9 @@ export function useMessageQueue(): MessageQueueStore {
     markProcessed,
     markFailed,
     resetToPending,
+    pauseQueue,
+    resumeQueue,
+    isQueuePaused,
     hasQueuedMessages,
   };
 }

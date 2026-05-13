@@ -14,6 +14,7 @@ import {
   formatConversationHistoryForProgress,
   RESPOND_TO_USER_TOOL,
   MARK_WORK_COMPLETE_TOOL,
+  isCompletionControlTool,
   buildChatCompletionDoneSsePayload,
   buildChatCompletionErrorSsePayload,
   buildChatCompletionProgressSsePayload,
@@ -52,7 +53,15 @@ import {
   sortAgentUserResponseEvents,
   getRenderableMessageContent,
   getRespondToUserContentFromMessage,
+  getChatMessageDisplayState,
+  hasVisibleChatMessageContent,
   getVisibleMessageContent,
+  getVisibleChatMessageToolEntries,
+  shouldCollapseVisibleChatMessageContent,
+  shouldTreatChatMessageAsToolOnly,
+  applyChatMessageAutoExpansionState,
+  preserveChatMessageDisplayContentFromProgress,
+  applyUserResponseToChatMessages,
   isToolOnlyMessage,
   normalizeServerSentEventOrigin,
   processChatCompletionSseEvent,
@@ -94,8 +103,8 @@ describe('shouldCollapseMessage', () => {
     expect(shouldCollapseMessage(content)).toBe(false)
   })
 
-  it('still collapses when non-image text exceeds the threshold', () => {
-    const content = `${'a'.repeat(201)}\n\n![diagram](data:image/png;base64,${'b'.repeat(500)})`
+  it('still collapses when non-image text exceeds the media-aware threshold', () => {
+    const content = `${'a'.repeat(501)}\n\n![diagram](data:image/png;base64,${'b'.repeat(500)})`
     expect(shouldCollapseMessage(content)).toBe(true)
   })
 
@@ -159,6 +168,24 @@ describe('sanitizeMessagesForRequest', () => {
 
     expect(sanitized[0].content).toBe('Final answer')
     expect(sanitized[0].displayContent).toBeUndefined()
+  })
+
+  it('removes render-only runtime metadata before model replay', () => {
+    const sanitized = sanitizeMessagesForRequest([{
+      role: 'assistant' as const,
+      content: 'Delegated to Worker',
+      variant: 'delegation',
+      toolApproval: { approvalId: 'approval-1' },
+      retryInfo: { attempt: 1 },
+      delegation: { runId: 'run-1', agentName: 'Worker' },
+      branchMessageIndex: 7,
+    }])
+
+    expect(sanitized[0].variant).toBeUndefined()
+    expect(sanitized[0].toolApproval).toBeUndefined()
+    expect(sanitized[0].retryInfo).toBeUndefined()
+    expect(sanitized[0].delegation).toBeUndefined()
+    expect(sanitized[0].branchMessageIndex).toBeUndefined()
   })
 })
 
@@ -1911,12 +1938,199 @@ describe('visible message content helpers', () => {
     }
     expect(getRespondToUserContentFromMessage(message)).toBe('Visible answer')
     expect(getVisibleMessageContent(message)).toBe('Visible answer')
+    expect(hasVisibleChatMessageContent(message)).toBe(true)
+    expect(getVisibleMessageContent({
+      ...message,
+      displayContent: 'Visible answer with ![image](asset://image.png)',
+    })).toBe('Visible answer with ![image](asset://image.png)')
   })
 
   it('hides tool role content and raw tool payload assistant messages', () => {
     expect(getVisibleMessageContent({ role: 'tool', content: 'raw result' })).toBe('')
     expect(getVisibleMessageContent({ role: 'assistant', content: 'tool result: {"ok":true}' })).toBe('')
     expect(getVisibleMessageContent({ role: 'assistant', content: '[execute_command] {"cmd":"ls"}' })).toBe('')
+    expect(hasVisibleChatMessageContent({ role: 'assistant', content: 'tool result: {"ok":true}' })).toBe(false)
+  })
+
+  it('shares tool-only display detection for raw payload and metadata-only messages', () => {
+    expect(shouldTreatChatMessageAsToolOnly({
+      role: 'assistant',
+      toolCalls: [{ name: 'read_file' }],
+    })).toBe(true)
+    expect(shouldTreatChatMessageAsToolOnly({
+      role: 'assistant',
+      content: 'tool result: {"ok":true}',
+    })).toBe(true)
+    expect(shouldTreatChatMessageAsToolOnly({
+      role: 'assistant',
+      content: 'Visible answer',
+      toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } }],
+    })).toBe(false)
+  })
+
+  it('applies desktop-style auto expansion to the final visible assistant message', () => {
+    const messages = [
+      { role: 'user' as const, content: 'Prompt' },
+      { role: 'assistant' as const, content: 'Visible answer' },
+      { role: 'assistant' as const, content: '', toolCalls: [{ name: 'read_file' }] },
+    ]
+
+    expect(applyChatMessageAutoExpansionState({}, messages, { isResponding: false })).toEqual({
+      1: true,
+      2: false,
+    })
+  })
+
+  it('preserves explicit expansion choices while defaulting streaming assistant content closed', () => {
+    const current = { 0: true, 1: true }
+    const messages = [
+      { role: 'assistant' as const, content: '', toolCalls: [{ name: 'read_file' }] },
+      { role: 'assistant' as const, content: 'Streaming answer' },
+      { role: 'assistant' as const, content: '', toolCalls: [{ name: 'list_files' }] },
+    ]
+
+    expect(applyChatMessageAutoExpansionState(current, messages, { isResponding: true })).toEqual({
+      ...current,
+      2: false,
+    })
+    expect(applyChatMessageAutoExpansionState({}, messages, { isResponding: true })).toEqual({
+      0: false,
+      2: false,
+    })
+  })
+
+  it('shares visible tool entry filtering and result-only fallback rows', () => {
+    expect(getVisibleChatMessageToolEntries({
+      toolCalls: [
+        { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } },
+        { name: 'read_file', arguments: { path: 'README.md' } },
+      ],
+      toolResults: [
+        { success: true, content: 'delivered' },
+        { success: true, content: 'file content' },
+      ],
+    })).toEqual([
+      {
+        toolCall: { name: 'read_file', arguments: { path: 'README.md' } },
+        origIdx: 1,
+        result: { success: true, content: 'file content' },
+      },
+    ])
+    expect(getVisibleChatMessageToolEntries({
+      toolExecutions: [
+        {
+          toolCall: { name: MARK_WORK_COMPLETE_TOOL, arguments: {} },
+          result: { success: true, content: 'done' },
+        },
+        {
+          toolCall: { name: 'execute_command', arguments: { cmd: 'pnpm test' } },
+          result: { success: false, content: '', error: 'failed' },
+        },
+      ],
+    })).toEqual([
+      {
+        toolCall: { name: 'execute_command', arguments: { cmd: 'pnpm test' } },
+        origIdx: 1,
+        result: { success: false, content: '', error: 'failed' },
+      },
+    ])
+    expect(getVisibleChatMessageToolEntries({
+      toolResults: [{ success: true, content: 'orphan result' }],
+    }, { resultOnlyToolLabel: 'Tool result' })).toEqual([
+      {
+        toolCall: { name: 'tool_call', arguments: {} },
+        label: 'Tool result',
+        origIdx: 0,
+        result: { success: true, content: 'orphan result' },
+      },
+    ])
+    expect(getVisibleChatMessageToolEntries({
+      toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } }],
+      toolResults: [{ success: true, content: 'delivered' }],
+    }, { includeResultOnlyFallback: false })).toEqual([])
+    expect(getChatMessageDisplayState({
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } },
+        { name: 'read_file', arguments: { path: 'README.md' } },
+      ],
+      toolResults: [
+        { success: true, content: 'delivered' },
+        { success: true, content: 'file content' },
+      ],
+    }, { resultOnlyToolLabel: 'Tool result' })).toMatchObject({
+      visibleContent: 'Visible answer',
+      displayToolCallCount: 1,
+      shouldCollapse: false,
+      isToolOnly: false,
+      shouldRenderSurface: true,
+    })
+  })
+
+  it('shares visible-content collapse decisions for message chrome', () => {
+    expect(shouldCollapseVisibleChatMessageContent({
+      role: 'assistant',
+      content: 'tool result: {"ok":true}',
+      toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } }],
+    })).toBe(false)
+    expect(shouldCollapseVisibleChatMessageContent({
+      role: 'assistant',
+      content: 'Short visible answer',
+      toolCalls: [{ name: 'read_file', arguments: { path: 'README.md' } }],
+    }, 'Short visible answer')).toBe(false)
+    expect(shouldCollapseVisibleChatMessageContent({
+      role: 'assistant',
+      content: 'a'.repeat(101),
+    }, 'a'.repeat(101))).toBe(true)
+    expect(shouldCollapseVisibleChatMessageContent({
+      role: 'user',
+      content: 'Short prompt',
+      toolCalls: [{ name: 'read_file', arguments: { path: 'README.md' } }],
+    })).toBe(true)
+  })
+
+  it('preserves display-only progress content on final assistant messages', () => {
+    expect(preserveChatMessageDisplayContentFromProgress(
+      [
+        { role: 'user' as const, content: 'Prompt' },
+        { role: 'assistant' as const, content: 'Final answer' },
+      ],
+      [
+        { role: 'user' as const, content: 'Prompt' },
+        { role: 'assistant' as const, content: 'Final answer', displayContent: '<think>Reasoning</think>\n\nFinal answer' },
+      ],
+    )).toEqual([
+      { role: 'user', content: 'Prompt' },
+      { role: 'assistant', content: 'Final answer', displayContent: '<think>Reasoning</think>\n\nFinal answer' },
+    ])
+  })
+
+  it('applies user-facing response text over tool-only assistant wrappers', () => {
+    expect(applyUserResponseToChatMessages(
+      [{
+        role: 'assistant' as const,
+        content: '',
+        displayContent: '<think>Tool call</think>',
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } }],
+      }],
+      'Visible answer',
+    )).toEqual([{
+      role: 'assistant',
+      content: 'Visible answer',
+      displayContent: undefined,
+      toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } }],
+    }])
+  })
+
+  it('appends a user-facing response when there is no assistant message to replace', () => {
+    expect(applyUserResponseToChatMessages(
+      [{ role: 'user' as const, content: 'Prompt' }],
+      'Final answer',
+    )).toEqual([
+      { role: 'user', content: 'Prompt' },
+      { role: 'assistant', content: 'Final answer' },
+    ])
   })
 
   it('strips inline raw tool payloads from otherwise visible assistant content', () => {
@@ -1972,5 +2186,12 @@ describe('Constants', () => {
 
   it('MARK_WORK_COMPLETE_TOOL is "mark_work_complete"', () => {
     expect(MARK_WORK_COMPLETE_TOOL).toBe('mark_work_complete')
+  })
+
+  it('shares completion-control tool detection across chat renderers', () => {
+    expect(isCompletionControlTool(RESPOND_TO_USER_TOOL)).toBe(true)
+    expect(isCompletionControlTool(MARK_WORK_COMPLETE_TOOL)).toBe(true)
+    expect(isCompletionControlTool('read_file')).toBe(false)
+    expect(isCompletionControlTool(undefined)).toBe(false)
   })
 })

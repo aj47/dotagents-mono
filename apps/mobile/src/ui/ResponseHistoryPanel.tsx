@@ -3,7 +3,7 @@
  * from the current agent session, with per-message TTS playback.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,16 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
+import {
+  getAgentResponseHistoryMobileIconState,
+  getAgentResponseHistoryMobileSurfaceColors,
+  getAgentResponseHistoryMobileSurfaceState,
+  getAgentResponseHistoryNewestFadeDurationMs,
+  getAgentResponseHistoryNewestInitialOpacity,
+  getAgentResponseHistoryPanelState,
+  getAgentResponseHistorySpeechAccessibilityLabel,
+  getAgentResponseHistoryVisibleOpacity,
+} from '@dotagents/shared/agent-user-response-store';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
@@ -50,20 +60,27 @@ function AnimatedResponseItem({
   children: React.ReactNode;
   isNewest: boolean;
 }) {
-  const fadeAnim = useRef(new Animated.Value(isNewest ? 0 : 1)).current;
+  const fadeAnim = useRef(
+    new Animated.Value(
+      isNewest
+        ? getAgentResponseHistoryNewestInitialOpacity()
+        : getAgentResponseHistoryVisibleOpacity(),
+    ),
+  ).current;
+  const animatedStyle = useMemo(() => ({ opacity: fadeAnim }), [fadeAnim]);
 
   useEffect(() => {
     if (isNewest) {
       Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
+        toValue: getAgentResponseHistoryVisibleOpacity(),
+        duration: getAgentResponseHistoryNewestFadeDurationMs(),
         useNativeDriver: true,
       }).start();
     }
   }, [fadeAnim, isNewest]);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim }}>
+    <Animated.View style={animatedStyle}>
       {children}
     </Animated.View>
   );
@@ -86,6 +103,15 @@ export function ResponseHistoryPanel({
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const isMountedRef = useRef(true);
   const speechRequestIdRef = useRef(0);
+  const prevCountRef = useRef(responses.length);
+  const responseHistorySurface = getAgentResponseHistoryMobileSurfaceState();
+  const responseHistorySurfaceColors = getAgentResponseHistoryMobileSurfaceColors(theme.colors);
+  const responseHistoryIcons = getAgentResponseHistoryMobileIconState();
+  const shouldAnimateNewest = responses.length > prevCountRef.current;
+  const responseHistoryPanelState = getAgentResponseHistoryPanelState(responses, {
+    isCollapsed,
+    animateNewest: shouldAnimateNewest,
+  });
 
   const nextSpeechRequestId = useCallback(() => {
     speechRequestIdRef.current += 1;
@@ -116,6 +142,10 @@ export function ResponseHistoryPanel({
       safeSetSpeakingIndex(null);
     }
   }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId]);
+
+  useEffect(() => {
+    prevCountRef.current = responses.length;
+  }, [responses.length]);
 
   if (responses.length === 0) {
     return null;
@@ -183,87 +213,88 @@ export function ResponseHistoryPanel({
     Speech.speak(processedText, speechOptions);
   };
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
-
-  // Track previous responses count to detect newly added entries.
-  const prevCountRef = useRef(responses.length);
-  const newestTimestamp = responses.length > 0 ? Math.max(...responses.map((r) => r.timestamp)) : null;
-  const shouldAnimateNewest = responses.length > prevCountRef.current;
-
-  useEffect(() => {
-    prevCountRef.current = responses.length;
-  }, [responses.length]);
-
   const styles = StyleSheet.create({
     container: {
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: `${theme.colors.muted}30`,
-      overflow: 'hidden',
-      marginHorizontal: spacing.sm,
-      marginBottom: spacing.sm,
+      borderRadius: radius[responseHistorySurface.container.borderRadius],
+      borderWidth: responseHistorySurface.container.borderWidth,
+      borderColor: responseHistorySurfaceColors.container.borderColor,
+      backgroundColor: responseHistorySurfaceColors.container.backgroundColor,
+      overflow: responseHistorySurface.container.overflow,
+      marginHorizontal: spacing[responseHistorySurface.container.marginHorizontal],
+      marginBottom: spacing[responseHistorySurface.container.marginBottom],
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderBottomWidth: isCollapsed ? 0 : 1,
-      borderBottomColor: theme.colors.border,
-      backgroundColor: `${theme.colors.muted}50`,
+      flexDirection: responseHistorySurface.header.flexDirection,
+      alignItems: responseHistorySurface.header.alignItems,
+      justifyContent: responseHistorySurface.header.justifyContent,
+      paddingHorizontal: responseHistorySurface.header.paddingHorizontal,
+      paddingVertical: responseHistorySurface.header.paddingVertical,
+      borderBottomWidth: responseHistoryPanelState.headerBorderBottomWidth,
+      borderBottomColor: responseHistorySurfaceColors.header.borderBottomColor,
+      backgroundColor: responseHistorySurfaceColors.header.backgroundColor,
     },
     headerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
+      flexDirection: responseHistorySurface.header.leftFlexDirection,
+      alignItems: responseHistorySurface.header.leftAlignItems,
+      gap: responseHistorySurface.header.gap,
     },
     headerTitle: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: theme.colors.foreground,
+      fontSize: responseHistorySurface.header.titleFontSize,
+      fontWeight: responseHistorySurface.header.titleFontWeight,
+      color: responseHistorySurfaceColors.header.titleColor,
     },
     badge: {
-      backgroundColor: theme.colors.primary,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 6,
+      backgroundColor: responseHistorySurfaceColors.badge.backgroundColor,
+      borderRadius: responseHistorySurface.badge.borderRadius,
+      minWidth: responseHistorySurface.badge.minWidth,
+      height: responseHistorySurface.badge.height,
+      alignItems: responseHistorySurface.badge.alignItems,
+      justifyContent: responseHistorySurface.badge.justifyContent,
+      paddingHorizontal: responseHistorySurface.badge.paddingHorizontal,
     },
     badgeText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: theme.colors.primaryForeground,
+      fontSize: responseHistorySurface.badge.fontSize,
+      fontWeight: responseHistorySurface.badge.fontWeight,
+      color: responseHistorySurfaceColors.badge.textColor,
     },
     list: {
-      maxHeight: 300,
+      maxHeight: responseHistorySurface.list.maxHeight,
     },
     responseItem: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: responseHistorySurface.item.paddingHorizontal,
+      paddingVertical: responseHistorySurface.item.paddingVertical,
     },
     responseHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 4,
+      flexDirection: responseHistorySurface.item.headerFlexDirection,
+      alignItems: responseHistorySurface.item.headerAlignItems,
+      justifyContent: responseHistorySurface.item.headerJustifyContent,
+      marginBottom: responseHistorySurface.item.headerMarginBottom,
     },
     timestamp: {
-      fontSize: 11,
-      color: theme.colors.mutedForeground,
+      fontSize: responseHistorySurface.item.timestampFontSize,
+      color: responseHistorySurfaceColors.item.timestampColor,
     },
     speakButton: {
-      padding: 4,
+      padding: responseHistorySurface.item.speakButtonPadding,
     },
     separator: {
-      height: 1,
-      backgroundColor: theme.colors.border,
+      height: responseHistorySurface.list.separatorHeight,
+      backgroundColor: responseHistorySurfaceColors.list.separatorColor,
+    },
+    collapsedPreview: {
+      paddingHorizontal: responseHistorySurface.collapsedPreview.paddingHorizontal,
+      paddingBottom: responseHistorySurface.collapsedPreview.paddingBottom,
+      gap: responseHistorySurface.collapsedPreview.gap,
+      backgroundColor: responseHistorySurfaceColors.collapsedPreview.backgroundColor,
+    },
+    collapsedPreviewTimestamp: {
+      fontSize: responseHistorySurface.collapsedPreview.timestampFontSize,
+      color: responseHistorySurfaceColors.collapsedPreview.timestampColor,
+    },
+    collapsedPreviewText: {
+      fontSize: responseHistorySurface.collapsedPreview.previewFontSize,
+      lineHeight: responseHistorySurface.collapsedPreview.previewLineHeight,
+      color: responseHistorySurfaceColors.collapsedPreview.previewColor,
     },
   });
 
@@ -273,49 +304,66 @@ export function ResponseHistoryPanel({
         style={styles.header}
         onPress={() => setIsCollapsed((prev) => !prev)}
         accessibilityRole="button"
-        accessibilityLabel={isCollapsed ? 'Show agent responses' : 'Hide agent responses'}
-        accessibilityState={{ expanded: !isCollapsed }}
+        accessibilityLabel={responseHistoryPanelState.toggleAccessibilityLabel}
+        accessibilityState={{ expanded: responseHistoryPanelState.isExpanded }}
       >
         <View style={styles.headerLeft}>
-          <Ionicons name="chatbubbles-outline" size={16} color={theme.colors.mutedForeground} />
-          <Text style={styles.headerTitle}>Agent Responses</Text>
+          <Ionicons
+            name={responseHistoryIcons.headerName}
+            size={responseHistorySurface.header.iconSize}
+            color={responseHistorySurfaceColors.header.iconColor}
+          />
+          <Text style={styles.headerTitle}>{responseHistoryPanelState.title}</Text>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{responses.length}</Text>
+            <Text style={styles.badgeText}>{responseHistoryPanelState.countLabel}</Text>
           </View>
         </View>
         <Ionicons
-          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-          size={16}
-          color={theme.colors.mutedForeground}
+          name={responseHistoryPanelState.toggleIconName}
+          size={responseHistorySurface.header.toggleIconSize}
+          color={responseHistorySurfaceColors.header.toggleIconColor}
         />
       </TouchableOpacity>
+      {responseHistoryPanelState.collapsedPreview.shouldRender && (
+        <View style={styles.collapsedPreview}>
+          <Text style={styles.collapsedPreviewTimestamp}>
+            {responseHistoryPanelState.collapsedPreview.timestampLabel}
+          </Text>
+          <Text
+            style={styles.collapsedPreviewText}
+            numberOfLines={responseHistorySurface.collapsedPreview.previewNumberOfLines}
+          >
+            {responseHistoryPanelState.collapsedPreview.text}
+          </Text>
+        </View>
+      )}
       {!isCollapsed && (
         <ScrollView style={styles.list}>
-          {/* Show newest first */}
-          {[...responses].reverse().map((response, index) => {
-            const originalIndex = responses.length - 1 - index;
-            const isSpeaking = speakingIndex === originalIndex;
-            // Animate newest entry (shown at top after reverse)
-            const isNewestEntry =
-              shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
+          {responseHistoryPanelState.items.map((item) => {
+            const response = item.entry;
+            const isSpeaking = speakingIndex === item.originalIndex;
             return (
-              <React.Fragment key={response.id ?? `${response.timestamp}-${index}`}>
-                {index > 0 && <View style={styles.separator} />}
-                <AnimatedResponseItem isNewest={isNewestEntry}>
+              <React.Fragment key={item.key}>
+                {item.displayIndex > 0 && <View style={styles.separator} />}
+                <AnimatedResponseItem isNewest={item.isNewest}>
                   <View style={styles.responseItem}>
                     <View style={styles.responseHeader}>
                       <Text style={styles.timestamp}>
-                        {formatTime(response.timestamp)}
+                        {item.timestampLabel}
                       </Text>
                       <TouchableOpacity
                         style={styles.speakButton}
-                        onPress={() => handleSpeak(response.text, originalIndex)}
-                        accessibilityLabel={isSpeaking ? 'Stop speaking' : 'Speak this response'}
+                        onPress={() => handleSpeak(response.text, item.originalIndex)}
+                        accessibilityLabel={getAgentResponseHistorySpeechAccessibilityLabel(isSpeaking)}
                       >
                         <Ionicons
-                          name={isSpeaking ? 'stop-circle' : 'volume-medium'}
-                          size={18}
-                          color={isSpeaking ? theme.colors.primary : theme.colors.mutedForeground}
+                          name={isSpeaking ? responseHistoryIcons.stopName : responseHistoryIcons.speakName}
+                          size={responseHistorySurface.item.speakIconSize}
+                          color={
+                            isSpeaking
+                              ? responseHistorySurfaceColors.item.activeSpeakIconColor
+                              : responseHistorySurfaceColors.item.speakIconColor
+                          }
                         />
                       </TouchableOpacity>
                     </View>

@@ -6,11 +6,15 @@ import {
   buildConversationImageAssetHttpUrl,
   buildConversationImageAssetStoragePlan,
   buildConversationImageAssetUrl,
+  buildChatImageAttachmentMessage,
   buildConversationImageMarkdownMessage,
   buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
   buildConversationVideoAssetStoragePlan,
   CHAT_IMAGE_ATTACHMENT_PRESENTATION,
+  CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION,
+  CHAT_VIDEO_ATTACHMENT_PRESENTATION,
+  CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION,
   createConversationImageAssetFileService,
   createConversationImageAssetRouteActions,
   createConversationVideoAssetFileService,
@@ -45,10 +49,25 @@ import {
   formatChatImageSlotsRemainingMessage,
   formatChatImageTryFewerOrSmallerMessage,
   formatChatImageUnsupportedFormatMessage,
+  getChatImageAttachmentCopyState,
+  getChatImageAttachmentDesktopSurfaceState,
+  getChatImageAttachmentMobileAlertState,
+  getChatImageAttachmentMobileRenderState,
+  getChatImageAttachmentMobileSurfaceColors,
+  getChatImageAttachmentMobileSurfaceState,
+  getChatImageAttachmentMobileRemoveIconState,
+  getChatVideoAttachmentCopyState,
+  getChatVideoAttachmentDesktopSurfaceState,
+  getChatVideoAttachmentMobileSurfaceColors,
+  getChatVideoAttachmentMobileSurfaceState,
   getRenderableVideoMimeTypeFromFileName,
   getUtf8ByteLength,
   formatMediaBytesMb,
+  getVideoAttachmentLoadAccessibilityLabel,
+  getVideoAttachmentOpenLinkAccessibilityLabel,
+  getVideoAttachmentPlayAccessibilityLabel,
   getVideoAssetLabel,
+  formatVideoAttachmentRequestFailedMessage,
   hasMarkdownMediaImageReference,
   hasMarkdownVideoLink,
   inferImageMimeTypeFromSource,
@@ -147,6 +166,79 @@ describe('conversation video asset utilities', () => {
   it('uses link text before filename for labels', () => {
     expect(getVideoAssetLabel('Demo clip', 'assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe('Demo clip');
     expect(getVideoAssetLabel('', 'assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe('abcdef1234567890.mp4');
+  });
+
+  it('centralizes chat video attachment copy and surface tokens', () => {
+    expect(CHAT_VIDEO_ATTACHMENT_PRESENTATION.labels.play).toBe('Play video');
+    expect(CHAT_VIDEO_ATTACHMENT_PRESENTATION.labels.loading).toBe('Loading…');
+    expect(CHAT_VIDEO_ATTACHMENT_PRESENTATION.labels.desktopLazyLoadSubtitle).toBe('Loads only when you click play');
+    expect(CHAT_VIDEO_ATTACHMENT_PRESENTATION.labels.mobileLazyLoadSubtitle).toBe('Loads only when you tap play');
+    expect(CHAT_VIDEO_ATTACHMENT_PRESENTATION.errors.missingCredentials).toBe('Missing video asset credentials.');
+    expect(CHAT_VIDEO_ATTACHMENT_PRESENTATION.errors.loadFallback).toBe('Unable to load this video.');
+    expect(getChatVideoAttachmentCopyState()).toBe(CHAT_VIDEO_ATTACHMENT_PRESENTATION);
+    expect(getChatVideoAttachmentDesktopSurfaceState()).toBe(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop);
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop.videoClassName).toContain('bg-black');
+    expect(getChatVideoAttachmentMobileSurfaceState()).toBe(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile);
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.borderColorToken).toBe('border');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.dark).toBe('#ffffff');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.darkAlpha).toBe(0.04);
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.light).toBe('#000000');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.lightAlpha).toBe(0.03);
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.loadButton.flexDirection).toBe('row');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.alignItems).toBe('center');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.justifyContent).toBe('center');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIconWrapper.backgroundAlpha).toBe(0.09);
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.playIcon.name).toBe('play-circle');
+    expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.video.height).toBe(220);
+    expect(getChatVideoAttachmentMobileSurfaceColors({
+      border: '#d4d4d4',
+      destructive: '#dc2626',
+      foreground: '#171717',
+      mutedForeground: '#737373',
+      primary: '#2563eb',
+      primaryForeground: '#ffffff',
+    }, { isDark: true })).toEqual({
+      card: {
+        borderColor: '#d4d4d4',
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      },
+      playIconWrapper: {
+        backgroundColor: 'rgba(37, 99, 235, 0.09)',
+      },
+      playIcon: {
+        color: '#2563eb',
+      },
+      title: {
+        color: '#171717',
+      },
+      subtitle: {
+        color: '#737373',
+      },
+      button: {
+        backgroundColor: '#2563eb',
+      },
+      buttonText: {
+        color: '#ffffff',
+      },
+      fallbackLinkText: {
+        color: '#2563eb',
+      },
+      errorText: {
+        color: '#dc2626',
+      },
+    });
+    expect(getChatVideoAttachmentMobileSurfaceColors({
+      border: '#d4d4d4',
+      destructive: '#dc2626',
+      foreground: '#171717',
+      mutedForeground: '#737373',
+      primary: '#2563eb',
+      primaryForeground: '#ffffff',
+    }).card.backgroundColor).toBe('rgba(0, 0, 0, 0.03)');
+    expect(getVideoAttachmentLoadAccessibilityLabel('Demo clip')).toBe('Load video Demo clip');
+    expect(getVideoAttachmentPlayAccessibilityLabel('Demo clip')).toBe('Play video Demo clip');
+    expect(getVideoAttachmentOpenLinkAccessibilityLabel('Demo clip')).toBe('Open video link: Demo clip');
+    expect(formatVideoAttachmentRequestFailedMessage(404)).toBe('Video request failed (404)');
   });
 
   it('builds asset urls and validates persisted video asset filenames', () => {
@@ -321,6 +413,117 @@ describe('conversation video asset utilities', () => {
 
   it('centralizes chat image attachment feedback copy', () => {
     expect(CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.limitReached).toBe('Image limit reached');
+    expect(CHAT_IMAGE_ATTACHMENT_PRESENTATION.composerPreview.removeTitle).toBe('Remove image');
+    expect(getChatImageAttachmentCopyState()).toBe(CHAT_IMAGE_ATTACHMENT_PRESENTATION);
+    expect(getChatImageAttachmentDesktopSurfaceState()).toBe(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop);
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.overlayRowClassName).toContain('gap-2');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.tileRowClassName).toContain('gap-1.5');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.overlayPreviewClassName).toContain('h-14 w-14');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.tilePreviewClassName).toContain('h-12 w-12');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.removeButtonClassName).toContain('bg-black/70');
+    expect(getChatImageAttachmentMobileSurfaceState()).toBe(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile);
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.row.showsHorizontalScrollIndicator).toBe(false);
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.size).toBe(56);
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.borderColorToken).toBe('border');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.backgroundColorToken).toBe('muted');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.overflow).toBe('hidden');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.position).toBe('relative');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.previewImage.width).toBe('100%');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.previewImage.height).toBe('100%');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.position).toBe('absolute');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.accessibilityRole).toBe('button');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.backgroundAlpha).toBe(0.7);
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.pressedOpacity).toBe(0.8);
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.alignItems).toBe('center');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.justifyContent).toBe('center');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon.name).toBe('close');
+    expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon.size).toBe(13);
+    expect(getChatImageAttachmentMobileRemoveIconState()).toEqual({
+      name: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon.name,
+      size: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon.size,
+      color: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeIcon.color,
+    });
+    expect(getChatImageAttachmentMobileSurfaceColors({
+      border: '#d4d4d4',
+      muted: '#e5e5e5',
+    })).toEqual({
+      preview: {
+        borderColor: '#d4d4d4',
+        backgroundColor: '#e5e5e5',
+      },
+      removeButton: {
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      },
+    });
+    expect(getChatImageAttachmentMobileRenderState({
+      colors: {
+        border: '#d4d4d4',
+        muted: '#e5e5e5',
+      },
+    })).toEqual({
+      copy: CHAT_IMAGE_ATTACHMENT_PRESENTATION,
+      surface: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile,
+      colors: getChatImageAttachmentMobileSurfaceColors({
+        border: '#d4d4d4',
+        muted: '#e5e5e5',
+      }),
+      removeButton: {
+        accessibilityRole: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.accessibilityRole,
+        accessibilityLabel: CHAT_IMAGE_ATTACHMENT_PRESENTATION.composerPreview.removeTitle,
+        pressedOpacity: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.removeButton.pressedOpacity,
+      },
+      removeIcon: getChatImageAttachmentMobileRemoveIconState(),
+    });
+    expect(getChatImageAttachmentMobileAlertState({ reason: 'limitReached' })).toEqual({
+      title: 'Image limit reached',
+      message: 'You can attach up to 4 images per message.',
+    });
+    expect(getChatImageAttachmentMobileAlertState({ reason: 'budgetReached' })).toEqual({
+      title: 'Image budget reached',
+      message: 'This message already reached the image budget (0.88MB).',
+    });
+    expect(getChatImageAttachmentMobileAlertState({
+      reason: 'missingData',
+      names: ['one.png'],
+    })).toEqual({
+      title: 'Some images were skipped',
+      message: 'one.png could not be attached. Please try again.',
+    });
+    expect(getChatImageAttachmentMobileAlertState({
+      reason: 'selectionTooLarge',
+      names: ['large.png'],
+    })).toEqual({
+      title: 'Image too large',
+      message: 'large.png exceed the 4MB limit.',
+    });
+    expect(getChatImageAttachmentMobileAlertState({
+      reason: 'unsupportedFormat',
+      names: ['unknown.heic'],
+    })).toEqual({
+      title: 'Unsupported image format',
+      message: 'unknown.heic could not be attached because the image type could not be determined.',
+    });
+    expect(getChatImageAttachmentMobileAlertState({
+      reason: 'budgetExceeded',
+      names: ['budget.png'],
+    })).toEqual({
+      title: 'Image budget reached',
+      message: 'budget.png exceed the per-message image budget (0.88MB).',
+    });
+    expect(getChatImageAttachmentMobileAlertState({
+      reason: 'pickerError',
+      error: new Error('No access'),
+    })).toEqual({
+      title: 'Image picker error',
+      message: 'No access',
+    });
+    expect(getChatImageAttachmentMobileAlertState({
+      reason: 'pickerError',
+      error: null,
+    })).toEqual({
+      title: 'Image picker error',
+      message: 'Unable to select images right now.',
+    });
     expect(formatChatImageAttachmentLimitMessage()).toBe('You can attach up to 4 images per message.');
     expect(formatChatImageBudgetReachedMessage()).toBe('This message already reached the image budget (0.88MB).');
     expect(formatChatImageMissingDataMessage(['one.png'])).toBe('one.png could not be attached. Please try again.');
@@ -373,6 +576,16 @@ describe('conversation video asset utilities', () => {
         fallbackAltText: 'Only image',
       },
     ])).toBe('![Only image](data:image/png;base64,AAAA)');
+
+    expect(buildChatImageAttachmentMessage('  Describe this  ', [
+      {
+        dataUrl: 'data:image/png;base64,AAAA',
+        name: 'First',
+      },
+      {
+        dataUrl: 'data:image/jpeg;base64,BBBB',
+      },
+    ])).toBe('Describe this\n\n![First](data:image/png;base64,AAAA)\n\n![Image 2](data:image/jpeg;base64,BBBB)');
   });
 
   it('extracts markdown conversation image references for model adapters', () => {

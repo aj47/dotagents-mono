@@ -32,6 +32,7 @@ import {
   APP_SHELL_PRIMARY_NAV_ITEMS,
   APP_SHELL_PROVIDER_SETUP_PRESENTATION,
   APP_SHELL_SESSION_START_PRESENTATION,
+  APP_SHELL_SESSION_START_SURFACE_PRESENTATION,
   APP_SHELL_SETTINGS_FEEDBACK_LABELS,
   APP_SHELL_SKILL_ACTION_LABELS,
   APP_SHELL_SKILL_DELETE_PRESENTATION,
@@ -101,6 +102,8 @@ import {
   getAppShellHeaderActionDisplayLabel,
   getAppShellHeaderActionHint,
   getAppShellHeaderActionLabel,
+  getAppShellHeaderActionMobileIconColors,
+  getAppShellHeaderActionMobileIconState,
   getAppShellKnowledgeNoteActionLabel,
   getAppShellKnowledgeNoteDeleteAccessibilityLabel,
   getAppShellKnowledgeNoteDeleteAllAccessibilityLabel,
@@ -183,6 +186,8 @@ import {
   getAppShellMobileSettingsSectionTitle,
   getAppShellPrimaryNavItemLabel,
   getAppShellProviderModelSelectionMovedDescription,
+  getAppShellSessionStartCopyState,
+  getAppShellSessionStartDesktopSurfaceState,
   getAppShellSidebarToggleLabel,
   getAppShellSkillActionLabel,
   getAppShellSkillDeleteConfirmMessage,
@@ -263,6 +268,32 @@ describe("app shell", () => {
     expect(getAppShellHeaderActionHint("openSplitView")).toBe(
       "Opens two chats at once for comparison",
     )
+    expect(APP_SHELL_HEADER_ACTIONS.openSplitView.mobileIcon).toMatchObject({
+      name: "git-compare-outline",
+      size: 18,
+      colorToken: "foreground",
+    })
+    expect(APP_SHELL_HEADER_ACTIONS.openSettings.mobileIcon).toMatchObject({
+      name: "settings-outline",
+      size: 20,
+      colorToken: "foreground",
+    })
+    expect(getAppShellHeaderActionMobileIconState("openSplitView")).toBe(
+      APP_SHELL_HEADER_ACTIONS.openSplitView.mobileIcon,
+    )
+    expect(getAppShellHeaderActionMobileIconState("openSettings")).toBe(
+      APP_SHELL_HEADER_ACTIONS.openSettings.mobileIcon,
+    )
+    expect(
+      getAppShellHeaderActionMobileIconColors(
+        {
+          foreground: "#123456",
+        },
+        "openSplitView",
+      ),
+    ).toEqual({
+      color: "#123456",
+    })
     expect(getAppShellGlobalTtsToggleLabel(true)).toBe("Disable global TTS")
     expect(getAppShellGlobalTtsToggleLabel(false)).toBe("Enable global TTS")
     expect(getAppShellSidebarToggleLabel(true)).toBe("Expand sidebar")
@@ -270,8 +301,46 @@ describe("app shell", () => {
     expect(APP_SHELL_SESSION_START_PRESENTATION.emptyTitle).toBe(
       "No Active Sessions",
     )
-    expect(APP_SHELL_SESSION_START_PRESENTATION.agentSelectorLabel).toBe("Agent")
-    expect(APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.text).toBe("Text:")
+    expect(APP_SHELL_SESSION_START_PRESENTATION.agentSelectorLabel).toBe(
+      "Agent",
+    )
+    expect(APP_SHELL_SESSION_START_PRESENTATION.recordingActionLabel).toBe(
+      "Recording...",
+    )
+    expect(APP_SHELL_SESSION_START_PRESENTATION.keybindLabels.text).toBe(
+      "Text:",
+    )
+    expect(getAppShellSessionStartCopyState()).toBe(
+      APP_SHELL_SESSION_START_PRESENTATION,
+    )
+    expect(getAppShellSessionStartDesktopSurfaceState()).toBe(
+      APP_SHELL_SESSION_START_SURFACE_PRESENTATION.desktop,
+    )
+    expect(
+      APP_SHELL_SESSION_START_SURFACE_PRESENTATION.desktop.empty,
+    ).toMatchObject({
+      containerClassName:
+        "flex w-full flex-col items-center px-5 py-6 text-center sm:px-6",
+      titleClassName: "mb-1.5 text-lg font-semibold",
+      actionsClassName: "flex flex-wrap gap-2 items-center justify-center",
+      keybindRowClassName:
+        "flex flex-wrap items-center justify-center gap-2.5 text-xs text-muted-foreground",
+    })
+    expect(
+      APP_SHELL_SESSION_START_SURFACE_PRESENTATION.desktop.expanded,
+    ).toMatchObject({
+      containerClassName: "flex items-center gap-2 p-3 bg-card border-b",
+      textAreaClassName: "min-h-[60px] max-h-[120px] flex-1 resize-none",
+      actionButtonClassName: "h-8",
+    })
+    expect(
+      APP_SHELL_SESSION_START_SURFACE_PRESENTATION.desktop.idle,
+    ).toMatchObject({
+      containerClassName:
+        "flex items-center justify-between gap-3 p-3 bg-card border-b",
+      actionButtonClassName: "gap-2",
+      descriptionClassName: "text-sm text-muted-foreground",
+    })
   })
 
   it("only hides mobile stack headers for top-level desktop shell routes", () => {
@@ -304,9 +373,9 @@ describe("app shell", () => {
     expect(APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.name.placeholder).toBe(
       "Code review expert",
     )
-    expect(
-      APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.helper,
-    ).toBe("Skill files are saved by the desktop server under .agents/skills.")
+    expect(APP_SHELL_SKILL_EDITOR_PRESENTATION.fields.instructions.helper).toBe(
+      "Skill files are saved by the desktop server under .agents/skills.",
+    )
     expect(getAppShellSkillActionLabel("exporting")).toBe("Exporting...")
     expect(getAppShellSkillActionLabel("importSkillFromGitHubTitle")).toBe(
       "Import Skill from GitHub",
@@ -318,18 +387,18 @@ describe("app shell", () => {
       "Delete Selected",
     )
     expect(getAppShellSkillSelectionLabel(true)).toBe("Selected")
-    expect(getAppShellSkillSelectionAccessibilityLabel("Code Review", true)).toBe(
-      "Deselect skill Code Review",
-    )
+    expect(
+      getAppShellSkillSelectionAccessibilityLabel("Code Review", true),
+    ).toBe("Deselect skill Code Review")
     expect(
       getAppShellSkillItemActionAccessibilityLabel("actions", "Code Review"),
     ).toBe("Actions for Code Review")
     expect(
       getAppShellSkillItemActionAccessibilityLabel("edit", "Code Review"),
     ).toBe("Edit skill Code Review")
-    expect(getAppShellSkillExportMarkdownAccessibilityLabel("Code Review")).toBe(
-      "Export skill Code Review as Markdown",
-    )
+    expect(
+      getAppShellSkillExportMarkdownAccessibilityLabel("Code Review"),
+    ).toBe("Export skill Code Review as Markdown")
     expect(getAppShellSkillImportMarkdownAccessibilityLabel()).toBe(
       "Import skill Markdown",
     )
@@ -403,9 +472,7 @@ describe("app shell", () => {
     expect(
       formatAppShellKnowledgeNoteBulkActionLabel("deleteSelected", 2),
     ).toBe("Delete Selected (2)")
-    expect(formatAppShellKnowledgeNoteDeleteCountLabel(1)).toBe(
-      "Delete 1 Note",
-    )
+    expect(formatAppShellKnowledgeNoteDeleteCountLabel(1)).toBe("Delete 1 Note")
     expect(formatAppShellKnowledgeNoteDeleteCountLabel(4)).toBe(
       "Delete 4 Notes",
     )
@@ -413,9 +480,9 @@ describe("app shell", () => {
     expect(
       getAppShellKnowledgeNoteSelectionAccessibilityLabel("Release Plan", true),
     ).toBe("Deselect note Release Plan")
-    expect(getAppShellKnowledgeNoteDeleteAccessibilityLabel("Release Plan")).toBe(
-      "Delete note Release Plan",
-    )
+    expect(
+      getAppShellKnowledgeNoteDeleteAccessibilityLabel("Release Plan"),
+    ).toBe("Delete note Release Plan")
     expect(getAppShellKnowledgeNoteDeleteSelectedAccessibilityLabel(2)).toBe(
       "Delete 2 selected knowledge notes",
     )
@@ -444,13 +511,15 @@ describe("app shell", () => {
 
   it("shares repeat task action labels across app shells", () => {
     expect(APP_SHELL_LOOP_ACTION_LABELS.runNow).toBe("Run now")
-    expect(APP_SHELL_LOOP_EDITOR_PRESENTATION.loadingLabel).toBe("Loading loop...")
+    expect(APP_SHELL_LOOP_EDITOR_PRESENTATION.loadingLabel).toBe(
+      "Loading loop...",
+    )
     expect(APP_SHELL_LOOP_EDITOR_PRESENTATION.scheduleModes.continuous).toBe(
       "Continuous",
     )
-    expect(APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.speakOnTrigger.helper).toContain(
-      "desktop TTS",
-    )
+    expect(
+      APP_SHELL_LOOP_EDITOR_PRESENTATION.switches.speakOnTrigger.helper,
+    ).toContain("desktop TTS")
     expect(getAppShellLoopActionLabel("addTask")).toBe("Add Task")
     expect(getAppShellLoopStartAllActionLabel(false)).toBe("Start All")
     expect(getAppShellLoopStartAllActionLabel(true)).toBe("Starting All...")
@@ -480,9 +549,9 @@ describe("app shell", () => {
     expect(getAppShellLoopStopScheduleAccessibilityLabel("Daily Summary")).toBe(
       "Stop Daily Summary loop schedule",
     )
-    expect(getAppShellLoopExportMarkdownAccessibilityLabel("Daily Summary")).toBe(
-      "Export Daily Summary loop as Markdown",
-    )
+    expect(
+      getAppShellLoopExportMarkdownAccessibilityLabel("Daily Summary"),
+    ).toBe("Export Daily Summary loop as Markdown")
     expect(getAppShellLoopDeleteAccessibilityLabel("Daily Summary")).toBe(
       "Delete Daily Summary loop",
     )
@@ -496,7 +565,9 @@ describe("app shell", () => {
     expect(getAppShellLoopDeleteConfirmMessage("Daily Summary")).toBe(
       'Are you sure you want to delete "Daily Summary"?',
     )
-    expect(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.created).toBe("Task created")
+    expect(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.save.created).toBe(
+      "Task created",
+    )
     expect(APP_SHELL_LOOP_FEEDBACK_PRESENTATION.runtime.triggerFailed).toBe(
       "Failed to trigger task",
     )
@@ -596,9 +667,7 @@ describe("app shell", () => {
     expect(formatAppShellBundlePreviewStatus(1)).toBe(
       "Previewed bundle with 1 item",
     )
-    expect(formatAppShellBundleImportStatus(3)).toBe(
-      "Imported 3 bundle items",
-    )
+    expect(formatAppShellBundleImportStatus(3)).toBe("Imported 3 bundle items")
     expect(formatAppShellBundleImportCompleteMessage(3)).toBe(
       "Imported 3 items from the bundle.",
     )
@@ -616,12 +685,12 @@ describe("app shell", () => {
     expect(APP_SHELL_AGENT_EDITOR_PRESENTATION.avatar.unavailableTitle).toBe(
       "Photo unavailable",
     )
-    expect(APP_SHELL_AGENT_EDITOR_PRESENTATION.validation.displayNameRequired).toBe(
-      "Display name is required",
-    )
-    expect(APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.loadMcpServersFailed).toBe(
-      "Failed to load MCP servers",
-    )
+    expect(
+      APP_SHELL_AGENT_EDITOR_PRESENTATION.validation.displayNameRequired,
+    ).toBe("Display name is required")
+    expect(
+      APP_SHELL_AGENT_EDITOR_PRESENTATION.errors.loadMcpServersFailed,
+    ).toBe("Failed to load MCP servers")
     expect(
       APP_SHELL_AGENT_EDITOR_PRESENTATION.fields.displayName.placeholder,
     ).toBe("My Agent")
@@ -693,12 +762,12 @@ describe("app shell", () => {
     expect(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.description).toBe(
       "Add or configure an MCP server.",
     )
-    expect(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.transport.helper).toBe(
-      "Choose how to connect to the MCP server.",
-    )
-    expect(APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.transports.streamableHttp).toBe(
-      "Streamable HTTP",
-    )
+    expect(
+      APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.fields.transport.helper,
+    ).toBe("Choose how to connect to the MCP server.")
+    expect(
+      APP_SHELL_MCP_SERVER_EDITOR_PRESENTATION.transports.streamableHttp,
+    ).toBe("Streamable HTTP")
     expect(getAppShellMcpServerActionLabel("deleteServer")).toBe(
       "Delete server",
     )
@@ -728,9 +797,7 @@ describe("app shell", () => {
     expect(getAppShellMcpServerRevokeOAuthActionLabel(false)).toBe(
       "Revoke OAuth",
     )
-    expect(getAppShellMcpServerRevokeOAuthActionLabel(true)).toBe(
-      "Revoking...",
-    )
+    expect(getAppShellMcpServerRevokeOAuthActionLabel(true)).toBe("Revoking...")
     expect(
       getAppShellMcpServerItemActionAccessibilityLabel("actions", "github"),
     ).toBe("Actions for github server")
@@ -747,7 +814,10 @@ describe("app shell", () => {
       'Delete "github" from the connected desktop MCP config?',
     )
     expect(
-      getAppShellMcpServerItemActionAccessibilityLabel("toggleDetails", "github"),
+      getAppShellMcpServerItemActionAccessibilityLabel(
+        "toggleDetails",
+        "github",
+      ),
     ).toBe("Toggle github server details")
     expect(getAppShellMcpServerImportJsonAccessibilityLabel()).toBe(
       "Import MCP server JSON",
@@ -762,20 +832,20 @@ describe("app shell", () => {
     expect(getAppShellMcpServerImportServersAccessibilityLabel()).toBe(
       "Import MCP servers",
     )
-    expect(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportWarning).toContain(
-      "MCP config exports can include tokens",
-    )
-    expect(APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.runtime.enableServerMissing).toBe(
-      "Failed to enable server: Server not found",
-    )
+    expect(
+      APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.importExport.exportWarning,
+    ).toContain("MCP config exports can include tokens")
+    expect(
+      APP_SHELL_MCP_SERVER_FEEDBACK_PRESENTATION.runtime.enableServerMissing,
+    ).toBe("Failed to enable server: Server not found")
     expect(formatAppShellMcpServerCount(1)).toBe("1 MCP server")
     expect(formatAppShellMcpServerCount(2)).toBe("2 MCP servers")
     expect(formatAppShellMcpServerImportStatus(2)).toBe(
       "Imported 2 MCP servers",
     )
-    expect(
-      formatAppShellMcpServerImportCompleteMessage(1, ["runtime"]),
-    ).toBe("Imported 1 MCP server. Skipped reserved names: runtime.")
+    expect(formatAppShellMcpServerImportCompleteMessage(1, ["runtime"])).toBe(
+      "Imported 1 MCP server. Skipped reserved names: runtime.",
+    )
     expect(formatAppShellMcpServerExportStatus(3)).toBe(
       "Exported 3 MCP servers",
     )
@@ -900,9 +970,9 @@ describe("app shell", () => {
     expect(
       APP_SHELL_PROVIDER_SETUP_PRESENTATION.configuredSecretPlaceholder,
     ).toBe("Configured")
-    expect(
-      getAppShellProviderModelSelectionMovedDescription("Groq"),
-    ).toBe("Groq model selection now lives on the Models page.")
+    expect(getAppShellProviderModelSelectionMovedDescription("Groq")).toBe(
+      "Groq model selection now lives on the Models page.",
+    )
     expect(getAppShellChatGptWebConnectionLabel(false)).toBe("Not connected")
     expect(getAppShellChatGptWebConnectionLabel(true, "aj@example.com")).toBe(
       "Connected as aj@example.com",

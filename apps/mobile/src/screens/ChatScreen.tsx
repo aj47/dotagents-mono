@@ -1,24 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Platform,
-  KeyboardAvoidingView,
-  ActivityIndicator,
   Alert,
-  Pressable,
-  Image,
   AppState,
-  AppStateStatus,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  TextInputKeyPressEventData,
   useWindowDimensions,
-  Modal,
+  type AppStateStatus,
 } from 'react-native';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -36,55 +23,140 @@ import {
 } from '@dotagents/shared/mobile-app-config';
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
-import { MessageQueuePanel } from '../ui/MessageQueuePanel';
-import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
+import {
+  ChatMessageRuntimeSurface,
+  ChatMessageRuntimeThread,
+  createChatConversationHomePromptEditorModalChromeProps,
+  createChatConversationHomePromptEditorModalStyleSlots,
+  createChatComposerRuntimeDockChromeProps,
+  createChatComposerRuntimeDockStyleSlots,
+  createChatComposerStyleSlots,
+  createChatRuntimeDelegationConversationPreviewRoleStyleSlots,
+  createChatRuntimeHeaderStyleSlots,
+  createChatRuntimeMobileSafeAreaStyleSlots,
+  createChatRuntimeNavigationHeaderOptions,
+  createChatRuntimeSafeAreaMergedStyleSlots,
+  createChatMessageActionSet,
+  createChatMessageActionStyleSlots,
+  createChatMessageConversationDockStyleSlots,
+  createChatMessageRuntimeDockStyleSlots,
+  createChatMessageRuntimeSurfaceStyleSlots,
+  createChatMessageRuntimeThreadStyleSlots,
+  createChatMessageConversationViewportStyleSlots,
+  createChatMessageRuntimeViewportStyleSlots,
+  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
+  createChatMessageThreadBodyStyleSlots,
+} from '../ui/ChatMessageChrome';
+import type {
+  ChatComposerTextEntryKeyPressEvent,
+  ChatComposerTextEntryRef,
+  ChatConversationHomeQuickStartItem,
+  ChatMessageScrollEvent,
+  ChatMessageScrollViewportRef,
+} from '../ui/ChatMessageChrome';
+import {
+  getMessageQueuePanelMobileSurfaceState,
+} from '@dotagents/shared/message-queue-utils';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
-import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
-import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
+import type { AgentProgressUpdate, AgentStepSummary } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import type { Settings } from '@dotagents/shared/api-types';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { formatConnectionStatus, type RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import {
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
-  shouldCollapseMessage,
   sortAgentUserResponseEvents,
-  formatToolArguments,
   getCompactToolExecutionPreview,
   getToolResultsSummary,
-  RESPOND_TO_USER_TOOL,
-  getRenderableMessageContent,
-  getRespondToUserContentFromMessage,
-  getVisibleMessageContent,
-  isToolOnlyMessage,
-  looksLikeToolPayloadContent,
+  getChatMessageDisplayState,
+  hasVisibleChatMessageContent,
+  preserveChatMessageDisplayContentFromProgress,
+  applyUserResponseToChatMessages,
+  applyChatMessageAutoExpansionState,
 } from '@dotagents/shared/chat-utils';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   mergeVoiceText,
   normalizeAutoTtsTextKey,
 } from '@dotagents/shared/voice-text-utils';
+import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
-  getAgentConversationStateLabel,
-  type AgentConversationState,
-} from '@dotagents/shared/conversation-state';
-import {
-  CHAT_RUNTIME_PRESENTATION,
+  formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantErrorContent,
-  formatChatRuntimeBranchAccessibilityLabel,
+  formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeConnectionErrorMessage,
+  formatChatRuntimeDebugError,
+  formatChatRuntimeDelegationAccessibilityLabel,
+  formatChatRuntimeDelegationMessageCount,
+  formatChatRuntimeDelegationToolCallActivityLabel,
+  formatChatRuntimeStartingRequestDebugMessage,
+  formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
+  getChatComposerEditBeforeSendMobileRenderState,
+  getChatComposerImageAttachmentMobileRenderState,
+  getChatComposerMicMobileRenderState,
+  getChatComposerMobileControlState,
+  getChatComposerMicMobileWebPressStyleState,
+  getChatComposerMobileSurfaceState,
+  getChatComposerMobileSurfaceColors,
+  getChatComposerMobileTextColors,
+  getChatComposerQueueMobileRenderState,
+  getChatComposerSubmitMobileRenderState,
+  getChatComposerTextToSpeechMobileRenderState,
+  getChatComposerVoiceOverlayLabel,
+  getChatRuntimeAgentSelectorMobileRenderState,
+  getChatRuntimeBackMobileRenderState,
+  getChatRuntimeBranchMobileAlertState,
+  getChatRuntimeBranchMobileRenderState,
+  getChatRuntimeConnectionBannerMobileRenderState,
+  getChatRuntimeCurrentAgentLabel,
+  getChatRuntimeDelegationConversationPreviewMoreActionState,
+  getChatRuntimeDebugState,
+  getChatRuntimeDelegationCardMobileColors,
+  getChatRuntimeDelegationCardMobileState,
+  getChatRuntimeDelegationToolPreviewMoreActionState,
+  getChatRuntimeDelegationStatusMobileColors,
+  getChatRuntimeHandsFreeMobileRenderState,
+  getChatRuntimeHeaderMobileSurfaceState,
+  getChatRuntimeInlineActivityMobileState,
+  getChatRuntimeKillSwitchMobileAlertState,
+  getChatRuntimeKillSwitchMobileRenderState,
+  getChatRuntimeLatestStepSummary,
+  getChatRuntimeLoadingStateMobileState,
+  getChatRuntimeMessageHistoryBannerMobileRenderState,
+  getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeMobileActivityAccessibilityState,
+  getChatRuntimeMobileSafeAreaLayoutState,
+  getChatRuntimePinMobileRenderState,
+  getChatRuntimeRetryStatusMobileRenderState,
+  getChatRuntimeScrollToBottomMobileRenderState,
+  getChatRuntimeStepSummaryMobileRenderState,
+  getChatRuntimeStreamingContentMobileRenderState,
+  getChatRuntimeToolApprovalMobileRenderState,
+  getChatRuntimeToolApprovalMobileAlertState,
+  getChatRuntimeTurnDurationHeaderMobileBadgeColors,
+  getChatRuntimeTurnDurationHeaderMobileBadgeState,
+  getChatRuntimeTurnDurationHeaderMobileRenderState,
+  getChatRuntimeTurnDurationMessageMobileRenderState,
+  getChatRuntimeViewportMobileColors,
+  getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
+  getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
+  getChatSessionStatusMobileStyleState,
   getFollowUpInputPresentation,
+  getSessionStatusMobileRenderState,
+  getSessionStatusMobileSurfaceState,
 } from '@dotagents/shared/session-presentation';
 import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
+  getAgentDelegationCardState,
   resolveAgentProgressConversationState,
 } from '@dotagents/shared/agent-progress';
 import {
@@ -96,30 +168,74 @@ import {
   getTextToSpeechVoiceValue,
 } from '@dotagents/shared/text-to-speech-settings';
 import {
+  getToolActivityGroupExpansionInheritanceItems,
+  getToolActivityGroupMobileRenderState,
+  getToolActivityGroupMobileSurfaceColors,
+  getToolActivityGroupMobileSurfaceState,
+  getToolActivityGroupStateKey,
   groupToolActivity,
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
 import {
-  sanitizeMessageMediaContentForPreview,
+  getToolExecutionCompactMobileRenderState,
+  getToolExecutionCompactMobileSurfaceState,
+  getToolExecutionDetailMobileBadgeColors,
+  getToolExecutionDetailMobileCollapseControlRenderState,
+  getToolExecutionDetailMobileColors,
+  getToolExecutionDetailMobileContentColors,
+  getToolExecutionDetailMobileCopyButtonColors,
+  getToolExecutionDetailMobileCopyButtonRenderState,
+  getToolExecutionDetailCopyFailureAlertState,
+  getToolExecutionDetailMobileErrorColors,
+  getToolExecutionDetailMobileEmptyStateRenderState,
+  getToolExecutionDetailMobileExpandControlRenderState,
+  getToolExecutionDetailMobileHeaderRenderState,
+  getToolExecutionDetailMobilePayloadPreviewColors,
+  getToolExecutionDetailMobilePayloadPreviewState,
+  getToolExecutionDetailMobilePendingResultRenderState,
+  getToolExecutionDetailMobileSectionHeaderRenderState,
+  getToolExecutionDetailMobileSurfaceState,
+  getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailResultState,
+  getToolExecutionCallDisplayState,
+  getToolExecutionResultOnlyFallbackRenderState,
+  getToolExecutionSummaryDisplayState,
+  getToolExecutionStatusMobileColor,
+} from '@dotagents/shared/tool-execution-display';
+import {
+  getChatMessageActionCopyState,
+  applyChatDisplayGroupedExpansionInheritance,
+  getChatMessageActionMobileButtonColors,
+  getChatMessageActionMobileButtonState,
+  getChatMessageActionMobileRowState,
+  getChatMessageCopyMobileRenderState,
+  getChatDisplayExpansionState,
+  getChatMessageExpansionMobileRenderState,
+  getChatMessageMobileRenderState,
+  getChatMessageSpeechMobileRenderState,
+  findLastChatMessageConversationContentIndex,
+  isChatMessageLiveStreamingConversationContent,
+  isChatMessageConversationContent,
   sanitizeMessagesForModel,
+  setChatDisplayExpansionState,
+  toggleChatDisplayExpansionState,
 } from '@dotagents/shared/message-display-utils';
 import {
-  buildConversationImageMarkdownMessage,
+  computeTurnDurations,
+  type TurnDurationMessage,
+} from '@dotagents/shared/turn-duration';
+import {
+  buildChatImageAttachmentMessage,
   extractDataImageMarkdownReferences,
-  CHAT_IMAGE_ATTACHMENT_PRESENTATION,
-  formatChatImageAttachmentErrorMessage,
-  formatChatImageAttachmentLimitMessage,
-  formatChatImageBudgetExceededMessage,
-  formatChatImageBudgetReachedMessage,
-  formatChatImageMissingDataMessage,
-  formatChatImageSelectionTooLargeMessage,
-  formatChatImageUnsupportedFormatMessage,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
+  getChatImageAttachmentMobileAlertState,
+  getChatImageAttachmentMobileRenderState,
   inferImageMimeTypeFromSource,
   MAX_CHAT_IMAGE_ATTACHMENTS,
   MAX_CHAT_IMAGE_FILE_BYTES,
   MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+  type ChatImageAttachmentMobileAlertInput,
 } from '@dotagents/shared/conversation-media-assets';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
@@ -129,23 +245,29 @@ import type {
   Skill,
 } from '@dotagents/shared/api-types';
 import {
-  PROMPT_LIBRARY_PRESENTATION,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   formatPromptLibraryDeletePromptConfirmMessage,
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
+  getPromptLibraryCopyState,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
-  getPromptLibraryDeletePromptAccessibilityLabel,
-  getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorModalKeyboardAvoidingBehavior,
+  getPromptLibraryEditorMobileCloseIconState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
+  getPromptLibraryMobileAddShortcutIconState,
+  getPromptLibraryMobileCopyState,
+  getPromptLibraryMobileEmptyLibraryLabel,
+  getPromptLibraryMobileIconColors,
+  getPromptLibraryMobileShortcutActionIconState,
+  getPromptLibraryMobileShortcutSourceIconState,
+  getPromptLibraryMobileSurfaceColors,
+  getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
-  getPromptLibraryShortcutAccessibilityHint,
-  getPromptLibraryShortcutAccessibilityLabel,
   getPromptLibraryTaskContent,
   getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
@@ -155,22 +277,25 @@ import {
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
-import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
-import { MarkdownRenderer } from '../ui/MarkdownRenderer';
-import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
-import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
+import { spacing, radius, Theme } from '../ui/theme';
+import { resolveMobileFontFamily } from '../ui/mobileTypography';
 import {
-  createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
-  createExpandCollapseAccessibilityLabel,
-  createMicControlAccessibilityHint,
-  createMicControlAccessibilityLabel,
   createMinimumTouchTargetStyle,
-  createSwitchAccessibilityLabel,
-  createTextInputAccessibilityLabel,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
 import { formatVoiceDebugEntry } from '@dotagents/shared/voice-debug-log';
+import {
+  formatHandsFreeSleepingDebugMessage,
+  formatHandsFreeRecognizerErrorDebugMessage,
+  getHandsFreeComposerControlState,
+  getHandsFreeComposerCopyState,
+  getHandsFreeComposerPlaceholder,
+  getHandsFreeComposerMobileSurfaceColors,
+  getHandsFreeComposerMobileSurfaceState,
+  getHandsFreeMicButtonLabel,
+  getHandsFreeStatusSubtitle,
+} from '@dotagents/shared/hands-free-controller';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
@@ -185,40 +310,66 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = MAX_CHAT_IMAGE_ATTACHMENTS;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
-const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
-const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
-const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
-const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
+const CHAT_MESSAGE_HISTORY_WINDOW = getChatRuntimeMessageHistoryWindowMobileState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
+const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState();
+const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
+const mobileHeaderTurnDurationBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState();
+const mobileHeaderTurnDurationLiveBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState({
+  isLive: true,
+});
+const mobileRuntimeDebug = getChatRuntimeDebugState();
+const mobileComposerSurface = getChatComposerMobileSurfaceState();
+const mobileComposerWebAccessibility = mobileComposerSurface.webAccessibility;
+const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
+const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState();
+const mobileRuntimeViewport = getChatRuntimeViewportMobileState();
+const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(Platform.OS);
+const mobileRuntimeLoadingState = getChatRuntimeLoadingStateMobileState();
+const mobileRuntimeInlineActivity = getChatRuntimeInlineActivityMobileState();
+const mobileRuntimeActivityAccessibility = getChatRuntimeMobileActivityAccessibilityState();
+const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
+const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
+const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState();
+const handsFreeCopy = getHandsFreeComposerCopyState();
+const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState();
+const mobileToolActivityGroupSurface = getToolActivityGroupMobileSurfaceState();
+const mobileToolExecutionDetailSurface = getToolExecutionDetailMobileSurfaceState();
+const mobileToolExecutionCompactSurface = getToolExecutionCompactMobileSurfaceState();
+const mobileToolExecutionDetailPayloadPreview = getToolExecutionDetailMobilePayloadPreviewState();
+const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState();
+const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
+const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
+const mobileMessageActionCopy = getChatMessageActionCopyState();
+const mobileMessageActionRow = getChatMessageActionMobileRowState();
+const mobileMessageActionButton = getChatMessageActionMobileButtonState();
+const mobileMessageBranchButton = getChatMessageActionMobileButtonState('branch');
+const mobileMessageCopiedButton = getChatMessageActionMobileButtonState('copied');
+const mobileMessageSpeechButton = getChatMessageActionMobileButtonState('speech');
+const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState('speechActive');
+const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState();
+const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState();
+const promptEditorKeyboardAvoidingBehavior = getPromptLibraryEditorModalKeyboardAvoidingBehavior(Platform.OS);
+const promptLibraryCopy = getPromptLibraryCopyState();
+const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
+const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel();
+const promptLibraryEditorCloseIcon = getPromptLibraryEditorMobileCloseIconState();
+const promptLibraryAddShortcutIcon = getPromptLibraryMobileAddShortcutIconState();
+const promptLibraryEditActionIcon = getPromptLibraryMobileShortcutActionIconState('edit');
+const promptLibraryDeleteActionIcon = getPromptLibraryMobileShortcutActionIconState('delete');
+const promptLibraryShortcutSourceIcons = {
+  action: getPromptLibraryMobileShortcutSourceIconState('action'),
+  command: getPromptLibraryMobileShortcutSourceIconState('command'),
+  'saved-prompt': getPromptLibraryMobileShortcutSourceIconState('saved-prompt'),
+  skill: getPromptLibraryMobileShortcutSourceIconState('skill'),
+  task: getPromptLibraryMobileShortcutSourceIconState('task'),
+} as const;
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
 };
 
-const buildMessageWithPendingImages = (text: string, images: PendingImageAttachment[]) => {
-  return buildConversationImageMarkdownMessage(
-    text,
-    images.map((image, index) => ({
-      url: image.dataUrl,
-      altText: image.name,
-      fallbackAltText: `Image ${index + 1}`,
-    })),
-  );
-};
-
-type QuickStartShortcut = {
-  id: string;
-  title: string;
-  content: string;
-  description?: string;
-  source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
-  action?: 'add-prompt';
-  prompt?: PredefinedPromptSummary;
-  task?: Loop;
-};
-
-/** Meta-tools whose results are already shown as visible message content or are purely internal */
-const HIDDEN_META_TOOLS = new Set([RESPOND_TO_USER_TOOL, 'mark_work_complete']);
+type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
 
 const resolveConversationStateFromProgress = (
   update: AgentProgressUpdate,
@@ -243,78 +394,6 @@ const getMessageLogMeta = (content: string) => ({
   inlineImageCount: extractDataImageMarkdownReferences(content).length,
 });
 
-const getCollapsedMessagePreview = (content: string) =>
-  sanitizeMessageMediaContentForPreview(
-    content.replace(/^#{1,6}\s+/gm, ''),
-  );
-
-const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
-  const hasToolMetadata =
-    (message.toolCalls?.length ?? 0) > 0 ||
-    (message.toolResults?.length ?? 0) > 0;
-
-  // Also treat standalone raw tool result messages as tool-only
-  if (looksLikeToolPayloadContent(getRenderableMessageContent(message))) {
-    return true;
-  }
-
-  return hasToolMetadata && getVisibleMessageContent(message).trim().length === 0;
-};
-
-const preserveDisplayContentFromProgress = (
-  finalMessages: ChatMessage[],
-  progressMessages: ChatMessage[]
-): ChatMessage[] => {
-  if (progressMessages.length === 0) return finalMessages;
-
-  return finalMessages.map((message, index) => {
-    if (message.displayContent) return message;
-    const progressMessage = progressMessages[index];
-    if (message.role !== 'assistant' || !progressMessage?.displayContent) {
-      return message;
-    }
-    return { ...message, displayContent: progressMessage.displayContent };
-  });
-};
-
-const applyUserResponseToMessages = (
-  messages: ChatMessage[],
-  userResponse?: string
-): ChatMessage[] => {
-  const trimmedResponse = userResponse?.trim();
-  if (!trimmedResponse) {
-    return messages;
-  }
-
-  const updatedMessages = [...messages];
-  for (let i = updatedMessages.length - 1; i >= 0; i--) {
-    const msg = updatedMessages[i];
-    if (msg.role !== 'assistant') {
-      continue;
-    }
-
-    const hasToolMetadata =
-      (msg.toolCalls && msg.toolCalls.length > 0) ||
-      (msg.toolResults && msg.toolResults.length > 0);
-    const shouldReplaceToolContent =
-      hasToolMetadata && (
-        isToolOnlyMessage(msg) ||
-        looksLikeToolPayloadContent(msg.content) ||
-        !!getRespondToUserContentFromMessage(msg)
-      );
-
-    if (hasToolMetadata && !shouldReplaceToolContent) {
-      continue;
-    }
-
-    updatedMessages[i] = { ...msg, content: trimmedResponse, displayContent: undefined };
-    return updatedMessages;
-  }
-
-  updatedMessages.push({ role: 'assistant', content: trimmedResponse });
-  return updatedMessages;
-};
-
 type RemoteDesktopTtsProvider = 'native' | NonNullable<Settings['ttsProviderId']>;
 
 export default function ChatScreen({ route, navigation }: any) {
@@ -324,16 +403,201 @@ export default function ChatScreen({ route, navigation }: any) {
   const isFocused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const messageThreadBodyStyles = useMemo(
+    () => createChatMessageThreadBodyStyleSlots(styles),
+    [styles],
+  );
+  const messageActionStyles = useMemo(
+    () => createChatMessageActionStyleSlots(styles),
+    [styles],
+  );
+  const chatRuntimeHeaderStyles = useMemo(
+    () => createChatRuntimeHeaderStyleSlots(styles),
+    [styles],
+  );
+  const chatComposerStyles = useMemo(
+    () => createChatComposerStyleSlots(styles),
+    [styles],
+  );
+  const conversationDockStyles = useMemo(
+    () => createChatMessageConversationDockStyleSlots(styles),
+    [styles],
+  );
+  const messageThreadSurfaceStyles = useMemo(
+    () => createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles),
+    [styles],
+  );
+  const chatMessageRuntimeThreadStyles = useMemo(
+    () => createChatMessageRuntimeThreadStyleSlots({
+      threadSurfaceStyles: messageThreadSurfaceStyles,
+      threadBodyStyles: messageThreadBodyStyles,
+    }),
+    [messageThreadSurfaceStyles, messageThreadBodyStyles],
+  );
+  const conversationViewportStyles = useMemo(
+    () => createChatMessageConversationViewportStyleSlots(styles),
+    [styles],
+  );
+  const promptEditorModalStyles = useMemo(
+    () => createChatConversationHomePromptEditorModalStyleSlots(styles),
+    [styles],
+  );
+  const mobileSafeAreaLayout = useMemo(
+    () => getChatRuntimeMobileSafeAreaLayoutState(insets.bottom),
+    [insets.bottom],
+  );
+  const mobileSafeAreaStyles = useMemo(
+    () => createChatRuntimeMobileSafeAreaStyleSlots(mobileSafeAreaLayout),
+    [mobileSafeAreaLayout],
+  );
+  const chatSafeAreaStyles = useMemo(
+    () => createChatRuntimeSafeAreaMergedStyleSlots({
+      chatComposerStyles,
+      conversationDockStyles,
+      conversationViewportStyles,
+      safeAreaStyles: mobileSafeAreaStyles,
+    }),
+    [chatComposerStyles, conversationDockStyles, conversationViewportStyles, mobileSafeAreaStyles],
+  );
+  const chatComposerRuntimeDockStyles = useMemo(
+    () => createChatComposerRuntimeDockStyleSlots({
+      chatComposerStyles,
+      safeAreaStyles: chatSafeAreaStyles,
+    }),
+    [chatComposerStyles, chatSafeAreaStyles],
+  );
+  const chatMessageRuntimeDockStyles = useMemo(
+    () => createChatMessageRuntimeDockStyleSlots({
+      conversationDockStyles,
+      composerStyles: chatComposerRuntimeDockStyles,
+      safeAreaStyles: chatSafeAreaStyles,
+    }),
+    [conversationDockStyles, chatComposerRuntimeDockStyles, chatSafeAreaStyles],
+  );
+  const chatMessageRuntimeViewportStyles = useMemo(
+    () => createChatMessageRuntimeViewportStyleSlots({
+      conversationViewportStyles,
+      safeAreaStyles: chatSafeAreaStyles,
+    }),
+    [conversationViewportStyles, chatSafeAreaStyles],
+  );
+  const chatMessageRuntimeSurfaceStyles = useMemo(
+    () => createChatMessageRuntimeSurfaceStyleSlots({
+      conversationViewportStyles,
+      dockStyles: chatMessageRuntimeDockStyles,
+      viewportStyles: chatMessageRuntimeViewportStyles,
+    }),
+    [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
+  );
+  const delegationConversationPreviewRoleStyles = useMemo(
+    () => createChatRuntimeDelegationConversationPreviewRoleStyleSlots(theme.colors),
+    [theme.colors],
+  );
+  const toolExecutionDetailPendingResultState = useMemo(
+    () => getToolExecutionDetailMobilePendingResultRenderState({ colors: theme.colors }),
+    [theme.colors],
+  );
+  const promptLibraryEditorCloseIconColors = useMemo(
+    () => getPromptLibraryMobileIconColors(promptLibraryEditorCloseIcon, theme.colors),
+    [theme.colors],
+  );
+  const promptLibraryAddShortcutIconColors = useMemo(
+    () => getPromptLibraryMobileIconColors(promptLibraryAddShortcutIcon, theme.colors),
+    [theme.colors],
+  );
+  const promptLibraryEditActionIconColors = useMemo(
+    () => getPromptLibraryMobileIconColors(promptLibraryEditActionIcon, theme.colors),
+    [theme.colors],
+  );
+  const promptLibraryDeleteActionIconColors = useMemo(
+    () => getPromptLibraryMobileIconColors(promptLibraryDeleteActionIcon, theme.colors),
+    [theme.colors],
+  );
+  const promptLibrarySurfaceColors = useMemo(
+    () => getPromptLibraryMobileSurfaceColors(theme.colors),
+    [theme.colors],
+  );
+  const promptLibraryShortcutSourceIconColors = useMemo(
+    () => ({
+      action: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.action, theme.colors),
+      command: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.command, theme.colors),
+      'saved-prompt': getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons['saved-prompt'], theme.colors),
+      skill: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.skill, theme.colors),
+      task: getPromptLibraryMobileIconColors(promptLibraryShortcutSourceIcons.task, theme.colors),
+    }),
+    [theme.colors],
+  );
+  const mobileComposerTextColors = useMemo(
+    () => getChatComposerMobileTextColors(theme.colors),
+    [theme.colors],
+  );
+  const imageAttachmentRenderState = useMemo(
+    () => getChatImageAttachmentMobileRenderState({
+      colors: theme.colors,
+    }),
+    [theme.colors],
+  );
+  const showImageAttachmentAlert = useCallback((input: ChatImageAttachmentMobileAlertInput) => {
+    const alertState = getChatImageAttachmentMobileAlertState(input);
+    Alert.alert(alertState.title, alertState.message);
+  }, []);
+  const mobileHeaderBackRenderState = useMemo(
+    () => getChatRuntimeBackMobileRenderState({ colors: theme.colors }),
+    [theme.colors],
+  );
+  const promptEditorModalSurface = mobilePromptLibrarySurface.editorModal;
+  const promptEditorModalChrome = useMemo(
+    () => createChatConversationHomePromptEditorModalChromeProps({
+      surface: promptEditorModalSurface,
+      colors: promptLibrarySurfaceColors.editorModal,
+      keyboardAvoidingBehavior: promptEditorKeyboardAvoidingBehavior,
+      closeIcon: promptLibraryEditorCloseIcon,
+      closeIconColors: promptLibraryEditorCloseIconColors,
+      closeButtonAccessibilityLabel: promptLibraryCopy.editor.closeAccessibilityLabel,
+      styles: promptEditorModalStyles,
+    }),
+    [
+      promptEditorModalSurface,
+      promptLibrarySurfaceColors,
+      promptLibraryEditorCloseIconColors,
+      promptEditorModalStyles,
+    ],
+  );
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
-  const currentAgentLabel = currentProfile?.name || 'Default Agent';
+  const currentAgentLabel = getChatRuntimeCurrentAgentLabel(currentProfile?.name);
   const currentSession = sessionStore.getCurrentSession();
   const isCurrentSessionPinned = !!currentSession?.isPinned;
+  const mobileHeaderAgentSelectorRenderState = useMemo(
+    () => getChatRuntimeAgentSelectorMobileRenderState({
+      agentLabel: currentAgentLabel,
+      colors: theme.colors,
+    }),
+    [currentAgentLabel, theme.colors],
+  );
+  const headerPinMobileRenderState = useMemo(
+    () => getChatRuntimePinMobileRenderState({
+      isPinned: isCurrentSessionPinned,
+      colors: theme.colors,
+    }),
+    [isCurrentSessionPinned, theme.colors],
+  );
   const handsFree = !!config.handsFree;
+  const headerHandsFreeMobileRenderState = useMemo(
+    () => getChatRuntimeHandsFreeMobileRenderState({
+      isEnabled: handsFree,
+      colors: theme.colors,
+    }),
+    [handsFree, theme.colors],
+  );
+  const mobileHeaderKillSwitchRenderState = useMemo(
+    () => getChatRuntimeKillSwitchMobileRenderState({ colors: theme.colors }),
+    [theme.colors],
+  );
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
       return null;
@@ -351,6 +615,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsRate, setRemoteTtsRate] = useState(1.0);
   const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
   const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const copiedMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
   // any value pulled from the connected desktop's settings.
   const effectiveTtsProvider: RemoteDesktopTtsProvider =
@@ -376,6 +642,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const ttsEnabledSetting = config.ttsEnabled ?? DEFAULT_APP_CONFIG.ttsEnabled ?? true;
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
+  useEffect(() => {
+    return () => {
+      if (copiedMessageTimeoutRef.current) {
+        clearTimeout(copiedMessageTimeoutRef.current);
+      }
+    };
+  }, []);
   const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
   // Track ttsEnabled in a ref so speech callbacks resolved before a mute-toggle
   // (e.g. in-flight send() progress callbacks) still see the latest setting and
@@ -385,23 +658,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
   const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
-
-  const toggleHandsFree = async () => {
-    const next = !handsFreeRef.current;
-	    handsFreeRef.current = next;
-    const nextCfg = { ...config, handsFree: next } as any;
-    setConfig(nextCfg);
-    try { await saveConfig(nextCfg); } catch {}
-    if (!next) {
-	      handsFreeController.reset();
-      void stopRecognitionOnly?.();
-      Speech.stop();
-      stopRemoteTts();
-      setDebugInfo('Handsfree mode turned off.');
-    } else {
-      setDebugInfo('Handsfree mode turned on. Say the wake phrase to begin.');
-    }
-  };
 
   // TTS toggle
   const ttsEnabled = ttsEnabledSetting;
@@ -432,6 +688,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const [responding, setResponding] = useState(false);
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
+  const [latestStepSummary, setLatestStepSummary] = useState<AgentStepSummary | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
 
@@ -471,6 +728,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setConnectionState(null);
       setResponding(false);
       setConversationState(null);
+      setLatestStepSummary(null);
       return;
     }
 
@@ -517,24 +775,24 @@ export default function ChatScreen({ route, navigation }: any) {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
         formatChatRuntimeWebConfirmMessage(
-          CHAT_RUNTIME_PRESENTATION.killSwitch.title,
-          CHAT_RUNTIME_PRESENTATION.killSwitch.message,
+          mobileRuntimeKillSwitchAlerts.confirmation.title,
+          mobileRuntimeKillSwitchAlerts.confirmation.message,
         )
       );
       if (confirmed) {
         try {
           const result = await client.killSwitch();
           if (result.success) {
-            window.alert(result.message || CHAT_RUNTIME_PRESENTATION.killSwitch.successFallback);
+            window.alert(result.message || mobileRuntimeKillSwitchAlerts.success.fallbackMessage);
           } else {
             window.alert(
-              `${CHAT_RUNTIME_PRESENTATION.common.errorTitle}: ${result.error || CHAT_RUNTIME_PRESENTATION.killSwitch.stopFailed}`,
+              `${mobileRuntimeKillSwitchAlerts.failed.title}: ${result.error || mobileRuntimeKillSwitchAlerts.failed.fallbackMessage}`,
             );
           }
         } catch (e: any) {
           console.error('[ChatScreen] Kill switch error:', e);
           window.alert(
-            `${CHAT_RUNTIME_PRESENTATION.common.errorTitle}: ${getChatRuntimeAlertMessage(e, CHAT_RUNTIME_PRESENTATION.killSwitch.connectionFailed)}`,
+            `${mobileRuntimeKillSwitchAlerts.connectionFailed.title}: ${getChatRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage)}`,
           );
         }
       }
@@ -542,32 +800,32 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     Alert.alert(
-      CHAT_RUNTIME_PRESENTATION.killSwitch.title,
-      CHAT_RUNTIME_PRESENTATION.killSwitch.message,
+      mobileRuntimeKillSwitchAlerts.confirmation.title,
+      mobileRuntimeKillSwitchAlerts.confirmation.message,
       [
-        { text: CHAT_RUNTIME_PRESENTATION.common.cancel, style: 'cancel' },
+        { text: mobileRuntimeKillSwitchAlerts.confirmation.cancelLabel, style: 'cancel' },
         {
-          text: CHAT_RUNTIME_PRESENTATION.killSwitch.actionLabel,
+          text: mobileRuntimeKillSwitchAlerts.confirmation.confirmLabel,
           style: 'destructive',
           onPress: async () => {
             try {
               const result = await client.killSwitch();
               if (result.success) {
                 Alert.alert(
-                  CHAT_RUNTIME_PRESENTATION.common.successTitle,
-                  result.message || CHAT_RUNTIME_PRESENTATION.killSwitch.successFallback,
+                  mobileRuntimeKillSwitchAlerts.success.title,
+                  result.message || mobileRuntimeKillSwitchAlerts.success.fallbackMessage,
                 );
               } else {
                 Alert.alert(
-                  CHAT_RUNTIME_PRESENTATION.common.errorTitle,
-                  result.error || CHAT_RUNTIME_PRESENTATION.killSwitch.stopFailed,
+                  mobileRuntimeKillSwitchAlerts.failed.title,
+                  result.error || mobileRuntimeKillSwitchAlerts.failed.fallbackMessage,
                 );
               }
             } catch (e: any) {
               console.error('[ChatScreen] Kill switch error:', e);
               Alert.alert(
-                CHAT_RUNTIME_PRESENTATION.common.errorTitle,
-                getChatRuntimeAlertMessage(e, CHAT_RUNTIME_PRESENTATION.killSwitch.connectionFailed),
+                mobileRuntimeKillSwitchAlerts.connectionFailed.title,
+                getChatRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage),
               );
             }
           },
@@ -604,9 +862,9 @@ export default function ChatScreen({ route, navigation }: any) {
     setRunningPromptTaskId(task.id);
     try {
       await settingsClient.runLoop(task.id);
-      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.taskStartedTitle, formatPromptLibraryTaskStartedMessage(task.name));
+      Alert.alert(promptLibraryCopy.feedback.taskStartedTitle, formatPromptLibraryTaskStartedMessage(task.name));
     } catch (error: any) {
-      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.errorTitle, error?.message || PROMPT_LIBRARY_PRESENTATION.feedback.taskRunFailed);
+      Alert.alert(promptLibraryCopy.feedback.errorTitle, error?.message || promptLibraryCopy.feedback.taskRunFailed);
     } finally {
       setRunningPromptTaskId(null);
     }
@@ -652,12 +910,47 @@ export default function ChatScreen({ route, navigation }: any) {
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
 
+  const handleCopyMessage = useCallback(async (messageIndex: number, content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await Clipboard.setStringAsync(copyContent);
+      setCopiedMessageIndex(messageIndex);
+      if (copiedMessageTimeoutRef.current) {
+        clearTimeout(copiedMessageTimeoutRef.current);
+      }
+      copiedMessageTimeoutRef.current = setTimeout(() => {
+        setCopiedMessageIndex((current) => (current === messageIndex ? null : current));
+      }, mobileMessageActionCopy.copy.feedbackResetDelayMs);
+    } catch (error) {
+      Alert.alert(
+        mobileMessageActionCopy.copy.failedTitle,
+        getChatRuntimeAlertMessage(error, mobileMessageActionCopy.copy.failedMessage),
+      );
+    }
+  }, []);
+
+  const handleCopyToolPayload = useCallback(async (content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await Clipboard.setStringAsync(copyContent);
+    } catch (error) {
+      Alert.alert(
+        toolExecutionDetailCopyFailureAlert.title,
+        getChatRuntimeAlertMessage(error, toolExecutionDetailCopyFailureAlert.fallbackMessage),
+      );
+    }
+  }, []);
+
   const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
     const serverConversationId = currentSession?.serverConversationId;
     if (!settingsClient || !serverConversationId) {
       Alert.alert(
-        CHAT_RUNTIME_PRESENTATION.branch.unavailableTitle,
-        CHAT_RUNTIME_PRESENTATION.branch.unavailableMessage,
+        mobileRuntimeBranchAlerts.unavailable.title,
+        mobileRuntimeBranchAlerts.unavailable.message,
       );
       return;
     }
@@ -674,13 +967,13 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       Alert.alert(
-        CHAT_RUNTIME_PRESENTATION.branch.createdTitle,
-        CHAT_RUNTIME_PRESENTATION.branch.createdMessage,
+        mobileRuntimeBranchAlerts.created.title,
+        mobileRuntimeBranchAlerts.created.message,
       );
     } catch (error: any) {
       Alert.alert(
-        CHAT_RUNTIME_PRESENTATION.branch.failedTitle,
-        getChatRuntimeAlertMessage(error, CHAT_RUNTIME_PRESENTATION.branch.failedMessage),
+        mobileRuntimeBranchAlerts.failed.title,
+        getChatRuntimeAlertMessage(error, mobileRuntimeBranchAlerts.failed.fallbackMessage),
       );
     } finally {
       setBranchingMessageIndex(null);
@@ -688,179 +981,62 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const headerConversationState = conversationState ?? (responding ? 'running' : null);
-  const headerConversationLabel = headerConversationState
-    ? getAgentConversationStateLabel(headerConversationState)
-    : null;
-  const headerConversationChipStyle = useMemo(() => {
-    if (!headerConversationState) return null;
-    if (headerConversationState === 'complete') {
-      return {
-        backgroundColor: hexToRgba(theme.colors.success, 0.12),
-        borderColor: hexToRgba(theme.colors.success, 0.35),
-        textColor: theme.colors.success,
-      };
-    }
-    if (headerConversationState === 'needs_input') {
-      return {
-        backgroundColor: 'rgba(245, 158, 11, 0.12)',
-        borderColor: 'rgba(245, 158, 11, 0.35)',
-        textColor: '#d97706',
-      };
-    }
-    if (headerConversationState === 'blocked') {
-      return {
-        backgroundColor: hexToRgba(theme.colors.danger, 0.12),
-        borderColor: hexToRgba(theme.colors.danger, 0.35),
-        textColor: theme.colors.danger,
-      };
-    }
-    return {
-      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
-      borderColor: hexToRgba(theme.colors.primary, 0.35),
-      textColor: theme.colors.primary,
-    };
-  }, [headerConversationState, theme.colors.danger, theme.colors.primary, theme.colors.success]);
-
-  useLayoutEffect(() => {
-    navigation?.setOptions?.({
-      headerTitle: () => (
-        <TouchableOpacity
-          style={{ alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 44 }}
-          onPress={() => setAgentSelectorVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-          accessibilityHint="Opens agent selection menu"
-        >
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: theme.colors.primary + '33',
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 10,
-          }}>
-            <Text style={{
-              fontSize: 11,
-              color: theme.colors.primary,
-              fontWeight: '500',
-            }}>
-              {currentAgentLabel} ▼
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ),
-      headerLeft: () => (
-        <View style={styles.headerActionsRow}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Sessions')}
-            accessibilityRole="button"
-            accessibilityLabel="Back to chat history"
-            accessibilityHint="Returns to the chat history list"
-            style={styles.headerEdgeActionButton}
-          >
-            <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleToggleCurrentSessionPinned}
-            accessibilityRole="button"
-            accessibilityLabel={isCurrentSessionPinned ? 'Unpin current chat' : 'Pin current chat'}
-            accessibilityHint={isCurrentSessionPinned
-              ? 'Removes this chat from the pinned chats list.'
-              : 'Keeps this chat at the top of the chats list.'}
-            style={[styles.headerPinButton, isCurrentSessionPinned && styles.headerPinButtonActive]}
-          >
-            <Text style={[styles.headerPinButtonText, isCurrentSessionPinned && styles.headerPinButtonTextActive]}>
-              {isCurrentSessionPinned ? 'Pinned' : 'Pin'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ),
-      headerRight: () => (
-        <View style={styles.headerActionsRow}>
-          {headerConversationLabel && headerConversationChipStyle && (
-            <View
-              style={[
-                styles.headerConversationChip,
-                {
-                  backgroundColor: headerConversationChipStyle.backgroundColor,
-                  borderColor: headerConversationChipStyle.borderColor,
-                },
-              ]}
-            >
-              {headerConversationState === 'running' && (
-                <Image
-                  source={isDark ? darkSpinner : lightSpinner}
-                  style={{ width: 14, height: 14 }}
-                  resizeMode="contain"
-                />
-              )}
-              <Text
-                style={[
-                  styles.headerConversationChipText,
-                  { color: headerConversationChipStyle.textColor },
-                ]}
-              >
-                {headerConversationLabel}
-              </Text>
-            </View>
-          )}
-          {headerConversationState === 'running' && (
-            <TouchableOpacity
-              onPress={handleKillSwitch}
-              accessibilityRole="button"
-              accessibilityLabel="Emergency stop - kill all agent sessions"
-              accessibilityHint="Shows a confirmation before stopping all running sessions"
-              style={styles.headerActionButton}
-            >
-              <View style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: theme.colors.danger,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>⏹</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={toggleHandsFree}
-            accessibilityRole="switch"
-            accessibilityLabel={createSwitchAccessibilityLabel('Hands-free voice mode')}
-            accessibilityHint="When enabled, speech is sent automatically after each phrase"
-            accessibilityState={{ checked: handsFree }}
-            aria-checked={handsFree}
-            style={styles.headerActionButton}
-          >
-            <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 18 }}>🎙️</Text>
-              {!handsFree && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    width: 20,
-                    height: 2,
-                    backgroundColor: theme.colors.danger,
-                    transform: [{ rotate: '45deg' }],
-                    borderRadius: 1,
-                  }}
-                />
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
-      ),
-    });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, theme, isDark, sessionStore, currentProfile, styles]);
-
-
+  const headerConversationStatus = useMemo(
+    () => getSessionStatusMobileRenderState({
+      session: headerConversationState ? { conversationState: headerConversationState } : null,
+      colors: theme.colors,
+    }),
+    [headerConversationState, theme.colors],
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const hasLiveAgentTurn =
+    responding ||
+    conversationState === 'running' ||
+    conversationState === 'needs_input';
+  const [turnNow, setTurnNow] = useState(() => Date.now());
+  useEffect(() => {
+    setTurnNow(Date.now());
+    if (!hasLiveAgentTurn) return undefined;
+    const id = setInterval(() => setTurnNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasLiveAgentTurn]);
+  const turnDurationMessages = useMemo<TurnDurationMessage[]>(
+    () => messages.reduce<TurnDurationMessage[]>((entries, message) => {
+      if (typeof message.timestamp !== 'number' || !Number.isFinite(message.timestamp)) {
+        return entries;
+      }
+
+      entries.push({
+        role: message.role,
+        timestamp: message.timestamp,
+        isThinking:
+          message.role === 'assistant' &&
+          (!message.content || message.content.length === 0) &&
+          !message.toolCalls?.length &&
+          !message.toolResults?.length,
+      });
+      return entries;
+    }, []),
+    [messages],
+  );
+  const turnDurations = useMemo(
+    () => computeTurnDurations(turnDurationMessages, !hasLiveAgentTurn, turnNow),
+    [hasLiveAgentTurn, turnDurationMessages, turnNow],
+  );
+  const headerTotalTurnDurationRenderState = useMemo(
+    () => getChatRuntimeTurnDurationHeaderMobileRenderState({
+      durationMs: turnDurations.totalMs,
+      isLive: turnDurations.hasLive,
+      colors: theme.colors,
+    }),
+    [theme.colors, turnDurations.hasLive, turnDurations.totalMs],
+  );
+
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!settingsClient) {
       Alert.alert(
-        CHAT_RUNTIME_PRESENTATION.approval.connectionRequiredTitle,
-        CHAT_RUNTIME_PRESENTATION.approval.connectionRequiredMessage,
+        mobileRuntimeToolApprovalAlerts.connectionRequired.title,
+        mobileRuntimeToolApprovalAlerts.connectionRequired.message,
       );
       return;
     }
@@ -871,20 +1047,22 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
       if (!response.success) {
         Alert.alert(
-          CHAT_RUNTIME_PRESENTATION.approval.unavailableTitle,
-          CHAT_RUNTIME_PRESENTATION.approval.unavailableMessage,
+          mobileRuntimeToolApprovalAlerts.unavailable.title,
+          mobileRuntimeToolApprovalAlerts.unavailable.message,
         );
       }
     } catch (error: any) {
       Alert.alert(
-        CHAT_RUNTIME_PRESENTATION.approval.failedTitle,
-        getChatRuntimeAlertMessage(error, CHAT_RUNTIME_PRESENTATION.approval.responseFailedMessage),
+        mobileRuntimeToolApprovalAlerts.failed.title,
+        getChatRuntimeAlertMessage(error, mobileRuntimeToolApprovalAlerts.failed.fallbackMessage),
       );
     } finally {
       setPendingToolApprovalResponseId(null);
     }
   }, [settingsClient]);
-  const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_CHAT_MESSAGES);
+  const [visibleMessageCount, setVisibleMessageCount] = useState<number>(
+    CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount,
+  );
   // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
   const messagesRef = useRef<ChatMessage[]>(messages);
   // Track progress messages so we can merge them with final conversationHistory
@@ -903,7 +1081,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
 	  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
-	  const inputRef = useRef<TextInput>(null);
+	  const inputRef = useRef<ChatComposerTextEntryRef>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
   // Track which individual tool calls are fully expanded to show all input/output details
@@ -912,9 +1090,16 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which tool-activity groups are expanded (keyed by startIndex so the
   // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [expandedToolApprovals, setExpandedToolApprovals] = useState<Record<string, boolean>>({});
+  const [expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews] = useState<Record<string, boolean>>({});
+  const [expandedDelegationToolPreviews, setExpandedDelegationToolPreviews] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const [willCancel, setWillCancel] = useState(false);
+  const mobileComposerControls = useMemo(
+    () => getChatComposerMobileControlState(),
+    [],
+  );
 
 	  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
 	  useEffect(() => {
@@ -943,10 +1128,10 @@ export default function ChatScreen({ route, navigation }: any) {
 		stopRecognitionOnly,
 		handlePushToTalkPressIn,
 		handlePushToTalkPressOut,
-	  } = useSpeechRecognizer({
-		handsFree,
-			handsFreeDebounceMs: handsFreeMessageDebounceMs,
-		willCancel,
+		  } = useSpeechRecognizer({
+			handsFree,
+				handsFreeDebounceMs: handsFreeMessageDebounceMs,
+			willCancel,
 		audioInputDeviceId: config.audioInputDeviceId,
 		onVoiceFinalized: ({ text, mode }) => {
 			const finalText = text.trim();
@@ -954,7 +1139,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 			if (mode === 'edit') {
 				setInput((current) => mergeVoiceText(current, finalText));
-				setDebugInfo('Voice transcript added to the composer.');
+				setDebugInfo(handsFreeCopy.debug.transcriptAdded);
 				setTimeout(() => inputRef.current?.focus(), 0);
 				return;
 			}
@@ -973,17 +1158,70 @@ export default function ChatScreen({ route, navigation }: any) {
 		},
 		onRecognizerError: (message) => {
 			handsFreeController.onRecognizerError(message);
-			setDebugInfo(`Voice error: ${message}`);
+			setDebugInfo(formatHandsFreeRecognizerErrorDebugMessage(message));
 		},
 		onPermissionDenied: () => {
-			setDebugInfo('Speech recognition permission denied.');
+			setDebugInfo(handsFreeCopy.debug.permissionDenied);
 		},
-		log: voiceLog,
-	  });
+			log: voiceLog,
+		  });
 
-	  useEffect(() => {
-		const subscription = AppState.addEventListener('change', (nextState) => {
-			setAppState(nextState);
+  const toggleHandsFree = useCallback(async () => {
+    const next = !handsFreeRef.current;
+    handsFreeRef.current = next;
+    const nextCfg = { ...config, handsFree: next } as any;
+    setConfig(nextCfg);
+    try { await saveConfig(nextCfg); } catch {}
+    if (!next) {
+      handsFreeController.reset();
+      void stopRecognitionOnly?.();
+      Speech.stop();
+      stopRemoteTts();
+      setDebugInfo(handsFreeCopy.debug.disabled);
+    } else {
+      setDebugInfo(handsFreeCopy.debug.enabled);
+    }
+  }, [config, handsFreeController, setConfig, stopRecognitionOnly]);
+
+  useLayoutEffect(() => {
+    navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
+      agentSelector: {
+        renderState: mobileHeaderAgentSelectorRenderState,
+        onPress: () => setAgentSelectorVisible(true),
+        labelNumberOfLines: mobileHeaderSurface.agentSelectorText.numberOfLines,
+      },
+      backButton: {
+        renderState: mobileHeaderBackRenderState,
+        onPress: () => navigation.navigate('Sessions'),
+      },
+      pinButton: {
+        renderState: headerPinMobileRenderState,
+        onPress: handleToggleCurrentSessionPinned,
+        isActive: headerPinMobileRenderState.isPinned,
+      },
+      conversationStatus: {
+        renderState: headerConversationStatus,
+        spinnerSource: isDark ? darkSpinner : lightSpinner,
+      },
+      turnDuration: {
+        renderState: headerTotalTurnDurationRenderState,
+      },
+      killSwitchButton: {
+        shouldRender: headerConversationState === 'running',
+        renderState: mobileHeaderKillSwitchRenderState,
+        onPress: handleKillSwitch,
+      },
+      handsFreeButton: {
+        renderState: headerHandsFreeMobileRenderState,
+        onPress: toggleHandsFree,
+      },
+      styles: chatRuntimeHeaderStyles,
+    }));
+  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, headerConversationState, headerConversationStatus, headerHandsFreeMobileRenderState, headerPinMobileRenderState, headerTotalTurnDurationRenderState, mobileHeaderAgentSelectorRenderState, mobileHeaderBackRenderState, mobileHeaderKillSwitchRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);
+
+		  useEffect(() => {
+			const subscription = AppState.addEventListener('change', (nextState) => {
+				setAppState(nextState);
 		});
 		return () => subscription.remove();
 	  }, []);
@@ -1312,8 +1550,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	  ]);
 
   // Auto-scroll state and ref for mobile chat
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ChatMessageScrollViewportRef>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const scrollToBottomRenderState = useMemo(
+    () => getChatRuntimeScrollToBottomMobileRenderState({
+      isVisible: !shouldAutoScroll,
+      colors: theme.colors,
+    }),
+    [shouldAutoScroll, theme.colors],
+  );
   // Track scroll timeout for debouncing rapid message updates
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref to track current auto-scroll state for use in timeout callbacks
@@ -1361,15 +1606,17 @@ export default function ChatScreen({ route, navigation }: any) {
     dragEndTimeoutRef.current = setTimeout(() => {
       isUserDraggingRef.current = false;
       dragEndTimeoutRef.current = null;
-    }, 150);
+    }, CHAT_MESSAGE_HISTORY_WINDOW.dragEndDebounceMs);
   }, []);
 
   // Handle scroll events to detect when user scrolls away from bottom
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleScroll = useCallback((event: ChatMessageScrollEvent) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    // Consider "at bottom" if within 50 pixels of the bottom
-    const isAtBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
-    const isNearTop = contentOffset.y <= 120;
+    // Keep auto-scroll behavior aligned with the shared chat history window.
+    const isAtBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - CHAT_MESSAGE_HISTORY_WINDOW.bottomResumeThresholdPx;
+    const isNearTop = contentOffset.y <= CHAT_MESSAGE_HISTORY_WINDOW.topLoadThresholdPx;
 
     if (isAtBottom && !shouldAutoScroll) {
       // User scrolled back to bottom, resume auto-scroll
@@ -1379,18 +1626,20 @@ export default function ChatScreen({ route, navigation }: any) {
       setShouldAutoScroll(false);
     }
     if (isNearTop && visibleMessageCount < messages.length) {
-      setVisibleMessageCount((current) => Math.min(messages.length, current + VISIBLE_CHAT_MESSAGES_INCREMENT));
+      setVisibleMessageCount((current) =>
+        Math.min(messages.length, current + CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement),
+      );
     }
   }, [messages.length, shouldAutoScroll, visibleMessageCount]);
 
   useEffect(() => {
-    setVisibleMessageCount(INITIAL_VISIBLE_CHAT_MESSAGES);
+    setVisibleMessageCount(CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount);
   }, [sessionStore.currentSessionId]);
 
   useEffect(() => {
     setVisibleMessageCount((current) => {
-      if (messages.length === 0) return INITIAL_VISIBLE_CHAT_MESSAGES;
-      const next = Math.max(INITIAL_VISIBLE_CHAT_MESSAGES, current);
+      if (messages.length === 0) return CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount;
+      const next = Math.max(CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount, current);
       return Math.min(messages.length, next);
     });
   }, [messages.length]);
@@ -1495,10 +1744,10 @@ export default function ChatScreen({ route, navigation }: any) {
       setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.successTitle, getPromptLibrarySaveSuccessMessage(Boolean(editingPrompt)));
+      Alert.alert(promptLibraryCopy.feedback.successTitle, getPromptLibrarySaveSuccessMessage(Boolean(editingPrompt)));
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
-      Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.errorTitle, error.message || PROMPT_LIBRARY_PRESENTATION.feedback.promptSaveFailed);
+      Alert.alert(promptLibraryCopy.feedback.errorTitle, error.message || promptLibraryCopy.feedback.promptSaveFailed);
     } finally {
       setIsSavingPrompt(false);
     }
@@ -1515,7 +1764,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {
         console.error('[ChatScreen] Error deleting prompt:', error);
-        Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.errorTitle, error.message || PROMPT_LIBRARY_PRESENTATION.feedback.promptDeleteFailed);
+        Alert.alert(promptLibraryCopy.feedback.errorTitle, error.message || promptLibraryCopy.feedback.promptDeleteFailed);
       } finally {
         setIsSavingPrompt(false);
       }
@@ -1529,9 +1778,9 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    Alert.alert(PROMPT_LIBRARY_PRESENTATION.feedback.deletePromptTitle, formatPromptLibraryDeletePromptConfirmMessage(prompt.name), [
-      { text: PROMPT_LIBRARY_PRESENTATION.actions.cancel, style: 'cancel' },
-      { text: PROMPT_LIBRARY_PRESENTATION.actions.delete, style: 'destructive', onPress: () => { void deletePrompt(); } },
+    Alert.alert(promptLibraryCopy.feedback.deletePromptTitle, formatPromptLibraryDeletePromptConfirmMessage(prompt.name), [
+      { text: promptLibraryCopy.actions.cancel, style: 'cancel' },
+      { text: promptLibraryCopy.actions.delete, style: 'destructive', onPress: () => { void deletePrompt(); } },
     ]);
   }, [predefinedPrompts, settingsClient]);
 
@@ -1576,6 +1825,11 @@ export default function ChatScreen({ route, navigation }: any) {
       setExpandedMessages({});
       setExpandedToolCalls({});
       setExpandedGroups({});
+      setExpandedToolApprovals({});
+      setExpandedDelegationConversationPreviews({});
+      setExpandedDelegationToolPreviews({});
+      setCopiedMessageIndex(null);
+      setLatestStepSummary(null);
       // Clear respond_to_user history for the new session
 	      replaceResponseHistory([]);
       playedResponseEventIdsRef.current = new Set();
@@ -1759,25 +2013,35 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
 
   const toggleMessageExpansion = useCallback((index: number) => {
-    setExpandedMessages(prev => ({ ...prev, [index]: !prev[index] }));
+    setExpandedMessages(prev => toggleChatDisplayExpansionState(prev, index));
   }, []);
 
   // Toggle expansion of individual tool call details (input params and results)
   const toggleToolCallExpansion = useCallback((messageId: string, toolCallIndex: number) => {
     const key = `${messageId}-${toolCallIndex}`;
-    setExpandedToolCalls(prev => ({ ...prev, [key]: !prev[key] }));
+    setExpandedToolCalls(prev => toggleChatDisplayExpansionState(prev, key));
   }, []);
 
   // Compute tool-activity groups for consecutive connected tool-call messages
   const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
 
-  const getToolActivityGroupKey = useCallback((group: ToolActivityGroup) => `${group.startIndex}`, []);
-
   // Toggle expansion of a tool-activity group using a stable key for the run.
   const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
-    const key = getToolActivityGroupKey(group);
-    setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  }, [getToolActivityGroupKey]);
+    const key = getToolActivityGroupStateKey(group);
+    setExpandedGroups(prev => toggleChatDisplayExpansionState(prev, key));
+  }, []);
+
+  useEffect(() => {
+    setExpandedGroups(prev => applyChatDisplayGroupedExpansionInheritance({
+      groupState: prev,
+      inheritedState: expandedMessages,
+      groups: getToolActivityGroupExpansionInheritanceItems(toolActivityGroups.groups),
+    }));
+  }, [expandedMessages, toolActivityGroups.groups]);
+
+  const toggleToolApprovalArguments = useCallback((approvalId: string) => {
+    setExpandedToolApprovals(prev => toggleChatDisplayExpansionState(prev, approvalId));
+  }, []);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
   // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
@@ -1786,42 +2050,9 @@ export default function ChatScreen({ route, navigation }: any) {
   // - Tool-only messages stay collapsed during streaming to avoid showing raw payload text
   // - Users can still manually expand any collapsed message
   useEffect(() => {
-    const lastAssistantIndex = messages.reduce((lastIdx, m, i) =>
-      m.role === 'assistant' ? i : lastIdx, -1);
-
-    if (lastAssistantIndex >= 0) {
-      setExpandedMessages(prev => {
-        const updated = { ...prev };
-        const lastMsg = messages[lastAssistantIndex];
-
-        // Collapse tool-only assistant messages by default when they have no visible user-facing content
-        messages.forEach((m, i) => {
-          if (m.role === 'assistant' && shouldTreatMessageAsToolOnly(m)) {
-            // Only set to false if not explicitly toggled by user
-            // (We check if the index exists in prev - if so, preserve user choice)
-            if (!(i in prev)) {
-              updated[i] = false;
-            }
-          }
-        });
-
-        // Expand final assistant message ONLY if:
-        // 1. Agent is not currently streaming/responding
-        // 2. The message is NOT a tool-only message (has real content for user)
-        const isComplete = !responding;
-        const isFinalToolOnly = shouldTreatMessageAsToolOnly(lastMsg);
-
-        if (isComplete && !isFinalToolOnly) {
-          // Expand final message only if it has user-facing content
-          updated[lastAssistantIndex] = true;
-        } else if (!(lastAssistantIndex in prev)) {
-          // During streaming or for tool-only messages, collapse by default
-          updated[lastAssistantIndex] = false;
-        }
-
-        return updated;
-      });
-    }
+    setExpandedMessages(prev => applyChatMessageAutoExpansionState(prev, messages, {
+      isResponding: responding,
+    }));
   }, [messages, responding]);
 
   const convoRef = useRef<string | undefined>(undefined);
@@ -1861,13 +2092,14 @@ export default function ChatScreen({ route, navigation }: any) {
       const hasCurrentStateFeedback =
         hasCurrentAssistantFeedback ||
         !!update.pendingToolApproval ||
+        !!update.retryInfo?.isRetrying ||
         delegationMessages.length > 0 ||
         !!update.streamingContent?.text;
 
       if (hasCurrentAssistantFeedback) {
         messages.push({
           role: 'assistant',
-          content: thinkingContent || (hasCurrentToolActivity ? 'Executing tools...' : ''),
+          content: formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasCurrentToolActivity),
           toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
         });
@@ -1878,9 +2110,7 @@ export default function ChatScreen({ route, navigation }: any) {
       ) {
         messages.push({
           role: 'assistant',
-          content: activeStep?.type === 'tool_call'
-            ? activeStep.title || 'Running tool...'
-            : activeStep?.description || 'Thinking...',
+          content: formatChatRuntimeActivityContent(activeStep),
         });
       }
     }
@@ -1938,17 +2168,25 @@ export default function ChatScreen({ route, navigation }: any) {
             displayContent: historyMsg.displayContent,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
+            branchMessageIndex: historyMsg.branchMessageIndex,
           });
         }
       }
     }
 
+    if (update.retryInfo?.isRetrying) {
+      messages.push({
+        role: 'assistant',
+        content: update.retryInfo.reason,
+        variant: 'retry',
+        retryInfo: update.retryInfo,
+      });
+    }
+
     if (update.streamingContent?.text) {
       if (
         messages.length > 0
-        && messages[messages.length - 1].role === 'assistant'
-        && messages[messages.length - 1].variant !== 'delegation'
-        && messages[messages.length - 1].variant !== 'approval'
+        && isChatMessageConversationContent(messages[messages.length - 1])
       ) {
         messages[messages.length - 1].content = update.streamingContent.text;
       } else {
@@ -1962,13 +2200,13 @@ export default function ChatScreen({ route, navigation }: any) {
     if (update.pendingToolApproval) {
       messages.push({
         role: 'assistant',
-        content: `Tool approval required: ${update.pendingToolApproval.toolName}`,
+        content: formatChatRuntimeToolApprovalRequiredContent(update.pendingToolApproval.toolName),
         variant: 'approval',
         toolApproval: update.pendingToolApproval,
       });
     }
 
-    const messagesWithUserResponse = applyUserResponseToMessages(
+    const messagesWithUserResponse = applyUserResponseToChatMessages(
       messages,
       update.userResponse || update.spokenContent,
     );
@@ -1980,14 +2218,15 @@ export default function ChatScreen({ route, navigation }: any) {
 
   // Get queued messages for the current conversation
   const queuedMessages = messageQueue.getQueue(currentConversationId);
-  const nextQueuedMessage = !responding ? messageQueue.peek(currentConversationId) : null;
+  const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
+  const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
 
   const handlePickImages = useCallback(async () => {
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
-      Alert.alert(
-        CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.limitReached,
-        formatChatImageAttachmentLimitMessage(MAX_PENDING_IMAGES),
-      );
+      showImageAttachmentAlert({
+        reason: 'limitReached',
+        maxImages: MAX_PENDING_IMAGES,
+      });
       return;
     }
 
@@ -1996,10 +2235,10 @@ export default function ChatScreen({ route, navigation }: any) {
       0
     );
     if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
-      Alert.alert(
-        CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.budgetReached,
-        formatChatImageBudgetReachedMessage(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES),
-      );
+      showImageAttachmentAlert({
+        reason: 'budgetReached',
+        maxBytes: MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES,
+      });
       return;
     }
 
@@ -2067,39 +2306,41 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (missingBase64Names.length > 0) {
-        Alert.alert(
-          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.skipped,
-          formatChatImageMissingDataMessage(missingBase64Names),
-        );
+        showImageAttachmentAlert({
+          reason: 'missingData',
+          names: missingBase64Names,
+        });
       }
 
       if (oversizedImageNames.length > 0) {
-        Alert.alert(
-          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.tooLarge,
-          formatChatImageSelectionTooLargeMessage(oversizedImageNames, MAX_PENDING_IMAGE_FILE_SIZE_BYTES),
-        );
+        showImageAttachmentAlert({
+          reason: 'selectionTooLarge',
+          names: oversizedImageNames,
+          maxBytes: MAX_PENDING_IMAGE_FILE_SIZE_BYTES,
+        });
       }
 
       if (unknownMimeNames.length > 0) {
-        Alert.alert(
-          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.unsupportedFormat,
-          formatChatImageUnsupportedFormatMessage(unknownMimeNames),
-        );
+        showImageAttachmentAlert({
+          reason: 'unsupportedFormat',
+          names: unknownMimeNames,
+        });
       }
 
       if (budgetExceededNames.length > 0) {
-        Alert.alert(
-          CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.budgetReached,
-          formatChatImageBudgetExceededMessage(budgetExceededNames, MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES),
-        );
+        showImageAttachmentAlert({
+          reason: 'budgetExceeded',
+          names: budgetExceededNames,
+          maxBytes: MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES,
+        });
       }
     } catch (error: any) {
-      Alert.alert(
-        CHAT_IMAGE_ATTACHMENT_PRESENTATION.titles.pickerError,
-        formatChatImageAttachmentErrorMessage(error, CHAT_IMAGE_ATTACHMENT_PRESENTATION.errors.pickerFailed),
-      );
+      showImageAttachmentAlert({
+        reason: 'pickerError',
+        error,
+      });
     }
-  }, [pendingImages]);
+  }, [pendingImages, showImageAttachmentAlert]);
 
   const removePendingImage = useCallback((attachmentId: string) => {
     setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));
@@ -2125,20 +2366,21 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo('Error: No session available');
+      setDebugInfo(formatChatRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
       return;
     }
 
-    setDebugInfo(`Starting request to ${config.baseUrl}...`);
+    setDebugInfo(formatChatRuntimeStartingRequestDebugMessage(config.baseUrl));
     // Clear any previous failed message when starting a new send
     setLastFailedMessage(null);
 
     const userMsg: ChatMessage = { role: 'user', content: text };
 	    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
 	    const currentMessages = messagesRef.current;
-	    const messageCountBeforeTurn = currentMessages.length;
+    const messageCountBeforeTurn = currentMessages.length;
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
+    setLatestStepSummary(null);
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
     setConversationState('running');
@@ -2194,7 +2436,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
-      setDebugInfo('Request sent, waiting for response...');
+      setDebugInfo(mobileRuntimeDebug.requestSent);
 
       const onProgress = (update: AgentProgressUpdate) => {
         // Guard: skip update if session has changed since request started
@@ -2232,6 +2474,10 @@ export default function ChatScreen({ route, navigation }: any) {
 		            speakAssistantResponse(responseText, 'mid-turn progress');
 	          }
 	        }
+        const nextStepSummary = getChatRuntimeLatestStepSummary(update);
+        if (nextStepSummary) {
+          setLatestStepSummary(nextStepSummary);
+        }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
@@ -2270,7 +2516,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setMessages((m) => {
           const copy = [...m];
           for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
+            if (isChatMessageConversationContent(copy[i])) {
               copy[i] = { ...copy[i], content: streamingText };
               break;
             }
@@ -2295,7 +2541,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
-        setDebugInfo(`Completed!`);
+        setDebugInfo(mobileRuntimeDebug.completed);
       }
 
       // Guard: skip final updates if this request is no longer the latest one for this session
@@ -2378,9 +2624,10 @@ export default function ChatScreen({ route, navigation }: any) {
             displayContent: historyMsg.displayContent,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
+            branchMessageIndex: historyMsg.branchMessageIndex,
           });
         }
-		        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
+		        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
 	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
@@ -2421,13 +2668,13 @@ export default function ChatScreen({ route, navigation }: any) {
               console.log('[ChatScreen] Merging: progress had more messages, preserving intermediate');
               mergedMessages = [...progressMsgs];
               // Replace/update the last message with the final one from history
-              mergedMessages[mergedMessages.length - 1] = preserveDisplayContentFromProgress(
+              mergedMessages[mergedMessages.length - 1] = preserveChatMessageDisplayContentFromProgress(
                 [finalTurnMessages[finalTurnMessages.length - 1]],
                 [mergedMessages[mergedMessages.length - 1]],
               )[0];
             } else {
               // History is authoritative when it has >= messages
-              mergedMessages = preserveDisplayContentFromProgress(finalTurnMessages, progressMsgs);
+              mergedMessages = preserveChatMessageDisplayContentFromProgress(finalTurnMessages, progressMsgs);
             }
             const result = [...beforePlaceholder, ...mergedMessages];
             console.log('[ChatScreen] Final messages count:', result.length);
@@ -2455,7 +2702,7 @@ export default function ChatScreen({ route, navigation }: any) {
           setMessages((m) => {
             const copy = [...m];
             for (let i = copy.length - 1; i >= 0; i--) {
-              if (copy[i].role === 'assistant') {
+              if (isChatMessageConversationContent(copy[i])) {
 	                copy[i] = { ...copy[i], content: finalDisplayText };
                 break;
               }
@@ -2520,7 +2767,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // Check if there's partial content we can show
       const partialContent = client.getPartialContent();
 
-      setDebugInfo(`Error: ${errorMessage}`);
+      setDebugInfo(formatChatRuntimeDebugError(errorMessage));
       // Update the in-flight assistant message instead of appending a new one
       // This avoids duplicating the assistant loading placeholder and ensures
       // the retry pop logic removes the correct items
@@ -2529,7 +2776,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // Find and update the last assistant message instead of appending
         const copy = [...m];
         for (let i = copy.length - 1; i >= 0; i--) {
-          if (copy[i].role === 'assistant') {
+          if (isChatMessageConversationContent(copy[i])) {
             copy[i] = { ...copy[i], content: errorContent };
             break;
           }
@@ -2578,12 +2825,19 @@ export default function ChatScreen({ route, navigation }: any) {
         }, 5000);
 
         // Process next queued message if any
-        if (messageQueueEnabled && (!handsFree || handsFreePhaseRef.current !== 'paused')) {
+        if (
+          messageQueueEnabled &&
+          !messageQueue.isQueuePaused(currentConversationId) &&
+          (!handsFree || handsFreePhaseRef.current !== 'paused')
+        ) {
           const nextMessage = messageQueue.peek(currentConversationId);
           if (nextMessage) {
             console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
             // Use setTimeout to avoid recursive call stack issues
             setTimeout(() => {
+              if (messageQueue.isQueuePaused(currentConversationId)) {
+                return;
+              }
               if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
                 return;
               }
@@ -2606,6 +2860,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
   // Process a queued message (similar to send but handles queue state)
   const processQueuedMessage = async (queuedMsg: { id: string; text: string }) => {
+    if (messageQueue.isQueuePaused(currentConversationId)) {
+      console.log('[ChatScreen] Queue is paused, skipping queued message processing:', queuedMsg.id);
+      return;
+    }
+
     const text = queuedMsg.text;
     if (!text.trim()) {
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
@@ -2618,17 +2877,22 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for processing queued message');
-      messageQueue.markFailed(currentConversationId, queuedMsg.id, 'No session available');
-      setDebugInfo('Error: No session available');
+      messageQueue.markFailed(
+        currentConversationId,
+        queuedMsg.id,
+        mobileRuntimeDebug.noSessionAvailable,
+      );
+      setDebugInfo(formatChatRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
       return;
     }
 
-    setDebugInfo(`Processing queued message...`);
+    setDebugInfo(mobileRuntimeDebug.processingQueuedMessage);
 
     const userMsg: ChatMessage = { role: 'user', content: text };
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
     const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;
+    setLatestStepSummary(null);
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
     setConversationState('running');
@@ -2683,6 +2947,10 @@ export default function ChatScreen({ route, navigation }: any) {
 		            speakAssistantResponse(responseText, 'queued mid-turn progress');
 	          }
 	        }
+        const nextStepSummary = getChatRuntimeLatestStepSummary(update);
+        if (nextStepSummary) {
+          setLatestStepSummary(nextStepSummary);
+        }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
           setMessages((m) => {
@@ -2707,7 +2975,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setMessages((m) => {
           const copy = [...m];
           for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
+            if (isChatMessageConversationContent(copy[i])) {
               copy[i] = { ...copy[i], content: streamingText };
               break;
             }
@@ -2725,12 +2993,20 @@ export default function ChatScreen({ route, navigation }: any) {
       // Early exit guards - finalize queue status before returning to prevent stuck 'processing' items
       if (sessionStore.currentSessionId !== requestSessionId) {
         // Session changed - mark as failed so user can retry in correct session
-        messageQueue.markFailed(currentConversationId, queuedMsg.id, 'Session changed during processing');
+        messageQueue.markFailed(
+          currentConversationId,
+          queuedMsg.id,
+          mobileRuntimeDebug.sessionChangedDuringProcessing,
+        );
         return;
       }
       if (activeRequestIdRef.current !== thisRequestId) {
         // Request superseded - mark as failed so user can retry
-        messageQueue.markFailed(currentConversationId, queuedMsg.id, 'Request superseded');
+        messageQueue.markFailed(
+          currentConversationId,
+          queuedMsg.id,
+          mobileRuntimeDebug.requestSuperseded,
+        );
         return;
       }
       setConversationState(latestConversationState === 'running' ? 'complete' : latestConversationState);
@@ -2769,9 +3045,10 @@ export default function ChatScreen({ route, navigation }: any) {
             displayContent: historyMsg.displayContent,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
+            branchMessageIndex: historyMsg.branchMessageIndex,
           });
         }
-	        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
+	        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
         setMessages((m) => {
           const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
@@ -2781,7 +3058,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setMessages((m) => {
           const copy = [...m];
           for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
+            if (isChatMessageConversationContent(copy[i])) {
               copy[i] = { ...copy[i], content: finalDisplayText };
               break;
             }
@@ -2809,9 +3086,10 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
     } catch (e: any) {
       console.error('[ChatScreen] Queued message error:', e);
-      messageQueue.markFailed(currentConversationId, queuedMsg.id, e.message || 'Unknown error');
+      const queuedErrorMessage = getChatRuntimeAlertMessage(e, mobileRuntimeDebug.unknownError);
+      messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
       setConversationState('blocked');
-      setMessages((m) => [...m, { role: 'assistant', content: `Error: ${e.message}` }]);
+      setMessages((m) => [...m, { role: 'assistant', content: formatChatRuntimeDebugError(queuedErrorMessage) }]);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
@@ -2831,9 +3109,16 @@ export default function ChatScreen({ route, navigation }: any) {
 
         // Process next queued message if any
         const nextMessage = messageQueue.peek(currentConversationId);
-        if (nextMessage && (!handsFree || handsFreePhaseRef.current !== 'paused')) {
+        if (
+          nextMessage &&
+          !messageQueue.isQueuePaused(currentConversationId) &&
+          (!handsFree || handsFreePhaseRef.current !== 'paused')
+        ) {
           console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
           setTimeout(() => {
+            if (messageQueue.isQueuePaused(currentConversationId)) {
+              return;
+            }
             if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
               return;
             }
@@ -2847,6 +3132,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handleProcessNextQueuedMessage = useCallback(() => {
     if (responding) return;
+    if (messageQueue.isQueuePaused(currentConversationId)) return;
 
     const nextMessage = messageQueue.peek(currentConversationId);
     if (!nextMessage) return;
@@ -2855,6 +3141,9 @@ export default function ChatScreen({ route, navigation }: any) {
 
     console.log('[ChatScreen] Processing queue while idle, next message:', nextMessage.id);
     setTimeout(() => {
+      if (messageQueue.isQueuePaused(currentConversationId)) {
+        return;
+      }
       if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
         return;
       }
@@ -2863,21 +3152,40 @@ export default function ChatScreen({ route, navigation }: any) {
     }, 100);
   }, [currentConversationId, handsFree, handsFreeController.state.phase, messageQueue, processQueuedMessage, responding]);
 
+  const handlePauseMessageQueue = useCallback(() => {
+    messageQueue.pauseQueue(currentConversationId);
+  }, [currentConversationId, messageQueue]);
+
+  const handleResumeMessageQueue = useCallback(() => {
+    messageQueue.resumeQueue(currentConversationId);
+    if (!responding) {
+      setTimeout(() => {
+        handleProcessNextQueuedMessage();
+      }, 0);
+    }
+  }, [currentConversationId, handleProcessNextQueuedMessage, messageQueue, responding]);
+
 	// Keep sendRef in sync with the latest send() implementation for speech callbacks.
 	// IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
 	// We intentionally assign during render (not useEffect) so it is available immediately.
 	sendRef.current = send;
 
 	const isWebPlatform = Platform.OS === 'web';
+  const chatComposerRuntimeDockChrome = useMemo(
+    () => createChatComposerRuntimeDockChromeProps({
+      composerSurface: mobileComposerSurface,
+      composerTextColors: mobileComposerTextColors,
+      handsFreeSurface: mobileHandsFreeSurface,
+      webAccessibility: mobileComposerWebAccessibility,
+      isWebPlatform,
+      micWebPressedStyle: composerMicWebPressStyle,
+    }),
+    [isWebPlatform, mobileComposerTextColors],
+  );
 	const composerAccessibilityHint = createChatComposerAccessibilityHint({
 	  handsFree,
 	  listening,
 	  isWeb: isWebPlatform,
-	});
-	const micControlAccessibilityHint = createMicControlAccessibilityHint({
-	  handsFree,
-	  listening,
-	  willCancel,
 	});
 	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
 	  listening,
@@ -2918,16 +3226,16 @@ export default function ChatScreen({ route, navigation }: any) {
         id: `task-${task.id}`,
         title: task.name,
         content: getPromptLibraryTaskContent(task),
-        description: getPromptLibraryTaskDescription(task, PROMPT_LIBRARY_PRESENTATION.mobile.taskDescriptionFallback),
+        description: getPromptLibraryTaskDescription(task, mobilePromptLibraryCopy.taskDescriptionFallback),
         source: 'task' as const,
         task,
       }));
 
       const addPromptItem: QuickStartShortcut[] = settingsClient ? [{
         id: 'action-add-prompt',
-        title: PROMPT_LIBRARY_PRESENTATION.mobile.addPromptTitle,
+        title: mobilePromptLibraryCopy.addPromptTitle,
         content: '',
-        description: PROMPT_LIBRARY_PRESENTATION.mobile.addPromptDescription,
+        description: mobilePromptLibraryCopy.addPromptDescription,
         source: 'action' as const,
         action: 'add-prompt' as const,
       }] : [];
@@ -2944,27 +3252,58 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 	const isComposerSubmitDisabled = !composerHasContent || (!handsFree && composerPresentation.isDisabled);
-	const composerSubmitAccessibilityLabel = handsFree ? 'Send message' : composerPresentation.submitAriaLabel;
-	const composerSubmitAccessibilityHint = handsFree
-	  ? 'Sends your typed text and any attached images to the selected agent.'
-	  : composerPresentation.submitHint;
-	const composerSubmitButtonText = !handsFree && composerPresentation.mode === 'queue' ? 'Queue' : 'Send';
-
+  const mobileComposerQueueRenderState = useMemo(
+    () => getChatComposerQueueMobileRenderState({
+      isDisabled: !composerHasContent,
+      colors: theme.colors,
+    }),
+    [composerHasContent, theme.colors],
+  );
+  const composerSubmitRenderState = useMemo(
+    () => getChatComposerSubmitMobileRenderState({
+      presentation: composerPresentation,
+      isHandsFree: handsFree,
+      isDisabled: isComposerSubmitDisabled,
+      colors: theme.colors,
+    }),
+    [composerPresentation, handsFree, isComposerSubmitDisabled, theme.colors],
+  );
+  const mobileComposerImageAttachmentRenderState = useMemo(
+    () => getChatComposerImageAttachmentMobileRenderState({
+      hasImages: pendingImages.length > 0,
+      colors: theme.colors,
+    }),
+    [pendingImages.length, theme.colors],
+  );
+  const mobileComposerTextToSpeechRenderState = useMemo(
+    () => getChatComposerTextToSpeechMobileRenderState({
+      isEnabled: ttsEnabled,
+      colors: theme.colors,
+    }),
+    [ttsEnabled, theme.colors],
+  );
+  const mobileComposerEditBeforeSendRenderState = useMemo(
+    () => getChatComposerEditBeforeSendMobileRenderState({
+      isEnabled: willCancel,
+      colors: theme.colors,
+    }),
+    [willCancel, theme.colors],
+  );
   const sendComposerInput = useCallback(() => {
-    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+    const composedMessage = buildChatImageAttachmentMessage(input, pendingImages);
     if (!composedMessage.trim()) return;
     void send(composedMessage, { fromComposer: true });
   }, [input, pendingImages, send]);
 
   const queueComposerInput = useCallback(() => {
-    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+    const composedMessage = buildChatImageAttachmentMessage(input, pendingImages);
     if (!composedMessage.trim()) return;
 
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
     setInput('');
     setPendingImages([]);
-    setDebugInfo('Message queued. Use Send Next when you are ready.');
-  }, [currentConversationId, input, messageQueue, pendingImages]);
+    setDebugInfo(mobileComposerQueueRenderState.debugMessage);
+  }, [currentConversationId, input, messageQueue, mobileComposerQueueRenderState.debugMessage, pendingImages]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -2984,7 +3323,7 @@ export default function ChatScreen({ route, navigation }: any) {
   // Handle keyboard shortcuts for text submission
   // Shift+Enter or Ctrl/Cmd+Enter to submit
   const handleInputKeyPress = useCallback(
-    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+    (e: ChatComposerTextEntryKeyPressEvent) => {
       const key = e.nativeEvent.key;
 
       // On web platform, we have access to modifier keys via nativeEvent
@@ -3075,12 +3414,12 @@ export default function ChatScreen({ route, navigation }: any) {
 			if (!listening) {
 				void startRecording();
 			}
-			setDebugInfo('Handsfree awake. Listening for your request.');
+			setDebugInfo(handsFreeCopy.debug.awake);
 		}, [handsFreeController.wakeByUser, listening, startRecording]);
 
 		const sleepHandsFreeByUser = useCallback(() => {
 			handsFreeController.sleepByUser();
-			setDebugInfo(`Handsfree sleeping. Say “${handsFreeWakePhrase}” or tap Wake to begin.`);
+			setDebugInfo(formatHandsFreeSleepingDebugMessage(handsFreeWakePhrase));
 		}, [handsFreeController.sleepByUser, handsFreeWakePhrase]);
 
 		const resumeHandsFreeByUser = useCallback(() => {
@@ -3088,14 +3427,14 @@ export default function ChatScreen({ route, navigation }: any) {
 			if (!listening) {
 				void startRecording();
 			}
-			setDebugInfo('Handsfree resumed.');
+			setDebugInfo(handsFreeCopy.debug.resumed);
 		}, [handsFreeController.resumeByUser, listening, startRecording]);
 
 		const pauseHandsFreeByUser = useCallback(() => {
 			handsFreeController.pauseByUser();
 			Speech.stop();
 			void stopRecognitionOnly();
-			setDebugInfo('Handsfree paused.');
+			setDebugInfo(handsFreeCopy.debug.paused);
 		}, [handsFreeController.pauseByUser, stopRecognitionOnly]);
 
 		const handleHandsFreePrimaryControl = useCallback(() => {
@@ -3110,30 +3449,17 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
-		const handsFreePauseResumeLabel = handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause';
+		const handsFreeControlState = getHandsFreeComposerControlState(handsFreeController.state.phase);
 
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
-		switch (handsFreeController.state.phase) {
-			case 'sleeping':
-					return `Say “${handsFreeWakePhrase}” or tap Wake to wake the assistant.`;
-			case 'waking':
-				return 'Listening for your next request.';
-			case 'listening':
-				return `Say “${handsFreeSleepPhrase}” to return to sleep.`;
-			case 'processing':
-				return 'Working on your request.';
-			case 'speaking':
-				return 'Speech recognition pauses while the assistant speaks.';
-			case 'paused':
-				return 'Tap the mic to resume handsfree listening.';
-			case 'error':
-				return handsFreeController.state.lastError || 'Voice recognition is recovering.';
-			default:
-				return handsFreeForegroundOnly
-					? 'Handsfree works while Chat stays open in the foreground.'
-					: undefined;
-		}
+		return getHandsFreeStatusSubtitle({
+			phase: handsFreeController.state.phase,
+			wakePhrase: handsFreeWakePhrase,
+			sleepPhrase: handsFreeSleepPhrase,
+			lastError: handsFreeController.state.lastError,
+			foregroundOnly: handsFreeForegroundOnly,
+		});
 	}, [
 		handsFree,
 		handsFreeController.state.lastError,
@@ -3143,2085 +3469,2554 @@ export default function ChatScreen({ route, navigation }: any) {
 		handsFreeWakePhrase,
 	]);
 
-	const composerPlaceholder = handsFree
-		? (handsFreeController.state.phase === 'paused'
-			? 'Handsfree paused — tap mic to resume or type a message'
-			: `Say “${handsFreeWakePhrase}” or type a message`)
-		: (listening ? 'Listening…' : composerPresentation.placeholder || composerPresentation.submitTitle);
+	const composerPlaceholder = getHandsFreeComposerPlaceholder({
+		handsFree,
+		phase: handsFreeController.state.phase,
+		wakePhrase: handsFreeWakePhrase,
+		listening,
+		fallback: composerPresentation.placeholder || composerPresentation.submitTitle,
+	});
 
-	const micButtonLabel = handsFree
-			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
-		: (listening ? '...' : 'Hold');
+	const micButtonLabel = getHandsFreeMicButtonLabel({
+		handsFree,
+		phase: handsFreeController.state.phase,
+		listening,
+	});
+  const mobileComposerMicRenderState = useMemo(
+    () => getChatComposerMicMobileRenderState({
+      label: micButtonLabel,
+      handsFree,
+      listening,
+      willCancel,
+      colors: theme.colors,
+    }),
+    [handsFree, listening, micButtonLabel, theme.colors, willCancel],
+  );
+	const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({ handsFree, willCancel });
+  const connectionBannerRenderState = useMemo(
+    () => getChatRuntimeConnectionBannerMobileRenderState({
+      connectionState,
+      lastFailedMessage,
+      isResponding: responding,
+      colors: theme.colors,
+    }),
+    [connectionState, lastFailedMessage, responding, theme.colors],
+  );
 
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
-  const canLoadOlderMessages = firstVisibleMessageIndex > 0;
+  const hiddenMessageCount = firstVisibleMessageIndex;
+  const messageHistoryBannerRenderState = useMemo(
+    () => getChatRuntimeMessageHistoryBannerMobileRenderState({
+      visibleCount: visibleMessages.length,
+      totalCount: messages.length,
+      hiddenCount: hiddenMessageCount,
+      loadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
+      includeScrollHint: true,
+      colors: theme.colors,
+    }),
+    [hiddenMessageCount, messages.length, theme.colors, visibleMessages.length],
+  );
+  const latestStepSummaryRenderState = useMemo(
+    () => getChatRuntimeStepSummaryMobileRenderState({
+      summary: latestStepSummary,
+      colors: theme.colors,
+    }),
+    [latestStepSummary, theme.colors],
+  );
+  const lastAssistantContentMessageIndex = findLastChatMessageConversationContentIndex(
+    messages,
+    (message) => message,
+    (message) => hasVisibleChatMessageContent(message),
+  );
+  const handleLoadEarlierMessages = () => {
+    setVisibleMessageCount((current) =>
+      Math.min(messages.length, current + CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement),
+    );
+  };
+
+  const handleRetryLastFailedMessage = async () => {
+    const messageToRetry = lastFailedMessage;
+    if (!messageToRetry) return;
+    setLastFailedMessage(null);
+
+    // Use the recovery conversation ID if available, so the retry resumes
+    // the same server-created conversation when the first attempt failed mid-stream.
+    const retryClient = getSessionClient();
+    const recoveryConversationId = retryClient?.getRecoveryConversationId();
+
+    // Try to recover conversation state from server first (fixes #815).
+    // If the server already processed the message, sync state instead of re-sending.
+    if (recoveryConversationId && retryClient) {
+      console.log('[ChatScreen] Retry: Checking server conversation state:', recoveryConversationId);
+      try {
+        const serverConversation = await retryClient.getConversation(recoveryConversationId);
+        if (serverConversation && serverConversation.messages.length > 0) {
+          const serverMessages = serverConversation.messages;
+
+          let lastUserMsgIndex = -1;
+          for (let i = serverMessages.length - 1; i >= 0; i--) {
+            if (serverMessages[i].role === 'user') {
+              lastUserMsgIndex = i;
+              break;
+            }
+          }
+
+          let hasAssistantResponse = false;
+          if (lastUserMsgIndex >= 0) {
+            for (let i = lastUserMsgIndex + 1; i < serverMessages.length; i++) {
+              if (serverMessages[i].role === 'assistant' && serverMessages[i].content) {
+                hasAssistantResponse = true;
+                break;
+              }
+            }
+          }
+
+          if (hasAssistantResponse) {
+            console.log('[ChatScreen] Retry: Server already has response, syncing state');
+
+            await sessionStore.setServerConversationId(recoveryConversationId);
+
+            const recoveredMessages: ChatMessage[] = [];
+            for (const msg of serverMessages) {
+              if (msg.role === 'user' || msg.role === 'assistant') {
+                recoveredMessages.push({
+                  id: msg.id,
+                  role: msg.role,
+                  content: msg.content,
+                  displayContent: (msg as ChatMessage).displayContent,
+                  toolCalls: msg.toolCalls,
+                  toolResults: msg.toolResults,
+                });
+              } else if (msg.role === 'tool' && recoveredMessages.length > 0) {
+                const lastMessage = recoveredMessages[recoveredMessages.length - 1];
+                if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
+                  const hasToolResults = msg.toolResults && msg.toolResults.length > 0;
+
+                  if (hasToolResults) {
+                    lastMessage.toolResults = [
+                      ...(lastMessage.toolResults || []),
+                      ...(msg.toolResults || []),
+                    ];
+                  }
+                }
+              }
+            }
+
+            setMessages(recoveredMessages);
+            await sessionStore.setMessages(recoveredMessages);
+
+            console.log('[ChatScreen] Retry: Successfully recovered', recoveredMessages.length, 'messages from server');
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('[ChatScreen] Retry: Could not fetch server state, will retry message:', error);
+      }
+
+      console.log('[ChatScreen] Retry: Using recovery conversationId:', recoveryConversationId);
+      await sessionStore.setServerConversationId(recoveryConversationId);
+    }
+
+    setMessages((m) => {
+      const newMessages = [...m];
+      if (newMessages.length >= 2) {
+        newMessages.pop();
+        newMessages.pop();
+      }
+      return newMessages;
+    });
+    // Let React commit the message removal before send() reads current state.
+    setTimeout(() => send(messageToRetry), 0);
+  };
 
 
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={headerHeight}
-    >
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          ref={scrollViewRef}
-          style={{ flex: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: theme.colors.background }}
-          contentContainerStyle={{ paddingBottom: insets.bottom, gap: spacing.xs }}
-          keyboardShouldPersistTaps="handled"
-          contentInsetAdjustmentBehavior="automatic"
-          onScroll={handleScroll}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onScrollEndDrag={handleScrollEndDrag}
-          scrollEventThrottle={16}
-        >
-          {sessionStore.isLoadingMessages && messages.length === 0 && (
-            <View
-              accessible
-              accessibilityRole="progressbar"
-              accessibilityLabel="Loading messages from desktop"
-              accessibilityState={{ busy: true }}
-              style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}
-            >
-              <Image
-                source={isDark ? darkSpinner : lightSpinner}
-                style={{ width: 32, height: 32 }}
-                resizeMode="contain"
-              />
-            </View>
-          )}
-          {!sessionStore.isLoadingMessages && messages.length === 0 && (
-            <View style={styles.chatHomeCard}>
-	              {promptQuickStarts.length > 0 ? (
-	                <View style={styles.chatHomeShortcutGrid}>
-	                  {promptQuickStarts.map((item) => (
-	                    <Pressable
-	                      key={item.id}
-	                      style={({ pressed }) => [
-	                        styles.chatHomeShortcutCard,
-		                        item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
-		                        item.source === 'task' && runningPromptTaskId === item.task?.id && styles.chatHomeShortcutCardDisabled,
-	                        pressed && styles.chatHomeShortcutCardPressed,
-	                      ]}
-		                      onPress={() => handleQuickStartPress(item)}
-		                      disabled={item.source === 'task' && runningPromptTaskId === item.task?.id}
-	                      accessibilityRole="button"
-		                      accessibilityLabel={createButtonAccessibilityLabel(getPromptLibraryShortcutAccessibilityLabel(item.source, item.title, item.action))}
-		                      accessibilityHint={getPromptLibraryShortcutAccessibilityHint(item.source, item.action)}
-	                    >
-		                      <Text style={[
-		                        styles.chatHomeShortcutTitle,
-		                        item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
-		                      ]} numberOfLines={2}>{item.title}</Text>
-		                      {item.description ? (
-		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
-		                      ) : null}
-                          {item.prompt ? (
-                            <View style={styles.chatHomeShortcutActions}>
-                              <Pressable
-                                style={styles.chatHomeShortcutActionButton}
-                                onPress={(event) => {
-                                  event.stopPropagation();
-                                  openEditPromptModal(item.prompt!);
-                                }}
-                                accessibilityRole="button"
-                                accessibilityLabel={getPromptLibraryEditPromptAccessibilityLabel(item.title)}
-                              >
-                                <Text style={styles.chatHomeShortcutActionText}>{PROMPT_LIBRARY_PRESENTATION.actions.edit}</Text>
-                              </Pressable>
-                              <Pressable
-                                style={styles.chatHomeShortcutActionButton}
-                                onPress={(event) => {
-                                  event.stopPropagation();
-                                  handleDeletePrompt(item.prompt!);
-                                }}
-                                accessibilityRole="button"
-                                accessibilityLabel={getPromptLibraryDeletePromptAccessibilityLabel(item.title)}
-                              >
-                                <Text style={[styles.chatHomeShortcutActionText, styles.chatHomeShortcutActionDangerText]}>{PROMPT_LIBRARY_PRESENTATION.actions.delete}</Text>
-                              </Pressable>
-                            </View>
-                          ) : null}
-	                    </Pressable>
-	                  ))}
-	                </View>
-	              ) : (
-	                <Text style={styles.chatHomeEmptyText}>
-		                  {isLoadingQuickStartPrompts ? 'Loading desktop library…' : PROMPT_LIBRARY_PRESENTATION.empty.mobileLibrary}
-	                </Text>
-	              )}
-            </View>
-          )}
-          {canLoadOlderMessages && (
-            <View style={styles.loadOlderContainer}>
-              <Text style={styles.loadOlderText}>
-                Showing latest {visibleMessages.length} of {messages.length} messages. Scroll up to load older messages.
-              </Text>
-            </View>
-          )}
-          {visibleMessages.map((m, visibleIndex) => {
-            const i = firstVisibleMessageIndex + visibleIndex;
-            // --- Tool-activity group handling ---
-            const group = toolActivityGroups.groupByIndex.get(i);
-            if (group) {
-              const groupKey = getToolActivityGroupKey(group);
-              const isGroupExpanded = expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false;
-
-              // Non-first message in a collapsed group: skip rendering
-              if (i !== group.startIndex && !isGroupExpanded) {
-                return null;
-              }
-
-              // First message in a collapsed group: render the group header
-              if (i === group.startIndex && !isGroupExpanded) {
-                return (
-                  <Pressable
-                    key={`group-${groupKey}`}
-                    onPress={() => toggleGroupExpansion(group)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${group.count} tool activities, collapsed. Tap to expand.`}
-                    accessibilityState={{ expanded: false }}
-                    aria-expanded={false}
-                    style={({ pressed }) => [
-                      styles.toolActivityGroupCollapsed,
-                      pressed && styles.toolActivityGroupPressed,
-                    ]}
-                  >
-                    <View style={styles.toolActivityGroupHeaderRow}>
-                      <Text style={styles.toolActivityGroupHeader}>
-                        ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
-                      </Text>
-                      {group.previewLines.length > 0 && (
-                        <Text
-                          style={styles.toolActivityGroupPreviewLine}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {group.previewLines.join(', ')}
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              }
-
-              // First message in an expanded group: render a collapse header before the message
-              // (non-first messages in expanded groups fall through to normal rendering below)
-            }
-
-            const visibleMessageContent = getVisibleMessageContent(m);
-            // Messages whose visible content comes from respond_to_user should
-            // never be collapsed — they ARE the assistant's response to the user
-            const hasRespondToUserContent = !!getRespondToUserContentFromMessage(m);
-            const shouldCollapse = m.role === 'assistant'
-              ? shouldCollapseMessage(visibleMessageContent)
-              : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
-            const effectiveShouldCollapse = hasRespondToUserContent ? false : shouldCollapse;
-            // expandedMessages is auto-updated via useEffect to expand the last assistant message
-            // and persist the expansion state so it doesn't collapse when new messages arrive
-            const isExpanded = expandedMessages[i] ?? false;
-            const hasToolMetadata =
-              (m.toolCalls?.length ?? 0) > 0 ||
-              (m.toolResults?.length ?? 0) > 0;
-            const shouldShowExpandedContent = visibleMessageContent.length > 0 && (isExpanded || !effectiveShouldCollapse);
-            const shouldShowCollapsedTextPreview =
-              visibleMessageContent.length > 0 &&
-              !isExpanded &&
-              effectiveShouldCollapse;
-            const canSpeakVisibleContent =
-              m.role === 'assistant' &&
-              visibleMessageContent.trim().length > 0 &&
-              ttsEnabled &&
-              (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
-            const canBranchFromMessage =
-              !!currentSession?.serverConversationId &&
-              (m.role === 'user' || m.role === 'assistant');
-
-            const toolCalls = m.toolCalls ?? [];
-            const toolResults = m.toolResults ?? [];
-            // Filter out meta-tools from display (respond_to_user, mark_work_complete)
-            // since their content is already shown as visible message text
-            const displayToolEntries = (m.toolExecutions?.length
-              ? m.toolExecutions.map((execution, origIdx) => ({
-                  toolCall: execution.toolCall,
-                  label: undefined as string | undefined,
-                  origIdx,
-                  result: execution.result,
-                }))
-              : toolCalls.map((toolCall, origIdx) => ({
-                  toolCall,
-                  label: undefined as string | undefined,
-                  origIdx,
-                  result: toolResults[origIdx],
-                })))
-              .filter((entry) => !HIDDEN_META_TOOLS.has(entry.toolCall.name));
-            const fallbackToolEntries =
-              displayToolEntries.length === 0 && toolResults.length > 0
-                ? toolResults.map((result, idx) => ({
-                    toolCall: {
-                      name: 'tool_call',
-                      arguments: {},
-                    },
-                    label: 'Tool result',
-                    origIdx: idx,
-                    result,
-                  }))
-                : [];
-            const renderedToolEntries = fallbackToolEntries.length > 0
-              ? fallbackToolEntries
-              : displayToolEntries;
-            const displayToolCallCount = renderedToolEntries.length;
-            const hasToolResults = renderedToolEntries.some(entry => !!entry.result);
-            const allSuccess =
-              hasToolResults && renderedToolEntries.every(entry => entry.result?.success === true);
-            const hasErrors = renderedToolEntries.some(entry => entry.result?.success === false);
-            // isPending is true when any displayed tool call has not received its result yet.
-            const isPending =
-              renderedToolEntries.some(entry => !entry.result);
-
-            // Skip empty messages: no visible content AND no tool calls to display
-            // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
-            if (visibleMessageContent.trim().length === 0 && displayToolCallCount === 0) {
-              return null;
-            }
-
-            // Determine if this message needs group expand/collapse chrome
-            const groupKey = group ? getToolActivityGroupKey(group) : '';
-            const isExpandedGroup = group ? (expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false) : false;
-            const isFirstInExpandedGroup = group && i === group.startIndex && isExpandedGroup;
-            const isLastInExpandedGroup = group && i === group.endIndex && isExpandedGroup;
-
-            return (
-              <View key={i}>
-                {/* Expanded group collapse header */}
-                {isFirstInExpandedGroup && (
-                  <Pressable
-                    onPress={() => toggleGroupExpansion(group!)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Collapse ${group!.count} tool activities`}
-                    accessibilityState={{ expanded: true }}
-                    aria-expanded={true}
-                    style={({ pressed }) => [
-                      styles.toolActivityGroupCollapsed,
-                      pressed && styles.toolActivityGroupPressed,
-                    ]}
-                  >
-                    <Text style={styles.toolActivityGroupHeader}>
-                      ▼ {group!.count} tool {group!.count === 1 ? 'activity' : 'activities'}
-                    </Text>
-                  </Pressable>
-                )}
-              <View
-                style={[
-                  styles.msg,
-                  m.role === 'user' ? styles.user : styles.assistant,
-                ]}
-              >
-                {/* Compact message header - only for non-tool-only messages (tool-only uses the tool compact row) */}
-                {shouldCollapse && !shouldTreatMessageAsToolOnly(m) && (
-                  <Pressable
-                    onPress={() => toggleMessageExpansion(i)}
-                    accessibilityRole="button"
-                    accessibilityLabel={createExpandCollapseAccessibilityLabel('message', isExpanded)}
-                    accessibilityHint={isExpanded ? 'Collapse message' : 'Expand message'}
-                    accessibilityState={{ expanded: isExpanded }}
-                    aria-expanded={isExpanded}
-                    style={({ pressed }) => [
-                      styles.messageHeader,
-                      styles.messageHeaderClickable,
-                      pressed && styles.messageHeaderPressed,
-                    ]}
-                  >
-                    <View style={styles.expandButton}>
-                      <Text style={styles.expandButtonText}>
-                        {isExpanded ? '▲' : '▼'}
-                      </Text>
-                    </View>
-                  </Pressable>
-                )}
-
-                {m.variant === 'approval' && m.toolApproval ? (
-                  <View style={styles.toolApprovalCard}>
-                    <Text style={styles.toolApprovalTitle}>Tool Approval Required</Text>
-                    <Text style={styles.toolApprovalTool} numberOfLines={2}>
-                      {m.toolApproval.toolName}
-                    </Text>
-                    <Text style={styles.toolApprovalArguments} numberOfLines={4}>
-                      {formatToolArguments(m.toolApproval.arguments)}
-                    </Text>
-                    <View style={styles.toolApprovalActions}>
-                      <TouchableOpacity
-                        style={[
-                          styles.toolApprovalButton,
-                          styles.toolApprovalDenyButton,
-                          pendingToolApprovalResponseId === m.toolApproval.approvalId && styles.toolApprovalButtonDisabled,
-                        ]}
-                        onPress={() => respondToToolApproval(m.toolApproval!.approvalId, false)}
-                        disabled={pendingToolApprovalResponseId === m.toolApproval.approvalId}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Deny tool call ${m.toolApproval.toolName}`}
-                      >
-                        <Text style={styles.toolApprovalDenyButtonText}>Deny</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.toolApprovalButton,
-                          styles.toolApprovalApproveButton,
-                          pendingToolApprovalResponseId === m.toolApproval.approvalId && styles.toolApprovalButtonDisabled,
-                        ]}
-                        onPress={() => respondToToolApproval(m.toolApproval!.approvalId, true)}
-                        disabled={pendingToolApprovalResponseId === m.toolApproval.approvalId}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Approve tool call ${m.toolApproval.toolName}`}
-                      >
-                        <Text style={styles.toolApprovalApproveButtonText}>
-                          {pendingToolApprovalResponseId === m.toolApproval.approvalId ? 'Responding...' : 'Approve'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? (
-                  <View
-                    accessible
-                    accessibilityRole="progressbar"
-                    accessibilityLabel="Assistant is thinking"
-                    accessibilityState={{ busy: true }}
-                    style={{ flexDirection: 'row', alignItems: 'center' }}
-                  >
-                    <Image
-                      source={isDark ? darkSpinner : lightSpinner}
-                      style={{ width: 14, height: 14 }}
-                      resizeMode="contain"
-                    />
-                  </View>
-                ) : (
-                  <>
-                    {shouldShowExpandedContent ? (
-                      <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
-                        <View style={m.role === 'assistant' ? styles.assistantMessageBody : undefined}>
-                          <MarkdownRenderer
-                            content={visibleMessageContent}
-                            assetBaseUrl={config.baseUrl}
-                            assetAuthToken={config.apiKey}
-                          />
-                        </View>
-                        {canSpeakVisibleContent && (
-                          <TouchableOpacity
-                            onPress={() => speakMessage(i, visibleMessageContent)}
-                            style={[
-                              styles.speakButton,
-                              speakingMessageIndex === i && styles.speakButtonActive,
-                            ]}
-                            accessibilityRole="button"
-                            accessibilityLabel={speakingMessageIndex === i ? 'Stop reading' : 'Read aloud'}
-                          >
-                            <Text style={[
-                              styles.speakButtonText,
-                              speakingMessageIndex === i && styles.speakButtonTextActive,
-                            ]}>
-                              {speakingMessageIndex === i ? '⏹' : '🔊'}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    ) : shouldShowCollapsedTextPreview ? (
-                      <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
-                        <Text
-                          style={styles.collapsedMessagePreview}
-                          numberOfLines={1}
-                        >
-                          {getCollapsedMessagePreview(visibleMessageContent)}
-                        </Text>
-                        {canSpeakVisibleContent && (
-                          <TouchableOpacity
-                            onPress={() => speakMessage(i, visibleMessageContent)}
-                            style={[
-                              styles.speakButton,
-                              speakingMessageIndex === i && styles.speakButtonActive,
-                            ]}
-                            accessibilityRole="button"
-                            accessibilityLabel={speakingMessageIndex === i ? 'Stop reading' : 'Read aloud'}
-                          >
-                            <Text style={[
-                              styles.speakButtonText,
-                              speakingMessageIndex === i && styles.speakButtonTextActive,
-                            ]}>
-                              {speakingMessageIndex === i ? '⏹' : '🔊'}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    ) : null}
-
-                    {/* Unified Tool Execution Display - only show when there are displayable tool calls */}
-                    {displayToolCallCount > 0 && (
-                      <>
-                        {/* Collapsed view - one line per tool call with useful info */}
-                        {!isExpanded && (
-                          <Pressable
-                            onPress={() => toggleMessageExpansion(i)}
-                            accessibilityRole="button"
-                            accessibilityLabel={createExpandCollapseAccessibilityLabel('tool execution details', false)}
-                            accessibilityHint="Expands this tool execution summary"
-                            accessibilityState={{ expanded: false }}
-                            aria-expanded={false}
-                            style={({ pressed }) => [
-                              styles.toolCallCompactContainer,
-                              pressed && styles.toolCallCompactPressed,
-                            ]}
-                          >
-                            {renderedToolEntries.map(({ toolCall, label, origIdx, result: tcResult }, tcIdx) => {
-                              const tcPending = !tcResult;
-                              const tcSuccess = tcResult?.success === true;
-                              const tcError = tcResult?.success === false;
-                              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, tcResult ?? null);
-                              return (
-                                <View key={tcIdx} style={styles.toolCallCompactLine}>
-                                  <Text style={[
-                                    styles.toolCallCompactStatus,
-                                    tcPending && styles.toolCallCompactStatusPending,
-                                    tcSuccess && styles.toolCallCompactStatusSuccess,
-                                    tcError && styles.toolCallCompactStatusError,
-                                  ]}>
-                                    {tcPending ? '⏳' : tcSuccess ? '✓' : '✗'}
-                                  </Text>
-                                  <Text
-                                    style={[
-                                      styles.toolCallCompactName,
-                                      tcPending && styles.toolCallCompactNamePending,
-                                      tcSuccess && styles.toolCallCompactNameSuccess,
-                                      tcError && styles.toolCallCompactNameError,
-                                    ]}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                  >
-                                    {toolPreview}
-                                  </Text>
-                                </View>
-                              );
-                            })}
-                          </Pressable>
-                        )}
-
-                        {/* Expanded view - each tool call with its own params + result */}
-                        {isExpanded && (
-                          <View style={[
-                            { position: 'relative' as const },
-                          ]}>
-                          {/* Collapse button at top of expanded view */}
-                          <Pressable
-                            onPress={() => toggleMessageExpansion(i)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Collapse tool execution details"
-                            accessibilityHint="Collapse back to compact view"
-                            style={({ pressed }) => [
-                              styles.toolCallCompactContainer,
-                              pressed && styles.toolCallCompactPressed,
-                              { marginBottom: 4 },
-                            ]}
-                          >
-                            <Text style={styles.toolCallCompactStatus}>▲</Text>
-                            <Text style={styles.toolCallCompactName}>
-                              Collapse {displayToolCallCount} tool {displayToolCallCount === 1 ? 'call' : 'calls'}
-                            </Text>
-                          </Pressable>
-                          <View style={[
-                            styles.toolExecutionCard,
-                            isPending && styles.toolExecutionPending,
-                            allSuccess && styles.toolExecutionSuccess,
-                            hasErrors && styles.toolExecutionError,
-                          ]}>
-                            {renderedToolEntries.map(({ toolCall, label, origIdx, result }, idx) => {
-                              const isResultPending = !result;
-                              // Use message id or fallback to array index to ensure stable, unique keys
-                              // that won't collide when m.id is undefined (which is common)
-                              const stableMessageKey = m.id ?? String(i);
-                              const toolCallKey = `${stableMessageKey}-${origIdx}`;
-                              const isToolCallFullyExpanded = expandedToolCalls[toolCallKey] ?? false;
-                              return (
-                                <View key={idx} style={styles.toolCallSection}>
-                                  {/* Tool name heading - tappable to toggle full expansion */}
-                                  <Pressable
-                                    onPress={() => toggleToolCallExpansion(stableMessageKey, idx)}
-                                    style={({ pressed }) => [
-                                      styles.toolCallHeader,
-                                      pressed && styles.toolCallHeaderPressed,
-                                    ]}
-                                    accessibilityRole="button"
-                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${label ?? toolCall.name} tool details`, isToolCallFullyExpanded)}
-                                    accessibilityState={{ expanded: isToolCallFullyExpanded }}
-                                    aria-expanded={isToolCallFullyExpanded}
-                                    accessibilityHint={isToolCallFullyExpanded ? 'Collapse tool details' : 'Expand to show full input/output'}
-                                  >
-                                    <Text style={styles.toolName}>{label ?? toolCall.name}</Text>
-                                    <Text style={styles.toolCallExpandHint}>
-                                      {isToolCallFullyExpanded ? '▼ Collapse' : '▶ Full Details'}
-                                    </Text>
-                                  </Pressable>
-
-                                  {/* Parameters */}
-                                  {toolCall.arguments && (
-                                    <View style={styles.toolParamsSection}>
-                                      <Text style={styles.toolSectionLabel}>Input:</Text>
-                                      <ScrollView
-                                        style={isToolCallFullyExpanded ? styles.toolParamsScrollExpanded : styles.toolParamsScroll}
-                                        nestedScrollEnabled
-                                      >
-                                        <Text style={styles.toolParamsCode}>
-                                          {formatToolArguments(toolCall.arguments)}
-                                        </Text>
-                                      </ScrollView>
-                                    </View>
-                                  )}
-
-                                  {/* Result for this specific tool call */}
-                                  {result ? (
-                                    <View style={styles.toolResultItem}>
-                                      <View style={styles.toolResultHeader}>
-                                        <Text style={styles.toolSectionLabel}>Output:</Text>
-                                        <Text style={[
-                                          styles.toolResultBadge,
-                                          result.success ? styles.toolResultBadgeSuccess : styles.toolResultBadgeError
-                                        ]}>
-                                          {result.success ? '✅ OK' : '❌ Error'}
-                                        </Text>
-                                        <Text style={styles.toolResultCharCount}>
-                                          {(result.content?.length || 0).toLocaleString()} chars
-                                        </Text>
-                                      </View>
-                                      <ScrollView
-                                        style={isToolCallFullyExpanded ? styles.toolResultScrollExpanded : styles.toolResultScroll}
-                                        nestedScrollEnabled
-                                      >
-                                        <Text style={styles.toolResultCode}>
-                                          {result.content || 'No content returned'}
-                                        </Text>
-                                      </ScrollView>
-                                      {result.error && (
-                                        <View style={styles.toolResultErrorSection}>
-                                          <Text style={styles.toolResultErrorLabel}>Error:</Text>
-                                          <Text style={styles.toolResultErrorText}>{result.error}</Text>
-                                        </View>
-                                      )}
-                                    </View>
-                                  ) : isResultPending ? (
-                                    <Text style={styles.toolResponsePendingText}>⏳ Waiting...</Text>
-                                  ) : null}
-                                </View>
-                              );
-                            })}
-                            {/* Show message if no displayable tool calls */}
-                            {displayToolCallCount === 0 && (
-                              <Text style={styles.toolResponsePendingText}>No tool calls</Text>
-                            )}
-                          </View>
-                          {/* Collapse button at bottom of expanded view for easy access */}
-                          <Pressable
-                            onPress={() => toggleMessageExpansion(i)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Collapse tool execution details"
-                            accessibilityHint="Collapse back to compact view"
-                            style={({ pressed }) => [
-                              styles.toolCallCompactContainer,
-                              pressed && styles.toolCallCompactPressed,
-                              { marginTop: 4 },
-                            ]}
-                          >
-                            <Text style={styles.toolCallCompactStatus}>▲</Text>
-                            <Text style={styles.toolCallCompactName}>
-                              Collapse
-                            </Text>
-                          </Pressable>
-                          </View>
-                        )}
-                      </>
-                    )}
-                    {canBranchFromMessage && (
-                      <View style={styles.messageActionsRow}>
-                        <Pressable
-                          style={[
-                            styles.messageActionButton,
-                            branchingMessageIndex !== null && styles.messageActionButtonDisabled,
-                          ]}
-                          onPress={() => { void handleBranchFromMessage(i); }}
-                          disabled={branchingMessageIndex !== null}
-                          accessibilityRole="button"
-                          accessibilityLabel={formatChatRuntimeBranchAccessibilityLabel(m.role, i + 1)}
-                        >
-                          <Text style={styles.messageActionButtonText}>
-                            {branchingMessageIndex === i
-                              ? CHAT_RUNTIME_PRESENTATION.branch.pendingLabel
-                              : CHAT_RUNTIME_PRESENTATION.branch.buttonLabel}
-                          </Text>
-                        </Pressable>
-                      </View>
-                    )}
-                  </>
-                )}
-              </View>
-                {/* Expanded group collapse footer */}
-                {isLastInExpandedGroup && (
-                  <Pressable
-                    onPress={() => toggleGroupExpansion(group!)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Collapse ${group!.count} tool activities`}
-                    style={({ pressed }) => [
-                      styles.toolActivityGroupCollapsed,
-                      pressed && styles.toolActivityGroupPressed,
-                    ]}
-                  >
-                    <Text style={styles.toolActivityGroupHeader}>
-                      ▲ Collapse {group!.count} tool {group!.count === 1 ? 'activity' : 'activities'}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            );
-          })}
-          {connectionState && connectionState.status === 'reconnecting' && (
-            <View style={styles.connectionBanner}>
-              <ActivityIndicator size="small" color="#f59e0b" style={{ marginRight: spacing.sm }} />
-              <Text style={styles.connectionBannerText}>
-                {formatConnectionStatus(connectionState)}
-              </Text>
-            </View>
-          )}
-          {debugInfo && (
-            <View style={styles.debugInfo}>
-              <Text style={styles.debugText}>{debugInfo}</Text>
-            </View>
-          )}
-	          {handsFreeDebugEnabled && voiceEvents.length > 0 && (
-	            <View style={styles.debugInfo}>
-	              <Text style={styles.debugText}>Voice debug</Text>
-	              {voiceEvents.slice(0, 6).map((entry) => (
-	                <Text key={entry.id} style={styles.debugText}>
-	                  {formatVoiceDebugEntry(entry)}
-	                </Text>
-	              ))}
-	            </View>
-	          )}
-        </ScrollView>
-        {/* Respond-to-user history panel - sticky at bottom of conversation */}
-        {respondToUserHistory.length > 0 && (
-          <ResponseHistoryPanel
-            responses={respondToUserHistory}
-            ttsProvider={effectiveTtsProvider}
-            remoteTtsVoice={effectiveRemoteTtsVoice}
-            remoteTtsModel={effectiveRemoteTtsModel}
-            ttsRate={effectiveRemoteTtsRate}
-            ttsPitch={config.ttsPitch ?? 1.0}
-            ttsVoiceId={config.ttsVoiceId}
-            remoteBaseUrl={config.baseUrl}
-            remoteApiKey={config.apiKey}
-          />
-        )}
-        {/* Scroll to bottom button - appears when user scrolls up */}
-        {!shouldAutoScroll && (
-          <TouchableOpacity
-            style={[styles.scrollToBottomButton, { bottom: 80 + insets.bottom }]}
-            onPress={() => {
+    <ChatMessageRuntimeSurface
+      frame={{
+        keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,
+        keyboardVerticalOffset: headerHeight,
+      }}
+      dock={{
+        responseHistoryPanel: {
+            shouldRender: respondToUserHistory.length > 0,
+            responses: respondToUserHistory,
+            ttsProvider: effectiveTtsProvider,
+            remoteTtsVoice: effectiveRemoteTtsVoice,
+            remoteTtsModel: effectiveRemoteTtsModel,
+            ttsRate: effectiveRemoteTtsRate,
+            ttsPitch: config.ttsPitch ?? 1.0,
+            ttsVoiceId: config.ttsVoiceId,
+            remoteBaseUrl: config.baseUrl,
+            remoteApiKey: config.apiKey,
+          },
+          scrollToBottomButton: {
+            renderState: scrollToBottomRenderState,
+            onPress: () => {
               setShouldAutoScroll(true);
               scrollViewRef.current?.scrollToEnd({ animated: true });
-            }}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Scroll to bottom"
-            accessibilityHint="Scrolls to the latest messages"
-          >
-            <Text style={styles.scrollToBottomText}>↓</Text>
-          </TouchableOpacity>
-        )}
-		        {listening && (
-		          <View style={[styles.overlay, { bottom: 72 + insets.bottom }]} pointerEvents="none">
-		            <View style={styles.overlayCard}>
-		              <Text style={styles.overlayText}>
-		                {handsFree ? 'Listening...' : (willCancel ? 'Release to edit' : 'Release to send')}
-		              </Text>
-		              {!!liveTranscript && (
-		                <Text style={styles.overlayTranscript} numberOfLines={3}>
-		                  {liveTranscript}
-		                </Text>
-		              )}
-		            </View>
-		          </View>
-		        )}
-        {/* Message Queue Panel */}
-        {messageQueueEnabled && queuedMessages.length > 0 && (
-          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
-            <MessageQueuePanel
-              conversationId={currentConversationId}
-              messages={queuedMessages}
-              onRemove={(messageId) => messageQueue.removeFromQueue(currentConversationId, messageId)}
-              onUpdate={(messageId, text) => messageQueue.updateText(currentConversationId, messageId, text)}
-              onRetry={(messageId) => {
+            },
+          },
+          voiceOverlay: {
+            isVisible: listening,
+            label: voiceOverlayLabel,
+            transcript: liveTranscript,
+            transcriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
+          },
+          queuePanel: {
+            shouldRender: messageQueueEnabled && queuedMessages.length > 0,
+            panel: {
+              conversationId: currentConversationId,
+              messages: queuedMessages,
+              onRemove: (messageId) => messageQueue.removeFromQueue(currentConversationId, messageId),
+              onUpdate: (messageId, text) => messageQueue.updateText(currentConversationId, messageId, text),
+              onRetry: (messageId) => {
                 messageQueue.resetToPending(currentConversationId, messageId);
                 // If not already processing, trigger queue processing
                 if (!responding) {
                   handleProcessNextQueuedMessage();
                 }
-              }}
-              onProcessNext={handleProcessNextQueuedMessage}
-              canProcessNext={!!nextQueuedMessage}
-              onClear={() => messageQueue.clearQueue(currentConversationId)}
-            />
-          </View>
-        )}
-        {/* Connection status banner - shows when reconnecting */}
-        {connectionState && connectionState.status === 'reconnecting' && (
-          <View style={[styles.connectionBanner, styles.connectionBannerReconnecting]}>
-            <View style={styles.connectionBannerContent}>
-              <Text style={styles.connectionBannerIcon}>🔄</Text>
-              <View style={styles.connectionBannerTextContainer}>
-                <Text style={styles.connectionBannerText}>
-                  Reconnecting... (attempt {connectionState.retryCount})
-                </Text>
-                {connectionState.lastError && (
-                  <Text style={styles.connectionBannerSubtext} numberOfLines={1}>
-                    {connectionState.lastError}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-        )}
-        {/* Retry banner - shows when there's a failed message that can be retried */}
-        {lastFailedMessage && !responding && (
-          <View style={[styles.connectionBanner, styles.connectionBannerFailed]}>
-            <View style={styles.connectionBannerContent}>
-              <Text style={styles.connectionBannerIcon}>⚠️</Text>
-              <View style={styles.connectionBannerTextContainer}>
-                <Text style={styles.connectionBannerText}>Message failed to send</Text>
-                <Text style={styles.connectionBannerSubtext} numberOfLines={1}>
-                  Tap retry to try again
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={async () => {
-                  const messageToRetry = lastFailedMessage;
-                  setLastFailedMessage(null);
-
-                  // Use the recovery conversation ID if available, so the retry resumes
-                  // the same server-created conversation when the first attempt failed mid-stream
-                  const retryClient = getSessionClient();
-                  const recoveryConversationId = retryClient?.getRecoveryConversationId();
-
-                  // Try to recover conversation state from server first (fixes #815)
-                  // If the server already processed the message, we should sync the state
-                  // instead of re-sending the message
-                  if (recoveryConversationId && retryClient) {
-                    console.log('[ChatScreen] Retry: Checking server conversation state:', recoveryConversationId);
-                    try {
-                      const serverConversation = await retryClient.getConversation(recoveryConversationId);
-                      if (serverConversation && serverConversation.messages.length > 0) {
-                        // Check if the server has the user's message and a response
-                        const serverMessages = serverConversation.messages;
-
-                        // Find the index of the last user message
-                        let lastUserMsgIndex = -1;
-                        for (let i = serverMessages.length - 1; i >= 0; i--) {
-                          if (serverMessages[i].role === 'user') {
-                            lastUserMsgIndex = i;
-                            break;
-                          }
-                        }
-
-                        // Check if there's ANY assistant message with content after the last user message
-                        // This handles cases where tool messages follow the assistant response
-                        let hasAssistantResponse = false;
-                        if (lastUserMsgIndex >= 0) {
-                          for (let i = lastUserMsgIndex + 1; i < serverMessages.length; i++) {
-                            if (serverMessages[i].role === 'assistant' && serverMessages[i].content) {
-                              hasAssistantResponse = true;
-                              break;
-                            }
-                          }
-                        }
-
-                        // If there's an assistant response after the last user message, server already processed the request
-                        if (hasAssistantResponse) {
-                          console.log('[ChatScreen] Retry: Server already has response, syncing state');
-
-                          // Update the server conversation ID
-                          await sessionStore.setServerConversationId(recoveryConversationId);
-
-                          // Convert server messages to ChatMessage format, filtering out tool messages
-                          // and merging their toolResults into the preceding assistant message
-                          const recoveredMessages: ChatMessage[] = [];
-                          for (const msg of serverMessages) {
-                            // Only include 'user' and 'assistant' roles
-                            if (msg.role === 'user' || msg.role === 'assistant') {
-                              recoveredMessages.push({
-                                id: msg.id,
-                                role: msg.role,
-                                content: msg.content,
-                                displayContent: (msg as ChatMessage).displayContent,
-                                toolCalls: msg.toolCalls,
-                                toolResults: msg.toolResults,
-                              });
-                            } else if (msg.role === 'tool' && recoveredMessages.length > 0) {
-                              // Merge tool message toolResults into the preceding assistant message
-                              const lastMessage = recoveredMessages[recoveredMessages.length - 1];
-                              if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-                                const hasToolResults = msg.toolResults && msg.toolResults.length > 0;
-
-                                if (hasToolResults) {
-                                  // Merge toolResults into the existing assistant message
-                                  lastMessage.toolResults = [
-                                    ...(lastMessage.toolResults || []),
-                                    ...(msg.toolResults || []),
-                                  ];
-                                }
-                              }
-                            }
-                          }
-
-                          // Replace local messages with server state
-                          setMessages(recoveredMessages);
-
-                          // Also persist to session store
-                          await sessionStore.setMessages(recoveredMessages);
-
-                          console.log('[ChatScreen] Retry: Successfully recovered', recoveredMessages.length, 'messages from server');
-                          return; // Don't retry, we've recovered the state
-                        }
-                      }
-                    } catch (error) {
-                      console.log('[ChatScreen] Retry: Could not fetch server state, will retry message:', error);
-                    }
-
-                    // If we couldn't recover, set the conversation ID for the retry
-                    console.log('[ChatScreen] Retry: Using recovery conversationId:', recoveryConversationId);
-                    await sessionStore.setServerConversationId(recoveryConversationId);
-                  }
-
-                  // Remove the last error message before retrying
-                  setMessages((m) => {
-                    // Remove the last assistant message (error) and user message
-                    const newMessages = [...m];
-                    if (newMessages.length >= 2) {
-                      newMessages.pop(); // Remove error message
-                      newMessages.pop(); // Remove user message
-                    }
-                    return newMessages;
-                  });
-                  // Use setTimeout to ensure setMessages completes before send() reads the updated state.
-                  // React batches state updates, so send() would otherwise read stale messages.
-                  setTimeout(() => send(messageToRetry), 0);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-		        <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
-	          {!!sttPreview && (
-	            <View style={styles.sttPreviewBox}>
-	              <Text style={styles.sttPreviewLabel}>STT preview</Text>
-		              <Text style={styles.sttPreviewText}>{sttPreview}</Text>
-	            </View>
-	          )}
-	          {pendingImages.length > 0 && (
-	            <ScrollView
-	              horizontal
-	              showsHorizontalScrollIndicator={false}
-	              contentContainerStyle={styles.pendingImagesRow}
-	            >
-	              {pendingImages.map((image) => (
-	                <View key={image.id} style={styles.pendingImageCard}>
-	                  <Image source={{ uri: image.previewUri }} style={styles.pendingImagePreview} />
-	                  <TouchableOpacity
-	                    style={styles.pendingImageRemoveButton}
-	                    onPress={() => removePendingImage(image.id)}
-	                    activeOpacity={0.8}
-	                  >
-	                    <Text style={styles.pendingImageRemoveButtonText}>✕</Text>
-	                  </TouchableOpacity>
-	                </View>
-	              ))}
-	            </ScrollView>
-	          )}
-          {handsFree && (
-            <>
-              <View style={styles.handsFreeStatusRow}>
-                <HandsFreeStatusChip
-                  phase={handsFreeController.state.phase}
-                  label={handsFreeController.statusLabel}
-                  subtitle={handsFreeStatusSubtitle}
+              },
+              onProcessNext: handleProcessNextQueuedMessage,
+              canProcessNext: !!nextQueuedMessage,
+              onClear: () => messageQueue.clearQueue(currentConversationId),
+              isPaused: isMessageQueuePaused,
+              onPause: handlePauseMessageQueue,
+              onResume: handleResumeMessageQueue,
+            },
+          },
+          connectionBanner: {
+            renderState: connectionBannerRenderState,
+            onRetry: handleRetryLastFailedMessage,
+          },
+          composer: {
+            speechPreview: {
+              label: mobileComposerControls.sttPreview.label,
+              text: sttPreview,
+            },
+            pendingImagesRail: {
+              images: pendingImages,
+              renderState: imageAttachmentRenderState,
+              onRemove: removePendingImage,
+            },
+            handsFreeControls: {
+              isVisible: handsFree,
+              status: {
+                phase: handsFreeController.state.phase,
+                label: handsFreeController.statusLabel,
+                subtitle: handsFreeStatusSubtitle,
+              },
+              controlState: handsFreeControlState,
+              onWake: wakeHandsFreeByUser,
+              onSleep: sleepHandsFreeByUser,
+              onResume: resumeHandsFreeByUser,
+              onPause: pauseHandsFreeByUser,
+              ...chatComposerRuntimeDockChrome.handsFreeControls,
+            },
+            imageAttachmentControl: {
+              renderState: mobileComposerImageAttachmentRenderState,
+              onPress: handlePickImages,
+              ...chatComposerRuntimeDockChrome.imageAttachmentControl,
+            },
+            textToSpeechControl: {
+              renderState: mobileComposerTextToSpeechRenderState,
+              onPress: toggleTts,
+              ...chatComposerRuntimeDockChrome.textToSpeechControl,
+            },
+            editBeforeSendControl: {
+              shouldRender: !handsFree,
+              renderState: mobileComposerEditBeforeSendRenderState,
+              onPress: () => setWillCancel((current) => !current),
+              ...chatComposerRuntimeDockChrome.editBeforeSendControl,
+            },
+            textEntry: {
+              inputRef,
+              value: input,
+              onChangeText: handleInputChange,
+              onKeyPress: handleInputKeyPress,
+              accessibilityLabel: mobileComposerControls.field.accessibilityLabel,
+              accessibilityHint: composerAccessibilityHint,
+              placeholder: composerPlaceholder,
+              voiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement,
+              ...chatComposerRuntimeDockChrome.textEntry,
+            },
+            queueAction: {
+              shouldRender: handsFree && messageQueueEnabled,
+              renderState: mobileComposerQueueRenderState,
+              onPress: queueComposerInput,
+              ...chatComposerRuntimeDockChrome.queueAction,
+            },
+            submitAction: {
+              renderState: composerSubmitRenderState,
+              onPress: sendComposerInput,
+              ...chatComposerRuntimeDockChrome.submitAction,
+            },
+            micButton: {
+              renderState: mobileComposerMicRenderState,
+              onPressIn: !handsFree ? handlePushToTalkPressIn : undefined,
+              onPressOut: !handsFree ? handlePushToTalkPressOut : undefined,
+              onPress: handsFree ? handleHandsFreePrimaryControl : undefined,
+              ...chatComposerRuntimeDockChrome.micButton,
+            },
+            micWrapperRef: micButtonRef,
+          },
+      }}
+      overlays={{
+          agentSelector: {
+            visible: agentSelectorVisible,
+            onClose: () => setAgentSelectorVisible(false),
+          },
+          promptEditor: {
+            visible: addPromptModalVisible,
+            title: getPromptLibraryEditorTitle(Boolean(editingPrompt)),
+            nameLabel: promptLibraryCopy.editor.nameLabel,
+            nameValue: newPromptName,
+            namePlaceholder: promptLibraryCopy.editor.namePlaceholder,
+            onNameChange: setNewPromptName,
+            contentLabel: promptLibraryCopy.editor.contentLabel,
+            contentValue: newPromptContent,
+            contentPlaceholder: promptLibraryCopy.editor.contentPlaceholder,
+            onContentChange: setNewPromptContent,
+            cancelLabel: promptLibraryCopy.actions.cancel,
+            saveLabel: getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt), isSavingPrompt),
+            isSaving: isSavingPrompt,
+            onClose: closePromptModal,
+            onSave: handleSavePrompt,
+          },
+          promptEditorChrome: promptEditorModalChrome,
+      }}
+      viewport={{
+        scrollRef: scrollViewRef,
+        keyboardShouldPersistTaps: mobileRuntimeViewport.keyboardShouldPersistTaps,
+        contentInsetAdjustmentBehavior: mobileRuntimeViewport.contentInsetAdjustmentBehavior,
+        onScroll: handleScroll,
+        onScrollBeginDrag: handleScrollBeginDrag,
+        onScrollEndDrag: handleScrollEndDrag,
+        scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW.scrollEventThrottleMs,
+        loadingState: {
+          shouldRender: sessionStore.isLoadingMessages && messages.length === 0,
+          renderState: mobileRuntimeLoadingState,
+          accessibilityLabel: mobileRuntimeActivityAccessibility.loadingMessagesLabel,
+          spinnerSource: isDark ? darkSpinner : lightSpinner,
+        },
+        homeQuickStarts: {
+          shouldRender: !sessionStore.isLoadingMessages && messages.length === 0,
+          items: promptQuickStarts,
+          isLoading: isLoadingQuickStartPrompts,
+          loadingLabel: mobilePromptLibraryCopy.loadingLibraryLabel,
+          emptyLabel: mobilePromptLibraryEmptyLabel,
+          runningTaskId: runningPromptTaskId,
+          onPress: handleQuickStartPress,
+          onEditPrompt: openEditPromptModal,
+          onDeletePrompt: handleDeletePrompt,
+          shortcutCardAccessibilityRole: mobilePromptLibrarySurface.shortcutCard.accessibilityRole,
+          shortcutActionAccessibilityRole: mobilePromptLibrarySurface.shortcutActionButton.accessibilityRole,
+          sourceLabelNumberOfLines: mobilePromptLibrarySurface.shortcutSourceLabel.numberOfLines,
+          titleNumberOfLines: mobilePromptLibrarySurface.shortcutTitle.numberOfLines,
+          descriptionNumberOfLines: mobilePromptLibrarySurface.shortcutDescription.numberOfLines,
+          addIcon: promptLibraryAddShortcutIcon,
+          addIconColors: promptLibraryAddShortcutIconColors,
+          editIcon: promptLibraryEditActionIcon,
+          editIconColors: promptLibraryEditActionIconColors,
+          deleteIcon: promptLibraryDeleteActionIcon,
+          deleteIconColors: promptLibraryDeleteActionIconColors,
+          sourceIcons: promptLibraryShortcutSourceIcons,
+          sourceIconColors: promptLibraryShortcutSourceIconColors,
+          editLabel: promptLibraryCopy.actions.edit,
+          deleteLabel: promptLibraryCopy.actions.delete,
+        },
+        historyBanner: {
+          renderState: messageHistoryBannerRenderState,
+          onLoadEarlier: handleLoadEarlierMessages,
+        },
+        stepSummary: {
+          renderState: latestStepSummaryRenderState,
+        },
+        debugPanels: {
+          requestShouldRender: Boolean(debugInfo),
+          requestRows: debugInfo ? [{ key: 'request-debug', text: debugInfo }] : [],
+          voiceShouldRender: handsFreeDebugEnabled && voiceEvents.length > 0,
+          voiceRows: [
+            { key: 'voice-debug-title', text: handsFreeCopy.debug.voiceDebugTitle },
+            ...voiceEvents.slice(0, 6).map((entry) => ({
+              key: entry.id,
+              text: formatVoiceDebugEntry(entry),
+            })),
+          ],
+        },
+      }}
+      styles={chatMessageRuntimeSurfaceStyles}
+    >
+          {visibleMessages.map((m, visibleIndex) => {
+            const i = firstVisibleMessageIndex + visibleIndex;
+            // --- Tool-activity group handling ---
+            const group = toolActivityGroups.groupByIndex.get(i);
+            const groupRenderState = group
+              ? getToolActivityGroupMobileRenderState({
+                group,
+                itemIndex: i,
+                groupState: expandedGroups,
+                inheritedState: expandedMessages,
+                colors: theme.colors,
+              })
+              : null;
+            if (groupRenderState?.shouldSkipCollapsedItem || groupRenderState?.shouldRenderCollapsedHeader) {
+              return (
+                <ChatMessageRuntimeThread
+                  key={groupRenderState.shouldRenderCollapsedHeader ? `group-${groupRenderState.groupKey}` : i}
+                  groupRenderState={groupRenderState}
+                  onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
+                  body={null}
+                  styles={chatMessageRuntimeThreadStyles}
                 />
-              </View>
-              <View style={styles.handsFreeControlsRow}>
-                {handsFreeController.state.phase === 'sleeping' ? (
-                  <TouchableOpacity
-                    style={styles.handsFreeControlButton}
-	                    onPress={wakeHandsFreeByUser}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.handsFreeControlButtonText}>Wake</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.handsFreeControlButton}
-	                    onPress={sleepHandsFreeByUser}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={styles.handsFreeControlButton}
-	                  onPress={handsFreeController.state.phase === 'paused' ? resumeHandsFreeByUser : pauseHandsFreeByUser}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.handsFreeControlButtonText}>
-	                    {handsFreePauseResumeLabel}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-	          {/* Top row: TTS toggle, text input, send button */}
-		          <View style={styles.inputRow}>
-	            <TouchableOpacity
-	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
-	              onPress={handlePickImages}
-	              activeOpacity={0.7}
-	              accessibilityRole="button"
-	              accessibilityLabel="Attach images"
-	              accessibilityHint="Select one or more images to include with your next message."
-	            >
-	              <Text style={styles.ttsToggleText}>🖼️</Text>
-	            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
-              onPress={toggleTts}
-              activeOpacity={0.7}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: ttsEnabled }}
-              accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
-              accessibilityHint="Toggles spoken playback for assistant responses."
-              aria-checked={ttsEnabled}
-            >
-              <Text style={styles.ttsToggleText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
-            </TouchableOpacity>
-	            {!handsFree && (
-	              <TouchableOpacity
-	                style={[styles.ttsToggle, willCancel && styles.ttsToggleOn]}
-		                onPress={() => setWillCancel((current) => !current)}
-	                activeOpacity={0.7}
-	                accessibilityRole="switch"
-		                aria-checked={willCancel}
-	                accessibilityState={{ checked: willCancel }}
-	                accessibilityLabel="Edit before send"
-	                accessibilityHint="When enabled, releasing the mic inserts the transcript into the input so you can edit before sending."
-	              >
-	                <Text style={styles.ttsToggleText}>✏️</Text>
-	              </TouchableOpacity>
-	            )}
-            <TextInput
-	              ref={inputRef}
-              style={styles.input}
-              value={input}
-              onChangeText={handleInputChange}
-              onKeyPress={handleInputKeyPress}
-              accessibilityLabel={createTextInputAccessibilityLabel('Message composer')}
-              accessibilityHint={composerAccessibilityHint}
-              aria-describedby={isWebPlatform ? CHAT_COMPOSER_HINT_NATIVE_ID : undefined}
-	              placeholder={composerPlaceholder}
-              placeholderTextColor={theme.colors.mutedForeground}
-              multiline
-            />
-            {isWebPlatform && (
-              <Text nativeID={CHAT_COMPOSER_HINT_NATIVE_ID} style={styles.visuallyHiddenComposerHint}>
-                {composerAccessibilityHint}
-              </Text>
-            )}
-	            {isWebPlatform && (
-	              <Text
-	                nativeID={CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID}
-	                style={styles.visuallyHiddenComposerHint}
-	                accessibilityLiveRegion="polite"
-	                aria-live="polite"
-	              >
-	                {voiceInputLiveRegionAnnouncement}
-	              </Text>
-	            )}
-            {handsFree && messageQueueEnabled && (
-              <TouchableOpacity
-                style={[styles.queueButton, !composerHasContent && styles.sendButtonDisabled]}
-                onPress={queueComposerInput}
-                activeOpacity={0.7}
-                disabled={!composerHasContent}
-                accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Queue message')}
-                accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
-                accessibilityState={{ disabled: !composerHasContent }}
-              >
-                <Text style={styles.queueButtonText}>Queue</Text>
-              </TouchableOpacity>
-            )}
-	            <TouchableOpacity
-	              style={[styles.sendButton, isComposerSubmitDisabled && styles.sendButtonDisabled]}
-	              onPress={sendComposerInput}
-	              activeOpacity={0.7}
-	              disabled={isComposerSubmitDisabled}
-              accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel(composerSubmitAccessibilityLabel)}
-	              accessibilityHint={composerSubmitAccessibilityHint}
-              accessibilityState={{ disabled: isComposerSubmitDisabled }}
-	            >
-              <Text style={styles.sendButtonText}>{composerSubmitButtonText}</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Large mic button - ~20% of screen height */}
-          <View
-            ref={micButtonRef}
-            style={styles.micWrapper}
-          >
-            <Pressable
-              style={[
-                styles.mic,
-                listening && styles.micOn,
-                // @ts-ignore - Web-only CSS to disable long-press selection/callouts
-                Platform.OS === 'web' && { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={createMicControlAccessibilityLabel()}
-              accessibilityHint={micControlAccessibilityHint}
-              accessibilityState={{ busy: listening }}
-              aria-busy={listening}
-	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
-	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
-            >
-              <Text style={styles.micText} selectable={false}>
-                {listening ? '🎙️' : '🎤'}
-              </Text>
-              <Text style={[styles.micLabel, listening && styles.micLabelOn]} selectable={false}>
-	                {micButtonLabel}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-      <AgentSelectorSheet
-        visible={agentSelectorVisible}
-        onClose={() => setAgentSelectorVisible(false)}
-      />
+              );
+            }
 
-      <Modal
-        visible={addPromptModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closePromptModal}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{getPromptLibraryEditorTitle(Boolean(editingPrompt))}</Text>
+            const messageDisplayState = getChatMessageDisplayState(m, {
+              resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
+            });
+            const visibleMessageContent = messageDisplayState.visibleContent;
+            const effectiveShouldCollapse = messageDisplayState.shouldCollapse;
+            // expandedMessages is auto-updated via useEffect to expand the last assistant message
+            // and persist the expansion state so it doesn't collapse when new messages arrive
+            const isExpanded = getChatDisplayExpansionState(expandedMessages, i);
+            const isMessageCopied = copiedMessageIndex === i;
+            const messageCopyRenderState = getChatMessageCopyMobileRenderState({
+              role: m.role,
+              content: visibleMessageContent,
+              isAssistantComplete: !responding,
+              isCopied: isMessageCopied,
+              colors: theme.colors,
+            });
+            const canCopyVisibleContent = messageCopyRenderState.canCopy;
+            const messageBranchRenderState = getChatRuntimeBranchMobileRenderState({
+              conversationId: currentSession?.serverConversationId,
+              role: m.role,
+              branchMessageIndex: m.branchMessageIndex,
+              fallbackMessageIndex: i,
+              pendingMessageIndex: branchingMessageIndex,
+              colors: theme.colors,
+            });
+            const canBranchFromMessage = messageBranchRenderState.canBranch;
+            const messageBranchIndex = messageBranchRenderState.messageIndex;
 
-              <Text style={styles.modalLabel}>{PROMPT_LIBRARY_PRESENTATION.editor.nameLabel}</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={newPromptName}
-                onChangeText={setNewPromptName}
-                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.namePlaceholder}
-                placeholderTextColor={theme.colors.mutedForeground}
+            const renderedToolEntries = messageDisplayState.visibleToolEntries;
+            const displayToolCallCount = messageDisplayState.displayToolCallCount;
+            const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
+              isResponding: responding,
+              messageIndex: i,
+              lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
+              message: m,
+              content: visibleMessageContent,
+              displayToolCallCount,
+            });
+            const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState({
+              isStreaming: isLiveStreamingAssistantMessage,
+              content: visibleMessageContent,
+              colors: theme.colors,
+            });
+            const {
+              state: toolExecutionState,
+              allSuccess,
+              hasErrors,
+              isPending,
+            } = getToolExecutionSummaryDisplayState(renderedToolEntries.map(entry => entry.result));
+            const toolExecutionTopCollapseControl = getToolExecutionDetailMobileCollapseControlRenderState({
+              placement: 'top',
+              toolCallCount: displayToolCallCount,
+              colors: theme.colors,
+            });
+            const toolExecutionBottomCollapseControl = getToolExecutionDetailMobileCollapseControlRenderState({
+              colors: theme.colors,
+            });
+            const toolExecutionExpandControl = getToolExecutionDetailMobileExpandControlRenderState();
+            const compactToolExecutionRows = renderedToolEntries.map(({ toolCall, label, origIdx, result: tcResult }) => {
+              const tcState = getToolExecutionCallDisplayState(tcResult);
+              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, tcResult ?? null);
+              const compactRenderState = getToolExecutionCompactMobileRenderState({
+                state: tcState,
+                preview: toolPreview,
+                colors: theme.colors,
+              });
+
+              return {
+                key: String(origIdx),
+                renderState: compactRenderState,
+              };
+            });
+            const stableMessageKey = m.id ?? String(i);
+            const toolExecutionDetailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) => {
+              const toolCallKey = `${stableMessageKey}-${origIdx}`;
+              const isToolCallFullyExpanded = getChatDisplayExpansionState(expandedToolCalls, toolCallKey);
+              const toolNameLabel = label ?? toolCall.name;
+              const toolArgumentsDetail = getToolExecutionDetailArgumentsState(toolCall.arguments);
+              const toolArgumentsPayload = toolArgumentsDetail.payload;
+              const toolArgumentsText = toolArgumentsDetail.content;
+              const toolInputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+                kind: 'input',
+                payload: toolArgumentsPayload,
+              });
+              const toolResultDetail = getToolExecutionDetailResultState(result);
+              const toolResultContent = toolResultDetail.content;
+              const toolResultPayload = toolResultDetail.payload;
+              const toolResultState = toolResultDetail.state;
+              const toolOutputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+                kind: 'output',
+                payload: toolResultPayload,
+              });
+              const toolErrorHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+                kind: 'error',
+              });
+              const toolDetailHeaderState = getToolExecutionDetailMobileHeaderRenderState({
+                toolName: toolNameLabel,
+                isExpanded: isToolCallFullyExpanded,
+                resultState: toolResultState,
+                colors: theme.colors,
+              });
+              const toolInputCopyButtonState = getToolExecutionDetailMobileCopyButtonRenderState({
+                kind: 'input',
+                toolName: toolNameLabel,
+                colors: theme.colors,
+              });
+              const toolOutputCopyButtonState = getToolExecutionDetailMobileCopyButtonRenderState({
+                kind: 'output',
+                toolName: toolNameLabel,
+                colors: theme.colors,
+              });
+              const toolErrorCopyButtonState = getToolExecutionDetailMobileCopyButtonRenderState({
+                kind: 'error',
+                toolName: toolNameLabel,
+                colors: theme.colors,
+              });
+
+              return {
+                key: toolCallKey,
+                renderState: toolDetailHeaderState,
+                toolName: toolNameLabel,
+                onHeaderPress: () => toggleToolCallExpansion(stableMessageKey, origIdx),
+                input: toolArgumentsDetail.hasArguments ? {
+                  payloadRenderState: toolInputHeaderState,
+                  compactText: toolArgumentsPayload?.compactText,
+                  content: toolArgumentsText,
+                  isExpanded: isToolCallFullyExpanded,
+                  previewNumberOfLines: mobileToolExecutionDetailPayloadPreview.numberOfLines,
+                  copyButtonRenderState: toolInputCopyButtonState,
+                  onCopyPress: () => { void handleCopyToolPayload(toolArgumentsText); },
+                } : null,
+                result: result ? {
+                  payloadRenderState: toolOutputHeaderState,
+                  resultBadge: toolDetailHeaderState.resultBadge,
+                  characterCountLabel: toolResultDetail.characterCountLabel,
+                  resultCompactText: toolResultPayload?.compactText,
+                  resultContent: toolResultContent,
+                  isExpanded: isToolCallFullyExpanded,
+                  previewNumberOfLines: mobileToolExecutionDetailPayloadPreview.numberOfLines,
+                  copyButtonRenderState: toolOutputCopyButtonState,
+                  onCopyPress: () => { void handleCopyToolPayload(toolResultContent); },
+                  errorRenderState: toolErrorHeaderState,
+                  error: toolResultDetail.error,
+                  errorCopyButtonRenderState: toolErrorCopyButtonState,
+                  onErrorCopyPress: () => { void handleCopyToolPayload(toolResultDetail.error ?? ''); },
+                } : null,
+                pendingResult: !result && toolResultDetail.isPending ? {
+                  renderState: toolExecutionDetailPendingResultState,
+                } : null,
+              };
+            });
+            const messageRenderState = getChatMessageMobileRenderState({
+              role: m.role,
+              isComplete: !responding,
+              isLast: i === lastAssistantContentMessageIndex,
+              hasErrors,
+              content: visibleMessageContent,
+              isExpanded,
+              shouldCollapse: effectiveShouldCollapse,
+              isLiveStreaming: isLiveStreamingAssistantMessage,
+              colors: theme.colors,
+            });
+            const messageContentRenderState = messageRenderState.content;
+            const {
+              shouldShowExpandedContent,
+              shouldShowCollapsedTextPreview,
+              shouldRenderExpandedContent,
+              shouldRenderCollapsedTextPreview,
+            } = messageContentRenderState;
+            const isMessageSpeaking = speakingMessageIndex === i;
+            const messageSpeechRenderState = getChatMessageSpeechMobileRenderState({
+              role: m.role,
+              content: visibleMessageContent,
+              ttsEnabled,
+              isVisible: shouldRenderExpandedContent || shouldRenderCollapsedTextPreview,
+              isSpeaking: isMessageSpeaking,
+              colors: theme.colors,
+            });
+            const canSpeakVisibleContent = messageSpeechRenderState.canSpeak;
+            const messageToneStyle = messageThreadSurfaceStyles.getToneStyle(messageRenderState.toneStyleSlot);
+            // Skip empty messages: no visible content AND no tool calls to display
+            // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
+            if (!messageDisplayState.shouldRenderSurface) {
+              return null;
+            }
+
+            const messageExpansionRenderState = getChatMessageExpansionMobileRenderState({
+              shouldCollapse: effectiveShouldCollapse,
+              isToolOnly: messageDisplayState.isToolOnly,
+              isExpanded,
+              colors: theme.colors,
+            });
+            const canToggleVisibleContent = messageExpansionRenderState.canToggle;
+            const toolApprovalId = m.toolApproval?.approvalId ?? '';
+            const isToolApprovalExpanded = toolApprovalId
+              ? getChatDisplayExpansionState(expandedToolApprovals, toolApprovalId)
+              : false;
+            const isToolApprovalResponding = toolApprovalId
+              ? pendingToolApprovalResponseId === toolApprovalId
+              : false;
+            const toolApprovalRenderState = m.toolApproval
+              ? getChatRuntimeToolApprovalMobileRenderState({
+                  toolName: m.toolApproval.toolName,
+                  isArgumentsExpanded: isToolApprovalExpanded,
+                  isResponding: isToolApprovalResponding,
+                  colors: theme.colors,
+                })
+              : null;
+            const toolApprovalArgumentsDetail = m.toolApproval
+              ? getToolExecutionDetailArgumentsState(m.toolApproval.arguments)
+              : null;
+            const toolApprovalArgumentsPreview = m.toolApproval
+              ? toolApprovalArgumentsDetail?.preview ?? ''
+              : '';
+            const turnDurationEntry =
+              typeof m.timestamp === 'number'
+                ? turnDurations.byUserTimestamp.get(m.timestamp)
+                : undefined;
+            const messageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
+              role: m.role,
+              durationMs: turnDurationEntry?.durationMs,
+              isLive: turnDurationEntry?.isLive,
+              colors: theme.colors,
+            });
+            const messageActionSet = createChatMessageActionSet({
+              contentRenderState: messageContentRenderState,
+              turnDuration: {
+                canRender: messageTurnDurationRenderState.shouldRender,
+                renderState: messageTurnDurationRenderState,
+                ...messageActionStyles.turnDuration,
+              },
+              speech: {
+                canRender: canSpeakVisibleContent,
+                renderState: messageSpeechRenderState,
+                onPress: () => speakMessage(i, visibleMessageContent),
+                hitSlop: mobileMessageSpeechButton.hitSlop,
+                ...messageActionStyles.speech,
+                isActive: isMessageSpeaking,
+              },
+              branch: {
+                canRender: canBranchFromMessage,
+                renderState: messageBranchRenderState,
+                onPress: () => {
+                  if (messageBranchIndex != null) {
+                    void handleBranchFromMessage(messageBranchIndex);
+                  }
+                },
+                hitSlop: mobileMessageActionButton.hitSlop,
+                ...messageActionStyles.branch,
+              },
+              copy: {
+                canRender: canCopyVisibleContent,
+                renderState: messageCopyRenderState,
+                onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
+                hitSlop: mobileMessageActionButton.hitSlop,
+                ...messageActionStyles.copy,
+                isActive: isMessageCopied,
+              },
+              expansion: {
+                canRender: canToggleVisibleContent,
+                renderState: messageExpansionRenderState,
+                onPress: () => toggleMessageExpansion(i),
+                hitSlop: mobileMessageActionButton.hitSlop,
+                ...messageActionStyles.expansion,
+              },
+            });
+            const delegationStatusColors = m.delegation
+              ? getChatRuntimeDelegationStatusMobileColors(m.delegation.status, theme.colors)
+              : null;
+            const delegationStatusStyles = delegationStatusColors
+              ? getChatSessionStatusMobileStyleState(delegationStatusColors)
+              : null;
+            const isDelegationConversationPreviewExpanded = m.delegation
+              ? getChatDisplayExpansionState(expandedDelegationConversationPreviews, m.delegation.runId)
+              : false;
+            const isDelegationToolPreviewExpanded = m.delegation
+              ? getChatDisplayExpansionState(expandedDelegationToolPreviews, m.delegation.runId)
+              : false;
+            const delegationCardState = m.delegation
+              ? getAgentDelegationCardState(
+                  m.delegation,
+                  renderedToolEntries,
+                  {
+                    maxSubtitleLength: mobileRuntimeDelegationCard.subtitleMaxLength,
+                    conversationPreviewMaxRows: mobileRuntimeDelegationCard.conversationPreviewMaxRows,
+                    conversationPreviewMaxLength: mobileRuntimeDelegationCard.conversationPreviewMaxLength,
+                    includeAllConversationPreview: isDelegationConversationPreviewExpanded,
+                    toolPreviewMaxRows: mobileRuntimeDelegationCard.toolPreviewMaxRows,
+                    includeAllToolPreview: isDelegationToolPreviewExpanded,
+                  },
+                )
+              : null;
+            const delegationPresentation = delegationCardState?.presentation ?? null;
+            const delegationMessageCount = delegationPresentation?.messageCount ?? 0;
+            const delegationConversationPreviewState = delegationCardState?.conversationPreview ?? null;
+            const delegationConversationPreviewRows = delegationConversationPreviewState?.rows ?? [];
+            const delegationHiddenConversationCount = delegationConversationPreviewState?.hiddenCount ?? 0;
+            const delegationToolPreviewState = delegationCardState?.toolPreview ?? { rows: [], hiddenCount: 0 };
+            const delegationVisibleToolRows = delegationToolPreviewState.rows;
+            const delegationHiddenToolCount = delegationToolPreviewState.hiddenCount;
+            const delegationConversationPreviewMoreAction = getChatRuntimeDelegationConversationPreviewMoreActionState(
+              delegationHiddenConversationCount,
+            );
+            const delegationToolPreviewMoreAction = getChatRuntimeDelegationToolPreviewMoreActionState(
+              delegationHiddenToolCount,
+            );
+            const delegationMessageCountLabel = delegationMessageCount > 0
+              ? formatChatRuntimeDelegationMessageCount(delegationMessageCount)
+              : null;
+            const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount);
+            const delegationToolPreviewRows = delegationVisibleToolRows.map(({ toolCall, label, result }, toolIndex) => {
+              const toolState = getToolExecutionCallDisplayState(result);
+              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, result ?? null);
+              const renderState = getToolExecutionCompactMobileRenderState({
+                state: toolState,
+                preview: toolPreview,
+                colors: theme.colors,
+              });
+
+              return {
+                key: `${toolCall.name}-${toolIndex}`,
+                preview: toolPreview,
+                renderState,
+              };
+            });
+            const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState({
+              retryInfo: m.retryInfo,
+              colors: theme.colors,
+            });
+
+            return (
+              <ChatMessageRuntimeThread
+                key={i}
+                surfaceToneStyle={messageToneStyle}
+                groupRenderState={groupRenderState}
+                onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
+                styles={chatMessageRuntimeThreadStyles}
+                body={{
+                  retryStatus: m.variant === 'retry' && retryStatusRenderState.shouldRender ? {
+                    renderState: retryStatusRenderState,
+                  } : null,
+                  delegationCard: m.variant === 'delegation' && m.delegation && delegationPresentation ? {
+                    surface: mobileRuntimeDelegationCard,
+                    agentName: m.delegation.agentName,
+                    presentation: delegationPresentation,
+                    accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel({
+                      agentName: m.delegation.agentName,
+                      statusLabel: delegationPresentation.statusLabel,
+                      subtitle: delegationPresentation.subtitle,
+                      sourceLabel: delegationPresentation.sourceLabel,
+                      trackingLabel: delegationPresentation.trackingLabel,
+                      messageCount: delegationMessageCount,
+                    }),
+                    messageCountLabel: delegationMessageCountLabel,
+                    statusStyles: delegationStatusStyles,
+                    conversationPreview: {
+                      rows: delegationConversationPreviewRows,
+                      roleStyles: delegationConversationPreviewRoleStyles,
+                      hiddenCount: delegationHiddenConversationCount,
+                      moreAction: delegationConversationPreviewMoreAction,
+                      onShowAll: () => {
+                        setExpandedDelegationConversationPreviews((current) =>
+                          setChatDisplayExpansionState(current, m.delegation!.runId, true),
+                        );
+                      },
+                    },
+                    toolPreview: {
+                      shouldRender: displayToolCallCount > 0,
+                      label: delegationToolPreviewLabel,
+                      rows: delegationToolPreviewRows,
+                      hiddenCount: delegationHiddenToolCount,
+                      moreAction: delegationToolPreviewMoreAction,
+                      onShowAll: () => {
+                        setExpandedDelegationToolPreviews((current) =>
+                          setChatDisplayExpansionState(current, m.delegation!.runId, true),
+                        );
+                      },
+                    },
+                  } : null,
+                  toolApproval: m.variant === 'approval' && m.toolApproval && toolApprovalRenderState ? {
+                    renderState: toolApprovalRenderState,
+                    toolName: m.toolApproval.toolName,
+                    argumentsPreview: toolApprovalArgumentsPreview,
+                    argumentsContent: toolApprovalArgumentsDetail?.content ?? '',
+                    onToggleArguments: () => toggleToolApprovalArguments(m.toolApproval!.approvalId),
+                    onDeny: () => respondToToolApproval(m.toolApproval!.approvalId, false),
+                    onApprove: () => respondToToolApproval(m.toolApproval!.approvalId, true),
+                  } : null,
+                  inlineActivity: m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? {
+                    renderState: mobileRuntimeInlineActivity,
+                    accessibilityLabel: mobileRuntimeActivityAccessibility.thinkingLabel,
+                    spinnerSource: isDark ? darkSpinner : lightSpinner,
+                  } : null,
+                  conversation: {
+                    content: {
+                      contentState: messageContentRenderState,
+                      slots: messageActionSet.visibleSlots,
+                      components: messageActionSet.components,
+                      expanded: {
+                        streamingRenderState: streamingContentRenderState,
+                        markdownContent: visibleMessageContent,
+                        assetBaseUrl: config.baseUrl,
+                        assetAuthToken: config.apiKey,
+                        spinnerSource: isDark ? darkSpinner : lightSpinner,
+                      },
+                      collapsed: {
+                        renderState: messageRenderState.collapsedPreview,
+                        onPress: canToggleVisibleContent ? () => toggleMessageExpansion(i) : undefined,
+                        disabled: !canToggleVisibleContent,
+                        accessibilityLabel: messageExpansionRenderState.accessibilityLabel,
+                        accessibilityHint: messageExpansionRenderState.accessibilityHint ?? undefined,
+                        accessibilityState: messageExpansionRenderState.accessibilityState,
+                        ariaExpanded: messageExpansionRenderState.ariaExpanded,
+                      },
+                    },
+                    toolExecutionStack: {
+                      shouldRender: displayToolCallCount > 0,
+                      isExpanded,
+                      compact: {
+                        renderState: toolExecutionExpandControl,
+                        rows: compactToolExecutionRows,
+                        onPress: () => toggleMessageExpansion(i),
+                      },
+                      expanded: {
+                        topCollapseRenderState: toolExecutionTopCollapseControl,
+                        bottomCollapseRenderState: toolExecutionBottomCollapseControl,
+                        onCollapsePress: () => toggleMessageExpansion(i),
+                        isPending,
+                        allSuccess,
+                        hasErrors,
+                        emptyState: {
+                          shouldRender: displayToolCallCount === 0,
+                          renderState: toolExecutionDetailEmptyState,
+                        },
+                      },
+                      detailRows: toolExecutionDetailRows,
+                    },
+                    standaloneActions: {
+                      shouldRender: messageActionSet.shouldRenderStandaloneActions,
+                      slots: messageActionSet.visibleSlots,
+                      components: messageActionSet.components,
+                    },
+                  },
+                }}
               />
-
-              <Text style={styles.modalLabel}>{PROMPT_LIBRARY_PRESENTATION.editor.contentLabel}</Text>
-              <TextInput
-                style={[styles.modalInput, styles.modalInputMultiline]}
-                value={newPromptContent}
-                onChangeText={setNewPromptContent}
-                placeholder={PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder}
-                placeholderTextColor={theme.colors.mutedForeground}
-                multiline
-                textAlignVertical="top"
-              />
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={closePromptModal}
-                  disabled={isSavingPrompt}
-                >
-                  <Text style={styles.modalCancelButtonText}>{PROMPT_LIBRARY_PRESENTATION.actions.cancel}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modalSaveButton,
-                    (!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt) && styles.modalSaveButtonDisabled
-                  ]}
-                  onPress={handleSavePrompt}
-                  disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
-                >
-                  <Text style={styles.modalSaveButtonText}>
-                    {getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt), isSavingPrompt)}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </KeyboardAvoidingView>
+            );
+          })}
+    </ChatMessageRuntimeSurface>
   );
 }
 
 function createStyles(theme: Theme, screenHeight: number) {
+  const headerSurface = mobileHeaderSurface;
+  const headerAgentSelectorRenderState = getChatRuntimeAgentSelectorMobileRenderState({
+    agentLabel: getChatRuntimeCurrentAgentLabel(),
+    colors: theme.colors,
+  });
+  const inactiveHeaderPinRenderState = getChatRuntimePinMobileRenderState({
+    isPinned: false,
+    colors: theme.colors,
+  });
+  const activeHeaderPinRenderState = getChatRuntimePinMobileRenderState({
+    isPinned: true,
+    colors: theme.colors,
+  });
+  const headerKillSwitchRenderState = getChatRuntimeKillSwitchMobileRenderState({
+    colors: theme.colors,
+  });
+  const viewportSurface = mobileRuntimeViewport;
+  const loadingStateSurface = mobileRuntimeLoadingState;
+  const inlineActivitySurface = mobileRuntimeInlineActivity;
+  const streamingContentStyleState = getChatRuntimeStreamingContentMobileRenderState({
+    colors: theme.colors,
+  });
+  const streamingContentSurface = streamingContentStyleState.surface;
+  const streamingContentSurfaceColors = streamingContentStyleState.colors;
+  const streamingContentSpinnerSize = streamingContentStyleState.spinner.size;
+  const connectionBannerStyleState = getChatRuntimeConnectionBannerMobileRenderState({
+    colors: theme.colors,
+  });
+  const connectionBannerSurface = connectionBannerStyleState.surface;
+  const connectionBannerSurfaceColors = connectionBannerStyleState.colors;
+  const retryStatusStyleState = getChatRuntimeRetryStatusMobileRenderState({
+    colors: theme.colors,
+  });
+  const retryStatusSurface = retryStatusStyleState.surface;
+  const retryStatusSurfaceColors = retryStatusStyleState.colors;
+  const stepSummaryStyleState = getChatRuntimeStepSummaryMobileRenderState({
+    colors: theme.colors,
+  });
+  const stepSummarySurface = stepSummaryStyleState.surface;
+  const stepSummarySurfaceColors = stepSummaryStyleState.colors;
+  const delegationCardSurface = mobileRuntimeDelegationCard;
+  const delegationCardSurfaceColors = getChatRuntimeDelegationCardMobileColors(theme.colors);
+  const scrollToBottomStyleState = getChatRuntimeScrollToBottomMobileRenderState({
+    colors: theme.colors,
+  });
+  const scrollToBottomSurface = scrollToBottomStyleState.surface;
+  const scrollToBottomSurfaceColors = scrollToBottomStyleState.colors;
+  const messageHistoryBannerStyleState = getChatRuntimeMessageHistoryBannerMobileRenderState({
+    colors: theme.colors,
+  });
+  const messageHistoryBannerSurface = messageHistoryBannerStyleState.surface;
+  const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState.colors;
+  const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;
+  const composerSurface = mobileComposerSurface;
+  const mobileComposerSurfaceColors = getChatComposerMobileSurfaceColors(theme.colors);
+  const mobileComposerTextColors = getChatComposerMobileTextColors(theme.colors);
+  const inputAreaSurface = composerSurface.inputArea;
+  const sttPreviewSurface = composerSurface.sttPreview;
+  const voiceOverlaySurface = composerSurface.voiceOverlay;
+  const imageAttachmentStyleState = getChatImageAttachmentMobileRenderState({
+    colors: theme.colors,
+  });
+  const imageAttachmentSurface = imageAttachmentStyleState.surface;
+  const promptLibrarySurface = mobilePromptLibrarySurface;
+  const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors(theme.colors);
+  const promptEditorModalSurface = promptLibrarySurface.editorModal;
+  const messageQueuePanelSurface = mobileMessageQueuePanelSurface;
+  const handsFreeSurface = mobileHandsFreeSurface;
   const headerActionButton = createMinimumTouchTargetStyle();
-  const headerEdgeActionButton = createMinimumTouchTargetStyle({ horizontalPadding: 16 });
+  const headerEdgeActionButton = createMinimumTouchTargetStyle({
+    horizontalPadding: headerSurface.edgeActionButton.horizontalPadding,
+  });
+  const sessionStatusSurface = mobileSessionStatusSurface;
+  const compactToolExecution = mobileToolExecutionCompactSurface;
+  const detailedToolExecution = mobileToolExecutionDetailSurface;
+  const viewportSurfaceColors = getChatRuntimeViewportMobileColors(theme.colors);
+  const toolActivityGroupSurface = mobileToolActivityGroupSurface;
+  const toolActivityGroupSurfaceColors = getToolActivityGroupMobileSurfaceColors(theme.colors);
+  const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
+  const handsFreeSurfaceColors = getHandsFreeComposerMobileSurfaceColors(theme.colors);
+  const toolApprovalStyleState = getChatRuntimeToolApprovalMobileRenderState({
+    toolName: '',
+    colors: theme.colors,
+  });
+  const toolApprovalSurface = toolApprovalStyleState.surface;
+  const toolApprovalSurfaceColors = toolApprovalStyleState.colors;
+  const mobileMessageStyleState = getChatMessageMobileRenderState({
+    colors: theme.colors,
+  });
+  const mobileMessageSurface = mobileMessageStyleState.surface;
+  const mobileMessageContentLayout = mobileMessageStyleState.contentLayout;
+  const mobileMessageCollapsedPreview = mobileMessageStyleState.collapsedPreview;
+  const mobileMessageCollapsedPreviewColors = mobileMessageStyleState.colors.collapsedPreview;
+  const mobileMessageToneColors = mobileMessageStyleState.colors.tones;
+  const toolPayloadPreviewColors = getToolExecutionDetailMobilePayloadPreviewColors(theme.colors);
+  const toolDetailCopyButtonColors = getToolExecutionDetailMobileCopyButtonColors(theme.colors);
+  const toolResultBadgeSuccessColors = getToolExecutionDetailMobileBadgeColors('success', theme.colors);
+  const toolResultBadgeErrorColors = getToolExecutionDetailMobileBadgeColors('error', theme.colors);
+  const toolResultErrorColors = getToolExecutionDetailMobileErrorColors(theme.colors);
+  const toolExecutionDetailContentColors = getToolExecutionDetailMobileContentColors(theme.colors);
+  const headerTurnDurationColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors({}, theme.colors);
+  const headerTurnDurationLiveColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors(
+    { isLive: true },
+    theme.colors,
+  );
+  const mobileMessageActionButtonColors = getChatMessageActionMobileButtonColors('standard', theme.colors);
+  const mobileMessageBranchButtonColors = getChatMessageActionMobileButtonColors('branch', theme.colors);
+  const mobileMessageCopiedButtonColors = getChatMessageActionMobileButtonColors('copied', theme.colors);
+  const mobileMessageSpeechButtonColors = getChatMessageActionMobileButtonColors('speech', theme.colors);
+  const mobileMessageSpeechActiveButtonColors = getChatMessageActionMobileButtonColors('speechActive', theme.colors);
+  const mobileMessageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
+    role: 'user',
+    durationMs: 1,
+    colors: theme.colors,
+  });
+  const mobileMessageTurnDurationLiveRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
+    role: 'user',
+    durationMs: 1,
+    isLive: true,
+    colors: theme.colors,
+  });
+  const mobileMessageTurnDurationBadge = mobileMessageTurnDurationRenderState.badge;
+  const mobileMessageTurnDurationLiveBadge = mobileMessageTurnDurationLiveRenderState.badge;
+  const mobileMessageTurnDurationBadgeColors = mobileMessageTurnDurationRenderState.colors;
+  const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
+  const getToolExecutionStatusColor = (state: Parameters<typeof getToolExecutionStatusMobileColor>[0]) =>
+    getToolExecutionStatusMobileColor(state, theme.colors);
+  const getToolExecutionDetailColors = (state: Parameters<typeof getToolExecutionDetailMobileColors>[0]) =>
+    getToolExecutionDetailMobileColors(state, theme.colors);
   return StyleSheet.create({
+    keyboardAvoidingContainer: {
+      flex: viewportSurface.flex,
+      backgroundColor: viewportSurfaceColors.backgroundColor,
+    },
+    chatRoot: {
+      flex: viewportSurface.flex,
+    },
+    chatScroll: {
+      flex: viewportSurface.flex,
+      paddingHorizontal: spacing[viewportSurface.paddingHorizontal],
+      paddingVertical: spacing[viewportSurface.paddingVertical],
+      backgroundColor: viewportSurfaceColors.backgroundColor,
+    },
+    chatScrollContent: {
+      gap: spacing[viewportSurface.contentGap],
+    },
+    loadingState: {
+      flex: loadingStateSurface.flex,
+      justifyContent: loadingStateSurface.justifyContent,
+      alignItems: loadingStateSurface.alignItems,
+      paddingVertical: loadingStateSurface.paddingVertical,
+    },
+    loadingSpinner: {
+      width: loadingStateSurface.spinnerSize,
+      height: loadingStateSurface.spinnerSize,
+    },
+    inlineActivityIndicator: {
+      flexDirection: inlineActivitySurface.flexDirection,
+      alignItems: inlineActivitySurface.alignItems,
+    },
+    inlineActivitySpinner: {
+      width: inlineActivitySurface.spinnerSize,
+      height: inlineActivitySurface.spinnerSize,
+    },
+    streamingContentHeader: {
+      flexDirection: streamingContentSurface.headerFlexDirection,
+      alignItems: streamingContentSurface.headerAlignItems,
+      gap: spacing[streamingContentSurface.headerGap],
+      marginBottom: spacing[streamingContentSurface.headerMarginBottom],
+    },
+    streamingContentTitle: {
+      minWidth: streamingContentSurface.titleMinWidth,
+      flexShrink: streamingContentSurface.titleFlexShrink,
+      color: streamingContentSurfaceColors.title.color,
+      fontSize: streamingContentSurface.titleFontSize,
+      fontWeight: streamingContentSurface.titleFontWeight,
+    },
+    streamingContentSpinner: {
+      width: streamingContentSpinnerSize,
+      height: streamingContentSpinnerSize,
+    },
+    streamingContentBadge: {
+      marginLeft: streamingContentSurface.badgeMarginLeft,
+      paddingHorizontal: spacing[streamingContentSurface.badgePaddingHorizontal],
+      paddingVertical: streamingContentSurface.badgePaddingVertical,
+      borderRadius: radius[streamingContentSurface.badgeBorderRadius],
+      backgroundColor: streamingContentSurfaceColors.badge.backgroundColor,
+    },
+    streamingContentBadgeText: {
+      color: streamingContentSurfaceColors.badgeText.color,
+      fontSize: streamingContentSurface.badgeTextFontSize,
+      fontWeight: streamingContentSurface.badgeTextFontWeight,
+    },
+    streamingContentBodyRow: {
+      flexDirection: streamingContentSurface.bodyRowFlexDirection,
+      alignItems: streamingContentSurface.bodyRowAlignItems,
+      minWidth: streamingContentSurface.bodyRowMinWidth,
+    },
+    streamingContentText: {
+      flex: streamingContentSurface.textFlex,
+      minWidth: streamingContentSurface.textMinWidth,
+      color: streamingContentSurfaceColors.text.color,
+      fontSize: streamingContentSurface.textFontSize,
+      lineHeight: streamingContentSurface.textLineHeight,
+    },
+    streamingContentCaret: {
+      width: streamingContentSurface.caretWidth,
+      height: streamingContentSurface.caretHeight,
+      marginLeft: streamingContentSurface.caretMarginLeft,
+      borderRadius: streamingContentSurface.caretBorderRadius,
+      backgroundColor: streamingContentSurfaceColors.caret.backgroundColor,
+    },
+    messageQueuePanelWrapper: {
+      paddingHorizontal: spacing[messageQueuePanelSurface.wrapper.paddingHorizontal],
+      paddingTop: spacing[messageQueuePanelSurface.wrapper.paddingTop],
+    },
+    headerAgentSelectorButton: {
+      alignItems: headerSurface.agentSelectorButton.alignItems,
+      justifyContent: headerSurface.agentSelectorButton.justifyContent,
+      height: headerSurface.agentSelectorButton.height,
+      minHeight: headerSurface.agentSelectorButton.minHeight,
+    },
+	    headerAgentSelectorChip: {
+	      flexDirection: headerSurface.agentSelectorChip.flexDirection,
+	      alignItems: headerSurface.agentSelectorChip.alignItems,
+	      backgroundColor: headerAgentSelectorRenderState.chip.backgroundColor,
+	      maxWidth: headerSurface.agentSelectorChip.maxWidth,
+	      paddingHorizontal: headerSurface.agentSelectorChip.paddingHorizontal,
+	      paddingVertical: headerSurface.agentSelectorChip.paddingVertical,
+	      borderRadius: headerSurface.agentSelectorChip.borderRadius,
+	      gap: headerSurface.agentSelectorChip.gap,
+	    },
+    headerAgentSelectorText: {
+      fontSize: headerSurface.agentSelectorText.fontSize,
+      color: headerAgentSelectorRenderState.text.color,
+      fontWeight: headerSurface.agentSelectorText.fontWeight,
+    },
     headerActionsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
+      flexDirection: headerSurface.actionsRow.flexDirection,
+      alignItems: headerSurface.actionsRow.alignItems,
+      gap: headerSurface.actionsRow.gap,
     },
     headerConversationChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      borderWidth: 1,
-      borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      marginHorizontal: 4,
+      flexDirection: sessionStatusSurface.chip.flexDirection,
+      alignItems: sessionStatusSurface.chip.alignItems,
+      gap: sessionStatusSurface.chip.gap,
+      borderWidth: sessionStatusSurface.chip.borderWidth,
+      borderRadius: sessionStatusSurface.chip.borderRadius,
+      paddingHorizontal: sessionStatusSurface.chip.paddingHorizontal,
+      paddingVertical: sessionStatusSurface.chip.paddingVertical,
+      marginHorizontal: sessionStatusSurface.chip.marginHorizontal,
     },
     headerConversationChipText: {
       ...theme.typography.caption,
-      fontWeight: '700',
+      fontWeight: sessionStatusSurface.chipText.fontWeight,
+    },
+    headerConversationSpinner: {
+      width: sessionStatusSurface.runningIndicator.size,
+      height: sessionStatusSurface.runningIndicator.size,
+    },
+    headerDurationChip: {
+      flexDirection: mobileHeaderTurnDurationBadge.flexDirection,
+      alignItems: mobileHeaderTurnDurationBadge.alignItems,
+      justifyContent: mobileHeaderTurnDurationBadge.justifyContent,
+      gap: mobileHeaderTurnDurationBadge.gap,
+      minHeight: mobileHeaderTurnDurationBadge.minHeight,
+      maxWidth: mobileHeaderTurnDurationBadge.maxWidth,
+      paddingHorizontal: mobileHeaderTurnDurationBadge.paddingHorizontal,
+      borderRadius: mobileHeaderTurnDurationBadge.borderRadius,
+      backgroundColor: headerTurnDurationColors.chip.backgroundColor,
+      marginHorizontal: mobileHeaderTurnDurationBadge.marginHorizontal,
+      flexShrink: mobileHeaderTurnDurationBadge.flexShrink,
+      opacity: mobileHeaderTurnDurationBadge.opacity,
+    } as const,
+    headerDurationChipLive: {
+      backgroundColor: headerTurnDurationLiveColors.chip.backgroundColor,
+      opacity: mobileHeaderTurnDurationLiveBadge.opacity,
+    } as const,
+    headerDurationChipText: {
+      fontFamily: resolveMobileFontFamily(mobileHeaderTurnDurationBadge.fontFamilyByPlatform),
+      fontSize: mobileHeaderTurnDurationBadge.fontSize,
+      lineHeight: mobileHeaderTurnDurationBadge.lineHeight,
+      fontWeight: mobileHeaderTurnDurationBadge.fontWeight,
+      color: headerTurnDurationColors.text.color,
+    },
+    headerDurationChipTextLive: {
+      color: headerTurnDurationLiveColors.text.color,
     },
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
-      ...createMinimumTouchTargetStyle({ horizontalPadding: 10, verticalPadding: 8 }),
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: headerSurface.pinButton.horizontalPadding,
+        verticalPadding: headerSurface.pinButton.verticalPadding,
+      }),
+      borderRadius: radius[headerSurface.pinButton.borderRadius],
+      borderWidth: headerSurface.pinButton.borderWidth,
+      borderColor: inactiveHeaderPinRenderState.button.borderColor,
+      backgroundColor: inactiveHeaderPinRenderState.button.backgroundColor,
     },
     headerPinButtonActive: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.primary + '18',
-    },
-    headerPinButtonText: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      fontWeight: '600',
-    },
-    headerPinButtonTextActive: {
-      color: theme.colors.primary,
+      borderColor: activeHeaderPinRenderState.button.borderColor,
+      backgroundColor: activeHeaderPinRenderState.button.backgroundColor,
+	    },
+	    headerKillSwitchIconContainer: {
+	      width: headerSurface.killSwitchButton.size,
+	      height: headerSurface.killSwitchButton.size,
+	      borderRadius: headerSurface.killSwitchButton.borderRadius,
+	      backgroundColor: headerKillSwitchRenderState.button.backgroundColor,
+	      alignItems: headerSurface.killSwitchButton.alignItems,
+	      justifyContent: headerSurface.killSwitchButton.justifyContent,
+	    },
+    headerHandsFreeIconContainer: {
+      width: headerSurface.handsFreeButton.size,
+      height: headerSurface.handsFreeButton.size,
+      alignItems: headerSurface.handsFreeButton.alignItems,
+      justifyContent: headerSurface.handsFreeButton.justifyContent,
     },
     loadOlderContainer: {
-      alignItems: 'center',
-      paddingVertical: spacing.xs,
+      flexDirection: messageHistoryBannerSurface.flexDirection,
+      flexWrap: messageHistoryBannerSurface.flexWrap,
+      justifyContent: messageHistoryBannerSurface.justifyContent,
+      alignItems: messageHistoryBannerSurface.alignItems,
+      gap: spacing[messageHistoryBannerSurface.gap],
+      paddingVertical: spacing[messageHistoryBannerSurface.paddingVertical],
     },
     loadOlderText: {
       ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      textAlign: 'center',
+      color: messageHistoryBannerSurfaceColors.summary.color,
+      textAlign: messageHistoryBannerSurface.textAlign,
     },
-    // Compact desktop-style messages: left-border accent, full width, no bubbles
+    loadOlderButton: {
+      flexDirection: messageHistoryBannerSurface.loadButton.flexDirection,
+      alignItems: messageHistoryBannerSurface.loadButton.alignItems,
+      justifyContent: messageHistoryBannerSurface.loadButton.justifyContent,
+      gap: spacing[messageHistoryBannerSurface.loadButton.gap],
+      paddingHorizontal: spacing[messageHistoryBannerSurface.loadButton.paddingHorizontal],
+      paddingVertical: messageHistoryBannerSurface.loadButton.paddingVertical,
+      borderRadius: radius[messageHistoryBannerSurface.loadButton.borderRadius],
+      borderWidth: messageHistoryBannerSurface.loadButton.borderWidth,
+      borderColor: messageHistoryBannerSurfaceColors.loadButton.borderColor,
+      backgroundColor: messageHistoryBannerSurfaceColors.loadButton.backgroundColor,
+    },
+    loadOlderButtonPressed: {
+      opacity: messageHistoryLoadButtonPressedOpacity,
+    },
+    loadOlderButtonText: {
+      color: messageHistoryBannerSurfaceColors.loadButton.color,
+      fontSize: messageHistoryBannerSurface.loadButton.fontSize,
+      fontWeight: messageHistoryBannerSurface.loadButton.fontWeight,
+    },
+    // Compact desktop-style messages: full-width role cards with shared tone semantics.
     msg: {
-      paddingLeft: spacing.xs,
-      paddingVertical: 2,
-      marginBottom: 0,
-      width: '100%',
+      paddingHorizontal: spacing[mobileMessageSurface.paddingHorizontal],
+      paddingVertical: spacing[mobileMessageSurface.paddingVertical],
+      marginBottom: spacing[mobileMessageSurface.marginBottom],
+      width: mobileMessageSurface.width,
+      borderWidth: theme[mobileMessageSurface.borderWidth],
+      borderRadius: radius[mobileMessageSurface.borderRadius],
     },
-    user: {
-      // User messages: subtle left border accent
-      borderLeftWidth: 2,
-      borderLeftColor: hexToRgba(theme.colors.info, 0.4),
-      paddingLeft: spacing.xs,
+    user: mobileMessageToneColors.user,
+    assistant: mobileMessageToneColors.assistant,
+    assistantFinal: mobileMessageToneColors.assistant_final,
+    tool: mobileMessageToneColors.tool,
+    retryStatusCard: {
+      gap: spacing[retryStatusSurface.gap],
+      padding: spacing[retryStatusSurface.padding],
+      borderRadius: radius[retryStatusSurface.borderRadius],
+      borderWidth: retryStatusSurface.borderWidth,
+      borderColor: retryStatusSurfaceColors.card.borderColor,
+      backgroundColor: retryStatusSurfaceColors.card.backgroundColor,
     },
-    assistant: {
-      // Assistant messages: subtle left-border accent like desktop
-      borderLeftWidth: 2,
-      borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.3),
-      paddingLeft: spacing.xs,
+    retryStatusHeader: {
+      flexDirection: retryStatusSurface.headerFlexDirection,
+      alignItems: retryStatusSurface.headerAlignItems,
+      gap: spacing[retryStatusSurface.headerGap],
     },
-    messageHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 1,
-      paddingVertical: 1,
-      marginHorizontal: -1,
-      paddingHorizontal: 1,
-      borderRadius: radius.sm,
+    retryStatusTitle: {
+      flex: retryStatusSurface.titleFlex,
+      minWidth: retryStatusSurface.titleMinWidth,
+      color: retryStatusSurfaceColors.title.color,
+      fontSize: retryStatusSurface.titleFontSize,
+      fontWeight: retryStatusSurface.titleFontWeight,
     },
-    messageHeaderClickable: {
-      // Visual hint that header is clickable
-      minHeight: 44,
-      justifyContent: 'center',
+    retryStatusMetaRow: {
+      flexDirection: retryStatusSurface.metaFlexDirection,
+      flexWrap: retryStatusSurface.metaFlexWrap,
+      alignItems: retryStatusSurface.metaAlignItems,
+      gap: spacing[retryStatusSurface.metaGap],
+      marginTop: retryStatusSurface.metaMarginTop,
     },
-    messageHeaderPressed: {
-      backgroundColor: theme.colors.muted,
+    retryStatusAttempt: {
+      color: retryStatusSurfaceColors.attempt.color,
+      fontSize: retryStatusSurface.attemptFontSize,
     },
-    expandButton: {
-      marginLeft: 'auto',
-      paddingHorizontal: 2,
-      paddingVertical: 1,
+    retryStatusCountdown: {
+      color: retryStatusSurfaceColors.countdown.color,
+      fontSize: retryStatusSurface.countdownFontSize,
+      fontWeight: retryStatusSurface.countdownFontWeight,
+      paddingHorizontal: spacing[retryStatusSurface.countdownPaddingHorizontal],
+      paddingVertical: retryStatusSurface.countdownPaddingVertical,
+      borderRadius: radius[retryStatusSurface.countdownBorderRadius],
+      backgroundColor: retryStatusSurfaceColors.countdown.backgroundColor,
+      overflow: retryStatusSurface.countdownOverflow,
     },
-    expandButtonText: {
-      fontSize: 8,
-      color: theme.colors.primary,
-      fontWeight: '500',
+    retryStatusDescription: {
+      color: retryStatusSurfaceColors.description.color,
+      fontSize: retryStatusSurface.descriptionFontSize,
+      lineHeight: retryStatusSurface.descriptionLineHeight,
+      marginTop: retryStatusSurface.descriptionMarginTop,
     },
-
+    stepSummaryCard: {
+      gap: spacing[stepSummarySurface.gap],
+      padding: spacing[stepSummarySurface.padding],
+      borderRadius: radius[stepSummarySurface.borderRadius],
+      borderWidth: stepSummarySurface.borderWidth,
+      borderColor: stepSummarySurfaceColors.card.borderColor,
+      backgroundColor: stepSummarySurfaceColors.card.backgroundColor,
+    },
+    stepSummaryHeader: {
+      flexDirection: stepSummarySurface.headerFlexDirection,
+      alignItems: stepSummarySurface.headerAlignItems,
+      gap: spacing[stepSummarySurface.headerGap],
+      minWidth: stepSummarySurface.headerMinWidth,
+    },
+    stepSummaryTitle: {
+      flexShrink: stepSummarySurface.titleFlexShrink,
+      minWidth: stepSummarySurface.titleMinWidth,
+      color: stepSummarySurfaceColors.title.color,
+      fontSize: stepSummarySurface.titleFontSize,
+      fontWeight: stepSummarySurface.titleFontWeight,
+    },
+    stepSummaryBadge: {
+      marginLeft: stepSummarySurface.badgeMarginLeft,
+      maxWidth: stepSummarySurface.badgeMaxWidth,
+      paddingHorizontal: spacing[stepSummarySurface.badgePaddingHorizontal],
+      paddingVertical: stepSummarySurface.badgePaddingVertical,
+      borderRadius: radius[stepSummarySurface.badgeBorderRadius],
+      backgroundColor: stepSummarySurfaceColors.badge.backgroundColor,
+    },
+    stepSummaryBadgeText: {
+      color: stepSummarySurfaceColors.badgeText.color,
+      fontSize: stepSummarySurface.badgeTextFontSize,
+      fontWeight: stepSummarySurface.badgeTextFontWeight,
+    },
+    stepSummaryAction: {
+      color: stepSummarySurfaceColors.action.color,
+      fontSize: stepSummarySurface.actionFontSize,
+      lineHeight: stepSummarySurface.actionLineHeight,
+      fontWeight: stepSummarySurface.actionFontWeight,
+    },
+    stepSummaryMeta: {
+      color: stepSummarySurfaceColors.meta.color,
+      fontSize: stepSummarySurface.metaFontSize,
+      lineHeight: stepSummarySurface.metaLineHeight,
+    },
+    stepSummaryPreview: {
+      color: stepSummarySurfaceColors.preview.color,
+      fontSize: stepSummarySurface.previewFontSize,
+      lineHeight: stepSummarySurface.previewLineHeight,
+      marginTop: stepSummarySurface.previewMarginTop,
+    },
+    delegationCard: {
+      gap: spacing[delegationCardSurface.gap],
+      padding: spacing[delegationCardSurface.padding],
+      borderRadius: radius[delegationCardSurface.borderRadius],
+      borderWidth: delegationCardSurface.borderWidth,
+      borderColor: delegationCardSurfaceColors.card.borderColor,
+      backgroundColor: delegationCardSurfaceColors.card.backgroundColor,
+    },
+    delegationHeader: {
+      flexDirection: delegationCardSurface.headerFlexDirection,
+      alignItems: delegationCardSurface.headerAlignItems,
+      gap: spacing[delegationCardSurface.headerGap],
+      minWidth: delegationCardSurface.headerMinWidth,
+    },
+    delegationTitle: {
+      flex: delegationCardSurface.titleFlex,
+      minWidth: delegationCardSurface.titleMinWidth,
+      color: delegationCardSurfaceColors.title.color,
+      fontSize: delegationCardSurface.titleFontSize,
+      fontWeight: delegationCardSurface.titleFontWeight,
+    },
+    delegationStatusBadge: {
+      flexShrink: delegationCardSurface.statusFlexShrink,
+      borderWidth: delegationCardSurface.statusBorderWidth,
+      borderRadius: radius[delegationCardSurface.statusBorderRadius],
+      paddingHorizontal: spacing[delegationCardSurface.statusPaddingHorizontal],
+      paddingVertical: delegationCardSurface.statusPaddingVertical,
+    },
+    delegationStatusText: {
+      fontSize: delegationCardSurface.statusFontSize,
+      fontWeight: delegationCardSurface.statusFontWeight,
+    },
+    delegationLiveText: {
+      color: delegationCardSurfaceColors.liveText.color,
+      fontSize: delegationCardSurface.metaFontSize,
+      lineHeight: delegationCardSurface.metaLineHeight,
+      fontWeight: delegationCardSurface.statusFontWeight,
+    },
+    delegationSubtitle: {
+      color: delegationCardSurfaceColors.subtitle.color,
+      fontSize: delegationCardSurface.subtitleFontSize,
+      lineHeight: delegationCardSurface.subtitleLineHeight,
+    },
+    delegationMetaRow: {
+      flexDirection: delegationCardSurface.metaFlexDirection,
+      flexWrap: delegationCardSurface.metaFlexWrap,
+      alignItems: delegationCardSurface.metaAlignItems,
+      gap: spacing[delegationCardSurface.metaGap],
+    },
+    delegationMetaText: {
+      color: delegationCardSurfaceColors.meta.color,
+      fontSize: delegationCardSurface.metaFontSize,
+      lineHeight: delegationCardSurface.metaLineHeight,
+    },
+    delegationConversationPreview: {
+      gap: delegationCardSurface.conversationPreviewGap,
+      marginTop: delegationCardSurface.conversationPreviewMarginTop,
+      paddingHorizontal: spacing[delegationCardSurface.conversationPreviewPaddingHorizontal],
+      paddingVertical: delegationCardSurface.conversationPreviewPaddingVertical,
+      borderRadius: radius[delegationCardSurface.conversationPreviewBorderRadius],
+      borderWidth: delegationCardSurface.conversationPreviewBorderWidth,
+      borderColor: delegationCardSurfaceColors.conversationPreview.borderColor,
+      backgroundColor: delegationCardSurfaceColors.conversationPreview.backgroundColor,
+    },
+    delegationConversationPreviewLine: {
+      flexDirection: delegationCardSurface.conversationPreviewLineFlexDirection,
+      alignItems: delegationCardSurface.conversationPreviewLineAlignItems,
+      gap: spacing[delegationCardSurface.conversationPreviewLineGap],
+      minWidth: delegationCardSurface.conversationPreviewLineMinWidth,
+    },
+    delegationConversationPreviewRole: {
+      minWidth: delegationCardSurface.conversationPreviewRoleMinWidth,
+      maxWidth: delegationCardSurface.conversationPreviewRoleMaxWidth,
+      paddingHorizontal: spacing[delegationCardSurface.conversationPreviewRolePaddingHorizontal],
+      paddingVertical: delegationCardSurface.conversationPreviewRolePaddingVertical,
+      borderRadius: radius[delegationCardSurface.conversationPreviewRoleBorderRadius],
+      borderWidth: delegationCardSurface.conversationPreviewRoleBorderWidth,
+      overflow: delegationCardSurface.conversationPreviewRoleOverflow,
+      fontSize: delegationCardSurface.conversationPreviewRoleFontSize,
+      fontWeight: delegationCardSurface.conversationPreviewRoleFontWeight,
+    },
+    delegationConversationPreviewContent: {
+      flex: delegationCardSurface.conversationPreviewContentFlex,
+      minWidth: delegationCardSurface.conversationPreviewContentMinWidth,
+      color: delegationCardSurfaceColors.conversationPreviewContent.color,
+      fontSize: delegationCardSurface.conversationPreviewContentFontSize,
+      lineHeight: delegationCardSurface.conversationPreviewContentLineHeight,
+    },
+    delegationConversationPreviewTimestamp: {
+      flexShrink: delegationCardSurface.conversationPreviewTimestampFlexShrink,
+      color: delegationCardSurfaceColors.conversationPreviewTimestamp.color,
+      fontSize: delegationCardSurface.conversationPreviewTimestampFontSize,
+    },
+    delegationConversationPreviewMoreButton: {
+      alignSelf: delegationCardSurface.conversationPreviewMoreButtonAlignSelf,
+    },
+    delegationConversationPreviewMoreButtonPressed: {
+      opacity: delegationCardSurface.conversationPreviewMoreButtonPressedOpacity,
+    },
+    delegationConversationPreviewMore: {
+      color: delegationCardSurfaceColors.conversationPreviewMore.color,
+      fontSize: delegationCardSurface.conversationPreviewMoreFontSize,
+      fontWeight: delegationCardSurface.conversationPreviewMoreFontWeight,
+    },
+    delegationToolPreview: {
+      gap: delegationCardSurface.toolPreviewGap,
+      marginTop: delegationCardSurface.toolPreviewMarginTop,
+      paddingHorizontal: spacing[delegationCardSurface.toolPreviewPaddingHorizontal],
+      paddingVertical: delegationCardSurface.toolPreviewPaddingVertical,
+      borderRadius: radius[delegationCardSurface.toolPreviewBorderRadius],
+      borderWidth: delegationCardSurface.toolPreviewBorderWidth,
+      borderColor: delegationCardSurfaceColors.toolPreview.borderColor,
+      backgroundColor: delegationCardSurfaceColors.toolPreview.backgroundColor,
+    },
+    delegationToolPreviewLabel: {
+      color: delegationCardSurfaceColors.toolPreviewLabel.color,
+      fontSize: delegationCardSurface.toolPreviewLabelFontSize,
+      fontWeight: delegationCardSurface.toolPreviewLabelFontWeight,
+    },
+    delegationToolPreviewLine: {
+      flexDirection: delegationCardSurface.toolPreviewLineFlexDirection,
+      alignItems: delegationCardSurface.toolPreviewLineAlignItems,
+      gap: spacing[delegationCardSurface.toolPreviewLineGap],
+      minWidth: delegationCardSurface.toolPreviewLineMinWidth,
+    },
+    delegationToolPreviewStatusIcon: {
+      width: compactToolExecution.statusIcon.width,
+      minWidth: delegationCardSurface.toolPreviewStatusMinWidth,
+      alignItems: delegationCardSurface.toolPreviewStatusAlignItems,
+      justifyContent: delegationCardSurface.toolPreviewStatusJustifyContent,
+      flexShrink: delegationCardSurface.toolPreviewStatusFlexShrink,
+    },
+    delegationToolPreviewName: {
+      flex: delegationCardSurface.toolPreviewNameFlex,
+      minWidth: delegationCardSurface.toolPreviewNameMinWidth,
+      color: delegationCardSurfaceColors.toolPreviewName.color,
+      fontSize: delegationCardSurface.toolPreviewNameFontSize,
+    },
+    delegationToolPreviewMoreButton: {
+      alignSelf: delegationCardSurface.toolPreviewMoreButtonAlignSelf,
+    },
+    delegationToolPreviewMoreButtonPressed: {
+      opacity: delegationCardSurface.toolPreviewMoreButtonPressedOpacity,
+    },
+    delegationToolPreviewMore: {
+      color: delegationCardSurfaceColors.toolPreviewMore.color,
+      fontSize: delegationCardSurface.toolPreviewMoreFontSize,
+      fontWeight: delegationCardSurface.toolPreviewMoreFontWeight,
+    },
     inputArea: {
       borderTopWidth: theme.hairline,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
+      borderColor: mobileComposerSurfaceColors.inputArea.borderColor,
+      backgroundColor: mobileComposerSurfaceColors.inputArea.backgroundColor,
     },
     pendingImagesRow: {
-      paddingHorizontal: spacing.sm,
-      paddingTop: spacing.xs,
-      paddingBottom: 2,
-      gap: spacing.xs,
+      paddingHorizontal: spacing[imageAttachmentSurface.row.paddingHorizontal],
+      paddingTop: spacing[imageAttachmentSurface.row.paddingTop],
+      paddingBottom: imageAttachmentSurface.row.paddingBottom,
+      gap: spacing[imageAttachmentSurface.row.gap],
     },
     pendingImageCard: {
-      width: 64,
-      height: 64,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.muted,
-      position: 'relative',
+      width: imageAttachmentSurface.preview.size,
+      height: imageAttachmentSurface.preview.size,
+      borderRadius: radius[imageAttachmentSurface.preview.borderRadius],
+      borderWidth: imageAttachmentSurface.preview.borderWidth,
+      borderColor: imageAttachmentSurfaceColors.preview.borderColor,
+      overflow: imageAttachmentSurface.preview.overflow,
+      backgroundColor: imageAttachmentSurfaceColors.preview.backgroundColor,
+      position: imageAttachmentSurface.preview.position,
     },
     pendingImagePreview: {
-      width: '100%',
-      height: '100%',
+      width: imageAttachmentSurface.previewImage.width,
+      height: imageAttachmentSurface.previewImage.height,
     },
     pendingImageRemoveButton: {
-      position: 'absolute',
-      top: 4,
-      right: 4,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: 'rgba(0,0,0,0.7)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    pendingImageRemoveButtonText: {
-      color: '#FFFFFF',
-      fontSize: 11,
-      fontWeight: '700',
-      lineHeight: 12,
+      position: imageAttachmentSurface.removeButton.position,
+      top: imageAttachmentSurface.removeButton.top,
+      right: imageAttachmentSurface.removeButton.right,
+      width: imageAttachmentSurface.removeButton.size,
+      height: imageAttachmentSurface.removeButton.size,
+      borderRadius: imageAttachmentSurface.removeButton.borderRadius,
+      backgroundColor: imageAttachmentSurfaceColors.removeButton.backgroundColor,
+      alignItems: imageAttachmentSurface.removeButton.alignItems,
+      justifyContent: imageAttachmentSurface.removeButton.justifyContent,
     },
     sttPreviewBox: {
-      marginHorizontal: spacing.sm,
-      marginTop: spacing.xs,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      marginHorizontal: spacing[sttPreviewSurface.marginHorizontal],
+      marginTop: spacing[sttPreviewSurface.marginTop],
+      borderWidth: sttPreviewSurface.borderWidth,
+      borderColor: mobileComposerSurfaceColors.sttPreview.borderColor,
+      backgroundColor: mobileComposerSurfaceColors.sttPreview.backgroundColor,
+      borderRadius: radius[sttPreviewSurface.borderRadius],
+      paddingHorizontal: spacing[sttPreviewSurface.paddingHorizontal],
+      paddingVertical: spacing[sttPreviewSurface.paddingVertical],
     },
     sttPreviewLabel: {
       ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      marginBottom: 2,
-      fontWeight: '600',
+      color: mobileComposerTextColors.sttPreview.labelColor,
+      marginBottom: sttPreviewSurface.labelMarginBottom,
+      fontWeight: sttPreviewSurface.labelFontWeight,
     },
     sttPreviewText: {
       ...theme.typography.body,
-      color: theme.colors.foreground,
+      color: mobileComposerTextColors.sttPreview.textColor,
     },
     inputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      flexDirection: composerSurface.inputRow.flexDirection,
+      alignItems: composerSurface.inputRow.alignItems,
+      gap: spacing[composerSurface.inputRow.gap],
+      paddingHorizontal: spacing[composerSurface.inputRow.paddingHorizontal],
+      paddingVertical: spacing[composerSurface.inputRow.paddingVertical],
     },
     handsFreeStatusRow: {
-      paddingHorizontal: spacing.sm,
-      paddingTop: spacing.xs,
+      paddingHorizontal: spacing[handsFreeSurface.statusRow.paddingHorizontal],
+      paddingTop: spacing[handsFreeSurface.statusRow.paddingTop],
     },
     handsFreeControlsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.sm,
-      paddingTop: spacing.xs,
+      flexDirection: handsFreeSurface.controlsRow.flexDirection,
+      alignItems: handsFreeSurface.controlsRow.alignItems,
+      gap: spacing[handsFreeSurface.controlsRow.gap],
+      paddingHorizontal: spacing[handsFreeSurface.controlsRow.paddingHorizontal],
+      paddingTop: spacing[handsFreeSurface.controlsRow.paddingTop],
     },
     handsFreeControlButton: {
-      flex: 1,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      minHeight: 36,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
+      flex: handsFreeSurface.controlButton.flex,
+      borderWidth: handsFreeSurface.controlButton.borderWidth,
+      borderColor: handsFreeSurfaceColors.controlButton.borderColor,
+      backgroundColor: handsFreeSurfaceColors.controlButton.backgroundColor,
+      minHeight: handsFreeSurface.controlButton.minHeight,
+      paddingHorizontal: spacing[handsFreeSurface.controlButton.paddingHorizontal],
+      borderRadius: radius[handsFreeSurface.controlButton.borderRadius],
+      alignItems: handsFreeSurface.controlButton.alignItems,
+      justifyContent: handsFreeSurface.controlButton.justifyContent,
     },
     handsFreeControlButtonText: {
-      color: theme.colors.foreground,
-      fontWeight: '600',
-      fontSize: 12,
+      color: handsFreeSurfaceColors.controlButtonText.color,
+      fontWeight: handsFreeSurface.controlButtonText.fontWeight,
+      fontSize: handsFreeSurface.controlButtonText.fontSize,
     },
     chatHomeCard: {
-      marginHorizontal: spacing.sm,
-      marginTop: spacing.md,
-      padding: spacing.md,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
-      gap: spacing.sm,
+      marginHorizontal: spacing[promptLibrarySurface.quickStartCard.marginHorizontal],
+      marginTop: spacing[promptLibrarySurface.quickStartCard.marginTop],
+      padding: spacing[promptLibrarySurface.quickStartCard.padding],
+      borderRadius: radius[promptLibrarySurface.quickStartCard.borderRadius],
+      borderWidth: promptLibrarySurface.quickStartCard.borderWidth,
+      borderColor: promptLibrarySurfaceColors.quickStartCard.borderColor,
+      backgroundColor: promptLibrarySurfaceColors.quickStartCard.backgroundColor,
+      gap: spacing[promptLibrarySurface.quickStartCard.gap],
     },
-	    chatHomeEmptyText: {
+    chatHomeEmptyText: {
       ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-	      textAlign: 'center',
-	      paddingVertical: spacing.md,
+      color: promptLibrarySurfaceColors.emptyText.color,
+      textAlign: promptLibrarySurface.emptyText.textAlign,
+      paddingVertical: spacing[promptLibrarySurface.emptyText.paddingVertical],
     },
     chatHomeShortcutGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
+      flexDirection: promptLibrarySurface.shortcutGrid.flexDirection,
+      flexWrap: promptLibrarySurface.shortcutGrid.flexWrap,
+      gap: spacing[promptLibrarySurface.shortcutGrid.gap],
     },
     chatHomeShortcutCard: {
-      minHeight: 84,
-      minWidth: '47%',
-      flexGrow: 1,
-      flexBasis: '47%',
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      justifyContent: 'center',
-      gap: spacing.xs,
+      minHeight: promptLibrarySurface.shortcutCard.minHeight,
+      minWidth: promptLibrarySurface.shortcutCard.minWidth,
+      flexGrow: promptLibrarySurface.shortcutCard.flexGrow,
+      flexBasis: promptLibrarySurface.shortcutCard.flexBasis,
+      paddingHorizontal: spacing[promptLibrarySurface.shortcutCard.paddingHorizontal],
+      paddingVertical: spacing[promptLibrarySurface.shortcutCard.paddingVertical],
+      borderRadius: radius[promptLibrarySurface.shortcutCard.borderRadius],
+      borderWidth: promptLibrarySurface.shortcutCard.borderWidth,
+      borderColor: promptLibrarySurfaceColors.shortcutCard.borderColor,
+      backgroundColor: promptLibrarySurfaceColors.shortcutCard.backgroundColor,
+      justifyContent: promptLibrarySurface.shortcutCard.justifyContent,
+      gap: spacing[promptLibrarySurface.shortcutCard.gap],
     },
     chatHomeShortcutCardAdd: {
-      borderStyle: 'dashed',
-      borderColor: theme.colors.primary,
-      backgroundColor: 'transparent',
-      alignItems: 'center',
+      borderStyle: promptLibrarySurface.addShortcutCard.borderStyle,
+      borderColor: promptLibrarySurfaceColors.addShortcutCard.borderColor,
+      backgroundColor: promptLibrarySurfaceColors.addShortcutCard.backgroundColor,
+      alignItems: promptLibrarySurface.addShortcutCard.alignItems,
+    },
+    chatHomeShortcutAddIcon: {
+      marginBottom: promptLibrarySurface.addShortcutIcon.marginBottom,
     },
     chatHomeShortcutCardDisabled: {
-      opacity: 0.5,
+      opacity: promptLibrarySurface.shortcutCard.disabledOpacity,
     },
     chatHomeShortcutCardPressed: {
-      opacity: 0.88,
-      transform: [{ scale: 0.99 }],
+      opacity: promptLibrarySurface.shortcutCard.pressedOpacity,
+      transform: [{ scale: promptLibrarySurface.shortcutCard.pressedScale }],
+    },
+    chatHomeShortcutSourcePill: {
+      alignSelf: promptLibrarySurface.shortcutSourcePill.alignSelf,
+      flexDirection: promptLibrarySurface.shortcutSourcePill.flexDirection,
+      alignItems: promptLibrarySurface.shortcutSourcePill.alignItems,
+      gap: spacing[promptLibrarySurface.shortcutSourcePill.gap],
+      paddingHorizontal: spacing[promptLibrarySurface.shortcutSourcePill.paddingHorizontal],
+      paddingVertical: promptLibrarySurface.shortcutSourcePill.paddingVertical,
+      borderRadius: radius[promptLibrarySurface.shortcutSourcePill.borderRadius],
+      backgroundColor: promptLibrarySurfaceColors.shortcutSourcePill.backgroundColor,
+    },
+    chatHomeShortcutSourceLabel: {
+      color: promptLibrarySurfaceColors.shortcutSourceLabel.color,
+      fontSize: promptLibrarySurface.shortcutSourceLabel.fontSize,
+      fontWeight: promptLibrarySurface.shortcutSourceLabel.fontWeight,
+      letterSpacing: promptLibrarySurface.shortcutSourceLabel.letterSpacing,
+      textTransform: promptLibrarySurface.shortcutSourceLabel.textTransform,
     },
     chatHomeShortcutTitle: {
       ...theme.typography.body,
-      color: theme.colors.foreground,
-      fontWeight: '600',
+      color: promptLibrarySurfaceColors.shortcutTitle.color,
+      fontWeight: promptLibrarySurface.shortcutTitle.fontWeight,
     },
     chatHomeShortcutTitleAdd: {
-      color: theme.colors.primary,
-      textAlign: 'center',
+      color: promptLibrarySurfaceColors.addShortcutCard.titleColor,
+      textAlign: promptLibrarySurface.addShortcutCard.titleTextAlign,
     },
     chatHomeShortcutDescription: {
       ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      marginTop: 3,
-      lineHeight: 15,
+      color: promptLibrarySurfaceColors.shortcutDescription.color,
+      marginTop: promptLibrarySurface.shortcutDescription.marginTop,
+      lineHeight: promptLibrarySurface.shortcutDescription.lineHeight,
     },
     chatHomeShortcutActions: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.xs,
-      marginTop: spacing.xs,
+      flexDirection: promptLibrarySurface.shortcutActions.flexDirection,
+      flexWrap: promptLibrarySurface.shortcutActions.flexWrap,
+      gap: spacing[promptLibrarySurface.shortcutActions.gap],
+      marginTop: spacing[promptLibrarySurface.shortcutActions.marginTop],
     },
     chatHomeShortcutActionButton: {
-      minHeight: 32,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 5,
-      borderRadius: radius.sm,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
-      justifyContent: 'center',
+      minHeight: promptLibrarySurface.shortcutActionButton.minHeight,
+      paddingHorizontal: spacing[promptLibrarySurface.shortcutActionButton.paddingHorizontal],
+      paddingVertical: promptLibrarySurface.shortcutActionButton.paddingVertical,
+      borderRadius: radius[promptLibrarySurface.shortcutActionButton.borderRadius],
+      borderWidth: promptLibrarySurface.shortcutActionButton.borderWidth,
+      borderColor: promptLibrarySurfaceColors.shortcutActionButton.borderColor,
+      backgroundColor: promptLibrarySurfaceColors.shortcutActionButton.backgroundColor,
+      flexDirection: promptLibrarySurface.shortcutActionButton.flexDirection,
+      alignItems: promptLibrarySurface.shortcutActionButton.alignItems,
+      justifyContent: promptLibrarySurface.shortcutActionButton.justifyContent,
+      gap: spacing[promptLibrarySurface.shortcutActionButton.gap],
+    },
+    chatHomeShortcutActionButtonPressed: {
+      opacity: promptLibrarySurface.shortcutActionButton.pressedOpacity,
     },
     chatHomeShortcutActionText: {
       ...theme.typography.caption,
-      color: theme.colors.primary,
-      fontWeight: '600',
+      color: promptLibrarySurfaceColors.shortcutActionText.color,
+      fontWeight: promptLibrarySurface.shortcutActionText.fontWeight,
     },
     chatHomeShortcutActionDangerText: {
-      color: theme.colors.destructive,
+      color: promptLibrarySurfaceColors.shortcutActionText.destructiveColor,
+    },
+    modalKeyboardAvoidingView: {
+      flex: promptEditorModalSurface.keyboardAvoidingView.flex,
     },
     modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      padding: spacing.lg,
+      flex: promptEditorModalSurface.overlay.flex,
+      backgroundColor: promptLibrarySurfaceColors.editorModal.overlay.backgroundColor,
+      justifyContent: promptEditorModalSurface.overlay.justifyContent,
+      padding: spacing[promptEditorModalSurface.overlay.padding],
     },
     modalContent: {
-      backgroundColor: theme.colors.background,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      backgroundColor: promptLibrarySurfaceColors.editorModal.content.backgroundColor,
+      borderRadius: radius[promptEditorModalSurface.content.borderRadius],
+      padding: spacing[promptEditorModalSurface.content.padding],
+      borderWidth: promptEditorModalSurface.content.borderWidth,
+      borderColor: promptLibrarySurfaceColors.editorModal.content.borderColor,
+    },
+    modalHeader: {
+      flexDirection: promptEditorModalSurface.header.flexDirection,
+      alignItems: promptEditorModalSurface.header.alignItems,
+      justifyContent: promptEditorModalSurface.header.justifyContent,
+      gap: spacing[promptEditorModalSurface.header.gap],
+      marginBottom: spacing[promptEditorModalSurface.header.marginBottom],
     },
     modalTitle: {
       ...theme.typography.h2,
-      marginBottom: spacing.md,
-      color: theme.colors.foreground,
+      flex: promptEditorModalSurface.title.flex,
+      marginBottom: promptEditorModalSurface.title.marginBottom,
+      color: promptLibrarySurfaceColors.editorModal.title.color,
+    },
+    modalCloseButton: {
+      width: promptEditorModalSurface.closeButton.width,
+      height: promptEditorModalSurface.closeButton.height,
+      borderRadius: radius[promptEditorModalSurface.closeButton.borderRadius],
+      alignItems: promptEditorModalSurface.closeButton.alignItems,
+      justifyContent: promptEditorModalSurface.closeButton.justifyContent,
     },
     modalLabel: {
       ...theme.typography.caption,
-      fontWeight: '600',
-      color: theme.colors.foreground,
-      marginBottom: spacing.xs,
+      fontWeight: promptEditorModalSurface.label.fontWeight,
+      color: promptLibrarySurfaceColors.editorModal.label.color,
+      marginBottom: spacing[promptEditorModalSurface.label.marginBottom],
     },
     modalInput: {
       ...theme.input,
-      marginBottom: spacing.md,
-      color: theme.colors.foreground,
+      marginBottom: spacing[promptEditorModalSurface.input.marginBottom],
+      color: promptLibrarySurfaceColors.editorModal.input.color,
     },
     modalInputMultiline: {
-      height: 120,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.sm,
+      height: promptEditorModalSurface.multilineInput.height,
+      paddingTop: spacing[promptEditorModalSurface.multilineInput.paddingTop],
+      paddingBottom: spacing[promptEditorModalSurface.multilineInput.paddingBottom],
     },
     modalActions: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: spacing.sm,
-      marginTop: spacing.sm,
+      flexDirection: promptEditorModalSurface.actions.flexDirection,
+      justifyContent: promptEditorModalSurface.actions.justifyContent,
+      gap: spacing[promptEditorModalSurface.actions.gap],
+      marginTop: spacing[promptEditorModalSurface.actions.marginTop],
     },
     modalCancelButton: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
+      paddingHorizontal: spacing[promptEditorModalSurface.cancelButton.paddingHorizontal],
+      paddingVertical: spacing[promptEditorModalSurface.cancelButton.paddingVertical],
+      borderRadius: radius[promptEditorModalSurface.cancelButton.borderRadius],
     },
     modalCancelButtonText: {
-      color: theme.colors.mutedForeground,
-      fontWeight: '600',
+      color: promptLibrarySurfaceColors.editorModal.cancelButtonText.color,
+      fontWeight: promptEditorModalSurface.actionText.fontWeight,
     },
     modalSaveButton: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      backgroundColor: theme.colors.primary,
-      minWidth: 100,
-      alignItems: 'center',
+      paddingHorizontal: spacing[promptEditorModalSurface.saveButton.paddingHorizontal],
+      paddingVertical: spacing[promptEditorModalSurface.saveButton.paddingVertical],
+      borderRadius: radius[promptEditorModalSurface.saveButton.borderRadius],
+      backgroundColor: promptLibrarySurfaceColors.editorModal.saveButton.backgroundColor,
+      minWidth: promptEditorModalSurface.saveButton.minWidth,
+      alignItems: promptEditorModalSurface.saveButton.alignItems,
     },
     modalSaveButtonDisabled: {
-      opacity: 0.5,
+      opacity: promptEditorModalSurface.saveButton.disabledOpacity,
     },
     modalSaveButtonText: {
-      color: theme.colors.primaryForeground,
-      fontWeight: '600',
+      color: promptLibrarySurfaceColors.editorModal.saveButtonText.color,
+      fontWeight: promptEditorModalSurface.actionText.fontWeight,
     },
     input: {
       ...theme.input,
-      flex: 1,
-      maxHeight: 120,
+      flex: composerSurface.input.flex,
+      maxHeight: composerSurface.input.maxHeight,
     },
     visuallyHiddenComposerHint: {
-      position: 'absolute',
-      left: -10000,
-      width: 1,
-      height: 1,
+      position: composerSurface.visuallyHiddenComposerHint.position,
+      left: composerSurface.visuallyHiddenComposerHint.left,
+      width: composerSurface.visuallyHiddenComposerHint.width,
+      height: composerSurface.visuallyHiddenComposerHint.height,
     },
     micWrapper: {
-      paddingHorizontal: spacing.sm,
-      paddingBottom: spacing.sm,
+      paddingHorizontal: spacing[inputAreaSurface.micWrapperPaddingHorizontal],
+      paddingBottom: spacing[inputAreaSurface.micWrapperPaddingBottom],
     },
     mic: {
-      width: '100%' as any,
-      height: 56,
-      flexDirection: 'row',
-      borderRadius: radius.lg,
-      borderWidth: 1.5,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
+      width: composerSurface.micButton.width,
+      height: composerSurface.micButton.height,
+      flexDirection: composerSurface.micButton.flexDirection,
+      borderRadius: radius[composerSurface.micButton.borderRadius],
+      borderWidth: composerSurface.micButton.borderWidth,
+      borderColor: mobileComposerSurfaceColors.micButton.borderColor,
+      backgroundColor: mobileComposerSurfaceColors.micButton.backgroundColor,
+      alignItems: composerSurface.micButton.alignItems,
+      justifyContent: composerSurface.micButton.justifyContent,
+      gap: spacing[composerSurface.micButton.gap],
     },
     micOn: {
-      backgroundColor: theme.colors.primary,
-      borderColor: theme.colors.primary,
-    },
-    micText: {
-      fontSize: 20,
+      backgroundColor: mobileComposerSurfaceColors.micButton.activeBackgroundColor,
+      borderColor: mobileComposerSurfaceColors.micButton.activeBorderColor,
     },
     micLabel: {
-      fontSize: 15,
-      color: theme.colors.mutedForeground,
-      fontWeight: '600',
+      fontSize: composerSurface.micButton.labelFontSize,
+      color: mobileComposerTextColors.micButton.color,
+      fontWeight: composerSurface.micButton.labelFontWeight,
     },
     micLabelOn: {
-      color: theme.colors.primaryForeground,
+      color: mobileComposerTextColors.micButton.activeColor,
     },
     ttsToggle: {
-	      width: 44,
-	      height: 44,
-	      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.muted,
-      alignItems: 'center',
-      justifyContent: 'center',
+      width: composerSurface.accessoryButton.size,
+      height: composerSurface.accessoryButton.size,
+      borderRadius: composerSurface.accessoryButton.borderRadius,
+      borderWidth: composerSurface.accessoryButton.borderWidth,
+      borderColor: mobileComposerSurfaceColors.accessoryButton.borderColor,
+      backgroundColor: mobileComposerSurfaceColors.accessoryButton.backgroundColor,
+      alignItems: composerSurface.accessoryButton.alignItems,
+      justifyContent: composerSurface.accessoryButton.justifyContent,
     },
     ttsToggleOn: {
-      backgroundColor: theme.colors.card,
-      borderColor: theme.colors.primary,
-    },
-    ttsToggleText: {
-      fontSize: 14,
+      backgroundColor: mobileComposerSurfaceColors.accessoryButton.activeBackgroundColor,
+      borderColor: mobileComposerSurfaceColors.accessoryButton.activeBorderColor,
     },
     sendButton: {
-      backgroundColor: theme.colors.primary,
-      minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: mobileComposerSurfaceColors.submitButton.backgroundColor,
+      minHeight: composerSurface.submitButton.minHeight,
+      minWidth: composerSurface.submitButton.minWidth,
+      paddingHorizontal: spacing[composerSurface.submitButton.paddingHorizontal],
+      paddingVertical: spacing[composerSurface.submitButton.paddingVertical],
+      borderRadius: radius[composerSurface.submitButton.borderRadius],
+      flexDirection: composerSurface.submitButton.flexDirection,
+      alignItems: composerSurface.submitButton.alignItems,
+      justifyContent: composerSurface.submitButton.justifyContent,
+      gap: composerSurface.submitButton.gap,
     },
     queueButton: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderWidth: composerSurface.queueButton.borderWidth,
+      borderColor: mobileComposerSurfaceColors.queueButton.borderColor,
+      backgroundColor: mobileComposerSurfaceColors.queueButton.backgroundColor,
+      minHeight: composerSurface.submitButton.minHeight,
+      minWidth: composerSurface.submitButton.minWidth,
+      paddingHorizontal: spacing[composerSurface.submitButton.paddingHorizontal],
+      paddingVertical: spacing[composerSurface.submitButton.paddingVertical],
+      borderRadius: radius[composerSurface.submitButton.borderRadius],
+      flexDirection: composerSurface.submitButton.flexDirection,
+      alignItems: composerSurface.submitButton.alignItems,
+      justifyContent: composerSurface.submitButton.justifyContent,
+      gap: composerSurface.submitButton.gap,
     },
     sendButtonDisabled: {
-      opacity: 0.5,
+      opacity: composerSurface.submitButton.disabledOpacity,
     },
     queueButtonText: {
-      color: theme.colors.foreground,
-      fontWeight: '600',
-      fontSize: 13,
+      color: mobileComposerTextColors.queueButton.color,
+      fontWeight: composerSurface.submitButton.fontWeight,
+      fontSize: composerSurface.submitButton.fontSize,
     },
     sendButtonText: {
-      color: theme.colors.primaryForeground,
-      fontWeight: '600',
-      fontSize: 13,
+      color: mobileComposerTextColors.submitButton.color,
+      fontWeight: composerSurface.submitButton.fontWeight,
+      fontSize: composerSurface.submitButton.fontSize,
     },
     debugInfo: {
-      backgroundColor: theme.colors.muted,
-      padding: spacing.sm,
-      margin: spacing.sm,
-      borderRadius: radius.lg,
-      borderLeftWidth: 4,
-      borderLeftColor: theme.colors.primary,
+      backgroundColor: handsFreeSurfaceColors.debugPanel.backgroundColor,
+      padding: spacing[handsFreeSurface.debugPanel.padding],
+      margin: spacing[handsFreeSurface.debugPanel.margin],
+      borderRadius: radius[handsFreeSurface.debugPanel.borderRadius],
+      borderLeftWidth: handsFreeSurface.debugPanel.borderLeftWidth,
+      borderLeftColor: handsFreeSurfaceColors.debugPanel.borderLeftColor,
     },
     debugText: {
-      fontSize: 12,
-      color: theme.colors.mutedForeground,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: handsFreeSurface.debugText.fontSize,
+      color: handsFreeSurfaceColors.debugText.color,
+      fontFamily: resolveMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform),
     },
     connectionBanner: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      marginHorizontal: spacing.md,
-      marginBottom: spacing.sm,
-      borderRadius: radius.md,
-      borderWidth: 1,
+      paddingHorizontal: spacing[connectionBannerSurface.paddingHorizontal],
+      paddingVertical: spacing[connectionBannerSurface.paddingVertical],
+      marginHorizontal: spacing[connectionBannerSurface.marginHorizontal],
+      marginBottom: spacing[connectionBannerSurface.marginBottom],
+      borderRadius: radius[connectionBannerSurface.borderRadius],
+      borderWidth: connectionBannerSurface.borderWidth,
     },
     connectionBannerReconnecting: {
-      backgroundColor: hexToRgba(theme.colors.info, 0.1),
-      borderColor: hexToRgba(theme.colors.info, 0.3),
+      backgroundColor: connectionBannerSurfaceColors.reconnecting.backgroundColor,
+      borderColor: connectionBannerSurfaceColors.reconnecting.borderColor,
     },
     connectionBannerFailed: {
-      backgroundColor: hexToRgba(theme.colors.destructive, 0.1),
-      borderColor: hexToRgba(theme.colors.destructive, 0.3),
+      backgroundColor: connectionBannerSurfaceColors.failed.backgroundColor,
+      borderColor: connectionBannerSurfaceColors.failed.borderColor,
     },
     connectionBannerContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: connectionBannerSurface.contentFlexDirection,
+      alignItems: connectionBannerSurface.contentAlignItems,
     },
     connectionBannerIcon: {
-      fontSize: 16,
-      marginRight: spacing.sm,
+      marginRight: spacing[connectionBannerSurface.iconMarginRight],
     },
     connectionBannerTextContainer: {
-      flex: 1,
+      flex: connectionBannerSurface.textContainerFlex,
     },
     connectionBannerText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: theme.colors.foreground,
+      fontSize: connectionBannerSurface.titleFontSize,
+      fontWeight: connectionBannerSurface.titleFontWeight,
+      color: connectionBannerSurfaceColors.title.color,
     },
     connectionBannerSubtext: {
-      fontSize: 11,
-      color: theme.colors.mutedForeground,
-      marginTop: 2,
+      fontSize: connectionBannerSurface.subtitleFontSize,
+      color: connectionBannerSurfaceColors.subtitle.color,
+      marginTop: connectionBannerSurface.subtitleMarginTop,
     },
     retryButton: {
-      backgroundColor: theme.colors.primary,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      marginLeft: spacing.sm,
+      backgroundColor: connectionBannerSurfaceColors.retryButton.backgroundColor,
+      paddingHorizontal: spacing[connectionBannerSurface.retryButton.paddingHorizontal],
+      paddingVertical: spacing[connectionBannerSurface.retryButton.paddingVertical],
+      borderRadius: radius[connectionBannerSurface.retryButton.borderRadius],
+      marginLeft: spacing[connectionBannerSurface.retryButton.marginLeft],
     },
     retryButtonText: {
-      color: theme.colors.primaryForeground,
-      fontSize: 13,
-      fontWeight: '600',
+      color: connectionBannerSurfaceColors.retryButton.color,
+      fontSize: connectionBannerSurface.retryButton.fontSize,
+      fontWeight: connectionBannerSurface.retryButton.fontWeight,
     },
     scrollToBottomButton: {
-      position: 'absolute',
-      right: spacing.lg,
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-      elevation: 5,
+      position: scrollToBottomSurface.position,
+      right: spacing[scrollToBottomSurface.right],
+      width: scrollToBottomSurface.size,
+      height: scrollToBottomSurface.size,
+      borderRadius: scrollToBottomSurface.borderRadius,
+      backgroundColor: scrollToBottomSurfaceColors.button.backgroundColor,
+      alignItems: scrollToBottomSurface.alignItems,
+      justifyContent: scrollToBottomSurface.justifyContent,
+      shadowColor: scrollToBottomSurface.shadowColor,
+      shadowOffset: scrollToBottomSurface.shadowOffset,
+      shadowOpacity: scrollToBottomSurface.shadowOpacity,
+      shadowRadius: scrollToBottomSurface.shadowRadius,
+      elevation: scrollToBottomSurface.elevation,
     },
-    scrollToBottomText: {
-      fontSize: 20,
-      color: theme.colors.primaryForeground,
-      fontWeight: '600',
+    overlay: {
+      position: voiceOverlaySurface.position,
+      left: voiceOverlaySurface.left,
+      right: voiceOverlaySurface.right,
+      bottom: voiceOverlaySurface.bottomOffset,
+      // Ensure the live transcription overlay renders above the input area.
+      zIndex: voiceOverlaySurface.zIndex,
+      elevation: voiceOverlaySurface.elevation,
+      alignItems: voiceOverlaySurface.alignItems,
+      paddingHorizontal: spacing[voiceOverlaySurface.paddingHorizontal],
+      paddingBottom: spacing[voiceOverlaySurface.paddingBottom],
     },
-	    overlay: {
-	      position: 'absolute',
-	      left: 0,
-	      right: 0,
-	      bottom: 72,
-	      // Ensure the live transcription overlay renders above the input area.
-	      zIndex: 1000,
-	      elevation: 10,
-	      alignItems: 'center',
-	      paddingHorizontal: spacing.md,
-	      paddingBottom: spacing.sm,
-	    },
-	    overlayCard: {
-	      maxWidth: '88%',
-	      borderRadius: radius.xl,
-	      backgroundColor: hexToRgba(theme.colors.foreground, 0.72),
-	      paddingHorizontal: 12,
-	      paddingVertical: 8,
-	    },
-	    overlayText: {
-	      ...theme.typography.caption,
-	      color: theme.colors.background,
-	      textAlign: 'center',
-	    },
+    overlayCard: {
+      maxWidth: voiceOverlaySurface.cardMaxWidth,
+      borderRadius: radius[voiceOverlaySurface.cardBorderRadius],
+      backgroundColor: mobileComposerSurfaceColors.voiceOverlay.cardBackgroundColor,
+      paddingHorizontal: voiceOverlaySurface.cardPaddingHorizontal,
+      paddingVertical: voiceOverlaySurface.cardPaddingVertical,
+    },
+    overlayText: {
+      ...theme.typography.caption,
+      color: mobileComposerTextColors.voiceOverlay.color,
+      textAlign: voiceOverlaySurface.textAlign,
+    },
     overlayTranscript: {
-      color: theme.colors.background,
-      marginTop: 4,
-      fontSize: 12,
-      lineHeight: 16,
-      opacity: 0.92,
+      color: mobileComposerTextColors.voiceOverlay.color,
+      marginTop: voiceOverlaySurface.transcriptMarginTop,
+      fontSize: voiceOverlaySurface.transcriptFontSize,
+      lineHeight: voiceOverlaySurface.transcriptLineHeight,
+      opacity: voiceOverlaySurface.transcriptOpacity,
     },
-    toolApprovalCard: {
-      gap: spacing.xs,
-      padding: spacing.sm,
-      borderRadius: radius.sm,
-      borderWidth: 1,
-      borderColor: 'rgba(245, 158, 11, 0.35)',
-      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+	    toolApprovalCard: {
+	      gap: spacing[toolApprovalSurface.card.gap],
+	      padding: spacing[toolApprovalSurface.card.padding],
+	      borderRadius: radius[toolApprovalSurface.card.borderRadius],
+	      borderWidth: toolApprovalSurface.card.borderWidth,
+	      borderColor: toolApprovalSurfaceColors.card.borderColor,
+	      backgroundColor: toolApprovalSurfaceColors.card.backgroundColor,
+	    },
+	    toolApprovalHeader: {
+	      flexDirection: toolApprovalSurface.header.flexDirection,
+	      alignItems: toolApprovalSurface.header.alignItems,
+	      gap: spacing[toolApprovalSurface.header.gap],
+	    },
+	    toolApprovalContent: {
+	      gap: spacing[toolApprovalSurface.card.gap],
+	    },
+	    toolApprovalContentDisabled: {
+	      opacity: toolApprovalSurface.content.disabledOpacity,
+	    },
+	    toolApprovalTitle: {
+	      flex: toolApprovalSurface.title.flex,
+	      minWidth: toolApprovalSurface.title.minWidth,
+	      fontSize: toolApprovalSurface.title.fontSize,
+	      fontWeight: toolApprovalSurface.title.fontWeight,
+	      color: toolApprovalSurfaceColors.title.color,
     },
-    toolApprovalTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#b45309',
+    toolApprovalToolRow: {
+      flexDirection: toolApprovalSurface.toolRow.flexDirection,
+      alignItems: toolApprovalSurface.toolRow.alignItems,
+      flexWrap: toolApprovalSurface.toolRow.flexWrap,
+      gap: spacing[toolApprovalSurface.toolRow.gap],
+      marginBottom: toolApprovalSurface.toolRow.marginBottom,
+    },
+    toolApprovalToolLabel: {
+      fontSize: toolApprovalSurface.toolLabel.fontSize,
+      fontWeight: toolApprovalSurface.toolLabel.fontWeight,
+      color: toolApprovalSurfaceColors.toolLabel.color,
     },
     toolApprovalTool: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 12,
-      color: theme.colors.foreground,
+      fontFamily: resolveMobileFontFamily(toolApprovalSurface.toolName.fontFamilyByPlatform),
+      fontSize: toolApprovalSurface.toolName.fontSize,
+      color: toolApprovalSurfaceColors.toolName.color,
+      flexShrink: toolApprovalSurface.toolName.flexShrink,
     },
-    toolApprovalArguments: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 11,
-      lineHeight: 15,
-      color: theme.colors.mutedForeground,
+    toolApprovalArgumentsPreview: {
+      fontFamily: resolveMobileFontFamily(toolApprovalSurface.argumentsPreview.fontFamilyByPlatform),
+      fontSize: toolApprovalSurface.argumentsPreview.fontSize,
+      lineHeight: toolApprovalSurface.argumentsPreview.lineHeight,
+      borderWidth: toolApprovalSurface.argumentsPreview.borderWidth,
+      borderRadius: radius[toolApprovalSurface.argumentsPreview.borderRadius],
+      paddingHorizontal: spacing[toolApprovalSurface.argumentsPreview.paddingHorizontal],
+      paddingVertical: toolApprovalSurface.argumentsPreview.paddingVertical,
+      borderColor: toolApprovalSurfaceColors.argumentsPreview.borderColor,
+      backgroundColor: toolApprovalSurfaceColors.argumentsPreview.backgroundColor,
+      color: toolApprovalSurfaceColors.argumentsPreview.color,
+    },
+    toolApprovalArgumentsToggle: {
+      flexDirection: toolApprovalSurface.argumentsToggle.flexDirection,
+      alignItems: toolApprovalSurface.argumentsToggle.alignItems,
+      alignSelf: toolApprovalSurface.argumentsToggle.alignSelf,
+      gap: toolApprovalSurface.argumentsToggle.gap,
+      marginTop: spacing[toolApprovalSurface.argumentsToggle.marginTop],
+      paddingVertical: toolApprovalSurface.argumentsToggle.paddingVertical,
+    },
+    toolApprovalArgumentsTogglePressed: {
+      opacity: toolApprovalSurface.argumentsToggle.pressedOpacity,
+    },
+    toolApprovalArgumentsToggleText: {
+      fontSize: toolApprovalSurface.argumentsToggleText.fontSize,
+      fontWeight: toolApprovalSurface.argumentsToggleText.fontWeight,
+      color: toolApprovalSurfaceColors.argumentsToggleText.color,
+    },
+    toolApprovalArgumentsScroll: {
+      marginTop: toolApprovalSurface.fullArguments.marginTop,
+      maxHeight: toolApprovalSurface.fullArguments.maxHeight,
+      borderRadius: radius[toolApprovalSurface.fullArguments.borderRadius],
+      backgroundColor: toolApprovalSurfaceColors.fullArguments.backgroundColor,
+    },
+    toolApprovalArgumentsFull: {
+      fontFamily: resolveMobileFontFamily(toolApprovalSurface.fullArguments.fontFamilyByPlatform),
+      fontSize: toolApprovalSurface.fullArguments.fontSize,
+      lineHeight: toolApprovalSurface.fullArguments.lineHeight,
+      padding: toolApprovalSurface.fullArguments.padding,
+      color: toolApprovalSurfaceColors.fullArguments.color,
     },
     toolApprovalActions: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginTop: spacing.xs,
+      flexDirection: toolApprovalSurface.actions.flexDirection,
+      justifyContent: toolApprovalSurface.actions.justifyContent,
+      flexWrap: toolApprovalSurface.actions.flexWrap,
+      gap: spacing[toolApprovalSurface.actions.gap],
+      marginTop: spacing[toolApprovalSurface.actions.marginTop],
     },
-    toolApprovalButton: {
-      minHeight: 36,
-      minWidth: 84,
-      borderRadius: radius.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+	    toolApprovalButton: {
+	      minHeight: toolApprovalSurface.button.minHeight,
+	      minWidth: toolApprovalSurface.button.minWidth,
+	      borderRadius: radius[toolApprovalSurface.button.borderRadius],
+	      paddingHorizontal: spacing[toolApprovalSurface.button.paddingHorizontal],
+	      paddingVertical: spacing[toolApprovalSurface.button.paddingVertical],
+	      flexDirection: toolApprovalSurface.button.flexDirection,
+	      alignItems: toolApprovalSurface.button.alignItems,
+	      justifyContent: toolApprovalSurface.button.justifyContent,
+	      gap: toolApprovalSurface.button.gap,
+	      flex: toolApprovalSurface.button.flex,
+	    },
     toolApprovalButtonDisabled: {
-      opacity: 0.6,
+      opacity: toolApprovalSurface.disabledOpacity,
     },
-    toolApprovalApproveButton: {
-      backgroundColor: theme.colors.primary,
-    },
-    toolApprovalApproveButtonText: {
-      color: theme.colors.primaryForeground,
-      fontSize: 13,
-      fontWeight: '700',
-    },
-    toolApprovalDenyButton: {
-      borderWidth: 1,
-      borderColor: theme.colors.destructive,
-      backgroundColor: theme.colors.background,
-    },
-    toolApprovalDenyButtonText: {
-      color: theme.colors.destructive,
-      fontSize: 13,
-      fontWeight: '700',
-    },
+	    toolApprovalApproveButton: {
+	      backgroundColor: toolApprovalSurfaceColors.approveButton.backgroundColor,
+	    },
+	    toolApprovalApproveButtonText: {
+	      color: toolApprovalSurfaceColors.approveButtonText.color,
+	      fontSize: toolApprovalSurface.buttonText.fontSize,
+	      fontWeight: toolApprovalSurface.buttonText.fontWeight,
+	    },
+	    toolApprovalDenyButton: {
+	      borderWidth: toolApprovalSurface.buttonVariants.deny.borderWidth,
+	      borderColor: toolApprovalSurfaceColors.denyButton.borderColor,
+	      backgroundColor: toolApprovalSurfaceColors.denyButton.backgroundColor,
+	    },
+	    toolApprovalDenyButtonText: {
+	      color: toolApprovalSurfaceColors.denyButtonText.color,
+	      fontSize: toolApprovalSurface.buttonText.fontSize,
+	      fontWeight: toolApprovalSurface.buttonText.fontWeight,
+	    },
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
-      marginTop: 2,
-      borderRadius: radius.sm,
-      borderLeftWidth: 1.5,
-      borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.5),
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.02),
-      overflow: 'hidden',
+      marginTop: detailedToolExecution.card.marginTop,
+      borderRadius: radius[detailedToolExecution.card.borderRadius],
+      borderLeftWidth: detailedToolExecution.card.borderLeftWidth,
+      ...getToolExecutionDetailColors('idle'),
+      overflow: detailedToolExecution.card.overflow,
     },
-    toolExecutionPending: {
-      borderLeftColor: hexToRgba(theme.colors.info, 0.5),
-      backgroundColor: hexToRgba(theme.colors.info, 0.02),
+    toolExecutionPending: getToolExecutionDetailColors('pending'),
+    toolExecutionSuccess: getToolExecutionDetailColors('success'),
+    toolExecutionError: getToolExecutionDetailColors('error'),
+    toolExecutionExpandedContainer: {
+      position: detailedToolExecution.expandedContainer.position,
     },
-    toolExecutionSuccess: {
-      borderLeftColor: hexToRgba(theme.colors.success, 0.5),
-      backgroundColor: hexToRgba(theme.colors.success, 0.02),
+    toolExecutionCollapseTopButton: {
+      marginBottom: detailedToolExecution.collapseButton.topMarginBottom,
     },
-    toolExecutionError: {
-      borderLeftColor: hexToRgba(theme.colors.destructive, 0.5),
-      backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
+    toolExecutionCollapseBottomButton: {
+      marginTop: detailedToolExecution.collapseButton.bottomMarginTop,
     },
     toolCallCompactContainer: {
-      paddingVertical: 1,
-      paddingHorizontal: 2,
-      borderRadius: radius.sm,
-      gap: 1,
+      paddingVertical: compactToolExecution.container.paddingVertical,
+      paddingHorizontal: compactToolExecution.container.paddingHorizontal,
+      borderRadius: radius[compactToolExecution.container.borderRadius],
+      gap: compactToolExecution.container.gap,
     },
     toolCallCompactLine: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingVertical: 1,
-      overflow: 'hidden',
+      flexDirection: compactToolExecution.line.flexDirection,
+      alignItems: compactToolExecution.line.alignItems,
+      gap: compactToolExecution.line.gap,
+      paddingVertical: compactToolExecution.line.paddingVertical,
+      overflow: compactToolExecution.line.overflow,
+    },
+    toolCallCompactLeadingIcon: {
+      width: compactToolExecution.toolIcon.width,
+      alignItems: compactToolExecution.iconCell.alignItems,
+      justifyContent: compactToolExecution.iconCell.justifyContent,
+      flexShrink: compactToolExecution.iconCell.flexShrink,
     },
     toolCallCompactPressed: {
-      opacity: 0.7,
+      opacity: compactToolExecution.pressedOpacity,
     },
     toolCallCompactName: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
-      fontWeight: '500',
-      flexShrink: 1,
-      minWidth: 0,
-      color: theme.colors.mutedForeground,
+      fontFamily: resolveMobileFontFamily(compactToolExecution.name.fontFamilyByPlatform),
+      fontSize: compactToolExecution.name.fontSize,
+      fontWeight: compactToolExecution.name.fontWeight,
+      flexShrink: compactToolExecution.name.flexShrink,
+      minWidth: compactToolExecution.name.minWidth,
+      color: getToolExecutionStatusColor('idle'),
     },
     toolCallCompactNamePending: {
-      color: theme.colors.info,
+      color: getToolExecutionStatusColor('pending'),
     },
     toolCallCompactNameSuccess: {
-      color: theme.colors.success,
+      color: getToolExecutionStatusColor('success'),
     },
     toolCallCompactNameError: {
-      color: theme.colors.destructive,
+      color: getToolExecutionStatusColor('error'),
     },
-    toolCallCompactStatus: {
-      fontSize: 9,
+    toolCallCompactStatusIndicator: {
+      width: compactToolExecution.statusIcon.width,
+      alignItems: compactToolExecution.iconCell.alignItems,
+      justifyContent: compactToolExecution.iconCell.justifyContent,
+      flexShrink: compactToolExecution.iconCell.flexShrink,
+    },
+    toolCallCompactToggleIcon: {
+      width: compactToolExecution.toggleIcon.width,
+      alignItems: compactToolExecution.iconCell.alignItems,
+      justifyContent: compactToolExecution.iconCell.justifyContent,
+      flexShrink: compactToolExecution.iconCell.flexShrink,
     },
     toolCallCompactStatusPending: {
-      color: theme.colors.info,
+      color: getToolExecutionStatusColor('pending'),
     },
     toolCallCompactStatusSuccess: {
-      color: theme.colors.success,
+      color: getToolExecutionStatusColor('success'),
     },
     toolCallCompactStatusError: {
-      color: theme.colors.destructive,
+      color: getToolExecutionStatusColor('error'),
     },
     // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
     toolActivityGroupCollapsed: {
-      paddingVertical: 4,
-      paddingHorizontal: spacing.xs,
-      borderRadius: radius.sm,
-      borderLeftWidth: 2,
-      borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.3),
-      marginBottom: 2,
+      paddingVertical: toolActivityGroupSurface.collapsed.paddingVertical,
+      paddingHorizontal: spacing[toolActivityGroupSurface.collapsed.paddingHorizontal],
+      borderRadius: radius[toolActivityGroupSurface.collapsed.borderRadius],
+      borderWidth: toolActivityGroupSurface.collapsed.borderWidth,
+      borderColor: toolActivityGroupSurfaceColors.collapsed.borderColor,
+      borderLeftWidth: toolActivityGroupSurface.collapsed.borderLeftWidth,
+      borderLeftColor: toolActivityGroupSurfaceColors.collapsed.borderLeftColor,
+      backgroundColor: toolActivityGroupSurfaceColors.collapsed.backgroundColor,
+      marginBottom: toolActivityGroupSurface.collapsed.marginBottom,
     },
     toolActivityGroupPressed: {
-      opacity: 0.7,
+      opacity: toolActivityGroupSurface.pressedOpacity,
     },
     toolActivityGroupHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      overflow: 'hidden',
+      flexDirection: toolActivityGroupSurface.headerRow.flexDirection,
+      alignItems: toolActivityGroupSurface.headerRow.alignItems,
+      gap: toolActivityGroupSurface.headerRow.gap,
+      overflow: toolActivityGroupSurface.headerRow.overflow,
     },
-    toolActivityGroupHeader: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
-      fontWeight: '600',
-      color: theme.colors.mutedForeground,
-      flexShrink: 0,
+    toolActivityGroupCountBadge: {
+      minWidth: toolActivityGroupSurface.countBadge.minWidth,
+      paddingHorizontal: toolActivityGroupSurface.countBadge.paddingHorizontal,
+      paddingVertical: toolActivityGroupSurface.countBadge.paddingVertical,
+      borderRadius: radius[toolActivityGroupSurface.countBadge.borderRadius],
+      alignItems: toolActivityGroupSurface.countBadge.alignItems,
+      justifyContent: toolActivityGroupSurface.countBadge.justifyContent,
+      backgroundColor: toolActivityGroupSurfaceColors.countBadge.backgroundColor,
+    },
+    toolActivityGroupCountBadgeText: {
+      fontFamily: resolveMobileFontFamily(toolActivityGroupSurface.countBadge.fontFamilyByPlatform),
+      fontSize: toolActivityGroupSurface.countBadge.fontSize,
+      fontWeight: toolActivityGroupSurface.countBadge.fontWeight,
+      color: toolActivityGroupSurfaceColors.countBadge.color,
     },
     toolActivityGroupPreviewLine: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
-      color: theme.colors.mutedForeground,
-      flexShrink: 1,
-      minWidth: 0,
+      fontFamily: resolveMobileFontFamily(toolActivityGroupSurface.preview.fontFamilyByPlatform),
+      fontSize: toolActivityGroupSurface.preview.fontSize,
+      color: toolActivityGroupSurfaceColors.preview.color,
+      flexShrink: toolActivityGroupSurface.preview.flexShrink,
+      minWidth: toolActivityGroupSurface.preview.minWidth,
+    },
+    toolActivityGroupFooterButton: {
+      alignSelf: toolActivityGroupSurface.footerButton.alignSelf,
+      flexDirection: toolActivityGroupSurface.footerButton.flexDirection,
+      alignItems: toolActivityGroupSurface.footerButton.alignItems,
+      gap: toolActivityGroupSurface.footerButton.gap,
+      marginTop: toolActivityGroupSurface.footerButton.marginTop,
+      marginBottom: toolActivityGroupSurface.footerButton.marginBottom,
+      paddingHorizontal: spacing[toolActivityGroupSurface.footerButton.paddingHorizontal],
+      paddingVertical: toolActivityGroupSurface.footerButton.paddingVertical,
+      borderRadius: radius[toolActivityGroupSurface.footerButton.borderRadius],
+    },
+    toolActivityGroupFooterText: {
+      fontSize: toolActivityGroupSurface.footerText.fontSize,
+      fontWeight: toolActivityGroupSurface.footerText.fontWeight,
+      color: toolActivityGroupSurfaceColors.footerText.color,
     },
     toolParamsSection: {
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 2,
-    },
-    toolParamsSectionTitle: {
-      fontSize: 9,
-      fontWeight: '600',
-      color: theme.colors.mutedForeground,
-      marginBottom: 2,
-      opacity: 0.7,
-    },
-    toolCallCard: {
-      backgroundColor: hexToRgba(theme.colors.foreground, 0.02),
-      borderRadius: radius.sm,
-      padding: 3,
-      marginBottom: 2,
+      paddingHorizontal: spacing[detailedToolExecution.blockSection.paddingHorizontal],
+      paddingVertical: detailedToolExecution.blockSection.paddingVertical,
     },
     toolCallSection: {
-      marginBottom: spacing.xs,
-      paddingBottom: spacing.xs,
-      borderBottomWidth: 0.5,
-      borderBottomColor: hexToRgba(theme.colors.mutedForeground, 0.15),
+      marginBottom: spacing[detailedToolExecution.section.marginBottom],
+      paddingBottom: spacing[detailedToolExecution.section.paddingBottom],
+      borderBottomWidth: detailedToolExecution.section.borderBottomWidth,
+      borderBottomColor: toolExecutionDetailContentColors.section.borderBottomColor,
     },
     toolName: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontWeight: '600',
-      color: theme.colors.primary,
-      fontSize: 10,
-      flex: 1,
+      fontFamily: resolveMobileFontFamily(detailedToolExecution.toolName.fontFamilyByPlatform),
+      fontWeight: detailedToolExecution.toolName.fontWeight,
+      color: toolExecutionDetailContentColors.toolName.color,
+      fontSize: detailedToolExecution.toolName.fontSize,
+      flex: detailedToolExecution.toolName.flex,
     },
     toolCallHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: spacing.xs,
-      marginBottom: spacing.xs,
-      minHeight: 44,
+      flexDirection: detailedToolExecution.header.flexDirection,
+      alignItems: detailedToolExecution.header.alignItems,
+      justifyContent: detailedToolExecution.header.justifyContent,
+      paddingVertical: spacing[detailedToolExecution.header.paddingVertical],
+      marginBottom: spacing[detailedToolExecution.header.marginBottom],
+      minHeight: detailedToolExecution.header.minHeight,
     },
     toolCallHeaderPressed: {
-      opacity: 0.7,
+      opacity: detailedToolExecution.header.pressedOpacity,
     },
     toolCallExpandHint: {
-      fontSize: 9,
-      color: theme.colors.mutedForeground,
-      fontWeight: '500',
+      flexDirection: detailedToolExecution.expandHint.flexDirection,
+      alignItems: detailedToolExecution.expandHint.alignItems,
+      gap: detailedToolExecution.expandHint.gap,
+    },
+    toolCallExpandHintText: {
+      fontSize: detailedToolExecution.expandHint.fontSize,
+      color: toolExecutionDetailContentColors.expandHintText.color,
+      fontWeight: detailedToolExecution.expandHint.fontWeight,
     },
     toolSectionLabel: {
-      fontSize: 8,
-      fontWeight: '600',
-      color: theme.colors.mutedForeground,
-      marginBottom: 2,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      fontSize: detailedToolExecution.sectionLabel.fontSize,
+      fontWeight: detailedToolExecution.sectionLabel.fontWeight,
+      color: toolExecutionDetailContentColors.sectionLabel.color,
+      marginBottom: detailedToolExecution.sectionLabel.marginBottom,
+      textTransform: detailedToolExecution.sectionLabel.textTransform,
+      letterSpacing: detailedToolExecution.sectionLabel.letterSpacing,
+    },
+    toolDetailHeaderRow: {
+      flexDirection: detailedToolExecution.detailHeaderRow.flexDirection,
+      alignItems: detailedToolExecution.detailHeaderRow.alignItems,
+      justifyContent: detailedToolExecution.detailHeaderRow.justifyContent,
+      gap: detailedToolExecution.detailHeaderRow.gap,
+      marginBottom: detailedToolExecution.detailHeaderRow.marginBottom,
+    },
+    toolPayloadMetaRow: {
+      flexDirection: detailedToolExecution.payloadMeta.flexDirection,
+      alignItems: detailedToolExecution.payloadMeta.alignItems,
+      minWidth: detailedToolExecution.payloadMeta.minWidth,
+      gap: detailedToolExecution.payloadMeta.gap,
+      marginBottom: detailedToolExecution.payloadMeta.marginBottom,
+    },
+    toolPayloadType: {
+      fontSize: detailedToolExecution.payloadType.fontSize,
+      fontWeight: detailedToolExecution.payloadType.fontWeight,
+      opacity: detailedToolExecution.payloadType.opacity,
+      color: toolExecutionDetailContentColors.payloadType.color,
+    },
+    toolPayloadPreview: {
+      fontFamily: resolveMobileFontFamily(detailedToolExecution.payloadPreview.fontFamilyByPlatform),
+      fontSize: detailedToolExecution.payloadPreview.fontSize,
+      lineHeight: detailedToolExecution.payloadPreview.lineHeight,
+      paddingHorizontal: detailedToolExecution.payloadPreview.paddingHorizontal,
+      paddingVertical: detailedToolExecution.payloadPreview.paddingVertical,
+      borderRadius: radius[detailedToolExecution.payloadPreview.borderRadius],
+      backgroundColor: toolPayloadPreviewColors.backgroundColor,
+      color: toolPayloadPreviewColors.color,
+      marginBottom: detailedToolExecution.result.headerMarginBottom,
+    },
+    toolDetailCopyButton: {
+      minHeight: detailedToolExecution.copyButton.minHeight,
+      paddingHorizontal: detailedToolExecution.copyButton.paddingHorizontal,
+      paddingVertical: detailedToolExecution.copyButton.paddingVertical,
+      borderRadius: radius[detailedToolExecution.copyButton.borderRadius],
+      backgroundColor: toolDetailCopyButtonColors.backgroundColor,
+      flexDirection: detailedToolExecution.copyButton.flexDirection,
+      alignItems: detailedToolExecution.copyButton.alignItems,
+      justifyContent: detailedToolExecution.copyButton.justifyContent,
+      gap: detailedToolExecution.copyButton.gap,
+      flexShrink: detailedToolExecution.copyButton.flexShrink,
+    } as const,
+    toolDetailCopyButtonPressed: {
+      opacity: detailedToolExecution.copyButton.pressedOpacity,
+    },
+    toolDetailCopyButtonText: {
+      fontSize: detailedToolExecution.copyButtonText.fontSize,
+      fontWeight: detailedToolExecution.copyButtonText.fontWeight,
+      color: toolDetailCopyButtonColors.textColor,
     },
     toolParamsScroll: {
-      maxHeight: 80,
-      borderRadius: radius.sm,
-      overflow: 'hidden',
+      maxHeight: detailedToolExecution.scroll.collapsedMaxHeight,
+      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
+      overflow: detailedToolExecution.scroll.overflow,
     },
     toolParamsScrollExpanded: {
-      maxHeight: 400,
-      borderRadius: radius.sm,
-      overflow: 'hidden',
+      maxHeight: detailedToolExecution.scroll.expandedMaxHeight,
+      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
+      overflow: detailedToolExecution.scroll.overflow,
     },
     toolParamsCode: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 8,
-      color: theme.colors.foreground,
-      backgroundColor: theme.colors.muted,
-      padding: 3,
-      borderRadius: radius.sm,
-    },
-    toolResponseSection: {
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 2,
-    },
-    toolResponsePending: {
-      // No background - let parent handle it
-    },
-    toolResponseSuccess: {
-      // No background - let parent handle it
-    },
-    toolResponseError: {
-      // No background - let parent handle it
-    },
-    toolResponseSectionTitle: {
-      fontSize: 9,
-      fontWeight: '600',
-      color: theme.colors.mutedForeground,
-      marginBottom: 2,
-      opacity: 0.7,
+      fontFamily: resolveMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontSize: detailedToolExecution.codeBlock.fontSize,
+      color: toolExecutionDetailContentColors.codeBlock.color,
+      backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
+      padding: detailedToolExecution.codeBlock.padding,
+      borderRadius: radius[detailedToolExecution.codeBlock.borderRadius],
     },
     toolResponsePendingText: {
-      fontSize: 9,
-      fontStyle: 'italic',
-      color: theme.colors.mutedForeground,
-      textAlign: 'center',
-      paddingVertical: 2,
+      fontSize: detailedToolExecution.pendingText.fontSize,
+      fontStyle: detailedToolExecution.pendingText.fontStyle,
+      color: toolExecutionDetailContentColors.pendingText.color,
+      textAlign: detailedToolExecution.pendingText.textAlign,
+      paddingVertical: detailedToolExecution.pendingText.paddingVertical,
+    },
+    toolResponsePendingRow: {
+      flexDirection: detailedToolExecution.pendingRow.flexDirection,
+      alignItems: detailedToolExecution.pendingRow.alignItems,
+      justifyContent: detailedToolExecution.pendingRow.justifyContent,
+      gap: detailedToolExecution.pendingRow.gap,
+      paddingVertical: detailedToolExecution.pendingRow.paddingVertical,
     },
     toolResultItem: {
-      marginBottom: 2,
+      marginBottom: detailedToolExecution.result.itemMarginBottom,
     },
     toolResultHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 1,
+      flexDirection: detailedToolExecution.resultHeader.flexDirection,
+      alignItems: detailedToolExecution.resultHeader.alignItems,
+      justifyContent: detailedToolExecution.resultHeader.justifyContent,
+      marginBottom: detailedToolExecution.result.headerMarginBottom,
+      gap: detailedToolExecution.resultHeader.gap,
+    },
+    toolResultHeaderMeta: {
+      flexDirection: detailedToolExecution.resultHeaderMeta.flexDirection,
+      alignItems: detailedToolExecution.resultHeaderMeta.alignItems,
+      gap: detailedToolExecution.resultHeaderMeta.gap,
+      flexShrink: detailedToolExecution.resultHeaderMeta.flexShrink,
+      minWidth: detailedToolExecution.resultHeaderMeta.minWidth,
     },
     toolResultCharCount: {
-      fontSize: 8,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      color: theme.colors.mutedForeground,
-      opacity: 0.6,
+      fontSize: detailedToolExecution.characterCount.fontSize,
+      fontFamily: resolveMobileFontFamily(detailedToolExecution.characterCount.fontFamilyByPlatform),
+      color: toolExecutionDetailContentColors.characterCount.color,
+      opacity: detailedToolExecution.characterCount.opacity,
     },
     toolResultBadge: {
-      fontSize: 9,
-      fontWeight: '600',
-      paddingHorizontal: 4,
-      paddingVertical: 1,
-      borderRadius: radius.sm,
+      flexDirection: detailedToolExecution.badge.flexDirection,
+      alignItems: detailedToolExecution.badge.alignItems,
+      gap: detailedToolExecution.badge.gap,
+      paddingHorizontal: detailedToolExecution.badge.paddingHorizontal,
+      paddingVertical: detailedToolExecution.badge.paddingVertical,
+      borderRadius: radius[detailedToolExecution.badge.borderRadius],
     },
     toolResultBadgeSuccess: {
-      backgroundColor: hexToRgba(theme.colors.success, 0.12),
-      color: theme.colors.success,
+      backgroundColor: toolResultBadgeSuccessColors.backgroundColor,
     },
     toolResultBadgeError: {
-      backgroundColor: hexToRgba(theme.colors.destructive, 0.12),
-      color: theme.colors.destructive,
+      backgroundColor: toolResultBadgeErrorColors.backgroundColor,
+    },
+    toolResultBadgeText: {
+      fontSize: detailedToolExecution.badge.fontSize,
+      fontWeight: detailedToolExecution.badge.fontWeight,
+    },
+    toolResultBadgeTextSuccess: {
+      color: toolResultBadgeSuccessColors.color,
+    },
+    toolResultBadgeTextError: {
+      color: toolResultBadgeErrorColors.color,
     },
     toolResultScroll: {
-      maxHeight: 80,
-      borderRadius: radius.sm,
-      overflow: 'hidden',
+      maxHeight: detailedToolExecution.scroll.collapsedMaxHeight,
+      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
+      overflow: detailedToolExecution.scroll.overflow,
     },
     toolResultScrollExpanded: {
-      maxHeight: 400,
-      borderRadius: radius.sm,
-      overflow: 'hidden',
+      maxHeight: detailedToolExecution.scroll.expandedMaxHeight,
+      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
+      overflow: detailedToolExecution.scroll.overflow,
     },
     toolResultCode: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 8,
-      color: theme.colors.foreground,
-      backgroundColor: theme.colors.muted,
-      padding: 3,
-      borderRadius: radius.sm,
+      fontFamily: resolveMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontSize: detailedToolExecution.codeBlock.fontSize,
+      color: toolExecutionDetailContentColors.codeBlock.color,
+      backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
+      padding: detailedToolExecution.codeBlock.padding,
+      borderRadius: radius[detailedToolExecution.codeBlock.borderRadius],
     },
     toolResultErrorSection: {
-      marginTop: 1,
+      marginTop: detailedToolExecution.result.errorSectionMarginTop,
     },
     toolResultErrorLabel: {
-      fontSize: 8,
-      fontWeight: '500',
-      color: theme.colors.destructive,
-      marginBottom: 1,
+      fontSize: detailedToolExecution.error.labelFontSize,
+      fontWeight: detailedToolExecution.error.labelFontWeight,
+      color: toolResultErrorColors.color,
+      marginBottom: detailedToolExecution.error.labelMarginBottom,
     },
     toolResultErrorText: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 8,
-      color: theme.colors.destructive,
-      backgroundColor: hexToRgba(theme.colors.destructive, 0.06),
-      padding: 3,
-      borderRadius: radius.sm,
+      fontFamily: resolveMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontSize: detailedToolExecution.codeBlock.fontSize,
+      color: toolResultErrorColors.color,
+      backgroundColor: toolResultErrorColors.backgroundColor,
+      padding: detailedToolExecution.codeBlock.padding,
+      borderRadius: radius[detailedToolExecution.codeBlock.borderRadius],
     },
-    assistantMessageRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing.xs,
-      width: '100%',
+    messageContentRow: {
+      flexDirection: mobileMessageContentLayout.row.flexDirection,
+      alignItems: mobileMessageContentLayout.row.alignItems,
+      gap: spacing[mobileMessageContentLayout.row.gap],
+      width: mobileMessageContentLayout.row.width,
     },
-    assistantMessageBody: {
-      flex: 1,
-      minWidth: 0,
+    messageContentBody: {
+      flex: mobileMessageContentLayout.body.flex,
+      minWidth: mobileMessageContentLayout.body.minWidth,
+    },
+    collapsedMessagePreviewToggle: {
+      flex: mobileMessageCollapsedPreview.flex,
+      minWidth: mobileMessageCollapsedPreview.minWidth,
+    },
+    collapsedMessagePreviewTogglePressed: {
+      opacity: mobileMessageCollapsedPreview.pressedOpacity,
     },
     collapsedMessagePreview: {
-      color: theme.colors.foreground,
-      fontSize: 13,
-      lineHeight: 18,
-      flex: 1,
-      minWidth: 0,
+      color: mobileMessageCollapsedPreviewColors.text.color,
+      fontSize: mobileMessageCollapsedPreview.fontSize,
+      lineHeight: mobileMessageCollapsedPreview.lineHeight,
+    },
+    messageExpandButton: {
+      alignSelf: mobileMessageActionButton.alignSelf,
+      width: mobileMessageActionButton.width,
+      height: mobileMessageActionButton.height,
+      marginTop: mobileMessageActionButton.marginTop,
+      borderRadius: mobileMessageActionButton.borderRadius,
+      backgroundColor: mobileMessageActionButtonColors.backgroundColor,
+      alignItems: mobileMessageActionButton.alignItems,
+      justifyContent: mobileMessageActionButton.justifyContent,
+      flexShrink: mobileMessageActionButton.flexShrink,
+    } as const,
+    messageExpandButtonPressed: {
+      opacity: mobileMessageActionButton.pressedOpacity,
     },
     messageActionsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      marginTop: 2,
-      gap: spacing.xs,
+      flexDirection: mobileMessageActionRow.flexDirection,
+      alignItems: mobileMessageActionRow.alignItems,
+      justifyContent: mobileMessageActionRow.justifyContent,
+      marginTop: mobileMessageActionRow.marginTop,
+      gap: spacing[mobileMessageActionRow.gap],
     },
-    messageActionButton: {
-      ...createMinimumTouchTargetStyle({
-        horizontalPadding: spacing.sm,
-        verticalPadding: spacing.xs,
-        horizontalMargin: 0,
-      }),
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      alignItems: 'center',
-      justifyContent: 'center',
+    messageTurnDurationBadge: {
+      alignSelf: mobileMessageTurnDurationBadge.alignSelf,
+      flexDirection: mobileMessageTurnDurationBadge.flexDirection,
+      minHeight: mobileMessageTurnDurationBadge.minHeight,
+      marginTop: mobileMessageTurnDurationBadge.marginTop,
+      paddingHorizontal: mobileMessageTurnDurationBadge.paddingHorizontal,
+      borderRadius: mobileMessageTurnDurationBadge.borderRadius,
+      backgroundColor: mobileMessageTurnDurationBadgeColors.backgroundColor,
+      alignItems: mobileMessageTurnDurationBadge.alignItems,
+      justifyContent: mobileMessageTurnDurationBadge.justifyContent,
+      gap: mobileMessageTurnDurationBadge.gap,
+      flexShrink: mobileMessageTurnDurationBadge.flexShrink,
+      opacity: mobileMessageTurnDurationBadge.opacity,
+    } as const,
+    messageTurnDurationBadgeLive: {
+      backgroundColor: mobileMessageTurnDurationLiveBadgeColors.backgroundColor,
+      opacity: mobileMessageTurnDurationLiveBadge.opacity,
+    } as const,
+    messageTurnDurationText: {
+      fontFamily: resolveMobileFontFamily(mobileMessageTurnDurationBadge.fontFamilyByPlatform),
+      fontSize: mobileMessageTurnDurationBadge.fontSize,
+      lineHeight: mobileMessageTurnDurationBadge.lineHeight,
+      fontWeight: mobileMessageTurnDurationBadge.fontWeight,
+      color: mobileMessageTurnDurationBadgeColors.color,
     },
-    messageActionButtonDisabled: {
-      opacity: 0.65,
+    messageTurnDurationTextLive: {
+      color: mobileMessageTurnDurationLiveBadgeColors.color,
     },
-    messageActionButtonText: {
-      ...theme.typography.caption,
-      color: theme.colors.primary,
-      fontWeight: '600',
+    messageBranchButton: {
+      alignSelf: mobileMessageBranchButton.alignSelf,
+      width: mobileMessageBranchButton.width,
+      height: mobileMessageBranchButton.height,
+      marginTop: mobileMessageBranchButton.marginTop,
+      borderRadius: mobileMessageBranchButton.borderRadius,
+      backgroundColor: mobileMessageBranchButtonColors.backgroundColor,
+      alignItems: mobileMessageBranchButton.alignItems,
+      justifyContent: mobileMessageBranchButton.justifyContent,
+      flexShrink: mobileMessageBranchButton.flexShrink,
+    } as const,
+    messageBranchButtonPressed: {
+      opacity: mobileMessageBranchButton.pressedOpacity,
+    } as const,
+    messageBranchButtonDisabled: {
+      opacity: mobileMessageBranchButton.disabledOpacity,
     },
+    messageCopyButton: {
+      alignSelf: mobileMessageActionButton.alignSelf,
+      width: mobileMessageActionButton.width,
+      height: mobileMessageActionButton.height,
+      marginTop: mobileMessageActionButton.marginTop,
+      borderRadius: mobileMessageActionButton.borderRadius,
+      backgroundColor: mobileMessageActionButtonColors.backgroundColor,
+      alignItems: mobileMessageActionButton.alignItems,
+      justifyContent: mobileMessageActionButton.justifyContent,
+      flexShrink: mobileMessageActionButton.flexShrink,
+    } as const,
+    messageCopyButtonCopied: {
+      backgroundColor: mobileMessageCopiedButtonColors.backgroundColor,
+    } as const,
+    messageCopyButtonPressed: {
+      opacity: mobileMessageActionButton.pressedOpacity,
+    } as const,
     // Per-message TTS button styles (#1078)
     speakButton: {
-      alignSelf: 'flex-start',
-      width: 24,
-      height: 24,
-      marginTop: 1,
-      borderRadius: 12,
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.1),
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
+      alignSelf: mobileMessageSpeechButton.alignSelf,
+      width: mobileMessageSpeechButton.width,
+      height: mobileMessageSpeechButton.height,
+      marginTop: mobileMessageSpeechButton.marginTop,
+      borderRadius: mobileMessageSpeechButton.borderRadius,
+      backgroundColor: mobileMessageSpeechButtonColors.backgroundColor,
+      alignItems: mobileMessageSpeechButton.alignItems,
+      justifyContent: mobileMessageSpeechButton.justifyContent,
+      flexShrink: mobileMessageSpeechButton.flexShrink,
     } as const,
     speakButtonActive: {
-      backgroundColor: hexToRgba(theme.colors.primary, 0.15),
+      backgroundColor: mobileMessageSpeechActiveButtonColors.backgroundColor,
     } as const,
-    speakButtonText: {
-      fontSize: 12,
-      color: theme.colors.mutedForeground,
-    } as const,
-    speakButtonTextActive: {
-      color: theme.colors.primary,
+    speakButtonPressed: {
+      opacity: mobileMessageSpeechButton.pressedOpacity,
     } as const,
   });
 }

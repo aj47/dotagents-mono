@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  AGENT_SELECTOR_PRESENTATION,
   buildSelectorProfiles,
+  formatAgentSelectorEditLabel,
+  formatAgentSelectorSelectAccessibilityLabel,
+  formatAgentSelectorSelectedAccessibilityLabel,
   getDefaultAgentProfile,
   getDisplayAgentProfile,
   getEnabledAgentProfiles,
+  getAgentSelectorCommonCopyState,
+  getAgentSelectorDesktopSurfaceState,
+  getAgentSelectorMobileFallbackAvatarBackgroundColor,
+  getAgentSelectorMobileCloseIconState,
+  getAgentSelectorMobileSurfaceColors,
+  getAgentSelectorMobileSurfaceState,
+  getAgentSelectorSheetCopyState,
+  getAgentSelectorSheetEmptyLabel,
+  getAgentSelectorSheetTitle,
   resolveAgentProfileIdForNextSession,
   sortAgentProfilesWithDefaultFirst,
   toSelectableAgentProfile,
@@ -117,6 +130,7 @@ describe("agent selector option helpers", () => {
       name: "augustus",
       displayName: "Augustus",
       description: "Delegated helper",
+      avatarDataUrl: "data:image/png;base64,abc",
       enabled: true,
       connectionType: "internal",
     })
@@ -126,9 +140,123 @@ describe("agent selector option helpers", () => {
       name: "Augustus",
       guidelines: "Delegated helper",
       description: "Delegated helper",
+      avatarDataUrl: "data:image/png;base64,abc",
       selectorMode: "profile",
       selectionValue: "sub",
     })
+  })
+
+  it("centralizes selector copy and dense desktop/mobile surface tokens", () => {
+    expect(AGENT_SELECTOR_PRESENTATION.common.defaultAgentLabel).toBe("Default Agent")
+    expect(AGENT_SELECTOR_PRESENTATION.common.newAgentLabel).toBe("New agent…")
+    expect(AGENT_SELECTOR_PRESENTATION.desktop.triggerClassName).toContain("h-8 w-8")
+    expect(AGENT_SELECTOR_PRESENTATION.desktop.contentClassName).toContain("max-h-[300px]")
+    expect(getAgentSelectorCommonCopyState()).toBe(AGENT_SELECTOR_PRESENTATION.common)
+    expect(getAgentSelectorDesktopSurfaceState()).toBe(AGENT_SELECTOR_PRESENTATION.desktop)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.sheet.backgroundColorToken).toBe("card")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.backdropSpacer.flex).toBe(1)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.handle.alignSelf).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.header.flexDirection).toBe("row")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.header.alignItems).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.width).toBe(32)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.alignItems).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.justifyContent).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.pressedOpacity).toBe(0.72)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.name).toBe("close")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.size).toBe(20)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.colorToken).toBe("mutedForeground")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.title.flex).toBe(1)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.title.minWidth).toBe(0)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.title.numberOfLines).toBe(1)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileItem.flexDirection).toBe("row")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileItem.justifyContent).toBe("space-between")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileItem.selectedBackgroundAlpha).toBe(0.12)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatar.alignItems).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatar.justifyContent).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatar.overflow).toBe("hidden")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatar.flexShrink).toBe(0)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatar.fallbackIconName).toBe("hardware-chip-outline")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatarImage.width).toBe("100%")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.avatarImage.height).toBe("100%")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileInfo.flex).toBe(1)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileInfo.minWidth).toBe(0)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileName.numberOfLines).toBe(1)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.profileDescription.numberOfLines).toBe(1)
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.loadingContainer.alignItems).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.errorContainer.alignItems).toBe("center")
+    expect(AGENT_SELECTOR_PRESENTATION.mobile.emptyText.textAlign).toBe("center")
+    expect(getAgentSelectorSheetCopyState()).toBe(AGENT_SELECTOR_PRESENTATION.sheet)
+    expect(getAgentSelectorMobileSurfaceState()).toBe(AGENT_SELECTOR_PRESENTATION.mobile)
+    expect(getAgentSelectorSheetTitle("profile")).toBe("Select Agent")
+    expect(getAgentSelectorSheetTitle("acpx")).toBe("Select Main Agent")
+    expect(getAgentSelectorSheetEmptyLabel("profile")).toBe("No agents available")
+    expect(getAgentSelectorSheetEmptyLabel("acpx")).toBe("No acpx agents available")
+    expect(getAgentSelectorMobileCloseIconState()).toEqual({
+      name: "close",
+      size: 20,
+      colorToken: "mutedForeground",
+    })
+    expect(getAgentSelectorMobileSurfaceColors({
+      card: "#fafafa",
+      border: "#d4d4d4",
+      destructive: "#dc2626",
+      foreground: "#171717",
+      mutedForeground: "#737373",
+      primary: "#2563eb",
+    })).toEqual({
+      backdrop: {
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+      },
+      sheet: {
+        backgroundColor: "#fafafa",
+      },
+      handle: {
+        backgroundColor: "#d4d4d4",
+      },
+      title: {
+        color: "#171717",
+      },
+      headerCloseIcon: {
+        color: "#737373",
+      },
+      profileItem: {
+        selectedBackgroundColor: "rgba(37, 99, 235, 0.12)",
+      },
+      avatar: {
+        fallbackIconColor: "#2563eb",
+      },
+      profileName: {
+        color: "#171717",
+        selectedColor: "#2563eb",
+      },
+      profileDescription: {
+        color: "#737373",
+      },
+      checkIcon: {
+        color: "#2563eb",
+      },
+      loadingText: {
+        color: "#737373",
+      },
+      errorText: {
+        color: "#dc2626",
+      },
+      retryButtonText: {
+        color: "#2563eb",
+      },
+      emptyText: {
+        color: "#737373",
+      },
+      activityIndicator: {
+        color: "#2563eb",
+      },
+    })
+    expect(getAgentSelectorMobileFallbackAvatarBackgroundColor("#0f172a")).toBe(
+      "rgba(15, 23, 42, 0.14)",
+    )
+    expect(formatAgentSelectorSelectedAccessibilityLabel("Research")).toBe("Selected agent: Research")
+    expect(formatAgentSelectorSelectAccessibilityLabel("Research")).toBe("Select Research agent")
+    expect(formatAgentSelectorEditLabel("Research")).toBe("Edit Research")
   })
 })
 
@@ -138,7 +266,7 @@ describe("buildSelectorProfiles", () => {
       { mainAgentMode: "api" },
       [
         { id: "main", name: "main-agent", displayName: "Main Agent", enabled: true, connectionType: "internal" },
-        { id: "sub", name: "augustus", displayName: "Augustus", description: "Delegated helper", connectionType: "internal" },
+        { id: "sub", name: "augustus", displayName: "Augustus", description: "Delegated helper", avatarDataUrl: "data:image/png;base64,abc", connectionType: "internal" },
         { id: "off", name: "disabled", displayName: "Disabled", enabled: false, connectionType: "internal" },
       ],
     )
@@ -146,6 +274,7 @@ describe("buildSelectorProfiles", () => {
     expect(result.selectorMode).toBe("profile")
     expect(result.profiles.map((profile) => profile.id)).toEqual(["main", "sub"])
     expect(result.profiles.map((profile) => profile.name)).toEqual(["Main Agent", "Augustus"])
+    expect(result.profiles.map((profile) => profile.avatarDataUrl)).toEqual([null, "data:image/png;base64,abc"])
   })
 
   it("uses acpx-capable agent profiles when acpx mode is enabled", () => {

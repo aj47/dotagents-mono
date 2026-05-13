@@ -16,15 +16,20 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  MESSAGE_QUEUE_PANEL_PRESENTATION,
-  formatMessageQueueCompactLabel,
-  formatMessageQueuePanelTitle,
-  getMessageQueueListToggleLabel,
+  formatQueuedMessageMetaLabel,
+  getMessageQueuePanelCopyState,
+  getMessageQueuePanelState,
+  getMessageQueuePanelMobileIconState,
+  getMessageQueuePanelMobileSurfaceColors,
+  getMessageQueuePanelMobileSurfaceState,
   getQueuedMessageItemPresentation,
-  hasProcessingQueuedMessage,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
 import { useTheme } from './ThemeProvider';
+
+const mobileMessageQueuePanelCopy = getMessageQueuePanelCopyState();
+const mobileMessageQueuePanelIcons = getMessageQueuePanelMobileIconState();
+const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState();
 
 interface MessageQueuePanelProps {
   conversationId: string;
@@ -36,6 +41,9 @@ interface MessageQueuePanelProps {
   onClear: () => void;
   canProcessNext?: boolean;
   compact?: boolean;
+  isPaused?: boolean;
+  onPause?: () => void;
+  onResume?: () => void;
 }
 
 interface QueuedMessageItemProps {
@@ -61,6 +69,24 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     expansionLabel,
     errorText,
   } = messagePresentation;
+  const itemSurface = mobileMessageQueuePanelSurface.item;
+  const actionSurface = mobileMessageQueuePanelSurface.actions;
+  const editSurface = mobileMessageQueuePanelSurface.edit;
+  const queuePanelColors = getMessageQueuePanelMobileSurfaceColors(theme.colors);
+  const itemColors = queuePanelColors.item;
+  const actionColors = queuePanelColors.actions;
+  const editColors = queuePanelColors.edit;
+  const queuePanelIcons = mobileMessageQueuePanelIcons;
+  const statusColor = isFailed
+    ? itemColors.failedColor
+    : isProcessing
+    ? itemColors.processingColor
+    : itemColors.messageColor;
+  const statusMetaColor = isFailed
+    ? itemColors.failedMetaColor
+    : isProcessing
+    ? itemColors.processingMetaColor
+    : itemColors.metaColor;
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -77,11 +103,6 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     }
   }, [isProcessing, message.text]);
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   const handleSaveEdit = () => {
     const trimmed = editText.trim();
     if (trimmed && trimmed !== message.text) {
@@ -97,130 +118,122 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
 
   const styles = StyleSheet.create({
     container: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: itemSurface.paddingHorizontal,
+      paddingVertical: itemSurface.paddingVertical,
       backgroundColor: isFailed
-        ? `${theme.colors.destructive}15`
+        ? itemColors.failedBackgroundColor
         : isProcessing
-        ? `${theme.colors.primary}15`
-        : 'transparent',
+        ? itemColors.processingBackgroundColor
+        : itemColors.transparentBackgroundColor,
     },
     row: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
+      flexDirection: itemSurface.rowFlexDirection,
+      alignItems: itemSurface.rowAlignItems,
+      gap: itemSurface.rowGap,
     },
     content: {
-      flex: 1,
-      minWidth: 0,
+      flex: itemSurface.contentFlex,
+      minWidth: itemSurface.contentMinWidth,
     },
     messageText: {
-      fontSize: 14,
-      color: isFailed
-        ? theme.colors.destructive
-        : isProcessing
-        ? theme.colors.primary
-        : theme.colors.foreground,
+      fontSize: itemSurface.message.fontSize,
+      color: statusColor,
     },
     errorText: {
-      fontSize: 12,
-      color: `${theme.colors.destructive}CC`,
-      marginTop: 4,
+      fontSize: itemSurface.errorFontSize,
+      color: itemColors.errorColor,
+      marginTop: itemSurface.errorMarginTop,
     },
     metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 4,
+      flexDirection: itemSurface.metaFlexDirection,
+      alignItems: itemSurface.metaAlignItems,
+      flexWrap: itemSurface.metaFlexWrap,
+      gap: itemSurface.metaGap,
+      marginTop: itemSurface.metaMarginTop,
     },
     metaText: {
-      fontSize: 12,
-      color: isFailed
-        ? `${theme.colors.destructive}B3`
-        : isProcessing
-        ? `${theme.colors.primary}B3`
-        : theme.colors.mutedForeground,
+      fontSize: itemSurface.metaFontSize,
+      color: statusMetaColor,
     },
     expandButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: itemSurface.expandButtonFlexDirection,
+      alignItems: itemSurface.expandButtonAlignItems,
     },
     expandText: {
-      fontSize: 12,
-      color: theme.colors.mutedForeground,
-      marginLeft: 2,
+      fontSize: itemSurface.expandTextFontSize,
+      color: itemColors.expandTextColor,
+      marginLeft: itemSurface.expandTextMarginLeft,
     },
     actions: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 6,
+      flexDirection: actionSurface.flexDirection,
+      flexWrap: actionSurface.flexWrap,
+      alignItems: actionSurface.alignItems,
+      gap: actionSurface.gap,
+      marginTop: actionSurface.marginTop,
     },
     actionButton: {
-      alignSelf: 'flex-start',
-      minHeight: 28,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      justifyContent: 'center',
+      alignSelf: actionSurface.buttonAlignSelf,
+      minHeight: actionSurface.buttonMinHeight,
+      paddingHorizontal: actionSurface.buttonPaddingHorizontal,
+      paddingVertical: actionSurface.buttonPaddingVertical,
+      borderRadius: actionSurface.buttonBorderRadius,
+      borderWidth: actionSurface.buttonBorderWidth,
+      borderColor: actionColors.buttonBorderColor,
+      backgroundColor: actionColors.buttonBackgroundColor,
+      justifyContent: actionSurface.buttonJustifyContent,
     },
     retryActionText: {
-      color: theme.colors.primary,
-      fontSize: 12,
-      fontWeight: '500',
+      color: actionColors.retryTextColor,
+      fontSize: actionSurface.textFontSize,
+      fontWeight: actionSurface.textFontWeight,
     },
     editActionText: {
-      color: theme.colors.foreground,
-      fontSize: 12,
-      fontWeight: '500',
+      color: actionColors.editTextColor,
+      fontSize: actionSurface.textFontSize,
+      fontWeight: actionSurface.textFontWeight,
     },
     removeActionText: {
-      color: theme.colors.destructive,
-      fontSize: 12,
-      fontWeight: '500',
+      color: actionColors.removeTextColor,
+      fontSize: actionSurface.textFontSize,
+      fontWeight: actionSurface.textFontWeight,
     },
     editContainer: {
-      gap: 8,
+      gap: editSurface.containerGap,
     },
     editInput: {
-      minHeight: 60,
-      padding: 8,
-      fontSize: 14,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      color: theme.colors.foreground,
-      textAlignVertical: 'top',
+      minHeight: editSurface.inputMinHeight,
+      padding: editSurface.inputPadding,
+      fontSize: editSurface.inputFontSize,
+      borderRadius: editSurface.inputBorderRadius,
+      borderWidth: editSurface.inputBorderWidth,
+      borderColor: editColors.inputBorderColor,
+      backgroundColor: editColors.inputBackgroundColor,
+      color: editColors.inputTextColor,
+      textAlignVertical: editSurface.inputTextAlignVertical,
     },
     editActions: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: 8,
+      flexDirection: editSurface.actionsFlexDirection,
+      justifyContent: editSurface.actionsJustifyContent,
+      gap: editSurface.actionsGap,
     },
     editButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 6,
+      paddingHorizontal: editSurface.buttonPaddingHorizontal,
+      paddingVertical: editSurface.buttonPaddingVertical,
+      borderRadius: editSurface.buttonBorderRadius,
     },
     cancelButton: {
-      backgroundColor: 'transparent',
+      backgroundColor: editColors.cancelButtonBackgroundColor,
     },
     saveButton: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: editColors.saveButtonBackgroundColor,
     },
     buttonText: {
-      fontSize: 12,
-      color: theme.colors.foreground,
+      fontSize: editSurface.buttonTextFontSize,
+      color: editColors.buttonTextColor,
     },
     saveButtonText: {
-      fontSize: 12,
-      color: theme.colors.primaryForeground,
+      fontSize: editSurface.buttonTextFontSize,
+      color: editColors.saveButtonTextColor,
     },
   });
 
@@ -240,14 +253,14 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
             >
-              <Text style={styles.buttonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel}</Text>
+              <Text style={styles.buttonText}>{mobileMessageQueuePanelCopy.actions.cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
               disabled={!editText.trim()}
             >
-              <Text style={styles.saveButtonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel}</Text>
+              <Text style={styles.saveButtonText}>{mobileMessageQueuePanelCopy.actions.saveLabel}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -259,15 +272,15 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     <View style={styles.container}>
       <View style={styles.row}>
         {isFailed && (
-          <Ionicons name="alert-circle" size={16} color={theme.colors.destructive} />
+          <Ionicons name={queuePanelIcons.failedName} size={itemSurface.stateIconSize} color={itemColors.failedColor} />
         )}
         {isProcessing && (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <ActivityIndicator size="small" color={itemColors.processingColor} />
         )}
         <View style={styles.content}>
           <Text
             style={styles.messageText}
-            numberOfLines={isExpanded ? undefined : 2}
+            numberOfLines={isExpanded ? undefined : itemSurface.message.collapsedNumberOfLines}
           >
             {message.text}
           </Text>
@@ -276,8 +289,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           )}
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
-              {formatTime(message.createdAt)} •{' '}
-              {statusLabel}
+              {formatQueuedMessageMetaLabel(message.createdAt, statusLabel)}
             </Text>
             {isLongMessage && (
               <TouchableOpacity
@@ -285,9 +297,9 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 onPress={() => setIsExpanded(!isExpanded)}
               >
                 <Ionicons
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={12}
-                  color={theme.colors.mutedForeground}
+                  name={isExpanded ? queuePanelIcons.collapseMessageName : queuePanelIcons.expandMessageName}
+                  size={itemSurface.expandIconSize}
+                  color={itemColors.expandTextColor}
                 />
                 <Text style={styles.expandText}>
                   {expansionLabel}
@@ -302,10 +314,10 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   style={styles.actionButton}
                   onPress={onRetry}
                   accessibilityRole="button"
-                  accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={mobileMessageQueuePanelCopy.actions.retryAccessibilityLabel}
+                  hitSlop={actionSurface.hitSlop}
                 >
-                  <Text style={styles.retryActionText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryLabel}</Text>
+                  <Text style={styles.retryActionText}>{mobileMessageQueuePanelCopy.actions.retryLabel}</Text>
                 </TouchableOpacity>
               )}
               {canEditMessage && (
@@ -313,20 +325,20 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   style={styles.actionButton}
                   onPress={() => setIsEditing(true)}
                   accessibilityRole="button"
-                  accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editAccessibilityLabel}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={mobileMessageQueuePanelCopy.actions.editAccessibilityLabel}
+                  hitSlop={actionSurface.hitSlop}
                 >
-                  <Text style={styles.editActionText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editLabel}</Text>
+                  <Text style={styles.editActionText}>{mobileMessageQueuePanelCopy.actions.editLabel}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={onRemove}
                 accessibilityRole="button"
-                accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeAccessibilityLabel}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={mobileMessageQueuePanelCopy.actions.removeAccessibilityLabel}
+                hitSlop={actionSurface.hitSlop}
               >
-                <Text style={styles.removeActionText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.removeLabel}</Text>
+                <Text style={styles.removeActionText}>{mobileMessageQueuePanelCopy.actions.removeLabel}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -349,16 +361,26 @@ export function MessageQueuePanel({
   onClear,
   canProcessNext = false,
   compact = false,
+  isPaused = false,
+  onPause,
+  onResume,
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
-  const listToggleLabel = getMessageQueueListToggleLabel(isListCollapsed);
+  const queuePanelState = getMessageQueuePanelState(messages, {
+    isPaused,
+    isListCollapsed,
+    canProcessNext,
+  });
+  const panelSurface = mobileMessageQueuePanelSurface.panel;
+  const queuePanelColors = getMessageQueuePanelMobileSurfaceColors(theme.colors);
+  const panelColors = queuePanelColors.panel;
+  const panelStatusColors = panelColors.status[queuePanelState.statusKey];
+  const queuePanelIcons = mobileMessageQueuePanelIcons;
 
   useEffect(() => {
     setIsListCollapsed(false);
   }, [conversationId]);
-
-  const hasProcessingMessage = hasProcessingQueuedMessage(messages);
 
   if (messages.length === 0) {
     return null;
@@ -366,95 +388,169 @@ export function MessageQueuePanel({
 
   const styles = StyleSheet.create({
     container: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: `${theme.colors.muted}30`,
-      overflow: 'hidden',
+      borderRadius: panelSurface.borderRadius,
+      borderWidth: panelSurface.borderWidth,
+      borderColor: panelStatusColors.borderColor,
+      backgroundColor: panelStatusColors.backgroundColor,
+      overflow: panelSurface.overflow,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      backgroundColor: `${theme.colors.muted}50`,
+      flexDirection: panelSurface.headerFlexDirection,
+      alignItems: panelSurface.headerAlignItems,
+      justifyContent: panelSurface.headerJustifyContent,
+      paddingHorizontal: panelSurface.headerPaddingHorizontal,
+      paddingVertical: panelSurface.headerPaddingVertical,
+      borderBottomWidth: panelSurface.headerBorderBottomWidth,
+      borderBottomColor: panelStatusColors.headerBorderBottomColor,
+      backgroundColor: panelStatusColors.headerBackgroundColor,
+    },
+    headerCollapsed: {
+      borderBottomWidth: panelSurface.headerCollapsedBorderBottomWidth,
     },
     headerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
+      flexDirection: panelSurface.headerLeftFlexDirection,
+      alignItems: panelSurface.headerLeftAlignItems,
+      gap: panelSurface.headerGap,
+    },
+    headerActions: {
+      flexDirection: panelSurface.headerActionsFlexDirection,
+      alignItems: panelSurface.headerActionsAlignItems,
+      gap: panelSurface.headerActionGap,
     },
     headerTitle: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: theme.colors.foreground,
+      fontSize: panelSurface.titleFontSize,
+      fontWeight: panelSurface.titleFontWeight,
+      color: panelColors.titleColor,
     },
     clearButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: panelSurface.actionPaddingHorizontal,
+      paddingVertical: panelSurface.actionPaddingVertical,
     },
     clearButtonText: {
-      fontSize: 12,
-      color: hasProcessingMessage
-        ? theme.colors.mutedForeground
-        : theme.colors.foreground,
+      fontSize: panelSurface.actionFontSize,
+      color: queuePanelState.hasProcessingMessage
+        ? panelColors.disabledActionColor
+        : panelStatusColors.color,
+    },
+    queueControlText: {
+      fontSize: panelSurface.actionFontSize,
+      color: queuePanelState.isPaused ? panelColors.resumeActionColor : panelStatusColors.color,
+      fontWeight: panelSurface.processFontWeight,
+    },
+    queueControlTextDisabled: {
+      color: panelColors.disabledActionColor,
     },
     processButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: panelSurface.actionPaddingHorizontal,
+      paddingVertical: panelSurface.actionPaddingVertical,
     },
     processButtonText: {
-      fontSize: 12,
-      color: canProcessNext ? theme.colors.primary : theme.colors.mutedForeground,
-      fontWeight: '600',
+      fontSize: panelSurface.actionFontSize,
+      color: queuePanelState.canProcessNext ? panelColors.processReadyColor : panelColors.disabledActionColor,
+      fontWeight: panelSurface.processFontWeight,
     },
     list: {
-      maxHeight: 200,
+      maxHeight: panelSurface.listMaxHeight,
     },
     separator: {
-      height: 1,
-      backgroundColor: theme.colors.border,
+      height: panelSurface.separatorHeight,
+      backgroundColor: panelStatusColors.separatorColor,
+    },
+    pausedNotice: {
+      paddingHorizontal: panelSurface.pausedNoticePaddingHorizontal,
+      paddingVertical: panelSurface.pausedNoticePaddingVertical,
+      backgroundColor: panelStatusColors.pausedNoticeBackgroundColor,
+      borderBottomWidth: panelSurface.separatorHeight,
+      borderBottomColor: panelStatusColors.pausedNoticeBorderBottomColor,
+    },
+    pausedNoticeText: {
+      color: panelStatusColors.pausedNoticeTextColor,
+      fontSize: panelSurface.pausedNoticeFontSize,
+      lineHeight: panelSurface.pausedNoticeLineHeight,
     },
     compactContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      gap: 8,
+      flexDirection: panelSurface.compactFlexDirection,
+      alignItems: panelSurface.compactAlignItems,
+      paddingHorizontal: panelSurface.compactPaddingHorizontal,
+      paddingVertical: panelSurface.compactPaddingVertical,
+      gap: panelSurface.compactGap,
+      borderWidth: panelSurface.borderWidth,
+      borderColor: panelStatusColors.borderColor,
+      borderRadius: panelSurface.borderRadius,
+      backgroundColor: panelStatusColors.backgroundColor,
     },
     compactText: {
-      flex: 1,
-      fontSize: 12,
-      color: theme.colors.mutedForeground,
+      flex: panelSurface.compactTextFlex,
+      fontSize: panelSurface.compactFontSize,
+      color: panelStatusColors.color,
+    },
+    compactAction: {
+      paddingHorizontal: panelSurface.actionPaddingHorizontal,
+      paddingVertical: panelSurface.actionPaddingVertical,
     },
   });
 
   if (compact) {
     return (
       <View style={styles.compactContainer}>
-        <Ionicons name="time-outline" size={12} color={theme.colors.mutedForeground} />
+        <Ionicons name={queuePanelState.statusIconName} size={panelSurface.compactIconSize} color={panelStatusColors.color} />
         <Text style={styles.compactText}>
-          {formatMessageQueueCompactLabel(messages.length)}
+          {queuePanelState.compactLabel}
         </Text>
-        {canProcessNext && onProcessNext && (
+        {isPaused && onResume ? (
           <TouchableOpacity
-            onPress={onProcessNext}
-            accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextAccessibilityLabel}
+            style={styles.compactAction}
+            onPress={onResume}
+            accessibilityRole="button"
+            accessibilityLabel={mobileMessageQueuePanelCopy.actions.resumeTitle}
           >
-            <Ionicons name="play" size={14} color={theme.colors.primary} />
+            <Ionicons
+              name={queuePanelIcons.resumeName}
+              size={panelSurface.compactActionIconSize}
+              color={panelColors.resumeActionColor}
+            />
           </TouchableOpacity>
-        )}
+        ) : null}
+        {!isPaused && onPause ? (
+          <TouchableOpacity
+            style={styles.compactAction}
+            onPress={onPause}
+            disabled={!queuePanelState.canPause}
+            accessibilityRole="button"
+            accessibilityLabel={mobileMessageQueuePanelCopy.actions.pauseTitle}
+          >
+            <Ionicons
+              name={queuePanelIcons.pauseName}
+              size={panelSurface.compactActionIconSize}
+              color={queuePanelState.canPause ? panelStatusColors.color : panelColors.disabledActionColor}
+            />
+          </TouchableOpacity>
+        ) : null}
+        {queuePanelState.shouldShowCompactProcessNext && onProcessNext ? (
+          <TouchableOpacity
+            style={styles.compactAction}
+            onPress={onProcessNext}
+            accessibilityRole="button"
+            accessibilityLabel={mobileMessageQueuePanelCopy.actions.sendNextAccessibilityLabel}
+          >
+            <Ionicons
+              name={queuePanelIcons.sendNextName}
+              size={panelSurface.compactActionIconSize}
+              color={panelColors.processReadyColor}
+            />
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
+          style={styles.compactAction}
           onPress={onClear}
-          disabled={hasProcessingMessage}
+          disabled={!queuePanelState.canClear}
+          accessibilityRole="button"
+          accessibilityLabel={mobileMessageQueuePanelCopy.actions.clearQueueTitle}
         >
           <Ionicons
-            name="trash-outline"
-            size={14}
-            color={hasProcessingMessage ? theme.colors.mutedForeground : theme.colors.foreground}
+            name={queuePanelIcons.clearName}
+            size={panelSurface.compactActionIconSize}
+            color={queuePanelState.canClear ? panelStatusColors.color : panelColors.disabledActionColor}
           />
         </TouchableOpacity>
       </View>
@@ -463,61 +559,94 @@ export function MessageQueuePanel({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, isListCollapsed && { borderBottomWidth: 0 }]}>
+      <View style={[styles.header, queuePanelState.isListCollapsed && styles.headerCollapsed]}>
         <View style={styles.headerLeft}>
-          <Ionicons name="time-outline" size={16} color={theme.colors.mutedForeground} />
+          <Ionicons name={queuePanelState.statusIconName} size={panelSurface.headerIconSize} color={panelStatusColors.color} />
           <Text style={styles.headerTitle}>
-            {formatMessageQueuePanelTitle(messages.length)}
+            {queuePanelState.title}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {canProcessNext && onProcessNext && !isListCollapsed && (
+        <View style={styles.headerActions}>
+          {isPaused && onResume ? (
+            <TouchableOpacity
+              style={styles.processButton}
+              onPress={onResume}
+              accessibilityRole="button"
+              accessibilityLabel={mobileMessageQueuePanelCopy.actions.resumeTitle}
+            >
+              <Text style={styles.queueControlText}>{mobileMessageQueuePanelCopy.actions.resumeLabel}</Text>
+            </TouchableOpacity>
+          ) : null}
+          {!isPaused && onPause ? (
+            <TouchableOpacity
+              style={styles.processButton}
+              onPress={onPause}
+              disabled={!queuePanelState.canPause}
+              accessibilityRole="button"
+              accessibilityLabel={mobileMessageQueuePanelCopy.actions.pauseTitle}
+            >
+              <Text style={[styles.queueControlText, !queuePanelState.canPause && styles.queueControlTextDisabled]}>
+                {mobileMessageQueuePanelCopy.actions.pauseLabel}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          {queuePanelState.shouldShowProcessNext && onProcessNext ? (
             <TouchableOpacity
               style={styles.processButton}
               onPress={onProcessNext}
               accessibilityRole="button"
-              accessibilityLabel={MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextAccessibilityLabel}
+              accessibilityLabel={mobileMessageQueuePanelCopy.actions.sendNextAccessibilityLabel}
             >
-              <Text style={styles.processButtonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel}</Text>
+              <Text style={styles.processButtonText}>{mobileMessageQueuePanelCopy.actions.sendNextLabel}</Text>
             </TouchableOpacity>
-          )}
-          {!isListCollapsed && (
+          ) : null}
+          {queuePanelState.shouldRenderClear && (
             <TouchableOpacity
               style={styles.clearButton}
               onPress={onClear}
-              disabled={hasProcessingMessage}
+              disabled={!queuePanelState.canClear}
+              accessibilityRole="button"
+              accessibilityLabel={mobileMessageQueuePanelCopy.actions.clearQueueTitle}
             >
-              <Text style={styles.clearButtonText}>{MESSAGE_QUEUE_PANEL_PRESENTATION.actions.clearAllLabel}</Text>
+              <Text style={styles.clearButtonText}>{mobileMessageQueuePanelCopy.actions.clearAllLabel}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={styles.clearButton}
             onPress={() => setIsListCollapsed((prev) => !prev)}
             accessibilityRole="button"
-            accessibilityLabel={listToggleLabel}
-            accessibilityState={{ expanded: !isListCollapsed }}
+            accessibilityLabel={queuePanelState.listToggleLabel}
+            accessibilityState={{ expanded: queuePanelState.isExpanded }}
           >
             <Ionicons
-              name={isListCollapsed ? 'chevron-down' : 'chevron-up'}
-              size={16}
-              color={theme.colors.mutedForeground}
+              name={queuePanelState.toggleIconName}
+              size={panelSurface.headerToggleIconSize}
+              color={panelColors.toggleIconColor}
             />
           </TouchableOpacity>
         </View>
       </View>
-      {!isListCollapsed && (
+      {queuePanelState.shouldRenderPausedNotice && (
+        <View style={styles.pausedNotice}>
+          <Text style={styles.pausedNoticeText}>{mobileMessageQueuePanelCopy.pausedNotice}</Text>
+        </View>
+      )}
+      {queuePanelState.shouldRenderList && (
         <ScrollView style={styles.list}>
-          {messages.map((msg, index) => (
-            <React.Fragment key={msg.id}>
-              {index > 0 && <View style={styles.separator} />}
-              <QueuedMessageItem
-                message={msg}
-                onRemove={() => onRemove(msg.id)}
-                onUpdate={(text) => onUpdate(msg.id, text)}
-                onRetry={() => onRetry(msg.id)}
-              />
-            </React.Fragment>
-          ))}
+          {queuePanelState.items.map((item) => {
+            const msg = item.message;
+            return (
+              <React.Fragment key={item.key}>
+                {item.shouldRenderSeparator && <View style={styles.separator} />}
+                <QueuedMessageItem
+                  message={msg}
+                  onRemove={() => onRemove(msg.id)}
+                  onUpdate={(text) => onUpdate(msg.id, text)}
+                  onRetry={() => onRetry(msg.id)}
+                />
+              </React.Fragment>
+            );
+          })}
         </ScrollView>
       )}
     </View>

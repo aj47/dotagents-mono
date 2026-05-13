@@ -8,6 +8,8 @@ import type { ServerConversationFull } from '@dotagents/shared/api-types';
 import type {
   AgentProgressUpdate,
   AgentProgressStep,
+  AgentRetryInfo,
+  ACPDelegationProgress,
   OnProgressCallback,
 } from '@dotagents/shared/agent-progress';
 import {
@@ -53,7 +55,11 @@ export type ChatMessage = {
   /** Render-only aligned call/result pairs for pending delegation tool activity. */
   toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
   toolApproval?: NonNullable<AgentProgressUpdate['pendingToolApproval']>;
-  variant?: 'delegation' | 'approval';
+  retryInfo?: AgentRetryInfo;
+  delegation?: ACPDelegationProgress;
+  variant?: 'delegation' | 'approval' | 'retry';
+  /** Absolute raw-history index to use when branching from this displayed message. */
+  branchMessageIndex?: number;
 };
 
 export type ChatResponse = ChatApiResponse;

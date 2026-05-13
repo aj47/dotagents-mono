@@ -1,48 +1,118 @@
 import React from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import * as Clipboard from 'expo-clipboard';
+import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationImageAssetHttpUrl,
   isAllowedMarkdownImageUrl,
-  isAllowedMarkdownLinkUrl,
   parseConversationImageAssetUrl,
 } from '@dotagents/shared/conversation-media-assets';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
-import { splitMarkdownContent } from '@dotagents/shared/markdown-render-parts';
+import {
+  formatMarkdownImageRequestFailedMessage,
+  getMarkdownCodeBlockCopyLabel,
+  getMarkdownCodeBlockCopyMobileButtonState,
+  getMarkdownCodeBlockCopyMobileIconState,
+  getMarkdownCodeBlockFeedbackResetDelayMs,
+  getMarkdownContentMobileSurfaceColors,
+  getMarkdownContentMobileSurfaceState,
+  getMarkdownImageFallbackLabel,
+  getMarkdownImageInvalidAssetUrlMessage,
+  getMarkdownImageLoadErrorFallback,
+  getMarkdownImageUnavailableLabel,
+  getMarkdownRenderOptions,
+  getMarkdownThinkSectionAccessibilityLabel,
+  getMarkdownThinkSectionControlState,
+  getMarkdownThinkSectionDisplayLabel,
+  getMarkdownThinkSectionMobileChevronIconState,
+  getMarkdownThinkSectionMobileContainerState,
+  getMarkdownThinkSectionMobileContentState,
+  getMarkdownThinkSectionMobileHeaderState,
+  getMarkdownThinkSectionMobileLabelState,
+  getMarkdownThinkSectionMobileLeadingIconState,
+  getMarkdownThinkSectionMobileSurfaceColors,
+  isAllowedMarkdownContentLinkUrl,
+  splitMarkdownContent,
+  type MarkdownContentMobileSurfaceColors,
+  type MarkdownThinkSectionControlOptions,
+  type MarkdownThinkSectionMobileSurfaceColors,
+} from '@dotagents/shared/markdown-render-parts';
 import { SettingsApiClient } from '../lib/settingsApi';
+import { resolveMobileFontFamily } from './mobileTypography';
 
-interface MarkdownRendererProps {
+interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   content: string;
   assetBaseUrl?: string;
   assetAuthToken?: string;
 }
 
+const markdownContentSurface = getMarkdownContentMobileSurfaceState();
+const codeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState();
+const copiedCodeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState(true);
+const collapsedThinkSectionContainerState = getMarkdownThinkSectionMobileContainerState(true);
+const expandedThinkSectionContainerState = getMarkdownThinkSectionMobileContainerState(false);
+const thinkSectionHeaderState = getMarkdownThinkSectionMobileHeaderState();
+const thinkSectionLabelState = getMarkdownThinkSectionMobileLabelState();
+const thinkSectionContentState = getMarkdownThinkSectionMobileContentState();
+
 const ThinkSection: React.FC<{
   content: string;
+  colors: MarkdownThinkSectionMobileSurfaceColors;
   markdownStyles: any;
   markdownRules: any;
   styles: any;
-}> = ({ content, markdownStyles, markdownRules, styles }) => {
-  const [collapsed, setCollapsed] = React.useState(true);
+  defaultCollapsed?: boolean;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+}> = ({
+  content,
+  colors,
+  markdownStyles,
+  markdownRules,
+  styles,
+  defaultCollapsed = true,
+  isCollapsed,
+  onToggle,
+}) => {
+  const [internalCollapsed, setInternalCollapsed] = React.useState(defaultCollapsed);
+  const collapsed = isCollapsed ?? internalCollapsed;
+  const chevronIcon = getMarkdownThinkSectionMobileChevronIconState(collapsed);
+  const thinkIcon = getMarkdownThinkSectionMobileLeadingIconState();
+  const handleToggle = React.useCallback(() => {
+    if (onToggle) {
+      onToggle();
+      return;
+    }
+    setInternalCollapsed(prev => !prev);
+  }, [onToggle]);
 
   return (
     <View style={[styles.container, collapsed ? styles.containerCollapsed : styles.containerExpanded]}>
       <Pressable
-        onPress={() => setCollapsed(prev => !prev)}
+        onPress={handleToggle}
         accessibilityRole="button"
-        accessibilityLabel={collapsed ? 'Show thinking' : 'Hide thinking'}
+        accessibilityLabel={getMarkdownThinkSectionAccessibilityLabel(collapsed)}
         accessibilityState={{ expanded: !collapsed }}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
-        <Text style={styles.chevron}>{collapsed ? '▶' : '▼'}</Text>
-        <Text style={styles.icon}>🧠</Text>
-        <Text style={styles.label}>{collapsed ? 'Thinking' : 'Hide thinking'}</Text>
+        <Ionicons
+          name={chevronIcon.name}
+          size={chevronIcon.size}
+          color={colors.chevron.color}
+        />
+        <Ionicons
+          name={thinkIcon.name}
+          size={thinkIcon.size}
+          color={colors.icon.color}
+        />
+        <Text style={styles.label}>{getMarkdownThinkSectionDisplayLabel(collapsed)}</Text>
       </Pressable>
       {!collapsed && content.trim().length > 0 && (
         <View style={styles.content}>
-          <Markdown style={markdownStyles} rules={markdownRules} onLinkPress={isAllowedMarkdownLinkUrl}>
+          <Markdown style={markdownStyles} rules={markdownRules} onLinkPress={isAllowedMarkdownContentLinkUrl}>
             {content}
           </Markdown>
         </View>
@@ -58,6 +128,9 @@ function getHeaderRecord(headers: Headers): Record<string, string> {
   });
   return record;
 }
+
+const resolveMobileMarkdownSpacing = (value: keyof typeof spacing | number) =>
+  typeof value === 'number' ? value : spacing[value];
 
 const MarkdownImage: React.FC<{
   sourceUrl: string;
@@ -92,7 +165,7 @@ const MarkdownImage: React.FC<{
 
       if (!assetBaseUrl || !authToken) {
         setImageSource(null);
-        setError('Image unavailable.');
+        setError(getMarkdownImageUnavailableLabel());
         return;
       }
 
@@ -102,7 +175,7 @@ const MarkdownImage: React.FC<{
         if (Platform.OS === 'web') {
           const response = await client.getConversationImageAssetResponse(assetRef.conversationId, assetRef.fileName);
           if (!response.ok) {
-            throw new Error(`Image request failed (${response.status})`);
+            throw new Error(formatMarkdownImageRequestFailedMessage(response.status));
           }
           const objectUrl = URL.createObjectURL(await response.blob());
           if (cancelled) {
@@ -116,14 +189,14 @@ const MarkdownImage: React.FC<{
 
         const resolvedUri = buildConversationImageAssetHttpUrl(assetBaseUrl, sourceUrl);
         if (!resolvedUri) {
-          throw new Error('Invalid image asset URL.');
+          throw new Error(getMarkdownImageInvalidAssetUrlMessage());
         }
         const headers = getHeaderRecord(await client.buildRequestHeaders());
         if (!cancelled) setImageSource({ uri: resolvedUri, headers });
       } catch (caughtError) {
         if (!cancelled) {
           setImageSource(null);
-          setError(caughtError instanceof Error ? caughtError.message : 'Unable to load image.');
+          setError(caughtError instanceof Error ? caughtError.message : getMarkdownImageLoadErrorFallback());
         }
       }
     }
@@ -140,55 +213,119 @@ const MarkdownImage: React.FC<{
   }
 
   if (!imageSource) {
-    return <Text>{alt || 'Image'}</Text>;
+    return <Text>{getMarkdownImageFallbackLabel(alt)}</Text>;
   }
 
   return <Image source={imageSource} style={style} resizeMode="contain" accessibilityLabel={alt} />;
 };
 
-const createThinkStyles = (theme: ReturnType<typeof useTheme>['theme'], isDark: boolean) => StyleSheet.create({
+function getMarkdownCodeContent(node: any): string {
+  if (typeof node?.content === 'string') return node.content.replace(/\n$/, '');
+  if (typeof node?.literal === 'string') return node.literal.replace(/\n$/, '');
+  if (Array.isArray(node?.children)) {
+    return node.children.map(getMarkdownCodeContent).join('').replace(/\n$/, '');
+  }
+  return '';
+}
+
+const MarkdownCodeBlock: React.FC<{
+  node: any;
+  styles: any;
+  colors: MarkdownContentMobileSurfaceColors;
+}> = ({ node, styles, colors }) => {
+  const [copied, setCopied] = React.useState(false);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const codeContent = getMarkdownCodeContent(node);
+  const copyLabel = getMarkdownCodeBlockCopyLabel(copied);
+  const codeBlockCopyIcon = getMarkdownCodeBlockCopyMobileIconState(copied);
+  const codeBlockCopyIconColor = copied
+    ? colors.codeBlockCopyIcon.copiedColor
+    : colors.codeBlockCopyIcon.color;
+
+  React.useEffect(() => () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  }, []);
+
+  const handleCopy = React.useCallback(async () => {
+    if (!codeContent) return;
+    try {
+      await Clipboard.setStringAsync(codeContent);
+      setCopied(true);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(
+        () => setCopied(false),
+        getMarkdownCodeBlockFeedbackResetDelayMs(),
+      );
+    } catch {
+      // Clipboard failures should not disturb markdown reading.
+    }
+  }, [codeContent]);
+
+  return (
+    <View style={styles.codeBlockCopyContainer}>
+      <Text style={styles.codeBlockCopyText} selectable>
+        {codeContent}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={copyLabel}
+        onPress={handleCopy}
+        style={({ pressed }) => [
+          styles.codeBlockCopyButton,
+          copied && styles.codeBlockCopyButtonCopied,
+          pressed && styles.codeBlockCopyButtonPressed,
+        ]}
+      >
+        <Ionicons
+          name={codeBlockCopyIcon.name}
+          size={codeBlockCopyIcon.size}
+          color={codeBlockCopyIconColor}
+        />
+      </Pressable>
+    </View>
+  );
+};
+
+const createThinkStyles = (colors: MarkdownThinkSectionMobileSurfaceColors) => StyleSheet.create({
   container: {
-    overflow: 'hidden',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    marginVertical: 2,
+    overflow: collapsedThinkSectionContainerState.overflow,
+    borderRadius: radius[collapsedThinkSectionContainerState.borderRadius],
+    borderWidth: collapsedThinkSectionContainerState.borderWidth,
+    marginVertical: resolveMobileMarkdownSpacing(collapsedThinkSectionContainerState.marginVertical),
   },
   containerCollapsed: {
-    borderColor: isDark ? 'rgba(251,191,36,0.28)' : 'rgba(245,158,11,0.35)',
-    backgroundColor: isDark ? 'rgba(146,64,14,0.12)' : 'rgba(254,243,199,0.45)',
+    borderColor: colors.collapsedContainer.borderColor,
+    backgroundColor: colors.collapsedContainer.backgroundColor,
   },
   containerExpanded: {
-    borderColor: isDark ? 'rgba(251,191,36,0.45)' : 'rgba(245,158,11,0.5)',
-    backgroundColor: isDark ? 'rgba(146,64,14,0.18)' : 'rgba(254,243,199,0.65)',
-    marginVertical: spacing.xs,
+    borderColor: colors.expandedContainer.borderColor,
+    backgroundColor: colors.expandedContainer.backgroundColor,
+    marginVertical: resolveMobileMarkdownSpacing(expandedThinkSectionContainerState.marginVertical),
   },
   header: {
-    minHeight: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    minHeight: thinkSectionHeaderState.minHeight,
+    flexDirection: thinkSectionHeaderState.flexDirection,
+    alignItems: thinkSectionHeaderState.alignItems,
+    gap: thinkSectionHeaderState.gap,
+    paddingHorizontal: spacing[thinkSectionHeaderState.paddingHorizontal],
+    paddingVertical: thinkSectionHeaderState.paddingVertical,
   },
   headerPressed: {
-    opacity: 0.7,
-  },
-  chevron: {
-    color: isDark ? '#fbbf24' : '#d97706',
-    fontSize: 10,
-  },
-  icon: {
-    fontSize: 12,
+    opacity: thinkSectionHeaderState.pressedOpacity,
   },
   label: {
-    color: isDark ? '#fde68a' : '#92400e',
-    fontSize: 11,
-    fontWeight: '600',
-    flex: 1,
+    color: colors.label.color,
+    fontSize: thinkSectionLabelState.fontSize,
+    fontWeight: thinkSectionLabelState.fontWeight,
+    flex: thinkSectionLabelState.flex,
   },
   content: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing[thinkSectionContentState.paddingHorizontal],
+    paddingBottom: spacing[thinkSectionContentState.paddingBottom],
   },
 });
 
@@ -196,157 +333,221 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   assetBaseUrl,
   assetAuthToken,
+  getThinkKey,
+  isThinkExpanded,
+  onToggleThink,
 }) => {
   const { theme, isDark } = useTheme();
-  const thinkStyles = createThinkStyles(theme, isDark);
+  const markdownContentColors = React.useMemo(
+    () => getMarkdownContentMobileSurfaceColors(theme.colors, { isDark }),
+    [isDark, theme.colors],
+  );
+  const thinkSectionColors = React.useMemo(
+    () => getMarkdownThinkSectionMobileSurfaceColors({ isDark }),
+    [isDark],
+  );
+  const thinkStyles = React.useMemo(
+    () => createThinkStyles(thinkSectionColors),
+    [thinkSectionColors],
+  );
 
   // Compact markdown styles matching desktop's tight layout
   const markdownStyles = StyleSheet.create({
     body: {
-      color: theme.colors.foreground,
-      fontSize: 13,
-      lineHeight: 18,
+      color: markdownContentColors.body.color,
+      fontSize: markdownContentSurface.body.fontSize,
+      lineHeight: markdownContentSurface.body.lineHeight,
     },
     heading1: {
-      color: theme.colors.foreground,
-      fontSize: 16,
-      fontWeight: '700',
-      marginTop: spacing.xs,
-      marginBottom: 2,
+      color: markdownContentColors.heading1.color,
+      fontSize: markdownContentSurface.heading1.fontSize,
+      fontWeight: markdownContentSurface.heading1.fontWeight,
+      marginTop: spacing[markdownContentSurface.heading1.marginTop],
+      marginBottom: markdownContentSurface.heading1.marginBottom,
     },
     heading2: {
-      color: theme.colors.foreground,
-      fontSize: 15,
-      fontWeight: '600',
-      marginTop: spacing.xs,
-      marginBottom: 2,
+      color: markdownContentColors.heading2.color,
+      fontSize: markdownContentSurface.heading2.fontSize,
+      fontWeight: markdownContentSurface.heading2.fontWeight,
+      marginTop: spacing[markdownContentSurface.heading2.marginTop],
+      marginBottom: markdownContentSurface.heading2.marginBottom,
     },
     heading3: {
-      color: theme.colors.foreground,
-      fontSize: 14,
-      fontWeight: '600',
-      marginTop: 2,
-      marginBottom: 1,
+      color: markdownContentColors.heading3.color,
+      fontSize: markdownContentSurface.heading3.fontSize,
+      fontWeight: markdownContentSurface.heading3.fontWeight,
+      marginTop: markdownContentSurface.heading3.marginTop,
+      marginBottom: markdownContentSurface.heading3.marginBottom,
     },
     paragraph: {
-      color: theme.colors.foreground,
-      marginBottom: spacing.xs,
-      lineHeight: 18,
+      color: markdownContentColors.paragraph.color,
+      marginBottom: spacing[markdownContentSurface.paragraph.marginBottom],
+      lineHeight: markdownContentSurface.paragraph.lineHeight,
     },
     strong: {
-      fontWeight: '700',
+      fontWeight: markdownContentSurface.strong.fontWeight,
     },
     em: {
-      fontStyle: 'italic',
+      fontStyle: markdownContentSurface.emphasis.fontStyle,
     },
     s: {
-      textDecorationLine: 'line-through',
+      textDecorationLine: markdownContentSurface.strikethrough.textDecorationLine,
     },
     bullet_list: {
-      marginBottom: spacing.xs,
+      marginBottom: spacing[markdownContentSurface.list.marginBottom],
     },
     ordered_list: {
-      marginBottom: spacing.xs,
+      marginBottom: spacing[markdownContentSurface.list.marginBottom],
     },
     list_item: {
-      marginBottom: 1,
+      marginBottom: markdownContentSurface.list.itemMarginBottom,
     },
     bullet_list_icon: {
-      color: theme.colors.mutedForeground,
-      marginRight: 2,
+      color: markdownContentColors.list.iconColor,
+      marginRight: markdownContentSurface.list.iconMarginRight,
     },
     ordered_list_icon: {
-      color: theme.colors.mutedForeground,
-      marginRight: 2,
+      color: markdownContentColors.list.iconColor,
+      marginRight: markdownContentSurface.list.iconMarginRight,
     },
     code_inline: {
-      backgroundColor: theme.colors.muted,
-      color: theme.colors.primary,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 11,
-      paddingHorizontal: 3,
-      paddingVertical: 1,
-      borderRadius: radius.sm,
+      backgroundColor: markdownContentColors.inlineCode.backgroundColor,
+      color: markdownContentColors.inlineCode.color,
+      fontFamily: resolveMobileFontFamily(markdownContentSurface.inlineCode.fontFamilyByPlatform),
+      fontSize: markdownContentSurface.inlineCode.fontSize,
+      paddingHorizontal: markdownContentSurface.inlineCode.paddingHorizontal,
+      paddingVertical: markdownContentSurface.inlineCode.paddingVertical,
+      borderRadius: radius[markdownContentSurface.inlineCode.borderRadius],
     },
     code_block: {
-      backgroundColor: theme.colors.muted,
-      color: theme.colors.foreground,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
-      padding: spacing.xs,
-      borderRadius: radius.sm,
-      marginBottom: spacing.xs,
-      overflow: 'hidden',
+      backgroundColor: markdownContentColors.codeBlock.backgroundColor,
+      color: markdownContentColors.codeBlock.color,
+      fontFamily: resolveMobileFontFamily(markdownContentSurface.codeBlock.fontFamilyByPlatform),
+      fontSize: markdownContentSurface.codeBlock.fontSize,
+      padding: spacing[markdownContentSurface.codeBlock.padding],
+      borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
+      marginBottom: spacing[markdownContentSurface.codeBlock.marginBottom],
+      overflow: markdownContentSurface.codeBlock.overflow,
     },
     fence: {
-      backgroundColor: theme.colors.muted,
-      color: theme.colors.foreground,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
-      padding: spacing.xs,
-      borderRadius: radius.sm,
-      marginBottom: spacing.xs,
-      overflow: 'hidden',
+      backgroundColor: markdownContentColors.codeBlock.backgroundColor,
+      color: markdownContentColors.codeBlock.color,
+      fontFamily: resolveMobileFontFamily(markdownContentSurface.codeBlock.fontFamilyByPlatform),
+      fontSize: markdownContentSurface.codeBlock.fontSize,
+      padding: spacing[markdownContentSurface.codeBlock.padding],
+      borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
+      marginBottom: spacing[markdownContentSurface.codeBlock.marginBottom],
+      overflow: markdownContentSurface.codeBlock.overflow,
+    },
+    codeBlockCopyContainer: {
+      position: 'relative',
+      marginBottom: spacing[markdownContentSurface.codeBlock.marginBottom],
+    },
+    codeBlockCopyText: {
+      backgroundColor: markdownContentColors.codeBlock.backgroundColor,
+      color: markdownContentColors.codeBlock.color,
+      fontFamily: resolveMobileFontFamily(markdownContentSurface.codeBlock.fontFamilyByPlatform),
+      fontSize: markdownContentSurface.codeBlock.fontSize,
+      padding: spacing[markdownContentSurface.codeBlock.padding],
+      paddingRight: markdownContentSurface.codeBlock.copyPaddingRight,
+      borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
+      overflow: markdownContentSurface.codeBlock.overflow,
+    },
+    codeBlockCopyButton: {
+      position: codeBlockCopyButtonState.position,
+      top: codeBlockCopyButtonState.top,
+      right: codeBlockCopyButtonState.right,
+      width: codeBlockCopyButtonState.size,
+      height: codeBlockCopyButtonState.size,
+      borderRadius: radius[codeBlockCopyButtonState.borderRadius],
+      borderWidth: codeBlockCopyButtonState.borderWidth,
+      borderColor: markdownContentColors.codeBlockCopyButton.borderColor,
+      backgroundColor: markdownContentColors.codeBlockCopyButton.backgroundColor,
+      alignItems: codeBlockCopyButtonState.alignItems,
+      justifyContent: codeBlockCopyButtonState.justifyContent,
+    },
+    codeBlockCopyButtonCopied: {
+      borderColor: markdownContentColors.codeBlockCopyButton.copiedBorderColor,
+      backgroundColor: markdownContentColors.codeBlockCopyButton.copiedBackgroundColor,
+    },
+    codeBlockCopyButtonPressed: {
+      opacity: codeBlockCopyButtonState.pressedOpacity,
     },
     blockquote: {
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-      borderLeftWidth: 2,
-      borderLeftColor: theme.colors.primary,
-      paddingLeft: spacing.sm,
-      paddingVertical: 2,
-      marginBottom: spacing.xs,
+      backgroundColor: markdownContentColors.blockquote.backgroundColor,
+      borderLeftWidth: markdownContentSurface.blockquote.borderLeftWidth,
+      borderLeftColor: markdownContentColors.blockquote.borderLeftColor,
+      paddingLeft: spacing[markdownContentSurface.blockquote.paddingLeft],
+      paddingVertical: markdownContentSurface.blockquote.paddingVertical,
+      marginBottom: spacing[markdownContentSurface.blockquote.marginBottom],
     },
     link: {
-      color: theme.colors.primary,
-      textDecorationLine: 'underline',
+      color: markdownContentColors.link.color,
+      textDecorationLine: markdownContentSurface.link.textDecorationLine,
     },
     image: {
-      width: '100%',
-      minHeight: 140,
-      maxHeight: 320,
-      borderRadius: radius.md,
-      marginBottom: spacing.xs,
-      backgroundColor: theme.colors.muted,
+      width: markdownContentSurface.image.width,
+      minHeight: markdownContentSurface.image.minHeight,
+      maxHeight: markdownContentSurface.image.maxHeight,
+      borderRadius: radius[markdownContentSurface.image.borderRadius],
+      marginBottom: spacing[markdownContentSurface.image.marginBottom],
+      backgroundColor: markdownContentColors.image.backgroundColor,
     },
     table: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: radius.sm,
-      marginBottom: spacing.xs,
+      borderWidth: markdownContentSurface.table.borderWidth,
+      borderColor: markdownContentColors.table.borderColor,
+      borderRadius: radius[markdownContentSurface.table.borderRadius],
+      marginBottom: spacing[markdownContentSurface.table.marginBottom],
     },
     thead: {
-      backgroundColor: theme.colors.muted,
+      backgroundColor: markdownContentColors.tableHead.backgroundColor,
     },
     th: {
-      padding: spacing.xs,
-      fontWeight: '600',
-      borderBottomWidth: 1,
-      borderColor: theme.colors.border,
-      fontSize: 11,
+      padding: spacing[markdownContentSurface.tableCell.padding],
+      fontWeight: markdownContentSurface.tableCell.headerFontWeight,
+      borderBottomWidth: markdownContentSurface.tableCell.borderBottomWidth,
+      borderColor: markdownContentColors.tableCell.borderColor,
+      fontSize: markdownContentSurface.tableCell.fontSize,
     },
     tr: {
-      borderBottomWidth: 1,
-      borderColor: theme.colors.border,
+      borderBottomWidth: markdownContentSurface.tableCell.borderBottomWidth,
+      borderColor: markdownContentColors.tableCell.borderColor,
     },
     td: {
-      padding: spacing.xs,
-      fontSize: 11,
+      padding: spacing[markdownContentSurface.tableCell.padding],
+      fontSize: markdownContentSurface.tableCell.fontSize,
     },
     hr: {
-      backgroundColor: theme.colors.border,
-      height: 1,
-      marginVertical: spacing.xs,
+      backgroundColor: markdownContentColors.horizontalRule.backgroundColor,
+      height: markdownContentSurface.horizontalRule.height,
+      marginVertical: spacing[markdownContentSurface.horizontalRule.marginVertical],
     },
   });
 
-  const parts = splitMarkdownContent(content);
+  const parts = splitMarkdownContent(content, getMarkdownRenderOptions());
   const markdownRules = React.useMemo(() => ({
+    code_block: (node: any) => (
+      <MarkdownCodeBlock
+        key={node.key}
+        node={node}
+        styles={markdownStyles}
+        colors={markdownContentColors}
+      />
+    ),
+    fence: (node: any) => (
+      <MarkdownCodeBlock
+        key={node.key}
+        node={node}
+        styles={markdownStyles}
+        colors={markdownContentColors}
+      />
+    ),
     image: (node: any) => {
       const src = String(node.attributes?.src || '');
       const alt = typeof node.attributes?.alt === 'string' ? node.attributes.alt : undefined;
       if (!src) return null;
       if (!isAllowedMarkdownImageUrl(src)) {
-        return <Text key={node.key}>{alt || 'Image'}</Text>;
+        return <Text key={node.key}>{getMarkdownImageFallbackLabel(alt)}</Text>;
       }
       return (
         <MarkdownImage
@@ -359,7 +560,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         />
       );
     },
-  }), [assetAuthToken, assetBaseUrl, markdownStyles.image]);
+  }), [assetAuthToken, assetBaseUrl, markdownContentColors, markdownStyles]);
 
   return (
     <View>
@@ -377,13 +578,24 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         }
 
         if (part.type === 'think') {
+          const thinkControl = getMarkdownThinkSectionControlState(part.content, index, {
+            getThinkKey,
+            isThinkExpanded,
+            onToggleThink,
+          });
           return (
             <ThinkSection
-              key={`think-${index}`}
+              key={thinkControl.key}
               content={part.content}
+              colors={thinkSectionColors}
               markdownStyles={markdownStyles}
               markdownRules={markdownRules}
               styles={thinkStyles}
+              defaultCollapsed={true}
+              {...(thinkControl.isControlled ? {
+                isCollapsed: thinkControl.isCollapsed,
+                onToggle: thinkControl.onToggle,
+              } : {})}
             />
           );
         }
@@ -394,7 +606,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             key={`markdown-${index}`}
             style={markdownStyles}
             rules={markdownRules}
-            onLinkPress={isAllowedMarkdownLinkUrl}
+            onLinkPress={isAllowedMarkdownContentLinkUrl}
           >
             {part.content}
           </Markdown>

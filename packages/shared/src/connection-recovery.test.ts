@@ -3,9 +3,18 @@ import {
   applyStreamingCheckpointFailure,
   calculateBackoff,
   clearRecoveryContent,
+  CONNECTION_STATUS_INDICATOR_PRESENTATION,
+  CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION,
   createStreamingCheckpoint,
+  formatConnectionStatusIndicatorLabel,
+  getConnectionStatusIndicatorMobileColorToken,
+  getConnectionStatusIndicatorMobileRenderState,
+  getConnectionStatusIndicatorMobileSurfaceColors,
+  getConnectionStatusIndicatorMobileSurfaceState,
+  getConnectionStatusIndicatorMobileVisualColors,
   updateStreamingCheckpoint,
   hasRecoverablePartialContent,
+  isConnectionStatusIndicatorPulsing,
   isRetryableError,
   normalizeApiBaseUrl,
   delay,
@@ -231,6 +240,118 @@ describe('formatConnectionStatus', () => {
   it('formats disconnected state', () => {
     const state: RecoveryState = { status: 'disconnected', retryCount: 0, isAppActive: true }
     expect(formatConnectionStatus(state)).toBe('Disconnected')
+  })
+})
+
+describe('connection status indicator presentation', () => {
+  it('centralizes compact mobile indicator copy and surface tokens', () => {
+    expect(CONNECTION_STATUS_INDICATOR_PRESENTATION.labels.connected).toBe('Connected')
+    expect(CONNECTION_STATUS_INDICATOR_PRESENTATION.labels.failed).toBe('Connection failed')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.flexDirection).toBe('row')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.alignItems).toBe('center')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.dotContainer.position).toBe('relative')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.dot.position).toBe('absolute')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.dot.size).toBe(8)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.dot.pulsingOpacity).toBe(1)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.position).toBe('absolute')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.top).toBe(0)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.left).toBe(0)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.minOpacity).toBe(0.3)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.maxOpacity).toBe(0.8)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus.connected).toBe('success')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus.failed).toBe('destructive')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.text.colorToken).toBe('mutedForeground')
+    expect(getConnectionStatusIndicatorMobileSurfaceState()).toBe(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile)
+    expect(getConnectionStatusIndicatorMobileSurfaceColors({
+      destructive: '#dc2626',
+      mutedForeground: '#737373',
+      success: '#16a34a',
+      warning: '#f59e0b',
+    })).toEqual({
+      textColor: '#737373',
+      statusColorByStatus: {
+        connected: '#16a34a',
+        connecting: '#f59e0b',
+        reconnecting: '#f59e0b',
+        disconnected: '#737373',
+        failed: '#dc2626',
+      },
+    })
+  })
+
+  it('formats compact status labels and pulse/color states', () => {
+    expect(formatConnectionStatusIndicatorLabel('connected')).toBe('Connected')
+    expect(formatConnectionStatusIndicatorLabel('connecting')).toBe('Connecting...')
+    expect(formatConnectionStatusIndicatorLabel('reconnecting')).toBe('Reconnecting...')
+    expect(formatConnectionStatusIndicatorLabel('reconnecting', 2)).toBe('Reconnecting (2)...')
+    expect(formatConnectionStatusIndicatorLabel('disconnected')).toBe('Disconnected')
+    expect(formatConnectionStatusIndicatorLabel('failed')).toBe('Connection failed')
+    expect(isConnectionStatusIndicatorPulsing('connecting')).toBe(true)
+    expect(isConnectionStatusIndicatorPulsing('reconnecting')).toBe(true)
+    expect(isConnectionStatusIndicatorPulsing('connected')).toBe(false)
+    expect(getConnectionStatusIndicatorMobileColorToken('connected')).toBe('success')
+    expect(getConnectionStatusIndicatorMobileColorToken('connecting')).toBe('warning')
+    expect(getConnectionStatusIndicatorMobileColorToken('disconnected')).toBe('mutedForeground')
+    expect(getConnectionStatusIndicatorMobileColorToken('failed')).toBe('destructive')
+    expect(getConnectionStatusIndicatorMobileVisualColors('failed', {
+      destructive: '#dc2626',
+      mutedForeground: '#737373',
+      success: '#16a34a',
+      warning: '#f59e0b',
+    })).toEqual({
+      dot: {
+        backgroundColor: '#dc2626',
+      },
+      pulse: {
+        backgroundColor: '#dc2626',
+      },
+      text: {
+        color: '#737373',
+      },
+    })
+    expect(getConnectionStatusIndicatorMobileRenderState({
+      status: 'reconnecting',
+      retryCount: 2,
+      compact: false,
+      colors: {
+        destructive: '#dc2626',
+        mutedForeground: '#737373',
+        success: '#16a34a',
+        warning: '#f59e0b',
+      },
+    })).toEqual({
+      statusText: 'Reconnecting (2)...',
+      accessibilityLabel: 'Reconnecting (2)...',
+      isPulsing: true,
+      shouldRenderPulse: true,
+      shouldRenderText: true,
+      colors: {
+        dot: {
+          backgroundColor: '#f59e0b',
+        },
+        pulse: {
+          backgroundColor: '#f59e0b',
+        },
+        text: {
+          color: '#737373',
+        },
+      },
+    })
+    expect(getConnectionStatusIndicatorMobileRenderState({
+      status: 'connected',
+      compact: true,
+      colors: {
+        destructive: '#dc2626',
+        mutedForeground: '#737373',
+        success: '#16a34a',
+        warning: '#f59e0b',
+      },
+    })).toMatchObject({
+      statusText: 'Connected',
+      isPulsing: false,
+      shouldRenderPulse: false,
+      shouldRenderText: false,
+    })
   })
 })
 

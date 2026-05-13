@@ -16,9 +16,15 @@ import {
   MAX_SUPERTONIC_TTS_STEPS,
   MIN_SUPERTONIC_TTS_STEPS,
   OPENAI_TTS_RESPONSE_FORMATS,
+  SPEECH_SELECTOR_PRESENTATION,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
   clampTextToSpeechPlaybackRate,
+  formatSpeechSelectorMicrophoneEnumerationError,
   formatLocalSpeechModelProgress,
+  getSpeechSelectorCopyState,
+  getSpeechSelectorMobileCloseIconState,
+  getSpeechSelectorMobileSurfaceColors,
+  getSpeechSelectorMobileSurfaceState,
   getTextToSpeechModelDefault,
   getTextToSpeechModelValue,
   getTextToSpeechPlaybackRate,
@@ -46,6 +52,118 @@ describe("text to speech settings helpers", () => {
     expect(DEFAULT_TTS_REMOVE_URLS).toBe(true)
     expect(DEFAULT_TTS_CONVERT_MARKDOWN).toBe(true)
     expect(DEFAULT_TTS_USE_LLM_PREPROCESSING).toBe(false)
+  })
+
+  it("exports mobile speech selector presentation tokens", () => {
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.common.systemDefaultLabel).toBe("System Default")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.microphone.pickerTitle).toBe("Select Microphone")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.microphone.enumerationUnsupportedMessage)
+      .toBe("Audio device enumeration is not supported.")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.microphone.enumerationFailedMessage)
+      .toBe("Failed to enumerate audio devices.")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.testVoiceLabel).toBe("Test voice")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.container.marginTop).toBe("sm")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.row.flexDirection).toBe("row")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.row.gap).toBe("sm")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.label.fontSize).toBe(16)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.label.colorToken).toBe("foreground")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.nativeHint.colorToken).toBe("mutedForeground")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.helperText.marginTop).toBe("xs")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.trigger.backgroundColorToken).toBe("muted")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.trigger.textNumberOfLines).toBe(2)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.triggerText.flex).toBe(1)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.triggerText.flexShrink).toBe(1)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.sliderHeader.flexDirection).toBe("row")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.sliderHeader.justifyContent).toBe("space-between")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.sliderHeader.alignItems).toBe("center")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.sliderValue.colorToken).toBe("mutedForeground")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.slider.height).toBe(40)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.slider.minimumTrackTintColorToken).toBe("primary")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.slider.maximumTrackTintColorToken).toBe("muted")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.slider.thumbTintColorToken).toBe("primary")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.testButton.alignItems).toBe("center")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.testButton.backgroundColorToken).toBe("muted")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.testButtonText.colorToken).toBe("foreground")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.disclosureIcon.name).toBe("chevron-down")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.modalOverlay.flex).toBe(1)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.modalOverlay.color).toBe("#000000")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.modalOverlay.alpha).toBe(0.5)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.modalOverlay.justifyContent).toBe("flex-end")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.sheet.backgroundColorToken).toBe("card")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeButton.width).toBe(32)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeButton.height).toBe(32)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeButton.alignItems).toBe("center")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeButton.justifyContent).toBe("center")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeButton.pressedOpacity).toBe(0.72)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeIcon.name).toBe("close")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeIcon.size).toBe(20)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.closeIcon.colorToken).toBe("mutedForeground")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.selectedItem.backgroundAlpha).toBe(0.125)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.selectedIcon.name).toBe("checkmark")
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.itemText.numberOfLines).toBe(1)
+    expect(SPEECH_SELECTOR_PRESENTATION.mobile.itemSubtext.numberOfLines).toBe(1)
+    expect(getSpeechSelectorCopyState()).toBe(SPEECH_SELECTOR_PRESENTATION.copy)
+    expect(getSpeechSelectorMobileSurfaceState()).toBe(SPEECH_SELECTOR_PRESENTATION.mobile)
+    expect(getSpeechSelectorMobileCloseIconState()).toEqual({
+      name: "close",
+      size: 20,
+      colorToken: "mutedForeground",
+    })
+  })
+
+  it("resolves mobile speech selector colors from shared palette tokens", () => {
+    const colors = getSpeechSelectorMobileSurfaceColors({
+      foreground: "#111111",
+      mutedForeground: "#777777",
+      muted: "#eeeeee",
+      primary: "#123456",
+      destructive: "#ff0000",
+      card: "#ffffff",
+      border: "#dedede",
+    })
+
+    expect(colors).toEqual({
+      label: { color: "#111111" },
+      nativeHint: { color: "#777777" },
+      helperText: { color: "#777777" },
+      trigger: { backgroundColor: "#eeeeee" },
+      triggerText: { color: "#111111" },
+      sliderValue: { color: "#777777" },
+      slider: {
+        minimumTrackTintColor: "#123456",
+        maximumTrackTintColor: "#eeeeee",
+        thumbTintColor: "#123456",
+      },
+      testButton: { backgroundColor: "#eeeeee" },
+      testButtonText: { color: "#111111" },
+      disclosureIcon: { color: "#777777" },
+      errorText: { color: "#ff0000" },
+      modalOverlay: { backgroundColor: "rgba(0, 0, 0, 0.5)" },
+      sheet: { backgroundColor: "#ffffff" },
+      header: { borderBottomColor: "#dedede" },
+      title: { color: "#111111" },
+      closeIcon: { color: "#777777" },
+      groupHeader: { color: "#777777" },
+      selectedItem: { backgroundColor: "rgba(18, 52, 86, 0.125)" },
+      itemText: {
+        color: "#111111",
+        selectedColor: "#123456",
+      },
+      itemSubtext: { color: "#777777" },
+      selectedIcon: { color: "#123456" },
+    })
+  })
+
+  it("formats microphone enumeration errors for shared selector surfaces", () => {
+    expect(formatSpeechSelectorMicrophoneEnumerationError(new Error("Permission denied")))
+      .toBe("Permission denied")
+    expect(formatSpeechSelectorMicrophoneEnumerationError(new Error("   ")))
+      .toBe("Failed to enumerate audio devices.")
+    expect(formatSpeechSelectorMicrophoneEnumerationError("No devices")).toBe("No devices")
+    expect(formatSpeechSelectorMicrophoneEnumerationError("  "))
+      .toBe("Failed to enumerate audio devices.")
+    expect(formatSpeechSelectorMicrophoneEnumerationError(null))
+      .toBe("Failed to enumerate audio devices.")
   })
 
   it("selects provider-specific model values", () => {

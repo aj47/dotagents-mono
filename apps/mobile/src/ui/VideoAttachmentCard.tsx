@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
+  getChatVideoAttachmentCopyState,
+  getChatVideoAttachmentMobileSurfaceColors,
+  getChatVideoAttachmentMobileSurfaceState,
+  formatVideoAttachmentRequestFailedMessage,
+  getVideoAttachmentLoadAccessibilityLabel,
+  getVideoAttachmentOpenLinkAccessibilityLabel,
+  getVideoAttachmentPlayAccessibilityLabel,
   getVideoAssetLabel,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
@@ -18,6 +26,9 @@ interface VideoAttachmentCardProps {
   assetBaseUrl?: string;
   authToken?: string;
 }
+
+const videoAttachmentCopy = getChatVideoAttachmentCopyState();
+const videoAttachmentSurface = getChatVideoAttachmentMobileSurfaceState();
 
 function resolveVideoUri(sourceUrl: string, assetBaseUrl?: string): string {
   const remoteAssetUrl = assetBaseUrl
@@ -78,6 +89,10 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     return isRenderableVideoUrl(sourceUrl) || isRenderableVideoUrl(resolvedUri);
   })();
   const canOpenExternally = !isConversationAsset;
+  const videoAttachmentSurfaceColors = useMemo(
+    () => getChatVideoAttachmentMobileSurfaceColors(theme.colors, { isDark }),
+    [isDark, theme.colors],
+  );
 
   const source = useMemo<VideoSource>(() => {
     if (!playbackUri || !canRender) return null;
@@ -110,7 +125,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         return;
       }
       if (!assetApiClient || !conversationAssetRef) {
-        throw new Error('Missing video asset credentials.');
+        throw new Error(videoAttachmentCopy.errors.missingCredentials);
       }
 
       if (Platform.OS === 'web') {
@@ -119,7 +134,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
           conversationAssetRef.fileName,
         );
         if (!response.ok) {
-          throw new Error(`Video request failed (${response.status})`);
+          throw new Error(formatVideoAttachmentRequestFailedMessage(response.status));
         }
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
@@ -141,7 +156,11 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       cachedFileRef.current = new File(file.uri);
       setPlaybackUri(file.uri);
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Unable to load this video.');
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : videoAttachmentCopy.errors.loadFallback,
+      );
     } finally {
       setLoading(false);
     }
@@ -149,69 +168,85 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
 
   const styles = useMemo(() => StyleSheet.create({
     card: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: radius.lg,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-      overflow: 'hidden',
-      marginBottom: spacing.sm,
+      borderWidth: videoAttachmentSurface.card.borderWidth,
+      borderColor: videoAttachmentSurfaceColors.card.borderColor,
+      borderRadius: radius[videoAttachmentSurface.card.borderRadius],
+      backgroundColor: videoAttachmentSurfaceColors.card.backgroundColor,
+      overflow: videoAttachmentSurface.card.overflow,
+      marginBottom: spacing[videoAttachmentSurface.card.marginBottom],
     },
     header: {
-      padding: spacing.sm,
-      gap: 2,
+      padding: spacing[videoAttachmentSurface.header.padding],
+      gap: videoAttachmentSurface.header.gap,
+    },
+    loadButton: {
+      flexDirection: videoAttachmentSurface.loadButton.flexDirection,
+      alignItems: videoAttachmentSurface.loadButton.alignItems,
+      gap: videoAttachmentSurface.loadButton.gap,
+      padding: spacing[videoAttachmentSurface.loadButton.padding],
+    },
+    loadButtonPressed: {
+      opacity: videoAttachmentSurface.loadButton.pressedOpacity,
+    },
+    loadButtonDisabled: {
+      opacity: videoAttachmentSurface.loadButton.disabledOpacity,
+    },
+    playIconWrapper: {
+      width: videoAttachmentSurface.playIconWrapper.size,
+      height: videoAttachmentSurface.playIconWrapper.size,
+      borderRadius: videoAttachmentSurface.playIconWrapper.borderRadius,
+      alignItems: videoAttachmentSurface.playIconWrapper.alignItems,
+      justifyContent: videoAttachmentSurface.playIconWrapper.justifyContent,
+      backgroundColor: videoAttachmentSurfaceColors.playIconWrapper.backgroundColor,
+    },
+    textWrapper: {
+      flex: videoAttachmentSurface.textWrapper.flex,
+      minWidth: videoAttachmentSurface.textWrapper.minWidth,
     },
     title: {
-      color: theme.colors.foreground,
-      fontWeight: '600',
-      fontSize: 13,
+      color: videoAttachmentSurfaceColors.title.color,
+      fontWeight: videoAttachmentSurface.title.fontWeight,
+      fontSize: videoAttachmentSurface.title.fontSize,
     },
     subtitle: {
-      color: theme.colors.mutedForeground,
-      fontSize: 11,
-    },
-    button: {
-      marginTop: spacing.xs,
-      alignSelf: 'flex-start',
-      borderRadius: radius.md,
-      backgroundColor: theme.colors.primary,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 6,
-    },
-    buttonText: {
-      color: theme.colors.primaryForeground,
-      fontWeight: '700',
-      fontSize: 12,
+      color: videoAttachmentSurfaceColors.subtitle.color,
+      fontSize: videoAttachmentSurface.subtitle.fontSize,
     },
     video: {
-      width: '100%',
-      height: 220,
-      backgroundColor: '#000',
+      width: videoAttachmentSurface.video.width,
+      height: videoAttachmentSurface.video.height,
+      backgroundColor: videoAttachmentSurface.video.backgroundColor,
     },
     fallbackLink: {
-      paddingVertical: spacing.xs,
-      marginBottom: spacing.sm,
+      paddingVertical: spacing[videoAttachmentSurface.fallbackLink.paddingVertical],
+      marginBottom: spacing[videoAttachmentSurface.fallbackLink.marginBottom],
     },
     fallbackLinkText: {
-      color: theme.colors.primary,
-      fontSize: 13,
-      textDecorationLine: 'underline',
+      color: videoAttachmentSurfaceColors.fallbackLinkText.color,
+      fontSize: videoAttachmentSurface.fallbackLinkText.fontSize,
+      textDecorationLine: videoAttachmentSurface.fallbackLinkText.textDecorationLine,
+    },
+    externalLink: {
+      marginTop: spacing[videoAttachmentSurface.externalLink.marginTop],
     },
     errorText: {
-      color: theme.colors.destructive,
-      fontSize: 11,
-      marginTop: spacing.xs,
+      color: videoAttachmentSurfaceColors.errorText.color,
+      fontSize: videoAttachmentSurface.errorText.fontSize,
+      marginTop: spacing[videoAttachmentSurface.errorText.marginTop],
     },
-  }), [isDark, theme]);
+  }), [videoAttachmentSurfaceColors]);
 
   if (!canRender) {
     return (
       <Pressable
         accessibilityRole="link"
-        accessibilityLabel={`Open video link: ${displayLabel}`}
+        accessibilityLabel={getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel)}
         onPress={() => Linking.openURL(resolvedUri)}
         style={styles.fallbackLink}
       >
-        <Text style={styles.fallbackLinkText}>🔗 {displayLabel}</Text>
+        <Text style={styles.fallbackLinkText}>
+          {videoAttachmentCopy.glyphs.link} {displayLabel}
+        </Text>
       </Pressable>
     );
   }
@@ -220,6 +255,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     <View style={styles.card}>
       {playbackUri ? (
         <VideoView
+          accessibilityLabel={getVideoAttachmentPlayAccessibilityLabel(displayLabel)}
           player={player}
           style={styles.video}
           nativeControls
@@ -229,24 +265,48 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         />
       ) : (
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>🎬 {displayLabel}</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>Loads only when you tap play</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Play video ${displayLabel}`}
+            accessibilityLabel={getVideoAttachmentLoadAccessibilityLabel(displayLabel)}
             accessibilityState={{ busy: loading }}
             onPress={loadVideo}
-            style={styles.button}
+            style={({ pressed }) => [
+              styles.loadButton,
+              pressed && styles.loadButtonPressed,
+              loading && styles.loadButtonDisabled,
+            ]}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>{loading ? 'Loading…' : 'Play video'}</Text>
+            <View style={styles.playIconWrapper}>
+              {loading ? (
+                <ActivityIndicator size="small" color={videoAttachmentSurfaceColors.playIcon.color} />
+              ) : (
+                <Ionicons
+                  name={videoAttachmentSurface.playIcon.name}
+                  size={videoAttachmentSurface.playIcon.size}
+                  color={videoAttachmentSurfaceColors.playIcon.color}
+                />
+              )}
+            </View>
+            <View style={styles.textWrapper}>
+              <Text style={styles.title} numberOfLines={videoAttachmentSurface.title.numberOfLines}>
+                {videoAttachmentCopy.glyphs.video} {displayLabel}
+              </Text>
+              <Text style={styles.subtitle} numberOfLines={videoAttachmentSurface.subtitle.numberOfLines}>
+                {loading
+                  ? videoAttachmentCopy.labels.loading
+                  : videoAttachmentCopy.labels.mobileLazyLoadSubtitle}
+              </Text>
+            </View>
           </Pressable>
           {loadError ? (
             <Text style={styles.errorText}>{loadError}</Text>
           ) : null}
           {canOpenExternally ? (
             <Pressable onPress={() => Linking.openURL(resolvedUri)}>
-              <Text style={[styles.subtitle, { marginTop: spacing.xs }]}>Open externally</Text>
+              <Text style={[styles.subtitle, styles.externalLink]}>
+                {videoAttachmentCopy.labels.openExternally}
+              </Text>
             </Pressable>
           ) : null}
         </View>

@@ -7,6 +7,10 @@ const screenSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
   'utf8'
 );
+const chatMessageChromeSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
+  'utf8'
+);
 
 test('shows desktop library items directly in the new-chat prompt launchers', () => {
   assert.match(screenSource, /const promptQuickStarts = useMemo/);
@@ -16,11 +20,73 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /source: 'skill' as const/);
   assert.match(screenSource, /source: 'task' as const/);
   assert.match(screenSource, /handleRunPromptTask/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryShortcutSourceLabel\(item\.source\)/);
+  assert.match(screenSource, /getPromptLibraryCopyState,/);
+  assert.match(screenSource, /getPromptLibraryEditorMobileCloseIconState,/);
+  assert.match(screenSource, /getPromptLibraryMobileAddShortcutIconState,/);
+  assert.match(screenSource, /getPromptLibraryMobileShortcutActionIconState,/);
+  assert.match(screenSource, /getPromptLibraryMobileShortcutSourceIconState,/);
+  assert.match(screenSource, /getPromptLibraryMobileSurfaceState,/);
+  assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
+  assert.match(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
+  assert.match(screenSource, /getPromptLibraryMobileIconColors,/);
+  assert.match(screenSource, /getPromptLibraryMobileSurfaceColors,/);
+  assert.match(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
+  assert.match(screenSource, /const promptLibraryCopy = getPromptLibraryCopyState\(\);/);
+  assert.match(screenSource, /const promptLibraryEditorCloseIcon = getPromptLibraryEditorMobileCloseIconState\(\);/);
+  assert.match(screenSource, /const promptLibraryAddShortcutIcon = getPromptLibraryMobileAddShortcutIconState\(\);/);
+  assert.match(screenSource, /const promptLibraryEditActionIcon = getPromptLibraryMobileShortcutActionIconState\('edit'\);/);
+  assert.match(screenSource, /const promptLibraryDeleteActionIcon = getPromptLibraryMobileShortcutActionIconState\('delete'\);/);
+  assert.match(screenSource, /command: getPromptLibraryMobileShortcutSourceIconState\('command'\)/);
+  assert.match(screenSource, /'saved-prompt': getPromptLibraryMobileShortcutSourceIconState\('saved-prompt'\)/);
+  assert.match(screenSource, /skill: getPromptLibraryMobileShortcutSourceIconState\('skill'\)/);
+  assert.match(screenSource, /task: getPromptLibraryMobileShortcutSourceIconState\('task'\)/);
+  assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
+  assert.match(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
+  assert.match(screenSource, /runningTaskId: runningPromptTaskId/);
+  assert.match(screenSource, /sourceLabelNumberOfLines: mobilePromptLibrarySurface\.shortcutSourceLabel\.numberOfLines/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{sourceLabelNumberOfLines\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.homeQuickStarts\}\s+styles=\{styles\.homeQuickStarts\}/);
+  assert.match(chatMessageChromeSource, /const sourceIcon = sourceIcons\[item\.source\];/);
+  assert.match(chatMessageChromeSource, /const shortcutSourceIconColors = sourceIconColors\[item\.source\];/);
+  assert.match(chatMessageChromeSource, /name=\{sourceIcon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{sourceIcon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{shortcutSourceIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /name=\{addIcon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{addIcon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{addIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /style=\{styles\.addIcon\}/);
+  assert.match(chatMessageChromeSource, /pressed && styles\.actionButtonPressed/);
+  assert.match(chatMessageChromeSource, /name=\{editIcon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{editIcon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{editIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /name=\{deleteIcon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{deleteIcon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{deleteIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /homeQuickStarts: \{\s+card: styles\.chatHomeCard,\s+emptyText: styles\.chatHomeEmptyText,\s+grid: styles\.chatHomeShortcutGrid,\s+shortcutCard: styles\.chatHomeShortcutCard,/);
+  assert.match(screenSource, /chatHomeShortcutSourcePill:\s*\{[\s\S]*?promptLibrarySurface\.shortcutSourcePill\.alignSelf/);
+  assert.match(screenSource, /chatHomeShortcutSourcePill:\s*\{[\s\S]*?flexDirection:\s*promptLibrarySurface\.shortcutSourcePill\.flexDirection/);
+  assert.match(screenSource, /chatHomeShortcutSourcePill:\s*\{[\s\S]*?alignItems:\s*promptLibrarySurface\.shortcutSourcePill\.alignItems/);
+  assert.match(screenSource, /chatHomeShortcutAddIcon:\s*\{[\s\S]*?marginBottom:\s*promptLibrarySurface\.addShortcutIcon\.marginBottom/);
+  assert.match(screenSource, /chatHomeShortcutSourceLabel:\s*\{[\s\S]*?promptLibrarySurface\.shortcutSourceLabel\.textTransform/);
+  assert.match(screenSource, /chatHomeShortcutActionButton:\s*\{[\s\S]*?flexDirection:\s*promptLibrarySurface\.shortcutActionButton\.flexDirection/);
+  assert.match(screenSource, /chatHomeShortcutActionButtonPressed:\s*\{[\s\S]*?opacity:\s*promptLibrarySurface\.shortcutActionButton\.pressedOpacity/);
   assert.doesNotMatch(screenSource, /predefinedPrompts\s*\.slice/);
   assert.doesNotMatch(screenSource, /availableSkills\.slice/);
   assert.doesNotMatch(screenSource, /availableTasks\.slice/);
-  assert.match(screenSource, /promptQuickStarts\.map\(\(item\) =>/);
-  assert.match(screenSource, /PROMPT_LIBRARY_PRESENTATION\.empty\.mobileLibrary/);
+  assert.match(chatMessageChromeSource, /items\.map\(\(item\) =>/);
+  assert.match(screenSource, /mobilePromptLibraryCopy\.loadingLibraryLabel/);
+  assert.match(screenSource, /mobilePromptLibraryEmptyLabel/);
+  assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_PRESENTATION/);
+  assert.match(screenSource, /const promptLibrarySurface = mobilePromptLibrarySurface;/);
+  assert.match(screenSource, /const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors\(theme\.colors\);/);
+  assert.doesNotMatch(screenSource, /theme\.colors\[(sourceIcon|promptLibraryAddShortcutIcon|promptLibraryEditActionIcon|promptLibraryDeleteActionIcon)\.colorToken\]/);
+  assert.doesNotMatch(screenSource, /theme\.colors\[promptLibrarySurface\./);
+  assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_SURFACE_PRESENTATION,/);
+  assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_SURFACE_PRESENTATION\.mobile/);
+  assert.doesNotMatch(screenSource, /promptLibrarySurface\.shortcutActionIcon\.editName/);
+  assert.doesNotMatch(screenSource, /promptLibrarySurface\.shortcutSourceIcon\.skillName/);
+  assert.doesNotMatch(screenSource, /promptLibrarySurface\.addShortcutIcon\.name/);
   assert.doesNotMatch(screenSource, /title: 'Custom Commands'/);
   assert.doesNotMatch(screenSource, /title: 'Saved Prompts'/);
   assert.doesNotMatch(screenSource, /title: 'Prompt Library'/);
@@ -30,12 +96,52 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
 
 test('can create a new predefined prompt from mobile and save it to desktop settings', () => {
   assert.match(screenSource, /id: 'action-add-prompt'/);
-  assert.match(screenSource, /title: PROMPT_LIBRARY_PRESENTATION\.mobile\.addPromptTitle/);
+  assert.match(screenSource, /title: mobilePromptLibraryCopy\.addPromptTitle/);
+  assert.match(screenSource, /description: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
   assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
-  assert.match(screenSource, /onPress=\{handleSavePrompt\}/);
+  assert.match(screenSource, /onSave: handleSavePrompt/);
+  assert.match(chatMessageChromeSource, /onPress=\{onSave\}/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /getPromptLibrarySaveSuccessMessage\(Boolean\(editingPrompt\)\)/);
+  assert.match(screenSource, /const promptEditorModalSurface = promptLibrarySurface\.editorModal/);
+  assert.match(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
+  assert.match(screenSource, /const promptEditorModalChrome = useMemo\(\s+\(\) => createChatConversationHomePromptEditorModalChromeProps\(\{\s+surface: promptEditorModalSurface,\s+colors: promptLibrarySurfaceColors\.editorModal,/);
+  assert.match(screenSource, /promptEditorChrome: promptEditorModalChrome/);
+  assert.match(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
+  assert.match(chatMessageChromeSource, /style=\{styles\.header\}/);
+  assert.match(chatMessageChromeSource, /style=\{styles\.closeButton\}/);
+  assert.match(chatMessageChromeSource, /closeButtonPressedOpacity: surface\.closeButton\.pressedOpacity/);
+  assert.match(chatMessageChromeSource, /activeOpacity=\{closeButtonPressedOpacity\}/);
+  assert.match(screenSource, /closeButtonAccessibilityLabel: promptLibraryCopy\.editor\.closeAccessibilityLabel/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{closeButtonAccessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /name=\{closeIcon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{closeIcon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{closeIconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /style=\{styles\.keyboardAvoidingView\}/);
+  assert.match(screenSource, /promptEditorModalSurface\.keyboardAvoidingView\.flex/);
+  assert.match(screenSource, /promptEditorModalSurface\.overlay\.flex/);
+  assert.match(screenSource, /getPromptLibraryMobileSurfaceColors,/);
+  assert.match(screenSource, /const promptLibrarySurfaceColors = useMemo\(\s+\(\) => getPromptLibraryMobileSurfaceColors\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors\(theme\.colors\);/);
+  assert.match(screenSource, /backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.overlay\.backgroundColor/);
+  assert.match(chatMessageChromeSource, /inputPlaceholderTextColor: colors\.input\.placeholderColor/);
+  assert.match(chatMessageChromeSource, /placeholderTextColor=\{inputPlaceholderTextColor\}/);
+  assert.match(screenSource, /backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.content\.backgroundColor/);
+  assert.match(screenSource, /modalHeader:\s*\{[\s\S]*?flexDirection:\s*promptEditorModalSurface\.header\.flexDirection/);
+  assert.match(screenSource, /modalCloseButton:\s*\{[\s\S]*?width:\s*promptEditorModalSurface\.closeButton\.width/);
+  assert.match(screenSource, /promptEditorModalSurface\.actions\.flexDirection/);
+  assert.match(screenSource, /promptLibrarySurfaceColors\.editorModal\.saveButton\.backgroundColor/);
+  assert.match(screenSource, /promptLibrarySurfaceColors\.editorModal\.saveButtonText\.color/);
+  assert.match(screenSource, /promptEditorModalSurface\.saveButton\.alignItems/);
+  assert.match(screenSource, /promptEditorModalSurface\.saveButton\.disabledOpacity/);
+  assert.doesNotMatch(screenSource, /theme\.colors\[promptEditorModalSurface\.(content|title|label|input|cancelButton|saveButton)\./);
+  assert.doesNotMatch(screenSource, /modalOverlay:\s*\{[^}]*?flex:\s*1/);
+  assert.doesNotMatch(screenSource, /hexToRgba\(\s*promptEditorModalSurface\.overlay\.backgroundColor/);
+  assert.doesNotMatch(screenSource, /backgroundColor:\s*['"]rgba\(0,\s*0,\s*0,\s*0\.5\)['"]/);
+  assert.doesNotMatch(screenSource, /modalActions:\s*\{[^}]*?flexDirection:\s*'row'/);
+  assert.doesNotMatch(screenSource, /modalSaveButton:\s*\{[^}]*?alignItems:\s*'center'/);
+  assert.doesNotMatch(screenSource, /promptEditorModalSurface\.closeIcon\.name/);
 });
 
 test('removes the bottom composer prompt-library button', () => {

@@ -341,6 +341,8 @@ describe('ACPDelegationProgress', () => {
       sourceLabel: 'acpx session',
       trackingLabel: 'Session ef123456',
       activityTimestamp: 250,
+      messageCount: 1,
+      isActive: false,
     })
   })
 })

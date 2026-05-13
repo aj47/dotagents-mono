@@ -21,6 +21,7 @@
     "expo": "~54.0.6",
     "expo-audio": "~1.1.1",
     "expo-camera": "^17.0.9",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "^18.0.13",
     "expo-crypto": "~15.0.8",
     "expo-device": "^8.0.10",
