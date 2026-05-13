@@ -9,11 +9,11 @@ const source = fs.readFileSync(
 );
 
 test('mobile response history panel uses shared copy and accessibility labels', () => {
-  assert.match(source, /getAgentResponseHistoryPanelState,/);
+  assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /getAgentResponseHistorySpeechAccessibilityLabel\(isSpeaking\)/);
-  assert.match(source, /getAgentResponseHistoryMobileIconState,/);
-  assert.match(source, /const responseHistoryPanelState = getAgentResponseHistoryPanelState\(responses, \{\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+\}\);/);
-  assert.match(source, /const responseHistoryIcons = getAgentResponseHistoryMobileIconState\(\);/);
+  assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors: theme\.colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+\}\);/);
+  assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
+  assert.match(source, /const responseHistoryIcons = responseHistoryRenderState\.icons;/);
   assert.match(source, /name=\{responseHistoryIcons\.headerName\}/);
   assert.match(source, /name=\{responseHistoryPanelState\.toggleIconName\}/);
   assert.match(source, /name=\{isSpeaking \? responseHistoryIcons\.stopName : responseHistoryIcons\.speakName\}/);
@@ -26,6 +26,8 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /accessibilityLabel=\{isSpeaking \? 'Stop speaking' : 'Speak this response'\}/);
   assert.doesNotMatch(source, /name="chatbubbles-outline"/);
   assert.doesNotMatch(source, /name=\{isCollapsed \? responseHistoryIcons\.expandName : responseHistoryIcons\.collapseName\}/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryPanelState\(responses/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryMobileIconState\(\)/);
   assert.doesNotMatch(source, /'chevron-down'/);
   assert.doesNotMatch(source, /'chevron-up'/);
   assert.doesNotMatch(source, /'volume-medium'/);
@@ -35,16 +37,15 @@ test('mobile response history panel uses shared copy and accessibility labels', 
 });
 
 test('mobile response history panel reads compact sizing from shared surface tokens', () => {
-  assert.match(source, /getAgentResponseHistoryMobileSurfaceRenderState,/);
-  assert.match(source, /getAgentResponseHistoryNewestInitialOpacity,/);
-  assert.match(source, /getAgentResponseHistoryVisibleOpacity,/);
-  assert.match(source, /const responseHistoryStyleState = getAgentResponseHistoryMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(source, /const responseHistorySurface = responseHistoryStyleState\.surface;/);
-  assert.match(source, /const responseHistorySurfaceColors = responseHistoryStyleState\.colors;/);
-  assert.match(source, /new Animated\.Value\([\s\S]*?getAgentResponseHistoryNewestInitialOpacity\(\)[\s\S]*?: getAgentResponseHistoryVisibleOpacity\(\)/);
+  assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
+  assert.match(source, /type AgentResponseHistoryMobileAnimationState,/);
+  assert.match(source, /const responseHistorySurface = responseHistoryRenderState\.surface;/);
+  assert.match(source, /const responseHistorySurfaceColors = responseHistoryRenderState\.colors;/);
+  assert.match(source, /const responseHistoryAnimation = responseHistoryRenderState\.animation;/);
+  assert.match(source, /new Animated\.Value\([\s\S]*?animation\.newestInitialOpacity[\s\S]*?: animation\.visibleOpacity/);
   assert.match(source, /const animatedStyle = useMemo\(\(\) => \(\{ opacity: fadeAnim \}\), \[fadeAnim\]\);/);
-  assert.match(source, /duration: getAgentResponseHistoryNewestFadeDurationMs\(\)/);
-  assert.match(source, /toValue: getAgentResponseHistoryVisibleOpacity\(\)/);
+  assert.match(source, /duration: animation\.newestFadeDurationMs/);
+  assert.match(source, /toValue: animation\.visibleOpacity/);
   assert.match(source, /<Animated\.View style=\{animatedStyle\}>/);
   assert.match(source, /import \{ spacing, radius \} from '\.\/theme';/);
   assert.match(source, /borderRadius:\s*radius\[responseHistorySurface\.container\.borderRadius\]/);
@@ -71,8 +72,12 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.match(source, /fontSize:\s*responseHistorySurface\.collapsedPreview\.previewFontSize/);
   assert.match(source, /color:\s*responseHistorySurfaceColors\.collapsedPreview\.previewColor/);
   assert.doesNotMatch(source, /theme\.colors\[responseHistorySurface\./);
+  assert.doesNotMatch(source, /getAgentResponseHistoryMobileSurfaceRenderState\(/);
   assert.doesNotMatch(source, /getAgentResponseHistoryMobileSurfaceState\(\)/);
   assert.doesNotMatch(source, /getAgentResponseHistoryMobileSurfaceColors\(theme\.colors\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryNewestInitialOpacity\(\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryVisibleOpacity\(\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistoryNewestFadeDurationMs\(\)/);
   assert.doesNotMatch(source, /hexToRgba\(/);
   assert.doesNotMatch(source, /overflow:\s*'hidden'/);
   assert.doesNotMatch(source, /header:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',\s*justifyContent:\s*'space-between',/);
@@ -102,7 +107,7 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.match(source, /\{responseHistoryPanelState\.items\.map\(\(item\) => \{/);
   assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
   assert.match(source, /\{item\.displayIndex > 0 && <View style=\{styles\.separator\} \/>/);
-  assert.match(source, /<AnimatedResponseItem isNewest=\{item\.isNewest\}>/);
+  assert.match(source, /<AnimatedResponseItem isNewest=\{item\.isNewest\} animation=\{responseHistoryAnimation\}>/);
   assert.match(source, /\{item\.timestampLabel\}/);
   assert.match(source, /onPress=\{\(\) => handleSpeak\(response\.text, item\.originalIndex\)\}/);
   assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.shouldRender && \(/);

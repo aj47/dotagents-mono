@@ -9,6 +9,8 @@ import {
   formatAgentResponseHistoryPreviewText,
   formatAgentResponseHistoryTimestamp,
   getAgentResponseHistoryMobileIconState,
+  getAgentResponseHistoryMobileAnimationState,
+  getAgentResponseHistoryMobileRenderState,
   getAgentResponseHistoryMobileSurfaceColors,
   getAgentResponseHistoryMobileSurfaceRenderState,
   getAgentResponseHistoryMobileSurfaceState,
@@ -37,6 +39,11 @@ describe('agent-user-response-store', () => {
     expect(getAgentResponseHistoryNewestFadeDurationMs()).toBe(300);
     expect(getAgentResponseHistoryNewestInitialOpacity()).toBe(0);
     expect(getAgentResponseHistoryVisibleOpacity()).toBe(1);
+    expect(getAgentResponseHistoryMobileAnimationState()).toEqual({
+      newestInitialOpacity: 0,
+      visibleOpacity: 1,
+      newestFadeDurationMs: 300,
+    });
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.headerName).toBe('chatbubbles-outline');
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.expandName).toBe('chevron-down');
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.collapseName).toBe('chevron-up');
@@ -227,6 +234,44 @@ describe('agent-user-response-store', () => {
       headerBorderBottomWidth: 1,
       collapsedPreview: {
         shouldRender: false,
+      },
+    });
+    expect(getAgentResponseHistoryMobileRenderState({
+      responses,
+      colors: {
+        border: '#d4d4d4',
+        foreground: '#171717',
+        muted: '#e5e5e5',
+        mutedForeground: '#737373',
+        primary: '#2563eb',
+        primaryForeground: '#ffffff',
+      },
+      isCollapsed: true,
+      animateNewest: true,
+    })).toMatchObject({
+      panel: {
+        title: 'Agent Responses',
+        isExpanded: false,
+        toggleIconName: 'chevron-down',
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            entry: responses[1],
+            isNewest: true,
+          }),
+        ]),
+      },
+      surface: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile,
+      colors: {
+        container: {
+          borderColor: '#d4d4d4',
+          backgroundColor: 'rgba(229, 229, 229, 0.19)',
+        },
+      },
+      icons: AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon,
+      animation: {
+        newestInitialOpacity: 0,
+        visibleOpacity: 1,
+        newestFadeDurationMs: 300,
       },
     });
   });

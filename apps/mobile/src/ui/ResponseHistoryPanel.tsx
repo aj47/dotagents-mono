@@ -17,13 +17,9 @@ import * as Speech from 'expo-speech';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
-  getAgentResponseHistoryMobileIconState,
-  getAgentResponseHistoryMobileSurfaceRenderState,
-  getAgentResponseHistoryNewestFadeDurationMs,
-  getAgentResponseHistoryNewestInitialOpacity,
-  getAgentResponseHistoryPanelState,
+  getAgentResponseHistoryMobileRenderState,
   getAgentResponseHistorySpeechAccessibilityLabel,
-  getAgentResponseHistoryVisibleOpacity,
+  type AgentResponseHistoryMobileAnimationState,
 } from '@dotagents/shared/agent-user-response-store';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -55,15 +51,17 @@ interface ResponseHistoryPanelProps {
 function AnimatedResponseItem({
   children,
   isNewest,
+  animation,
 }: {
   children: React.ReactNode;
   isNewest: boolean;
+  animation: AgentResponseHistoryMobileAnimationState;
 }) {
   const fadeAnim = useRef(
     new Animated.Value(
       isNewest
-        ? getAgentResponseHistoryNewestInitialOpacity()
-        : getAgentResponseHistoryVisibleOpacity(),
+        ? animation.newestInitialOpacity
+        : animation.visibleOpacity,
     ),
   ).current;
   const animatedStyle = useMemo(() => ({ opacity: fadeAnim }), [fadeAnim]);
@@ -71,12 +69,12 @@ function AnimatedResponseItem({
   useEffect(() => {
     if (isNewest) {
       Animated.timing(fadeAnim, {
-        toValue: getAgentResponseHistoryVisibleOpacity(),
-        duration: getAgentResponseHistoryNewestFadeDurationMs(),
+        toValue: animation.visibleOpacity,
+        duration: animation.newestFadeDurationMs,
         useNativeDriver: true,
       }).start();
     }
-  }, [fadeAnim, isNewest]);
+  }, [animation.newestFadeDurationMs, animation.visibleOpacity, fadeAnim, isNewest]);
 
   return (
     <Animated.View style={animatedStyle}>
@@ -103,17 +101,18 @@ export function ResponseHistoryPanel({
   const isMountedRef = useRef(true);
   const speechRequestIdRef = useRef(0);
   const prevCountRef = useRef(responses.length);
-  const responseHistoryStyleState = getAgentResponseHistoryMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
-  const responseHistorySurface = responseHistoryStyleState.surface;
-  const responseHistorySurfaceColors = responseHistoryStyleState.colors;
-  const responseHistoryIcons = getAgentResponseHistoryMobileIconState();
   const shouldAnimateNewest = responses.length > prevCountRef.current;
-  const responseHistoryPanelState = getAgentResponseHistoryPanelState(responses, {
+  const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState({
+    responses,
+    colors: theme.colors,
     isCollapsed,
     animateNewest: shouldAnimateNewest,
   });
+  const responseHistoryPanelState = responseHistoryRenderState.panel;
+  const responseHistorySurface = responseHistoryRenderState.surface;
+  const responseHistorySurfaceColors = responseHistoryRenderState.colors;
+  const responseHistoryIcons = responseHistoryRenderState.icons;
+  const responseHistoryAnimation = responseHistoryRenderState.animation;
 
   const nextSpeechRequestId = useCallback(() => {
     speechRequestIdRef.current += 1;
@@ -347,7 +346,7 @@ export function ResponseHistoryPanel({
             return (
               <React.Fragment key={item.key}>
                 {item.displayIndex > 0 && <View style={styles.separator} />}
-                <AnimatedResponseItem isNewest={item.isNewest}>
+                <AnimatedResponseItem isNewest={item.isNewest} animation={responseHistoryAnimation}>
                   <View style={styles.responseItem}>
                     <View style={styles.responseHeader}>
                       <Text style={styles.timestamp}>

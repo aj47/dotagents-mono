@@ -224,6 +224,26 @@ export interface AgentResponseHistoryMobileSurfaceRenderState {
   colors: AgentResponseHistoryMobileSurfaceColors;
 }
 
+export interface AgentResponseHistoryMobileAnimationState {
+  newestInitialOpacity: number;
+  visibleOpacity: number;
+  newestFadeDurationMs: number;
+}
+
+export interface AgentResponseHistoryMobileRenderStateInput<T extends { id?: string | null; text: string; timestamp: number }>
+  extends AgentResponseHistoryPanelStateInput {
+  responses: readonly T[];
+  colors: AgentResponseHistoryMobileSurfaceColorPalette;
+}
+
+export interface AgentResponseHistoryMobileRenderState<T> {
+  panel: AgentResponseHistoryPanelState<T>;
+  surface: AgentResponseHistoryMobileSurfaceRenderState['surface'];
+  colors: AgentResponseHistoryMobileSurfaceRenderState['colors'];
+  icons: typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon;
+  animation: AgentResponseHistoryMobileAnimationState;
+}
+
 const NO_RUN_ORDINAL_KEY = 'no-run';
 
 export function getAgentResponseHistoryToggleAccessibilityLabel(isCollapsed: boolean): string {
@@ -256,6 +276,14 @@ export function getAgentResponseHistoryNewestInitialOpacity(): number {
 
 export function getAgentResponseHistoryVisibleOpacity(): number {
   return AGENT_RESPONSE_HISTORY_PRESENTATION.animation.visibleOpacity;
+}
+
+export function getAgentResponseHistoryMobileAnimationState(): AgentResponseHistoryMobileAnimationState {
+  return {
+    newestInitialOpacity: getAgentResponseHistoryNewestInitialOpacity(),
+    visibleOpacity: getAgentResponseHistoryVisibleOpacity(),
+    newestFadeDurationMs: getAgentResponseHistoryNewestFadeDurationMs(),
+  };
 }
 
 export function getAgentResponseHistoryMobileSurfaceState(): typeof AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile {
@@ -314,6 +342,26 @@ export function getAgentResponseHistoryMobileSurfaceRenderState({
   return {
     surface: getAgentResponseHistoryMobileSurfaceState(),
     colors: getAgentResponseHistoryMobileSurfaceColors(colors),
+  };
+}
+
+export function getAgentResponseHistoryMobileRenderState<T extends { id?: string | null; text: string; timestamp: number }>({
+  responses,
+  colors,
+  isCollapsed,
+  animateNewest,
+}: AgentResponseHistoryMobileRenderStateInput<T>): AgentResponseHistoryMobileRenderState<T> {
+  const surfaceState = getAgentResponseHistoryMobileSurfaceRenderState({ colors });
+
+  return {
+    panel: getAgentResponseHistoryPanelState(responses, {
+      isCollapsed,
+      animateNewest,
+    }),
+    surface: surfaceState.surface,
+    colors: surfaceState.colors,
+    icons: getAgentResponseHistoryMobileIconState(),
+    animation: getAgentResponseHistoryMobileAnimationState(),
   };
 }
 
