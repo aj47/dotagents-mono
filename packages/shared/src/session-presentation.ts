@@ -2532,6 +2532,7 @@ export const CHAT_COMPOSER_SURFACE_PRESENTATION = {
       bottomInsetOffset: 12,
       micWrapperPaddingHorizontal: "sm",
       micWrapperPaddingBottom: "sm",
+      borderTopWidthToken: "hairline",
       borderColorToken: "border",
       backgroundColorToken: "card",
     },

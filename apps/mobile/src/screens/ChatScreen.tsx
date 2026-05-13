@@ -4845,7 +4845,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontWeight: delegationCardSurface.toolPreviewMoreFontWeight,
     },
     inputArea: {
-      borderTopWidth: theme.hairline,
+      borderTopWidth: theme[inputAreaSurface.borderTopWidthToken],
       borderColor: mobileComposerSurfaceColors.inputArea.borderColor,
       backgroundColor: mobileComposerSurfaceColors.inputArea.backgroundColor,
     },

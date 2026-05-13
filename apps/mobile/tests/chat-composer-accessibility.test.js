@@ -50,6 +50,8 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_SURFACE_PRESENTATION/);
   assert.doesNotMatch(screenSource, /mobileComposerCopy/);
   assert.match(screenSource, /const inputAreaSurface = composerSurface\.inputArea;/);
+  assert.match(screenSource, /borderTopWidth:\s*theme\[inputAreaSurface\.borderTopWidthToken\]/);
+  assert.doesNotMatch(screenSource, /borderTopWidth:\s*theme\.hairline/);
   assert.match(chatMessageChromeSource, /inputArea:\s*\{\s+paddingBottom: layout\.inputArea\.paddingBottom,\s+\}/);
   assert.doesNotMatch(screenSource, /inputArea:\s*\{\s*paddingBottom:\s*mobileSafeAreaLayout\.inputArea\.paddingBottom,\s*\}/);
   assert.match(screenSource, /composerStyles: chatComposerRuntimeDockStyles/);

@@ -966,6 +966,7 @@ describe("session presentation semantics", () => {
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.desktop.followUp.iconClassName).toBe("h-3.5 w-3.5")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.bottomInsetOffset).toBe(12)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.micWrapperPaddingHorizontal).toBe("sm")
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.borderTopWidthToken).toBe("hairline")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.backgroundColorToken).toBe("card")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.borderRadius).toBe("md")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.sttPreview.labelColorToken).toBe("mutedForeground")
