@@ -556,6 +556,14 @@ export interface ChatRuntimeKillSwitchMobileRenderState {
   }
 }
 
+export interface ChatRuntimeKillSwitchMobileVisibilityRenderStateInput {
+  conversationState?: AgentConversationState | null
+}
+
+export interface ChatRuntimeKillSwitchMobileVisibilityRenderState {
+  shouldRender: boolean
+}
+
 export type ChatRuntimeHeaderMobileStyleColorToken =
   | ChatRuntimeAgentSelectorMobileColorToken
   | ChatRuntimePinMobileColorToken
@@ -5107,6 +5115,14 @@ export function getChatRuntimeKillSwitchMobileRenderState(
       size: action.icon.size,
       color: colors.icon.color,
     },
+  }
+}
+
+export function getChatRuntimeKillSwitchMobileVisibilityRenderState({
+  conversationState = null,
+}: ChatRuntimeKillSwitchMobileVisibilityRenderStateInput = {}): ChatRuntimeKillSwitchMobileVisibilityRenderState {
+  return {
+    shouldRender: conversationState === "running",
   }
 }
 

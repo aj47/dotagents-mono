@@ -120,6 +120,7 @@ import {
   getChatRuntimeKillSwitchMobileColors,
   getChatRuntimeKillSwitchMobileIconState,
   getChatRuntimeKillSwitchMobileRenderState,
+  getChatRuntimeKillSwitchMobileVisibilityRenderState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeLoadingStateMobileState,
@@ -524,6 +525,19 @@ describe("session presentation semantics", () => {
         size: CHAT_RUNTIME_PRESENTATION.killSwitch.mobileIcon.size,
         color: "#FFFFFF",
       },
+    })
+    expect(getChatRuntimeKillSwitchMobileVisibilityRenderState({
+      conversationState: "running",
+    })).toEqual({
+      shouldRender: true,
+    })
+    expect(getChatRuntimeKillSwitchMobileVisibilityRenderState({
+      conversationState: "needs_input",
+    })).toEqual({
+      shouldRender: false,
+    })
+    expect(getChatRuntimeKillSwitchMobileVisibilityRenderState()).toEqual({
+      shouldRender: false,
     })
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.buttonAccessibilityLabel).toContain("Emergency stop")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.sessionTitle).toBe("Stop Agent Execution")

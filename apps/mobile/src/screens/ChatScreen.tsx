@@ -128,6 +128,7 @@ import {
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
+  getChatRuntimeKillSwitchMobileVisibilityRenderState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
@@ -923,6 +924,12 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [headerConversationState, theme.colors],
   );
+  const mobileHeaderKillSwitchVisibilityRenderState = useMemo(
+    () => getChatRuntimeKillSwitchMobileVisibilityRenderState({
+      conversationState: headerConversationState,
+    }),
+    [headerConversationState],
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mobileRuntimeLoadingRenderState = useMemo(
     () => getChatRuntimeLoadingStateMobileRenderState({
@@ -1156,7 +1163,7 @@ export default function ChatScreen({ route, navigation }: any) {
         renderState: headerTotalTurnDurationRenderState,
       },
       killSwitchButton: {
-        shouldRender: headerConversationState === 'running',
+        shouldRender: mobileHeaderKillSwitchVisibilityRenderState.shouldRender,
         renderState: mobileHeaderKillSwitchRenderState,
         onPress: handleKillSwitch,
       },
@@ -1166,7 +1173,7 @@ export default function ChatScreen({ route, navigation }: any) {
       },
       styles: chatRuntimeHeaderStyles,
     }));
-  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, headerConversationState, headerConversationStatus, headerHandsFreeMobileRenderState, headerPinMobileRenderState, headerTotalTurnDurationRenderState, mobileHeaderAgentSelectorRenderState, mobileHeaderBackRenderState, mobileHeaderKillSwitchRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);
+  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, headerConversationStatus, headerHandsFreeMobileRenderState, headerPinMobileRenderState, headerTotalTurnDurationRenderState, mobileHeaderAgentSelectorRenderState, mobileHeaderBackRenderState, mobileHeaderKillSwitchRenderState, mobileHeaderKillSwitchVisibilityRenderState.shouldRender, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);
 
 		  useEffect(() => {
 			const subscription = AppState.addEventListener('change', (nextState) => {

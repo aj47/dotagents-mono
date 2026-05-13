@@ -704,8 +704,10 @@ test('keeps pinning available from the individual chat view header', () => {
 test('uses shared runtime header copy for mobile stop and hands-free controls', () => {
   assert.match(screenSource, /getChatRuntimeHandsFreeMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeKillSwitchMobileRenderState,/);
+  assert.match(screenSource, /getChatRuntimeKillSwitchMobileVisibilityRenderState,/);
   assert.match(screenSource, /getChatRuntimeKillSwitchMobileAlertState,/);
-  assert.match(screenSource, /killSwitchButton: \{\s+shouldRender: headerConversationState === 'running',\s+renderState: mobileHeaderKillSwitchRenderState,\s+onPress: handleKillSwitch,\s+\}/);
+  assert.match(screenSource, /killSwitchButton: \{\s+shouldRender: mobileHeaderKillSwitchVisibilityRenderState\.shouldRender,\s+renderState: mobileHeaderKillSwitchRenderState,\s+onPress: handleKillSwitch,\s+\}/);
+  assert.doesNotMatch(screenSource, /shouldRender: headerConversationState === 'running'/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileIconState,/);
   assert.match(screenSource, /const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState\(\);/);
