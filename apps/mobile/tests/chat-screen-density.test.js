@@ -2515,7 +2515,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /turnDuration: turnDuration\.canRender \? \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
   assert.match(chatMessageChromeSource, /speech: renderChatMessageActionButton\(speech\),/);
   assert.match(chatMessageChromeSource, /const components = createChatMessageActionComponents\(input\);/);
-  assert.match(chatMessageChromeSource, /const layout = getChatMessageActionLayoutState\(\{\s+availability: \{\s+turnDuration: input\.turnDuration\.canRender,\s+speech: input\.speech\.canRender,\s+branch: input\.branch\.canRender,\s+copy: input\.copy\.canRender,\s+expansion: input\.expansion\.canRender,\s+\},\s+renderState: contentRenderState,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /getChatMessageActionLayoutRenderState,/);
+  assert.match(chatMessageChromeSource, /const layout = getChatMessageActionLayoutRenderState\(\{\s+availability: getChatMessageActionAvailabilityRenderState\(\{\s+turnDuration: input\.turnDuration\.canRender,\s+speech: input\.speech\.canRender,\s+branch: input\.branch\.canRender,\s+copy: input\.copy\.canRender,\s+expansion: input\.expansion\.canRender,\s+\}\),\s+renderState: contentRenderState,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const layout = getChatMessageActionLayoutState/);
   assert.doesNotMatch(screenSource, /const messageActionLayout = getChatMessageActionLayoutState/);
   assert.equal((screenSource.match(/<ChatMessageThreadBody/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageConversationContent/g) ?? []).length, 0);

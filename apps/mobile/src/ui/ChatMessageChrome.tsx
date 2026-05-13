@@ -23,7 +23,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  getChatMessageActionLayoutState,
+  getChatMessageActionAvailabilityRenderState,
+  getChatMessageActionLayoutRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
 } from '@dotagents/shared/message-display-utils';
@@ -1671,14 +1672,14 @@ export function createChatMessageActionSet({
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
   const components = createChatMessageActionComponents(input);
-  const layout = getChatMessageActionLayoutState({
-    availability: {
+  const layout = getChatMessageActionLayoutRenderState({
+    availability: getChatMessageActionAvailabilityRenderState({
       turnDuration: input.turnDuration.canRender,
       speech: input.speech.canRender,
       branch: input.branch.canRender,
       copy: input.copy.canRender,
       expansion: input.expansion.canRender,
-    },
+    }),
     renderState: contentRenderState,
   });
 

@@ -96,7 +96,7 @@ import {
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionCopyState,
   getChatMessageActionDesktopSurfaceState,
-  getChatMessageActionLayoutState,
+  getChatMessageActionLayoutRenderState,
   getChatDisplayExpansionState,
   getChatDisplayGroupedExpansionState,
   getChatMessageContentRenderState,
@@ -1342,14 +1342,8 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       </button>
     ),
   } satisfies Record<ChatMessageActionSlot, React.ReactNode>
-  const messageActionLayout = getChatMessageActionLayoutState({
-    availability: {
-      turnDuration: messageActionAvailabilityRenderState.turnDuration.canRender,
-      speech: messageActionAvailabilityRenderState.speech.canRender,
-      branch: messageActionAvailabilityRenderState.branch.canRender,
-      copy: messageActionAvailabilityRenderState.copy.canRender,
-      expansion: messageActionAvailabilityRenderState.expansion.canRender,
-    },
+  const messageActionLayout = getChatMessageActionLayoutRenderState({
+    availability: messageActionAvailabilityRenderState,
     renderState: messageContentRenderState,
   })
   const visibleMessageActionSlots = messageActionLayout.visibleSlots

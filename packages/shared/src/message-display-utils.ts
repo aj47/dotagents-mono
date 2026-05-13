@@ -339,6 +339,11 @@ export interface ChatMessageActionLayoutStateInput {
   renderState: ChatMessageStandaloneActionRowInput["renderState"]
 }
 
+export interface ChatMessageActionLayoutRenderStateInput {
+  availability: ChatMessageActionAvailabilityRenderState
+  renderState: ChatMessageStandaloneActionRowInput["renderState"]
+}
+
 export type ChatMessageActionAvailabilityRenderStateInput =
   Readonly<Partial<Record<ChatMessageActionSlot, boolean>>>
 
@@ -751,6 +756,21 @@ export function getChatMessageActionLayoutState(
       visibleActionCount: visibleSlots.length,
     }),
   }
+}
+
+export function getChatMessageActionLayoutRenderState(
+  input: ChatMessageActionLayoutRenderStateInput,
+): ChatMessageActionLayoutState {
+  return getChatMessageActionLayoutState({
+    availability: {
+      turnDuration: input.availability.turnDuration.canRender,
+      speech: input.availability.speech.canRender,
+      branch: input.availability.branch.canRender,
+      copy: input.availability.copy.canRender,
+      expansion: input.availability.expansion.canRender,
+    },
+    renderState: input.renderState,
+  })
 }
 
 export function getChatMessageActionAvailabilityRenderState(

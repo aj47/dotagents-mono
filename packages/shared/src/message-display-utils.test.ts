@@ -30,6 +30,7 @@ import {
   getChatMessageActionDesktopSurfaceState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionLayoutState,
+  getChatMessageActionLayoutRenderState,
   getChatMessageActionSequence,
   getChatMessageVisibleActionSlots,
   getChatMessageActionMobileButtonColors,
@@ -449,6 +450,23 @@ describe('chat message display presentation', () => {
       expansion: {
         canRender: false,
       },
+    })
+    expect(getChatMessageActionLayoutRenderState({
+      availability: getChatMessageActionAvailabilityRenderState({
+        turnDuration: true,
+        speech: false,
+        branch: true,
+        copy: true,
+        expansion: false,
+      }),
+      renderState: getChatMessageContentRenderState({
+        content: '',
+        isExpanded: false,
+        shouldCollapse: false,
+      }),
+    })).toEqual({
+      visibleSlots: ['turnDuration', 'branch', 'copy'],
+      shouldRenderStandaloneRow: true,
     })
   })
 
