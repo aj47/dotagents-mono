@@ -2112,6 +2112,8 @@ export const CHAT_RUNTIME_SURFACE_PRESENTATION = {
       gap: "xs",
       paddingVertical: "xs",
       textAlign: "center",
+      summaryFontSize: 12,
+      summaryLineHeight: 16,
       textColorToken: "mutedForeground",
       loadButton: {
         accessibilityRole: "button",

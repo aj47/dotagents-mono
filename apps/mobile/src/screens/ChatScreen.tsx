@@ -4564,8 +4564,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingVertical: spacing[messageHistoryBannerSurface.paddingVertical],
     },
     loadOlderText: {
-      ...theme.typography.caption,
       color: messageHistoryBannerSurfaceColors.summary.color,
+      fontSize: messageHistoryBannerSurface.summaryFontSize,
+      lineHeight: messageHistoryBannerSurface.summaryLineHeight,
       textAlign: messageHistoryBannerSurface.textAlign,
     },
     loadOlderButton: {

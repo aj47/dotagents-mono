@@ -1468,6 +1468,8 @@ describe("session presentation semantics", () => {
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.paddingVertical).toBe("xs")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.flexDirection).toBe("row")
+    expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.summaryFontSize).toBe(12)
+    expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.summaryLineHeight).toBe(16)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.textColorToken).toBe("mutedForeground")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.flexDirection).toBe("row")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.alignItems).toBe("center")

@@ -1949,7 +1949,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /loadOlderButton:\s*\{[\s\S]*?flexDirection:\s*messageHistoryBannerSurface\.loadButton\.flexDirection,[\s\S]*?alignItems:\s*messageHistoryBannerSurface\.loadButton\.alignItems,[\s\S]*?justifyContent:\s*messageHistoryBannerSurface\.loadButton\.justifyContent,[\s\S]*?gap:\s*spacing\[messageHistoryBannerSurface\.loadButton\.gap\]/);
   assert.match(screenSource, /loadOlderButton:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\[messageHistoryBannerSurface\.loadButton\.paddingHorizontal\],[\s\S]*?borderColor:\s*messageHistoryBannerSurfaceColors\.loadButton\.borderColor,[\s\S]*?backgroundColor:\s*messageHistoryBannerSurfaceColors\.loadButton\.backgroundColor/);
   assert.match(screenSource, /loadOlderButtonPressed:\s*\{[\s\S]*?opacity:\s*messageHistoryLoadButtonPressedOpacity/);
-  assert.match(screenSource, /loadOlderText:\s*\{[\s\S]*?color:\s*messageHistoryBannerSurfaceColors\.summary\.color/);
+  assert.match(screenSource, /loadOlderText:\s*\{[\s\S]*?color:\s*messageHistoryBannerSurfaceColors\.summary\.color,[\s\S]*?fontSize:\s*messageHistoryBannerSurface\.summaryFontSize,[\s\S]*?lineHeight:\s*messageHistoryBannerSurface\.summaryLineHeight,[\s\S]*?textAlign:\s*messageHistoryBannerSurface\.textAlign/);
+  assert.doesNotMatch(screenSource, /loadOlderText:\s*\{\s+\.\.\.theme\.typography\.caption/);
   assert.match(screenSource, /loadOlderButtonText:\s*\{[\s\S]*?color:\s*messageHistoryBannerSurfaceColors\.loadButton\.color/);
   assert.match(screenSource, /loadOlderButtonText:\s*\{[\s\S]*?fontWeight:\s*messageHistoryBannerSurface\.loadButton\.fontWeight/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileRuntimeMessageHistoryLoadEarlierIcon\.colorToken\]/);
