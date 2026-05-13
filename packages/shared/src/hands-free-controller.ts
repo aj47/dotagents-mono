@@ -87,6 +87,10 @@ export const HANDS_FREE_COMPOSER_PRESENTATION = {
     sleepLabel: "Sleep",
     pauseLabel: "Pause",
     resumeLabel: "Resume",
+    wakeAccessibilityLabel: "Wake handsfree button",
+    sleepAccessibilityLabel: "Sleep handsfree button",
+    pauseAccessibilityLabel: "Pause handsfree button",
+    resumeAccessibilityLabel: "Resume handsfree button",
     holdLabel: "Hold",
     listeningLabel: "...",
   },
@@ -373,10 +377,14 @@ export interface HandsFreeComposerControlState {
   primary: {
     action: HandsFreeComposerPrimaryControlAction
     label: string
+    accessibilityRole: "button"
+    accessibilityLabel: string
   }
   secondary: {
     action: HandsFreeComposerSecondaryControlAction
     label: string
+    accessibilityRole: "button"
+    accessibilityLabel: string
   }
 }
 
@@ -390,10 +398,18 @@ export function getHandsFreeComposerControlState(phase: HandsFreePhase): HandsFr
       label: isSleeping
         ? HANDS_FREE_COMPOSER_PRESENTATION.controls.wakeLabel
         : HANDS_FREE_COMPOSER_PRESENTATION.controls.sleepLabel,
+      accessibilityRole: "button",
+      accessibilityLabel: isSleeping
+        ? HANDS_FREE_COMPOSER_PRESENTATION.controls.wakeAccessibilityLabel
+        : HANDS_FREE_COMPOSER_PRESENTATION.controls.sleepAccessibilityLabel,
     },
     secondary: {
       action: isPaused ? "resume" : "pause",
       label: getHandsFreePauseResumeLabel(phase),
+      accessibilityRole: "button",
+      accessibilityLabel: isPaused
+        ? HANDS_FREE_COMPOSER_PRESENTATION.controls.resumeAccessibilityLabel
+        : HANDS_FREE_COMPOSER_PRESENTATION.controls.pauseAccessibilityLabel,
     },
   }
 }

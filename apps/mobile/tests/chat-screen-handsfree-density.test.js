@@ -80,6 +80,10 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(screenSource, /handsFreeControls: \{\s+isVisible: handsFree,[\s\S]*?controlState: handsFreeControlState,[\s\S]*?onWake: wakeHandsFreeByUser,[\s\S]*?onSleep: sleepHandsFreeByUser,[\s\S]*?onResume: resumeHandsFreeByUser,[\s\S]*?onPause: pauseHandsFreeByUser,[\s\S]*?\.\.\.chatComposerRuntimeDockChrome\.handsFreeControls,/);
   assert.match(chatMessageChromeSource, /const primaryOnPress = controlState\.primary\.action === 'wake'\s+\? onWake\s+: onSleep;/);
   assert.match(chatMessageChromeSource, /const secondaryOnPress = controlState\.secondary\.action === 'resume'\s+\? onResume\s+: onPause;/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{controlState\.primary\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{controlState\.primary\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{controlState\.secondary\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{controlState\.secondary\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /onPress=\{primaryOnPress\}[\s\S]*?\{controlState\.primary\.label\}/);
   assert.match(chatMessageChromeSource, /onPress=\{secondaryOnPress\}[\s\S]*?\{controlState\.secondary\.label\}/);
   assert.match(screenSource, /const micButtonLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: handsFreeController\.state\.phase,[\s\S]*?listening,[\s\S]*?\}\);/);

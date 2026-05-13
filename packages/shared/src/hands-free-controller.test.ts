@@ -138,30 +138,42 @@ describe("hands-free controller", () => {
       primary: {
         action: "wake",
         label: "Wake",
+        accessibilityRole: "button",
+        accessibilityLabel: "Wake handsfree button",
       },
       secondary: {
         action: "pause",
         label: "Pause",
+        accessibilityRole: "button",
+        accessibilityLabel: "Pause handsfree button",
       },
     })
     expect(getHandsFreeComposerControlState("paused")).toEqual({
       primary: {
         action: "sleep",
         label: "Sleep",
+        accessibilityRole: "button",
+        accessibilityLabel: "Sleep handsfree button",
       },
       secondary: {
         action: "resume",
         label: "Resume",
+        accessibilityRole: "button",
+        accessibilityLabel: "Resume handsfree button",
       },
     })
     expect(getHandsFreeComposerControlState("listening")).toEqual({
       primary: {
         action: "sleep",
         label: "Sleep",
+        accessibilityRole: "button",
+        accessibilityLabel: "Sleep handsfree button",
       },
       secondary: {
         action: "pause",
         label: "Pause",
+        accessibilityRole: "button",
+        accessibilityLabel: "Pause handsfree button",
       },
     })
     expect(getHandsFreeMicButtonLabel({ handsFree: true, phase: "sleeping", listening: false })).toBe("Wake")

@@ -4977,6 +4977,8 @@ export function ChatComposerHandsFreeControls({
           style={styles.controlButton}
           onPress={primaryOnPress}
           activeOpacity={controlPressedOpacity}
+          accessibilityRole={controlState.primary.accessibilityRole}
+          accessibilityLabel={controlState.primary.accessibilityLabel}
         >
           <Text style={styles.controlButtonText}>
             {controlState.primary.label}
@@ -4986,6 +4988,8 @@ export function ChatComposerHandsFreeControls({
           style={styles.controlButton}
           onPress={secondaryOnPress}
           activeOpacity={controlPressedOpacity}
+          accessibilityRole={controlState.secondary.accessibilityRole}
+          accessibilityLabel={controlState.secondary.accessibilityLabel}
         >
           <Text style={styles.controlButtonText}>
             {controlState.secondary.label}
