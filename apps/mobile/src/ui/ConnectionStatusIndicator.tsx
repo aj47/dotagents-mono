@@ -1,13 +1,19 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useTheme } from './ThemeProvider';
-import { TunnelConnectionState } from '../lib/tunnelConnectionManager';
+import {
+  getConnectionStatusIndicatorMobileRenderState,
+  getConnectionStatusIndicatorMobileSurfaceState,
+  type ConnectionStatus,
+} from '@dotagents/shared/connection-recovery';
 
 export interface ConnectionStatusIndicatorProps {
-  state: TunnelConnectionState;
+  state: ConnectionStatus;
   retryCount?: number;
   compact?: boolean;
 }
+
+const connectionStatusSurface = getConnectionStatusIndicatorMobileSurfaceState();
 
 /**
  * Visual indicator for tunnel connection status.
@@ -19,22 +25,45 @@ export function ConnectionStatusIndicator({
   compact = false,
 }: ConnectionStatusIndicatorProps) {
   const { theme } = useTheme();
-  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  const pulseAnim = useRef(new Animated.Value(connectionStatusSurface.pulse.minOpacity)).current;
 
-  const isPulsing = state === 'connecting' || state === 'reconnecting';
+  const connectionStatusState = useMemo(
+    () => getConnectionStatusIndicatorMobileRenderState({
+      status: state,
+      retryCount,
+      compact,
+      colors: theme.colors,
+    }),
+    [compact, retryCount, state, theme.colors],
+  );
+  const colorStyles = useMemo(
+    () => StyleSheet.create({
+      dot: {
+        backgroundColor: connectionStatusState.colors.dot.backgroundColor,
+      },
+      pulse: {
+        backgroundColor: connectionStatusState.colors.pulse.backgroundColor,
+      },
+      text: {
+        color: connectionStatusState.colors.text.color,
+      },
+    }),
+    [connectionStatusState.colors],
+  );
+  const pulseAnimatedStyle = useMemo(() => ({ opacity: pulseAnim }), [pulseAnim]);
 
   useEffect(() => {
-    if (isPulsing) {
+    if (connectionStatusState.isPulsing) {
       const animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 0.8,
-            duration: 800,
+            toValue: connectionStatusSurface.pulse.maxOpacity,
+            duration: connectionStatusSurface.pulse.durationMs,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
-            toValue: 0.3,
-            duration: 800,
+            toValue: connectionStatusSurface.pulse.minOpacity,
+            duration: connectionStatusSurface.pulse.durationMs,
             useNativeDriver: true,
           }),
         ])
@@ -42,65 +71,33 @@ export function ConnectionStatusIndicator({
       animation.start();
       return () => animation.stop();
     } else {
-      pulseAnim.setValue(0.3);
+      pulseAnim.setValue(connectionStatusSurface.pulse.minOpacity);
     }
-  }, [isPulsing, pulseAnim]);
-
-  const getStatusColor = (): string => {
-    switch (state) {
-      case 'connected':
-        return '#22c55e'; // green-500
-      case 'connecting':
-      case 'reconnecting':
-        return '#f59e0b'; // amber-500
-      case 'disconnected':
-        return '#6b7280'; // gray-500
-      case 'failed':
-        return '#ef4444'; // red-500
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const getStatusText = (): string => {
-    switch (state) {
-      case 'connected':
-        return 'Connected';
-      case 'connecting':
-        return 'Connecting...';
-      case 'reconnecting':
-        return retryCount > 0 ? `Reconnecting (${retryCount})...` : 'Reconnecting...';
-      case 'disconnected':
-        return 'Disconnected';
-      case 'failed':
-        return 'Connection failed';
-      default:
-        return 'Unknown';
-    }
-  };
+  }, [connectionStatusState.isPulsing, pulseAnim]);
 
   return (
-    <View style={[styles.container, compact && styles.containerCompact]} accessibilityLabel={getStatusText()} accessibilityRole="text">
+    <View style={[styles.container, compact && styles.containerCompact]} accessibilityLabel={connectionStatusState.accessibilityLabel} accessibilityRole="text">
       <View style={styles.dotContainer}>
         <View
           style={[
             styles.dot,
-            { backgroundColor: getStatusColor() },
-            isPulsing && styles.dotPulsing,
+            colorStyles.dot,
+            connectionStatusState.isPulsing && styles.dotPulsing,
           ]}
         />
-        {isPulsing && (
+        {connectionStatusState.shouldRenderPulse && (
           <Animated.View
             style={[
               styles.dotPulse,
-              { backgroundColor: getStatusColor(), opacity: pulseAnim },
+              colorStyles.pulse,
+              pulseAnimatedStyle,
             ]}
           />
         )}
       </View>
-      {!compact && (
-        <Text style={[styles.text, { color: theme.colors.mutedForeground }]}>
-          {getStatusText()}
+      {connectionStatusState.shouldRenderText && (
+        <Text style={[styles.text, colorStyles.text]}>
+          {connectionStatusState.statusText}
         </Text>
       )}
     </View>
@@ -109,46 +106,45 @@ export function ConnectionStatusIndicator({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    flexDirection: connectionStatusSurface.container.flexDirection,
+    alignItems: connectionStatusSurface.container.alignItems,
+    paddingVertical: connectionStatusSurface.container.paddingVertical,
+    paddingHorizontal: connectionStatusSurface.container.paddingHorizontal,
   },
   containerCompact: {
-    paddingVertical: 2,
-    paddingHorizontal: 4,
+    paddingVertical: connectionStatusSurface.container.compactPaddingVertical,
+    paddingHorizontal: connectionStatusSurface.container.compactPaddingHorizontal,
   },
   dotContainer: {
-    position: 'relative',
-    width: 10,
-    height: 10,
-    marginRight: 6,
+    position: connectionStatusSurface.dotContainer.position,
+    width: connectionStatusSurface.dotContainer.size,
+    height: connectionStatusSurface.dotContainer.size,
+    marginRight: connectionStatusSurface.dotContainer.marginRight,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    position: 'absolute',
-    top: 1,
-    left: 1,
+    width: connectionStatusSurface.dot.size,
+    height: connectionStatusSurface.dot.size,
+    borderRadius: connectionStatusSurface.dot.borderRadius,
+    position: connectionStatusSurface.dot.position,
+    top: connectionStatusSurface.dot.offset,
+    left: connectionStatusSurface.dot.offset,
   },
   dotPulsing: {
-    opacity: 1,
+    opacity: connectionStatusSurface.dot.pulsingOpacity,
   },
   dotPulse: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    opacity: 0.3,
-    position: 'absolute',
-    top: 0,
-    left: 0,
+    width: connectionStatusSurface.pulse.size,
+    height: connectionStatusSurface.pulse.size,
+    borderRadius: connectionStatusSurface.pulse.borderRadius,
+    opacity: connectionStatusSurface.pulse.minOpacity,
+    position: connectionStatusSurface.pulse.position,
+    top: connectionStatusSurface.pulse.top,
+    left: connectionStatusSurface.pulse.left,
   },
   text: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: connectionStatusSurface.text.fontSize,
+    fontWeight: connectionStatusSurface.text.fontWeight,
   },
 });
 
 export default ConnectionStatusIndicator;
-
