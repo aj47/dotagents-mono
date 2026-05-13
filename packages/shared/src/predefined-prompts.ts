@@ -574,6 +574,12 @@ export interface PromptLibraryMobileShortcutCopyState {
   deleteLabel: string
 }
 
+export interface PromptLibraryMobileShortcutRenderState {
+  surface: PromptLibraryMobileShortcutSurfaceState
+  chrome: PromptLibraryMobileShortcutChromeState
+  copy: PromptLibraryMobileShortcutCopyState
+}
+
 export function getPromptLibraryMobileSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile {
   return PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
 }
@@ -730,6 +736,16 @@ export function getPromptLibraryMobileShortcutChromeState(
     deleteIconColors: getPromptLibraryMobileIconColors(deleteIcon, colors),
     sourceIcons: getPromptLibraryMobileLauncherShortcutSourceIconStates(),
     sourceIconColors: getPromptLibraryMobileLauncherShortcutSourceIconColors(colors),
+  }
+}
+
+export function getPromptLibraryMobileShortcutRenderState(
+  colors: PromptLibraryMobileIconColorPalette,
+): PromptLibraryMobileShortcutRenderState {
+  return {
+    surface: getPromptLibraryMobileShortcutSurfaceState(),
+    chrome: getPromptLibraryMobileShortcutChromeState(colors),
+    copy: getPromptLibraryMobileShortcutCopyState(),
   }
 }
 

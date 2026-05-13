@@ -36,6 +36,7 @@ import {
   getPromptLibraryMobileShortcutChromeState,
   getPromptLibraryMobileShortcutActionIconState,
   getPromptLibraryMobileShortcutCopyState,
+  getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
@@ -326,6 +327,19 @@ describe("predefined prompt helpers", () => {
         mutedForeground: "#64748b",
         primary: "#2563eb",
       }),
+    })
+    expect(getPromptLibraryMobileShortcutRenderState({
+      destructive: "#dc2626",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+    })).toEqual({
+      surface: getPromptLibraryMobileShortcutSurfaceState(),
+      chrome: getPromptLibraryMobileShortcutChromeState({
+        destructive: "#dc2626",
+        mutedForeground: "#64748b",
+        primary: "#2563eb",
+      }),
+      copy: getPromptLibraryMobileShortcutCopyState(),
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.textTransform).toBe("uppercase")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourceLabel.numberOfLines).toBe(1)

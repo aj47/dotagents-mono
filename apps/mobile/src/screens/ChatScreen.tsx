@@ -257,9 +257,7 @@ import {
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileCopyState,
-  getPromptLibraryMobileShortcutChromeState,
-  getPromptLibraryMobileShortcutCopyState,
-  getPromptLibraryMobileShortcutSurfaceState,
+  getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceColors,
   getPromptLibraryMobileSurfaceState,
   getPromptLibrarySaveSuccessMessage,
@@ -344,8 +342,6 @@ const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState();
 const promptEditorKeyboardAvoidingBehavior = getPromptLibraryEditorModalKeyboardAvoidingBehavior(Platform.OS);
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
-const promptLibraryShortcutCopy = getPromptLibraryMobileShortcutCopyState();
-const promptLibraryShortcutSurface = getPromptLibraryMobileShortcutSurfaceState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -487,8 +483,8 @@ export default function ChatScreen({ route, navigation }: any) {
     () => getPromptLibraryEditorMobileChromeState(theme.colors),
     [theme.colors],
   );
-  const promptLibraryShortcutChrome = useMemo(
-    () => getPromptLibraryMobileShortcutChromeState(theme.colors),
+  const promptLibraryShortcutRenderState = useMemo(
+    () => getPromptLibraryMobileShortcutRenderState(theme.colors),
     [theme.colors],
   );
   const mobileComposerTextColors = useMemo(
@@ -3736,9 +3732,7 @@ export default function ChatScreen({ route, navigation }: any) {
           onPress: handleQuickStartPress,
           onEditPrompt: openEditPromptModal,
           onDeletePrompt: handleDeletePrompt,
-          shortcutSurface: promptLibraryShortcutSurface,
-          shortcutChrome: promptLibraryShortcutChrome,
-          shortcutCopy: promptLibraryShortcutCopy,
+          shortcutRenderState: promptLibraryShortcutRenderState,
         },
         historyBanner: {
           renderState: messageHistoryBannerRenderState,

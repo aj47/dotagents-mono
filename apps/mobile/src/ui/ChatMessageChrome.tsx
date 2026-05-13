@@ -46,9 +46,7 @@ import {
   getPromptLibraryShortcutSourceLabel,
   type PromptLibraryEditorMobileChromeState,
   type PromptLibraryLauncherShortcutSource,
-  type PromptLibraryMobileShortcutChromeState,
-  type PromptLibraryMobileShortcutCopyState,
-  type PromptLibraryMobileShortcutSurfaceState,
+  type PromptLibraryMobileShortcutRenderState,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
@@ -315,9 +313,7 @@ type ChatConversationHomeQuickStartsProps<
   onPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
   onEditPrompt: (prompt: TPrompt) => void;
   onDeletePrompt: (prompt: TPrompt) => void;
-  shortcutSurface: PromptLibraryMobileShortcutSurfaceState;
-  shortcutChrome: PromptLibraryMobileShortcutChromeState;
-  shortcutCopy: PromptLibraryMobileShortcutCopyState;
+  shortcutRenderState: PromptLibraryMobileShortcutRenderState;
   styles: ChatConversationHomeQuickStartsStyles;
 };
 
@@ -2693,12 +2689,11 @@ export function ChatConversationHomeQuickStarts<
   onPress,
   onEditPrompt,
   onDeletePrompt,
-  shortcutSurface,
-  shortcutChrome,
-  shortcutCopy,
+  shortcutRenderState,
   styles,
 }: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
   if (!shouldRender) return null;
+  const { chrome: shortcutChrome, copy: shortcutCopy, surface: shortcutSurface } = shortcutRenderState;
 
   return (
     <View style={styles.card}>
