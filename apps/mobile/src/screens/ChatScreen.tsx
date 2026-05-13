@@ -120,7 +120,7 @@ import {
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationCardMobileState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
-  getChatRuntimeDelegationStatusMobileColors,
+  getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeInlineActivityMobileState,
@@ -145,7 +145,6 @@ import {
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
-  getChatSessionStatusMobileStyleState,
   getFollowUpInputPresentation,
   getSessionStatusMobileRenderState,
   getSessionStatusMobileSurfaceState,
@@ -4005,11 +4004,11 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.expansion,
               },
             });
-            const delegationStatusColors = m.delegation
-              ? getChatRuntimeDelegationStatusMobileColors(m.delegation.status, theme.colors)
-              : null;
-            const delegationStatusStyles = delegationStatusColors
-              ? getChatSessionStatusMobileStyleState(delegationStatusColors)
+            const delegationStatusRenderState = m.delegation
+              ? getChatRuntimeDelegationStatusMobileRenderState({
+                  status: m.delegation.status,
+                  colors: theme.colors,
+                })
               : null;
             const isDelegationConversationPreviewExpanded = m.delegation
               ? getChatDisplayExpansionState(expandedDelegationConversationPreviews, m.delegation.runId)
@@ -4093,7 +4092,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       messageCount: delegationMessageCount,
                     }),
                     messageCountLabel: delegationMessageCountLabel,
-                    statusStyles: delegationStatusStyles,
+                    statusStyles: delegationStatusRenderState?.styles ?? null,
                     conversationPreview: {
                       rows: delegationConversationPreviewRows,
                       roleStyles: delegationConversationPreviewRoleStyles,

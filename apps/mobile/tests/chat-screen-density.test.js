@@ -107,7 +107,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
 
 test('shows a conversation-state chip in the mobile chat header while preserving the compact header actions row', () => {
   assert.match(screenSource, /getSessionStatusMobileRenderState,/);
-  assert.match(screenSource, /getChatSessionStatusMobileStyleState,/);
+  assert.doesNotMatch(screenSource, /getChatSessionStatusMobileStyleState,/);
   assert.match(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(screenSource, /const headerConversationStatus = useMemo\(\s+\(\) => getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors: theme\.colors,\s+\}\),/);
   assert.match(screenSource, /conversationStatus: \{\s+renderState: headerConversationStatus,\s+spinnerSource: isDark \? darkSpinner : lightSpinner,\s+\}/);
@@ -419,7 +419,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /formatChatRuntimeDelegationToolCallActivityLabel,/);
   assert.match(screenSource, /getChatRuntimeDelegationCardMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeDelegationCardMobileState,/);
-  assert.match(screenSource, /getChatRuntimeDelegationStatusMobileColors,/);
+  assert.match(screenSource, /getChatRuntimeDelegationStatusMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeDelegationStatusMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileColors,/);
   assert.match(screenSource, /createChatRuntimeDelegationConversationPreviewRoleStyleSlots,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
@@ -439,15 +440,14 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileColors,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileColors,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
-  assert.match(screenSource, /const delegationStatusColors = m\.delegation/);
-  assert.match(screenSource, /const delegationStatusStyles = delegationStatusColors/);
-  assert.match(screenSource, /getChatSessionStatusMobileStyleState\(delegationStatusColors\)/);
+  assert.match(screenSource, /const delegationStatusRenderState = m\.delegation/);
+  assert.match(screenSource, /getChatRuntimeDelegationStatusMobileRenderState\(\{\s*status: m\.delegation\.status,\s*colors: theme\.colors,\s*\}\)/);
   assert.match(screenSource, /m\.variant === 'delegation' && m\.delegation && delegationPresentation/);
   assert.match(screenSource, /delegationCard: m\.variant === 'delegation' && m\.delegation && delegationPresentation \? \{[\s\S]*?surface: mobileRuntimeDelegationCard,/);
   assert.match(screenSource, /agentName: m\.delegation\.agentName/);
   assert.match(screenSource, /presentation: delegationPresentation/);
   assert.match(screenSource, /messageCountLabel: delegationMessageCountLabel/);
-  assert.match(screenSource, /statusStyles: delegationStatusStyles/);
+  assert.match(screenSource, /statusStyles: delegationStatusRenderState\?\.styles \?\? null/);
   assert.match(screenSource, /const \[expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
   assert.match(screenSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
   assert.match(screenSource, /setExpandedDelegationConversationPreviews\(\{\}\);/);

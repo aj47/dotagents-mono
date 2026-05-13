@@ -100,6 +100,7 @@ import {
   isChatRuntimeBranchableMessageRole,
   getChatComposerVoiceOverlayLabel,
   getChatRuntimeDelegationStatusMobileColors,
+  getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeAccessibilityHint,
   getChatRuntimeHandsFreeAccessibilityLabel,
   getChatRuntimeHandsFreeMobileActionState,
@@ -2476,13 +2477,26 @@ describe("session presentation semantics", () => {
       sourceLabel: "Internal session",
       messageCount: 4,
     })).toBe("Delegation. Worker. Running. Reading files. Internal session. 4m")
-    expect(getChatRuntimeDelegationStatusMobileColors("completed", {
+    const delegationStatusColorPalette = {
       info: "#2563eb",
       success: "#16a34a",
       warning: "#d97706",
       destructive: "#dc2626",
       mutedForeground: "#64748b",
-    }).textColor).toBe("#16a34a")
+    }
+    expect(getChatRuntimeDelegationStatusMobileColors(
+      "completed",
+      delegationStatusColorPalette,
+    ).textColor).toBe("#16a34a")
+    expect(getChatRuntimeDelegationStatusMobileRenderState({
+      status: "failed",
+      colors: delegationStatusColorPalette,
+    })).toEqual({
+      colors: getChatRuntimeDelegationStatusMobileColors("failed", delegationStatusColorPalette),
+      styles: getChatSessionStatusMobileStyleState(
+        getChatRuntimeDelegationStatusMobileColors("failed", delegationStatusColorPalette),
+      ),
+    })
     expect(getChatRuntimeDelegationConversationPreviewRoleMobileColors("assistant", {
       info: "#2563eb",
       foreground: "#0f172a",

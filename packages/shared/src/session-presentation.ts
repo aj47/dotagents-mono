@@ -1604,6 +1604,16 @@ export interface ChatSessionStatusMobileRenderState {
   }
 }
 
+export interface ChatRuntimeDelegationStatusMobileRenderStateInput {
+  status: string
+  colors: ChatSessionStatusMobileColorPalette
+}
+
+export interface ChatRuntimeDelegationStatusMobileRenderState {
+  colors: ChatSessionStatusMobileColors
+  styles: ChatSessionStatusMobileStyleState
+}
+
 export interface ChatRuntimeDelegationConversationPreviewRoleMobileStyleState {
   backgroundColor: string
   borderColor: string
@@ -4160,6 +4170,18 @@ export function getChatRuntimeDelegationStatusMobileColors(
     backgroundColor: hexToRgba(color, statusSurface.backgroundAlpha),
     borderColor: hexToRgba(color, statusSurface.borderAlpha),
     textColor: color,
+  }
+}
+
+export function getChatRuntimeDelegationStatusMobileRenderState({
+  status,
+  colors,
+}: ChatRuntimeDelegationStatusMobileRenderStateInput): ChatRuntimeDelegationStatusMobileRenderState {
+  const resolvedColors = getChatRuntimeDelegationStatusMobileColors(status, colors)
+
+  return {
+    colors: resolvedColors,
+    styles: getChatSessionStatusMobileStyleState(resolvedColors),
   }
 }
 
