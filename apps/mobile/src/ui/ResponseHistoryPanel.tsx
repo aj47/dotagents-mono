@@ -307,7 +307,7 @@ export function ResponseHistoryPanel({
         activeOpacity={responseHistorySurface.header.pressedOpacity}
         accessibilityRole={responseHistorySurface.header.accessibilityRole}
         accessibilityLabel={responseHistoryPanelState.toggleAccessibilityLabel}
-        accessibilityState={{ expanded: responseHistoryPanelState.isExpanded }}
+        accessibilityState={responseHistoryPanelState.toggleAccessibilityState}
       >
         <View style={styles.headerLeft}>
           <Ionicons

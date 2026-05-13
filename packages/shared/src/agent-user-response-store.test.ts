@@ -206,6 +206,7 @@ describe('agent-user-response-store', () => {
       countLabel: '2',
       isExpanded: false,
       toggleAccessibilityLabel: 'Show agent responses',
+      toggleAccessibilityState: { expanded: false },
       toggleIconName: 'chevron-down',
       headerBorderBottomWidth: 0,
       latestResponse: responses[1],
@@ -234,6 +235,7 @@ describe('agent-user-response-store', () => {
     expect(getAgentResponseHistoryPanelState(responses, { isCollapsed: false })).toMatchObject({
       isExpanded: true,
       toggleAccessibilityLabel: 'Hide agent responses',
+      toggleAccessibilityState: { expanded: true },
       toggleIconName: 'chevron-up',
       headerBorderBottomWidth: 1,
       collapsedPreview: {

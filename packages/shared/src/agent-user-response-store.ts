@@ -32,12 +32,17 @@ export interface AgentResponseHistoryPanelCollapsedPreviewState {
   text: string;
 }
 
+export interface AgentResponseHistoryPanelToggleAccessibilityState {
+  expanded: boolean;
+}
+
 export interface AgentResponseHistoryPanelState<T> {
   title: string;
   responseCount: number;
   countLabel: string;
   isExpanded: boolean;
   toggleAccessibilityLabel: string;
+  toggleAccessibilityState: AgentResponseHistoryPanelToggleAccessibilityState;
   toggleIconName:
     | typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.expandName
     | typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.collapseName;
@@ -415,6 +420,7 @@ export function getAgentResponseHistoryPanelState<T extends { id?: string | null
     countLabel: String(responses.length),
     isExpanded,
     toggleAccessibilityLabel: getAgentResponseHistoryToggleAccessibilityLabel(input.isCollapsed),
+    toggleAccessibilityState: { expanded: isExpanded },
     toggleIconName: input.isCollapsed
       ? AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.expandName
       : AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.collapseName,

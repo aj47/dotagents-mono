@@ -22,7 +22,8 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.match(source, /activeOpacity=\{responseHistorySurface\.item\.speakButtonPressedOpacity\}/);
   assert.match(source, /accessibilityRole=\{responseHistorySurface\.item\.speakButtonAccessibilityRole\}/);
   assert.match(source, /accessibilityLabel=\{responseHistoryPanelState\.toggleAccessibilityLabel\}/);
-  assert.match(source, /accessibilityState=\{\{ expanded: responseHistoryPanelState\.isExpanded \}\}/);
+  assert.match(source, /accessibilityState=\{responseHistoryPanelState\.toggleAccessibilityState\}/);
+  assert.doesNotMatch(source, /accessibilityState=\{\{ expanded: responseHistoryPanelState\.isExpanded \}\}/);
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION\.mobileIcon/);
   assert.doesNotMatch(source, /getAgentResponseHistoryToggleAccessibilityLabel\(isCollapsed\)/);
   assert.doesNotMatch(source, /getAgentResponseHistoryTitle\(\)/);
