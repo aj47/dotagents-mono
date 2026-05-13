@@ -26,7 +26,9 @@ import {
   getPromptLibraryEditorMobileCopyState,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorMobileSurfaceState,
+  getPromptLibraryEditorDismissActionState,
   getPromptLibraryEditorSaveActionAccessibilityLabel,
+  getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryEmptyPromptLabel,
@@ -97,6 +99,32 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryEditorSaveActionAccessibilityLabel(false)).toBe("Add Prompt button")
     expect(getPromptLibraryEditorSaveActionAccessibilityLabel(true)).toBe("Save Changes button")
     expect(getPromptLibraryEditorSaveActionAccessibilityLabel(true, true)).toBe("Saving... button")
+    expect(getPromptLibraryEditorDismissActionState()).toEqual({
+      isDisabled: false,
+      accessibilityState: undefined,
+    })
+    expect(getPromptLibraryEditorDismissActionState(true)).toEqual({
+      isDisabled: true,
+      accessibilityState: { disabled: true },
+    })
+    expect(getPromptLibraryEditorSaveActionState({ name: "", content: "Ship it" }, false)).toEqual({
+      isDisabled: true,
+      label: "Add Prompt",
+      accessibilityLabel: "Add Prompt button",
+      accessibilityState: { disabled: true },
+    })
+    expect(getPromptLibraryEditorSaveActionState({ name: "Review", content: "Ship it" }, true)).toEqual({
+      isDisabled: false,
+      label: "Save Changes",
+      accessibilityLabel: "Save Changes button",
+      accessibilityState: undefined,
+    })
+    expect(getPromptLibraryEditorSaveActionState({ name: "Review", content: "Ship it" }, true, true)).toEqual({
+      isDisabled: true,
+      label: "Saving...",
+      accessibilityLabel: "Saving... button",
+      accessibilityState: { disabled: true },
+    })
     expect(isPromptLibraryEditorSaveDisabled({ name: "", content: "Ship it" })).toBe(true)
     expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "   " })).toBe(true)
     expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "Ship it" })).toBe(false)

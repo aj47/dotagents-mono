@@ -34,12 +34,11 @@ import type {
 import type { ChatImageAttachmentMobileRenderState } from '@dotagents/shared/conversation-media-assets';
 import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
 import {
-  getPromptLibraryEditorSaveActionAccessibilityLabel,
-  getPromptLibraryEditorSaveActionLabel,
+  getPromptLibraryEditorDismissActionState,
+  getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
-  isPromptLibraryEditorSaveDisabled,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibraryMobileShortcutRenderState,
@@ -2704,8 +2703,10 @@ export function ChatConversationHomePromptEditorModal({
   renderState,
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
-  const isSaveDisabled = isPromptLibraryEditorSaveDisabled(
+  const editorDismissActionState = getPromptLibraryEditorDismissActionState(isSaving);
+  const editorSaveActionState = getPromptLibraryEditorSaveActionState(
     { name: nameValue, content: contentValue },
+    isEditing,
     isSaving,
   );
   const {
@@ -2716,11 +2717,6 @@ export function ChatConversationHomePromptEditorModal({
     surface,
   } = renderState;
   const title = getPromptLibraryEditorTitle(isEditing);
-  const saveLabel = getPromptLibraryEditorSaveActionLabel(isEditing, isSaving);
-  const saveAccessibilityLabel = getPromptLibraryEditorSaveActionAccessibilityLabel(
-    isEditing,
-    isSaving,
-  );
 
   return (
     <Modal
@@ -2740,11 +2736,11 @@ export function ChatConversationHomePromptEditorModal({
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={onClose}
-                disabled={isSaving}
+                disabled={editorDismissActionState.isDisabled}
                 activeOpacity={surface.closeButton.pressedOpacity}
                 accessibilityRole={surface.closeButton.accessibilityRole}
                 accessibilityLabel={copy.closeAccessibilityLabel}
-                accessibilityState={isSaving ? { disabled: true } : undefined}
+                accessibilityState={editorDismissActionState.accessibilityState}
               >
                 <Ionicons
                   name={editorChrome.closeIcon.name}
@@ -2780,27 +2776,27 @@ export function ChatConversationHomePromptEditorModal({
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={onClose}
-                disabled={isSaving}
+                disabled={editorDismissActionState.isDisabled}
                 activeOpacity={surface.cancelButton.pressedOpacity}
                 accessibilityRole={surface.cancelButton.accessibilityRole}
                 accessibilityLabel={copy.cancelAccessibilityLabel}
-                accessibilityState={isSaving ? { disabled: true } : undefined}
+                accessibilityState={editorDismissActionState.accessibilityState}
               >
                 <Text style={styles.cancelButtonText}>{copy.cancelLabel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.saveButton,
-                  isSaveDisabled && styles.saveButtonDisabled,
+                  editorSaveActionState.isDisabled && styles.saveButtonDisabled,
                 ]}
                 onPress={onSave}
-                disabled={isSaveDisabled}
+                disabled={editorSaveActionState.isDisabled}
                 activeOpacity={surface.saveButton.pressedOpacity}
                 accessibilityRole={surface.saveButton.accessibilityRole}
-                accessibilityLabel={saveAccessibilityLabel}
-                accessibilityState={isSaveDisabled ? { disabled: true } : undefined}
+                accessibilityLabel={editorSaveActionState.accessibilityLabel}
+                accessibilityState={editorSaveActionState.accessibilityState}
               >
-                <Text style={styles.saveButtonText}>{saveLabel}</Text>
+                <Text style={styles.saveButtonText}>{editorSaveActionState.label}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -36,7 +36,7 @@ import {
   getPromptLibraryDeletePromptAccessibilityLabel,
   getPromptLibraryDesktopSurfaceState,
   getPromptLibraryEditPromptAccessibilityLabel,
-  getPromptLibraryEditorSaveActionLabel,
+  getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryEmptyPromptLabel,
   getPromptLibraryEmptySkillLabel,
@@ -46,7 +46,6 @@ import {
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
   getPromptLibraryTaskDescription,
-  isPromptLibraryEditorSaveDisabled,
   updatePredefinedPromptList,
 } from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
@@ -111,7 +110,10 @@ export function PredefinedPromptsMenu({
     task.name,
     task.prompt,
   ])
-  const isSaveDisabled = isPromptLibraryEditorSaveDisabled({ name: promptName, content: promptContent })
+  const editorSaveActionState = getPromptLibraryEditorSaveActionState(
+    { name: promptName, content: promptContent },
+    Boolean(editingPrompt),
+  )
 
   const handleSelectPrompt = (prompt: PredefinedPrompt) => {
     onSelectPrompt(getPromptLibraryPromptContent(prompt))
@@ -161,7 +163,7 @@ export function PredefinedPromptsMenu({
   }
 
   const handleSave = () => {
-    if (isSaveDisabled) return
+    if (editorSaveActionState.isDisabled) return
     if (!configQuery.data) return
 
     const now = Date.now()
@@ -356,8 +358,12 @@ export function PredefinedPromptsMenu({
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               {promptCopy.actions.cancel}
             </Button>
-            <Button onClick={handleSave} disabled={isSaveDisabled}>
-              {getPromptLibraryEditorSaveActionLabel(Boolean(editingPrompt))}
+            <Button
+              onClick={handleSave}
+              disabled={editorSaveActionState.isDisabled}
+              aria-label={editorSaveActionState.accessibilityLabel}
+            >
+              {editorSaveActionState.label}
             </Button>
           </DialogFooter>
         </DialogContent>

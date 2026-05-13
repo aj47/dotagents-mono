@@ -492,6 +492,20 @@ export interface PromptLibraryEditorMobileCopyState {
   cancelAccessibilityLabel: string
 }
 
+export interface PromptLibraryEditorActionAccessibilityState {
+  disabled: true
+}
+
+export interface PromptLibraryEditorDismissActionState {
+  isDisabled: boolean
+  accessibilityState?: PromptLibraryEditorActionAccessibilityState
+}
+
+export interface PromptLibraryEditorSaveActionState extends PromptLibraryEditorDismissActionState {
+  label: string
+  accessibilityLabel: string
+}
+
 export interface PromptLibraryMobileShortcutChromeState {
   addIcon: PromptLibraryMobileAddShortcutIconState
   addIconColors: PromptLibraryMobileIconColors
@@ -986,6 +1000,29 @@ export function getPromptLibraryEditorSaveActionAccessibilityLabel(
   return createButtonAccessibilityLabel(
     getPromptLibraryEditorSaveActionLabel(isEditing, isSaving),
   )
+}
+
+export function getPromptLibraryEditorDismissActionState(
+  isSaving = false,
+): PromptLibraryEditorDismissActionState {
+  return {
+    isDisabled: isSaving,
+    accessibilityState: isSaving ? { disabled: true } : undefined,
+  }
+}
+
+export function getPromptLibraryEditorSaveActionState(
+  draft: PredefinedPromptDraft,
+  isEditing: boolean,
+  isSaving = false,
+): PromptLibraryEditorSaveActionState {
+  const isDisabled = isPromptLibraryEditorSaveDisabled(draft, isSaving)
+  return {
+    isDisabled,
+    label: getPromptLibraryEditorSaveActionLabel(isEditing, isSaving),
+    accessibilityLabel: getPromptLibraryEditorSaveActionAccessibilityLabel(isEditing, isSaving),
+    accessibilityState: isDisabled ? { disabled: true } : undefined,
+  }
 }
 
 export function getPromptLibrarySaveSuccessMessage(isEditing: boolean): string {
