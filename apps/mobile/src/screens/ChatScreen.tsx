@@ -26,7 +26,6 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   ChatMessageRuntimeThread,
-  createChatConversationHomePromptEditorModalChromeProps,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -501,16 +500,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const mobileHeaderBackRenderState = useMemo(
     () => getChatRuntimeBackMobileRenderState({ colors: theme.colors }),
     [theme.colors],
-  );
-  const promptEditorModalChrome = useMemo(
-    () => createChatConversationHomePromptEditorModalChromeProps({
-      renderState: promptLibraryEditorRenderState,
-      styles: promptEditorModalStyles,
-    }),
-    [
-      promptLibraryEditorRenderState,
-      promptEditorModalStyles,
-    ],
   );
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
@@ -3683,6 +3672,7 @@ export default function ChatScreen({ route, navigation }: any) {
           },
           promptEditor: {
             visible: addPromptModalVisible,
+            renderState: promptLibraryEditorRenderState,
             title: getPromptLibraryEditorTitle(Boolean(editingPrompt)),
             nameLabel: promptLibraryEditorRenderState.copy.nameLabel,
             nameValue: newPromptName,
@@ -3697,8 +3687,8 @@ export default function ChatScreen({ route, navigation }: any) {
             isSaving: isSavingPrompt,
             onClose: closePromptModal,
             onSave: handleSavePrompt,
+            styles: promptEditorModalStyles,
           },
-          promptEditorChrome: promptEditorModalChrome,
       }}
       viewport={{
         scrollRef: scrollViewRef,

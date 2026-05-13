@@ -351,54 +351,13 @@ type ChatConversationHomePromptEditorModalProps = {
   isSaving: boolean;
   onClose: () => void;
   onSave: () => void;
-  modalTransparent?: ComponentProps<typeof Modal>['transparent'];
-  modalAnimationType?: ComponentProps<typeof Modal>['animationType'];
-  keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  editorChrome: PromptLibraryEditorMobileRenderState['chrome'];
-  closeButtonPressedOpacity: number;
-  closeButtonAccessibilityRole: AccessibilityRole;
-  closeButtonAccessibilityLabel: string;
-  inputPlaceholderTextColor: string;
-  multilineInputMultiline: boolean;
-  multilineInputTextAlignVertical?: ComponentProps<typeof TextInput>['textAlignVertical'];
-  cancelButtonPressedOpacity: number;
-  cancelButtonAccessibilityRole: AccessibilityRole;
-  saveButtonPressedOpacity: number;
-  saveButtonAccessibilityRole: AccessibilityRole;
-  styles: ChatConversationHomePromptEditorModalStyles;
-};
-
-type ChatConversationHomePromptEditorModalChromeProps = Pick<
-  ChatConversationHomePromptEditorModalProps,
-  | 'modalTransparent'
-  | 'modalAnimationType'
-  | 'keyboardAvoidingBehavior'
-  | 'editorChrome'
-  | 'closeButtonPressedOpacity'
-  | 'closeButtonAccessibilityRole'
-  | 'closeButtonAccessibilityLabel'
-  | 'inputPlaceholderTextColor'
-  | 'multilineInputMultiline'
-  | 'multilineInputTextAlignVertical'
-  | 'cancelButtonPressedOpacity'
-  | 'cancelButtonAccessibilityRole'
-  | 'saveButtonPressedOpacity'
-  | 'saveButtonAccessibilityRole'
-  | 'styles'
->;
-
-type ChatConversationHomePromptEditorModalChromeInput = {
   renderState: PromptLibraryEditorMobileRenderState;
   styles: ChatConversationHomePromptEditorModalStyles;
 };
 
 type ChatMessageRuntimeOverlaysProps = {
   agentSelector: ComponentProps<typeof AgentSelectorSheet>;
-  promptEditor: Omit<
-    ChatConversationHomePromptEditorModalProps,
-    keyof ChatConversationHomePromptEditorModalChromeProps
-  >;
-  promptEditorChrome: ChatConversationHomePromptEditorModalChromeProps;
+  promptEditor: ChatConversationHomePromptEditorModalProps;
 };
 
 type ChatMessageTurnDurationBadgeRenderState = {
@@ -2273,37 +2232,6 @@ export function createChatConversationHomePromptEditorModalStyleSlots(
   } as ChatConversationHomePromptEditorModalStyles;
 }
 
-export function createChatConversationHomePromptEditorModalChromeProps({
-  renderState,
-  styles,
-}: ChatConversationHomePromptEditorModalChromeInput): ChatConversationHomePromptEditorModalChromeProps {
-  const {
-    chrome: editorChrome,
-    colors,
-    copy,
-    keyboardAvoidingBehavior,
-    surface,
-  } = renderState;
-
-  return {
-    modalTransparent: surface.modal.transparent,
-    modalAnimationType: surface.modal.animationType,
-    keyboardAvoidingBehavior,
-    editorChrome,
-    closeButtonPressedOpacity: surface.closeButton.pressedOpacity,
-    closeButtonAccessibilityRole: surface.closeButton.accessibilityRole,
-    closeButtonAccessibilityLabel: copy.closeAccessibilityLabel,
-    inputPlaceholderTextColor: colors.input.placeholderColor,
-    multilineInputMultiline: surface.multilineInput.multiline,
-    multilineInputTextAlignVertical: surface.multilineInput.textAlignVertical,
-    cancelButtonPressedOpacity: surface.cancelButton.pressedOpacity,
-    cancelButtonAccessibilityRole: surface.cancelButton.accessibilityRole,
-    saveButtonPressedOpacity: surface.saveButton.pressedOpacity,
-    saveButtonAccessibilityRole: surface.saveButton.accessibilityRole,
-    styles,
-  };
-}
-
 export function createChatMessageThreadBodyStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatMessageThreadBodyStyleSlots {
@@ -2807,29 +2735,23 @@ export function ChatConversationHomePromptEditorModal({
   isSaving,
   onClose,
   onSave,
-  modalTransparent,
-  modalAnimationType,
-  keyboardAvoidingBehavior,
-  editorChrome,
-  closeButtonPressedOpacity,
-  closeButtonAccessibilityRole,
-  closeButtonAccessibilityLabel,
-  inputPlaceholderTextColor,
-  multilineInputMultiline,
-  multilineInputTextAlignVertical,
-  cancelButtonPressedOpacity,
-  cancelButtonAccessibilityRole,
-  saveButtonPressedOpacity,
-  saveButtonAccessibilityRole,
+  renderState,
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
   const isSaveDisabled = !nameValue.trim() || !contentValue.trim() || isSaving;
+  const {
+    chrome: editorChrome,
+    colors,
+    copy,
+    keyboardAvoidingBehavior,
+    surface,
+  } = renderState;
 
   return (
     <Modal
       visible={visible}
-      transparent={modalTransparent}
-      animationType={modalAnimationType}
+      transparent={surface.modal.transparent}
+      animationType={surface.modal.animationType}
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -2844,9 +2766,9 @@ export function ChatConversationHomePromptEditorModal({
                 style={styles.closeButton}
                 onPress={onClose}
                 disabled={isSaving}
-                activeOpacity={closeButtonPressedOpacity}
-                accessibilityRole={closeButtonAccessibilityRole}
-                accessibilityLabel={closeButtonAccessibilityLabel}
+                activeOpacity={surface.closeButton.pressedOpacity}
+                accessibilityRole={surface.closeButton.accessibilityRole}
+                accessibilityLabel={copy.closeAccessibilityLabel}
               >
                 <Ionicons
                   name={editorChrome.closeIcon.name}
@@ -2862,7 +2784,7 @@ export function ChatConversationHomePromptEditorModal({
               value={nameValue}
               onChangeText={onNameChange}
               placeholder={namePlaceholder}
-              placeholderTextColor={inputPlaceholderTextColor}
+              placeholderTextColor={colors.input.placeholderColor}
             />
 
             <Text style={styles.label}>{contentLabel}</Text>
@@ -2871,9 +2793,9 @@ export function ChatConversationHomePromptEditorModal({
               value={contentValue}
               onChangeText={onContentChange}
               placeholder={contentPlaceholder}
-              placeholderTextColor={inputPlaceholderTextColor}
-              multiline={multilineInputMultiline}
-              textAlignVertical={multilineInputTextAlignVertical}
+              placeholderTextColor={colors.input.placeholderColor}
+              multiline={surface.multilineInput.multiline}
+              textAlignVertical={surface.multilineInput.textAlignVertical}
             />
 
             <View style={styles.actions}>
@@ -2881,8 +2803,8 @@ export function ChatConversationHomePromptEditorModal({
                 style={styles.cancelButton}
                 onPress={onClose}
                 disabled={isSaving}
-                activeOpacity={cancelButtonPressedOpacity}
-                accessibilityRole={cancelButtonAccessibilityRole}
+                activeOpacity={surface.cancelButton.pressedOpacity}
+                accessibilityRole={surface.cancelButton.accessibilityRole}
               >
                 <Text style={styles.cancelButtonText}>{cancelLabel}</Text>
               </TouchableOpacity>
@@ -2893,8 +2815,8 @@ export function ChatConversationHomePromptEditorModal({
                 ]}
                 onPress={onSave}
                 disabled={isSaveDisabled}
-                activeOpacity={saveButtonPressedOpacity}
-                accessibilityRole={saveButtonAccessibilityRole}
+                activeOpacity={surface.saveButton.pressedOpacity}
+                accessibilityRole={surface.saveButton.accessibilityRole}
               >
                 <Text style={styles.saveButtonText}>{saveLabel}</Text>
               </TouchableOpacity>
@@ -4303,16 +4225,12 @@ export function ChatMessageConversationOverlays({
 export function ChatMessageRuntimeOverlays({
   agentSelector,
   promptEditor,
-  promptEditorChrome,
 }: ChatMessageRuntimeOverlaysProps) {
   return (
     <ChatMessageConversationOverlays
       agentSelector={<AgentSelectorSheet {...agentSelector} />}
       promptEditor={(
-        <ChatConversationHomePromptEditorModal
-          {...promptEditor}
-          {...promptEditorChrome}
-        />
+        <ChatConversationHomePromptEditorModal {...promptEditor} />
       )}
     />
   );
