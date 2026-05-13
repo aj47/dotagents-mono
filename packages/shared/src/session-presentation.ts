@@ -115,6 +115,8 @@ export interface ChatRuntimeViewportMobileRenderStateInput {
 
 export interface ChatRuntimeViewportMobileRenderState {
   surface: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport
+  loadingState: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState
+  inlineActivity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity
   colors: ChatRuntimeViewportMobileColors
 }
 
@@ -5406,6 +5408,8 @@ export function getChatRuntimeViewportMobileRenderState({
 }: ChatRuntimeViewportMobileRenderStateInput): ChatRuntimeViewportMobileRenderState {
   return {
     surface: getChatRuntimeViewportMobileState(),
+    loadingState: getChatRuntimeLoadingStateMobileState(),
+    inlineActivity: getChatRuntimeInlineActivityMobileState(),
     colors: getChatRuntimeViewportMobileColors(colors),
   }
 }

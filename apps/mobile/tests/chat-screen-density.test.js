@@ -841,18 +841,19 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
 });
 
 test('uses shared runtime presentation for the mobile chat viewport and loading state', () => {
-  assert.match(screenSource, /getChatRuntimeViewportMobileState,/);
   assert.match(screenSource, /getChatRuntimeViewportMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeViewportMobileKeyboardAvoidingBehavior,/);
-  assert.match(screenSource, /getChatRuntimeLoadingStateMobileState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeLoadingStateMobileState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileColors,/);
-  assert.match(screenSource, /const mobileRuntimeViewport = getChatRuntimeViewportMobileState\(\);/);
   assert.match(screenSource, /const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior\(Platform\.OS\);/);
-  assert.match(screenSource, /const mobileRuntimeLoadingState = getChatRuntimeLoadingStateMobileState\(\);/);
+  assert.match(screenSource, /const mobileRuntimeViewportRenderState = useMemo\(\s+\(\) => getChatRuntimeViewportMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const mobileRuntimeViewport = mobileRuntimeViewportRenderState\.surface;/);
+  assert.match(screenSource, /const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState\.loadingState;/);
   assert.match(screenSource, /const viewportStyleState = getChatRuntimeViewportMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const viewportSurface = viewportStyleState\.surface;/);
   assert.match(screenSource, /const viewportSurfaceColors = viewportStyleState\.colors;/);
-  assert.match(screenSource, /const loadingStateSurface = mobileRuntimeLoadingState;/);
+  assert.match(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
   assert.match(screenSource, /<ChatMessageRuntimeSurface\s+frame=\{\{\s+keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,\s+keyboardVerticalOffset: headerHeight,/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
@@ -1869,7 +1870,7 @@ test('keeps Codex thinking blocks display-only on mobile', () => {
 test('uses shared runtime activity copy for mobile loading and thinking states', () => {
   assert.match(screenSource, /formatChatRuntimeActivityContent,/);
   assert.match(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
-  assert.match(screenSource, /getChatRuntimeInlineActivityMobileState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);
   assert.match(screenSource, /getChatRuntimeMobileActivityAccessibilityState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryBannerMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
@@ -1897,8 +1898,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /current \+ CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement/);
   assert.match(screenSource, /scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW\.scrollEventThrottleMs/);
   assert.match(chatMessageChromeSource, /scrollEventThrottle=\{scrollEventThrottle\}/);
-  assert.match(screenSource, /const mobileRuntimeInlineActivity = getChatRuntimeInlineActivityMobileState\(\);/);
-  assert.match(screenSource, /const inlineActivitySurface = mobileRuntimeInlineActivity;/);
+  assert.match(screenSource, /const mobileRuntimeInlineActivity = mobileRuntimeViewportRenderState\.inlineActivity;/);
+  assert.match(screenSource, /const inlineActivitySurface = viewportStyleState\.inlineActivity;/);
   assert.match(screenSource, /const messageHistoryBannerStyleState = getChatRuntimeMessageHistoryBannerMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const messageHistoryBannerSurface = messageHistoryBannerStyleState\.surface;/);
   assert.match(screenSource, /const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState\.colors;/);

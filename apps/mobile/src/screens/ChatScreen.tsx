@@ -122,11 +122,9 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
-  getChatRuntimeInlineActivityMobileState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeLoadingStateMobileState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileActivityAccessibilityState,
@@ -142,7 +140,6 @@ import {
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeViewportMobileRenderState,
-  getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
   getSessionStatusMobileRenderState,
@@ -287,10 +284,7 @@ const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState();
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
 const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
-const mobileRuntimeViewport = getChatRuntimeViewportMobileState();
 const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(Platform.OS);
-const mobileRuntimeLoadingState = getChatRuntimeLoadingStateMobileState();
-const mobileRuntimeInlineActivity = getChatRuntimeInlineActivityMobileState();
 const mobileRuntimeActivityAccessibility = getChatRuntimeMobileActivityAccessibilityState();
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
@@ -342,6 +336,15 @@ export default function ChatScreen({ route, navigation }: any) {
   const isFocused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const mobileRuntimeViewportRenderState = useMemo(
+    () => getChatRuntimeViewportMobileRenderState({
+      colors: theme.colors,
+    }),
+    [theme.colors],
+  );
+  const mobileRuntimeViewport = mobileRuntimeViewportRenderState.surface;
+  const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState.loadingState;
+  const mobileRuntimeInlineActivity = mobileRuntimeViewportRenderState.inlineActivity;
   const messageThreadBodyStyles = useMemo(
     () => createChatMessageThreadBodyStyleSlots(styles),
     [styles],
@@ -4205,8 +4208,8 @@ function createStyles(theme: Theme, screenHeight: number) {
     colors: theme.colors,
   });
   const viewportSurface = viewportStyleState.surface;
-  const loadingStateSurface = mobileRuntimeLoadingState;
-  const inlineActivitySurface = mobileRuntimeInlineActivity;
+  const loadingStateSurface = viewportStyleState.loadingState;
+  const inlineActivitySurface = viewportStyleState.inlineActivity;
   const streamingContentStyleState = getChatRuntimeStreamingContentMobileRenderState({
     colors: theme.colors,
   });

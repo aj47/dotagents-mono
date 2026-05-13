@@ -1320,6 +1320,8 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       surface: getChatRuntimeViewportMobileState(),
+      loadingState: getChatRuntimeLoadingStateMobileState(),
+      inlineActivity: getChatRuntimeInlineActivityMobileState(),
       colors: getChatRuntimeViewportMobileColors({
         background: "#ffffff",
       }),
