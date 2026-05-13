@@ -81,6 +81,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /name=\{queuePanelIcons\.clearName\}/);
   assert.match(source, /name=\{queuePanelState\.toggleIconName\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelState\.listToggleLabel\}/);
+  assert.match(source, /accessibilityState=\{queuePanelState\.listToggleAccessibilityState\}/);
   assert.match(source, /queuePanelCopy\.pausedNotice/);
   assert.match(source, /panelSurface\.pausedNoticeFontSize/);
   assert.doesNotMatch(source, /getMessageQueuePanelState\(messages/);
@@ -93,6 +94,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.doesNotMatch(source, /name="trash-outline"/);
   assert.doesNotMatch(source, /name=\{isExpanded \? 'chevron-up' : 'chevron-down'\}/);
   assert.doesNotMatch(source, /name=\{isListCollapsed \? 'chevron-down' : 'chevron-up'\}/);
+  assert.doesNotMatch(source, /accessibilityState=\{\{ expanded: queuePanelState\.isExpanded \}\}/);
   assert.doesNotMatch(source, /MESSAGE_QUEUE_PANEL_PRESENTATION\.mobileIcon/);
   assert.doesNotMatch(source, /MESSAGE_QUEUE_PANEL_PRESENTATION/);
   assert.doesNotMatch(source, /accessibilityRole="button"/);
@@ -106,6 +108,8 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /queuePanelState\.hasProcessingMessage/);
   assert.match(source, /queuePanelState\.canClear/);
   assert.match(source, /queuePanelState\.canPause/);
+  assert.match(source, /queuePanelState\.clearActionAccessibilityState/);
+  assert.match(source, /queuePanelState\.pauseActionAccessibilityState/);
   assert.match(source, /queuePanelState\.shouldShowCompactProcessNext/);
   assert.match(source, /queuePanelState\.shouldShowProcessNext/);
   assert.match(source, /queuePanelState\.shouldRenderClear/);

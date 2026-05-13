@@ -690,6 +690,14 @@ export interface MessageQueuePanelRenderItem<T extends { id: string }> {
   shouldRenderSeparator: boolean;
 }
 
+export interface MessageQueuePanelActionAccessibilityState {
+  disabled: boolean;
+}
+
+export interface MessageQueuePanelListToggleAccessibilityState {
+  expanded: boolean;
+}
+
 export interface MessageQueuePanelStateInput {
   isPaused?: boolean;
   isListCollapsed?: boolean;
@@ -706,10 +714,13 @@ export interface MessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | 'st
   compactLabel: string;
   title: string;
   listToggleLabel: string;
+  listToggleAccessibilityState: MessageQueuePanelListToggleAccessibilityState;
   toggleIconName: MessageQueuePanelToggleIconName;
   hasProcessingMessage: boolean;
   canClear: boolean;
   canPause: boolean;
+  clearActionAccessibilityState: MessageQueuePanelActionAccessibilityState;
+  pauseActionAccessibilityState: MessageQueuePanelActionAccessibilityState;
   canProcessNext: boolean;
   shouldShowCompactProcessNext: boolean;
   shouldShowProcessNext: boolean;
@@ -754,6 +765,8 @@ export function getMessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | '
   const statusKey: MessageQueuePanelStatusKey = isPaused ? 'paused' : 'queued';
   const hasProcessingMessage = hasProcessingQueuedMessage(messages);
   const isExpanded = !isListCollapsed;
+  const canClear = !hasProcessingMessage;
+  const canPause = !hasProcessingMessage;
 
   return {
     messageCount: messages.length,
@@ -765,12 +778,15 @@ export function getMessageQueuePanelState<T extends Pick<QueuedMessage, 'id' | '
     compactLabel: formatMessageQueueCompactLabel(messages.length, isPaused),
     title: formatMessageQueuePanelTitle(messages.length, isPaused),
     listToggleLabel: getMessageQueueListToggleLabel(isListCollapsed),
+    listToggleAccessibilityState: { expanded: isExpanded },
     toggleIconName: isListCollapsed
       ? MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandQueueName
       : MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseQueueName,
     hasProcessingMessage,
-    canClear: !hasProcessingMessage,
-    canPause: !hasProcessingMessage,
+    canClear,
+    canPause,
+    clearActionAccessibilityState: { disabled: !canClear },
+    pauseActionAccessibilityState: { disabled: !canPause },
     canProcessNext,
     shouldShowCompactProcessNext: !isPaused && canProcessNext,
     shouldShowProcessNext: !isPaused && canProcessNext && isExpanded,

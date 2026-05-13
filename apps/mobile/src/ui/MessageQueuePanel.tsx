@@ -545,6 +545,7 @@ export function MessageQueuePanel({
             activeOpacity={panelSurface.actionPressedOpacity}
             accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelCopy.actions.pauseTitle}
+            accessibilityState={queuePanelState.pauseActionAccessibilityState}
           >
             <Ionicons
               name={queuePanelIcons.pauseName}
@@ -575,6 +576,7 @@ export function MessageQueuePanel({
           activeOpacity={panelSurface.actionPressedOpacity}
           accessibilityRole={panelSurface.actionAccessibilityRole}
           accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
+          accessibilityState={queuePanelState.clearActionAccessibilityState}
         >
           <Ionicons
             name={queuePanelIcons.clearName}
@@ -615,6 +617,7 @@ export function MessageQueuePanel({
               activeOpacity={panelSurface.actionPressedOpacity}
               accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.pauseTitle}
+              accessibilityState={queuePanelState.pauseActionAccessibilityState}
             >
               <Text style={[styles.queueControlText, !queuePanelState.canPause && styles.queueControlTextDisabled]}>
                 {queuePanelCopy.actions.pauseLabel}
@@ -640,6 +643,7 @@ export function MessageQueuePanel({
               activeOpacity={panelSurface.actionPressedOpacity}
               accessibilityRole={panelSurface.actionAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
+              accessibilityState={queuePanelState.clearActionAccessibilityState}
             >
               <Text style={styles.clearButtonText}>{queuePanelCopy.actions.clearAllLabel}</Text>
             </TouchableOpacity>
@@ -650,7 +654,7 @@ export function MessageQueuePanel({
             activeOpacity={panelSurface.actionPressedOpacity}
             accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelState.listToggleLabel}
-            accessibilityState={{ expanded: queuePanelState.isExpanded }}
+            accessibilityState={queuePanelState.listToggleAccessibilityState}
           >
             <Ionicons
               name={queuePanelState.toggleIconName}
