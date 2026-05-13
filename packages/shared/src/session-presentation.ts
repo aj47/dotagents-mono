@@ -109,6 +109,15 @@ export interface ChatRuntimeViewportMobileColors {
   backgroundColor: string
 }
 
+export interface ChatRuntimeViewportMobileRenderStateInput {
+  colors: ChatRuntimeViewportMobileColorPalette
+}
+
+export interface ChatRuntimeViewportMobileRenderState {
+  surface: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport
+  colors: ChatRuntimeViewportMobileColors
+}
+
 export interface ChatRuntimeTurnDurationHeaderMobileBadgeColors {
   chip: {
     backgroundColor: string
@@ -5302,6 +5311,15 @@ export function getChatRuntimeViewportMobileColors(
 
   return {
     backgroundColor: colors[viewport.backgroundColorToken],
+  }
+}
+
+export function getChatRuntimeViewportMobileRenderState({
+  colors,
+}: ChatRuntimeViewportMobileRenderStateInput): ChatRuntimeViewportMobileRenderState {
+  return {
+    surface: getChatRuntimeViewportMobileState(),
+    colors: getChatRuntimeViewportMobileColors(colors),
   }
 }
 

@@ -144,8 +144,8 @@ import {
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
-  getChatRuntimeViewportMobileColors,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
+  getChatRuntimeViewportMobileRenderState,
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
   getChatSessionStatusMobileStyleState,
@@ -4222,7 +4222,10 @@ function createStyles(theme: Theme, screenHeight: number) {
   const headerKillSwitchRenderState = getChatRuntimeKillSwitchMobileRenderState({
     colors: theme.colors,
   });
-  const viewportSurface = mobileRuntimeViewport;
+  const viewportStyleState = getChatRuntimeViewportMobileRenderState({
+    colors: theme.colors,
+  });
+  const viewportSurface = viewportStyleState.surface;
   const loadingStateSurface = mobileRuntimeLoadingState;
   const inlineActivitySurface = mobileRuntimeInlineActivity;
   const streamingContentStyleState = getChatRuntimeStreamingContentMobileRenderState({
@@ -4284,7 +4287,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const sessionStatusSurface = mobileSessionStatusSurface;
   const compactToolExecution = mobileToolExecutionCompactSurface;
   const detailedToolExecution = mobileToolExecutionDetailSurface;
-  const viewportSurfaceColors = getChatRuntimeViewportMobileColors(theme.colors);
+  const viewportSurfaceColors = viewportStyleState.colors;
   const toolActivityGroupSurface = mobileToolActivityGroupSurface;
   const toolActivityGroupSurfaceColors = getToolActivityGroupMobileSurfaceColors(theme.colors);
   const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;

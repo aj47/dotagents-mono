@@ -168,6 +168,7 @@ import {
   getChatRuntimeTurnDurationTitle,
   getChatRuntimeViewportMobileColors,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
+  getChatRuntimeViewportMobileRenderState,
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
   getChatSessionStatusMobileStyleState,
@@ -1289,6 +1290,16 @@ describe("session presentation semantics", () => {
       background: "#ffffff",
     })).toEqual({
       backgroundColor: "#ffffff",
+    })
+    expect(getChatRuntimeViewportMobileRenderState({
+      colors: {
+        background: "#ffffff",
+      },
+    })).toEqual({
+      surface: getChatRuntimeViewportMobileState(),
+      colors: getChatRuntimeViewportMobileColors({
+        background: "#ffffff",
+      }),
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerSize).toBe(32)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerResizeMode).toBe("contain")
