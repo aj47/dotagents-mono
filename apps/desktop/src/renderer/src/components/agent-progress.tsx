@@ -93,6 +93,7 @@ import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
   applyChatDisplayGroupedExpansionInheritance,
+  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionCopyState,
   getChatMessageActionDesktopSurfaceState,
   getChatMessageActionLayoutState,
@@ -1253,8 +1254,15 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     shouldCollapse,
   })
   const shouldToggleFromContentClick = messageContentRenderState.isCollapsed
+  const messageActionAvailabilityRenderState = getChatMessageActionAvailabilityRenderState({
+    turnDuration: messageTurnDurationBadgeState.canShow,
+    speech: isTTSPlaying || isGeneratingAudio,
+    branch: messageBranchAction.canBranch,
+    copy: messageCopyAction.canCopy,
+    expansion: messageExpansionAction.canToggle,
+  })
   const messageActionComponents = {
-    turnDuration: messageTurnDurationBadgeState.canShow && (
+    turnDuration: messageActionAvailabilityRenderState.turnDuration.canRender && (
       <span
         className={cn(
           desktopChatMessageActionSurface.turnDurationBadgeClassName,
@@ -1266,7 +1274,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         {messageTurnDurationBadgeState.label}
       </span>
     ),
-    speech: (isTTSPlaying || isGeneratingAudio) && (
+    speech: messageActionAvailabilityRenderState.speech.canRender && (
       <button
         onClick={(e) => {
           e.stopPropagation()
@@ -1294,7 +1302,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         )}
       </button>
     ),
-    branch: messageBranchAction.canBranch && (
+    branch: messageActionAvailabilityRenderState.branch.canRender && (
       <button
         onClick={handleBranchFromMessage}
         className={desktopChatMessageActionSurface.buttonClassName}
@@ -1304,7 +1312,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         <GitBranch className={desktopChatMessageActionSurface.branchIconClassName} />
       </button>
     ),
-    copy: messageCopyAction.canCopy && (
+    copy: messageActionAvailabilityRenderState.copy.canRender && (
       <button
         onClick={handleCopyResponse}
         className={desktopChatMessageActionSurface.buttonClassName}
@@ -1318,7 +1326,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         )}
       </button>
     ),
-    expansion: messageExpansionAction.canToggle && (
+    expansion: messageActionAvailabilityRenderState.expansion.canRender && (
       <button
         onClick={handleChevronClick}
         className={desktopChatMessageActionSurface.buttonClassName}
@@ -1336,11 +1344,11 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   } satisfies Record<ChatMessageActionSlot, React.ReactNode>
   const messageActionLayout = getChatMessageActionLayoutState({
     availability: {
-      turnDuration: messageTurnDurationBadgeState.canShow,
-      speech: isTTSPlaying || isGeneratingAudio,
-      branch: messageBranchAction.canBranch,
-      copy: messageCopyAction.canCopy,
-      expansion: messageExpansionAction.canToggle,
+      turnDuration: messageActionAvailabilityRenderState.turnDuration.canRender,
+      speech: messageActionAvailabilityRenderState.speech.canRender,
+      branch: messageActionAvailabilityRenderState.branch.canRender,
+      copy: messageActionAvailabilityRenderState.copy.canRender,
+      expansion: messageActionAvailabilityRenderState.expansion.canRender,
     },
     renderState: messageContentRenderState,
   })
