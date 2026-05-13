@@ -34,6 +34,7 @@ import type {
 import type { ChatImageAttachmentMobileRenderState } from '@dotagents/shared/conversation-media-assets';
 import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
 import {
+  getPromptLibraryEditorSaveActionAccessibilityLabel,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
@@ -2716,6 +2717,10 @@ export function ChatConversationHomePromptEditorModal({
   } = renderState;
   const title = getPromptLibraryEditorTitle(isEditing);
   const saveLabel = getPromptLibraryEditorSaveActionLabel(isEditing, isSaving);
+  const saveAccessibilityLabel = getPromptLibraryEditorSaveActionAccessibilityLabel(
+    isEditing,
+    isSaving,
+  );
 
   return (
     <Modal
@@ -2739,6 +2744,7 @@ export function ChatConversationHomePromptEditorModal({
                 activeOpacity={surface.closeButton.pressedOpacity}
                 accessibilityRole={surface.closeButton.accessibilityRole}
                 accessibilityLabel={copy.closeAccessibilityLabel}
+                accessibilityState={isSaving ? { disabled: true } : undefined}
               >
                 <Ionicons
                   name={editorChrome.closeIcon.name}
@@ -2775,6 +2781,8 @@ export function ChatConversationHomePromptEditorModal({
                 disabled={isSaving}
                 activeOpacity={surface.cancelButton.pressedOpacity}
                 accessibilityRole={surface.cancelButton.accessibilityRole}
+                accessibilityLabel={copy.cancelAccessibilityLabel}
+                accessibilityState={isSaving ? { disabled: true } : undefined}
               >
                 <Text style={styles.cancelButtonText}>{copy.cancelLabel}</Text>
               </TouchableOpacity>
@@ -2787,6 +2795,8 @@ export function ChatConversationHomePromptEditorModal({
                 disabled={isSaveDisabled}
                 activeOpacity={surface.saveButton.pressedOpacity}
                 accessibilityRole={surface.saveButton.accessibilityRole}
+                accessibilityLabel={saveAccessibilityLabel}
+                accessibilityState={isSaveDisabled ? { disabled: true } : undefined}
               >
                 <Text style={styles.saveButtonText}>{saveLabel}</Text>
               </TouchableOpacity>

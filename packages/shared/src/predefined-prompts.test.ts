@@ -26,6 +26,7 @@ import {
   getPromptLibraryEditorMobileCopyState,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorMobileSurfaceState,
+  getPromptLibraryEditorSaveActionAccessibilityLabel,
   getPromptLibraryEditorSaveActionLabel,
   getPromptLibraryEditorTitle,
   getPromptLibraryEmptyPromptLabel,
@@ -93,6 +94,9 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryEditorSaveActionLabel(false)).toBe("Add Prompt")
     expect(getPromptLibraryEditorSaveActionLabel(true)).toBe("Save Changes")
     expect(getPromptLibraryEditorSaveActionLabel(true, true)).toBe("Saving...")
+    expect(getPromptLibraryEditorSaveActionAccessibilityLabel(false)).toBe("Add Prompt button")
+    expect(getPromptLibraryEditorSaveActionAccessibilityLabel(true)).toBe("Save Changes button")
+    expect(getPromptLibraryEditorSaveActionAccessibilityLabel(true, true)).toBe("Saving... button")
     expect(isPromptLibraryEditorSaveDisabled({ name: "", content: "Ship it" })).toBe(true)
     expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "   " })).toBe(true)
     expect(isPromptLibraryEditorSaveDisabled({ name: "Review", content: "Ship it" })).toBe(false)
@@ -544,6 +548,7 @@ describe("predefined prompt helpers", () => {
       contentLabel: "Prompt Content",
       contentPlaceholder: "Enter your prompt text...",
       cancelLabel: "Cancel",
+      cancelAccessibilityLabel: "Cancel button",
     })
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("ios")).toBe("padding")
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("android")).toBeUndefined()

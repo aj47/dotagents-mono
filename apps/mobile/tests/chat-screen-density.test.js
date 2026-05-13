@@ -3006,6 +3006,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /isEditing: Boolean\(editingPrompt\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle\(isEditing\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionLabel\(isEditing, isSaving\)/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionAccessibilityLabel\(\s+isEditing,\s+isSaving,\s+\)/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorChrome:/);
@@ -3023,6 +3024,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /activeOpacity=\{surface\.closeButton\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{surface\.closeButton\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.closeAccessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{isSaving \? \{ disabled: true \} : undefined\}/);
   assert.match(chatMessageChromeSource, /onRequestClose=\{onClose\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.header\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.closeButton\}/);
@@ -3072,9 +3074,12 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /modalActions:\s*\{[\s\S]*?flexDirection:\s*promptEditorModalSurface\.actions\.flexDirection/);
   assert.match(chatMessageChromeSource, /activeOpacity=\{surface\.cancelButton\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{surface\.cancelButton\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.cancelAccessibilityLabel\}/);
   assert.match(screenSource, /modalCancelButtonText:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.cancelButtonText\.color/);
   assert.match(chatMessageChromeSource, /activeOpacity=\{surface\.saveButton\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{surface\.saveButton\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{saveAccessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{isSaveDisabled \? \{ disabled: true \} : undefined\}/);
   assert.match(screenSource, /modalSaveButton:\s*\{[\s\S]*?backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.saveButton\.backgroundColor/);
   assert.match(screenSource, /modalSaveButtonText:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.saveButtonText\.color/);
   assert.match(screenSource, /modalSaveButton:\s*\{[\s\S]*?alignItems:\s*promptEditorModalSurface\.saveButton\.alignItems/);

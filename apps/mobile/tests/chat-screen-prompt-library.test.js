@@ -192,11 +192,13 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /saveLabel: getPromptLibraryEditorSaveActionLabel\(Boolean\(editingPrompt\), isSavingPrompt\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle\(isEditing\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionLabel\(isEditing, isSaving\)/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionAccessibilityLabel\(\s+isEditing,\s+isSaving,\s+\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /style=\{styles\.header\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.closeButton\}/);
   assert.match(chatMessageChromeSource, /activeOpacity=\{surface\.closeButton\.pressedOpacity\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.closeAccessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{isSaving \? \{ disabled: true \} : undefined\}/);
   assert.match(chatMessageChromeSource, /renderState: PromptLibraryEditorMobileRenderState;/);
   assert.match(chatMessageChromeSource, /name=\{editorChrome\.closeIcon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{editorChrome\.closeIcon\.size\}/);
@@ -206,6 +208,9 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /\{copy\.contentLabel\}/);
   assert.match(chatMessageChromeSource, /placeholder=\{copy\.contentPlaceholder\}/);
   assert.match(chatMessageChromeSource, /\{copy\.cancelLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{copy\.cancelAccessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{saveAccessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{isSaveDisabled \? \{ disabled: true \} : undefined\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.keyboardAvoidingView\}/);
   assert.match(screenSource, /promptEditorModalSurface\.keyboardAvoidingView\.flex/);
   assert.match(screenSource, /promptEditorModalSurface\.overlay\.flex/);

@@ -484,6 +484,7 @@ export interface PromptLibraryEditorMobileCopyState {
   contentLabel: string
   contentPlaceholder: string
   cancelLabel: string
+  cancelAccessibilityLabel: string
 }
 
 export interface PromptLibraryMobileShortcutChromeState {
@@ -677,6 +678,9 @@ export function getPromptLibraryEditorMobileCopyState(): PromptLibraryEditorMobi
     contentLabel: PROMPT_LIBRARY_PRESENTATION.editor.contentLabel,
     contentPlaceholder: PROMPT_LIBRARY_PRESENTATION.editor.contentPlaceholder,
     cancelLabel: PROMPT_LIBRARY_PRESENTATION.actions.cancel,
+    cancelAccessibilityLabel: createButtonAccessibilityLabel(
+      PROMPT_LIBRARY_PRESENTATION.actions.cancel,
+    ),
   }
 }
 
@@ -962,6 +966,15 @@ export function getPromptLibraryEditorSaveActionLabel(
   return isEditing
     ? PROMPT_LIBRARY_PRESENTATION.actions.saveChanges
     : PROMPT_LIBRARY_PRESENTATION.actions.addPrompt
+}
+
+export function getPromptLibraryEditorSaveActionAccessibilityLabel(
+  isEditing: boolean,
+  isSaving = false,
+): string {
+  return createButtonAccessibilityLabel(
+    getPromptLibraryEditorSaveActionLabel(isEditing, isSaving),
+  )
 }
 
 export function getPromptLibrarySaveSuccessMessage(isEditing: boolean): string {
