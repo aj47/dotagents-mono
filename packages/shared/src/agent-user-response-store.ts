@@ -224,6 +224,21 @@ export interface AgentResponseHistoryMobileSurfaceColors {
   };
 }
 
+export interface AgentResponseHistorySpeechActionStateInput {
+  isSpeaking: boolean;
+  colors: AgentResponseHistoryMobileSurfaceColors['item'];
+}
+
+export interface AgentResponseHistorySpeechActionState {
+  accessibilityLabel: string;
+  icon: {
+    name:
+      | typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.speakName
+      | typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.stopName;
+    color: string;
+  };
+}
+
 export interface AgentResponseHistoryMobileSurfaceRenderStateInput {
   colors: AgentResponseHistoryMobileSurfaceColorPalette;
 }
@@ -265,6 +280,21 @@ export function getAgentResponseHistorySpeechAccessibilityLabel(isSpeaking: bool
   return isSpeaking
     ? AGENT_RESPONSE_HISTORY_PRESENTATION.speech.stopLabel
     : AGENT_RESPONSE_HISTORY_PRESENTATION.speech.speakLabel;
+}
+
+export function getAgentResponseHistorySpeechActionState({
+  isSpeaking,
+  colors,
+}: AgentResponseHistorySpeechActionStateInput): AgentResponseHistorySpeechActionState {
+  return {
+    accessibilityLabel: getAgentResponseHistorySpeechAccessibilityLabel(isSpeaking),
+    icon: {
+      name: isSpeaking
+        ? AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.stopName
+        : AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.speakName,
+      color: isSpeaking ? colors.activeSpeakIconColor : colors.speakIconColor,
+    },
+  };
 }
 
 export function getAgentResponseHistoryMobileIconState(): typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon {

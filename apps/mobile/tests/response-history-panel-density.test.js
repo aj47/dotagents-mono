@@ -10,22 +10,26 @@ const source = fs.readFileSync(
 
 test('mobile response history panel uses shared copy and accessibility labels', () => {
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
-  assert.match(source, /getAgentResponseHistorySpeechAccessibilityLabel\(isSpeaking\)/);
+  assert.match(source, /getAgentResponseHistorySpeechActionState,/);
   assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors: theme\.colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+\}\);/);
   assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
   assert.match(source, /const responseHistoryIcons = responseHistoryRenderState\.icons;/);
   assert.match(source, /name=\{responseHistoryIcons\.headerName\}/);
   assert.match(source, /name=\{responseHistoryPanelState\.toggleIconName\}/);
-  assert.match(source, /name=\{isSpeaking \? responseHistoryIcons\.stopName : responseHistoryIcons\.speakName\}/);
+  assert.match(source, /const speechActionState = getAgentResponseHistorySpeechActionState\(\{\s+isSpeaking,\s+colors: responseHistorySurfaceColors\.item,\s+\}\);/);
+  assert.match(source, /name=\{speechActionState\.icon\.name\}/);
+  assert.match(source, /color=\{speechActionState\.icon\.color\}/);
   assert.match(source, /activeOpacity=\{responseHistorySurface\.header\.pressedOpacity\}/);
   assert.match(source, /accessibilityRole=\{responseHistorySurface\.header\.accessibilityRole\}/);
   assert.match(source, /activeOpacity=\{responseHistorySurface\.item\.speakButtonPressedOpacity\}/);
   assert.match(source, /accessibilityRole=\{responseHistorySurface\.item\.speakButtonAccessibilityRole\}/);
+  assert.match(source, /accessibilityLabel=\{speechActionState\.accessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{responseHistoryPanelState\.toggleAccessibilityLabel\}/);
   assert.match(source, /accessibilityState=\{responseHistoryPanelState\.toggleAccessibilityState\}/);
   assert.doesNotMatch(source, /accessibilityState=\{\{ expanded: responseHistoryPanelState\.isExpanded \}\}/);
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION\.mobileIcon/);
   assert.doesNotMatch(source, /getAgentResponseHistoryToggleAccessibilityLabel\(isCollapsed\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistorySpeechAccessibilityLabel\(isSpeaking\)/);
   assert.doesNotMatch(source, /getAgentResponseHistoryTitle\(\)/);
   assert.doesNotMatch(source, /accessibilityLabel=\{isCollapsed \? 'Show agent responses' : 'Hide agent responses'\}/);
   assert.doesNotMatch(source, /accessibilityLabel=\{isSpeaking \? 'Stop speaking' : 'Speak this response'\}/);
@@ -72,7 +76,7 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.match(source, /size=\{responseHistorySurface\.item\.speakIconSize\}/);
   assert.match(source, /color=\{responseHistorySurfaceColors\.header\.iconColor\}/);
   assert.match(source, /color=\{responseHistorySurfaceColors\.header\.toggleIconColor\}/);
-  assert.match(source, /isSpeaking[\s\S]*?responseHistorySurfaceColors\.item\.activeSpeakIconColor[\s\S]*?: responseHistorySurfaceColors\.item\.speakIconColor/);
+  assert.match(source, /color=\{speechActionState\.icon\.color\}/);
   assert.match(source, /collapsedPreview:\s*\{[\s\S]*?paddingHorizontal:\s*responseHistorySurface\.collapsedPreview\.paddingHorizontal,[\s\S]*?backgroundColor:\s*responseHistorySurfaceColors\.collapsedPreview\.backgroundColor/);
   assert.match(source, /numberOfLines=\{responseHistorySurface\.collapsedPreview\.previewNumberOfLines\}/);
   assert.match(source, /fontSize:\s*responseHistorySurface\.collapsedPreview\.previewFontSize/);
@@ -100,6 +104,7 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.doesNotMatch(source, /maxHeight:\s*300/);
   assert.doesNotMatch(source, /size=\{18\}/);
   assert.doesNotMatch(source, /backgroundAlphaHex/);
+  assert.doesNotMatch(source, /isSpeaking[\s\S]*?responseHistorySurfaceColors\.item\.activeSpeakIconColor[\s\S]*?: responseHistorySurfaceColors\.item\.speakIconColor/);
   assert.doesNotMatch(source, /theme\.colors\.(background|foreground|card|border|muted|mutedForeground|primary|primaryForeground|destructive|success|warning|info)/);
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION/);
 });

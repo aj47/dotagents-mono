@@ -19,6 +19,7 @@ import {
   getAgentResponseHistoryNewestTimestamp,
   getAgentResponseHistoryPanelState,
   getAgentResponseHistoryRenderItems,
+  getAgentResponseHistorySpeechActionState,
   getAgentResponseHistorySpeechAccessibilityLabel,
   getAgentResponseHistoryTitle,
   getAgentResponseHistoryToggleAccessibilityLabel,
@@ -132,6 +133,26 @@ describe('agent-user-response-store', () => {
     expect(getAgentResponseHistoryToggleAccessibilityLabel(false)).toBe('Hide agent responses');
     expect(getAgentResponseHistorySpeechAccessibilityLabel(false)).toBe('Speak this response');
     expect(getAgentResponseHistorySpeechAccessibilityLabel(true)).toBe('Stop speaking');
+    expect(getAgentResponseHistorySpeechActionState({
+      isSpeaking: false,
+      colors: responseHistorySurfaceColors.item,
+    })).toEqual({
+      accessibilityLabel: 'Speak this response',
+      icon: {
+        name: 'volume-medium',
+        color: '#737373',
+      },
+    });
+    expect(getAgentResponseHistorySpeechActionState({
+      isSpeaking: true,
+      colors: responseHistorySurfaceColors.item,
+    })).toEqual({
+      accessibilityLabel: 'Stop speaking',
+      icon: {
+        name: 'stop-circle',
+        color: '#2563eb',
+      },
+    });
   });
 
   it('formats collapsed response history previews from the latest response', () => {

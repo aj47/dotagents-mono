@@ -18,7 +18,7 @@ import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   getAgentResponseHistoryMobileRenderState,
-  getAgentResponseHistorySpeechAccessibilityLabel,
+  getAgentResponseHistorySpeechActionState,
   type AgentResponseHistoryMobileAnimationState,
 } from '@dotagents/shared/agent-user-response-store';
 import { useTheme } from './ThemeProvider';
@@ -344,6 +344,10 @@ export function ResponseHistoryPanel({
           {responseHistoryPanelState.items.map((item) => {
             const response = item.entry;
             const isSpeaking = speakingIndex === item.originalIndex;
+            const speechActionState = getAgentResponseHistorySpeechActionState({
+              isSpeaking,
+              colors: responseHistorySurfaceColors.item,
+            });
             return (
               <React.Fragment key={item.key}>
                 {item.displayIndex > 0 && <View style={styles.separator} />}
@@ -358,16 +362,12 @@ export function ResponseHistoryPanel({
                         onPress={() => handleSpeak(response.text, item.originalIndex)}
                         activeOpacity={responseHistorySurface.item.speakButtonPressedOpacity}
                         accessibilityRole={responseHistorySurface.item.speakButtonAccessibilityRole}
-                        accessibilityLabel={getAgentResponseHistorySpeechAccessibilityLabel(isSpeaking)}
+                        accessibilityLabel={speechActionState.accessibilityLabel}
                       >
                         <Ionicons
-                          name={isSpeaking ? responseHistoryIcons.stopName : responseHistoryIcons.speakName}
+                          name={speechActionState.icon.name}
                           size={responseHistorySurface.item.speakIconSize}
-                          color={
-                            isSpeaking
-                              ? responseHistorySurfaceColors.item.activeSpeakIconColor
-                              : responseHistorySurfaceColors.item.speakIconColor
-                          }
+                          color={speechActionState.icon.color}
                         />
                       </TouchableOpacity>
                     </View>
