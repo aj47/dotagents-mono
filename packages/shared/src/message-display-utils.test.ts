@@ -19,6 +19,7 @@ import {
   sanitizeAgentProgressUpdateForDisplay,
   getChatMessageCollapseThreshold,
   getChatMessageCollapsedPreview,
+  getChatMessageCollapsedPreviewMobileActionState,
   getChatMessageDesktopSurfaceState,
   getChatMessageMobileContentLayoutState,
   getChatMessageMobileCollapsedPreviewColors,
@@ -1087,6 +1088,11 @@ describe('chat message display presentation', () => {
       border: '#f2f2f2',
       muted: '#f5f5f5',
     }
+    const collapsedExpansion = getChatMessageExpansionMobileRenderState({
+      shouldCollapse: true,
+      isExpanded: false,
+      colors: mobileRenderColors,
+    })
     expect(getChatMessageMobileRenderState({
       role: 'assistant',
       isComplete: true,
@@ -1103,16 +1109,15 @@ describe('chat message display presentation', () => {
         ...getChatMessageMobileCollapsedPreviewState(),
         text: 'Title Body',
       },
+      collapsedPreviewAction: getChatMessageCollapsedPreviewMobileActionState({
+        expansion: collapsedExpansion,
+      }),
       content: getChatMessageContentRenderState({
         content: '# Title\nBody',
         isExpanded: false,
         shouldCollapse: true,
       }),
-      expansion: getChatMessageExpansionMobileRenderState({
-        shouldCollapse: true,
-        isExpanded: false,
-        colors: mobileRenderColors,
-      }),
+      expansion: collapsedExpansion,
       tone: 'assistant_final',
       toneStyleSlot: 'assistantFinal',
       colors: {
@@ -1124,6 +1129,23 @@ describe('chat message display presentation', () => {
           tool: getChatMessageToneMobileColors('tool', mobileRenderColors),
         },
       },
+    })
+    expect(getChatMessageCollapsedPreviewMobileActionState({
+      expansion: getChatMessageExpansionMobileRenderState({
+        shouldCollapse: false,
+        isExpanded: false,
+        colors: mobileRenderColors,
+      }),
+    })).toEqual({
+      canToggle: false,
+      disabled: true,
+      accessibilityLabel: CHAT_MESSAGE_ACTION_PRESENTATION.expansion.messageName,
+      accessibilityHint: undefined,
+      accessibilityState: {
+        expanded: false,
+        disabled: true,
+      },
+      ariaExpanded: false,
     })
     expect(CHAT_MESSAGE_SURFACE_PRESENTATION.mobile).toMatchObject({
       paddingHorizontal: 'sm',

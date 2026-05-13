@@ -108,6 +108,22 @@ export interface ChatMessageMobileCollapsedPreviewColors {
   }
 }
 
+export interface ChatMessageCollapsedPreviewMobileActionStateInput {
+  expansion: Pick<
+    ChatMessageExpansionMobileRenderState,
+    "canToggle" | "accessibilityLabel" | "accessibilityHint" | "accessibilityState" | "ariaExpanded"
+  >
+}
+
+export interface ChatMessageCollapsedPreviewMobileActionState {
+  canToggle: boolean
+  disabled: boolean
+  accessibilityLabel: string
+  accessibilityHint?: string
+  accessibilityState: ChatMessageExpansionActionState["accessibilityState"]
+  ariaExpanded: boolean
+}
+
 export function getChatMessageMobileCollapsedPreviewState() {
   const surface = CHAT_MESSAGE_SURFACE_PRESENTATION.mobile.collapsedPreview
 
@@ -375,6 +391,7 @@ export interface ChatMessageMobileRenderState {
   collapsedPreview: ReturnType<typeof getChatMessageMobileCollapsedPreviewState> & {
     text: string
   }
+  collapsedPreviewAction: ChatMessageCollapsedPreviewMobileActionState
   content: ChatMessageContentRenderState
   expansion: ChatMessageExpansionMobileRenderState
   tone: ChatMessageDisplayTone
@@ -832,6 +849,12 @@ export function getChatMessageMobileRenderState(
 ): ChatMessageMobileRenderState {
   const collapsedPreview = getChatMessageMobileCollapsedPreviewState()
   const tone = getChatMessageDisplayTone(input)
+  const expansion = getChatMessageExpansionMobileRenderState({
+    shouldCollapse: input.shouldCollapse,
+    isToolOnly: input.isToolOnly,
+    isExpanded: input.isExpanded,
+    colors: input.colors,
+  })
 
   return {
     surface: getChatMessageMobileSurfaceState(),
@@ -841,12 +864,8 @@ export function getChatMessageMobileRenderState(
       text: getChatMessageCollapsedPreview(input.content ?? ""),
     },
     content: getChatMessageContentRenderState(input),
-    expansion: getChatMessageExpansionMobileRenderState({
-      shouldCollapse: input.shouldCollapse,
-      isToolOnly: input.isToolOnly,
-      isExpanded: input.isExpanded,
-      colors: input.colors,
-    }),
+    collapsedPreviewAction: getChatMessageCollapsedPreviewMobileActionState({ expansion }),
+    expansion,
     tone,
     toneStyleSlot: getChatMessageToneMobileStyleSlot(tone),
     colors: {
@@ -858,6 +877,19 @@ export function getChatMessageMobileRenderState(
         tool: getChatMessageToneMobileColors("tool", input.colors),
       },
     },
+  }
+}
+
+export function getChatMessageCollapsedPreviewMobileActionState(
+  input: ChatMessageCollapsedPreviewMobileActionStateInput,
+): ChatMessageCollapsedPreviewMobileActionState {
+  return {
+    canToggle: input.expansion.canToggle,
+    disabled: !input.expansion.canToggle,
+    accessibilityLabel: input.expansion.accessibilityLabel,
+    accessibilityHint: input.expansion.accessibilityHint ?? undefined,
+    accessibilityState: input.expansion.accessibilityState,
+    ariaExpanded: input.expansion.ariaExpanded,
   }
 }
 

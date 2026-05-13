@@ -3967,6 +3967,7 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const messageContentRenderState = messageRenderState.content;
+            const messageCollapsedPreviewActionState = messageRenderState.collapsedPreviewAction;
             const isMessageSpeaking = speakingMessageIndex === i;
             const messageSpeechRenderState = getChatMessageSpeechMobileRenderState({
               role: m.role,
@@ -4199,14 +4200,10 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                       collapsed: {
                         renderState: messageRenderState.collapsedPreview,
-                        onPress: messageActionAvailabilityRenderState.expansion.canRender
+                        actionState: messageCollapsedPreviewActionState,
+                        onPress: messageCollapsedPreviewActionState.canToggle
                           ? () => toggleMessageExpansion(i)
                           : undefined,
-                        disabled: !messageActionAvailabilityRenderState.expansion.canRender,
-                        accessibilityLabel: messageRenderState.expansion.accessibilityLabel,
-                        accessibilityHint: messageRenderState.expansion.accessibilityHint ?? undefined,
-                        accessibilityState: messageRenderState.expansion.accessibilityState,
-                        ariaExpanded: messageRenderState.expansion.ariaExpanded,
                       },
                     },
                     toolExecutionStack: {

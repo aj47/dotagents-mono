@@ -28,6 +28,7 @@ import {
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
+  type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageContentRenderState,
 } from '@dotagents/shared/message-display-utils';
 import type {
@@ -1411,12 +1412,8 @@ type ChatMessageCollapsedPreviewRenderState = {
 
 type ChatMessageCollapsedPreviewProps = {
   renderState: ChatMessageCollapsedPreviewRenderState;
+  actionState: ChatMessageCollapsedPreviewMobileActionState;
   onPress?: (event: GestureResponderEvent) => void;
-  disabled?: boolean;
-  accessibilityLabel: string;
-  accessibilityHint?: string;
-  accessibilityState?: AccessibilityState;
-  ariaExpanded?: boolean;
   style: StyleProp<ViewStyle>;
   pressedStyle?: StyleProp<ViewStyle>;
   textStyle: StyleProp<TextStyle>;
@@ -5262,12 +5259,8 @@ export function ChatMessageExpandedContent({
 
 export function ChatMessageCollapsedPreview({
   renderState,
+  actionState,
   onPress,
-  disabled = false,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
-  ariaExpanded,
   style,
   pressedStyle,
   textStyle,
@@ -5275,16 +5268,16 @@ export function ChatMessageCollapsedPreview({
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
+      disabled={actionState.disabled}
       accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={accessibilityState}
-      aria-expanded={ariaExpanded}
+      accessibilityLabel={actionState.accessibilityLabel}
+      accessibilityHint={actionState.accessibilityHint}
+      accessibilityState={actionState.accessibilityState}
+      aria-expanded={actionState.ariaExpanded}
       hitSlop={renderState.hitSlop}
       style={({ pressed }) => [
         style,
-        pressed && !disabled && pressedStyle,
+        pressed && !actionState.disabled && pressedStyle,
       ]}
     >
       <Text
@@ -5334,12 +5327,8 @@ export function ChatMessageConversationContent({
       >
         <ChatMessageCollapsedPreview
           renderState={collapsed.renderState}
+          actionState={collapsed.actionState}
           onPress={collapsed.onPress}
-          disabled={collapsed.disabled}
-          accessibilityLabel={collapsed.accessibilityLabel}
-          accessibilityHint={collapsed.accessibilityHint}
-          accessibilityState={collapsed.accessibilityState}
-          ariaExpanded={collapsed.ariaExpanded}
           style={collapsed.style}
           pressedStyle={collapsed.pressedStyle}
           textStyle={collapsed.textStyle}
