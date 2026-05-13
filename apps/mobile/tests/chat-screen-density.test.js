@@ -420,14 +420,16 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /getChatRuntimeDelegationToolPreviewMoreActionState,/);
   assert.match(screenSource, /formatChatRuntimeDelegationToolCallActivityLabel,/);
   assert.match(screenSource, /getChatRuntimeDelegationCardMobileRenderState,/);
-  assert.match(screenSource, /getChatRuntimeDelegationCardMobileState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileState,/);
   assert.match(screenSource, /getChatRuntimeDelegationStatusMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationStatusMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileColors,/);
   assert.match(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatRuntimeDelegationConversationPreviewRoleStyleSlots,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
-  assert.match(screenSource, /const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState\(\);/);
+  assert.match(screenSource, /const mobileRuntimeDelegationCardRenderState = useMemo\(\s*\(\) => getChatRuntimeDelegationCardMobileRenderState\(\{\s*colors: theme\.colors,\s*\}\),\s*\[theme\.colors\],\s*\);/);
+  assert.match(screenSource, /const mobileRuntimeDelegationCard = mobileRuntimeDelegationCardRenderState\.surface;/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState\(\);/);
   assert.match(screenSource, /const delegationCardState = m\.delegation/);
   assert.match(screenSource, /getAgentDelegationCardState\(/);
   assert.match(screenSource, /maxSubtitleLength:\s*mobileRuntimeDelegationCard\.subtitleMaxLength/);

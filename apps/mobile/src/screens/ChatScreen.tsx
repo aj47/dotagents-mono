@@ -117,7 +117,6 @@ import {
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDebugState,
   getChatRuntimeDelegationCardMobileRenderState,
-  getChatRuntimeDelegationCardMobileState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
@@ -287,7 +286,6 @@ const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobi
 const mobileRuntimeActivityAccessibility = getChatRuntimeMobileActivityAccessibilityState();
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
-const mobileRuntimeDelegationCard = getChatRuntimeDelegationCardMobileState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
 const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
@@ -343,6 +341,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const mobileRuntimeViewport = mobileRuntimeViewportRenderState.surface;
   const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState.loadingState;
   const mobileRuntimeInlineActivity = mobileRuntimeViewportRenderState.inlineActivity;
+  const mobileRuntimeDelegationCardRenderState = useMemo(
+    () => getChatRuntimeDelegationCardMobileRenderState({
+      colors: theme.colors,
+    }),
+    [theme.colors],
+  );
+  const mobileRuntimeDelegationCard = mobileRuntimeDelegationCardRenderState.surface;
   const messageThreadBodyStyles = useMemo(
     () => createChatMessageThreadBodyStyleSlots(styles),
     [styles],
