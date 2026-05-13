@@ -46,6 +46,7 @@ import {
   getPromptLibraryMobileShortcutSurfaceState,
   getPromptLibraryMobileShortcutSourceIconState,
   getPromptLibraryMobileSurfaceColors,
+  getPromptLibraryMobileSurfaceRenderState,
   getPromptLibraryMobileSurfaceState,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
@@ -171,7 +172,7 @@ describe("predefined prompt helpers", () => {
     })).toEqual({
       color: "#2563eb",
     })
-    expect(getPromptLibraryMobileSurfaceColors({
+    const promptLibrarySurfaceRenderStateColors = {
       background: "#f8fafc",
       border: "#cbd5e1",
       card: "#ffffff",
@@ -181,7 +182,8 @@ describe("predefined prompt helpers", () => {
       mutedForeground: "#64748b",
       primary: "#2563eb",
       primaryForeground: "#ffffff",
-    })).toEqual({
+    }
+    expect(getPromptLibraryMobileSurfaceColors(promptLibrarySurfaceRenderStateColors)).toEqual({
       quickStartCard: {
         borderColor: "#cbd5e1",
         backgroundColor: "#ffffff",
@@ -246,6 +248,14 @@ describe("predefined prompt helpers", () => {
           color: "#ffffff",
         },
       },
+    })
+    expect(
+      getPromptLibraryMobileSurfaceRenderState({
+        colors: promptLibrarySurfaceRenderStateColors,
+      }),
+    ).toEqual({
+      surface: getPromptLibraryMobileSurfaceState(),
+      colors: getPromptLibraryMobileSurfaceColors(promptLibrarySurfaceRenderStateColors),
     })
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.alignSelf).toBe("flex-start")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.shortcutSourcePill.flexDirection).toBe("row")

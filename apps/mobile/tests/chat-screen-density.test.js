@@ -2745,7 +2745,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /items\.map\(\(item\) => \{/);
   assert.match(chatMessageChromeSource, /onPress=\{\(\) => onPress\(item\)\}/);
   assert.doesNotMatch(screenSource, /promptQuickStarts\.map\(\(item\) => \{/);
-  assert.match(screenSource, /getPromptLibraryMobileSurfaceState,/);
+  assert.match(screenSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
   assert.match(screenSource, /getPromptLibraryEditorMobileRenderState,/);
@@ -2756,7 +2757,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
-  assert.match(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /const promptLibraryEditorRenderState = useMemo\(\s+\(\) => getPromptLibraryEditorMobileRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\),\s+\[theme\.colors\],\s+\);/);
@@ -2811,8 +2812,9 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
   assert.match(chatMessageChromeSource, /\{shortcutEmptyRenderState\.label\}/);
-  assert.match(screenSource, /const promptLibrarySurface = mobilePromptLibrarySurface;/);
-  assert.match(screenSource, /const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors\(theme\.colors\);/);
+  assert.match(screenSource, /const promptLibraryStyleState = getPromptLibraryMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const promptLibrarySurface = promptLibraryStyleState\.surface;/);
+  assert.match(screenSource, /const promptLibrarySurfaceColors = promptLibraryStyleState\.colors;/);
   assert.match(screenSource, /spacing\[promptLibrarySurface\.quickStartCard\.padding\]/);
   assert.match(screenSource, /chatHomeCard:\s*\{[\s\S]*?borderColor:\s*promptLibrarySurfaceColors\.quickStartCard\.borderColor,[\s\S]*?backgroundColor:\s*promptLibrarySurfaceColors\.quickStartCard\.backgroundColor/);
   assert.match(screenSource, /chatHomeEmptyText:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.emptyText\.color/);

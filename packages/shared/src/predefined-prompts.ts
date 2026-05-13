@@ -571,6 +571,15 @@ export interface PromptLibraryMobileSurfaceColors {
 
 export type PromptLibraryMobileSurfaceState = typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile
 
+export interface PromptLibraryMobileSurfaceRenderStateInput {
+  colors: PromptLibraryMobileSurfaceColorPalette
+}
+
+export interface PromptLibraryMobileSurfaceRenderState {
+  surface: PromptLibraryMobileSurfaceState
+  colors: PromptLibraryMobileSurfaceColors
+}
+
 export type PromptLibraryEditorMobileSurfaceState = PromptLibraryMobileSurfaceState["editorModal"]
 
 export type PromptLibraryMobileShortcutSurfaceState = Pick<
@@ -882,6 +891,15 @@ export function getPromptLibraryMobileSurfaceColors(
         color: colors[editorModal.saveButton.textColorToken],
       },
     },
+  }
+}
+
+export function getPromptLibraryMobileSurfaceRenderState({
+  colors,
+}: PromptLibraryMobileSurfaceRenderStateInput): PromptLibraryMobileSurfaceRenderState {
+  return {
+    surface: getPromptLibraryMobileSurfaceState(),
+    colors: getPromptLibraryMobileSurfaceColors(colors),
   }
 }
 

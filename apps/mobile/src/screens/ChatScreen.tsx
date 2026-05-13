@@ -253,8 +253,7 @@ import {
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
-  getPromptLibraryMobileSurfaceColors,
-  getPromptLibraryMobileSurfaceState,
+  getPromptLibraryMobileSurfaceRenderState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
   isPromptLibraryEditorSaveDisabled,
@@ -335,7 +334,6 @@ const mobileMessageCopiedButton = getChatMessageActionMobileButtonState('copied'
 const mobileMessageSpeechButton = getChatMessageActionMobileButtonState('speech');
 const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState('speechActive');
 const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState();
-const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState();
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 
@@ -4280,8 +4278,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     colors: theme.colors,
   });
   const imageAttachmentSurface = imageAttachmentStyleState.surface;
-  const promptLibrarySurface = mobilePromptLibrarySurface;
-  const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors(theme.colors);
+  const promptLibraryStyleState = getPromptLibraryMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const promptLibrarySurface = promptLibraryStyleState.surface;
+  const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
   const messageQueuePanelSurface = mobileMessageQueuePanelSurface;
   const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState({
