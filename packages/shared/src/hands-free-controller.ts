@@ -72,6 +72,15 @@ export interface HandsFreeComposerMobileSurfaceColors {
   }
 }
 
+export interface HandsFreeComposerMobileSurfaceRenderStateInput {
+  colors: HandsFreeComposerMobileSurfaceColorPalette
+}
+
+export interface HandsFreeComposerMobileSurfaceRenderState {
+  surface: typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile
+  colors: HandsFreeComposerMobileSurfaceColors
+}
+
 export const HANDS_FREE_COMPOSER_PRESENTATION = {
   controls: {
     wakeLabel: "Wake",
@@ -239,6 +248,15 @@ export function getHandsFreeComposerMobileSurfaceColors(
     debugText: {
       color: colors[surface.debugText.colorToken],
     },
+  }
+}
+
+export function getHandsFreeComposerMobileSurfaceRenderState({
+  colors,
+}: HandsFreeComposerMobileSurfaceRenderStateInput): HandsFreeComposerMobileSurfaceRenderState {
+  return {
+    surface: getHandsFreeComposerMobileSurfaceState(),
+    colors: getHandsFreeComposerMobileSurfaceColors(colors),
   }
 }
 

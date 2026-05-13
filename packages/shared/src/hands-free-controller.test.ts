@@ -11,6 +11,7 @@ import {
   getHandsFreeComposerControlState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeComposerMobileSurfaceColors,
+  getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerMobileSurfaceState,
   getHandsFreeMicButtonLabel,
   getHandsFreePauseResumeLabel,
@@ -101,6 +102,26 @@ describe("hands-free controller", () => {
       debugText: {
         color: "#737373",
       },
+    })
+    expect(getHandsFreeComposerMobileSurfaceRenderState({
+      colors: {
+        background: "#ffffff",
+        border: "#d4d4d4",
+        foreground: "#171717",
+        muted: "#e5e5e5",
+        mutedForeground: "#737373",
+        primary: "#2563eb",
+      },
+    })).toEqual({
+      surface: getHandsFreeComposerMobileSurfaceState(),
+      colors: getHandsFreeComposerMobileSurfaceColors({
+        background: "#ffffff",
+        border: "#d4d4d4",
+        foreground: "#171717",
+        muted: "#e5e5e5",
+        mutedForeground: "#737373",
+        primary: "#2563eb",
+      }),
     })
     expect(formatHandsFreeSleepingDebugMessage("hey dot agents")).toBe(
       "Handsfree sleeping. Say “hey dot agents” or tap Wake to begin.",

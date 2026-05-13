@@ -23,12 +23,14 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
   assert.match(screenSource, /handsFreeController\.statusLabel/);
   assert.match(screenSource, /handsFreeStatusSubtitle/);
   assert.match(screenSource, /getHandsFreeComposerCopyState,/);
-  assert.match(screenSource, /getHandsFreeComposerMobileSurfaceColors,/);
+  assert.match(screenSource, /getHandsFreeComposerMobileSurfaceRenderState,/);
   assert.match(screenSource, /getHandsFreeComposerMobileSurfaceState,/);
+  assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceColors,/);
   assert.match(screenSource, /const handsFreeCopy = getHandsFreeComposerCopyState\(\);/);
   assert.match(screenSource, /const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const handsFreeSurfaceColors = getHandsFreeComposerMobileSurfaceColors\(theme\.colors\);/);
-  assert.match(screenSource, /const handsFreeSurface = mobileHandsFreeSurface;/);
+  assert.match(screenSource, /const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const handsFreeSurface = handsFreeStyleState\.surface;/);
+  assert.match(screenSource, /const handsFreeSurfaceColors = handsFreeStyleState\.colors;/);
   assert.match(screenSource, /spacing\[handsFreeSurface\.statusRow\.paddingHorizontal\]/);
   assert.doesNotMatch(screenSource, /HANDS_FREE_COMPOSER_PRESENTATION/);
 });

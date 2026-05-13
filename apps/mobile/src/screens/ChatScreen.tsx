@@ -278,7 +278,7 @@ import {
   getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerPlaceholder,
-  getHandsFreeComposerMobileSurfaceColors,
+  getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerMobileSurfaceState,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
@@ -4284,7 +4284,10 @@ function createStyles(theme: Theme, screenHeight: number) {
   const promptLibrarySurfaceColors = getPromptLibraryMobileSurfaceColors(theme.colors);
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
   const messageQueuePanelSurface = mobileMessageQueuePanelSurface;
-  const handsFreeSurface = mobileHandsFreeSurface;
+  const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState({
+    colors: theme.colors,
+  });
+  const handsFreeSurface = handsFreeStyleState.surface;
   const headerActionButton = createMinimumTouchTargetStyle();
   const headerEdgeActionButton = createMinimumTouchTargetStyle({
     horizontalPadding: headerSurface.edgeActionButton.horizontalPadding,
@@ -4296,7 +4299,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const toolActivityGroupSurface = mobileToolActivityGroupSurface;
   const toolActivityGroupSurfaceColors = getToolActivityGroupMobileSurfaceColors(theme.colors);
   const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
-  const handsFreeSurfaceColors = getHandsFreeComposerMobileSurfaceColors(theme.colors);
+  const handsFreeSurfaceColors = handsFreeStyleState.colors;
   const toolApprovalStyleState = getChatRuntimeToolApprovalMobileRenderState({
     toolName: '',
     colors: theme.colors,
