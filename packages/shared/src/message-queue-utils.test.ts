@@ -33,6 +33,7 @@ import {
   getQueuedMessageItemMobileRenderState,
   getQueuedMessages,
   getQueuedMessageStatusLabel,
+  getQueuedMessageExpansionAccessibilityLabel,
   getQueuedMessageExpansionLabel,
   hasProcessingQueuedMessage,
   hasQueuedMessages,
@@ -234,8 +235,11 @@ describe('message-queue-utils', () => {
     expect(getMessageQueuePanelMobileIconState()).toBe(MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon);
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel).toBe('Cancel queued message edit');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel).toBe('Save queued message edit');
+    expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editInputAccessibilityLabel).toBe('Queued message edit input');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.retryAccessibilityLabel).toBe('Retry queued message');
     expect(MESSAGE_QUEUE_PANEL_PRESENTATION.actions.sendNextLabel).toBe('Send Next');
+    expect(getQueuedMessageExpansionAccessibilityLabel(false)).toBe('Expand queued message');
+    expect(getQueuedMessageExpansionAccessibilityLabel(true)).toBe('Collapse queued message');
     expect(getMessageQueuePanelCopyState()).toBe(MESSAGE_QUEUE_PANEL_PRESENTATION);
     expect(getMessageQueuePanelMobileSurfaceState()).toBe(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile);
     expect(getMessageQueuePanelMobileWrapperRenderState()).toEqual({
@@ -534,6 +538,7 @@ describe('message-queue-utils', () => {
       canEditMessage: true,
       statusLabel: 'Failed',
       expansionLabel: 'More',
+      expansionAccessibilityLabel: 'Expand queued message',
       errorText: 'Error: timeout',
     });
     expect(getQueuedMessageItemMobileRenderState({

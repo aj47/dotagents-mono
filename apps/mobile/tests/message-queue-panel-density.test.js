@@ -17,6 +17,7 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.retryAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.editAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.removeAccessibilityLabel\}/);
+  assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.editInputAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.cancelAccessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.saveAccessibilityLabel\}/);
   assert.match(source, /accessibilityState=\{\{ disabled: !editText\.trim\(\) \}\}/);
@@ -42,6 +43,7 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /hitSlop=\{actionSurface\.hitSlop\}/);
   assert.match(source, /activeOpacity=\{itemSurface\.expandButtonPressedOpacity\}/);
   assert.match(source, /accessibilityRole=\{itemSurface\.expandButtonAccessibilityRole\}/);
+  assert.match(source, /accessibilityLabel=\{messagePresentation\.expansionAccessibilityLabel\}/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);
   assert.doesNotMatch(source, /actions:\s*\{\s*flexDirection:\s*'row',\s*flexWrap:\s*'wrap',/);
   assert.doesNotMatch(source, /actionButton:\s*\{\s*alignSelf:\s*'flex-start',/);

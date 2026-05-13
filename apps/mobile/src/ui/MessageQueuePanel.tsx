@@ -237,6 +237,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             style={styles.editInput}
             value={editText}
             onChangeText={setEditText}
+            accessibilityLabel={queuePanelCopy.actions.editInputAccessibilityLabel}
             multiline
             autoFocus
           />
@@ -296,6 +297,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 onPress={() => setIsExpanded(!isExpanded)}
                 activeOpacity={itemSurface.expandButtonPressedOpacity}
                 accessibilityRole={itemSurface.expandButtonAccessibilityRole}
+                accessibilityLabel={messagePresentation.expansionAccessibilityLabel}
               >
                 <Ionicons
                   name={isExpanded ? queuePanelIcons.collapseMessageName : queuePanelIcons.expandMessageName}

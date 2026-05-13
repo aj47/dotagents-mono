@@ -145,6 +145,7 @@ export const MESSAGE_QUEUE_PANEL_PRESENTATION = {
     cancelAccessibilityLabel: 'Cancel queued message edit',
     saveLabel: 'Save',
     saveAccessibilityLabel: 'Save queued message edit',
+    editInputAccessibilityLabel: 'Queued message edit input',
     retryLabel: 'Retry',
     retryAccessibilityLabel: 'Retry queued message',
     retryPendingAccessibilityLabel: 'Retrying queued message',
@@ -166,6 +167,8 @@ export const MESSAGE_QUEUE_PANEL_PRESENTATION = {
   expansion: {
     moreLabel: 'More',
     lessLabel: 'Less',
+    expandMessageAccessibilityLabel: 'Expand queued message',
+    collapseMessageAccessibilityLabel: 'Collapse queued message',
     expandQueueLabel: 'Expand queue',
     collapseQueueLabel: 'Collapse queue',
   },
@@ -661,6 +664,12 @@ export function getQueuedMessageExpansionLabel(isExpanded: boolean): string {
     : MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.moreLabel;
 }
 
+export function getQueuedMessageExpansionAccessibilityLabel(isExpanded: boolean): string {
+  return isExpanded
+    ? MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.collapseMessageAccessibilityLabel
+    : MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.expandMessageAccessibilityLabel;
+}
+
 export function getMessageQueueListToggleLabel(isListCollapsed: boolean): string {
   return isListCollapsed
     ? MESSAGE_QUEUE_PANEL_PRESENTATION.expansion.expandQueueLabel
@@ -802,6 +811,7 @@ export type QueuedMessageItemPresentation = {
   canEditMessage: boolean;
   statusLabel: string;
   expansionLabel: string;
+  expansionAccessibilityLabel: string;
   errorText?: string;
 }
 
@@ -843,6 +853,7 @@ export function getQueuedMessageItemPresentation(
     canEditMessage: canEditQueuedMessage(message),
     statusLabel: getQueuedMessageStatusLabel(message),
     expansionLabel: getQueuedMessageExpansionLabel(isExpanded),
+    expansionAccessibilityLabel: getQueuedMessageExpansionAccessibilityLabel(isExpanded),
     errorText: isFailed && message.errorMessage
       ? formatQueuedMessageError(message.errorMessage)
       : undefined,
