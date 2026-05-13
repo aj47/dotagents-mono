@@ -1448,6 +1448,8 @@ describe("session presentation semantics", () => {
       loadEarlierLabel: "Load 30 earlier",
       loadButton: {
         accessibilityRole: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.accessibilityRole,
+        accessibilityLabel: "Load 30 earlier",
+        label: "Load 30 earlier",
         pressedOpacity: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.pressedOpacity,
       },
       loadIcon: {
@@ -1469,6 +1471,10 @@ describe("session presentation semantics", () => {
       shouldRender: false,
       summaryLabel: "",
       loadEarlierLabel: "",
+      loadButton: {
+        accessibilityLabel: "",
+        label: "",
+      },
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryWindow.initialVisibleCount).toBe(80)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryWindow.loadIncrement).toBe(60)

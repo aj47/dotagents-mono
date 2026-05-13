@@ -943,6 +943,8 @@ export interface ChatRuntimeMessageHistoryBannerMobileRenderState {
   loadEarlierLabel: string
   loadButton: {
     accessibilityRole: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.accessibilityRole
+    accessibilityLabel: string
+    label: string
     pressedOpacity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.pressedOpacity
   }
   loadIcon: {
@@ -5240,6 +5242,9 @@ export function getChatRuntimeMessageHistoryBannerMobileRenderState({
   const safeTotalCount = Math.max(0, totalCount)
   const safeHiddenCount = Math.max(0, hiddenCount ?? safeTotalCount - safeVisibleCount)
   const shouldRender = safeHiddenCount > 0
+  const loadEarlierLabel = shouldRender
+    ? formatChatRuntimeLoadEarlierLabel(safeHiddenCount, loadIncrement, isLoadingEarlier)
+    : ""
 
   return {
     shouldRender,
@@ -5248,11 +5253,11 @@ export function getChatRuntimeMessageHistoryBannerMobileRenderState({
     summaryLabel: shouldRender
       ? formatChatRuntimeConversationHistorySummary(safeVisibleCount, safeTotalCount, { includeScrollHint })
       : "",
-    loadEarlierLabel: shouldRender
-      ? formatChatRuntimeLoadEarlierLabel(safeHiddenCount, loadIncrement, isLoadingEarlier)
-      : "",
+    loadEarlierLabel,
     loadButton: {
       accessibilityRole: surface.loadButton.accessibilityRole,
+      accessibilityLabel: loadEarlierLabel,
+      label: loadEarlierLabel,
       pressedOpacity: surface.loadButton.pressedOpacity,
     },
     loadIcon: {

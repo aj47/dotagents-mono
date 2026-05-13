@@ -1884,11 +1884,12 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /\{renderState\.summaryLabel\}/);
   assert.match(chatMessageChromeSource, /onPress=\{onLoadEarlier\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.loadButton\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.loadEarlierLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.loadButton\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /name=\{renderState\.loadIcon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{renderState\.loadIcon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{renderState\.loadIcon\.color\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.loadEarlierLabel\}/);
+  assert.match(chatMessageChromeSource, /\{renderState\.loadButton\.label\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /accessibilityLabel=\{renderState\.loadEarlierLabel\}/);
   assert.doesNotMatch(screenSource, /<View style=\{styles\.loadOlderContainer\}>/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{messageHistoryBannerRenderState\.loadButton\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /name=\{messageHistoryBannerRenderState\.loadIcon\.name\}/);

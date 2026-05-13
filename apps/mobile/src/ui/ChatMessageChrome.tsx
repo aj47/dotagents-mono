@@ -4418,7 +4418,7 @@ export function ChatMessageHistoryBanner({
       <Pressable
         onPress={onLoadEarlier}
         accessibilityRole={renderState.loadButton.accessibilityRole}
-        accessibilityLabel={renderState.loadEarlierLabel}
+        accessibilityLabel={renderState.loadButton.accessibilityLabel}
         style={({ pressed }) => [
           styles.loadButton,
           pressed && styles.loadButtonPressed,
@@ -4430,7 +4430,7 @@ export function ChatMessageHistoryBanner({
           color={renderState.loadIcon.color}
         />
         <Text style={styles.loadButtonText}>
-          {renderState.loadEarlierLabel}
+          {renderState.loadButton.label}
         </Text>
       </Pressable>
     </View>
