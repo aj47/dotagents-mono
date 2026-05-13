@@ -10,13 +10,13 @@ const source = fs.readFileSync(
 
 test('mobile response history panel uses shared copy and accessibility labels', () => {
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
-  assert.match(source, /getAgentResponseHistorySpeechActionState,/);
-  assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors: theme\.colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+\}\);/);
+  assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors: theme\.colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
   assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
   assert.match(source, /const responseHistoryIcons = responseHistoryRenderState\.icons;/);
   assert.match(source, /name=\{responseHistoryIcons\.headerName\}/);
   assert.match(source, /name=\{responseHistoryPanelState\.toggleIconName\}/);
-  assert.match(source, /const speechActionState = getAgentResponseHistorySpeechActionState\(\{\s+isSpeaking,\s+colors: responseHistorySurfaceColors\.item,\s+\}\);/);
+  assert.match(source, /\{responseHistoryRenderState\.items\.map\(\(item\) => \{/);
+  assert.match(source, /const speechActionState = item\.speechActionState;/);
   assert.match(source, /name=\{speechActionState\.icon\.name\}/);
   assert.match(source, /color=\{speechActionState\.icon\.color\}/);
   assert.match(source, /activeOpacity=\{responseHistorySurface\.header\.pressedOpacity\}/);
@@ -30,6 +30,7 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION\.mobileIcon/);
   assert.doesNotMatch(source, /getAgentResponseHistoryToggleAccessibilityLabel\(isCollapsed\)/);
   assert.doesNotMatch(source, /getAgentResponseHistorySpeechAccessibilityLabel\(isSpeaking\)/);
+  assert.doesNotMatch(source, /getAgentResponseHistorySpeechActionState\(/);
   assert.doesNotMatch(source, /getAgentResponseHistoryTitle\(\)/);
   assert.doesNotMatch(source, /accessibilityLabel=\{isCollapsed \? 'Show agent responses' : 'Hide agent responses'\}/);
   assert.doesNotMatch(source, /accessibilityLabel=\{isSpeaking \? 'Stop speaking' : 'Speak this response'\}/);
@@ -112,10 +113,10 @@ test('mobile response history panel reads compact sizing from shared surface tok
 test('mobile response history keeps hook state stable while adding collapsed latest-preview chrome', () => {
   assert.match(source, /const prevCountRef = useRef\(responses\.length\);/);
   assert.match(source, /const response = item\.entry;/);
-  assert.match(source, /const isSpeaking = speakingIndex === item\.originalIndex;/);
+  assert.match(source, /const speechActionState = item\.speechActionState;/);
   assert.match(source, /useEffect\(\(\) => \{[\s\S]*?prevCountRef\.current = responses\.length;/);
   assert.match(source, /if \(responses\.length === 0\) \{[\s\S]*?return null;/);
-  assert.match(source, /\{responseHistoryPanelState\.items\.map\(\(item\) => \{/);
+  assert.match(source, /\{responseHistoryRenderState\.items\.map\(\(item\) => \{/);
   assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
   assert.match(source, /\{item\.displayIndex > 0 && <View style=\{styles\.separator\} \/>/);
   assert.match(source, /<AnimatedResponseItem isNewest=\{item\.isNewest\} animation=\{responseHistoryAnimation\}>/);
@@ -129,4 +130,5 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.doesNotMatch(source, /formatAgentResponseHistoryPreviewText/);
   assert.doesNotMatch(source, /formatAgentResponseHistoryTimestamp/);
   assert.doesNotMatch(source, /getLatestAgentResponseHistoryEntry/);
+  assert.doesNotMatch(source, /const isSpeaking = speakingIndex === item\.originalIndex;/);
 });

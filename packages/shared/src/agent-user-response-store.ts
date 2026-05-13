@@ -258,10 +258,16 @@ export interface AgentResponseHistoryMobileRenderStateInput<T extends { id?: str
   extends AgentResponseHistoryPanelStateInput {
   responses: readonly T[];
   colors: AgentResponseHistoryMobileSurfaceColorPalette;
+  speakingIndex?: number | null;
+}
+
+export interface AgentResponseHistoryMobileRenderItem<T> extends AgentResponseHistoryRenderItem<T> {
+  speechActionState: AgentResponseHistorySpeechActionState;
 }
 
 export interface AgentResponseHistoryMobileRenderState<T> {
   panel: AgentResponseHistoryPanelState<T>;
+  items: AgentResponseHistoryMobileRenderItem<T>[];
   surface: AgentResponseHistoryMobileSurfaceRenderState['surface'];
   colors: AgentResponseHistoryMobileSurfaceRenderState['colors'];
   icons: typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon;
@@ -389,14 +395,23 @@ export function getAgentResponseHistoryMobileRenderState<T extends { id?: string
   colors,
   isCollapsed,
   animateNewest,
+  speakingIndex,
 }: AgentResponseHistoryMobileRenderStateInput<T>): AgentResponseHistoryMobileRenderState<T> {
   const surfaceState = getAgentResponseHistoryMobileSurfaceRenderState({ colors });
+  const panel = getAgentResponseHistoryPanelState(responses, {
+    isCollapsed,
+    animateNewest,
+  });
 
   return {
-    panel: getAgentResponseHistoryPanelState(responses, {
-      isCollapsed,
-      animateNewest,
-    }),
+    panel,
+    items: panel.items.map((item) => ({
+      ...item,
+      speechActionState: getAgentResponseHistorySpeechActionState({
+        isSpeaking: speakingIndex === item.originalIndex,
+        colors: surfaceState.colors.item,
+      }),
+    })),
     surface: surfaceState.surface,
     colors: surfaceState.colors,
     icons: getAgentResponseHistoryMobileIconState(),

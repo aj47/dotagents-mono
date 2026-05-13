@@ -275,6 +275,7 @@ describe('agent-user-response-store', () => {
       },
       isCollapsed: true,
       animateNewest: true,
+      speakingIndex: 1,
     })).toMatchObject({
       panel: {
         title: 'Agent Responses',
@@ -287,6 +288,31 @@ describe('agent-user-response-store', () => {
           }),
         ]),
       },
+      items: [
+        expect.objectContaining({
+          entry: responses[1],
+          originalIndex: 1,
+          isNewest: true,
+          speechActionState: {
+            accessibilityLabel: 'Stop speaking',
+            icon: {
+              name: 'stop-circle',
+              color: '#2563eb',
+            },
+          },
+        }),
+        expect.objectContaining({
+          entry: responses[0],
+          originalIndex: 0,
+          speechActionState: {
+            accessibilityLabel: 'Speak this response',
+            icon: {
+              name: 'volume-medium',
+              color: '#737373',
+            },
+          },
+        }),
+      ],
       surface: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile,
       colors: {
         container: {

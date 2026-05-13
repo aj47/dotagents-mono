@@ -18,7 +18,6 @@ import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   getAgentResponseHistoryMobileRenderState,
-  getAgentResponseHistorySpeechActionState,
   type AgentResponseHistoryMobileAnimationState,
 } from '@dotagents/shared/agent-user-response-store';
 import { useTheme } from './ThemeProvider';
@@ -107,6 +106,7 @@ export function ResponseHistoryPanel({
     colors: theme.colors,
     isCollapsed,
     animateNewest: shouldAnimateNewest,
+    speakingIndex,
   });
   const responseHistoryPanelState = responseHistoryRenderState.panel;
   const responseHistorySurface = responseHistoryRenderState.surface;
@@ -341,13 +341,9 @@ export function ResponseHistoryPanel({
       )}
       {!isCollapsed && (
         <ScrollView style={styles.list}>
-          {responseHistoryPanelState.items.map((item) => {
+          {responseHistoryRenderState.items.map((item) => {
             const response = item.entry;
-            const isSpeaking = speakingIndex === item.originalIndex;
-            const speechActionState = getAgentResponseHistorySpeechActionState({
-              isSpeaking,
-              colors: responseHistorySurfaceColors.item,
-            });
+            const speechActionState = item.speechActionState;
             return (
               <React.Fragment key={item.key}>
                 {item.displayIndex > 0 && <View style={styles.separator} />}
