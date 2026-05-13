@@ -516,6 +516,15 @@ export interface MessageQueuePanelMobileWrapperRenderState {
   wrapper: typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper;
 }
 
+export interface MessageQueuePanelMobileDockRenderStateInput {
+  isQueueEnabled?: boolean;
+  messageCount?: number | null;
+}
+
+export interface MessageQueuePanelMobileDockRenderState {
+  shouldRender: boolean;
+}
+
 export function getMessageQueuePanelMobileSurfaceColors(
   colors: MessageQueuePanelMobileSurfaceColorPalette,
 ): MessageQueuePanelMobileSurfaceColors {
@@ -609,6 +618,15 @@ export function getMessageQueuePanelMobileSurfaceState(): typeof MESSAGE_QUEUE_P
 export function getMessageQueuePanelMobileWrapperRenderState(): MessageQueuePanelMobileWrapperRenderState {
   return {
     wrapper: getMessageQueuePanelMobileSurfaceState().wrapper,
+  };
+}
+
+export function getMessageQueuePanelMobileDockRenderState({
+  isQueueEnabled = true,
+  messageCount = 0,
+}: MessageQueuePanelMobileDockRenderStateInput = {}): MessageQueuePanelMobileDockRenderState {
+  return {
+    shouldRender: isQueueEnabled === true && (messageCount ?? 0) > 0,
   };
 }
 
@@ -746,6 +764,7 @@ export interface MessageQueuePanelMobileRenderStateInput<T extends Pick<QueuedMe
 }
 
 export interface MessageQueuePanelMobileRenderState<T extends Pick<QueuedMessage, 'id' | 'status'>> {
+  shouldRender: boolean;
   panel: MessageQueuePanelState<T>;
   surface: MessageQueuePanelMobileSurfaceRenderState['surface'];
   colors: MessageQueuePanelMobileSurfaceRenderState['colors'];
@@ -826,13 +845,17 @@ export function getMessageQueuePanelMobileRenderState<T extends Pick<QueuedMessa
   canProcessNext,
 }: MessageQueuePanelMobileRenderStateInput<T>): MessageQueuePanelMobileRenderState<T> {
   const surfaceState = getMessageQueuePanelMobileSurfaceRenderState({ colors });
+  const panel = getMessageQueuePanelState(messages, {
+    isPaused,
+    isListCollapsed,
+    canProcessNext,
+  });
 
   return {
-    panel: getMessageQueuePanelState(messages, {
-      isPaused,
-      isListCollapsed,
-      canProcessNext,
-    }),
+    shouldRender: getMessageQueuePanelMobileDockRenderState({
+      messageCount: panel.messageCount,
+    }).shouldRender,
+    panel,
     surface: surfaceState.surface,
     colors: surfaceState.colors,
     icons: getMessageQueuePanelMobileIconState(),

@@ -20,6 +20,7 @@ import {
   getMessageQueueListToggleLabel,
   getMessageQueuePanelCopyState,
   getMessageQueuePanelDesktopSurfaceState,
+  getMessageQueuePanelMobileDockRenderState,
   getMessageQueuePanelMobileIconState,
   getMessageQueuePanelMobileRenderState,
   getMessageQueuePanelMobileSurfaceColors,
@@ -263,6 +264,20 @@ describe('message-queue-utils', () => {
     expect(getMessageQueuePanelMobileWrapperRenderState()).toEqual({
       wrapper: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper,
     });
+    expect(getMessageQueuePanelMobileDockRenderState({
+      isQueueEnabled: true,
+      messageCount: 1,
+    })).toEqual({
+      shouldRender: true,
+    });
+    expect(getMessageQueuePanelMobileDockRenderState({
+      isQueueEnabled: false,
+      messageCount: 1,
+    }).shouldRender).toBe(false);
+    expect(getMessageQueuePanelMobileDockRenderState({
+      isQueueEnabled: true,
+      messageCount: 0,
+    }).shouldRender).toBe(false);
     expect(getMessageQueuePanelDesktopSurfaceState()).toBe(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingHorizontal).toBe('md');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingTop).toBe('sm');
@@ -527,6 +542,7 @@ describe('message-queue-utils', () => {
       isListCollapsed: true,
       canProcessNext: true,
     })).toMatchObject({
+      shouldRender: true,
       panel: {
         messageCount: 2,
         isPaused: true,
@@ -552,6 +568,10 @@ describe('message-queue-utils', () => {
       icons: MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon,
       copy: MESSAGE_QUEUE_PANEL_PRESENTATION,
     });
+    expect(getMessageQueuePanelMobileRenderState({
+      messages: [],
+      colors: mobileMessageQueuePalette,
+    }).shouldRender).toBe(false);
 
     const longFailedMessage = makeMessage('msg-1', {
       status: 'failed',

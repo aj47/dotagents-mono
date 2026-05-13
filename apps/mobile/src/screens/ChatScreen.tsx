@@ -53,6 +53,7 @@ import type {
   ChatMessageScrollViewportRef,
 } from '../ui/ChatMessageChrome';
 import {
+  getMessageQueuePanelMobileDockRenderState,
   getMessageQueuePanelMobileWrapperRenderState,
 } from '@dotagents/shared/message-queue-utils';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
@@ -2170,6 +2171,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const queuedMessages = messageQueue.getQueue(currentConversationId);
   const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
   const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
+  const messageQueuePanelDockRenderState = useMemo(
+    () => getMessageQueuePanelMobileDockRenderState({
+      isQueueEnabled: messageQueueEnabled,
+      messageCount: queuedMessages.length,
+    }),
+    [messageQueueEnabled, queuedMessages.length],
+  );
 
   const handlePickImages = useCallback(async () => {
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
@@ -3579,7 +3587,7 @@ export default function ChatScreen({ route, navigation }: any) {
             transcriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
           },
           queuePanel: {
-            shouldRender: messageQueueEnabled && queuedMessages.length > 0,
+            shouldRender: messageQueuePanelDockRenderState.shouldRender,
             panel: {
               conversationId: currentConversationId,
               messages: queuedMessages,

@@ -2144,6 +2144,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 });
 
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
+  assert.match(screenSource, /getMessageQueuePanelMobileDockRenderState,/);
   assert.match(screenSource, /getMessageQueuePanelMobileWrapperRenderState,/);
   assert.match(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
@@ -2153,10 +2154,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(screenSource, /const messageQueuePanelWrapper = messageQueuePanelWrapperState\.wrapper;/);
   assert.match(screenSource, /const isMessageQueuePaused = messageQueue\.isQueuePaused\(currentConversationId\);/);
   assert.match(screenSource, /const nextQueuedMessage = !responding && !isMessageQueuePaused \? messageQueue\.peek\(currentConversationId\) : null;/);
+  assert.match(screenSource, /const messageQueuePanelDockRenderState = useMemo\(\s+\(\) => getMessageQueuePanelMobileDockRenderState\(\{\s+isQueueEnabled: messageQueueEnabled,\s+messageCount: queuedMessages\.length,\s+\}\),\s+\[messageQueueEnabled, queuedMessages\.length\],\s+\);/);
   assert.match(screenSource, /const handlePauseMessageQueue = useCallback\(\(\) => \{[\s\S]*?messageQueue\.pauseQueue\(currentConversationId\);/);
   assert.match(screenSource, /const handleResumeMessageQueue = useCallback\(\(\) => \{[\s\S]*?messageQueue\.resumeQueue\(currentConversationId\);/);
   assert.match(screenSource, /messageQueueEnabled &&[\s\S]*?!messageQueue\.isQueuePaused\(currentConversationId\)/);
-  assert.match(screenSource, /queuePanel: \{\s+shouldRender: messageQueueEnabled && queuedMessages\.length > 0,\s+panel: \{\s+conversationId: currentConversationId,/);
+  assert.match(screenSource, /queuePanel: \{\s+shouldRender: messageQueuePanelDockRenderState\.shouldRender,\s+panel: \{\s+conversationId: currentConversationId,/);
+  assert.doesNotMatch(screenSource, /shouldRender: messageQueueEnabled && queuedMessages\.length > 0/);
   assert.match(chatMessageChromeSource, /<ChatMessageQueuePanelDock\s+\{\.\.\.queuePanel\}\s+style=\{styles\.queuePanelStyle\}/);
   assert.match(chatMessageChromeSource, /queuePanelStyle: styles\.messageQueuePanelWrapper,/);
   assert.match(chatMessageChromeSource, /queuePanelStyle: conversationDockStyles\.queuePanelStyle,/);
@@ -2164,6 +2167,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /export function ChatMessageQueuePanelDock/);
   assert.match(chatMessageChromeSource, /if \(!shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?<MessageQueuePanel \{\.\.\.panel\} \/>[\s\S]*?<\/View>/);
+  assert.match(messageQueuePanelSource, /if \(!queuePanelRenderState\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /if \(messages\.length === 0\) \{\s+return null;\s+\}/);
   assert.match(messageQueuePanelSource, /actionButton:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.buttonFlexDirection,[\s\S]*?alignItems:\s*actionSurface\.buttonAlignItems,[\s\S]*?gap:\s*actionSurface\.buttonGap/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);

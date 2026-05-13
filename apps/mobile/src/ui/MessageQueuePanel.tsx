@@ -409,7 +409,7 @@ export function MessageQueuePanel({
     setIsListCollapsed(false);
   }, [conversationId]);
 
-  if (messages.length === 0) {
+  if (!queuePanelRenderState.shouldRender) {
     return null;
   }
 
