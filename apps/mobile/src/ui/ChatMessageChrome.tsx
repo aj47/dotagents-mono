@@ -46,12 +46,8 @@ import {
   getPromptLibraryShortcutSourceLabel,
   type PromptLibraryEditorMobileCloseIconState,
   type PromptLibraryLauncherShortcutSource,
-  type PromptLibraryMobileAddShortcutIconState,
   type PromptLibraryMobileIconColors,
-  type PromptLibraryMobileLauncherShortcutSourceIconColors,
-  type PromptLibraryMobileLauncherShortcutSourceIconStates,
-  type PromptLibraryMobileShortcutActionIconState,
-  type PromptLibraryMobileShortcutSourceIconState,
+  type PromptLibraryMobileShortcutChromeState,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
@@ -286,14 +282,6 @@ export type ChatConversationHomeQuickStartItem<
   TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
 > = PromptLibraryShortcutItem<TPrompt, TTask>;
 
-type ChatConversationHomeQuickStartIcon =
-  | PromptLibraryEditorMobileCloseIconState
-  | PromptLibraryMobileAddShortcutIconState
-  | PromptLibraryMobileShortcutActionIconState
-  | PromptLibraryMobileShortcutSourceIconState;
-
-type ChatConversationHomeQuickStartIconColors = PromptLibraryMobileIconColors;
-
 type ChatConversationHomeQuickStartsStyles = {
   card: StyleProp<ViewStyle>;
   emptyText: StyleProp<TextStyle>;
@@ -333,14 +321,7 @@ type ChatConversationHomeQuickStartsProps<
   sourceLabelNumberOfLines: number;
   titleNumberOfLines: number;
   descriptionNumberOfLines: number;
-  addIcon: ChatConversationHomeQuickStartIcon;
-  addIconColors: ChatConversationHomeQuickStartIconColors;
-  editIcon: ChatConversationHomeQuickStartIcon;
-  editIconColors: ChatConversationHomeQuickStartIconColors;
-  deleteIcon: ChatConversationHomeQuickStartIcon;
-  deleteIconColors: ChatConversationHomeQuickStartIconColors;
-  sourceIcons: PromptLibraryMobileLauncherShortcutSourceIconStates;
-  sourceIconColors: PromptLibraryMobileLauncherShortcutSourceIconColors;
+  shortcutChrome: PromptLibraryMobileShortcutChromeState;
   editLabel: string;
   deleteLabel: string;
   styles: ChatConversationHomeQuickStartsStyles;
@@ -383,8 +364,8 @@ type ChatConversationHomePromptEditorModalProps = {
   modalTransparent?: ComponentProps<typeof Modal>['transparent'];
   modalAnimationType?: ComponentProps<typeof Modal>['animationType'];
   keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  closeIcon: ChatConversationHomeQuickStartIcon;
-  closeIconColors: ChatConversationHomeQuickStartIconColors;
+  closeIcon: PromptLibraryEditorMobileCloseIconState;
+  closeIconColors: PromptLibraryMobileIconColors;
   closeButtonPressedOpacity: number;
   closeButtonAccessibilityRole: AccessibilityRole;
   closeButtonAccessibilityLabel: string;
@@ -447,8 +428,8 @@ type ChatConversationHomePromptEditorModalChromeInput = {
     };
   };
   keyboardAvoidingBehavior?: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  closeIcon: ChatConversationHomeQuickStartIcon;
-  closeIconColors: ChatConversationHomeQuickStartIconColors;
+  closeIcon: PromptLibraryEditorMobileCloseIconState;
+  closeIconColors: PromptLibraryMobileIconColors;
   closeButtonAccessibilityLabel: string;
   styles: ChatConversationHomePromptEditorModalStyles;
 };
@@ -2730,14 +2711,7 @@ export function ChatConversationHomeQuickStarts<
   sourceLabelNumberOfLines,
   titleNumberOfLines,
   descriptionNumberOfLines,
-  addIcon,
-  addIconColors,
-  editIcon,
-  editIconColors,
-  deleteIcon,
-  deleteIconColors,
-  sourceIcons,
-  sourceIconColors,
+  shortcutChrome,
   editLabel,
   deleteLabel,
   styles,
@@ -2751,8 +2725,8 @@ export function ChatConversationHomeQuickStarts<
           {items.map((item) => {
             const isAddPrompt = item.action === 'add-prompt';
             const isTaskRunning = item.source === 'task' && runningTaskId === item.task?.id;
-            const sourceIcon = sourceIcons[item.source];
-            const shortcutSourceIconColors = sourceIconColors[item.source];
+            const sourceIcon = shortcutChrome.sourceIcons[item.source];
+            const shortcutSourceIconColors = shortcutChrome.sourceIconColors[item.source];
 
             return (
               <Pressable
@@ -2787,9 +2761,9 @@ export function ChatConversationHomeQuickStarts<
                   </View>
                 ) : (
                   <Ionicons
-                    name={addIcon.name}
-                    size={addIcon.size}
-                    color={addIconColors.color}
+                    name={shortcutChrome.addIcon.name}
+                    size={shortcutChrome.addIcon.size}
+                    color={shortcutChrome.addIconColors.color}
                     style={styles.addIcon}
                   />
                 )}
@@ -2825,9 +2799,9 @@ export function ChatConversationHomeQuickStarts<
                       accessibilityLabel={getPromptLibraryEditPromptAccessibilityLabel(item.title)}
                     >
                       <Ionicons
-                        name={editIcon.name}
-                        size={editIcon.size}
-                        color={editIconColors.color}
+                        name={shortcutChrome.editIcon.name}
+                        size={shortcutChrome.editIcon.size}
+                        color={shortcutChrome.editIconColors.color}
                       />
                       <Text style={styles.actionText}>{editLabel}</Text>
                     </Pressable>
@@ -2844,9 +2818,9 @@ export function ChatConversationHomeQuickStarts<
                       accessibilityLabel={getPromptLibraryDeletePromptAccessibilityLabel(item.title)}
                     >
                       <Ionicons
-                        name={deleteIcon.name}
-                        size={deleteIcon.size}
-                        color={deleteIconColors.color}
+                        name={shortcutChrome.deleteIcon.name}
+                        size={shortcutChrome.deleteIcon.size}
+                        color={shortcutChrome.deleteIconColors.color}
                       />
                       <Text style={[styles.actionText, styles.actionDangerText]}>{deleteLabel}</Text>
                     </Pressable>
