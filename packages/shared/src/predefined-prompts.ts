@@ -354,6 +354,17 @@ export const PROMPT_LIBRARY_SURFACE_PRESENTATION = {
       input: {
         colorToken: "foreground",
         placeholderColorToken: "mutedForeground",
+        borderWidth: 1,
+        borderColorToken: "input",
+        borderRadius: "lg",
+        paddingHorizontal: "md",
+        paddingVerticalByPlatform: {
+          ios: 10,
+          android: 8,
+          default: 10,
+        },
+        backgroundColorToken: "background",
+        fontSize: typography.body.fontSize,
         marginBottom: "md",
       },
       multilineInput: {
@@ -507,6 +518,8 @@ export type PromptLibraryMobileSurfaceColorToken =
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.label.colorToken
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.colorToken
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.borderColorToken
+  | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.backgroundColorToken
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.cancelButton.textColorToken
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.backgroundColorToken
   | typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.saveButton.textColorToken
@@ -568,6 +581,8 @@ export interface PromptLibraryMobileSurfaceColors {
     input: {
       color: string
       placeholderColor: string
+      borderColor: string
+      backgroundColor: string
     }
     cancelButtonText: {
       color: string
@@ -619,6 +634,12 @@ type PromptLibraryEditorModalBehaviorByPlatform =
 
 export type PromptLibraryEditorMobileKeyboardAvoidingBehavior =
   PromptLibraryEditorModalBehaviorByPlatform[keyof PromptLibraryEditorModalBehaviorByPlatform]
+
+type PromptLibraryEditorInputPaddingVerticalByPlatform =
+  typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.paddingVerticalByPlatform
+
+export type PromptLibraryEditorMobileInputPaddingVertical =
+  PromptLibraryEditorInputPaddingVerticalByPlatform[keyof PromptLibraryEditorInputPaddingVerticalByPlatform]
 
 export interface PromptLibraryEditorMobileRenderState {
   surface: PromptLibraryEditorMobileSurfaceState
@@ -672,6 +693,15 @@ export function getPromptLibraryEditorModalKeyboardAvoidingBehavior(
 ): PromptLibraryEditorMobileKeyboardAvoidingBehavior {
   const behavior = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.keyboardAvoidingView.behaviorByPlatform
   return platform === "ios" ? behavior.ios : behavior.default
+}
+
+export function getPromptLibraryEditorInputPaddingVertical(
+  platform: string | null | undefined,
+): PromptLibraryEditorMobileInputPaddingVertical {
+  const padding = PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.paddingVerticalByPlatform
+  if (platform === "ios") return padding.ios
+  if (platform === "android") return padding.android
+  return padding.default
 }
 
 export function getPromptLibraryDesktopSurfaceState(): typeof PROMPT_LIBRARY_SURFACE_PRESENTATION.desktop {
@@ -892,6 +922,8 @@ export function getPromptLibraryMobileSurfaceColors(
       input: {
         color: colors[editorModal.input.colorToken],
         placeholderColor: colors[editorModal.input.placeholderColorToken],
+        borderColor: colors[editorModal.input.borderColorToken],
+        backgroundColor: colors[editorModal.input.backgroundColorToken],
       },
       cancelButtonText: {
         color: colors[editorModal.cancelButton.textColorToken],

@@ -19,6 +19,7 @@ import {
   getPromptLibraryDeletePromptAccessibilityLabel,
   getPromptLibraryDesktopSurfaceState,
   getPromptLibraryEditPromptAccessibilityLabel,
+  getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorModalKeyboardAvoidingBehavior,
   getPromptLibraryEditorMobileChromeState,
   getPromptLibraryEditorMobileCloseIconState,
@@ -185,6 +186,7 @@ describe("predefined prompt helpers", () => {
       card: "#ffffff",
       destructive: "#dc2626",
       foreground: "#0f172a",
+      input: "#94a3b8",
       muted: "#e2e8f0",
       mutedForeground: "#64748b",
       primary: "#2563eb",
@@ -244,6 +246,8 @@ describe("predefined prompt helpers", () => {
         input: {
           color: "#0f172a",
           placeholderColor: "#64748b",
+          borderColor: "#94a3b8",
+          backgroundColor: "#f8fafc",
         },
         cancelButtonText: {
           color: "#64748b",
@@ -539,6 +543,9 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("ios")).toBe("padding")
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("android")).toBeUndefined()
     expect(getPromptLibraryEditorModalKeyboardAvoidingBehavior("web")).toBeUndefined()
+    expect(getPromptLibraryEditorInputPaddingVertical("ios")).toBe(10)
+    expect(getPromptLibraryEditorInputPaddingVertical("android")).toBe(8)
+    expect(getPromptLibraryEditorInputPaddingVertical("web")).toBe(10)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.overlay.flex).toBe(1)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.overlay.backgroundColor).toBe("#000000")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.overlay.backgroundAlpha).toBe(0.5)
@@ -588,6 +595,7 @@ describe("predefined prompt helpers", () => {
         card: "#ffffff",
         destructive: "#dc2626",
         foreground: "#0f172a",
+        input: "#94a3b8",
         muted: "#e2e8f0",
         mutedForeground: "#64748b",
         primary: "#2563eb",
@@ -602,6 +610,7 @@ describe("predefined prompt helpers", () => {
         card: "#ffffff",
         destructive: "#dc2626",
         foreground: "#0f172a",
+        input: "#94a3b8",
         muted: "#e2e8f0",
         mutedForeground: "#64748b",
         primary: "#2563eb",
@@ -618,6 +627,12 @@ describe("predefined prompt helpers", () => {
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.label.fontSize).toBe(12)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.label.lineHeight).toBe(16)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.placeholderColorToken).toBe("mutedForeground")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.borderWidth).toBe(1)
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.borderColorToken).toBe("input")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.borderRadius).toBe("lg")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.paddingHorizontal).toBe("md")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.backgroundColorToken).toBe("background")
+    expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.input.fontSize).toBe(16)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.multiline).toBe(true)
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.textAlignVertical).toBe("top")
     expect(PROMPT_LIBRARY_SURFACE_PRESENTATION.mobile.editorModal.multilineInput.height).toBe(120)
