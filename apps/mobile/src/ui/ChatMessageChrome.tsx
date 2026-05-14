@@ -52,10 +52,12 @@ import {
   applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
+  getNextAgentUserResponseEventOrdinal,
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
   hasVisibleChatMessageContent,
   preserveChatMessageDisplayContentFromProgress,
+  sortAgentUserResponseEvents,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
@@ -3745,6 +3747,22 @@ export function createChatMessageRuntimeResponseHistoryEvents(
   messages: ChatMessageRuntimeResponseHistorySourceMessage[],
 ): AgentUserResponseEvent[] {
   return extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
+}
+
+export function sortChatMessageRuntimeResponseEvents<
+  TEvent extends Pick<AgentUserResponseEvent, 'ordinal' | 'timestamp' | 'runId'>,
+>(
+  events: TEvent[],
+): TEvent[] {
+  return sortAgentUserResponseEvents(events);
+}
+
+export function getChatMessageRuntimeNextResponseEventOrdinal<
+  TEvent extends Pick<AgentUserResponseEvent, 'ordinal'>,
+>(
+  events: TEvent[],
+): number {
+  return getNextAgentUserResponseEventOrdinal(events);
 }
 
 export function createChatMessageRuntimeTurnDurationMessages(

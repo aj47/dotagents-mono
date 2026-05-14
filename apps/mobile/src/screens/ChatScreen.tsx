@@ -66,6 +66,8 @@ import {
   createChatMessageRuntimeUserTextMessage,
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeResponseHistoryEvents,
+  getChatMessageRuntimeNextResponseEventOrdinal,
+  sortChatMessageRuntimeResponseEvents,
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeToolActivityGroups,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
@@ -130,10 +132,6 @@ import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-import {
-  getNextAgentUserResponseEventOrdinal,
-  sortAgentUserResponseEvents,
-} from '@dotagents/shared/chat-utils';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   mergeVoiceText,
@@ -977,11 +975,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
-	    nextResponseEventOrdinalRef.current = getNextAgentUserResponseEventOrdinal(events);
+	    nextResponseEventOrdinalRef.current = getChatMessageRuntimeNextResponseEventOrdinal(events);
 	  }, []);
 
 	  const replaceResponseHistory = useCallback((events: AgentUserResponseEvent[]) => {
-	    const sortedEvents = sortAgentUserResponseEvents(events);
+	    const sortedEvents = sortChatMessageRuntimeResponseEvents(events);
 	    syncResponseHistoryRefs(sortedEvents);
 	    setRespondToUserHistory(sortedEvents);
 	  }, [syncResponseHistoryRefs]);
@@ -1012,7 +1010,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      merged.set(event.id, event);
 	    }
 
-	    const mergedEvents = sortAgentUserResponseEvents(Array.from(merged.values()));
+	    const mergedEvents = sortChatMessageRuntimeResponseEvents(Array.from(merged.values()));
 	    syncResponseHistoryRefs(mergedEvents);
 	    setRespondToUserHistory(mergedEvents);
 	  }, [syncResponseHistoryRefs]);
@@ -1055,7 +1053,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (!unseenEvents.length) return;
 
-    queuedResponseEventsRef.current = sortAgentUserResponseEvents([
+    queuedResponseEventsRef.current = sortChatMessageRuntimeResponseEvents([
       ...queuedResponseEventsRef.current,
       ...unseenEvents,
     ]);
@@ -1924,7 +1922,7 @@ export default function ChatScreen({ route, navigation }: any) {
         latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
         if (update.responseEvents?.length) {
-	          lastResponseEvents = sortAgentUserResponseEvents(update.responseEvents);
+	          lastResponseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents);
 	          mergeResponseEvents(lastResponseEvents);
 	          enqueueResponseEventsForSpeech(lastResponseEvents);
 	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
@@ -2317,7 +2315,7 @@ export default function ChatScreen({ route, navigation }: any) {
         latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
         if (update.responseEvents?.length) {
-	          lastResponseEvents = sortAgentUserResponseEvents(update.responseEvents);
+	          lastResponseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents);
 	          mergeResponseEvents(lastResponseEvents);
 	          enqueueResponseEventsForSpeech(lastResponseEvents);
 	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;

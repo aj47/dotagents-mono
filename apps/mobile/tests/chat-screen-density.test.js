@@ -1753,6 +1753,15 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /const extractRespondToUserHistory = /);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeResponseHistoryEvents/);
   assert.match(chatMessageChromeSource, /return extractRespondToUserResponseEvents\(messages, \{ idPrefix: 'mobile-history' \}\)/);
+  assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/chat-utils'/);
+  assert.doesNotMatch(screenSource, /sortAgentUserResponseEvents,/);
+  assert.doesNotMatch(screenSource, /getNextAgentUserResponseEventOrdinal,/);
+  assert.match(screenSource, /sortChatMessageRuntimeResponseEvents\(update\.responseEvents\)/);
+  assert.match(screenSource, /getChatMessageRuntimeNextResponseEventOrdinal\(events\)/);
+  assert.match(chatMessageChromeSource, /sortAgentUserResponseEvents,/);
+  assert.match(chatMessageChromeSource, /getNextAgentUserResponseEventOrdinal,/);
+  assert.match(chatMessageChromeSource, /export function sortChatMessageRuntimeResponseEvents/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeNextResponseEventOrdinal/);
   assert.match(screenSource, /createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>\(serverMessages\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+historyMessages,\s+\{\s+\.\.\.displayOptions,\s+skipUserMessages,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRecoveredHistoryMessages/);
