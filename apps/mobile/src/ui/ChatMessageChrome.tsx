@@ -553,6 +553,14 @@ type ChatMessageRetryStatusPropsInput = {
   colors: Parameters<typeof getChatRuntimeRetryStatusMobileRenderState>[0]['colors'];
 };
 
+type ChatMessageConversationRetryStatusInput = {
+  message: {
+    variant?: string;
+    retryInfo?: AgentRetryInfo | null;
+  };
+  colors: ChatMessageRetryStatusPropsInput['colors'];
+};
+
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -2186,6 +2194,17 @@ export function createChatMessageConversationDelegationCardInput({
         setChatDisplayExpansionState(current, runId, true),
       );
     },
+  };
+}
+
+export function createChatMessageConversationRetryStatusInput({
+  message,
+  colors,
+}: ChatMessageConversationRetryStatusInput): ChatMessageRetryStatusPropsInput {
+  return {
+    isRetry: message.variant === 'retry',
+    retryInfo: message.retryInfo,
+    colors,
   };
 }
 

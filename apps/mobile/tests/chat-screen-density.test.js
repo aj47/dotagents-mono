@@ -388,7 +388,9 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /getChatRuntimeRetryStatusMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type AgentRetryInfo,/);
   assert.doesNotMatch(screenSource, /retryStatus: createChatMessageRetryStatusProps/);
-  assert.match(screenSource, /retryStatus: \{\s+isRetry: m\.variant === 'retry',\s+retryInfo: m\.retryInfo,\s+colors: theme\.colors,\s+\},/);
+  assert.match(screenSource, /retryStatus: createChatMessageConversationRetryStatusInput\(\{\s+message: m,\s+colors: theme\.colors,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationRetryStatusInput/);
+  assert.match(chatMessageChromeSource, /isRetry: message\.variant === 'retry',\s+retryInfo: message\.retryInfo,\s+colors,/);
   assert.match(chatMessageChromeSource, /retryStatus: createChatMessageRetryStatusProps\(retryStatus\),/);
   assert.doesNotMatch(screenSource, /m\.variant === 'retry' && retryStatusRenderState\.shouldRender/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);

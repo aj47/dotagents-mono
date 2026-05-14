@@ -38,6 +38,7 @@ import {
   createChatMessageConversationActionSetInput,
   createChatMessageConversationContentInput,
   createChatMessageConversationDelegationCardInput,
+  createChatMessageConversationRetryStatusInput,
   createChatMessageConversationToolApprovalInput,
   createChatMessageConversationRenderContext,
   createChatMessageConversationToolExecutionStackInput,
@@ -3819,11 +3820,10 @@ export default function ChatScreen({ route, navigation }: any) {
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageRuntimeThreadStyles}
                 body={{
-                  retryStatus: {
-                    isRetry: m.variant === 'retry',
-                    retryInfo: m.retryInfo,
+                  retryStatus: createChatMessageConversationRetryStatusInput({
+                    message: m,
                     colors: theme.colors,
-                  },
+                  }),
                   delegationCard: createChatMessageConversationDelegationCardInput({
                     message: m,
                     surface: mobileRuntimeDelegationCard,
