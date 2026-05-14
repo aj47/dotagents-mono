@@ -45,6 +45,7 @@ import {
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageRuntimeDockChromeProps,
+  createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportChromeProps,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -3615,6 +3616,29 @@ export default function ChatScreen({ route, navigation }: any) {
       micWrapperRef: micButtonRef,
     },
   });
+  const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps({
+    keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,
+    keyboardVerticalOffset: headerHeight,
+    dock: chatMessageRuntimeDock,
+    viewport: chatMessageRuntimeViewport,
+    agentSelector: {
+      visible: agentSelectorVisible,
+      onClose: () => setAgentSelectorVisible(false),
+    },
+    promptEditor: {
+      visible: addPromptModalVisible,
+      renderState: promptLibraryEditorRenderState,
+      isEditing: Boolean(editingPrompt),
+      nameValue: newPromptName,
+      onNameChange: setNewPromptName,
+      contentValue: newPromptContent,
+      onContentChange: setNewPromptContent,
+      isSaving: isSavingPrompt,
+      onClose: closePromptModal,
+      onSave: handleSavePrompt,
+      styles: promptEditorModalStyles,
+    },
+  });
 
   const handleRetryLastFailedMessage = async () => {
     const messageToRetry = lastFailedMessage;
@@ -3715,31 +3739,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   return (
     <ChatMessageRuntimeSurface
-      frame={{
-        keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,
-        keyboardVerticalOffset: headerHeight,
-      }}
-      dock={chatMessageRuntimeDock}
-      overlays={{
-          agentSelector: {
-            visible: agentSelectorVisible,
-            onClose: () => setAgentSelectorVisible(false),
-          },
-          promptEditor: {
-            visible: addPromptModalVisible,
-            renderState: promptLibraryEditorRenderState,
-            isEditing: Boolean(editingPrompt),
-            nameValue: newPromptName,
-            onNameChange: setNewPromptName,
-            contentValue: newPromptContent,
-            onContentChange: setNewPromptContent,
-            isSaving: isSavingPrompt,
-            onClose: closePromptModal,
-            onSave: handleSavePrompt,
-            styles: promptEditorModalStyles,
-          },
-      }}
-      viewport={chatMessageRuntimeViewport}
+      {...chatMessageRuntimeSurface}
       styles={chatMessageRuntimeSurfaceStyles}
     >
           <ChatMessageConversationRuntimeThreadList

@@ -1493,6 +1493,23 @@ type ChatMessageRuntimeSurfaceProps<
   children: ReactNode;
 };
 
+type ChatMessageRuntimeSurfaceChromeProps<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> = Omit<ChatMessageRuntimeSurfaceProps<TPrompt, TTask>, 'children' | 'styles'>;
+
+type ChatMessageRuntimeSurfaceChromePropsInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> = {
+  keyboardAvoidingBehavior: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardAvoidingBehavior'];
+  keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
+  dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
+  viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
+  agentSelector: ChatMessageRuntimeOverlaysProps['agentSelector'];
+  promptEditor: ChatMessageRuntimeOverlaysProps['promptEditor'];
+};
+
 type ChatRuntimeMobileSafeAreaLayout = {
   chatScrollContent: {
     paddingBottom: number;
@@ -2634,6 +2651,31 @@ export function createChatMessageRuntimeDockChromeProps({
       renderState: scrollToBottomRenderState,
       onPress: onScrollToBottom,
     },
+  };
+}
+
+export function createChatMessageRuntimeSurfaceChromeProps<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>({
+  keyboardAvoidingBehavior,
+  keyboardVerticalOffset,
+  dock,
+  viewport,
+  agentSelector,
+  promptEditor,
+}: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
+  return {
+    frame: {
+      keyboardAvoidingBehavior,
+      keyboardVerticalOffset,
+    },
+    dock,
+    overlays: {
+      agentSelector,
+      promptEditor,
+    },
+    viewport,
   };
 }
 
