@@ -69,6 +69,7 @@ import {
   getChatMessageRuntimeNextResponseEventOrdinal,
   sortChatMessageRuntimeResponseEvents,
   createChatMessageRuntimeTurnDurationMessages,
+  computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeToolActivityGroups,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
   applyChatMessageRuntimeAutoExpansionState,
@@ -149,9 +150,6 @@ import {
 import {
   sanitizeMessagesForModel,
 } from '@dotagents/shared/message-display-utils';
-import {
-  computeTurnDurations,
-} from '@dotagents/shared/turn-duration';
 import {
   buildChatImageAttachmentMessage,
   extractDataImageMarkdownReferences,
@@ -674,7 +672,7 @@ export default function ChatScreen({ route, navigation }: any) {
     [messages],
   );
   const turnDurations = useMemo(
-    () => computeTurnDurations(turnDurationMessages, !hasLiveAgentTurn, turnNow),
+    () => computeChatMessageRuntimeTurnDurations(turnDurationMessages, !hasLiveAgentTurn, turnNow),
     [hasLiveAgentTurn, turnDurationMessages, turnNow],
   );
   const mobileHeaderRenderState = useMemo(

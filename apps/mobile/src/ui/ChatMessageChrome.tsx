@@ -100,7 +100,10 @@ import {
   createMinimumTouchTargetStyle,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
-import type { TurnDurationMessage } from '@dotagents/shared/turn-duration';
+import {
+  computeTurnDurations,
+  type TurnDurationMessage,
+} from '@dotagents/shared/turn-duration';
 import {
   buildPromptLibraryShortcutItems,
   formatPromptLibraryDeletePromptConfirmMessage,
@@ -3784,6 +3787,14 @@ export function createChatMessageRuntimeTurnDurationMessages(
     });
     return entries;
   }, []);
+}
+
+export function computeChatMessageRuntimeTurnDurations(
+  messages: TurnDurationMessage[],
+  isComplete: boolean,
+  nowMs: number,
+): ReturnType<typeof computeTurnDurations> {
+  return computeTurnDurations(messages, isComplete, nowMs);
 }
 
 export function createChatMessageRuntimeToolActivityGroups(
