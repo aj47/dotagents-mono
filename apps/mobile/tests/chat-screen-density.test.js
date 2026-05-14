@@ -77,9 +77,13 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
 });
 
 test('keeps agent selection in the navigation header for the mobile chat screen', () => {
-  assert.match(screenSource, /createChatRuntimeNavigationHeaderOptions,/);
+  assert.match(screenSource, /useChatRuntimeNavigationHeaderOptions,/);
   assert.match(screenSource, /createChatRuntimeNavigationHeaderRenderState,/);
-  assert.match(screenSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeNavigationHeaderOptions,/);
+  assert.doesNotMatch(screenSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
+  assert.match(screenSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.mobileHeaderRenderState,/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderOptions/);
+  assert.match(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeCurrentAgentLabel,/);
   assert.match(chatMessageChromeSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\);/);
   assert.match(chatMessageChromeSource, /getChatRuntimeHeaderMobileSurfaceState\(\)\.agentSelectorText\.numberOfLines/);
@@ -869,7 +873,8 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.doesNotMatch(screenSource, /void sessionStore\.toggleSessionPinned\(currentSessionId\);/);
   assert.match(chatMessageChromeSource, /backButtonRenderState: getChatRuntimeBackMobileRenderState\(\{ colors \}\),/);
   assert.match(chatMessageChromeSource, /pinButtonIsActive: pinButtonRenderState\.isPinned,/);
-  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onBackButtonPress: \(\) => navigation\.navigate\('Sessions'\),[\s\S]*?onPinButtonPress: handleToggleCurrentSessionPinned,/);
+  assert.match(screenSource, /const handleBackToSessions = useCallback\(\(\) => \{\s+navigation\.navigate\('Sessions'\);\s+\}, \[navigation\]\);/);
+  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onBackButtonPress: handleBackToSessions,[\s\S]*?onPinButtonPress: handleToggleCurrentSessionPinned,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderIconButton/);
   assert.match(chatMessageChromeSource, /headerLeft: \(\) => \(\s+<ChatRuntimeHeaderActionsRow style=\{styles\.actionsRowStyle\}>[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.backButton\}\s+style=\{styles\.iconButtons\.edgeStyle\}[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.pinButton\}\s+style=\{styles\.iconButtons\.pinStyle\}\s+activeStyle=\{styles\.iconButtons\.pinActiveStyle\}/);
   assert.match(chatMessageChromeSource, /edgeStyle: styles\.headerEdgeActionButton,\s+pinStyle: styles\.headerPinButton,\s+pinActiveStyle: styles\.headerPinButtonActive,/);

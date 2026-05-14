@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import {
   Platform,
   Alert,
@@ -41,7 +41,7 @@ import {
   useChatComposerRuntimeHandsFreeControlActionsState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
-  createChatRuntimeNavigationHeaderOptions,
+  useChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
   formatChatMessageRuntimeAlertMessage,
   formatChatMessageRuntimeConnectionErrorMessage,
@@ -643,18 +643,21 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [config, handsFreeController, setConfig, setHandsFreeRefValue, stopRecognitionOnly]);
 
-  useLayoutEffect(() => {
-    navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
-      ...mobileHeaderRenderState,
-      onAgentSelectorPress: openAgentSelector,
-      onBackButtonPress: () => navigation.navigate('Sessions'),
-      onPinButtonPress: handleToggleCurrentSessionPinned,
-      conversationStatusSpinnerSource: isDark ? darkSpinner : lightSpinner,
-      onKillSwitchButtonPress: handleKillSwitch,
-      onHandsFreeButtonPress: toggleHandsFree,
-      styles: chatRuntimeHeaderStyles,
-    }));
-  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, mobileHeaderRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree, openAgentSelector]);
+  const handleBackToSessions = useCallback(() => {
+    navigation.navigate('Sessions');
+  }, [navigation]);
+
+  useChatRuntimeNavigationHeaderOptions({
+    navigation,
+    ...mobileHeaderRenderState,
+    onAgentSelectorPress: openAgentSelector,
+    onBackButtonPress: handleBackToSessions,
+    onPinButtonPress: handleToggleCurrentSessionPinned,
+    conversationStatusSpinnerSource: isDark ? darkSpinner : lightSpinner,
+    onKillSwitchButtonPress: handleKillSwitch,
+    onHandsFreeButtonPress: toggleHandsFree,
+    styles: chatRuntimeHeaderStyles,
+  });
 
 	  useEffect(() => {
 		if (!handsFree) {

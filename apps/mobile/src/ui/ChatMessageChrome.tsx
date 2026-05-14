@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -1152,6 +1152,12 @@ type ChatRuntimeNavigationHeaderOptions = {
   headerTitle: () => ReactNode;
   headerLeft: () => ReactNode;
   headerRight: () => ReactNode;
+};
+
+type ChatRuntimeNavigationHeaderOptionsEffectInput = ChatRuntimeNavigationHeaderOptionsInput & {
+  navigation?: {
+    setOptions?: (options: ChatRuntimeNavigationHeaderOptions) => void;
+  } | null;
 };
 
 export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;
@@ -8475,6 +8481,68 @@ export function createChatRuntimeNavigationHeaderOptions({
       </ChatRuntimeHeaderActionsRow>
     ),
   };
+}
+
+export function useChatRuntimeNavigationHeaderOptions({
+  navigation,
+  agentSelectorRenderState,
+  onAgentSelectorPress,
+  agentSelectorLabelNumberOfLines,
+  backButtonRenderState,
+  onBackButtonPress,
+  pinButtonRenderState,
+  onPinButtonPress,
+  pinButtonIsActive,
+  conversationStatusRenderState,
+  conversationStatusSpinnerSource,
+  turnDurationRenderState,
+  killSwitchButtonShouldRender,
+  killSwitchButtonRenderState,
+  onKillSwitchButtonPress,
+  handsFreeButtonRenderState,
+  onHandsFreeButtonPress,
+  styles,
+}: ChatRuntimeNavigationHeaderOptionsEffectInput): void {
+  useLayoutEffect(() => {
+    navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
+      agentSelectorRenderState,
+      onAgentSelectorPress,
+      agentSelectorLabelNumberOfLines,
+      backButtonRenderState,
+      onBackButtonPress,
+      pinButtonRenderState,
+      onPinButtonPress,
+      pinButtonIsActive,
+      conversationStatusRenderState,
+      conversationStatusSpinnerSource,
+      turnDurationRenderState,
+      killSwitchButtonShouldRender,
+      killSwitchButtonRenderState,
+      onKillSwitchButtonPress,
+      handsFreeButtonRenderState,
+      onHandsFreeButtonPress,
+      styles,
+    }));
+  }, [
+    agentSelectorLabelNumberOfLines,
+    agentSelectorRenderState,
+    backButtonRenderState,
+    conversationStatusRenderState,
+    conversationStatusSpinnerSource,
+    handsFreeButtonRenderState,
+    killSwitchButtonRenderState,
+    killSwitchButtonShouldRender,
+    navigation,
+    onAgentSelectorPress,
+    onBackButtonPress,
+    onHandsFreeButtonPress,
+    onKillSwitchButtonPress,
+    onPinButtonPress,
+    pinButtonIsActive,
+    pinButtonRenderState,
+    styles,
+    turnDurationRenderState,
+  ]);
 }
 
 export function createChatComposerStyleSlots(
