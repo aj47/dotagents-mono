@@ -37,7 +37,8 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(screenSource, /const \{[\s\S]*?queueAction: mobileComposerQueueRenderState,[\s\S]*?submitAction: composerSubmitRenderState,[\s\S]*?\} = useMemo\(/);
   assert.match(screenSource, /createChatComposerRuntimeControlRenderState\(\{\s+hasContent: composerHasContent,\s+handsFree,\s+presentation: composerPresentation,[\s\S]*?colors: theme\.colors,\s+\}\)/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
-  assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
+  assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
+  assert.match(chatMessageChromeSource, /const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState\(\{\s+colors,\s+platform,\s+\}\);/);
   assert.match(screenSource, /getChatRuntimeMobileSafeAreaLayoutState/);
   assert.match(screenSource, /createChatComposerStyleSlots,/);
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
@@ -51,7 +52,8 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeSafeAreaMergedStyleSlots/);
-  assert.match(screenSource, /const mobileComposerWebAccessibility = mobileComposerSurface\.webAccessibility;/);
+  assert.doesNotMatch(screenSource, /const mobileComposerWebAccessibility = mobileComposerSurface\.webAccessibility;/);
+  assert.match(chatMessageChromeSource, /const webAccessibility = composerSurface\.webAccessibility;/);
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_PRESENTATION/);
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_SURFACE_PRESENTATION/);
   assert.doesNotMatch(screenSource, /mobileComposerCopy/);
@@ -87,7 +89,8 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.doesNotMatch(screenSource, /mobileComposerControls\.field\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
   assert.match(chatMessageChromeSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
-  assert.match(screenSource, /webAccessibility: mobileComposerWebAccessibility/);
+  assert.match(screenSource, /colors: theme\.colors,\s+platform: Platform\.OS,\s+isWebPlatform,/);
+  assert.match(chatMessageChromeSource, /webAccessibility: \{\s+isWebPlatform,/);
   assert.match(chatMessageChromeSource, /inputDescriptionNativeId: webAccessibility\.inputDescriptionNativeId/);
   assert.match(chatMessageChromeSource, /voiceStatusLiveRegionNativeId: webAccessibility\.voiceStatusLiveRegionNativeId/);
   assert.match(chatMessageChromeSource, /voiceStatusLiveRegionPoliteness: webAccessibility\.voiceStatusLiveRegionPoliteness/);
@@ -129,7 +132,8 @@ test('uses shared mobile composer control accessibility state', () => {
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
   assert.match(screenSource, /getChatComposerMobileSurfaceRenderState,/);
-  assert.match(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
+  assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
+  assert.match(chatMessageChromeSource, /const composerSurface = composerSurfaceRenderState\.surface;/);
   assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);

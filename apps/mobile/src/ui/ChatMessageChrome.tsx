@@ -65,6 +65,7 @@ import {
 } from '@dotagents/shared/conversation-media-assets';
 import {
   getHandsFreeComposerControlState,
+  getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
@@ -102,6 +103,7 @@ import {
   getChatComposerMicMobileRenderState,
   getChatComposerMobileActionAvailabilityRenderState,
   getChatComposerMobileControlState,
+  getChatComposerMobileSurfaceRenderState,
   getChatComposerMobileSurfaceState,
   getChatComposerMobileVisibilityRenderState,
   getChatComposerQueueMobileRenderState,
@@ -2036,33 +2038,9 @@ type ChatComposerRuntimeDockChromeProps = {
 };
 
 type ChatComposerRuntimeDockChromeInput = {
-  composerSurface: {
-    accessoryButton: {
-      pressedOpacity: number;
-    };
-    queueButton: {
-      pressedOpacity: number;
-    };
-    submitButton: {
-      pressedOpacity: number;
-    };
-  };
-  composerTextColors: {
-    input: {
-      placeholderColor: string;
-    };
-  };
-  handsFreeSurface: {
-    controlButton: {
-      pressedOpacity: number;
-    };
-  };
-  webAccessibility: Pick<
-    ChatComposerTextEntryWebAccessibility,
-    | 'inputDescriptionNativeId'
-    | 'voiceStatusLiveRegionNativeId'
-    | 'voiceStatusLiveRegionPoliteness'
-  >;
+  colors: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['colors']
+    & Parameters<typeof getHandsFreeComposerMobileSurfaceRenderState>[0]['colors'];
+  platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
   isWebPlatform: boolean;
   micWebPressedStyle?: ChatComposerMicButtonProps['webPressedStyle'];
 };
@@ -4360,13 +4338,21 @@ export function createChatComposerRuntimeDockStyleSlots({
 }
 
 export function createChatComposerRuntimeDockChromeProps({
-  composerSurface,
-  composerTextColors,
-  handsFreeSurface,
-  webAccessibility,
+  colors,
+  platform,
   isWebPlatform,
   micWebPressedStyle,
 }: ChatComposerRuntimeDockChromeInput): ChatComposerRuntimeDockChromeProps {
+  const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState({
+    colors,
+    platform,
+  });
+  const composerSurface = composerSurfaceRenderState.surface;
+  const composerTextColors = composerSurfaceRenderState.colors.text;
+  const webAccessibility = composerSurface.webAccessibility;
+  const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState({
+    colors,
+  }).surface;
   const accessoryButton = {
     activeOpacity: composerSurface.accessoryButton.pressedOpacity,
   };

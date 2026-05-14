@@ -352,23 +352,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
   );
-  const mobileComposerSurfaceRenderState = useMemo(
-    () => getChatComposerMobileSurfaceRenderState({
-      colors: theme.colors,
-      platform: Platform.OS,
-    }),
-    [theme.colors],
-  );
-  const mobileComposerSurface = mobileComposerSurfaceRenderState.surface;
-  const mobileComposerWebAccessibility = mobileComposerSurface.webAccessibility;
-  const mobileComposerTextColors = mobileComposerSurfaceRenderState.colors.text;
-  const mobileHandsFreeSurfaceRenderState = useMemo(
-    () => getHandsFreeComposerMobileSurfaceRenderState({
-      colors: theme.colors,
-    }),
-    [theme.colors],
-  );
-  const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState.surface;
   const showImageAttachmentAlert = useCallback((input: ChatImageAttachmentMobileAlertInput) => {
     const alertState = getChatImageAttachmentMobileAlertState(input);
     Alert.alert(alertState.title, alertState.message);
@@ -2976,14 +2959,12 @@ export default function ChatScreen({ route, navigation }: any) {
 	const isWebPlatform = Platform.OS === 'web';
   const chatComposerRuntimeDockChrome = useMemo(
     () => createChatComposerRuntimeDockChromeProps({
-      composerSurface: mobileComposerSurface,
-      composerTextColors: mobileComposerTextColors,
-      handsFreeSurface: mobileHandsFreeSurface,
-      webAccessibility: mobileComposerWebAccessibility,
+      colors: theme.colors,
+      platform: Platform.OS,
       isWebPlatform,
       micWebPressedStyle: composerMicWebPressStyle,
     }),
-    [isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility, mobileHandsFreeSurface],
+    [isWebPlatform, theme.colors],
   );
 	const composerPresentation = useMemo(
 	  () => getFollowUpInputPresentation({
