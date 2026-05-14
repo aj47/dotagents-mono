@@ -144,6 +144,7 @@ import {
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
+  getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
@@ -1751,20 +1752,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
 };
 
-type ChatRuntimeMobileSafeAreaLayout = {
-  chatScrollContent: {
-    paddingBottom: number;
-  };
-  scrollToBottomButton: {
-    bottom: number;
-  };
-  voiceOverlay: {
-    bottom: number;
-  };
-  inputArea: {
-    paddingBottom: number;
-  };
-};
+type ChatRuntimeMobileSafeAreaLayout = ReturnType<typeof getChatRuntimeMobileSafeAreaLayoutState>;
 
 type ChatRuntimeMobileSafeAreaStyleSlots = {
   chatScrollContent: StyleProp<ViewStyle>;
@@ -4925,6 +4913,12 @@ export function createChatMessageRuntimeDockStyleSlots({
     connectionBanner: conversationDockStyles.connectionBanner,
     composer: composerStyles,
   } as ChatMessageRuntimeDockStyleSlots;
+}
+
+export function createChatRuntimeMobileSafeAreaLayoutState(
+  bottomInset: number,
+): ChatRuntimeMobileSafeAreaLayout {
+  return getChatRuntimeMobileSafeAreaLayoutState(bottomInset);
 }
 
 export function createChatRuntimeMobileSafeAreaStyleSlots(

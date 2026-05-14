@@ -900,14 +900,17 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
 });
 
 test('uses shared runtime presentation for mobile scroll-to-bottom affordance', () => {
-  assert.match(screenSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
+  assert.match(screenSource, /createChatRuntimeMobileSafeAreaLayoutState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
-  assert.match(screenSource, /const mobileSafeAreaLayout = useMemo\(\s+\(\) => getChatRuntimeMobileSafeAreaLayoutState\(insets\.bottom\),\s+\[insets\.bottom\],\s+\);/);
+  assert.match(screenSource, /const mobileSafeAreaLayout = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaLayoutState\(insets\.bottom\),\s+\[insets\.bottom\],\s+\);/);
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaStyleSlots,/);
   assert.match(screenSource, /createChatRuntimeSafeAreaMergedStyleSlots,/);
   assert.match(screenSource, /const mobileSafeAreaStyles = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaStyleSlots\(mobileSafeAreaLayout\),\s+\[mobileSafeAreaLayout\],\s+\);/);
   assert.match(screenSource, /const chatSafeAreaStyles = useMemo\(\s+\(\) => createChatRuntimeSafeAreaMergedStyleSlots\(\{\s+chatComposerStyles,\s+conversationDockStyles,\s+conversationViewportStyles,\s+safeAreaStyles: mobileSafeAreaStyles,\s+\}\),\s+\[chatComposerStyles, conversationDockStyles, conversationViewportStyles, mobileSafeAreaStyles\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaStyleSlots/);
+  assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaLayoutState/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeSafeAreaMergedStyleSlots/);
   assert.match(chatMessageChromeSource, /scrollToBottomButton:\s*\{\s+bottom: layout\.scrollToBottomButton\.bottom,\s+\}/);
   assert.doesNotMatch(screenSource, /scrollToBottomButton:\s*\{\s*bottom:\s*mobileSafeAreaLayout\.scrollToBottomButton\.bottom,\s*\}/);

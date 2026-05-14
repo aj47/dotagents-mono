@@ -44,7 +44,9 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(chatMessageChromeSource, /const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState\(\{\s+colors,\s+platform,\s+\}\);/);
-  assert.match(screenSource, /getChatRuntimeMobileSafeAreaLayoutState/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeMobileSafeAreaLayoutState/);
+  assert.match(screenSource, /createChatRuntimeMobileSafeAreaLayoutState/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMobileSafeAreaLayoutState/);
   assert.match(screenSource, /createChatComposerStyleSlots,/);
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaStyleSlots,/);
@@ -55,6 +57,7 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(screenSource, /const chatComposerRuntimeDockStyles = useMemo\(\s+\(\) => createChatComposerRuntimeDockStyleSlots\(\{/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
+  assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaLayoutState/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeSafeAreaMergedStyleSlots/);
   assert.doesNotMatch(screenSource, /const mobileComposerWebAccessibility = mobileComposerSurface\.webAccessibility;/);

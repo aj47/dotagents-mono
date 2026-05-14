@@ -35,6 +35,7 @@ import {
   createChatComposerStyleSlots,
   getChatComposerRuntimeQueueDebugMessage,
   createChatRuntimeHeaderStyleSlots,
+  createChatRuntimeMobileSafeAreaLayoutState,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
@@ -101,7 +102,6 @@ import {
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileState,
-  getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeAlertMessage,
 } from '@dotagents/shared/session-presentation';
@@ -266,7 +266,7 @@ export default function ChatScreen({ route, navigation }: any) {
     [styles],
   );
   const mobileSafeAreaLayout = useMemo(
-    () => getChatRuntimeMobileSafeAreaLayoutState(insets.bottom),
+    () => createChatRuntimeMobileSafeAreaLayoutState(insets.bottom),
     [insets.bottom],
   );
   const mobileSafeAreaStyles = useMemo(
