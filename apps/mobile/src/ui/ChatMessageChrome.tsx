@@ -3373,6 +3373,91 @@ export function updateLastChatMessageRuntimeConversationContent<
   return copy;
 }
 
+export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
+  id?: string;
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  displayContent?: string;
+  toolCalls?: TToolCall[];
+  toolResults?: TToolResult[];
+  branchMessageIndex?: number;
+};
+
+export type ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult> = {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  displayContent?: string;
+  toolCalls?: TToolCall[];
+  toolResults?: TToolResult[];
+  branchMessageIndex?: number;
+};
+
+export type ChatMessageRuntimeToolResultMergeMessage<TToolCall, TToolResult> = {
+  role: 'user' | 'assistant' | 'tool';
+  toolCalls?: TToolCall[];
+  toolResults?: TToolResult[];
+};
+
+type ChatMessageRuntimeHistoryDisplayMessageOptions = {
+  includeId?: boolean;
+};
+
+const hasChatMessageRuntimeEntries = <TEntry,>(
+  entries?: readonly TEntry[] | null,
+): boolean => !!entries && entries.length > 0;
+
+export function mergeChatMessageRuntimeToolResultsIntoLastMessage<
+  TMessage extends ChatMessageRuntimeToolResultMergeMessage<TToolCall, TToolResult>,
+  TToolCall,
+  TToolResult,
+>(
+  messages: TMessage[],
+  historyMessage: ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>,
+): boolean {
+  const lastMessage = messages[messages.length - 1];
+  if (
+    historyMessage.role !== 'tool' ||
+    !lastMessage ||
+    lastMessage.role !== 'assistant' ||
+    !hasChatMessageRuntimeEntries(lastMessage.toolCalls) ||
+    !hasChatMessageRuntimeEntries(historyMessage.toolResults)
+  ) {
+    return false;
+  }
+
+  lastMessage.toolResults = [
+    ...(lastMessage.toolResults || []),
+    ...(historyMessage.toolResults || []),
+  ] as TMessage['toolResults'];
+  return true;
+}
+
+export function shouldSkipChatMessageRuntimeSyntheticToolSummary<TToolCall, TToolResult>(
+  historyMessage: ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>,
+): boolean {
+  return (
+    historyMessage.role === 'tool' &&
+    !hasChatMessageRuntimeEntries(historyMessage.toolResults) &&
+    !hasChatMessageRuntimeEntries(historyMessage.toolCalls)
+  );
+}
+
+export function createChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>(
+  historyMessage: ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>,
+  options: ChatMessageRuntimeHistoryDisplayMessageOptions = {},
+): ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult> {
+  return {
+    ...(options.includeId ? { id: historyMessage.id } : {}),
+    role: historyMessage.role === 'tool' ? 'assistant' : historyMessage.role,
+    content: historyMessage.content || '',
+    displayContent: historyMessage.displayContent,
+    toolCalls: historyMessage.toolCalls,
+    toolResults: historyMessage.toolResults,
+    branchMessageIndex: historyMessage.branchMessageIndex,
+  };
+}
+
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
   return formatChatRuntimeToolApprovalRequiredContent(toolName);
 }

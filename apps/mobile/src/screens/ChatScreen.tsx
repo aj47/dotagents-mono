@@ -56,6 +56,7 @@ import {
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
+  createChatMessageRuntimeHistoryDisplayMessage,
   createChatMessageRuntimeActivityMessage,
   createChatMessageRuntimeAssistantDebugErrorMessage,
   createChatMessageRuntimeAssistantErrorMessage,
@@ -92,6 +93,8 @@ import {
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   isLastChatMessageRuntimeConversationContent,
+  mergeChatMessageRuntimeToolResultsIntoLastMessage,
+  shouldSkipChatMessageRuntimeSyntheticToolSummary,
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -1802,43 +1805,19 @@ export default function ChatScreen({ route, navigation }: any) {
           // Merge tool results into the preceding assistant message to avoid duplication
           // The server sends: assistant (with toolCalls) -> tool (with toolResults)
           // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-
-              if (hasToolResults) {
-                // Merge toolResults into the existing assistant message
-                lastMessage.toolResults = [
-                  ...(lastMessage.toolResults || []),
-                  ...(historyMsg.toolResults || []),
-                ];
-                // Skip adding this as a separate message only when we merged results
-                continue;
-              }
-            }
+          if (mergeChatMessageRuntimeToolResultsIntoLastMessage(messages, historyMsg)) {
+            continue;
           }
 
           // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
           // carry no toolResults/toolCalls — the underlying failures are
           // already visible inside the tool call stack via toolResults on the
           // preceding tool message.
-          if (
-            historyMsg.role === 'tool' &&
-            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
-            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
-          ) {
+          if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMsg)) {
             continue;
           }
 
-          messages.push({
-            role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-            content: historyMsg.content || '',
-            displayContent: historyMsg.displayContent,
-            toolCalls: historyMsg.toolCalls,
-            toolResults: historyMsg.toolResults,
-            branchMessageIndex: historyMsg.branchMessageIndex,
-          });
+          messages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMsg));
         }
       }
     }
@@ -2244,43 +2223,19 @@ export default function ChatScreen({ route, navigation }: any) {
           // Merge tool results into the preceding assistant message to avoid duplication
           // The server sends: assistant (with toolCalls) -> tool (with toolResults)
           // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && newMessages.length > 0) {
-            const lastMessage = newMessages[newMessages.length - 1];
-            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-
-              if (hasToolResults) {
-                // Merge toolResults into the existing assistant message
-                lastMessage.toolResults = [
-                  ...(lastMessage.toolResults || []),
-                  ...(historyMsg.toolResults || []),
-                ];
-                // Skip adding this as a separate message only when we merged results
-                continue;
-              }
-            }
+          if (mergeChatMessageRuntimeToolResultsIntoLastMessage(newMessages, historyMsg)) {
+            continue;
           }
 
           // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
           // carry no toolResults/toolCalls — the underlying failures are
           // already visible inside the tool call stack via toolResults on the
           // preceding tool message.
-          if (
-            historyMsg.role === 'tool' &&
-            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
-            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
-          ) {
+          if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMsg)) {
             continue;
           }
 
-          newMessages.push({
-            role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-            content: historyMsg.content || '',
-            displayContent: historyMsg.displayContent,
-            toolCalls: historyMsg.toolCalls,
-            toolResults: historyMsg.toolResults,
-            branchMessageIndex: historyMsg.branchMessageIndex,
-          });
+          newMessages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMsg));
         }
 		        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
@@ -2662,21 +2617,10 @@ export default function ChatScreen({ route, navigation }: any) {
           // carry no toolResults/toolCalls — the underlying failures are
           // already visible inside the tool call stack via toolResults on the
           // preceding tool message.
-          if (
-            historyMsg.role === 'tool' &&
-            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
-            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
-          ) {
+          if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMsg)) {
             continue;
           }
-          newMessages.push({
-            role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-            content: historyMsg.content || '',
-            displayContent: historyMsg.displayContent,
-            toolCalls: historyMsg.toolCalls,
-            toolResults: historyMsg.toolResults,
-            branchMessageIndex: historyMsg.branchMessageIndex,
-          });
+          newMessages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMsg));
         }
 	        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
@@ -3222,27 +3166,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
             const recoveredMessages: ChatMessage[] = [];
             for (const msg of serverMessages) {
-              if (msg.role === 'user' || msg.role === 'assistant') {
-                recoveredMessages.push({
-                  id: msg.id,
-                  role: msg.role,
-                  content: msg.content,
-                  displayContent: (msg as ChatMessage).displayContent,
-                  toolCalls: msg.toolCalls,
-                  toolResults: msg.toolResults,
-                });
-              } else if (msg.role === 'tool' && recoveredMessages.length > 0) {
-                const lastMessage = recoveredMessages[recoveredMessages.length - 1];
-                if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-                  const hasToolResults = msg.toolResults && msg.toolResults.length > 0;
+              if (mergeChatMessageRuntimeToolResultsIntoLastMessage(recoveredMessages, msg)) {
+                continue;
+              }
 
-                  if (hasToolResults) {
-                    lastMessage.toolResults = [
-                      ...(lastMessage.toolResults || []),
-                      ...(msg.toolResults || []),
-                    ];
-                  }
-                }
+              if (msg.role === 'user' || msg.role === 'assistant') {
+                recoveredMessages.push(createChatMessageRuntimeHistoryDisplayMessage(msg, { includeId: true }));
               }
             }
 

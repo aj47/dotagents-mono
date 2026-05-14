@@ -1701,6 +1701,15 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
   assert.match(chatMessageChromeSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
   assert.match(chatMessageChromeSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
+  assert.match(screenSource, /mergeChatMessageRuntimeToolResultsIntoLastMessage\(messages, historyMsg\)/);
+  assert.match(screenSource, /mergeChatMessageRuntimeToolResultsIntoLastMessage\(newMessages, historyMsg\)/);
+  assert.match(screenSource, /shouldSkipChatMessageRuntimeSyntheticToolSummary\(historyMsg\)/);
+  assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessage\(historyMsg\)/);
+  assert.match(chatMessageChromeSource, /export function mergeChatMessageRuntimeToolResultsIntoLastMessage/);
+  assert.match(chatMessageChromeSource, /export function shouldSkipChatMessageRuntimeSyntheticToolSummary/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeHistoryDisplayMessage/);
+  assert.doesNotMatch(screenSource, /historyMsg\.content \|\| ''/);
+  assert.doesNotMatch(screenSource, /historyMsg\.role === 'tool' \? 'assistant' : historyMsg\.role/);
   assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{\s+messages,\s+visibleMessageCount,\s+groupByIndex: toolActivityGroups\.groupByIndex,\s+groupState: expandedGroups,\s+inheritedState: expandedMessages,\s+onToggleGroup: toggleGroupExpansion,/);
   assert.doesNotMatch(screenSource, /lastConversationContentMessageIndex: lastAssistantContentMessageIndex,/);
   assert.match(chatMessageChromeSource, /const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex\(\s+allMessages,\s+\(message\) => message,\s+\(message\) => hasVisibleChatMessageContent\(message\),\s+\);/);
@@ -2271,7 +2280,8 @@ test('keeps Codex thinking blocks display-only on mobile', () => {
   assert.match(screenSource, /preserveChatMessageDisplayContentFromProgress,/);
   assert.doesNotMatch(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /const preserveDisplayContentFromProgress = \(/);
-  assert.match(screenSource, /displayContent: historyMsg\.displayContent/);
+  assert.doesNotMatch(screenSource, /displayContent: historyMsg\.displayContent/);
+  assert.match(chatMessageChromeSource, /displayContent: historyMessage\.displayContent/);
   assert.match(screenSource, /preserveChatMessageDisplayContentFromProgress\(finalTurnMessages, progressMsgs\)/);
 });
 
@@ -3873,7 +3883,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
   assert.doesNotMatch(screenSource, /mobileRuntimeBranchAlerts\.(unavailable|created|failed)\.(title|message|fallbackMessage)/);
   assert.match(clientSource, /branchMessageIndex\?: number;/);
-  assert.match(screenSource, /branchMessageIndex: historyMsg\.branchMessageIndex/);
+  assert.doesNotMatch(screenSource, /branchMessageIndex: historyMsg\.branchMessageIndex/);
+  assert.match(chatMessageChromeSource, /branchMessageIndex: historyMessage\.branchMessageIndex/);
   assert.doesNotMatch(screenSource, /const messageBranchRenderState = getChatRuntimeBranchMobileRenderState\(\{/);
   assert.doesNotMatch(screenSource, /const messageBranchIndex = messageBranchRenderState\.messageIndex;/);
   assert.match(screenSource, /conversationId: currentSession\?\.serverConversationId,\s+pendingBranchMessageIndex: branchingMessageIndex,/);
