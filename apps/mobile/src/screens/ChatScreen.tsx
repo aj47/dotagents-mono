@@ -29,6 +29,7 @@ import {
   useChatRuntimeAgentSelectorOverlayState,
   useChatComposerRuntimeEditBeforeSendState,
   useChatRuntimeRequestDebugState,
+  useChatRuntimeRequestTrackingState,
   useChatRuntimeConnectionRetryState,
   useChatRuntimeForegroundState,
   useChatRuntimeHandsFreeMutableState,
@@ -360,16 +361,12 @@ export default function ChatScreen({ route, navigation }: any) {
     clearIntendedSpeakingMessage,
   } = useChatMessageRuntimeSpeechPlaybackState();
 
-  // Track the current active request to prevent cross-request state clobbering
-  // Each request gets a unique ID; only the currently active request can reset UI states
-  const activeRequestIdRef = useRef<number>(0);
-
-  // Stable ref for current session ID to avoid stale closures in callbacks
-  // This fixes the issue where useSessions() returns a new object each render
-  const currentSessionIdRef = useRef<string | null>(sessionStore.currentSessionId);
-  useEffect(() => {
-    currentSessionIdRef.current = sessionStore.currentSessionId;
-  }, [sessionStore.currentSessionId]);
+  const {
+    activeRequestIdRef,
+    currentSessionIdRef,
+  } = useChatRuntimeRequestTrackingState({
+    currentSessionId: sessionStore.currentSessionId,
+  });
 
   // Get or create a connection for the current session using the connection manager
   // This preserves connections when switching between sessions (fixes #608)

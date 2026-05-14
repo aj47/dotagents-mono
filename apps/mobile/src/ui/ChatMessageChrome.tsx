@@ -543,6 +543,15 @@ type ChatRuntimeRequestDebugState = {
   clearRequestDebugText: () => void;
 };
 
+type ChatRuntimeRequestTrackingStateInput = {
+  currentSessionId: string | null;
+};
+
+type ChatRuntimeRequestTrackingState = {
+  activeRequestIdRef: ChatRuntimeMutableRef<number>;
+  currentSessionIdRef: ChatRuntimeMutableRef<string | null>;
+};
+
 type ChatRuntimeForegroundStateInput = {
   handsFree: boolean;
   isFocused: boolean;
@@ -6189,6 +6198,22 @@ export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState 
     requestDebugText,
     setRequestDebugText,
     clearRequestDebugText,
+  };
+}
+
+export function useChatRuntimeRequestTrackingState({
+  currentSessionId,
+}: ChatRuntimeRequestTrackingStateInput): ChatRuntimeRequestTrackingState {
+  const activeRequestIdRef = useRef<number>(0);
+  const currentSessionIdRef = useRef<string | null>(currentSessionId);
+
+  useEffect(() => {
+    currentSessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
+
+  return {
+    activeRequestIdRef,
+    currentSessionIdRef,
   };
 }
 
