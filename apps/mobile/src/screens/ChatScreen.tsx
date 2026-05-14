@@ -45,6 +45,7 @@ import {
   useChatComposerRuntimeHandsFreeControlActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
+  createChatRuntimeThemeSpinnerSource,
   useChatRuntimeNavigationHeaderOptions,
   useChatRuntimeNavigationHeaderRenderState,
   createChatMessageRuntimeNoSessionAvailableDebugState,
@@ -153,6 +154,11 @@ export default function ChatScreen({ route, navigation }: any) {
   } = useChatRuntimeMobileStyleSlots({
     theme,
     bottomInset: insets.bottom,
+  });
+  const chatRuntimeSpinnerSource = createChatRuntimeThemeSpinnerSource({
+    isDark,
+    darkSource: darkSpinner,
+    lightSource: lightSpinner,
   });
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
@@ -644,7 +650,7 @@ export default function ChatScreen({ route, navigation }: any) {
     onAgentSelectorPress: openAgentSelector,
     onBackButtonPress: handleBackToSessions,
     onPinButtonPress: handleToggleCurrentSessionPinned,
-    conversationStatusSpinnerSource: isDark ? darkSpinner : lightSpinner,
+    conversationStatusSpinnerSource: chatRuntimeSpinnerSource,
     onKillSwitchButtonPress: handleKillSwitch,
     onHandsFreeButtonPress: toggleHandsFree,
     styles: chatRuntimeHeaderStyles,
@@ -1515,6 +1521,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
+    spinnerSource: chatRuntimeSpinnerSource,
     composerChrome: {
       colors: theme.colors,
       platform: Platform.OS,
@@ -1618,7 +1625,6 @@ export default function ChatScreen({ route, navigation }: any) {
       threadStyles: chatMessageConversationThreadStyles.runtimeThread,
       assetBaseUrl: config.baseUrl,
       assetAuthToken: config.apiKey,
-      spinnerSource: isDark ? darkSpinner : lightSpinner,
       expandedDelegationConversationPreviews,
       expandedDelegationToolPreviews,
       setExpandedDelegationConversationPreviews,
@@ -1643,7 +1649,6 @@ export default function ChatScreen({ route, navigation }: any) {
       scrollEventThrottle: scrollEventThrottleMs,
       viewportContentIsLoadingMessages: sessionStore.isLoadingMessages,
       viewportContentMessageCount: messages.length,
-      loadingSpinnerSource: isDark ? darkSpinner : lightSpinner,
       quickStartPrompts: predefinedPrompts,
       quickStartSkills: availableSkills,
       quickStartTasks: availableTasks,

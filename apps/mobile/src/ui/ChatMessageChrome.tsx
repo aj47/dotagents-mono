@@ -1413,6 +1413,12 @@ type ChatRuntimeNavigationHeaderOptionsInput = {
   styles: ChatRuntimeHeaderStyleSlots;
 };
 
+type ChatRuntimeThemeSpinnerSourceInput = {
+  isDark: boolean;
+  darkSource: ImageSourcePropType;
+  lightSource: ImageSourcePropType;
+};
+
 type ChatRuntimeNavigationHeaderRenderStateColors =
   Parameters<typeof getChatRuntimeAgentSelectorMobileRenderState>[0]['colors']
   & Parameters<typeof getChatRuntimeBackMobileRenderState>[0]['colors']
@@ -2902,15 +2908,16 @@ type ChatMessageRuntimeChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = {
+  spinnerSource: ImageSourcePropType;
   composerChrome: ChatComposerRuntimeDockChromeInput;
   composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome'>;
   dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer'>;
-  threadList: ChatMessageConversationRuntimeThreadListRenderStateInput & {
+  threadList: Omit<ChatMessageConversationRuntimeThreadListRenderStateInput, 'spinnerSource'> & {
     threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
   };
   viewport: Omit<
     ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>,
-    'visibleMessageCount' | 'totalMessageCount' | 'hiddenMessageCount'
+    'visibleMessageCount' | 'totalMessageCount' | 'hiddenMessageCount' | 'loadingSpinnerSource'
   >;
   surface: Omit<
     ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>,
@@ -6719,6 +6726,7 @@ export function createChatMessageRuntimeChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 >({
+  spinnerSource,
   composerChrome,
   composer,
   dock,
@@ -6730,7 +6738,10 @@ export function createChatMessageRuntimeChromeProps<
     threadStyles,
     ...threadListInput
   } = threadList;
-  const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState(threadListInput);
+  const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState({
+    ...threadListInput,
+    spinnerSource,
+  });
   const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps(composerChrome);
   const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
     chrome: chatComposerRuntimeDockChrome,
@@ -6738,6 +6749,7 @@ export function createChatMessageRuntimeChromeProps<
   });
   const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps({
     ...viewport,
+    loadingSpinnerSource: spinnerSource,
     visibleMessageCount: conversationThreadListState.visibleMessageCount,
     totalMessageCount: conversationThreadListState.totalMessageCount,
     hiddenMessageCount: conversationThreadListState.hiddenMessageCount,
@@ -10256,6 +10268,14 @@ export function createChatRuntimeNavigationHeaderOptions({
       </ChatRuntimeHeaderActionsRow>
     ),
   };
+}
+
+export function createChatRuntimeThemeSpinnerSource({
+  isDark,
+  darkSource,
+  lightSource,
+}: ChatRuntimeThemeSpinnerSourceInput): ImageSourcePropType {
+  return isDark ? darkSource : lightSource;
 }
 
 export function useChatRuntimeNavigationHeaderOptions({
