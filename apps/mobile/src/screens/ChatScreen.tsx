@@ -177,9 +177,6 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { resolveMobileFontFamily } from '../ui/mobileTypography';
 import {
-  createMinimumTouchTargetStyle,
-} from '@dotagents/shared/accessibility-utils';
-import {
   formatHandsFreeSleepingDebugMessage,
   formatHandsFreeRecognizerErrorDebugMessage,
   getHandsFreeComposerCopyState,
@@ -3449,6 +3446,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const handsFreeSurface = handsFreeStyleState.surface;
   const headerActionButton = chatChromeStyleState.headerActionButton;
   const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
+  const headerPinButton = chatChromeStyleState.headerPinButton;
   const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
   const sessionStatusSurface = sessionStatusStyleState.surface;
   const threadChromeStyleState = chatChromeStyleState.thread;
@@ -3666,10 +3664,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
-      ...createMinimumTouchTargetStyle({
-        horizontalPadding: headerSurface.pinButton.horizontalPadding,
-        verticalPadding: headerSurface.pinButton.verticalPadding,
-      }),
+      ...headerPinButton,
       borderRadius: radius[headerSurface.pinButton.borderRadius],
       borderWidth: headerSurface.pinButton.borderWidth,
       borderColor: inactiveHeaderPinButtonColors.button.borderColor,

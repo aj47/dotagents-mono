@@ -2090,6 +2090,7 @@ export type ChatRuntimeMobileChromeStyleState = {
   messageQueuePanelWrapper: ReturnType<typeof getMessageQueuePanelMobileWrapperRenderState>;
   headerActionButton: ReturnType<typeof createMinimumTouchTargetStyle>;
   headerEdgeActionButton: ReturnType<typeof createMinimumTouchTargetStyle>;
+  headerPinButton: ReturnType<typeof createMinimumTouchTargetStyle>;
   thread: ChatMessageRuntimeThreadChromeStyleState;
 };
 
@@ -4525,6 +4526,10 @@ export function createChatRuntimeMobileChromeStyleState({
     headerActionButton: createMinimumTouchTargetStyle(),
     headerEdgeActionButton: createMinimumTouchTargetStyle({
       horizontalPadding: header.header.surface.edgeActionButton.horizontalPadding,
+    }),
+    headerPinButton: createMinimumTouchTargetStyle({
+      horizontalPadding: header.header.surface.pinButton.horizontalPadding,
+      verticalPadding: header.header.surface.pinButton.verticalPadding,
     }),
     thread: createChatMessageRuntimeThreadChromeStyleState({
       colors,

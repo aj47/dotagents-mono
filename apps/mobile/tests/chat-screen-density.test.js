@@ -851,10 +851,13 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(screenSource, /const inactiveHeaderPinButtonColors = headerStyleState\.pinButton\.inactive;/);
   assert.match(screenSource, /const activeHeaderPinButtonColors = headerStyleState\.pinButton\.active;/);
   assert.match(screenSource, /const headerKillSwitchButtonColors = headerStyleState\.killSwitchButton;/);
+  assert.match(screenSource, /const headerPinButton = chatChromeStyleState\.headerPinButton;/);
+  assert.doesNotMatch(screenSource, /createMinimumTouchTargetStyle,/);
   assert.doesNotMatch(screenSource, /const inactiveHeaderPinRenderState = getChatRuntimePinMobileRenderState/);
   assert.doesNotMatch(screenSource, /const activeHeaderPinRenderState = getChatRuntimePinMobileRenderState/);
   assert.doesNotMatch(screenSource, /const headerKillSwitchRenderState = getChatRuntimeKillSwitchMobileRenderState/);
-  assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?horizontalPadding:\s*headerSurface\.pinButton\.horizontalPadding/);
+  assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?\.\.\.headerPinButton,/);
+  assert.match(chatMessageChromeSource, /headerPinButton: createMinimumTouchTargetStyle\(\{\s+horizontalPadding: header\.header\.surface\.pinButton\.horizontalPadding,\s+verticalPadding: header\.header\.surface\.pinButton\.verticalPadding,\s+\}\),/);
   assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?borderColor:\s*inactiveHeaderPinButtonColors\.button\.borderColor,[\s\S]*?backgroundColor:\s*inactiveHeaderPinButtonColors\.button\.backgroundColor/);
   assert.match(screenSource, /headerPinButtonActive:\s*\{[\s\S]*?borderColor:\s*activeHeaderPinButtonColors\.button\.borderColor,[\s\S]*?backgroundColor:\s*activeHeaderPinButtonColors\.button\.backgroundColor/);
   assert.match(screenSource, /headerKillSwitchIconContainer:\s*\{[\s\S]*?width:\s*headerSurface\.killSwitchButton\.size,[\s\S]*?borderRadius:\s*headerSurface\.killSwitchButton\.borderRadius,[\s\S]*?backgroundColor:\s*headerKillSwitchButtonColors\.button\.backgroundColor,[\s\S]*?alignItems:\s*headerSurface\.killSwitchButton\.alignItems,[\s\S]*?justifyContent:\s*headerSurface\.killSwitchButton\.justifyContent/);
