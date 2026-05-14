@@ -2456,9 +2456,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailCopy\.errorDetailsLabel\}:<\/Text>/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.copyGlyph/);
-  assert.match(screenSource, /getChatMessageToolExecutionCopyFailureResolvedAlertState\(error\)/);
-  assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageToolExecutionCopyFailureResolvedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureResolvedAlertState/);
+  assert.match(chatMessageChromeSource, /const failedAlert = getChatMessageToolExecutionCopyFailureResolvedAlertState\(error\);[\s\S]*?showAlert\(failedAlert\.title, failedAlert\.message\);/);
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alertState\.fallbackMessage\)/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopyFailureAlert\.(title|fallbackMessage)/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.copyFailedTitle/);
@@ -2474,7 +2474,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /accessibilityRole=\{toolExecutionDetailEmptyState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{toolExecutionDetailEmptyState\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailEmptyState\.label\}/);
-  assert.match(screenSource, /const handleCopyToolPayload = useCallback\(async \(content: string\) => \{/);
+  assert.doesNotMatch(screenSource, /const handleCopyToolPayload = useCallback\(async \(content: string\) => \{/);
+  assert.match(chatMessageChromeSource, /const handleCopyToolPayload = useCallback\(async \(content: string\) => \{/);
   assert.match(screenSource, /onCopyToolPayload: handleCopyToolPayload,/);
   assert.match(chatMessageChromeSource, /onCopyPayload: \(content\) => \{ void onCopyPayload\(content\); \},/);
   assert.match(chatMessageChromeSource, /onCopyPress: \(\) => onCopyPayload\(argumentsContent\),/);
@@ -3526,6 +3527,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
 test('keeps the copy action inline with desktop-style message controls', () => {
   assert.equal(packageJson.dependencies['expo-clipboard'], '~8.0.8');
   assert.match(screenSource, /import \* as Clipboard from 'expo-clipboard';/);
+  assert.match(screenSource, /useChatMessageRuntimeClipboardActionsState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatMessageCopyMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyActionState,/);
@@ -3533,12 +3535,14 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.doesNotMatch(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /const \{\s+copiedMessageIndex,\s+clearCopiedMessageFeedback,\s+showCopiedMessageFeedback,\s+\} = useChatMessageCopyFeedbackState\(\);/);
   assert.match(chatMessageChromeSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
-  assert.match(screenSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
-  assert.match(screenSource, /Clipboard\.setStringAsync\(copyContent\)/);
-  assert.match(screenSource, /showCopiedMessageFeedback\(messageIndex\);/);
+  assert.match(screenSource, /const \{\s+handleCopyMessage,\s+handleCopyToolPayload,\s+\} = useChatMessageRuntimeClipboardActionsState\(\{\s+copyText: Clipboard\.setStringAsync,\s+showAlert: Alert\.alert,\s+showCopiedMessageFeedback,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeClipboardActionsState/);
+  assert.match(chatMessageChromeSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
+  assert.match(chatMessageChromeSource, /await copyText\(copyContent\);[\s\S]*?showCopiedMessageFeedback\(messageIndex\);/);
   assert.match(screenSource, /clearCopiedMessageFeedback\(\);/);
-  assert.match(screenSource, /getChatMessageCopyFailureAlertState\(error\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageCopyFailureAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFailureAlertState/);
+  assert.match(chatMessageChromeSource, /const failedAlert = getChatMessageCopyFailureAlertState\(error\);[\s\S]*?showAlert\(failedAlert\.title, failedAlert\.message\);/);
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, feedbackState\.failedMessage\)/);
   assert.doesNotMatch(screenSource, /messageCopyFeedbackState\.failed(Title|Message)/);
   assert.doesNotMatch(screenSource, /messageCopyFeedbackState\.feedbackResetDelayMs/);

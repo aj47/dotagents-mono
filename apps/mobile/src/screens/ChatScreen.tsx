@@ -99,11 +99,10 @@ import {
   getChatMessageRuntimeToolApprovalConnectionRequiredAlertState,
   getChatMessageRuntimeToolApprovalFailedAlertState,
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
-  getChatMessageCopyFailureAlertState,
-  getChatMessageToolExecutionCopyFailureResolvedAlertState,
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeToolApprovalResponseState,
   useChatMessageCopyFeedbackState,
+  useChatMessageRuntimeClipboardActionsState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
@@ -226,6 +225,14 @@ export default function ChatScreen({ route, navigation }: any) {
     clearCopiedMessageFeedback,
     showCopiedMessageFeedback,
   } = useChatMessageCopyFeedbackState();
+  const {
+    handleCopyMessage,
+    handleCopyToolPayload,
+  } = useChatMessageRuntimeClipboardActionsState({
+    copyText: Clipboard.setStringAsync,
+    showAlert: Alert.alert,
+    showCopiedMessageFeedback,
+  });
   const {
     provider: effectiveTtsProvider,
     voice: effectiveRemoteTtsVoice,
@@ -544,31 +551,6 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!currentSessionId) return;
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
-
-  const handleCopyMessage = useCallback(async (messageIndex: number, content: string) => {
-    const copyContent = content.trim();
-    if (!copyContent) return;
-
-    try {
-      await Clipboard.setStringAsync(copyContent);
-      showCopiedMessageFeedback(messageIndex);
-    } catch (error) {
-      const failedAlert = getChatMessageCopyFailureAlertState(error);
-      Alert.alert(failedAlert.title, failedAlert.message);
-    }
-  }, [showCopiedMessageFeedback]);
-
-  const handleCopyToolPayload = useCallback(async (content: string) => {
-    const copyContent = content.trim();
-    if (!copyContent) return;
-
-    try {
-      await Clipboard.setStringAsync(copyContent);
-    } catch (error) {
-      const failedAlert = getChatMessageToolExecutionCopyFailureResolvedAlertState(error);
-      Alert.alert(failedAlert.title, failedAlert.message);
-    }
-  }, []);
 
   const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
     const serverConversationId = currentSession?.serverConversationId;

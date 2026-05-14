@@ -729,6 +729,17 @@ type ChatMessageCopyFeedbackState = {
   failedMessage: string;
 };
 
+type ChatMessageRuntimeClipboardActionsStateInput = {
+  copyText: (content: string) => Promise<unknown>;
+  showAlert: (title: string, message: string) => void;
+  showCopiedMessageFeedback: (messageIndex: number) => void;
+};
+
+type ChatMessageRuntimeClipboardActionsState = {
+  handleCopyMessage: (messageIndex: number, content: string) => Promise<void>;
+  handleCopyToolPayload: (content: string) => Promise<void>;
+};
+
 type ChatMessageMobileRenderState = ReturnType<typeof getChatMessageMobileRenderState>;
 
 type ChatMessageRenderStateInput =
@@ -6533,6 +6544,42 @@ export function getChatMessageToolExecutionCopyFailureResolvedAlertState(
   return {
     title: alertState.title,
     message: getChatRuntimeAlertMessage(error, alertState.fallbackMessage),
+  };
+}
+
+export function useChatMessageRuntimeClipboardActionsState({
+  copyText,
+  showAlert,
+  showCopiedMessageFeedback,
+}: ChatMessageRuntimeClipboardActionsStateInput): ChatMessageRuntimeClipboardActionsState {
+  const handleCopyMessage = useCallback(async (messageIndex: number, content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await copyText(copyContent);
+      showCopiedMessageFeedback(messageIndex);
+    } catch (error) {
+      const failedAlert = getChatMessageCopyFailureAlertState(error);
+      showAlert(failedAlert.title, failedAlert.message);
+    }
+  }, [copyText, showAlert, showCopiedMessageFeedback]);
+
+  const handleCopyToolPayload = useCallback(async (content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await copyText(copyContent);
+    } catch (error) {
+      const failedAlert = getChatMessageToolExecutionCopyFailureResolvedAlertState(error);
+      showAlert(failedAlert.title, failedAlert.message);
+    }
+  }, [copyText, showAlert]);
+
+  return {
+    handleCopyMessage,
+    handleCopyToolPayload,
   };
 }
 
