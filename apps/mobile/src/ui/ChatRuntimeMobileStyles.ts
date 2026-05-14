@@ -157,6 +157,21 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
   const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
+  const createChatRuntimeMobileMessageActionButtonStyle = (
+    button: typeof mobileMessageActionButton,
+    colors: typeof mobileMessageActionButtonColors,
+  ) => ({
+    alignSelf: button.alignSelf,
+    width: button.width,
+    height: button.height,
+    marginTop: button.marginTop,
+    borderRadius: button.borderRadius,
+    backgroundColor: colors.backgroundColor,
+    alignItems: button.alignItems,
+    justifyContent: button.justifyContent,
+    flexShrink: button.flexShrink,
+  } as const);
+
   return StyleSheet.create({
     keyboardAvoidingContainer: {
       flex: viewportSurface.flex,
@@ -1642,16 +1657,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       lineHeight: mobileMessageCollapsedPreview.lineHeight,
     },
     messageExpandButton: {
-      alignSelf: mobileMessageActionButton.alignSelf,
-      width: mobileMessageActionButton.width,
-      height: mobileMessageActionButton.height,
-      marginTop: mobileMessageActionButton.marginTop,
-      borderRadius: mobileMessageActionButton.borderRadius,
-      backgroundColor: mobileMessageActionButtonColors.backgroundColor,
-      alignItems: mobileMessageActionButton.alignItems,
-      justifyContent: mobileMessageActionButton.justifyContent,
-      flexShrink: mobileMessageActionButton.flexShrink,
-    } as const,
+      ...createChatRuntimeMobileMessageActionButtonStyle(
+        mobileMessageActionButton,
+        mobileMessageActionButtonColors,
+      ),
+    },
     messageExpandButtonPressed: {
       opacity: mobileMessageActionButton.pressedOpacity,
     },
@@ -1691,16 +1701,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       color: mobileMessageTurnDurationLiveBadgeColors.color,
     },
     messageBranchButton: {
-      alignSelf: mobileMessageBranchButton.alignSelf,
-      width: mobileMessageBranchButton.width,
-      height: mobileMessageBranchButton.height,
-      marginTop: mobileMessageBranchButton.marginTop,
-      borderRadius: mobileMessageBranchButton.borderRadius,
-      backgroundColor: mobileMessageBranchButtonColors.backgroundColor,
-      alignItems: mobileMessageBranchButton.alignItems,
-      justifyContent: mobileMessageBranchButton.justifyContent,
-      flexShrink: mobileMessageBranchButton.flexShrink,
-    } as const,
+      ...createChatRuntimeMobileMessageActionButtonStyle(
+        mobileMessageBranchButton,
+        mobileMessageBranchButtonColors,
+      ),
+    },
     messageBranchButtonPressed: {
       opacity: mobileMessageBranchButton.pressedOpacity,
     } as const,
@@ -1708,16 +1713,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       opacity: mobileMessageBranchButton.disabledOpacity,
     },
     messageCopyButton: {
-      alignSelf: mobileMessageActionButton.alignSelf,
-      width: mobileMessageActionButton.width,
-      height: mobileMessageActionButton.height,
-      marginTop: mobileMessageActionButton.marginTop,
-      borderRadius: mobileMessageActionButton.borderRadius,
-      backgroundColor: mobileMessageActionButtonColors.backgroundColor,
-      alignItems: mobileMessageActionButton.alignItems,
-      justifyContent: mobileMessageActionButton.justifyContent,
-      flexShrink: mobileMessageActionButton.flexShrink,
-    } as const,
+      ...createChatRuntimeMobileMessageActionButtonStyle(
+        mobileMessageActionButton,
+        mobileMessageActionButtonColors,
+      ),
+    },
     messageCopyButtonCopied: {
       backgroundColor: mobileMessageCopiedButtonColors.backgroundColor,
     } as const,
@@ -1726,16 +1726,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     } as const,
     // Per-message TTS button styles (#1078)
     speakButton: {
-      alignSelf: mobileMessageSpeechButton.alignSelf,
-      width: mobileMessageSpeechButton.width,
-      height: mobileMessageSpeechButton.height,
-      marginTop: mobileMessageSpeechButton.marginTop,
-      borderRadius: mobileMessageSpeechButton.borderRadius,
-      backgroundColor: mobileMessageSpeechButtonColors.backgroundColor,
-      alignItems: mobileMessageSpeechButton.alignItems,
-      justifyContent: mobileMessageSpeechButton.justifyContent,
-      flexShrink: mobileMessageSpeechButton.flexShrink,
-    } as const,
+      ...createChatRuntimeMobileMessageActionButtonStyle(
+        mobileMessageSpeechButton,
+        mobileMessageSpeechButtonColors,
+      ),
+    },
     speakButtonActive: {
       backgroundColor: mobileMessageSpeechActiveButtonColors.backgroundColor,
     } as const,

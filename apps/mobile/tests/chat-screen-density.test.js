@@ -3787,14 +3787,16 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /createChatMessageCollapsedPreviewProps,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps/);
   assert.match(chatMessageChromeSource, /onPress: actionState\.canToggle \? onToggle : undefined,/);
-  assert.match(screenSource, /messageExpandButton:\s*\{[\s\S]*?alignSelf:\s*mobileMessageActionButton\.alignSelf,[\s\S]*?width:\s*mobileMessageActionButton\.width,[\s\S]*?backgroundColor:\s*mobileMessageActionButtonColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageActionButton\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageActionButton\.justifyContent,[\s\S]*?flexShrink:\s*mobileMessageActionButton\.flexShrink/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageActionButtonStyle = \(\s+button: typeof mobileMessageActionButton,\s+colors: typeof mobileMessageActionButtonColors,/);
+  assert.match(screenSource, /backgroundColor: colors\.backgroundColor,[\s\S]*?alignItems: button\.alignItems,[\s\S]*?justifyContent: button\.justifyContent,[\s\S]*?flexShrink: button\.flexShrink/);
+  assert.match(screenSource, /messageExpandButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageActionButtonStyle\(\s+mobileMessageActionButton,\s+mobileMessageActionButtonColors,\s+\)/);
   assert.doesNotMatch(screenSource, /messageExpandButtonText:/);
   assert.doesNotMatch(screenSource, /messageBranchButtonText:/);
   assert.doesNotMatch(screenSource, /messageCopyButtonText:/);
   assert.doesNotMatch(screenSource, /messageCopyButtonTextCopied:/);
   assert.doesNotMatch(screenSource, /speakButtonText:/);
   assert.doesNotMatch(screenSource, /speakButtonTextActive:/);
-  assert.match(screenSource, /speakButton:\s*\{[\s\S]*?alignSelf:\s*mobileMessageSpeechButton\.alignSelf,[\s\S]*?width:\s*mobileMessageSpeechButton\.width,[\s\S]*?backgroundColor:\s*mobileMessageSpeechButtonColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageSpeechButton\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageSpeechButton\.justifyContent,[\s\S]*?flexShrink:\s*mobileMessageSpeechButton\.flexShrink/);
+  assert.match(screenSource, /speakButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageActionButtonStyle\(\s+mobileMessageSpeechButton,\s+mobileMessageSpeechButtonColors,\s+\)/);
   assert.match(screenSource, /speakButtonActive:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageSpeechActiveButtonColors\.backgroundColor/);
   assert.match(screenSource, /speakButtonPressed:\s*\{[\s\S]*?opacity:\s*mobileMessageSpeechButton\.pressedOpacity/);
   assert.doesNotMatch(screenSource, /messageExpandButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageActionButton\.backgroundColorToken\]/);
@@ -3860,7 +3862,7 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.doesNotMatch(screenSource, /messageCopyAction\.label \?\? mobileMessageActionCopy\.copy\.messageLabel/);
   assert.match(screenSource, /onBranchMessage: handleBranchFromMessagePress,[\s\S]*?onCopyMessage: handleCopyMessage,[\s\S]*?onToggleMessageExpansion: toggleMessageExpansion,/);
   assert.doesNotMatch(screenSource, /void handleBranchFromMessage\(messageIndex\)/);
-  assert.match(screenSource, /messageCopyButton:\s*\{[\s\S]*?alignSelf:\s*mobileMessageActionButton\.alignSelf,[\s\S]*?width:\s*mobileMessageActionButton\.width,[\s\S]*?backgroundColor:\s*mobileMessageActionButtonColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageActionButton\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageActionButton\.justifyContent,[\s\S]*?flexShrink:\s*mobileMessageActionButton\.flexShrink/);
+  assert.match(screenSource, /messageCopyButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageActionButtonStyle\(\s+mobileMessageActionButton,\s+mobileMessageActionButtonColors,\s+\)/);
   assert.match(screenSource, /messageCopyButtonCopied:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageCopiedButtonColors\.backgroundColor/);
   assert.doesNotMatch(screenSource, /messageCopyButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageActionButton\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /messageCopyButtonCopied:\s*\{[\s\S]*?theme\.colors\[mobileMessageCopiedButton\.backgroundColorToken\]/);
@@ -5006,7 +5008,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,/);
   assert.doesNotMatch(screenSource, /const messageActionSurface = CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION\.mobile;/);
   assert.doesNotMatch(screenSource, /messageActionsRow:\s*\{[\s\S]*?messageActionSurface\.row\./);
-  assert.match(screenSource, /messageBranchButton:\s*\{[\s\S]*?alignSelf:\s*mobileMessageBranchButton\.alignSelf,[\s\S]*?width:\s*mobileMessageBranchButton\.width,[\s\S]*?backgroundColor:\s*mobileMessageBranchButtonColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageBranchButton\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageBranchButton\.justifyContent,[\s\S]*?flexShrink:\s*mobileMessageBranchButton\.flexShrink/);
+  assert.match(screenSource, /messageBranchButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageActionButtonStyle\(\s+mobileMessageBranchButton,\s+mobileMessageBranchButtonColors,\s+\)/);
   assert.match(screenSource, /messageBranchButtonDisabled:\s*\{[\s\S]*?opacity:\s*mobileMessageBranchButton\.disabledOpacity/);
   assert.doesNotMatch(screenSource, /messageBranchButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageBranchButton\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.branch\.mobileIcon\./);
