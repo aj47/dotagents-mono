@@ -36,8 +36,9 @@ import {
   useChatRuntimeTextToSpeechToggleActionsState,
   useChatComposerRuntimeDraftState,
   useChatComposerRuntimeTextEntrySubmissionState,
-  formatChatComposerHandsFreeRecognizerErrorDebugMessage,
-  getChatComposerHandsFreeDebugMessage,
+  createChatComposerHandsFreeTranscriptAddedDebugState,
+  createChatComposerHandsFreePermissionDeniedDebugState,
+  createChatComposerHandsFreeRecognizerErrorDebugState,
   useChatComposerRuntimeImageAttachmentPickerState,
   useChatComposerRuntimeSubmissionActionsState,
   useChatComposerRuntimeHandsFreeControlActionsState,
@@ -589,7 +590,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (mode === 'edit') {
         mergeVoiceTextIntoComposer(finalText);
-        setDebugInfo(getChatComposerHandsFreeDebugMessage('transcriptAdded'));
+        setDebugInfo(createChatComposerHandsFreeTranscriptAddedDebugState().debugInfo);
         setTimeout(focusComposerInput, 0);
         return;
       }
@@ -608,10 +609,10 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     onRecognizerError: (message) => {
       handsFreeController.onRecognizerError(message);
-      setDebugInfo(formatChatComposerHandsFreeRecognizerErrorDebugMessage(message));
+      setDebugInfo(createChatComposerHandsFreeRecognizerErrorDebugState(message).debugInfo);
     },
     onPermissionDenied: () => {
-      setDebugInfo(getChatComposerHandsFreeDebugMessage('permissionDenied'));
+      setDebugInfo(createChatComposerHandsFreePermissionDeniedDebugState().debugInfo);
     },
     log: voiceLog,
   });

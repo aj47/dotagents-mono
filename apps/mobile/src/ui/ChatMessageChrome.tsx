@@ -4578,6 +4578,28 @@ export function formatChatComposerHandsFreeRecognizerErrorDebugMessage(
   return formatHandsFreeRecognizerErrorDebugMessage(...args);
 }
 
+function createChatComposerHandsFreeDebugInfoState(
+  key: ChatComposerHandsFreeDebugMessageKey,
+) {
+  return {
+    debugInfo: getChatComposerHandsFreeDebugMessage(key),
+  };
+}
+
+export function createChatComposerHandsFreeTranscriptAddedDebugState() {
+  return createChatComposerHandsFreeDebugInfoState('transcriptAdded');
+}
+
+export function createChatComposerHandsFreePermissionDeniedDebugState() {
+  return createChatComposerHandsFreeDebugInfoState('permissionDenied');
+}
+
+export function createChatComposerHandsFreeRecognizerErrorDebugState(message: string) {
+  return {
+    debugInfo: formatChatComposerHandsFreeRecognizerErrorDebugMessage(message),
+  };
+}
+
 export function formatChatComposerHandsFreeSleepingDebugMessage(
   ...args: Parameters<typeof formatHandsFreeSleepingDebugMessage>
 ): ReturnType<typeof formatHandsFreeSleepingDebugMessage> {
