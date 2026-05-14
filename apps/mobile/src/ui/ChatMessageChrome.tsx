@@ -1465,6 +1465,22 @@ type ChatRuntimeNavigationHeaderOptionsEffectInput = ChatRuntimeNavigationHeader
   } | null;
 };
 
+type ChatRuntimeNavigationHeaderChromeOptionsInput =
+  ChatRuntimeNavigationHeaderRenderStateInput
+  & Pick<
+    ChatRuntimeNavigationHeaderOptionsEffectInput,
+    | 'navigation'
+    | 'onAgentSelectorPress'
+    | 'onBackButtonPress'
+    | 'onPinButtonPress'
+    | 'onKillSwitchButtonPress'
+    | 'onHandsFreeButtonPress'
+    | 'styles'
+  >
+  & {
+    spinnerSource: ChatRuntimeHeaderConversationStatusProps['spinnerSource'];
+  };
+
 export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;
 
 export type ChatConversationHomeQuickStartItem<
@@ -10359,6 +10375,48 @@ export function useChatRuntimeNavigationHeaderOptions({
     styles,
     turnDurationRenderState,
   ]);
+}
+
+export function useChatRuntimeNavigationHeaderChromeOptions({
+  navigation,
+  colors,
+  spinnerSource,
+  agentName,
+  isPinned = false,
+  handsFree = false,
+  conversationState = null,
+  isResponding = false,
+  turnDurationMs = null,
+  turnDurationIsLive = false,
+  onAgentSelectorPress,
+  onBackButtonPress,
+  onPinButtonPress,
+  onKillSwitchButtonPress,
+  onHandsFreeButtonPress,
+  styles,
+}: ChatRuntimeNavigationHeaderChromeOptionsInput): void {
+  const headerRenderState = useChatRuntimeNavigationHeaderRenderState({
+    agentName,
+    isPinned,
+    handsFree,
+    conversationState,
+    isResponding,
+    turnDurationMs,
+    turnDurationIsLive,
+    colors,
+  });
+
+  useChatRuntimeNavigationHeaderOptions({
+    navigation,
+    ...headerRenderState,
+    onAgentSelectorPress,
+    onBackButtonPress,
+    onPinButtonPress,
+    conversationStatusSpinnerSource: spinnerSource,
+    onKillSwitchButtonPress,
+    onHandsFreeButtonPress,
+    styles,
+  });
 }
 
 export function createChatComposerStyleSlots(

@@ -77,14 +77,17 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
 });
 
 test('keeps agent selection in the navigation header for the mobile chat screen', () => {
-  assert.match(screenSource, /useChatRuntimeNavigationHeaderOptions,/);
-  assert.match(screenSource, /useChatRuntimeNavigationHeaderRenderState,/);
+  assert.match(screenSource, /useChatRuntimeNavigationHeaderChromeOptions,/);
+  assert.doesNotMatch(screenSource, /useChatRuntimeNavigationHeaderOptions,/);
+  assert.doesNotMatch(screenSource, /useChatRuntimeNavigationHeaderRenderState,/);
   assert.doesNotMatch(screenSource, /createChatRuntimeNavigationHeaderRenderState,/);
   assert.doesNotMatch(screenSource, /createChatRuntimeNavigationHeaderOptions,/);
   assert.doesNotMatch(screenSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
-  assert.match(screenSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.mobileHeaderRenderState,/);
+  assert.match(screenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{\s+navigation,\s+colors: theme\.colors,\s+spinnerSource: chatRuntimeSpinnerSource,/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderRenderState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderOptions/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderChromeOptions/);
+  assert.match(chatMessageChromeSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.headerRenderState,/);
   assert.match(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeCurrentAgentLabel,/);
   assert.match(chatMessageChromeSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\);/);
@@ -93,14 +96,15 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /export function getChatRuntimeHeaderChromeMobileStyleRenderState/);
   assert.match(sessionPresentationSource, /header: getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /getChatRuntimeAgentSelectorMobileRenderState,/);
-  assert.match(screenSource, /const mobileHeaderRenderState = useChatRuntimeNavigationHeaderRenderState\(\{\s+agentName: currentProfile\?\.name,[\s\S]*?colors: theme\.colors,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const mobileHeaderRenderState = useChatRuntimeNavigationHeaderRenderState/);
+  assert.match(screenSource, /agentName: currentProfile\?\.name,\s+isPinned: isCurrentSessionPinned,\s+handsFree,\s+conversationState,\s+isResponding: responding,\s+turnDurationMs: turnDurations\.totalMs,\s+turnDurationIsLive: turnDurations\.hasLive,/);
   assert.match(chatMessageChromeSource, /return useMemo\(\s+\(\) => createChatRuntimeNavigationHeaderRenderState\(\{\s+agentName,[\s\S]*?colors,\s+\}\),/);
   assert.match(screenSource, /useChatRuntimeAgentSelectorOverlayState,/);
   assert.match(screenSource, /const \{\s+agentSelectorVisible,\s+openAgentSelector,\s+closeAgentSelector,\s+\} = useChatRuntimeAgentSelectorOverlayState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeAgentSelectorOverlayState/);
   assert.match(chatMessageChromeSource, /const \[agentSelectorVisible, setAgentSelectorVisible\] = useState\(false\);/);
   assert.doesNotMatch(screenSource, /const \[agentSelectorVisible, setAgentSelectorVisible\] = useState\(false\);/);
-  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,\s+onAgentSelectorPress: openAgentSelector,/);
+  assert.match(screenSource, /turnDurationIsLive: turnDurations\.hasLive,\s+onAgentSelectorPress: openAgentSelector,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderAgentSelector/);
   assert.doesNotMatch(screenSource, /button: styles\.headerAgentSelectorButton,\s+chip: styles\.headerAgentSelectorChip,\s+label: styles\.headerAgentSelectorText,/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeHeaderStyleSlots/);
@@ -166,10 +170,12 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.doesNotMatch(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(chatMessageChromeSource, /conversationStatusRenderState: getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors,\s+\}\),/);
   assert.match(screenSource, /const chatRuntimeSpinnerSource = createChatRuntimeThemeSpinnerSource\(\{\s+isDark,\s+darkSource: darkSpinner,\s+lightSource: lightSpinner,\s+\}\);/);
-  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?conversationStatusSpinnerSource: chatRuntimeSpinnerSource,/);
+  assert.match(screenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{[\s\S]*?spinnerSource: chatRuntimeSpinnerSource,/);
+  assert.match(chatMessageChromeSource, /conversationStatusSpinnerSource: spinnerSource,/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeThemeSpinnerSource/);
   assert.match(chatMessageChromeSource, /return isDark \? darkSource : lightSource;/);
   assert.doesNotMatch(screenSource, /conversationStatusSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
+  assert.doesNotMatch(screenSource, /conversationStatusSpinnerSource: chatRuntimeSpinnerSource,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderConversationStatus/);
   assert.doesNotMatch(screenSource, /chip: styles\.headerConversationChip,\s+text: styles\.headerConversationChipText,\s+spinner: styles\.headerConversationSpinner,/);
   assert.match(chatMessageChromeSource, /conversationStatus: \{\s+chip: styles\.headerConversationChip,\s+text: styles\.headerConversationChipText,\s+spinner: styles\.headerConversationSpinner,/);
@@ -887,7 +893,7 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(chatMessageChromeSource, /export function useChatRuntimeBackToSessionsActionsState/);
   assert.match(chatMessageChromeSource, /navigation\.navigate\('Sessions'\);/);
   assert.doesNotMatch(screenSource, /navigation\.navigate\('Sessions'\)/);
-  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onBackButtonPress: handleBackToSessions,[\s\S]*?onPinButtonPress: handleToggleCurrentSessionPinned,/);
+  assert.match(screenSource, /onBackButtonPress: handleBackToSessions,\s+onPinButtonPress: handleToggleCurrentSessionPinned,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderIconButton/);
   assert.match(chatMessageChromeSource, /headerLeft: \(\) => \(\s+<ChatRuntimeHeaderActionsRow style=\{styles\.actionsRowStyle\}>[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.backButton\}\s+style=\{styles\.iconButtons\.edgeStyle\}[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.pinButton\}\s+style=\{styles\.iconButtons\.pinStyle\}\s+activeStyle=\{styles\.iconButtons\.pinActiveStyle\}/);
   assert.match(chatMessageChromeSource, /edgeStyle: styles\.headerEdgeActionButton,\s+pinStyle: styles\.headerPinButton,\s+pinActiveStyle: styles\.headerPinButtonActive,/);
@@ -948,7 +954,7 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /\{ text: input\.cancelLabel, style: 'cancel' \}/);
   assert.match(chatMessageChromeSource, /text: input\.confirmLabel,[\s\S]*?style: 'destructive',[\s\S]*?onPress: input\.onConfirm/);
   assert.doesNotMatch(screenSource, /confirmNative: \(\{ title, message, cancelLabel, confirmLabel, onConfirm \}\)/);
-  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onKillSwitchButtonPress: handleKillSwitch,/);
+  assert.match(screenSource, /onKillSwitchButtonPress: handleKillSwitch,/);
   assert.doesNotMatch(screenSource, /shouldRender: headerConversationState === 'running'/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileIconState,/);

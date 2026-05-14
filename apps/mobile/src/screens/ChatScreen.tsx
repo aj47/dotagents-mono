@@ -46,8 +46,7 @@ import {
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
   createChatRuntimeThemeSpinnerSource,
-  useChatRuntimeNavigationHeaderOptions,
-  useChatRuntimeNavigationHeaderRenderState,
+  useChatRuntimeNavigationHeaderChromeOptions,
   createChatMessageRuntimeNoSessionAvailableDebugState,
   createChatMessageRuntimeStartingRequestDebugState,
   createChatMessageRuntimeRequestSentDebugState,
@@ -464,17 +463,6 @@ export default function ChatScreen({ route, navigation }: any) {
     isResponding: responding,
     conversationState,
   });
-  const mobileHeaderRenderState = useChatRuntimeNavigationHeaderRenderState({
-    agentName: currentProfile?.name,
-    isPinned: isCurrentSessionPinned,
-    handsFree,
-    conversationState,
-    isResponding: responding,
-    turnDurationMs: turnDurations.totalMs,
-    turnDurationIsLive: turnDurations.hasLive,
-    colors: theme.colors,
-  });
-
   const { respondToToolApproval } = useChatMessageRuntimeToolApprovalActionsState<ChatMessage>({
     approvalClient: settingsClient,
     beginToolApprovalResponse,
@@ -644,13 +632,20 @@ export default function ChatScreen({ route, navigation }: any) {
     navigation,
   });
 
-  useChatRuntimeNavigationHeaderOptions({
+  useChatRuntimeNavigationHeaderChromeOptions({
     navigation,
-    ...mobileHeaderRenderState,
+    colors: theme.colors,
+    spinnerSource: chatRuntimeSpinnerSource,
+    agentName: currentProfile?.name,
+    isPinned: isCurrentSessionPinned,
+    handsFree,
+    conversationState,
+    isResponding: responding,
+    turnDurationMs: turnDurations.totalMs,
+    turnDurationIsLive: turnDurations.hasLive,
     onAgentSelectorPress: openAgentSelector,
     onBackButtonPress: handleBackToSessions,
     onPinButtonPress: handleToggleCurrentSessionPinned,
-    conversationStatusSpinnerSource: chatRuntimeSpinnerSource,
     onKillSwitchButtonPress: handleKillSwitch,
     onHandsFreeButtonPress: toggleHandsFree,
     styles: chatRuntimeHeaderStyles,
