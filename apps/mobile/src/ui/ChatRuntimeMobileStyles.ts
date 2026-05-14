@@ -171,6 +171,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     justifyContent: button.justifyContent,
     flexShrink: button.flexShrink,
   } as const);
+  const createChatRuntimeMobileMessageActionButtonPressedStyle = (
+    button: typeof mobileMessageActionButton,
+  ) => ({
+    opacity: button.pressedOpacity,
+  } as const);
 
   return StyleSheet.create({
     keyboardAvoidingContainer: {
@@ -1662,9 +1667,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
         mobileMessageActionButtonColors,
       ),
     },
-    messageExpandButtonPressed: {
-      opacity: mobileMessageActionButton.pressedOpacity,
-    },
+    messageExpandButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageActionButton),
     messageActionsRow: {
       flexDirection: mobileMessageActionRow.flexDirection,
       alignItems: mobileMessageActionRow.alignItems,
@@ -1706,9 +1709,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
         mobileMessageBranchButtonColors,
       ),
     },
-    messageBranchButtonPressed: {
-      opacity: mobileMessageBranchButton.pressedOpacity,
-    } as const,
+    messageBranchButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageBranchButton),
     messageBranchButtonDisabled: {
       opacity: mobileMessageBranchButton.disabledOpacity,
     },
@@ -1721,9 +1722,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     messageCopyButtonCopied: {
       backgroundColor: mobileMessageCopiedButtonColors.backgroundColor,
     } as const,
-    messageCopyButtonPressed: {
-      opacity: mobileMessageActionButton.pressedOpacity,
-    } as const,
+    messageCopyButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageActionButton),
     // Per-message TTS button styles (#1078)
     speakButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(
@@ -1734,9 +1733,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     speakButtonActive: {
       backgroundColor: mobileMessageSpeechActiveButtonColors.backgroundColor,
     } as const,
-    speakButtonPressed: {
-      opacity: mobileMessageSpeechButton.pressedOpacity,
-    } as const,
+    speakButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageSpeechButton),
   });
 }
 

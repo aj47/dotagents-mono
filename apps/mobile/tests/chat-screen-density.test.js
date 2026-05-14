@@ -3760,8 +3760,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/hitSlop: mobileMessageActionButton\.hitSlop/g) ?? []).length, 0);
   assert.equal((screenSource.match(/renderState: message(?:Branch|Copy)RenderState/g) ?? []).length, 0);
   assert.doesNotMatch(screenSource, /renderState: messageRenderState\.expansion,/);
-  assert.equal((screenSource.match(/opacity:\s*mobileMessageActionButton\.pressedOpacity/g) ?? []).length, 2);
-  assert.match(screenSource, /messageBranchButtonPressed:\s*\{[\s\S]*?opacity:\s*mobileMessageBranchButton\.pressedOpacity/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageActionButtonPressedStyle = \(\s+button: typeof mobileMessageActionButton,/);
+  assert.match(screenSource, /opacity: button\.pressedOpacity/);
+  assert.match(screenSource, /messageExpandButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageActionButton\)/);
+  assert.match(screenSource, /messageBranchButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageBranchButton\)/);
+  assert.match(screenSource, /messageCopyButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageActionButton\)/);
   assert.match(screenSource, /speakingMessageIndex,/);
   assert.match(chatMessageChromeSource, /isSpeaking: speakingMessageIndex === messageIndex,/);
   assert.match(chatMessageChromeSource, /\.\.\.styles\.speech,/);
@@ -3798,7 +3801,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /speakButtonTextActive:/);
   assert.match(screenSource, /speakButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageActionButtonStyle\(\s+mobileMessageSpeechButton,\s+mobileMessageSpeechButtonColors,\s+\)/);
   assert.match(screenSource, /speakButtonActive:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageSpeechActiveButtonColors\.backgroundColor/);
-  assert.match(screenSource, /speakButtonPressed:\s*\{[\s\S]*?opacity:\s*mobileMessageSpeechButton\.pressedOpacity/);
+  assert.match(screenSource, /speakButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageSpeechButton\)/);
   assert.doesNotMatch(screenSource, /messageExpandButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageActionButton\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /speakButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageSpeechButton\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /speakButtonActive:\s*\{[\s\S]*?theme\.colors\[mobileMessageSpeechActiveButton\.backgroundColorToken\]/);
