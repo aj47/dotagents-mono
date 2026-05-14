@@ -199,8 +199,18 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /onPress=\{onSave\}/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /formatChatConversationHomePromptSaveSuccessMessage\(Boolean\(editingPrompt\)\)/);
+  assert.match(screenSource, /formatChatConversationHomePromptSaveFailedMessage\(error\)/);
+  assert.match(screenSource, /formatChatConversationHomePromptDeleteFailedMessage\(error\)/);
+  assert.match(screenSource, /formatChatConversationHomePromptTaskRunFailedMessage\(error\)/);
   assert.doesNotMatch(screenSource, /getPromptLibrarySaveSuccessMessage/);
   assert.match(chatMessageChromeSource, /getPromptLibrarySaveSuccessMessage/);
+  assert.match(chatMessageChromeSource, /export function formatChatConversationHomePromptSaveFailedMessage/);
+  assert.match(chatMessageChromeSource, /export function formatChatConversationHomePromptDeleteFailedMessage/);
+  assert.match(chatMessageChromeSource, /export function formatChatConversationHomePromptTaskRunFailedMessage/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage\(error, getPromptLibraryCopyState\(\)\.feedback\.promptSaveFailed\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage\(error, getPromptLibraryCopyState\(\)\.feedback\.promptDeleteFailed\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage\(error, getPromptLibraryCopyState\(\)\.feedback\.taskRunFailed\)/);
+  assert.doesNotMatch(screenSource, /error\??\.message \|\| promptLibraryCopy\.feedback\.(promptSaveFailed|promptDeleteFailed|taskRunFailed)/);
   assert.doesNotMatch(screenSource, /newPrompt(Name|Content)\.trim\(\)/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);

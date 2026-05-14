@@ -30,7 +30,10 @@ import {
   createChatConversationHomePromptEditorSaveActionState,
   formatChatConversationHomePromptDeleteConfirmMessage,
   formatChatConversationHomePromptDeleteWebConfirmMessage,
+  formatChatConversationHomePromptDeleteFailedMessage,
+  formatChatConversationHomePromptSaveFailedMessage,
   formatChatConversationHomePromptSaveSuccessMessage,
+  formatChatConversationHomePromptTaskRunFailedMessage,
   formatChatConversationHomePromptTaskStartedMessage,
   createChatComposerRuntimeFollowUpPresentationState,
   createChatComposerRuntimeDockProps,
@@ -571,7 +574,7 @@ export default function ChatScreen({ route, navigation }: any) {
       await settingsClient.runLoop(task.id);
       Alert.alert(promptLibraryCopy.feedback.taskStartedTitle, formatChatConversationHomePromptTaskStartedMessage(task.name));
     } catch (error: any) {
-      Alert.alert(promptLibraryCopy.feedback.errorTitle, error?.message || promptLibraryCopy.feedback.taskRunFailed);
+      Alert.alert(promptLibraryCopy.feedback.errorTitle, formatChatConversationHomePromptTaskRunFailedMessage(error));
     } finally {
       setRunningPromptTaskId(null);
     }
@@ -1429,7 +1432,7 @@ export default function ChatScreen({ route, navigation }: any) {
       Alert.alert(promptLibraryCopy.feedback.successTitle, formatChatConversationHomePromptSaveSuccessMessage(Boolean(editingPrompt)));
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
-      Alert.alert(promptLibraryCopy.feedback.errorTitle, error.message || promptLibraryCopy.feedback.promptSaveFailed);
+      Alert.alert(promptLibraryCopy.feedback.errorTitle, formatChatConversationHomePromptSaveFailedMessage(error));
     } finally {
       setIsSavingPrompt(false);
     }
@@ -1446,7 +1449,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {
         console.error('[ChatScreen] Error deleting prompt:', error);
-        Alert.alert(promptLibraryCopy.feedback.errorTitle, error.message || promptLibraryCopy.feedback.promptDeleteFailed);
+        Alert.alert(promptLibraryCopy.feedback.errorTitle, formatChatConversationHomePromptDeleteFailedMessage(error));
       } finally {
         setIsSavingPrompt(false);
       }

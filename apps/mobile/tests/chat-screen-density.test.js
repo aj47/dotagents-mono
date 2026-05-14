@@ -3627,9 +3627,16 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /formatPromptLibraryDeletePromptWebConfirmMessage/);
   assert.match(chatMessageChromeSource, /formatPromptLibraryTaskStartedMessage/);
   assert.match(screenSource, /formatChatConversationHomePromptSaveSuccessMessage\(Boolean\(editingPrompt\)\)/);
+  assert.match(screenSource, /formatChatConversationHomePromptSaveFailedMessage\(error\)/);
   assert.match(screenSource, /formatChatConversationHomePromptDeleteConfirmMessage\(prompt\.name\)/);
+  assert.match(screenSource, /formatChatConversationHomePromptDeleteFailedMessage\(error\)/);
   assert.match(screenSource, /formatChatConversationHomePromptDeleteWebConfirmMessage\(prompt\.name\)/);
+  assert.match(screenSource, /formatChatConversationHomePromptTaskRunFailedMessage\(error\)/);
   assert.match(screenSource, /formatChatConversationHomePromptTaskStartedMessage\(task\.name\)/);
+  assert.match(chatMessageChromeSource, /formatChatConversationHomePromptSaveFailedMessage/);
+  assert.match(chatMessageChromeSource, /formatChatConversationHomePromptDeleteFailedMessage/);
+  assert.match(chatMessageChromeSource, /formatChatConversationHomePromptTaskRunFailedMessage/);
+  assert.doesNotMatch(screenSource, /error\??\.message \|\| promptLibraryCopy\.feedback\.(promptSaveFailed|promptDeleteFailed|taskRunFailed)/);
   assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /updatePredefinedPromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
   assert.match(screenSource, /deletePredefinedPromptFromList\(predefinedPrompts, prompt\.id\)/);

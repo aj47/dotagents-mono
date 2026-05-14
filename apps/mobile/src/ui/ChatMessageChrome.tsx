@@ -608,6 +608,10 @@ export function formatChatConversationHomePromptSaveSuccessMessage(isEditing: bo
   return getPromptLibrarySaveSuccessMessage(isEditing);
 }
 
+export function formatChatConversationHomePromptSaveFailedMessage(error: unknown): string {
+  return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptSaveFailed);
+}
+
 export function formatChatConversationHomePromptDeleteWebConfirmMessage(promptName: string): string {
   return formatPromptLibraryDeletePromptWebConfirmMessage(promptName);
 }
@@ -616,8 +620,16 @@ export function formatChatConversationHomePromptDeleteConfirmMessage(promptName:
   return formatPromptLibraryDeletePromptConfirmMessage(promptName);
 }
 
+export function formatChatConversationHomePromptDeleteFailedMessage(error: unknown): string {
+  return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptDeleteFailed);
+}
+
 export function formatChatConversationHomePromptTaskStartedMessage(taskName: string): string {
   return formatPromptLibraryTaskStartedMessage(taskName);
+}
+
+export function formatChatConversationHomePromptTaskRunFailedMessage(error: unknown): string {
+  return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.taskRunFailed);
 }
 
 export function getChatConversationHomeQuickStartPressIntent<
