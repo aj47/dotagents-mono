@@ -143,6 +143,7 @@ import {
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
+  getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
@@ -2978,6 +2979,10 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
       })),
     ],
   });
+}
+
+export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
+  return getChatRuntimeMessageHistoryWindowMobileState();
 }
 
 export function createChatMessageRuntimeViewportChromeProps<

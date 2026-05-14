@@ -52,6 +52,7 @@ import {
   createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
+  getChatMessageRuntimeHistoryWindowState,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -101,7 +102,6 @@ import {
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeAlertMessage,
 } from '@dotagents/shared/session-presentation';
@@ -191,7 +191,7 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = MAX_CHAT_IMAGE_ATTACHMENTS;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
-const CHAT_MESSAGE_HISTORY_WINDOW = getChatRuntimeMessageHistoryWindowMobileState();
+const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();

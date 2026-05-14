@@ -2226,7 +2226,9 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /createChatMessageConversationHistoryWindowState,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationViewportAffordanceRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
-  assert.match(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
+  assert.match(screenSource, /getChatMessageRuntimeHistoryWindowState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(screenSource, /content: formatChatRuntimeAssistantFeedbackContent\(thinkingContent, hasCurrentToolActivity\)/);
   assert.match(screenSource, /content: formatChatRuntimeActivityContent\(activeStep\)/);
   assert.match(screenSource, /const \{\s+threadStates: conversationThreadStates,\s+visibleMessageCount: conversationThreadVisibleMessageCount,\s+totalMessageCount: conversationThreadTotalMessageCount,\s+hiddenMessageCount,\s+\} = createChatMessageConversationRuntimeThreadListRenderState\(\{\s+messages,\s+visibleMessageCount,/);
@@ -2253,7 +2255,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /accessibilityLabel: mobileRuntimeActivityAccessibility\.thinkingLabel/);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.activity\.loadingMessagesAccessibilityLabel/);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.activity\.thinkingAccessibilityLabel/);
-  assert.match(screenSource, /const CHAT_MESSAGE_HISTORY_WINDOW = getChatRuntimeMessageHistoryWindowMobileState\(\);/);
+  assert.match(screenSource, /const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState\(\);/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeHistoryWindowState\(\): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> \{\s+return getChatRuntimeMessageHistoryWindowMobileState\(\);/);
   assert.match(screenSource, /useState<number>\(\s*CHAT_MESSAGE_HISTORY_WINDOW\.initialVisibleCount,\s*\)/);
   assert.match(screenSource, /contentSize\.height - CHAT_MESSAGE_HISTORY_WINDOW\.bottomResumeThresholdPx/);
   assert.match(screenSource, /contentOffset\.y <= CHAT_MESSAGE_HISTORY_WINDOW\.topLoadThresholdPx/);
