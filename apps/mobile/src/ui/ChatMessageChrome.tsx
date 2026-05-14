@@ -717,6 +717,26 @@ type ChatMessageRuntimeResponseSpeechQueueActionsState = {
   processResponseSpeechQueue: () => void;
 };
 
+type ChatMessageRuntimeAssistantSpeechActionsStateInput = {
+  ttsEnabledRef: ChatRuntimeMutableRef<boolean>;
+  recentAutoSpeechByTextRef: ChatRuntimeMutableRef<Map<string, number>>;
+  config: ChatMessageRuntimeSpeechActionConfig;
+  effectiveTtsProvider: string;
+  effectiveRemoteTtsVoice?: string | null;
+  effectiveRemoteTtsModel?: string | null;
+  effectiveRemoteTtsRate?: number | null;
+  handsFree: boolean;
+  handsFreeController: ChatMessageRuntimeSpeechActionsController;
+  speakNative: (text: string, options: ChatMessageRuntimeNativeSpeechOptions) => void;
+  speakRemote: (text: string, options: ChatMessageRuntimeRemoteSpeechOptions) => unknown | Promise<unknown>;
+  voiceLog: VoiceDebugLog;
+  duplicateSuppressionMs?: number;
+};
+
+type ChatMessageRuntimeAssistantSpeechActionsState = {
+  speakAssistantResponse: ChatMessageRuntimeResponseSpeechSpeaker;
+};
+
 type ChatMessageRuntimeSpeechPlaybackState = {
   speakingMessageIndex: number | null;
   setSpeakingMessageIndex: Dispatch<SetStateAction<number | null>>;
@@ -5083,6 +5103,8 @@ export function createChatMessageRuntimeSpeechTextState(
   };
 }
 
+export const CHAT_MESSAGE_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
+
 export function createChatMessageRuntimeLogMeta(content: string): ChatMessageRuntimeLogMeta {
   return {
     length: content.length,
@@ -7259,6 +7281,118 @@ export function useChatMessageRuntimeResponseSpeechQueueActionsState({
   return {
     enqueueResponseEventsForSpeech,
     processResponseSpeechQueue,
+  };
+}
+
+export function useChatMessageRuntimeAssistantSpeechActionsState({
+  ttsEnabledRef,
+  recentAutoSpeechByTextRef,
+  config,
+  effectiveTtsProvider,
+  effectiveRemoteTtsVoice,
+  effectiveRemoteTtsModel,
+  effectiveRemoteTtsRate,
+  handsFree,
+  handsFreeController,
+  speakNative,
+  speakRemote,
+  voiceLog,
+  duplicateSuppressionMs = CHAT_MESSAGE_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
+}: ChatMessageRuntimeAssistantSpeechActionsStateInput): ChatMessageRuntimeAssistantSpeechActionsState {
+  const speakAssistantResponse = useCallback((content: string, reason: string, onSettled?: () => void) => {
+    if (!ttsEnabledRef.current) {
+      onSettled?.();
+      return false;
+    }
+
+    const speechText = createChatMessageRuntimeSpeechTextState(content);
+    if (!speechText) {
+      onSettled?.();
+      return false;
+    }
+
+    const ttsTextKey = speechText.autoTextKey;
+    const processedText = speechText.processedText;
+    const now = Date.now();
+    const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
+    if (now - lastSpokenAt < duplicateSuppressionMs) {
+      onSettled?.();
+      return false;
+    }
+
+    recentAutoSpeechByTextRef.current.set(ttsTextKey, now);
+    for (const [key, spokenAt] of recentAutoSpeechByTextRef.current) {
+      if (now - spokenAt > duplicateSuppressionMs) {
+        recentAutoSpeechByTextRef.current.delete(key);
+      }
+    }
+
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      onSettled?.();
+      if (handsFree) {
+        handsFreeController.onSpeechFinished();
+        voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
+      }
+    };
+
+    if (handsFree) {
+      handsFreeController.onSpeechStarted();
+      voiceLog('tts-started', `Assistant speech started (${reason}).`);
+    }
+
+    if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
+      void speakRemote(processedText, {
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        providerId: effectiveTtsProvider,
+        voice: effectiveRemoteTtsVoice ?? undefined,
+        model: effectiveRemoteTtsModel ?? undefined,
+        rate: effectiveRemoteTtsRate ?? undefined,
+        onDone: settle,
+        onError: settle,
+        onStopped: settle,
+      });
+      return true;
+    }
+
+    const speechOptions: ChatMessageRuntimeNativeSpeechOptions = {
+      language: 'en-US',
+      rate: config.ttsRate ?? 1.0,
+      pitch: config.ttsPitch ?? 1.0,
+      onDone: settle,
+      onError: settle,
+      onStopped: settle,
+    };
+    if (config.ttsVoiceId) {
+      speechOptions.voice = config.ttsVoiceId;
+    }
+    speakNative(processedText, speechOptions);
+    return true;
+  }, [
+    config.apiKey,
+    config.baseUrl,
+    config.ttsPitch,
+    config.ttsRate,
+    config.ttsVoiceId,
+    duplicateSuppressionMs,
+    effectiveRemoteTtsModel,
+    effectiveRemoteTtsRate,
+    effectiveRemoteTtsVoice,
+    effectiveTtsProvider,
+    handsFree,
+    handsFreeController,
+    recentAutoSpeechByTextRef,
+    speakNative,
+    speakRemote,
+    ttsEnabledRef,
+    voiceLog,
+  ]);
+
+  return {
+    speakAssistantResponse,
   };
 }
 

@@ -63,10 +63,10 @@ import {
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
   useChatMessageRuntimeResponseHistoryState,
+  useChatMessageRuntimeAssistantSpeechActionsState,
   useChatMessageRuntimeResponseSpeechQueueActionsState,
   useChatMessageRuntimeSpeechActionsState,
   useChatMessageRuntimeSpeechPlaybackState,
-  createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeRemoteSpeechSettingsState,
@@ -122,7 +122,6 @@ import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
-const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
 
 type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
@@ -690,80 +689,20 @@ export default function ChatScreen({ route, navigation }: any) {
 		stopRecognitionOnly,
 	  ]);
 
-	  const speakAssistantResponse = useCallback((content: string, reason: string, onSettled?: () => void) => {
-		// Honor a mute that may have happened after this callback was scheduled but
-		// before it ran (stale closures inside in-flight send() progress handlers).
-		if (!ttsEnabledRef.current) {
-			onSettled?.();
-			return false;
-		}
-    const speechText = createChatMessageRuntimeSpeechTextState(content);
-		if (!speechText) {
-				onSettled?.();
-			return false;
-		}
-
-      const ttsTextKey = speechText.autoTextKey;
-      const processedText = speechText.processedText;
-      const now = Date.now();
-      const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
-      if (now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
-        onSettled?.();
-        return false;
-      }
-      recentAutoSpeechByTextRef.current.set(ttsTextKey, now);
-      for (const [key, spokenAt] of recentAutoSpeechByTextRef.current) {
-        if (now - spokenAt > AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
-          recentAutoSpeechByTextRef.current.delete(key);
-        }
-      }
-
-		let settled = false;
-		const settle = () => {
-			if (settled) return;
-			settled = true;
-				onSettled?.();
-			if (handsFree) {
-				handsFreeController.onSpeechFinished();
-				voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
-			}
-		};
-
-		if (handsFree) {
-			handsFreeController.onSpeechStarted();
-			voiceLog('tts-started', `Assistant speech started (${reason}).`);
-		}
-
-		if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
-			// Remote desktop TTS routes through the paired desktop's /v1/tts/speak.
-			void speakRemoteTts(processedText, {
-				baseUrl: config.baseUrl,
-				apiKey: config.apiKey,
-				providerId: effectiveTtsProvider,
-				voice: effectiveRemoteTtsVoice,
-				model: effectiveRemoteTtsModel,
-				rate: effectiveRemoteTtsRate,
-				onDone: settle,
-				onError: settle,
-				onStopped: settle,
-			});
-			return true;
-		}
-
-		const speechOptions: Speech.SpeechOptions = {
-			language: 'en-US',
-			rate: config.ttsRate ?? 1.0,
-			pitch: config.ttsPitch ?? 1.0,
-			onDone: settle,
-			onError: settle,
-			onStopped: settle,
-		};
-		if (config.ttsVoiceId) {
-			speechOptions.voice = config.ttsVoiceId;
-		}
-		Speech.speak(processedText, speechOptions);
-		return true;
-		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveRemoteTtsModel, effectiveRemoteTtsRate, effectiveRemoteTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
+  const { speakAssistantResponse } = useChatMessageRuntimeAssistantSpeechActionsState({
+    ttsEnabledRef,
+    recentAutoSpeechByTextRef,
+    config,
+    effectiveTtsProvider,
+    effectiveRemoteTtsVoice,
+    effectiveRemoteTtsModel,
+    effectiveRemoteTtsRate,
+    handsFree,
+    handsFreeController,
+    speakNative: Speech.speak,
+    speakRemote: speakRemoteTts,
+    voiceLog,
+  });
 
   const { enqueueResponseEventsForSpeech } = useChatMessageRuntimeResponseSpeechQueueActionsState({
     isTextToSpeechEnabled: config.ttsEnabled !== false,
