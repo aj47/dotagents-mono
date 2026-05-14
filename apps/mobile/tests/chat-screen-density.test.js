@@ -3271,7 +3271,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /getPromptLibraryShortcutPressIntent,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileIconColors,/);
-  assert.match(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileShortcutRenderState/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
@@ -3279,8 +3280,9 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /const promptLibraryEditorRenderState = useMemo\(\s+\(\) => getPromptLibraryEditorMobileRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(screenSource, /const promptLibraryShortcutRenderState = useMemo\(\s+\(\) => getPromptLibraryMobileShortcutRenderState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
+  assert.doesNotMatch(screenSource, /const promptLibraryShortcutRenderState = useMemo/);
+  assert.doesNotMatch(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
+  assert.match(chatMessageChromeSource, /const shortcutRenderState = getPromptLibraryMobileShortcutRenderState\(colors\);/);
   assert.match(screenSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
   assert.match(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
   assert.match(screenSource, /if \(pressIntent\.kind === 'run-task'\)/);

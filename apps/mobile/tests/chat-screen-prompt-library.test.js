@@ -43,7 +43,8 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileChromeState,/);
-  assert.match(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileShortcutRenderState/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
@@ -56,12 +57,13 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
   assert.match(screenSource, /const promptLibraryCopy = getPromptLibraryCopyState\(\);/);
   assert.match(screenSource, /const promptLibraryEditorRenderState = useMemo\(\s+\(\) => getPromptLibraryEditorMobileRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(screenSource, /const promptLibraryShortcutRenderState = useMemo\(\s+\(\) => getPromptLibraryMobileShortcutRenderState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
+  assert.doesNotMatch(screenSource, /const promptLibraryShortcutRenderState = useMemo/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /runningTaskId: runningPromptTaskId,/);
-  assert.match(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
+  assert.doesNotMatch(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
+  assert.match(chatMessageChromeSource, /const shortcutRenderState = getPromptLibraryMobileShortcutRenderState\(colors\);/);
   assert.match(screenSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
   assert.match(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
   assert.match(screenSource, /if \(pressIntent\.kind === 'run-task'\)/);

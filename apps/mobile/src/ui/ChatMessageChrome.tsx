@@ -67,6 +67,7 @@ import {
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
+  getPromptLibraryMobileShortcutRenderState,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibraryMobileShortcutRenderState,
@@ -1467,13 +1468,14 @@ type ChatMessageRuntimeViewportChromePropsInput<
     onQuickStartPress: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onPress'];
     onEditPrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onEditPrompt'];
     onDeletePrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onDeletePrompt'];
-    shortcutRenderState: PromptLibraryMobileShortcutRenderState;
     visibleMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['visibleMessageCount'];
     totalMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['totalMessageCount'];
     hiddenMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['hiddenMessageCount'];
     messageHistoryLoadIncrement: ChatMessageConversationViewportAffordanceRenderStateInput['messageHistoryLoadIncrement'];
     latestStepSummary: ChatMessageConversationViewportAffordanceRenderStateInput['latestStepSummary'];
-    colors: ChatMessageConversationViewportAffordanceRenderStateInput['colors'];
+    colors:
+      & ChatMessageConversationViewportAffordanceRenderStateInput['colors']
+      & Parameters<typeof getPromptLibraryMobileShortcutRenderState>[0];
     onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
     debugPanelsRenderState: ChatRuntimeDebugPanelsMobileRenderState;
   };
@@ -2837,7 +2839,6 @@ export function createChatMessageRuntimeViewportChromeProps<
   onQuickStartPress,
   onEditPrompt,
   onDeletePrompt,
-  shortcutRenderState,
   visibleMessageCount,
   totalMessageCount,
   hiddenMessageCount,
@@ -2856,6 +2857,7 @@ export function createChatMessageRuntimeViewportChromeProps<
     latestStepSummary,
     colors,
   });
+  const shortcutRenderState = getPromptLibraryMobileShortcutRenderState(colors);
 
   return {
     ...scrollViewportProps,

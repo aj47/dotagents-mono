@@ -192,7 +192,6 @@ import {
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
-  getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
@@ -376,10 +375,6 @@ export default function ChatScreen({ route, navigation }: any) {
       colors: theme.colors,
       platform: Platform.OS,
     }),
-    [theme.colors],
-  );
-  const promptLibraryShortcutRenderState = useMemo(
-    () => getPromptLibraryMobileShortcutRenderState(theme.colors),
     [theme.colors],
   );
   const mobileComposerSurfaceRenderState = useMemo(
@@ -3358,7 +3353,6 @@ export default function ChatScreen({ route, navigation }: any) {
     onQuickStartPress: handleQuickStartPress,
     onEditPrompt: openEditPromptModal,
     onDeletePrompt: handleDeletePrompt,
-    shortcutRenderState: promptLibraryShortcutRenderState,
     visibleMessageCount: conversationThreadVisibleMessageCount,
     totalMessageCount: conversationThreadTotalMessageCount,
     hiddenMessageCount,
