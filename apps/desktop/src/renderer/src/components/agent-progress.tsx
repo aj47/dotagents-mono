@@ -98,6 +98,7 @@ import {
   getChatMessageActionCopyState,
   getChatMessageActionDesktopSurfaceState,
   getChatMessageActionLayoutRenderState,
+  getChatMessageActionSlotRenderEntries,
   getChatDisplayExpansionState,
   getChatDisplayGroupedExpansionState,
   getChatMessageContentRenderState,
@@ -1363,6 +1364,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   })
   const visibleMessageActionSlots = messageActionLayout.visibleSlots
   const shouldRenderMessageActionSlots = messageActionLayout.shouldRenderActionSlots
+  const visibleMessageActionEntries = getChatMessageActionSlotRenderEntries(
+    visibleMessageActionSlots,
+    messageActionComponents,
+  )
 
   return (
     <div className={cn(
@@ -1519,9 +1524,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         </div>
         {shouldRenderMessageActionSlots && (
           <div className={desktopChatMessageActionSurface.actionRowClassName}>
-            {visibleMessageActionSlots.map((actionSlot) => (
-              <React.Fragment key={actionSlot}>
-                {messageActionComponents[actionSlot]}
+            {visibleMessageActionEntries.map(({ slot, item }) => (
+              <React.Fragment key={slot}>
+                {item}
               </React.Fragment>
             ))}
           </div>

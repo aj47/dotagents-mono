@@ -3527,9 +3527,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /name=\{renderState\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.badge\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
-  assert.match(chatMessageChromeSource, /slots\.map\(\(actionSlot\) => \(/);
-  assert.match(chatMessageChromeSource, /<Fragment key=\{actionSlot\}>/);
-  assert.match(chatMessageChromeSource, /\{components\[actionSlot\]\}/);
+  assert.match(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries\(slots, components\)\.map\(\(\{ slot, item \}\) => \(/);
+  assert.match(chatMessageChromeSource, /<Fragment key=\{slot\}>/);
+  assert.match(chatMessageChromeSource, /\{item\}/);
   assert.match(chatMessageChromeSource, /return <View style=\{rowStyle\}>\{content\}<\/View>;/);
   assert.match(chatMessageChromeSource, /<View style=\{rowStyle\}>[\s\S]*?bodyStyle \? \(/);
   assert.match(chatMessageChromeSource, /<View style=\{bodyStyle\}>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList/);
@@ -3680,6 +3680,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+slots=\{slots\}\s+components=\{components\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+slots=\{slots\}\s+components=\{components\}/);
+  assert.match(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
+  assert.match(chatMessageChromeSource, /const content = getChatMessageActionSlotRenderEntries\(slots, components\)\.map\(\(\{ slot, item \}\) => \(/);
   assert.equal((screenSource.match(/visibleMessageActionSlots\.map\(\(actionSlot\) => \(/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<Fragment key=\{actionSlot\}>/g) ?? []).length, 0);
   assert.equal((screenSource.match(/\{messageActionSet\.components\[actionSlot\]\}/g) ?? []).length, 0);

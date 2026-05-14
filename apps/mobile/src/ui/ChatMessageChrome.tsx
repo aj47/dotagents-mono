@@ -37,6 +37,7 @@ import {
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageActionLayoutRenderState,
+  getChatMessageActionSlotRenderEntries,
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
@@ -14995,9 +14996,9 @@ export function ChatMessageActionSlotList({
 }: ChatMessageActionSlotListProps) {
   if (!shouldRender) return null;
 
-  const content = slots.map((actionSlot) => (
-    <Fragment key={actionSlot}>
-      {components[actionSlot]}
+  const content = getChatMessageActionSlotRenderEntries(slots, components).map(({ slot, item }) => (
+    <Fragment key={slot}>
+      {item}
     </Fragment>
   ));
 
