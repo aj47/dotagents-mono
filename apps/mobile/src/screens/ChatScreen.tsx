@@ -24,7 +24,7 @@ import {
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
-  ChatMessageConversationRuntimeThread,
+  ChatMessageConversationRuntimeThreadList,
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatComposerRuntimeDockChromeProps,
@@ -34,7 +34,7 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatMessageConversationItemThreadRenderState,
+  createChatMessageConversationThreadListRenderState,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -3424,6 +3424,45 @@ export default function ChatScreen({ route, navigation }: any) {
     (message) => message,
     (message) => hasVisibleChatMessageContent(message),
   );
+  const conversationThreadStates = createChatMessageConversationThreadListRenderState({
+    messages: visibleMessages,
+    firstMessageIndex: firstVisibleMessageIndex,
+    groupByIndex: toolActivityGroups.groupByIndex,
+    groupState: expandedGroups,
+    inheritedState: expandedMessages,
+    onToggleGroup: toggleGroupExpansion,
+    lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
+    expandedMessages,
+    resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
+    turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,
+    conversationId: currentSession?.serverConversationId,
+    pendingBranchMessageIndex: branchingMessageIndex,
+    isResponding: responding,
+    speakingMessageIndex,
+    copiedMessageIndex,
+    ttsEnabled,
+    colors: theme.colors,
+    actionStyles: chatMessageConversationThreadStyles.actionSet,
+    assetBaseUrl: config.baseUrl,
+    assetAuthToken: config.apiKey,
+    spinnerSource: isDark ? darkSpinner : lightSpinner,
+    presentation: chatMessageConversationThreadPresentation,
+    expandedDelegationConversationPreviews,
+    expandedDelegationToolPreviews,
+    setExpandedDelegationConversationPreviews,
+    setExpandedDelegationToolPreviews,
+    expandedToolApprovals,
+    pendingApprovalResponseId: pendingToolApprovalResponseId,
+    onToggleToolApprovalArguments: toggleToolApprovalArguments,
+    onRespondToToolApproval: respondToToolApproval,
+    expandedToolCalls,
+    onToggleToolCall: toggleToolCallExpansion,
+    onCopyToolPayload: handleCopyToolPayload,
+    onSpeakMessage: speakMessage,
+    onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
+    onCopyMessage: handleCopyMessage,
+    onToggleMessageExpansion: toggleMessageExpansion,
+  });
   const handleLoadEarlierMessages = () => {
     setVisibleMessageCount((current) =>
       Math.min(messages.length, current + CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement),
@@ -3714,61 +3753,10 @@ export default function ChatScreen({ route, navigation }: any) {
       }}
       styles={chatMessageRuntimeSurfaceStyles}
     >
-          {visibleMessages.map((m, visibleIndex) => {
-            const i = firstVisibleMessageIndex + visibleIndex;
-            const group = toolActivityGroups.groupByIndex.get(i);
-            const {
-              threadState,
-            } = createChatMessageConversationItemThreadRenderState({
-              group,
-              itemIndex: i,
-              itemKey: i,
-              groupState: expandedGroups,
-              inheritedState: expandedMessages,
-              onToggleGroup: toggleGroupExpansion,
-              message: m,
-              messageIndex: i,
-              lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
-              expandedMessages,
-              resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
-              turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,
-              conversationId: currentSession?.serverConversationId,
-              pendingBranchMessageIndex: branchingMessageIndex,
-              isResponding: responding,
-              isSpeaking: speakingMessageIndex === i,
-              isCopied: copiedMessageIndex === i,
-              ttsEnabled,
-              colors: theme.colors,
-              actionStyles: chatMessageConversationThreadStyles.actionSet,
-              assetBaseUrl: config.baseUrl,
-              assetAuthToken: config.apiKey,
-              spinnerSource: isDark ? darkSpinner : lightSpinner,
-              presentation: chatMessageConversationThreadPresentation,
-              expandedDelegationConversationPreviews,
-              expandedDelegationToolPreviews,
-              setExpandedDelegationConversationPreviews,
-              setExpandedDelegationToolPreviews,
-              expandedToolApprovals,
-              pendingApprovalResponseId: pendingToolApprovalResponseId,
-              onToggleToolApprovalArguments: toggleToolApprovalArguments,
-              onRespondToToolApproval: respondToToolApproval,
-              expandedToolCalls,
-              onToggleToolCall: toggleToolCallExpansion,
-              onCopyToolPayload: handleCopyToolPayload,
-              onSpeakMessage: speakMessage,
-              onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
-              onCopyMessage: handleCopyMessage,
-              onToggleMessageExpansion: toggleMessageExpansion,
-            });
-
-            return (
-              <ChatMessageConversationRuntimeThread
-                key={threadState.threadKey}
-                threadState={threadState}
-                styles={chatMessageConversationThreadStyles.runtimeThread}
-              />
-            );
-          })}
+          <ChatMessageConversationRuntimeThreadList
+            threadStates={conversationThreadStates}
+            styles={chatMessageConversationThreadStyles.runtimeThread}
+          />
     </ChatMessageRuntimeSurface>
   );
 }

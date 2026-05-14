@@ -2108,6 +2108,24 @@ type ChatMessageConversationItemThreadRenderState = {
   threadState: ChatMessageConversationRenderableRuntimeThreadState;
 };
 
+type ChatMessageConversationThreadListRenderStateInput =
+  Omit<
+    ChatMessageConversationItemThreadRenderStateInput,
+    'group' | 'itemIndex' | 'itemKey' | 'message' | 'messageIndex' | 'isSpeaking' | 'isCopied'
+  >
+  & {
+    messages: readonly ChatMessageConversationItemThreadRenderStateInput['message'][];
+    firstMessageIndex: number;
+    groupByIndex: ReadonlyMap<number, ToolActivityGroup>;
+    speakingMessageIndex: number | null;
+    copiedMessageIndex: number | null;
+  };
+
+type ChatMessageConversationRuntimeThreadListProps = {
+  threadStates: readonly ChatMessageConversationRenderableRuntimeThreadState[];
+  styles: ChatMessageRuntimeThreadStyleSlots;
+};
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2439,6 +2457,30 @@ export function createChatMessageConversationItemThreadRenderState({
     groupRenderState,
     groupThreadState,
     ...messageThreadInput,
+  });
+}
+
+export function createChatMessageConversationThreadListRenderState({
+  messages,
+  firstMessageIndex,
+  groupByIndex,
+  speakingMessageIndex,
+  copiedMessageIndex,
+  ...threadInput
+}: ChatMessageConversationThreadListRenderStateInput): ChatMessageConversationRenderableRuntimeThreadState[] {
+  return messages.map((message, visibleIndex) => {
+    const messageIndex = firstMessageIndex + visibleIndex;
+
+    return createChatMessageConversationItemThreadRenderState({
+      ...threadInput,
+      group: groupByIndex.get(messageIndex),
+      itemIndex: messageIndex,
+      itemKey: messageIndex,
+      message,
+      messageIndex,
+      isSpeaking: speakingMessageIndex === messageIndex,
+      isCopied: copiedMessageIndex === messageIndex,
+    }).threadState;
   });
 }
 
@@ -4635,6 +4677,23 @@ export function ChatMessageConversationRuntimeThread({
       body={threadState.body}
       styles={styles}
     />
+  );
+}
+
+export function ChatMessageConversationRuntimeThreadList({
+  threadStates,
+  styles,
+}: ChatMessageConversationRuntimeThreadListProps) {
+  return (
+    <>
+      {threadStates.map((threadState) => (
+        <ChatMessageConversationRuntimeThread
+          key={threadState.threadKey}
+          threadState={threadState}
+          styles={styles}
+        />
+      ))}
+    </>
   );
 }
 
