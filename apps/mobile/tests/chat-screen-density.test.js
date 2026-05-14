@@ -3726,7 +3726,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const mobileMessageSpeechButton = getChatMessageActionMobileButtonState\('speech'\);/);
   assert.doesNotMatch(screenSource, /const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState\('speechActive'\);/);
   assert.doesNotMatch(screenSource, /const mobileMessageActionStyleState = useMemo\(\s+\(\) => getChatMessageActionMobileStyleRenderState\(\{ colors: theme\.colors \}\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(chatMessageChromeSource, /getChatMessageActionMobileButtonState,/);
+  assert.match(chatMessageChromeSource, /getChatMessageActionMobileButtonStateForSlot,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileStyleRenderState,/);
   assert.match(sessionPresentationSource, /action: getChatMessageActionMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonRenderState,/);
@@ -3771,9 +3771,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /pressedStyle: styles\.speakButtonPressed,/);
   assert.match(chatMessageChromeSource, /speech: \{\s+hitSlop: speechButton\.hitSlop,\s+style: styles\.speakButton,\s+activeStyle: styles\.speakButtonActive,\s+pressedStyle: styles\.speakButtonPressed,\s+\}/);
   assert.doesNotMatch(screenSource, /hitSlop: mobileMessageSpeechButton\.hitSlop,/);
+  assert.match(chatMessageChromeSource, /const speechButton = getChatMessageActionMobileButtonStateForSlot\('speech'\);/);
+  assert.match(chatMessageChromeSource, /const branchButton = getChatMessageActionMobileButtonStateForSlot\('branch'\);/);
+  assert.match(chatMessageChromeSource, /const copyButton = getChatMessageActionMobileButtonStateForSlot\('copy'\);/);
+  assert.match(chatMessageChromeSource, /const expansionButton = getChatMessageActionMobileButtonStateForSlot\('expansion'\);/);
   assert.match(chatMessageChromeSource, /branch: \{\s+hitSlop: branchButton\.hitSlop,\s+style: styles\.messageBranchButton,/);
-  assert.match(chatMessageChromeSource, /copy: \{\s+hitSlop: standardButton\.hitSlop,\s+style: styles\.messageCopyButton,/);
-  assert.match(chatMessageChromeSource, /expansion: \{\s+hitSlop: standardButton\.hitSlop,\s+style: styles\.messageExpandButton,/);
+  assert.match(chatMessageChromeSource, /copy: \{\s+hitSlop: copyButton\.hitSlop,\s+style: styles\.messageCopyButton,/);
+  assert.match(chatMessageChromeSource, /expansion: \{\s+hitSlop: expansionButton\.hitSlop,\s+style: styles\.messageExpandButton,/);
   assert.doesNotMatch(screenSource, /hitSlop=\{CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION\.mobile\.expansionButton\.hitSlop\}/);
   assert.doesNotMatch(screenSource, /opacity:\s*messageActionSurface\.expansionButton\.pressedOpacity/);
   assert.doesNotMatch(screenSource, /messageActionSurface\.expansionButton\.(alignSelf|width|height|marginTop|borderRadius|backgroundColorToken|branchBackgroundColorToken|copiedBackgroundColorToken|backgroundAlpha|alignItems|justifyContent|flexShrink)/);

@@ -970,6 +970,27 @@ export type ChatMessageActionMobileButtonKind =
   | "speech"
   | "speechActive"
 
+export type ChatMessageActionMobileButtonSlot = Exclude<ChatMessageActionSlot, "turnDuration">
+
+export const CHAT_MESSAGE_ACTION_MOBILE_BUTTON_KIND_BY_SLOT = {
+  speech: "speech",
+  branch: "branch",
+  copy: "standard",
+  expansion: "standard",
+} as const satisfies Record<ChatMessageActionMobileButtonSlot, ChatMessageActionMobileButtonKind>
+
+export function getChatMessageActionMobileButtonKindForSlot(
+  slot: ChatMessageActionMobileButtonSlot,
+): ChatMessageActionMobileButtonKind {
+  return CHAT_MESSAGE_ACTION_MOBILE_BUTTON_KIND_BY_SLOT[slot]
+}
+
+export function getChatMessageActionMobileButtonStateForSlot(
+  slot: ChatMessageActionMobileButtonSlot,
+): ReturnType<typeof getChatMessageActionMobileButtonState> {
+  return getChatMessageActionMobileButtonState(getChatMessageActionMobileButtonKindForSlot(slot))
+}
+
 export interface ChatMessageActionMobileTurnDurationBadgeStateInput {
   isLive?: boolean
 }

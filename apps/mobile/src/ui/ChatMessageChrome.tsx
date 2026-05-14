@@ -34,7 +34,7 @@ import {
   getChatDisplayExpansionState,
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
-  getChatMessageActionMobileButtonState,
+  getChatMessageActionMobileButtonStateForSlot,
   getChatMessageActionLayoutRenderState,
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
@@ -10619,9 +10619,10 @@ export function createChatMessageToolExecutionStackProps({
 export function createChatMessageActionStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatMessageActionStyleSlots {
-  const standardButton = getChatMessageActionMobileButtonState();
-  const branchButton = getChatMessageActionMobileButtonState('branch');
-  const speechButton = getChatMessageActionMobileButtonState('speech');
+  const speechButton = getChatMessageActionMobileButtonStateForSlot('speech');
+  const branchButton = getChatMessageActionMobileButtonStateForSlot('branch');
+  const copyButton = getChatMessageActionMobileButtonStateForSlot('copy');
+  const expansionButton = getChatMessageActionMobileButtonStateForSlot('expansion');
 
   return {
     turnDuration: {
@@ -10643,13 +10644,13 @@ export function createChatMessageActionStyleSlots(
       disabledStyle: styles.messageBranchButtonDisabled,
     },
     copy: {
-      hitSlop: standardButton.hitSlop,
+      hitSlop: copyButton.hitSlop,
       style: styles.messageCopyButton,
       activeStyle: styles.messageCopyButtonCopied,
       pressedStyle: styles.messageCopyButtonPressed,
     },
     expansion: {
-      hitSlop: standardButton.hitSlop,
+      hitSlop: expansionButton.hitSlop,
       style: styles.messageExpandButton,
       pressedStyle: styles.messageExpandButtonPressed,
     },
