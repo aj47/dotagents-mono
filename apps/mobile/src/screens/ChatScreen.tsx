@@ -46,6 +46,7 @@ import {
   createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
   createChatMessageToolExecutionCompactPreviewRow,
+  createChatMessageToolExecutionDetailRow,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -185,17 +186,12 @@ import {
 import {
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileCollapseControlRenderState,
-  getToolExecutionDetailMobileCopyButtonRenderState,
   getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobileExpandControlRenderState,
-  getToolExecutionDetailMobileHeaderRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
-  getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailArgumentsState,
-  getToolExecutionDetailResultState,
-  getToolExecutionCallDisplayState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
@@ -3882,80 +3878,19 @@ export default function ChatScreen({ route, navigation }: any) {
             const toolExecutionDetailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) => {
               const toolCallKey = `${stableMessageKey}-${origIdx}`;
               const isToolCallFullyExpanded = getChatDisplayExpansionState(expandedToolCalls, toolCallKey);
-              const toolNameLabel = label ?? toolCall.name;
-              const toolArgumentsDetail = getToolExecutionDetailArgumentsState(toolCall.arguments);
-              const toolArgumentsPayload = toolArgumentsDetail.payload;
-              const toolArgumentsText = toolArgumentsDetail.content;
-              const toolInputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
-                kind: 'input',
-                payload: toolArgumentsPayload,
-              });
-              const toolResultDetail = getToolExecutionDetailResultState(result);
-              const toolResultContent = toolResultDetail.content;
-              const toolResultPayload = toolResultDetail.payload;
-              const toolResultState = toolResultDetail.state;
-              const toolOutputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
-                kind: 'output',
-                payload: toolResultPayload,
-              });
-              const toolErrorHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
-                kind: 'error',
-              });
-              const toolDetailHeaderState = getToolExecutionDetailMobileHeaderRenderState({
-                toolName: toolNameLabel,
-                isExpanded: isToolCallFullyExpanded,
-                resultState: toolResultState,
-                colors: theme.colors,
-              });
-              const toolInputCopyButtonState = getToolExecutionDetailMobileCopyButtonRenderState({
-                kind: 'input',
-                toolName: toolNameLabel,
-                colors: theme.colors,
-              });
-              const toolOutputCopyButtonState = getToolExecutionDetailMobileCopyButtonRenderState({
-                kind: 'output',
-                toolName: toolNameLabel,
-                colors: theme.colors,
-              });
-              const toolErrorCopyButtonState = getToolExecutionDetailMobileCopyButtonRenderState({
-                kind: 'error',
-                toolName: toolNameLabel,
-                colors: theme.colors,
-              });
 
-              return {
+              return createChatMessageToolExecutionDetailRow({
                 key: toolCallKey,
-                renderState: toolDetailHeaderState,
-                toolName: toolNameLabel,
-                onHeaderPress: () => toggleToolCallExpansion(stableMessageKey, origIdx),
-                input: toolArgumentsDetail.hasArguments ? {
-                  payloadRenderState: toolInputHeaderState,
-                  compactText: toolArgumentsPayload?.compactText,
-                  content: toolArgumentsText,
-                  isExpanded: isToolCallFullyExpanded,
-                  previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-                  copyButtonRenderState: toolInputCopyButtonState,
-                  onCopyPress: () => { void handleCopyToolPayload(toolArgumentsText); },
-                } : null,
-                result: result ? {
-                  payloadRenderState: toolOutputHeaderState,
-                  resultBadge: toolDetailHeaderState.resultBadge,
-                  characterCountLabel: toolResultDetail.characterCountLabel,
-                  resultCompactText: toolResultPayload?.compactText,
-                  resultContent: toolResultContent,
-                  isExpanded: isToolCallFullyExpanded,
-                  previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-                  copyButtonRenderState: toolOutputCopyButtonState,
-                  onCopyPress: () => { void handleCopyToolPayload(toolResultContent); },
-                  errorRenderState: toolErrorHeaderState,
-                  error: toolResultDetail.error,
-                  errorCopyButtonRenderState: toolErrorCopyButtonState,
-                  onErrorCopyPress: () => { void handleCopyToolPayload(toolResultDetail.error ?? ''); },
-                } : null,
-                pendingResult: !result && toolResultDetail.isPending ? {
-                  renderState: toolExecutionDetailPendingResultState,
-                } : null,
-              };
+                toolCall,
+                label,
+                result,
+                isExpanded: isToolCallFullyExpanded,
+                colors: theme.colors,
+                previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+                pendingResultRenderState: toolExecutionDetailPendingResultState,
+                onToggle: () => toggleToolCallExpansion(stableMessageKey, origIdx),
+                onCopyPayload: (content) => { void handleCopyToolPayload(content); },
+              });
             });
             const messageRenderState = getChatMessageMobileRenderState({
               role: m.role,

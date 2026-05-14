@@ -79,6 +79,11 @@ import type {
 import {
   getToolExecutionCallDisplayState,
   getToolExecutionCompactMobileRenderState,
+  getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailMobileCopyButtonRenderState,
+  getToolExecutionDetailMobileHeaderRenderState,
+  getToolExecutionDetailMobileSectionHeaderRenderState,
+  getToolExecutionDetailResultState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -946,6 +951,19 @@ type ChatMessageToolExecutionCallDetailProps = {
 
 type ChatMessageToolExecutionCallListRow = Omit<ChatMessageToolExecutionCallDetailProps, 'styles'> & {
   key: string;
+};
+
+type ChatMessageToolExecutionDetailRowInput = {
+  key: string;
+  toolCall: ChatMessageDisplayToolEntry['toolCall'];
+  label?: string;
+  result?: ChatMessageDisplayToolEntry['result'];
+  isExpanded: boolean;
+  colors: Parameters<typeof getToolExecutionDetailMobileHeaderRenderState>[0]['colors'];
+  previewNumberOfLines: number;
+  pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
+  onToggle?: ChatMessageToolExecutionCallListRow['onHeaderPress'];
+  onCopyPayload: (content: string) => void;
 };
 
 type ChatMessageToolExecutionCallListProps = {
@@ -1933,6 +1951,94 @@ export function createChatMessageToolExecutionCompactPreviewRow({
       preview,
       colors,
     }),
+  };
+}
+
+export function createChatMessageToolExecutionDetailRow({
+  key,
+  toolCall,
+  label,
+  result,
+  isExpanded,
+  colors,
+  previewNumberOfLines,
+  pendingResultRenderState,
+  onToggle,
+  onCopyPayload,
+}: ChatMessageToolExecutionDetailRowInput): ChatMessageToolExecutionCallListRow {
+  const toolName = label ?? toolCall.name;
+  const argumentsDetail = getToolExecutionDetailArgumentsState(toolCall.arguments);
+  const argumentsPayload = argumentsDetail.payload;
+  const argumentsContent = argumentsDetail.content;
+  const inputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+    kind: 'input',
+    payload: argumentsPayload,
+  });
+  const resultDetail = getToolExecutionDetailResultState(result);
+  const resultContent = resultDetail.content;
+  const resultPayload = resultDetail.payload;
+  const resultState = resultDetail.state;
+  const outputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+    kind: 'output',
+    payload: resultPayload,
+  });
+  const errorHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+    kind: 'error',
+  });
+  const renderState = getToolExecutionDetailMobileHeaderRenderState({
+    toolName,
+    isExpanded,
+    resultState,
+    colors,
+  });
+  const inputCopyButtonRenderState = getToolExecutionDetailMobileCopyButtonRenderState({
+    kind: 'input',
+    toolName,
+    colors,
+  });
+  const outputCopyButtonRenderState = getToolExecutionDetailMobileCopyButtonRenderState({
+    kind: 'output',
+    toolName,
+    colors,
+  });
+  const errorCopyButtonRenderState = getToolExecutionDetailMobileCopyButtonRenderState({
+    kind: 'error',
+    toolName,
+    colors,
+  });
+
+  return {
+    key,
+    renderState,
+    toolName,
+    onHeaderPress: onToggle,
+    input: argumentsDetail.hasArguments ? {
+      payloadRenderState: inputHeaderState,
+      compactText: argumentsPayload?.compactText,
+      content: argumentsContent,
+      isExpanded,
+      previewNumberOfLines,
+      copyButtonRenderState: inputCopyButtonRenderState,
+      onCopyPress: () => onCopyPayload(argumentsContent),
+    } : null,
+    result: result ? {
+      payloadRenderState: outputHeaderState,
+      resultBadge: renderState.resultBadge,
+      characterCountLabel: resultDetail.characterCountLabel,
+      resultCompactText: resultPayload?.compactText,
+      resultContent,
+      isExpanded,
+      previewNumberOfLines,
+      copyButtonRenderState: outputCopyButtonRenderState,
+      onCopyPress: () => onCopyPayload(resultContent),
+      errorRenderState: errorHeaderState,
+      error: resultDetail.error,
+      errorCopyButtonRenderState,
+      onErrorCopyPress: () => onCopyPayload(resultDetail.error ?? ''),
+    } : null,
+    pendingResult: !result && resultDetail.isPending ? {
+      renderState: pendingResultRenderState,
+    } : null,
   };
 }
 
