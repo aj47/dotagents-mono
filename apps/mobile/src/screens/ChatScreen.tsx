@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import {
-  Platform,
   Alert,
 } from 'react-native';
 
@@ -144,6 +143,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
   const {
+    chatRuntimeChromeEnvironment,
     chatMessageConversationThreadStyles,
     chatMessageRuntimeSurfaceStyles,
     chatRuntimeHeaderStyles,
@@ -398,7 +398,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
-    platform: Platform.OS,
+    platform: chatRuntimeChromeEnvironment.platform,
     getKillSwitchClient: getSessionClient,
     confirmWeb: confirmChatRuntimeWebDialog,
     showWebAlert: showChatRuntimeWebAlert,
@@ -633,7 +633,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   useChatRuntimeNavigationHeaderChromeOptions({
     navigation,
-    colors: theme.colors,
+    colors: chatRuntimeChromeEnvironment.colors,
     spinnerSource: chatRuntimeSpinnerSource,
     agentName: currentProfile?.name,
     isPinned: isCurrentSessionPinned,
@@ -727,7 +727,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setPredefinedPrompts,
     beginPromptEditorSave,
     clearPromptEditorSave,
-    platform: Platform.OS,
+    platform: chatRuntimeChromeEnvironment.platform,
     confirmWeb: confirmChatRuntimeWebDialog,
     confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter(Alert.alert),
     showAlert: Alert.alert,
@@ -1481,7 +1481,7 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
     clearComposerDraft,
     setDebugInfo,
-    platform: Platform.OS,
+    platform: chatRuntimeChromeEnvironment.platform,
     onTextEntryChangeText: setInput,
   });
 
@@ -1511,8 +1511,8 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
-    colors: theme.colors,
-    platform: Platform.OS,
+    colors: chatRuntimeChromeEnvironment.colors,
+    platform: chatRuntimeChromeEnvironment.platform,
     spinnerSource: chatRuntimeSpinnerSource,
     styles: {
       actionStyles: chatMessageConversationThreadStyles.actionSet,

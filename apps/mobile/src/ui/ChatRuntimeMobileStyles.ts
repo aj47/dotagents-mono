@@ -28,11 +28,21 @@ type ChatRuntimeMobileStyleSlotsInput = {
   bottomInset: number;
 };
 
-export function createChatRuntimeMobileStyles(theme: Theme) {
-  const chatChromeStyleState = createChatRuntimeMobileChromeStyleState({
+export type ChatRuntimeMobileChromeEnvironment = {
+  colors: Theme['colors'];
+  platform: typeof Platform.OS;
+};
+
+export function createChatRuntimeMobileChromeEnvironment(theme: Theme): ChatRuntimeMobileChromeEnvironment {
+  return {
     colors: theme.colors,
     platform: Platform.OS,
-  });
+  };
+}
+
+export function createChatRuntimeMobileStyles(theme: Theme) {
+  const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment(theme);
+  const chatChromeStyleState = createChatRuntimeMobileChromeStyleState(chatRuntimeChromeEnvironment);
   const headerChromeStyleState = chatChromeStyleState.header;
   const headerStyleState = headerChromeStyleState.header;
   const headerSurface = headerStyleState.surface;
@@ -1738,6 +1748,10 @@ export function useChatRuntimeMobileStyleSlots({
   theme,
   bottomInset,
 }: ChatRuntimeMobileStyleSlotsInput) {
+  const chatRuntimeChromeEnvironment = useMemo(
+    () => createChatRuntimeMobileChromeEnvironment(theme),
+    [theme],
+  );
   const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
   const chatMessageConversationThreadStyles = useMemo(
     () => createChatMessageConversationThreadStyleSlots(styles),
@@ -1812,6 +1826,7 @@ export function useChatRuntimeMobileStyleSlots({
   );
 
   return {
+    chatRuntimeChromeEnvironment,
     chatMessageConversationThreadStyles,
     chatMessageRuntimeSurfaceStyles,
     chatRuntimeHeaderStyles,
