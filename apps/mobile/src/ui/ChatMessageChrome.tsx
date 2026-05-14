@@ -415,6 +415,30 @@ export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatM
   webMessage: string;
 }
 
+type ChatConversationHomePromptEditorSaveClient = {
+  updateSettings: (settings: { predefinedPrompts: PredefinedPromptSummary[] }) => Promise<unknown>;
+};
+
+type ChatConversationHomePromptEditorSaveActionsStateInput<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+> = {
+  promptClient?: TPromptEditorClient | null;
+  predefinedPrompts: PredefinedPromptSummary[];
+  editingPrompt?: PredefinedPromptSummary | null;
+  promptName: string;
+  promptContent: string;
+  isSavingPrompt: boolean;
+  setPredefinedPrompts: Dispatch<SetStateAction<PredefinedPromptSummary[]>>;
+  beginPromptEditorSave: () => void;
+  clearPromptEditorSave: () => void;
+  dismissPromptEditor: () => void;
+  showAlert: (title: string, message: string) => void;
+};
+
+type ChatConversationHomePromptEditorSaveActionsState = {
+  handleSavePrompt: () => Promise<void>;
+};
+
 type ChatConversationHomePromptTaskRunState = {
   runningPromptTaskId: string | null;
   canRunPromptTask: boolean;
@@ -6244,6 +6268,72 @@ export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState 
 
 export function getChatMessageCopyFeedbackResetDelayMs(): number {
   return getChatMessageCopyFeedbackState().feedbackResetDelayMs;
+}
+
+export function useChatConversationHomePromptEditorSaveActionsState<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+>({
+  promptClient,
+  predefinedPrompts,
+  editingPrompt,
+  promptName,
+  promptContent,
+  isSavingPrompt,
+  setPredefinedPrompts,
+  beginPromptEditorSave,
+  clearPromptEditorSave,
+  dismissPromptEditor,
+  showAlert,
+}: ChatConversationHomePromptEditorSaveActionsStateInput<TPromptEditorClient>): ChatConversationHomePromptEditorSaveActionsState {
+  const handleSavePrompt = useCallback(async () => {
+    const draft = { name: promptName, content: promptContent };
+    const saveActionState = createChatConversationHomePromptEditorSaveActionState({
+      draft,
+      isEditing: Boolean(editingPrompt),
+      isSaving: isSavingPrompt,
+    });
+    if (!promptClient || saveActionState.isDisabled) return;
+
+    const wasEditingPrompt = Boolean(editingPrompt);
+    beginPromptEditorSave();
+    try {
+      const now = Date.now();
+      const updatedPrompts = editingPrompt
+        ? updateChatConversationHomePromptList(predefinedPrompts, editingPrompt.id, draft, now)
+        : [
+          createChatConversationHomePromptRecord(draft, now),
+          ...predefinedPrompts,
+        ];
+
+      await promptClient.updateSettings({ predefinedPrompts: updatedPrompts });
+      setPredefinedPrompts(sortChatConversationHomePromptsByUpdatedAt(updatedPrompts));
+      dismissPromptEditor();
+      const successAlert = getChatConversationHomePromptSaveSuccessAlertState(wasEditingPrompt);
+      showAlert(successAlert.title, successAlert.message);
+    } catch (error: any) {
+      console.error('[ChatConversationHome] Error saving prompt:', error);
+      const failedAlert = getChatConversationHomePromptSaveFailedAlertState(error);
+      showAlert(failedAlert.title, failedAlert.message);
+    } finally {
+      clearPromptEditorSave();
+    }
+  }, [
+    beginPromptEditorSave,
+    clearPromptEditorSave,
+    dismissPromptEditor,
+    editingPrompt,
+    isSavingPrompt,
+    predefinedPrompts,
+    promptClient,
+    promptContent,
+    promptName,
+    setPredefinedPrompts,
+    showAlert,
+  ]);
+
+  return {
+    handleSavePrompt,
+  };
 }
 
 export function useChatConversationHomePromptTaskRunState(): ChatConversationHomePromptTaskRunState {

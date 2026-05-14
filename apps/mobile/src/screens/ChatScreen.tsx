@@ -15,11 +15,9 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
-  createChatConversationHomePromptEditorSaveActionState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
-  getChatConversationHomePromptSaveFailedAlertState,
-  getChatConversationHomePromptSaveSuccessAlertState,
+  useChatConversationHomePromptEditorSaveActionsState,
   useChatConversationHomePromptTaskRunActionsState,
   useChatConversationHomePromptTaskRunState,
   useChatConversationHomeQuickStartCatalogState,
@@ -35,10 +33,8 @@ import {
   useChatRuntimeHandsFreeMutableState,
   useChatComposerRuntimeDraftState,
   useChatComposerRuntimeTextEntrySubmissionState,
-  createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
-  updateChatConversationHomePromptList,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   getChatComposerHandsFreeDebugMessage,
   useChatComposerRuntimeImageAttachmentPickerState,
@@ -1051,38 +1047,19 @@ export default function ChatScreen({ route, navigation }: any) {
     settingsClient,
   ]);
 
-  const handleSavePrompt = async () => {
-    const draft = { name: newPromptName, content: newPromptContent };
-    const saveActionState = createChatConversationHomePromptEditorSaveActionState({
-      draft,
-      isEditing: Boolean(editingPrompt),
-      isSaving: isSavingPrompt,
-    });
-    if (!settingsClient || saveActionState.isDisabled) return;
-    const wasEditingPrompt = Boolean(editingPrompt);
-    beginPromptEditorSave();
-    try {
-      const now = Date.now();
-      const updatedPrompts = editingPrompt
-        ? updateChatConversationHomePromptList(predefinedPrompts, editingPrompt.id, draft, now)
-        : [
-          createChatConversationHomePromptRecord(draft, now),
-          ...predefinedPrompts,
-        ];
-
-      await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
-      setPredefinedPrompts(sortChatConversationHomePromptsByUpdatedAt(updatedPrompts));
-      dismissPromptEditor();
-      const successAlert = getChatConversationHomePromptSaveSuccessAlertState(wasEditingPrompt);
-      Alert.alert(successAlert.title, successAlert.message);
-    } catch (error: any) {
-      console.error('[ChatScreen] Error saving prompt:', error);
-      const failedAlert = getChatConversationHomePromptSaveFailedAlertState(error);
-      Alert.alert(failedAlert.title, failedAlert.message);
-    } finally {
-      clearPromptEditorSave();
-    }
-  };
+  const { handleSavePrompt } = useChatConversationHomePromptEditorSaveActionsState<ExtendedSettingsApiClient>({
+    promptClient: settingsClient,
+    predefinedPrompts,
+    editingPrompt,
+    promptName: newPromptName,
+    promptContent: newPromptContent,
+    isSavingPrompt,
+    setPredefinedPrompts,
+    beginPromptEditorSave,
+    clearPromptEditorSave,
+    dismissPromptEditor,
+    showAlert: Alert.alert,
+  });
 
   const handleDeletePrompt = useCallback((prompt: PredefinedPromptSummary) => {
     if (!settingsClient) return;
