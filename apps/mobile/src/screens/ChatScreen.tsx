@@ -43,7 +43,6 @@ import {
   createChatMessageRetryStatusProps,
   createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
-  createChatMessageToolExecutionRows,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -3811,17 +3810,6 @@ export default function ChatScreen({ route, navigation }: any) {
               hasErrors,
               isPending,
             } = getToolExecutionSummaryDisplayState(renderedToolEntries.map(entry => entry.result));
-            const stableMessageKey = m.id ?? String(i);
-            const toolExecutionRows = createChatMessageToolExecutionRows({
-              entries: renderedToolEntries,
-              stableMessageKey,
-              expandedToolCalls,
-              colors: theme.colors,
-              previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-              pendingResultRenderState: toolExecutionDetailPendingResultState,
-              onToggleToolCall: toggleToolCallExpansion,
-              onCopyPayload: (content) => { void handleCopyToolPayload(content); },
-            });
             const messageRenderState = getChatMessageMobileRenderState({
               role: m.role,
               isComplete: !responding,
@@ -3959,8 +3947,16 @@ export default function ChatScreen({ route, navigation }: any) {
                       displayToolCallCount,
                       colors: theme.colors,
                       isExpanded,
+                      rows: {
+                        entries: renderedToolEntries,
+                        stableMessageKey: m.id ?? String(i),
+                        expandedToolCalls,
+                        previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+                        pendingResultRenderState: toolExecutionDetailPendingResultState,
+                        onToggleToolCall: toggleToolCallExpansion,
+                        onCopyPayload: (content) => { void handleCopyToolPayload(content); },
+                      },
                       compact: {
-                        rows: toolExecutionRows.compactRows,
                         onToggle: () => toggleMessageExpansion(i),
                       },
                       expanded: {
@@ -3970,7 +3966,6 @@ export default function ChatScreen({ route, navigation }: any) {
                         hasErrors,
                         emptyStateRenderState: toolExecutionDetailEmptyState,
                       },
-                      detailRows: toolExecutionRows.detailRows,
                     }),
                   }),
                 })}

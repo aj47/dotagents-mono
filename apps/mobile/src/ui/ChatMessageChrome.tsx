@@ -824,7 +824,8 @@ type ChatMessageToolExecutionStackPropsInput = {
   displayToolCallCount: number;
   colors: Parameters<typeof getToolExecutionDetailMobileCollapseControlRenderState>[0]['colors'];
   isExpanded: ChatMessageToolExecutionStackProps['isExpanded'];
-  compact: Pick<ChatMessageToolExecutionStackProps['compact'], 'rows'> & {
+  rows: Omit<ChatMessageToolExecutionRowsInput, 'colors'>;
+  compact: {
     onToggle?: ChatMessageToolExecutionStackProps['compact']['onPress'];
   };
   expanded: Pick<
@@ -836,7 +837,6 @@ type ChatMessageToolExecutionStackPropsInput = {
     emptyStateRenderState: ToolExecutionDetailMobileEmptyStateRenderState;
     onToggle?: ChatMessageToolExecutionStackProps['expanded']['onCollapsePress'];
   };
-  detailRows: ChatMessageToolExecutionStackProps['detailRows'];
 };
 
 type ChatMessageToolExecutionCopyButtonStyles = {
@@ -2403,11 +2403,11 @@ export function createChatMessageToolExecutionStackProps({
   displayToolCallCount,
   colors,
   isExpanded,
+  rows: rowInput,
   compact,
   expanded,
-  detailRows,
 }: ChatMessageToolExecutionStackPropsInput): ChatMessageConversationBodyProps['toolExecutionStack'] {
-  const { onToggle: onCompactToggle, ...compactProps } = compact;
+  const { onToggle: onCompactToggle } = compact;
   const { emptyStateRenderState, onToggle: onExpandedToggle, ...expandedProps } = expanded;
   const visibility = getToolExecutionMobileVisibilityRenderState({
     toolCallCount: displayToolCallCount,
@@ -2421,13 +2421,17 @@ export function createChatMessageToolExecutionStackProps({
   const bottomCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
     colors,
   });
+  const executionRows = createChatMessageToolExecutionRows({
+    ...rowInput,
+    colors,
+  });
 
   return {
     shouldRender: visibility.toolExecutionStack.shouldRender,
     isExpanded,
     compact: {
-      ...compactProps,
       renderState: compactRenderState,
+      rows: executionRows.compactRows,
       onPress: onCompactToggle,
     },
     expanded: {
@@ -2440,7 +2444,7 @@ export function createChatMessageToolExecutionStackProps({
         renderState: emptyStateRenderState,
       },
     },
-    detailRows,
+    detailRows: executionRows.detailRows,
   };
 }
 
