@@ -26,7 +26,6 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
-  createChatComposerRuntimeChromeStyleState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -47,8 +46,8 @@ import {
   createChatMessageRuntimeDockChromeProps,
   createChatMessageRuntimeDebugPanelsRenderState,
   createChatMessageRuntimeSurfaceChromeProps,
-  createChatMessageRuntimeThreadChromeStyleState,
   createChatMessageRuntimeViewportChromeProps,
+  createChatRuntimeMobileChromeStyleState,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -58,7 +57,6 @@ import type {
   ChatMessageScrollEvent,
   ChatMessageScrollViewportRef,
 } from '../ui/ChatMessageChrome';
-import { getMessageQueuePanelMobileWrapperRenderState } from '@dotagents/shared/message-queue-utils';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -97,9 +95,7 @@ import {
   formatChatRuntimeWebConfirmMessage,
   getChatComposerMicMobileWebPressStyleState,
   getChatRuntimeBranchMobileAlertState,
-  getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDebugState,
-  getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileState,
@@ -3392,18 +3388,18 @@ export default function ChatScreen({ route, navigation }: any) {
 }
 
 function createStyles(theme: Theme, screenHeight: number) {
-  const headerChromeStyleState = getChatRuntimeHeaderChromeMobileStyleRenderState({
+  const chatChromeStyleState = createChatRuntimeMobileChromeStyleState({
     colors: theme.colors,
+    platform: Platform.OS,
   });
+  const headerChromeStyleState = chatChromeStyleState.header;
   const headerStyleState = headerChromeStyleState.header;
   const headerSurface = headerStyleState.surface;
   const headerAgentSelectorColors = headerStyleState.agentSelector;
   const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
   const activeHeaderPinButtonColors = headerStyleState.pinButton.active;
   const headerKillSwitchButtonColors = headerStyleState.killSwitchButton;
-  const conversationChromeStyleState = getChatRuntimeConversationChromeMobileStyleRenderState({
-    colors: theme.colors,
-  });
+  const conversationChromeStyleState = chatChromeStyleState.conversation;
   const viewportStyleState = conversationChromeStyleState.viewport;
   const viewportSurface = viewportStyleState.surface;
   const loadingStateSurface = viewportStyleState.loadingState;
@@ -3431,10 +3427,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const messageHistoryBannerSurface = messageHistoryBannerStyleState.surface;
   const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState.colors;
   const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;
-  const composerChromeStyleState = createChatComposerRuntimeChromeStyleState({
-    colors: theme.colors,
-    platform: Platform.OS,
-  });
+  const composerChromeStyleState = chatChromeStyleState.composer;
   const composerStyleState = composerChromeStyleState.composer;
   const composerSurface = composerStyleState.surface;
   const composerTextInputSurface = composerSurface.input;
@@ -3450,19 +3443,15 @@ function createStyles(theme: Theme, screenHeight: number) {
   const promptLibrarySurface = promptLibraryStyleState.surface;
   const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
-  const messageQueuePanelWrapperState = getMessageQueuePanelMobileWrapperRenderState();
+  const messageQueuePanelWrapperState = chatChromeStyleState.messageQueuePanelWrapper;
   const messageQueuePanelWrapper = messageQueuePanelWrapperState.wrapper;
   const handsFreeStyleState = composerChromeStyleState.handsFree;
   const handsFreeSurface = handsFreeStyleState.surface;
-  const headerActionButton = createMinimumTouchTargetStyle();
-  const headerEdgeActionButton = createMinimumTouchTargetStyle({
-    horizontalPadding: headerSurface.edgeActionButton.horizontalPadding,
-  });
+  const headerActionButton = chatChromeStyleState.headerActionButton;
+  const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
   const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
   const sessionStatusSurface = sessionStatusStyleState.surface;
-  const threadChromeStyleState = createChatMessageRuntimeThreadChromeStyleState({
-    colors: theme.colors,
-  });
+  const threadChromeStyleState = chatChromeStyleState.thread;
   const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
   const compactToolExecution = compactToolExecutionStyleState.surface;
   const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;

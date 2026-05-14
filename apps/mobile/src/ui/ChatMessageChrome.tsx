@@ -79,6 +79,7 @@ import {
 } from '@dotagents/shared/voice-debug-log';
 import {
   createChatComposerAccessibilityHint,
+  createMinimumTouchTargetStyle,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
 import {
@@ -96,7 +97,10 @@ import {
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
-import { getMessageQueuePanelMobileDockRenderState } from '@dotagents/shared/message-queue-utils';
+import {
+  getMessageQueuePanelMobileDockRenderState,
+  getMessageQueuePanelMobileWrapperRenderState,
+} from '@dotagents/shared/message-queue-utils';
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupMobileRenderState,
@@ -129,6 +133,7 @@ import {
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeBranchMobileRenderState,
   getChatRuntimeConnectionBannerMobileRenderState,
+  getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
@@ -147,6 +152,7 @@ import {
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
+  getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeKillSwitchMobileVisibilityRenderState,
@@ -2066,6 +2072,25 @@ export type ChatComposerRuntimeChromeStyleState = {
   imageAttachment: ReturnType<typeof getChatImageAttachmentMobileRenderState>;
   promptLibrary: ReturnType<typeof getPromptLibraryMobileSurfaceRenderState>;
   handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>;
+};
+
+type ChatRuntimeMobileChromeStyleStateInput = {
+  colors:
+    & Parameters<typeof getChatRuntimeHeaderChromeMobileStyleRenderState>[0]['colors']
+    & Parameters<typeof getChatRuntimeConversationChromeMobileStyleRenderState>[0]['colors']
+    & ChatComposerRuntimeChromeStyleStateInput['colors']
+    & ChatMessageRuntimeThreadChromeStyleStateInput['colors'];
+  platform: ChatComposerRuntimeChromeStyleStateInput['platform'];
+};
+
+export type ChatRuntimeMobileChromeStyleState = {
+  header: ReturnType<typeof getChatRuntimeHeaderChromeMobileStyleRenderState>;
+  conversation: ReturnType<typeof getChatRuntimeConversationChromeMobileStyleRenderState>;
+  composer: ChatComposerRuntimeChromeStyleState;
+  messageQueuePanelWrapper: ReturnType<typeof getMessageQueuePanelMobileWrapperRenderState>;
+  headerActionButton: ReturnType<typeof createMinimumTouchTargetStyle>;
+  headerEdgeActionButton: ReturnType<typeof createMinimumTouchTargetStyle>;
+  thread: ChatMessageRuntimeThreadChromeStyleState;
 };
 
 type ChatComposerRuntimeDockProps = {
@@ -4474,6 +4499,34 @@ export function createChatComposerRuntimeChromeStyleState({
       colors,
     }),
     handsFree: getHandsFreeComposerMobileSurfaceRenderState({
+      colors,
+    }),
+  };
+}
+
+export function createChatRuntimeMobileChromeStyleState({
+  colors,
+  platform,
+}: ChatRuntimeMobileChromeStyleStateInput): ChatRuntimeMobileChromeStyleState {
+  const header = getChatRuntimeHeaderChromeMobileStyleRenderState({
+    colors,
+  });
+
+  return {
+    header,
+    conversation: getChatRuntimeConversationChromeMobileStyleRenderState({
+      colors,
+    }),
+    composer: createChatComposerRuntimeChromeStyleState({
+      colors,
+      platform,
+    }),
+    messageQueuePanelWrapper: getMessageQueuePanelMobileWrapperRenderState(),
+    headerActionButton: createMinimumTouchTargetStyle(),
+    headerEdgeActionButton: createMinimumTouchTargetStyle({
+      horizontalPadding: header.header.surface.edgeActionButton.horizontalPadding,
+    }),
+    thread: createChatMessageRuntimeThreadChromeStyleState({
       colors,
     }),
   };

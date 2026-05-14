@@ -142,11 +142,11 @@ test('uses shared mobile composer control accessibility state', () => {
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
-  assert.match(screenSource, /createChatComposerRuntimeChromeStyleState,/);
+  assert.match(screenSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(chatMessageChromeSource, /const composerSurface = composerSurfaceRenderState\.surface;/);
-  assert.match(screenSource, /const composerChromeStyleState = createChatComposerRuntimeChromeStyleState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
+  assert.match(screenSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
   assert.match(screenSource, /const composerStyleState = composerChromeStyleState\.composer;/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
