@@ -24,8 +24,8 @@ import {
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
+  ChatMessageConversationRuntimeThread,
   ChatMessageRuntimeSurface,
-  ChatMessageRuntimeThread,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -3736,11 +3736,9 @@ export default function ChatScreen({ route, navigation }: any) {
             });
             if (groupOnlyThreadState.shouldRenderThread) {
               return (
-                <ChatMessageRuntimeThread
+                <ChatMessageConversationRuntimeThread
                   key={groupOnlyThreadState.threadKey}
-                  groupRenderState={groupOnlyThreadState.groupRenderState}
-                  onToggleGroup={groupOnlyThreadState.onToggleGroup}
-                  body={groupOnlyThreadState.body}
+                  threadState={groupOnlyThreadState}
                   styles={chatMessageConversationThreadStyles.runtimeThread}
                 />
               );
@@ -3795,17 +3793,12 @@ export default function ChatScreen({ route, navigation }: any) {
               renderContext: messageRenderContext,
               body: messageThreadBody,
             });
-            if (!messageThreadState.shouldRenderThread) {
-              return null;
-            }
 
             return (
-              <ChatMessageRuntimeThread
+              <ChatMessageConversationRuntimeThread
                 key={messageThreadState.threadKey}
-                groupRenderState={messageThreadState.groupRenderState}
-                onToggleGroup={messageThreadState.onToggleGroup}
+                threadState={messageThreadState}
                 styles={chatMessageConversationThreadStyles.runtimeThread}
-                body={messageThreadState.body}
               />
             );
           })}

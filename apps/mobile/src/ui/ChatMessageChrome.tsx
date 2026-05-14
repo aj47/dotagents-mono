@@ -2056,14 +2056,21 @@ type ChatMessageConversationRuntimeThreadState =
     threadKey: string | number;
   };
 
-type ChatMessageConversationToolActivityGroupRuntimeThreadStateInput =
-  Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>;
-
-type ChatMessageConversationToolActivityGroupRuntimeThreadState =
+type ChatMessageConversationRenderableRuntimeThreadState =
   ChatMessageConversationRuntimeThreadState
   & {
     shouldRenderThread: boolean;
   };
+
+type ChatMessageConversationRuntimeThreadProps = {
+  threadState: ChatMessageConversationRenderableRuntimeThreadState;
+  styles: ChatMessageRuntimeThreadStyleSlots;
+};
+
+type ChatMessageConversationToolActivityGroupRuntimeThreadStateInput =
+  Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>;
+
+type ChatMessageConversationToolActivityGroupRuntimeThreadState = ChatMessageConversationRenderableRuntimeThreadState;
 
 type ChatMessageConversationMessageRuntimeThreadStateInput =
   Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>
@@ -2072,11 +2079,7 @@ type ChatMessageConversationMessageRuntimeThreadStateInput =
     body: ChatMessageThreadBodyPropsInput;
   };
 
-type ChatMessageConversationMessageRuntimeThreadState =
-  ChatMessageConversationRuntimeThreadState
-  & {
-    shouldRenderThread: boolean;
-  };
+type ChatMessageConversationMessageRuntimeThreadState = ChatMessageConversationRenderableRuntimeThreadState;
 
 export function ChatMessageActionIconButton({
   icon,
@@ -4512,6 +4515,22 @@ export function ChatMessageRuntimeThread({
         styles={styles.body}
       />
     </ChatMessageToolActivityGroupThreadSurface>
+  );
+}
+
+export function ChatMessageConversationRuntimeThread({
+  threadState,
+  styles,
+}: ChatMessageConversationRuntimeThreadProps) {
+  if (!threadState.shouldRenderThread) return null;
+
+  return (
+    <ChatMessageRuntimeThread
+      groupRenderState={threadState.groupRenderState}
+      onToggleGroup={threadState.onToggleGroup}
+      body={threadState.body}
+      styles={styles}
+    />
   );
 }
 
