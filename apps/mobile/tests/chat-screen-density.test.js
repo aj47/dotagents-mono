@@ -2611,7 +2611,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const can(SpeakVisibleContent|CopyVisibleContent|BranchFromMessage|ToggleVisibleContent) =/);
   assert.match(screenSource, /const mobileMessageContentLayout = mobileMessageStyleState\.contentLayout;/);
   assert.match(screenSource, /messageContentRow:\s*\{[\s\S]*?flexDirection:\s*mobileMessageContentLayout\.row\.flexDirection,[\s\S]*?alignItems:\s*mobileMessageContentLayout\.row\.alignItems/);
-  assert.match(screenSource, /const messageActionSet = createChatMessageActionSet\(\{\s+contentRenderState: messageContentRenderState,\s+turnDuration: \{\s+renderState: messageTurnDurationRenderState,\s+\.\.\.messageActionStyles\.turnDuration,\s+\},\s+speech: \{/);
+  assert.match(screenSource, /const messageActionSet = createChatMessageActionSet\(\{\s+contentRenderState: messageContentRenderState,\s+turnDuration: \{\s+role: m\.role,\s+durationMs: turnDurationEntry\?\.durationMs,\s+isLive: turnDurationEntry\?\.isLive,\s+colors: theme\.colors,\s+\.\.\.messageActionStyles\.turnDuration,\s+\},\s+speech: \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionComponents/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionSet/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
@@ -2812,7 +2812,8 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(screenSource, /isThinking:\s+message\.role === 'assistant'[\s\S]*?!message\.toolResults\?\.length/);
   assert.match(screenSource, /computeTurnDurations\(turnDurationMessages, !hasLiveAgentTurn, turnNow\)/);
   assert.match(screenSource, /turnDurations\.byUserTimestamp\.get\(m\.timestamp\)/);
-  assert.match(screenSource, /const messageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: m\.role,\s+durationMs: turnDurationEntry\?\.durationMs,\s+isLive: turnDurationEntry\?\.isLive,\s+colors: theme\.colors,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const messageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{/);
+  assert.match(chatMessageChromeSource, /renderState: getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: turnDuration\.role,\s+durationMs: turnDuration\.durationMs,\s+isLive: turnDuration\.isLive,\s+colors: turnDuration\.colors,\s+\}\),/);
   assert.match(screenSource, /const mobileMessageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: 'user',\s+durationMs: 1,\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const mobileMessageTurnDurationLiveRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: 'user',\s+durationMs: 1,\s+isLive: true,\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const mobileMessageTurnDurationBadge = mobileMessageTurnDurationRenderState\.badge;/);
@@ -2830,7 +2831,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /size=\{messageTurnDurationRenderState\.icon\.size\}/);
   assert.doesNotMatch(screenSource, /color=\{messageTurnDurationRenderState\.icon\.color\}/);
   assert.doesNotMatch(screenSource, /numberOfLines=\{messageTurnDurationRenderState\.badge\.numberOfLines\}/);
-  assert.match(screenSource, /createChatMessageActionSet\(\{[\s\S]*?turnDuration: \{\s+renderState: messageTurnDurationRenderState,[\s\S]*?speech: \{\s+role: m\.role,[\s\S]*?branch: \{\s+renderState: messageBranchRenderState,[\s\S]*?copy: \{\s+role: m\.role,/);
+  assert.match(screenSource, /createChatMessageActionSet\(\{[\s\S]*?turnDuration: \{\s+role: m\.role,[\s\S]*?durationMs: turnDurationEntry\?\.durationMs,[\s\S]*?speech: \{\s+role: m\.role,[\s\S]*?branch: \{\s+renderState: messageBranchRenderState,[\s\S]*?copy: \{\s+role: m\.role,/);
   assert.match(screenSource, /messageTurnDurationBadge:\s*\{[\s\S]*?alignSelf:\s*mobileMessageTurnDurationBadge\.alignSelf,[\s\S]*?flexDirection:\s*mobileMessageTurnDurationBadge\.flexDirection,[\s\S]*?minHeight:\s*mobileMessageTurnDurationBadge\.minHeight,[\s\S]*?backgroundColor:\s*mobileMessageTurnDurationBadgeColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageTurnDurationBadge\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageTurnDurationBadge\.justifyContent,[\s\S]*?gap:\s*mobileMessageTurnDurationBadge\.gap,[\s\S]*?flexShrink:\s*mobileMessageTurnDurationBadge\.flexShrink/);
   assert.match(screenSource, /messageTurnDurationBadgeLive:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageTurnDurationLiveBadgeColors\.backgroundColor,[\s\S]*?opacity:\s*mobileMessageTurnDurationLiveBadge\.opacity/);
   assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(mobileMessageTurnDurationBadge\.fontFamilyByPlatform\),[\s\S]*?fontSize:\s*mobileMessageTurnDurationBadge\.fontSize[\s\S]*?color:\s*mobileMessageTurnDurationBadgeColors\.color/);

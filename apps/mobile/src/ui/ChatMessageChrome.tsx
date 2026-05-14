@@ -77,6 +77,7 @@ import {
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
+  getChatRuntimeTurnDurationMessageMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
@@ -203,6 +204,10 @@ type ChatMessageExpansionActionSpec = Omit<ChatMessageActionButtonSpec, 'renderS
 
 type ChatMessageTurnDurationActionSpec = ChatMessageTurnDurationBadgeProps;
 
+type ChatMessageTurnDurationActionSpecInput =
+  Omit<ChatMessageTurnDurationActionSpec, 'renderState'>
+  & Parameters<typeof getChatRuntimeTurnDurationMessageMobileRenderState>[0];
+
 type ChatMessageActionComponentsInput = {
   availability: ChatMessageActionAvailabilityRenderState;
   turnDuration: ChatMessageTurnDurationActionSpec;
@@ -212,8 +217,12 @@ type ChatMessageActionComponentsInput = {
   expansion: ChatMessageExpansionActionSpec;
 };
 
-type ChatMessageActionSetInput = Omit<ChatMessageActionComponentsInput, 'availability' | 'speech' | 'copy'> & {
+type ChatMessageActionSetInput = Omit<
+  ChatMessageActionComponentsInput,
+  'availability' | 'turnDuration' | 'speech' | 'copy'
+> & {
   contentRenderState: ChatMessageActionLayoutStateInput['renderState'];
+  turnDuration: ChatMessageTurnDurationActionSpecInput;
   speech: ChatMessageSpeechActionSpecInput;
   copy: ChatMessageCopyActionSpecInput;
 };
@@ -1885,10 +1894,20 @@ export function createChatMessageActionComponents({
 
 export function createChatMessageActionSet({
   contentRenderState,
+  turnDuration,
   speech,
   copy,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
+  const turnDurationAction: ChatMessageTurnDurationActionSpec = {
+    ...turnDuration,
+    renderState: getChatRuntimeTurnDurationMessageMobileRenderState({
+      role: turnDuration.role,
+      durationMs: turnDuration.durationMs,
+      isLive: turnDuration.isLive,
+      colors: turnDuration.colors,
+    }),
+  };
   const speechAction: ChatMessageSpeechActionSpec = {
     ...speech,
     renderState: getChatMessageSpeechMobileRenderState({
@@ -1914,6 +1933,7 @@ export function createChatMessageActionSet({
   };
   const actionInput: Omit<ChatMessageActionComponentsInput, 'availability'> = {
     ...input,
+    turnDuration: turnDurationAction,
     speech: speechAction,
     copy: copyAction,
   };

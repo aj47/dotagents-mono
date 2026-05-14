@@ -3863,16 +3863,13 @@ export default function ChatScreen({ route, navigation }: any) {
               typeof m.timestamp === 'number'
                 ? turnDurations.byUserTimestamp.get(m.timestamp)
                 : undefined;
-            const messageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
-              role: m.role,
-              durationMs: turnDurationEntry?.durationMs,
-              isLive: turnDurationEntry?.isLive,
-              colors: theme.colors,
-            });
             const messageActionSet = createChatMessageActionSet({
               contentRenderState: messageContentRenderState,
               turnDuration: {
-                renderState: messageTurnDurationRenderState,
+                role: m.role,
+                durationMs: turnDurationEntry?.durationMs,
+                isLive: turnDurationEntry?.isLive,
+                colors: theme.colors,
                 ...messageActionStyles.turnDuration,
               },
               speech: {
