@@ -84,6 +84,7 @@ import {
 } from '@dotagents/shared/accessibility-utils';
 import {
   getPromptLibraryEditorDismissActionState,
+  getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
@@ -2071,6 +2072,7 @@ export type ChatComposerRuntimeChromeStyleState = {
   composer: ReturnType<typeof getChatComposerMobileSurfaceRenderState>;
   imageAttachment: ReturnType<typeof getChatImageAttachmentMobileRenderState>;
   promptLibrary: ReturnType<typeof getPromptLibraryMobileSurfaceRenderState>;
+  promptEditorInputPaddingVertical: ReturnType<typeof getPromptLibraryEditorInputPaddingVertical>;
   handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>;
 };
 
@@ -4499,6 +4501,7 @@ export function createChatComposerRuntimeChromeStyleState({
     promptLibrary: getPromptLibraryMobileSurfaceRenderState({
       colors,
     }),
+    promptEditorInputPaddingVertical: getPromptLibraryEditorInputPaddingVertical(platform),
     handsFree: getHandsFreeComposerMobileSurfaceRenderState({
       colors,
     }),

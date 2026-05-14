@@ -163,7 +163,6 @@ import {
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
-  getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
   getPromptLibrarySaveSuccessMessage,
@@ -3440,6 +3439,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const promptLibrarySurface = promptLibraryStyleState.surface;
   const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
+  const promptEditorInputPaddingVertical = composerChromeStyleState.promptEditorInputPaddingVertical;
   const messageQueuePanelWrapperState = chatChromeStyleState.messageQueuePanelWrapper;
   const messageQueuePanelWrapper = messageQueuePanelWrapperState.wrapper;
   const handsFreeStyleState = composerChromeStyleState.handsFree;
@@ -4240,7 +4240,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: promptLibrarySurfaceColors.editorModal.input.borderColor,
       borderRadius: radius[promptEditorModalSurface.input.borderRadius],
       paddingHorizontal: spacing[promptEditorModalSurface.input.paddingHorizontal],
-      paddingVertical: getPromptLibraryEditorInputPaddingVertical(Platform.OS),
+      paddingVertical: promptEditorInputPaddingVertical,
       backgroundColor: promptLibrarySurfaceColors.editorModal.input.backgroundColor,
       marginBottom: spacing[promptEditorModalSurface.input.marginBottom],
       color: promptLibrarySurfaceColors.editorModal.input.color,

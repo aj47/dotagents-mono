@@ -3564,7 +3564,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /transparent=\{surface\.modal\.transparent\}/);
   assert.match(chatMessageChromeSource, /animationType=\{surface\.modal\.animationType\}/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorModalKeyboardAvoidingBehavior\(Platform\.OS\)/);
-  assert.match(screenSource, /getPromptLibraryEditorInputPaddingVertical,/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryEditorInputPaddingVertical,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorInputPaddingVertical,/);
   assert.match(chatMessageChromeSource, /keyboardAvoidingBehavior,/);
   assert.match(chatMessageChromeSource, /chrome: editorChrome,/);
   assert.doesNotMatch(screenSource, /closeIcon: promptLibraryEditorCloseIcon/);
@@ -3615,7 +3616,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /modalLabel:\s*\{[\s\S]*?fontSize:\s*promptEditorModalSurface\.label\.fontSize,[\s\S]*?lineHeight:\s*promptEditorModalSurface\.label\.lineHeight/);
   assert.match(screenSource, /modalLabel:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.label\.color/);
   assert.match(screenSource, /modalInput:\s*\{[\s\S]*?borderWidth:\s*promptEditorModalSurface\.input\.borderWidth,[\s\S]*?borderColor:\s*promptLibrarySurfaceColors\.editorModal\.input\.borderColor,[\s\S]*?borderRadius:\s*radius\[promptEditorModalSurface\.input\.borderRadius\]/);
-  assert.match(screenSource, /modalInput:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\[promptEditorModalSurface\.input\.paddingHorizontal\],[\s\S]*?paddingVertical:\s*getPromptLibraryEditorInputPaddingVertical\(Platform\.OS\),[\s\S]*?backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.input\.backgroundColor/);
+  assert.match(screenSource, /const promptEditorInputPaddingVertical = composerChromeStyleState\.promptEditorInputPaddingVertical;/);
+  assert.match(screenSource, /modalInput:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\[promptEditorModalSurface\.input\.paddingHorizontal\],[\s\S]*?paddingVertical:\s*promptEditorInputPaddingVertical,[\s\S]*?backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.input\.backgroundColor/);
   assert.match(screenSource, /modalInput:\s*\{[\s\S]*?color:\s*promptLibrarySurfaceColors\.editorModal\.input\.color/);
   assert.match(screenSource, /modalInput:\s*\{[\s\S]*?fontSize:\s*promptEditorModalSurface\.input\.fontSize/);
   assert.match(chatMessageChromeSource, /placeholderTextColor=\{colors\.input\.placeholderColor\}/);
