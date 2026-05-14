@@ -59,7 +59,7 @@ import {
   createChatMessageRuntimeUserTextMessage,
   createChatMessageRuntimeStreamingText,
   createChatMessageRuntimeFinalResponseTextState,
-  sortChatMessageRuntimeResponseEvents,
+  createChatMessageRuntimeProgressResponseState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -890,27 +890,30 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
-        if (update.responseEvents?.length) {
-	          lastResponseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents);
-	          mergeResponseEvents(lastResponseEvents);
-	          enqueueResponseEventsForSpeech(lastResponseEvents);
-	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
-	        } else if (update.userResponse || update.spokenContent) {
-	          const responseText = update.userResponse || update.spokenContent;
-	          if (responseText && responseText !== lastUserResponse) {
-		            const fallbackEvent = createFallbackResponseEvent(
-		              requestSessionId,
-		              update.runId,
-		              responseText,
-		            );
-	            mergeResponseEvents([fallbackEvent]);
-	          }
-	          lastUserResponse = responseText;
-	          if (responseText && responseText !== midTurnLegacyResponseText && ttsEnabledRef.current) {
-	            midTurnLegacyResponseText = responseText;
-		            speakAssistantResponse(responseText, 'mid-turn progress');
-	          }
-	        }
+        const responseState = createChatMessageRuntimeProgressResponseState({
+          update,
+          requestSessionId,
+          lastUserResponse,
+          createFallbackResponseEvent,
+        });
+        if (responseState.responseEvents.length) {
+          lastResponseEvents = responseState.responseEvents;
+          mergeResponseEvents(responseState.responseEvents);
+        }
+        if (responseState.speechQueueEvents.length) {
+          enqueueResponseEventsForSpeech(responseState.speechQueueEvents);
+        }
+        if (responseState.hasResponseUpdate) {
+          lastUserResponse = responseState.lastUserResponse;
+        }
+        if (
+          responseState.legacyResponseText &&
+          responseState.legacyResponseText !== midTurnLegacyResponseText &&
+          ttsEnabledRef.current
+        ) {
+          midTurnLegacyResponseText = responseState.legacyResponseText;
+          speakAssistantResponse(responseState.legacyResponseText, 'mid-turn progress');
+        }
         const nextStepSummary = getChatMessageRuntimeLatestStepSummary(update);
         if (nextStepSummary) {
           setLatestStepSummary(nextStepSummary);
@@ -1271,27 +1274,30 @@ export default function ChatScreen({ route, navigation }: any) {
         if (activeRequestIdRef.current !== thisRequestId) return;
         latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
-        if (update.responseEvents?.length) {
-	          lastResponseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents);
-	          mergeResponseEvents(lastResponseEvents);
-	          enqueueResponseEventsForSpeech(lastResponseEvents);
-	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
-	        } else if (update.userResponse || update.spokenContent) {
-	          const responseText = update.userResponse || update.spokenContent;
-	          if (responseText && responseText !== lastUserResponse) {
-		            const fallbackEvent = createFallbackResponseEvent(
-		              requestSessionId,
-		              update.runId,
-		              responseText,
-		            );
-	            mergeResponseEvents([fallbackEvent]);
-	          }
-	          lastUserResponse = responseText;
-	          if (responseText && responseText !== midTurnLegacyResponseText && ttsEnabledRef.current) {
-	            midTurnLegacyResponseText = responseText;
-		            speakAssistantResponse(responseText, 'queued mid-turn progress');
-	          }
-	        }
+        const responseState = createChatMessageRuntimeProgressResponseState({
+          update,
+          requestSessionId,
+          lastUserResponse,
+          createFallbackResponseEvent,
+        });
+        if (responseState.responseEvents.length) {
+          lastResponseEvents = responseState.responseEvents;
+          mergeResponseEvents(responseState.responseEvents);
+        }
+        if (responseState.speechQueueEvents.length) {
+          enqueueResponseEventsForSpeech(responseState.speechQueueEvents);
+        }
+        if (responseState.hasResponseUpdate) {
+          lastUserResponse = responseState.lastUserResponse;
+        }
+        if (
+          responseState.legacyResponseText &&
+          responseState.legacyResponseText !== midTurnLegacyResponseText &&
+          ttsEnabledRef.current
+        ) {
+          midTurnLegacyResponseText = responseState.legacyResponseText;
+          speakAssistantResponse(responseState.legacyResponseText, 'queued mid-turn progress');
+        }
         const nextStepSummary = getChatMessageRuntimeLatestStepSummary(update);
         if (nextStepSummary) {
           setLatestStepSummary(nextStepSummary);

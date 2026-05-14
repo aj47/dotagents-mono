@@ -1946,7 +1946,10 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/chat-utils'/);
   assert.doesNotMatch(screenSource, /sortAgentUserResponseEvents,/);
   assert.doesNotMatch(screenSource, /getNextAgentUserResponseEventOrdinal,/);
-  assert.match(screenSource, /sortChatMessageRuntimeResponseEvents\(update\.responseEvents\)/);
+  assert.doesNotMatch(screenSource, /sortChatMessageRuntimeResponseEvents\(update\.responseEvents\)/);
+  assert.match(screenSource, /createChatMessageRuntimeProgressResponseState,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeProgressResponseState/);
+  assert.match(chatMessageChromeSource, /const responseEvents = sortChatMessageRuntimeResponseEvents\(update\.responseEvents\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeNextResponseEventOrdinal\(events\)/);
   assert.match(chatMessageChromeSource, /sortAgentUserResponseEvents,/);
   assert.match(chatMessageChromeSource, /getNextAgentUserResponseEventOrdinal,/);

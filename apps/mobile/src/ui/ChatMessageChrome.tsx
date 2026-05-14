@@ -5073,6 +5073,19 @@ type ChatMessageRuntimeFinalResponseTextStateInput = {
   playedResponseEventIds?: ReadonlySet<string>;
 };
 
+type ChatMessageRuntimeProgressResponseEventFactory = (
+  sessionId: string | null | undefined,
+  runId: number | undefined,
+  text: string,
+) => AgentUserResponseEvent;
+
+type ChatMessageRuntimeProgressResponseStateInput = {
+  update: Pick<AgentProgressUpdate, 'responseEvents' | 'userResponse' | 'spokenContent' | 'runId'>;
+  requestSessionId?: string | null;
+  lastUserResponse?: string;
+  createFallbackResponseEvent: ChatMessageRuntimeProgressResponseEventFactory;
+};
+
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
@@ -5142,6 +5155,47 @@ export function createChatMessageRuntimeFinalResponseTextState({
     ttsText,
     userResponseText,
     alreadySpokenMidTurn,
+  };
+}
+
+export function createChatMessageRuntimeProgressResponseState({
+  update,
+  requestSessionId,
+  lastUserResponse,
+  createFallbackResponseEvent,
+}: ChatMessageRuntimeProgressResponseStateInput) {
+  if (update.responseEvents?.length) {
+    const responseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents);
+    return {
+      hasResponseUpdate: true,
+      responseEvents,
+      speechQueueEvents: responseEvents,
+      lastUserResponse: responseEvents[responseEvents.length - 1]?.text,
+      legacyResponseText: undefined,
+    };
+  }
+
+  const responseText = update.userResponse || update.spokenContent;
+  if (responseText) {
+    const responseEvents = responseText !== lastUserResponse
+      ? [createFallbackResponseEvent(requestSessionId, update.runId, responseText)]
+      : [];
+
+    return {
+      hasResponseUpdate: true,
+      responseEvents,
+      speechQueueEvents: [],
+      lastUserResponse: responseText,
+      legacyResponseText: responseText,
+    };
+  }
+
+  return {
+    hasResponseUpdate: false,
+    responseEvents: [],
+    speechQueueEvents: [],
+    lastUserResponse,
+    legacyResponseText: undefined,
   };
 }
 
