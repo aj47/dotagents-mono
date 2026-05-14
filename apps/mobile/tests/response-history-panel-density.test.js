@@ -11,10 +11,11 @@ const source = fs.readFileSync(
 test('mobile response history panel uses shared copy and accessibility labels', () => {
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
-  assert.match(source, /speakNative: \(text: string, options: ResponseHistoryNativeSpeechOptions\) => void;/);
-  assert.match(source, /stopNativeSpeech: \(\) => void;/);
-  assert.match(source, /speakRemote: \(text: string, options: ResponseHistoryRemoteSpeechOptions\) => unknown \| Promise<unknown>;/);
-  assert.match(source, /stopRemoteSpeech: \(\) => void;/);
+  assert.match(source, /isCollapsed: boolean;/);
+  assert.match(source, /shouldAnimateNewest: boolean;/);
+  assert.match(source, /speakingIndex: number \| null;/);
+  assert.match(source, /onToggleCollapsed: \(\) => void;/);
+  assert.match(source, /onSpeakResponse: \(text: string, index: number\) => void;/);
   assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
   assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
@@ -56,9 +57,9 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION/);
   assert.doesNotMatch(source, /import \* as Speech from 'expo-speech';/);
   assert.doesNotMatch(source, /speakRemoteTts|stopRemoteTts/);
-  assert.match(source, /stopNativeSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);/);
-  assert.match(source, /void speakRemote\(processedText, \{/);
-  assert.match(source, /speakNative\(processedText, speechOptions\);/);
+  assert.doesNotMatch(source, /preprocessTextForTTS/);
+  assert.doesNotMatch(source, /DEFAULT_EDGE_TTS_VOICE/);
+  assert.doesNotMatch(source, /speakNative|stopNativeSpeech|speakRemote|stopRemoteSpeech/);
 });
 
 test('mobile response history panel reads compact sizing from shared surface tokens', () => {
@@ -125,17 +126,16 @@ test('mobile response history panel reads compact sizing from shared surface tok
 });
 
 test('mobile response history keeps hook state stable while adding collapsed latest-preview chrome', () => {
-  assert.match(source, /const prevCountRef = useRef\(responses\.length\);/);
   assert.match(source, /const response = item\.entry;/);
   assert.match(source, /const speechActionState = item\.speechActionState;/);
-  assert.match(source, /useEffect\(\(\) => \{[\s\S]*?prevCountRef\.current = responses\.length;/);
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
   assert.match(source, /\{responseHistoryRenderState\.items\.map\(\(item\) => \{/);
   assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
   assert.match(source, /\{item\.displayIndex > 0 && <View style=\{styles\.separator\} \/>/);
   assert.match(source, /<AnimatedResponseItem isNewest=\{item\.isNewest\} animation=\{responseHistoryAnimation\}>/);
   assert.match(source, /\{item\.timestampLabel\}/);
-  assert.match(source, /onPress=\{\(\) => handleSpeak\(response\.text, item\.originalIndex\)\}/);
+  assert.match(source, /onPress=\{\(\) => onSpeakResponse\(response\.text, item\.originalIndex\)\}/);
+  assert.match(source, /onPress=\{onToggleCollapsed\}/);
   assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.shouldRender && \(/);
   assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.timestampLabel\}/);
   assert.match(source, /\{responseHistoryPanelState\.collapsedPreview\.text\}/);
@@ -145,6 +145,9 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.doesNotMatch(source, /formatAgentResponseHistoryTimestamp/);
   assert.doesNotMatch(source, /getLatestAgentResponseHistoryEntry/);
   assert.doesNotMatch(source, /const isSpeaking = speakingIndex === item\.originalIndex;/);
+  assert.doesNotMatch(source, /const \[isCollapsed, setIsCollapsed\] = useState\(true\);/);
+  assert.doesNotMatch(source, /const \[speakingIndex, setSpeakingIndex\] = useState<number \| null>\(null\);/);
+  assert.doesNotMatch(source, /handleSpeak/);
   assert.doesNotMatch(source, /!\s*isCollapsed && \(/);
   assert.match(source, /\{responseHistoryRenderState\.shouldRenderList && \(/);
 });

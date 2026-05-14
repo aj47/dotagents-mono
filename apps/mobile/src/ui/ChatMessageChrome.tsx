@@ -2867,7 +2867,31 @@ type ChatMessageRuntimeViewportChromePropsInput<
     voiceEvents?: ChatMessageRuntimeDebugPanelsRenderStateInput['voiceEvents'];
   };
 
-type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel>;
+type ChatMessageResponseHistoryPanelViewProps = ComponentProps<typeof ResponseHistoryPanel>;
+
+type ChatMessageResponseHistoryPanelDockProps = Pick<
+  ChatMessageResponseHistoryPanelViewProps,
+  'responses' | 'colors' | 'remoteBaseUrl' | 'remoteApiKey'
+> & {
+  ttsProvider?: ChatMessageRuntimeRemoteSpeechOptions['providerId'];
+  edgeTtsVoice?: ChatMessageRuntimeRemoteSpeechOptions['voice'];
+  remoteTtsVoice?: ChatMessageRuntimeRemoteSpeechOptions['voice'] | null;
+  remoteTtsModel?: ChatMessageRuntimeRemoteSpeechOptions['model'] | null;
+  ttsRate?: ChatMessageRuntimeRemoteSpeechOptions['rate'] | null;
+  ttsPitch?: ChatMessageRuntimeNativeSpeechOptions['pitch'] | null;
+  ttsVoiceId?: ChatMessageRuntimeNativeSpeechOptions['voice'] | null;
+  speakNative: ChatMessageRuntimeSpeechActionsStateInput['speakNative'];
+  stopNativeSpeech: ChatMessageRuntimeSpeechActionsStateInput['stopNativeSpeech'];
+  speakRemote: ChatMessageRuntimeSpeechActionsStateInput['speakRemote'];
+  stopRemoteSpeech: ChatMessageRuntimeSpeechActionsStateInput['stopRemoteSpeech'];
+};
+
+type ChatMessageRuntimeResponseHistoryPanelChromeStateInput = ChatMessageResponseHistoryPanelDockProps;
+
+type ChatMessageRuntimeResponseHistoryPanelChromeState = Pick<
+  ChatMessageResponseHistoryPanelViewProps,
+  'isCollapsed' | 'shouldAnimateNewest' | 'speakingIndex' | 'onToggleCollapsed' | 'onSpeakResponse'
+>;
 
 type ChatMessageQueuePanelDockProps = {
   shouldRender: boolean;
@@ -9010,6 +9034,144 @@ export function useChatMessageRuntimeSpeechChromeCleanupState(
   });
 }
 
+export function useChatMessageRuntimeResponseHistoryPanelChromeState({
+  responses,
+  ttsProvider = 'native',
+  edgeTtsVoice = DEFAULT_EDGE_TTS_VOICE,
+  remoteTtsVoice,
+  remoteTtsModel,
+  ttsRate = 1.0,
+  ttsPitch = 1.0,
+  ttsVoiceId,
+  remoteBaseUrl,
+  remoteApiKey,
+  speakNative,
+  stopNativeSpeech,
+  speakRemote,
+  stopRemoteSpeech,
+}: ChatMessageRuntimeResponseHistoryPanelChromeStateInput): ChatMessageRuntimeResponseHistoryPanelChromeState {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const isMountedRef = useRef(true);
+  const speechRequestIdRef = useRef(0);
+  const prevCountRef = useRef(responses.length);
+  const shouldAnimateNewest = responses.length > prevCountRef.current;
+
+  const nextSpeechRequestId = useCallback(() => {
+    speechRequestIdRef.current += 1;
+    return speechRequestIdRef.current;
+  }, []);
+
+  const safeSetSpeakingIndex = useCallback((index: number | null) => {
+    if (isMountedRef.current) {
+      setSpeakingIndex(index);
+    }
+  }, []);
+
+  const stopCurrentSpeech = useCallback(() => {
+    const requestId = nextSpeechRequestId();
+    stopNativeSpeech();
+    stopRemoteSpeech();
+    return requestId;
+  }, [nextSpeechRequestId, stopNativeSpeech, stopRemoteSpeech]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stopCurrentSpeech();
+    };
+  }, [stopCurrentSpeech]);
+
+  useEffect(() => {
+    if (isCollapsed && speakingIndex !== null) {
+      stopCurrentSpeech();
+      safeSetSpeakingIndex(null);
+    }
+  }, [isCollapsed, safeSetSpeakingIndex, speakingIndex, stopCurrentSpeech]);
+
+  useEffect(() => {
+    prevCountRef.current = responses.length;
+  }, [responses.length]);
+
+  const onToggleCollapsed = useCallback(() => {
+    setIsCollapsed((current) => !current);
+  }, []);
+
+  const onSpeakResponse = useCallback((text: string, index: number) => {
+    if (speakingIndex === index) {
+      stopCurrentSpeech();
+      safeSetSpeakingIndex(null);
+      return;
+    }
+
+    const requestId = stopCurrentSpeech();
+    const processedText = preprocessTextForTTS(text);
+    if (!processedText) {
+      safeSetSpeakingIndex(null);
+      return;
+    }
+
+    const clearIfCurrentRequest = () => {
+      if (speechRequestIdRef.current === requestId) {
+        safeSetSpeakingIndex(null);
+      }
+    };
+
+    safeSetSpeakingIndex(index);
+    if (ttsProvider !== 'native' && remoteBaseUrl && remoteApiKey) {
+      void speakRemote(processedText, {
+        baseUrl: remoteBaseUrl,
+        apiKey: remoteApiKey,
+        providerId: ttsProvider,
+        voice: remoteTtsVoice ?? edgeTtsVoice,
+        model: remoteTtsModel ?? undefined,
+        rate: ttsRate ?? undefined,
+        onDone: clearIfCurrentRequest,
+        onStopped: clearIfCurrentRequest,
+        onError: clearIfCurrentRequest,
+      });
+      return;
+    }
+
+    const speechOptions: ChatMessageRuntimeNativeSpeechOptions = {
+      language: 'en-US',
+      rate: ttsRate ?? 1.0,
+      pitch: ttsPitch ?? 1.0,
+      onDone: clearIfCurrentRequest,
+      onStopped: clearIfCurrentRequest,
+      onError: clearIfCurrentRequest,
+    };
+    if (ttsVoiceId) {
+      speechOptions.voice = ttsVoiceId;
+    }
+    speakNative(processedText, speechOptions);
+  }, [
+    edgeTtsVoice,
+    remoteApiKey,
+    remoteBaseUrl,
+    remoteTtsModel,
+    remoteTtsVoice,
+    safeSetSpeakingIndex,
+    speakNative,
+    speakRemote,
+    speakingIndex,
+    stopCurrentSpeech,
+    ttsPitch,
+    ttsProvider,
+    ttsRate,
+    ttsVoiceId,
+  ]);
+
+  return {
+    isCollapsed,
+    shouldAnimateNewest,
+    speakingIndex,
+    onToggleCollapsed,
+    onSpeakResponse,
+  };
+}
+
 export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntimeEditBeforeSendState {
   const [editBeforeSendEnabled, setEditBeforeSendEnabled] = useState(false);
 
@@ -13998,7 +14160,23 @@ export function ChatMessageRuntimeDock({
 }
 
 export function ChatMessageResponseHistoryPanelDock(panelProps: ChatMessageResponseHistoryPanelDockProps) {
-  return <ResponseHistoryPanel {...panelProps} />;
+  const {
+    responses,
+    colors,
+    remoteBaseUrl,
+    remoteApiKey,
+  } = panelProps;
+  const panelChromeState = useChatMessageRuntimeResponseHistoryPanelChromeState(panelProps);
+
+  return (
+    <ResponseHistoryPanel
+      responses={responses}
+      colors={colors}
+      remoteBaseUrl={remoteBaseUrl}
+      remoteApiKey={remoteApiKey}
+      {...panelChromeState}
+    />
+  );
 }
 
 export function ChatMessageQueuePanelDock({

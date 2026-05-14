@@ -3144,6 +3144,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /import \{ MessageQueuePanel \} from '\.\/MessageQueuePanel';/);
   assert.match(chatMessageChromeSource, /import \{ ResponseHistoryPanel \} from '\.\/ResponseHistoryPanel';/);
   assert.match(chatMessageChromeSource, /export function ChatMessageResponseHistoryPanelDock/);
+  assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelViewProps = ComponentProps<typeof ResponseHistoryPanel>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelDockProps = Pick<[\s\S]*?ChatMessageResponseHistoryPanelViewProps,[\s\S]*?'responses' \| 'colors' \| 'remoteBaseUrl' \| 'remoteApiKey'[\s\S]*?> & \{/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryPanelChromeState/);
+  assert.match(chatMessageChromeSource, /const panelChromeState = useChatMessageRuntimeResponseHistoryPanelChromeState\(panelProps\);/);
+  assert.match(chatMessageChromeSource, /<ResponseHistoryPanel\s+responses=\{responses\}\s+colors=\{colors\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}\s+\{\.\.\.panelChromeState\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;/);
   assert.match(screenSource, /isMessageQueuePaused/);
   assert.match(screenSource, /onPauseMessageQueue: handlePauseMessageQueue/);
   assert.match(screenSource, /onResumeMessageQueue: handleResumeMessageQueue/);
@@ -3466,8 +3472,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivity/);
   assert.match(chatMessageChromeSource, /export function ChatMessageResponseHistoryPanelDock/);
-  assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel>;/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageResponseHistoryPanelDock\(panelProps: ChatMessageResponseHistoryPanelDockProps\) \{\s+return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;\s+\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelViewProps = ComponentProps<typeof ResponseHistoryPanel>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelDockProps = Pick<[\s\S]*?ChatMessageResponseHistoryPanelViewProps,/);
+  assert.match(chatMessageChromeSource, /const panelChromeState = useChatMessageRuntimeResponseHistoryPanelChromeState\(panelProps\);/);
   assert.match(chatMessageChromeSource, /export function ChatMessageQueuePanelDock/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewport/);
@@ -3680,6 +3687,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechCleanupState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechChromeActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechChromeCleanupState/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryPanelChromeState/);
+  assert.match(chatMessageChromeSource, /const prevCountRef = useRef\(responses\.length\);/);
+  assert.match(chatMessageChromeSource, /const shouldAnimateNewest = responses\.length > prevCountRef\.current;/);
+  assert.match(chatMessageChromeSource, /useEffect\(\(\) => \{[\s\S]*?prevCountRef\.current = responses\.length;/);
+  assert.match(chatMessageChromeSource, /const onSpeakResponse = useCallback\(\(text: string, index: number\) => \{/);
+  assert.match(chatMessageChromeSource, /const processedText = preprocessTextForTTS\(text\);/);
+  assert.match(chatMessageChromeSource, /voice: remoteTtsVoice \?\? edgeTtsVoice,/);
   assert.match(chatMessageChromeSource, /speakNative: Speech\.speak,[\s\S]*?stopNativeSpeech: Speech\.stop,[\s\S]*?speakRemote: speakRemoteTts,[\s\S]*?stopRemoteSpeech: stopRemoteTts,/);
   assert.match(chatMessageChromeSource, /return \(\) => \{[\s\S]*?stopNativeSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);/);
   assert.match(chatMessageChromeSource, /setIntendedSpeakingMessage\(messageIndex\);/);

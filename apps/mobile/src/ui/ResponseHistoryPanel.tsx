@@ -3,7 +3,7 @@
  * from the current agent session, with per-message TTS playback.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,6 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
-import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
@@ -28,46 +26,16 @@ export interface ResponseHistoryEntry {
   timestamp: number;
 }
 
-type ResponseHistoryTtsProvider = 'native' | 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
-
-type ResponseHistoryNativeSpeechOptions = {
-  language?: string;
-  rate?: number;
-  pitch?: number;
-  voice?: string;
-  onDone?: () => void;
-  onStopped?: () => void;
-  onError?: () => void;
-};
-
-type ResponseHistoryRemoteSpeechOptions = {
-  baseUrl: string;
-  apiKey: string;
-  providerId?: ResponseHistoryTtsProvider;
-  voice?: string;
-  model?: string;
-  rate?: number;
-  onDone?: () => void;
-  onStopped?: () => void;
-  onError?: () => void;
-};
-
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
   colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
-  ttsProvider?: ResponseHistoryTtsProvider;
-  edgeTtsVoice?: string;
-  remoteTtsVoice?: string;
-  remoteTtsModel?: string;
-  ttsRate?: number;
-  ttsPitch?: number;
-  ttsVoiceId?: string;
   remoteBaseUrl?: string;
   remoteApiKey?: string;
-  speakNative: (text: string, options: ResponseHistoryNativeSpeechOptions) => void;
-  stopNativeSpeech: () => void;
-  speakRemote: (text: string, options: ResponseHistoryRemoteSpeechOptions) => unknown | Promise<unknown>;
-  stopRemoteSpeech: () => void;
+  isCollapsed: boolean;
+  shouldAnimateNewest: boolean;
+  speakingIndex: number | null;
+  onToggleCollapsed: () => void;
+  onSpeakResponse: (text: string, index: number) => void;
 }
 
 /**
@@ -111,26 +79,14 @@ function AnimatedResponseItem({
 export function ResponseHistoryPanel({
   responses,
   colors,
-  ttsProvider = 'native',
-  edgeTtsVoice = DEFAULT_EDGE_TTS_VOICE,
-  remoteTtsVoice,
-  remoteTtsModel,
-  ttsRate = 1.0,
-  ttsPitch = 1.0,
-  ttsVoiceId,
   remoteBaseUrl,
   remoteApiKey,
-  speakNative,
-  stopNativeSpeech,
-  speakRemote,
-  stopRemoteSpeech,
+  isCollapsed,
+  shouldAnimateNewest,
+  speakingIndex,
+  onToggleCollapsed,
+  onSpeakResponse,
 }: ResponseHistoryPanelProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
-  const isMountedRef = useRef(true);
-  const speechRequestIdRef = useRef(0);
-  const prevCountRef = useRef(responses.length);
-  const shouldAnimateNewest = responses.length > prevCountRef.current;
   const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState({
     responses,
     colors,
@@ -144,105 +100,9 @@ export function ResponseHistoryPanel({
   const responseHistoryIcons = responseHistoryRenderState.icons;
   const responseHistoryAnimation = responseHistoryRenderState.animation;
 
-  const nextSpeechRequestId = useCallback(() => {
-    speechRequestIdRef.current += 1;
-    return speechRequestIdRef.current;
-  }, []);
-
-  const safeSetSpeakingIndex = useCallback((index: number | null) => {
-    if (isMountedRef.current) {
-      setSpeakingIndex(index);
-    }
-  }, []);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      nextSpeechRequestId();
-      stopNativeSpeech();
-      stopRemoteSpeech();
-    };
-  }, [nextSpeechRequestId, stopNativeSpeech, stopRemoteSpeech]);
-
-  useEffect(() => {
-    if (isCollapsed && speakingIndex !== null) {
-      nextSpeechRequestId();
-      stopNativeSpeech();
-      stopRemoteSpeech();
-      safeSetSpeakingIndex(null);
-    }
-  }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId, stopNativeSpeech, stopRemoteSpeech]);
-
-  useEffect(() => {
-    prevCountRef.current = responses.length;
-  }, [responses.length]);
-
   if (!responseHistoryRenderState.shouldRender) {
     return null;
   }
-
-  const handleSpeak = (text: string, index: number) => {
-    // If already speaking this message, stop it
-    if (speakingIndex === index) {
-      nextSpeechRequestId();
-      stopNativeSpeech();
-      stopRemoteSpeech();
-      safeSetSpeakingIndex(null);
-      return;
-    }
-
-    // Stop any current speech
-    const requestId = nextSpeechRequestId();
-    stopNativeSpeech();
-    stopRemoteSpeech();
-
-    const processedText = preprocessTextForTTS(text);
-    if (!processedText) {
-      safeSetSpeakingIndex(null);
-      return;
-    }
-
-    const clearIfCurrentRequest = () => {
-      if (speechRequestIdRef.current === requestId) {
-        safeSetSpeakingIndex(null);
-      }
-    };
-
-    safeSetSpeakingIndex(index);
-    if (ttsProvider !== 'native') {
-      // Remote desktop TTS routes through the paired desktop's /v1/tts/speak
-      // endpoint. Fall back to native Speech when no pairing is available.
-      if (remoteBaseUrl && remoteApiKey) {
-        void speakRemote(processedText, {
-          baseUrl: remoteBaseUrl,
-          apiKey: remoteApiKey,
-          providerId: ttsProvider,
-          voice: remoteTtsVoice ?? edgeTtsVoice,
-          model: remoteTtsModel,
-          rate: ttsRate,
-          onDone: clearIfCurrentRequest,
-          onStopped: clearIfCurrentRequest,
-          onError: clearIfCurrentRequest,
-        });
-        return;
-      }
-      // Fall through to native Speech below when paired desktop is unavailable.
-    }
-
-    const speechOptions: ResponseHistoryNativeSpeechOptions = {
-      language: 'en-US',
-      rate: ttsRate,
-      pitch: ttsPitch,
-      onDone: clearIfCurrentRequest,
-      onStopped: clearIfCurrentRequest,
-      onError: clearIfCurrentRequest,
-    };
-    if (ttsVoiceId) {
-      speechOptions.voice = ttsVoiceId;
-    }
-    speakNative(processedText, speechOptions);
-  };
 
   const styles = StyleSheet.create({
     container: {
@@ -333,7 +193,7 @@ export function ResponseHistoryPanel({
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.header}
-        onPress={() => setIsCollapsed((prev) => !prev)}
+        onPress={onToggleCollapsed}
         activeOpacity={responseHistorySurface.header.pressedOpacity}
         accessibilityRole={responseHistorySurface.header.accessibilityRole}
         accessibilityLabel={responseHistoryPanelState.toggleAccessibilityLabel}
@@ -385,7 +245,7 @@ export function ResponseHistoryPanel({
                       </Text>
                       <TouchableOpacity
                         style={styles.speakButton}
-                        onPress={() => handleSpeak(response.text, item.originalIndex)}
+                        onPress={() => onSpeakResponse(response.text, item.originalIndex)}
                         activeOpacity={responseHistorySurface.item.speakButtonPressedOpacity}
                         accessibilityRole={responseHistorySurface.item.speakButtonAccessibilityRole}
                         accessibilityLabel={speechActionState.accessibilityLabel}
