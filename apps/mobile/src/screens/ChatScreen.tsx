@@ -92,6 +92,9 @@ import {
   getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
+  findChatMessageRuntimeLastUserMessageIndex,
+  hasChatMessageRuntimeAssistantContentAfter,
+  hasChatMessageRuntimeMessagesAfter,
   isLastChatMessageRuntimeConversationContent,
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
@@ -1786,14 +1789,8 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (update.conversationHistory && update.conversationHistory.length > 0) {
-      let currentTurnStartIndex = 0;
-      for (let i = 0; i < update.conversationHistory.length; i++) {
-        if (update.conversationHistory[i].role === 'user') {
-          currentTurnStartIndex = i;
-        }
-      }
-
-      const hasAssistantMessages = currentTurnStartIndex + 1 < update.conversationHistory.length;
+      const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(update.conversationHistory);
+      const hasAssistantMessages = hasChatMessageRuntimeMessagesAfter(update.conversationHistory, currentTurnStartIndex);
       if (hasAssistantMessages) {
         messages.length = 0;
         messages.push(...createChatMessageRuntimeHistoryDisplayMessages(update.conversationHistory, {
@@ -2187,12 +2184,7 @@ export default function ChatScreen({ route, navigation }: any) {
         console.log('[ChatScreen] Processing final conversationHistory:', response.conversationHistory.length, 'messages');
         console.log('[ChatScreen] ConversationHistory roles:', response.conversationHistory.map(m => m.role).join(', '));
 
-        let currentTurnStartIndex = 0;
-        for (let i = 0; i < response.conversationHistory.length; i++) {
-          if (response.conversationHistory[i].role === 'user') {
-            currentTurnStartIndex = i;
-          }
-        }
+        const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(response.conversationHistory);
         console.log('[ChatScreen] currentTurnStartIndex:', currentTurnStartIndex);
 
         const newMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
@@ -2567,12 +2559,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (response.conversationHistory && response.conversationHistory.length > 0) {
-        let currentTurnStartIndex = 0;
-        for (let i = 0; i < response.conversationHistory.length; i++) {
-          if (response.conversationHistory[i].role === 'user') {
-            currentTurnStartIndex = i;
-          }
-        }
+        const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(response.conversationHistory);
 
         const newMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
           response.conversationHistory,
@@ -3101,23 +3088,8 @@ export default function ChatScreen({ route, navigation }: any) {
         if (serverConversation && serverConversation.messages.length > 0) {
           const serverMessages = serverConversation.messages;
 
-          let lastUserMsgIndex = -1;
-          for (let i = serverMessages.length - 1; i >= 0; i--) {
-            if (serverMessages[i].role === 'user') {
-              lastUserMsgIndex = i;
-              break;
-            }
-          }
-
-          let hasAssistantResponse = false;
-          if (lastUserMsgIndex >= 0) {
-            for (let i = lastUserMsgIndex + 1; i < serverMessages.length; i++) {
-              if (serverMessages[i].role === 'assistant' && serverMessages[i].content) {
-                hasAssistantResponse = true;
-                break;
-              }
-            }
-          }
+          const lastUserMsgIndex = findChatMessageRuntimeLastUserMessageIndex(serverMessages, -1);
+          const hasAssistantResponse = hasChatMessageRuntimeAssistantContentAfter(serverMessages, lastUserMsgIndex);
 
           if (hasAssistantResponse) {
             console.log('[ChatScreen] Retry: Server already has response, syncing state');

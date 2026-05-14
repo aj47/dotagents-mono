@@ -1704,6 +1704,16 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(update\.conversationHistory, \{\s+startIndex: currentTurnStartIndex \+ 1,\s+\}\)/);
   assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
+  assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(update\.conversationHistory\)/);
+  assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(response\.conversationHistory\)/);
+  assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(serverMessages, -1\)/);
+  assert.match(screenSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
+  assert.match(screenSource, /hasChatMessageRuntimeAssistantContentAfter\(serverMessages, lastUserMsgIndex\)/);
+  assert.match(chatMessageChromeSource, /export function findChatMessageRuntimeLastUserMessageIndex/);
+  assert.match(chatMessageChromeSource, /export function hasChatMessageRuntimeMessagesAfter/);
+  assert.match(chatMessageChromeSource, /export function hasChatMessageRuntimeAssistantContentAfter/);
+  assert.doesNotMatch(screenSource, /for \(let i = 0; i < (?:update|response)\.conversationHistory\.length; i\+\+\) \{\s+if \((?:update|response)\.conversationHistory\[i\]\.role === 'user'\)/);
+  assert.doesNotMatch(screenSource, /for \(let i = serverMessages\.length - 1; i >= 0; i--\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeHistoryDisplayMessages/);
   assert.match(chatMessageChromeSource, /mergeToolResults &&\s+mergeChatMessageRuntimeToolResultsIntoLastMessage\(messages, historyMessage\)/);
   assert.match(chatMessageChromeSource, /shouldSkipChatMessageRuntimeSyntheticToolSummary\(historyMessage\)/);

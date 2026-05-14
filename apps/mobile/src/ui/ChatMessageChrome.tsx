@@ -3383,6 +3383,11 @@ export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
   branchMessageIndex?: number;
 };
 
+export type ChatMessageRuntimeHistoryTurnMessageLike = {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string | null;
+};
+
 export type ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult> = {
   id?: string;
   role: 'user' | 'assistant';
@@ -3413,6 +3418,39 @@ type ChatMessageRuntimeHistoryDisplayMessagesOptions = ChatMessageRuntimeHistory
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
+
+export function findChatMessageRuntimeLastUserMessageIndex(
+  historyMessages: readonly ChatMessageRuntimeHistoryTurnMessageLike[],
+  fallbackIndex = 0,
+): number {
+  for (let i = historyMessages.length - 1; i >= 0; i--) {
+    if (historyMessages[i].role === 'user') {
+      return i;
+    }
+  }
+  return fallbackIndex;
+}
+
+export function hasChatMessageRuntimeMessagesAfter(
+  historyMessages: readonly ChatMessageRuntimeHistoryTurnMessageLike[],
+  startIndex: number,
+): boolean {
+  return startIndex + 1 < historyMessages.length;
+}
+
+export function hasChatMessageRuntimeAssistantContentAfter(
+  historyMessages: readonly ChatMessageRuntimeHistoryTurnMessageLike[],
+  startIndex: number,
+): boolean {
+  if (startIndex < 0) return false;
+  for (let i = startIndex + 1; i < historyMessages.length; i++) {
+    const historyMessage = historyMessages[i];
+    if (historyMessage.role === 'assistant' && historyMessage.content) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function mergeChatMessageRuntimeToolResultsIntoLastMessage<
   TMessage extends ChatMessageRuntimeToolResultMergeMessage<TToolCall, TToolResult>,
