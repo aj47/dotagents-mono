@@ -92,6 +92,7 @@ import {
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchActionsState,
   showChatMessageRuntimeKillSwitchNativeConfirmAlert,
+  useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeBranchActionsState,
@@ -627,9 +628,9 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo,
   });
 
-  const handleBackToSessions = useCallback(() => {
-    navigation.navigate('Sessions');
-  }, [navigation]);
+  const { handleBackToSessions } = useChatRuntimeBackToSessionsActionsState({
+    navigation,
+  });
 
   useChatRuntimeNavigationHeaderOptions({
     navigation,

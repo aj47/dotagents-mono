@@ -878,7 +878,11 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.doesNotMatch(screenSource, /void sessionStore\.toggleSessionPinned\(currentSessionId\);/);
   assert.match(chatMessageChromeSource, /backButtonRenderState: getChatRuntimeBackMobileRenderState\(\{ colors \}\),/);
   assert.match(chatMessageChromeSource, /pinButtonIsActive: pinButtonRenderState\.isPinned,/);
-  assert.match(screenSource, /const handleBackToSessions = useCallback\(\(\) => \{\s+navigation\.navigate\('Sessions'\);\s+\}, \[navigation\]\);/);
+  assert.match(screenSource, /useChatRuntimeBackToSessionsActionsState,/);
+  assert.match(screenSource, /const \{ handleBackToSessions \} = useChatRuntimeBackToSessionsActionsState\(\{\s+navigation,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeBackToSessionsActionsState/);
+  assert.match(chatMessageChromeSource, /navigation\.navigate\('Sessions'\);/);
+  assert.doesNotMatch(screenSource, /navigation\.navigate\('Sessions'\)/);
   assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onBackButtonPress: handleBackToSessions,[\s\S]*?onPinButtonPress: handleToggleCurrentSessionPinned,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderIconButton/);
   assert.match(chatMessageChromeSource, /headerLeft: \(\) => \(\s+<ChatRuntimeHeaderActionsRow style=\{styles\.actionsRowStyle\}>[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.backButton\}\s+style=\{styles\.iconButtons\.edgeStyle\}[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.pinButton\}\s+style=\{styles\.iconButtons\.pinStyle\}\s+activeStyle=\{styles\.iconButtons\.pinActiveStyle\}/);

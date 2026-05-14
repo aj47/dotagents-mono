@@ -3745,6 +3745,18 @@ type ChatRuntimeCurrentSessionPinActionsState = {
   handleToggleCurrentSessionPinned: () => void;
 };
 
+type ChatRuntimeBackToSessionsNavigation = {
+  navigate: (screenName: 'Sessions') => void;
+};
+
+type ChatRuntimeBackToSessionsActionsStateInput = {
+  navigation: ChatRuntimeBackToSessionsNavigation;
+};
+
+type ChatRuntimeBackToSessionsActionsState = {
+  handleBackToSessions: () => void;
+};
+
 type ChatMessageRuntimeKillSwitchClient = {
   killSwitch: () => Promise<ChatMessageRuntimeKillSwitchResultLike>;
 };
@@ -9046,6 +9058,18 @@ export function useChatRuntimeCurrentSessionPinActionsState({
 
   return {
     handleToggleCurrentSessionPinned,
+  };
+}
+
+export function useChatRuntimeBackToSessionsActionsState({
+  navigation,
+}: ChatRuntimeBackToSessionsActionsStateInput): ChatRuntimeBackToSessionsActionsState {
+  const handleBackToSessions = useCallback(() => {
+    navigation.navigate('Sessions');
+  }, [navigation]);
+
+  return {
+    handleBackToSessions,
   };
 }
 
