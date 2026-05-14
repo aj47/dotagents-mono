@@ -460,6 +460,8 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('availability: messageActionAvailabilityRenderState,')
     expect(agentProgressSource).toContain('renderState: messageContentRenderState,')
     expect(agentProgressSource).toContain('const visibleMessageActionSlots = messageActionLayout.visibleSlots')
+    expect(agentProgressSource).toContain('const shouldRenderMessageActionSlots = messageActionLayout.shouldRenderActionSlots')
+    expect(agentProgressSource).toContain('{shouldRenderMessageActionSlots && (')
     expect(agentProgressSource).toContain('visibleMessageActionSlots.map((actionSlot) => (')
     expect(agentProgressSource).toContain('<React.Fragment key={actionSlot}>')
     expect(agentProgressSource).toContain('{messageActionComponents[actionSlot]}')

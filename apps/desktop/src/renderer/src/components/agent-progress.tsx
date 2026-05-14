@@ -1347,6 +1347,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     renderState: messageContentRenderState,
   })
   const visibleMessageActionSlots = messageActionLayout.visibleSlots
+  const shouldRenderMessageActionSlots = messageActionLayout.shouldRenderActionSlots
 
   return (
     <div className={cn(
@@ -1501,13 +1502,15 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             </div>
           )}
         </div>
-        <div className={desktopChatMessageActionSurface.actionRowClassName}>
-          {visibleMessageActionSlots.map((actionSlot) => (
-            <React.Fragment key={actionSlot}>
-              {messageActionComponents[actionSlot]}
-            </React.Fragment>
-          ))}
-        </div>
+        {shouldRenderMessageActionSlots && (
+          <div className={desktopChatMessageActionSurface.actionRowClassName}>
+            {visibleMessageActionSlots.map((actionSlot) => (
+              <React.Fragment key={actionSlot}>
+                {messageActionComponents[actionSlot]}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
       </div>
       {/* TTS Audio Player - absolutely positioned so it doesn't add vertical space to the message */}
       {shouldShowTTSButton && (
