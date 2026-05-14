@@ -72,7 +72,6 @@ import {
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
   getToolResultsSummary,
-  hasVisibleChatMessageContent,
   preserveChatMessageDisplayContentFromProgress,
   applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
@@ -170,7 +169,6 @@ import {
   applyChatDisplayGroupedExpansionInheritance,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageMobileRenderState,
-  findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
   sanitizeMessagesForModel,
   toggleChatDisplayExpansionState,
@@ -3425,19 +3423,14 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [latestStepSummary, theme.colors],
   );
-  const lastAssistantContentMessageIndex = findLastChatMessageConversationContentIndex(
-    messages,
-    (message) => message,
-    (message) => hasVisibleChatMessageContent(message),
-  );
   const conversationThreadStates = createChatMessageConversationThreadListRenderState({
+    allMessages: messages,
     messages: visibleMessages,
     firstMessageIndex: firstVisibleMessageIndex,
     groupByIndex: toolActivityGroups.groupByIndex,
     groupState: expandedGroups,
     inheritedState: expandedMessages,
     onToggleGroup: toggleGroupExpansion,
-    lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
     expandedMessages,
     resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
     turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,

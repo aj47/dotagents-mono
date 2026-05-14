@@ -30,6 +30,7 @@ import {
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
+  findLastChatMessageConversationContentIndex,
   isChatMessageLiveStreamingConversationContent,
   setChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
@@ -46,6 +47,7 @@ import {
 import {
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
+  hasVisibleChatMessageContent,
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from '@dotagents/shared/chat-utils';
@@ -2111,9 +2113,17 @@ type ChatMessageConversationItemThreadRenderState = {
 type ChatMessageConversationThreadListRenderStateInput =
   Omit<
     ChatMessageConversationItemThreadRenderStateInput,
-    'group' | 'itemIndex' | 'itemKey' | 'message' | 'messageIndex' | 'isSpeaking' | 'isCopied'
+    | 'group'
+    | 'itemIndex'
+    | 'itemKey'
+    | 'message'
+    | 'messageIndex'
+    | 'isSpeaking'
+    | 'isCopied'
+    | 'lastConversationContentMessageIndex'
   >
   & {
+    allMessages: readonly ChatMessageConversationItemThreadRenderStateInput['message'][];
     messages: readonly ChatMessageConversationItemThreadRenderStateInput['message'][];
     firstMessageIndex: number;
     groupByIndex: ReadonlyMap<number, ToolActivityGroup>;
@@ -2485,6 +2495,7 @@ export function createChatMessageConversationHistoryWindowState<TMessage>({
 }
 
 export function createChatMessageConversationThreadListRenderState({
+  allMessages,
   messages,
   firstMessageIndex,
   groupByIndex,
@@ -2492,11 +2503,18 @@ export function createChatMessageConversationThreadListRenderState({
   copiedMessageIndex,
   ...threadInput
 }: ChatMessageConversationThreadListRenderStateInput): ChatMessageConversationRenderableRuntimeThreadState[] {
+  const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex(
+    allMessages,
+    (message) => message,
+    (message) => hasVisibleChatMessageContent(message),
+  );
+
   return messages.map((message, visibleIndex) => {
     const messageIndex = firstMessageIndex + visibleIndex;
 
     return createChatMessageConversationItemThreadRenderState({
       ...threadInput,
+      lastConversationContentMessageIndex,
       group: groupByIndex.get(messageIndex),
       itemIndex: messageIndex,
       itemKey: messageIndex,
