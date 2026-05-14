@@ -1,4 +1,4 @@
-import { Fragment, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -3827,6 +3827,12 @@ export type ChatMessageRuntimeTurnDurationSourceMessage = {
   toolResults?: unknown[];
 };
 
+type ChatMessageRuntimeTurnDurationStateInput = {
+  messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[];
+  conversationState?: AgentConversationState | null;
+  isResponding?: boolean;
+};
+
 type ChatMessageRuntimeSessionDisplayMessagesOptions = {
   includeId?: boolean;
 };
@@ -3938,6 +3944,45 @@ export function computeChatMessageRuntimeTurnDurations(
   nowMs: number,
 ): ReturnType<typeof computeTurnDurations> {
   return computeTurnDurations(messages, isComplete, nowMs);
+}
+
+export function hasChatMessageRuntimeLiveAgentTurn({
+  conversationState,
+  isResponding = false,
+}: Pick<ChatMessageRuntimeTurnDurationStateInput, 'conversationState' | 'isResponding'>): boolean {
+  return (
+    isResponding ||
+    conversationState === 'running' ||
+    conversationState === 'needs_input'
+  );
+}
+
+export function useChatMessageRuntimeTurnDurations({
+  messages,
+  conversationState,
+  isResponding = false,
+}: ChatMessageRuntimeTurnDurationStateInput): ReturnType<typeof computeChatMessageRuntimeTurnDurations> {
+  const hasLiveAgentTurn = hasChatMessageRuntimeLiveAgentTurn({
+    conversationState,
+    isResponding,
+  });
+  const [turnNow, setTurnNow] = useState(() => Date.now());
+  useEffect(() => {
+    setTurnNow(Date.now());
+    if (!hasLiveAgentTurn) return undefined;
+    const id = setInterval(() => setTurnNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasLiveAgentTurn]);
+
+  const turnDurationMessages = useMemo(
+    () => createChatMessageRuntimeTurnDurationMessages(messages),
+    [messages],
+  );
+
+  return useMemo(
+    () => computeChatMessageRuntimeTurnDurations(turnDurationMessages, !hasLiveAgentTurn, turnNow),
+    [hasLiveAgentTurn, turnDurationMessages, turnNow],
+  );
 }
 
 export function createChatMessageRuntimeSpeechTextState(

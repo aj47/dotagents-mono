@@ -3464,16 +3464,21 @@ test('keeps the copy action inline with desktop-style message controls', () => {
 test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/turn-duration'/);
   assert.doesNotMatch(screenSource, /computeTurnDurations,/);
-  assert.match(screenSource, /computeChatMessageRuntimeTurnDurations,/);
+  assert.doesNotMatch(screenSource, /computeChatMessageRuntimeTurnDurations,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /type TurnDurationMessage,/);
-  assert.match(screenSource, /createChatMessageRuntimeTurnDurationMessages,/);
-  assert.match(screenSource, /const hasLiveAgentTurn =\s+responding \|\|\s+conversationState === 'running' \|\|\s+conversationState === 'needs_input';/);
-  assert.match(screenSource, /const \[turnNow, setTurnNow\] = useState\(\(\) => Date\.now\(\)\);/);
-  assert.match(screenSource, /const id = setInterval\(\(\) => setTurnNow\(Date\.now\(\)\), 1000\);/);
-  assert.match(screenSource, /const turnDurationMessages = useMemo\(\s+\(\) => createChatMessageRuntimeTurnDurationMessages\(messages\),\s+\[messages\],\s+\);/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeTurnDurationMessages,/);
+  assert.match(screenSource, /useChatMessageRuntimeTurnDurations,/);
+  assert.match(screenSource, /const turnDurations = useChatMessageRuntimeTurnDurations\(\{\s+messages,\s+isResponding: responding,\s+conversationState,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const hasLiveAgentTurn =/);
+  assert.doesNotMatch(screenSource, /const \[turnNow, setTurnNow\]/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeTurnDurations/);
+  assert.match(chatMessageChromeSource, /const hasLiveAgentTurn = hasChatMessageRuntimeLiveAgentTurn\(\{\s+conversationState,\s+isResponding,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const \[turnNow, setTurnNow\] = useState\(\(\) => Date\.now\(\)\);/);
+  assert.match(chatMessageChromeSource, /const id = setInterval\(\(\) => setTurnNow\(Date\.now\(\)\), 1000\);/);
+  assert.match(chatMessageChromeSource, /const turnDurationMessages = useMemo\(\s+\(\) => createChatMessageRuntimeTurnDurationMessages\(messages\),\s+\[messages\],\s+\);/);
   assert.doesNotMatch(screenSource, /Number\.isFinite\(message\.timestamp\)/);
   assert.doesNotMatch(screenSource, /isThinking:\s+message\.role === 'assistant'[\s\S]*?!message\.toolResults\?\.length/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeTurnDurationMessages/);
@@ -3482,7 +3487,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /computeTurnDurations,/);
   assert.match(chatMessageChromeSource, /export function computeChatMessageRuntimeTurnDurations/);
   assert.match(chatMessageChromeSource, /return computeTurnDurations\(messages, isComplete, nowMs\);/);
-  assert.match(screenSource, /computeChatMessageRuntimeTurnDurations\(turnDurationMessages, !hasLiveAgentTurn, turnNow\)/);
+  assert.match(chatMessageChromeSource, /computeChatMessageRuntimeTurnDurations\(turnDurationMessages, !hasLiveAgentTurn, turnNow\)/);
   assert.doesNotMatch(screenSource, /turnDurations\.byUserTimestamp\.get\(m\.timestamp\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageConversationTurnDuration/);
   assert.match(chatMessageChromeSource, /return typeof message\.timestamp === 'number'\s+\? byUserTimestamp\.get\(message\.timestamp\)\s+: undefined;/);

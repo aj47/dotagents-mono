@@ -60,8 +60,7 @@ import {
   createChatMessageRuntimeResponseHistoryEvents,
   getChatMessageRuntimeNextResponseEventOrdinal,
   sortChatMessageRuntimeResponseEvents,
-  createChatMessageRuntimeTurnDurationMessages,
-  computeChatMessageRuntimeTurnDurations,
+  useChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
@@ -541,25 +540,11 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const hasLiveAgentTurn =
-    responding ||
-    conversationState === 'running' ||
-    conversationState === 'needs_input';
-  const [turnNow, setTurnNow] = useState(() => Date.now());
-  useEffect(() => {
-    setTurnNow(Date.now());
-    if (!hasLiveAgentTurn) return undefined;
-    const id = setInterval(() => setTurnNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [hasLiveAgentTurn]);
-  const turnDurationMessages = useMemo(
-    () => createChatMessageRuntimeTurnDurationMessages(messages),
-    [messages],
-  );
-  const turnDurations = useMemo(
-    () => computeChatMessageRuntimeTurnDurations(turnDurationMessages, !hasLiveAgentTurn, turnNow),
-    [hasLiveAgentTurn, turnDurationMessages, turnNow],
-  );
+  const turnDurations = useChatMessageRuntimeTurnDurations({
+    messages,
+    isResponding: responding,
+    conversationState,
+  });
   const mobileHeaderRenderState = useMemo(
     () => createChatRuntimeNavigationHeaderRenderState({
       agentName: currentProfile?.name,
