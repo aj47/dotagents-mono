@@ -145,6 +145,8 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageCopyButton = mobileMessageActionStyleState.slotButtons.copy.button;
   const mobileMessageBranchButton = mobileMessageActionStyleState.slotButtons.branch.button;
   const mobileMessageSpeechButton = mobileMessageActionStyleState.slotButtons.speech.button;
+  const mobileMessageCopiedButton = mobileMessageActionStyleState.activeSlotButtons.copy.button;
+  const mobileMessageSpeechActiveButton = mobileMessageActionStyleState.activeSlotButtons.speech.button;
   const mobileMessageExpansionButtonColors = mobileMessageActionStyleState.slotButtons.expansion.colors;
   const mobileMessageCopyButtonColors = mobileMessageActionStyleState.slotButtons.copy.colors;
   const mobileMessageBranchButtonColors = mobileMessageActionStyleState.slotButtons.branch.colors;
@@ -1722,8 +1724,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ),
     },
     messageCopyButtonCopied: {
-      backgroundColor: mobileMessageCopiedButtonColors.backgroundColor,
-    } as const,
+      ...createChatRuntimeMobileMessageActionButtonStyle(
+        mobileMessageCopiedButton,
+        mobileMessageCopiedButtonColors,
+      ),
+    },
     messageCopyButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageCopyButton),
     // Per-message TTS button styles (#1078)
     speakButton: {
@@ -1733,8 +1738,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ),
     },
     speakButtonActive: {
-      backgroundColor: mobileMessageSpeechActiveButtonColors.backgroundColor,
-    } as const,
+      ...createChatRuntimeMobileMessageActionButtonStyle(
+        mobileMessageSpeechActiveButton,
+        mobileMessageSpeechActiveButtonColors,
+      ),
+    },
     speakButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageSpeechButton),
   });
 }
