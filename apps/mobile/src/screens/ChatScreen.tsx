@@ -37,7 +37,10 @@ import {
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
+  formatChatComposerHandsFreeRecognizerErrorDebugMessage,
+  formatChatComposerHandsFreeSleepingDebugMessage,
   getChatComposerImageAttachmentAlertState,
+  getChatComposerHandsFreeCopyState,
   getChatComposerRuntimeQueueDebugMessage,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaLayoutState,
@@ -168,11 +171,6 @@ import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { resolveMobileFontFamily } from '../ui/mobileTypography';
-import {
-  formatHandsFreeSleepingDebugMessage,
-  formatHandsFreeRecognizerErrorDebugMessage,
-  getHandsFreeComposerCopyState,
-} from '@dotagents/shared/hands-free-controller';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
@@ -193,7 +191,7 @@ const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState(
 const mobileRuntimeDebug = getChatMessageRuntimeDebugState();
 const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState();
-const handsFreeCopy = getHandsFreeComposerCopyState();
+const handsFreeCopy = getChatComposerHandsFreeCopyState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
@@ -883,7 +881,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		},
 		onRecognizerError: (message) => {
 			handsFreeController.onRecognizerError(message);
-			setDebugInfo(formatHandsFreeRecognizerErrorDebugMessage(message));
+			setDebugInfo(formatChatComposerHandsFreeRecognizerErrorDebugMessage(message));
 		},
 		onPermissionDenied: () => {
 			setDebugInfo(handsFreeCopy.debug.permissionDenied);
@@ -3054,7 +3052,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 		const sleepHandsFreeByUser = useCallback(() => {
 			handsFreeController.sleepByUser();
-			setDebugInfo(formatHandsFreeSleepingDebugMessage(handsFreeWakePhrase));
+			setDebugInfo(formatChatComposerHandsFreeSleepingDebugMessage(handsFreeWakePhrase));
 		}, [handsFreeController.sleepByUser, handsFreeWakePhrase]);
 
 		const resumeHandsFreeByUser = useCallback(() => {

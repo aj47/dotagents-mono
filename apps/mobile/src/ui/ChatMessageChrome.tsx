@@ -67,6 +67,8 @@ import {
   type ChatImageAttachmentMobileRenderState,
 } from '@dotagents/shared/conversation-media-assets';
 import {
+  formatHandsFreeRecognizerErrorDebugMessage,
+  formatHandsFreeSleepingDebugMessage,
   getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
@@ -3045,6 +3047,22 @@ export function getChatComposerImageAttachmentAlertState(
   input: ChatComposerImageAttachmentAlertInput,
 ): ReturnType<typeof getChatImageAttachmentMobileAlertState> {
   return getChatImageAttachmentMobileAlertState(input);
+}
+
+export function getChatComposerHandsFreeCopyState(): ReturnType<typeof getHandsFreeComposerCopyState> {
+  return getHandsFreeComposerCopyState();
+}
+
+export function formatChatComposerHandsFreeRecognizerErrorDebugMessage(
+  ...args: Parameters<typeof formatHandsFreeRecognizerErrorDebugMessage>
+): ReturnType<typeof formatHandsFreeRecognizerErrorDebugMessage> {
+  return formatHandsFreeRecognizerErrorDebugMessage(...args);
+}
+
+export function formatChatComposerHandsFreeSleepingDebugMessage(
+  ...args: Parameters<typeof formatHandsFreeSleepingDebugMessage>
+): ReturnType<typeof formatHandsFreeSleepingDebugMessage> {
+  return formatHandsFreeSleepingDebugMessage(...args);
 }
 
 export function getChatMessageRuntimeDebugState(): ReturnType<typeof getChatRuntimeDebugState> {
