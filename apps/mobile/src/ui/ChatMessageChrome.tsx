@@ -3253,6 +3253,37 @@ type ChatMessageRuntimeBranchProgressState = {
   clearBranchMessage: () => void;
 };
 
+type ChatMessageRuntimeBranchClient = {
+  branchConversation: (
+    conversationId: string,
+    input: { messageIndex: number },
+  ) => Promise<{ id: string }>;
+};
+
+type ChatMessageRuntimeBranchSession = {
+  id: string;
+};
+
+type ChatMessageRuntimeBranchSessionStore<TBranchClient extends ChatMessageRuntimeBranchClient> = {
+  syncWithServer: (client: TBranchClient) => unknown | Promise<unknown>;
+  findSessionByServerConversationId: (conversationId: string) => ChatMessageRuntimeBranchSession | null | undefined;
+  setCurrentSession: (sessionId: string) => void;
+};
+
+type ChatMessageRuntimeBranchActionsStateInput<TBranchClient extends ChatMessageRuntimeBranchClient> = {
+  branchClient?: TBranchClient | null;
+  serverConversationId?: string | null;
+  sessionStore: ChatMessageRuntimeBranchSessionStore<TBranchClient>;
+  beginBranchMessage: (messageIndex: number) => void;
+  clearBranchMessage: () => void;
+  navigateToChat: () => void;
+  showAlert: (title: string, message: string) => void;
+};
+
+type ChatMessageRuntimeBranchActionsState = {
+  handleBranchFromMessage: (messageIndex: number) => Promise<void>;
+};
+
 type ChatMessageRuntimeToolApprovalResponseStateInput = {
   sessionId?: string | null;
 };
@@ -6934,6 +6965,58 @@ export function useChatMessageRuntimeBranchProgressState({
     pendingBranchMessageIndex,
     beginBranchMessage,
     clearBranchMessage,
+  };
+}
+
+export function useChatMessageRuntimeBranchActionsState<
+  TBranchClient extends ChatMessageRuntimeBranchClient,
+>({
+  branchClient,
+  serverConversationId,
+  sessionStore,
+  beginBranchMessage,
+  clearBranchMessage,
+  navigateToChat,
+  showAlert,
+}: ChatMessageRuntimeBranchActionsStateInput<TBranchClient>): ChatMessageRuntimeBranchActionsState {
+  const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
+    if (!branchClient || !serverConversationId) {
+      const unavailableAlert = getChatMessageRuntimeBranchUnavailableAlertState();
+      showAlert(unavailableAlert.title, unavailableAlert.message);
+      return;
+    }
+
+    beginBranchMessage(messageIndex);
+    try {
+      const branchedConversation = await branchClient.branchConversation(serverConversationId, { messageIndex });
+      await sessionStore.syncWithServer(branchClient);
+      const branchedSession = sessionStore.findSessionByServerConversationId(branchedConversation.id);
+      if (branchedSession) {
+        sessionStore.setCurrentSession(branchedSession.id);
+        navigateToChat();
+        return;
+      }
+
+      const createdAlert = getChatMessageRuntimeBranchCreatedAlertState();
+      showAlert(createdAlert.title, createdAlert.message);
+    } catch (error: any) {
+      const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error);
+      showAlert(failedAlert.title, failedAlert.message);
+    } finally {
+      clearBranchMessage();
+    }
+  }, [
+    beginBranchMessage,
+    branchClient,
+    clearBranchMessage,
+    navigateToChat,
+    serverConversationId,
+    sessionStore,
+    showAlert,
+  ]);
+
+  return {
+    handleBranchFromMessage,
   };
 }
 

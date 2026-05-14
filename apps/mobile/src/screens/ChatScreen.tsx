@@ -79,9 +79,6 @@ import {
   useChatMessageRuntimeThreadExpansionState,
   createChatMessageRuntimeChromeProps,
   getChatConversationHomeQuickStartPressIntent,
-  getChatMessageRuntimeBranchCreatedAlertState,
-  getChatMessageRuntimeBranchFailedAlertState,
-  getChatMessageRuntimeBranchUnavailableAlertState,
   getChatMessageRuntimeDebugMessage,
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
@@ -91,6 +88,7 @@ import {
   getChatMessageRuntimeLatestStepSummary,
   resolveChatMessageRuntimeConversationStateFromProgress,
   useChatMessageRuntimeBranchProgressState,
+  useChatMessageRuntimeBranchActionsState,
   useChatMessageRuntimeToolApprovalResponseState,
   useChatMessageRuntimeToolApprovalActionsState,
   useChatMessageRuntimeQueuePanelState,
@@ -550,34 +548,15 @@ export default function ChatScreen({ route, navigation }: any) {
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
 
-  const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
-    const serverConversationId = currentSession?.serverConversationId;
-    if (!settingsClient || !serverConversationId) {
-      const unavailableAlert = getChatMessageRuntimeBranchUnavailableAlertState();
-      Alert.alert(unavailableAlert.title, unavailableAlert.message);
-      return;
-    }
-
-    beginBranchMessage(messageIndex);
-    try {
-      const branchedConversation = await settingsClient.branchConversation(serverConversationId, { messageIndex });
-      await sessionStore.syncWithServer(settingsClient);
-      const branchedSession = sessionStore.findSessionByServerConversationId(branchedConversation.id);
-      if (branchedSession) {
-        sessionStore.setCurrentSession(branchedSession.id);
-        navigation.navigate('Chat');
-        return;
-      }
-
-      const createdAlert = getChatMessageRuntimeBranchCreatedAlertState();
-      Alert.alert(createdAlert.title, createdAlert.message);
-    } catch (error: any) {
-      const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error);
-      Alert.alert(failedAlert.title, failedAlert.message);
-    } finally {
-      clearBranchMessage();
-    }
-  }, [beginBranchMessage, clearBranchMessage, currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
+  const { handleBranchFromMessage } = useChatMessageRuntimeBranchActionsState({
+    branchClient: settingsClient,
+    serverConversationId: currentSession?.serverConversationId,
+    sessionStore,
+    beginBranchMessage,
+    clearBranchMessage,
+    navigateToChat: () => navigation.navigate('Chat'),
+    showAlert: Alert.alert,
+  });
 
   const {
     messages,
