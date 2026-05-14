@@ -63,6 +63,7 @@ import {
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
   useChatMessageRuntimeResponseHistoryState,
+  useChatMessageRuntimeResponseSpeechQueueActionsState,
   useChatMessageRuntimeSpeechActionsState,
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeSpeechTextState,
@@ -764,51 +765,14 @@ export default function ChatScreen({ route, navigation }: any) {
 		return true;
 		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveRemoteTtsModel, effectiveRemoteTtsRate, effectiveRemoteTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
 
-  const processAutoSpeechQueue = useCallback(() => {
-    if (activeAutoSpeechEventIdRef.current || queuedResponseEventsRef.current.length === 0) {
-      return;
-    }
-
-    const nextEvent = queuedResponseEventsRef.current.shift();
-    if (!nextEvent) return;
-    activeAutoSpeechEventIdRef.current = nextEvent.id;
-
-    const spoken = speakAssistantResponse(nextEvent.text, `response event ${nextEvent.ordinal}`, () => {
-      activeAutoSpeechEventIdRef.current = null;
-      processAutoSpeechQueue();
-    });
-
-    if (!spoken) {
-      activeAutoSpeechEventIdRef.current = null;
-      processAutoSpeechQueue();
-      return;
-    }
-
-    playedResponseEventIdsRef.current.add(nextEvent.id);
-  }, [speakAssistantResponse]);
-
-  const enqueueResponseEventsForSpeech = useCallback((events: AgentUserResponseEvent[]) => {
-    // Use the ref alongside the captured config so a mute that landed after this
-    // callback was scheduled still suppresses queueing.
-    if (config.ttsEnabled === false || !ttsEnabledRef.current || !events.length) return;
-
-    const queuedIds = new Set(queuedResponseEventsRef.current.map((event) => event.id));
-    const activeId = activeAutoSpeechEventIdRef.current;
-    const unseenEvents = events.filter((event) => (
-      !playedResponseEventIdsRef.current.has(event.id)
-      && !queuedIds.has(event.id)
-      && event.id !== activeId
-    ));
-
-    if (!unseenEvents.length) return;
-
-    queuedResponseEventsRef.current = sortChatMessageRuntimeResponseEvents([
-      ...queuedResponseEventsRef.current,
-      ...unseenEvents,
-    ]);
-
-    processAutoSpeechQueue();
-  }, [config.ttsEnabled, processAutoSpeechQueue]);
+  const { enqueueResponseEventsForSpeech } = useChatMessageRuntimeResponseSpeechQueueActionsState({
+    isTextToSpeechEnabled: config.ttsEnabled !== false,
+    ttsEnabledRef,
+    playedResponseEventIdsRef,
+    queuedResponseEventsRef,
+    activeAutoSpeechEventIdRef,
+    speakAssistantResponse,
+  });
 
   const { speakMessage } = useChatMessageRuntimeSpeechActionsState({
     speakingMessageIndex,

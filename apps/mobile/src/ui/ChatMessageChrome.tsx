@@ -697,6 +697,26 @@ type ChatMessageRuntimeResponseHistoryState = {
   resetResponseSpeechPlaybackState: (playedEventIds?: Iterable<string>) => void;
 };
 
+type ChatMessageRuntimeResponseSpeechSpeaker = (
+  content: string,
+  reason: string,
+  onSettled?: () => void,
+) => boolean;
+
+type ChatMessageRuntimeResponseSpeechQueueActionsStateInput = {
+  isTextToSpeechEnabled: boolean;
+  ttsEnabledRef: ChatRuntimeMutableRef<boolean>;
+  playedResponseEventIdsRef: ChatRuntimeMutableRef<Set<string>>;
+  queuedResponseEventsRef: ChatRuntimeMutableRef<AgentUserResponseEvent[]>;
+  activeAutoSpeechEventIdRef: ChatRuntimeMutableRef<string | null>;
+  speakAssistantResponse: ChatMessageRuntimeResponseSpeechSpeaker;
+};
+
+type ChatMessageRuntimeResponseSpeechQueueActionsState = {
+  enqueueResponseEventsForSpeech: (events: AgentUserResponseEvent[]) => void;
+  processResponseSpeechQueue: () => void;
+};
+
 type ChatMessageRuntimeSpeechPlaybackState = {
   speakingMessageIndex: number | null;
   setSpeakingMessageIndex: Dispatch<SetStateAction<number | null>>;
@@ -7169,6 +7189,76 @@ export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeR
     mergeResponseEvents,
     clearQueuedResponseSpeech,
     resetResponseSpeechPlaybackState,
+  };
+}
+
+export function useChatMessageRuntimeResponseSpeechQueueActionsState({
+  isTextToSpeechEnabled,
+  ttsEnabledRef,
+  playedResponseEventIdsRef,
+  queuedResponseEventsRef,
+  activeAutoSpeechEventIdRef,
+  speakAssistantResponse,
+}: ChatMessageRuntimeResponseSpeechQueueActionsStateInput): ChatMessageRuntimeResponseSpeechQueueActionsState {
+  const processResponseSpeechQueue = useCallback(() => {
+    if (activeAutoSpeechEventIdRef.current || queuedResponseEventsRef.current.length === 0) {
+      return;
+    }
+
+    const nextEvent = queuedResponseEventsRef.current.shift();
+    if (!nextEvent) return;
+    activeAutoSpeechEventIdRef.current = nextEvent.id;
+
+    const spoken = speakAssistantResponse(nextEvent.text, `response event ${nextEvent.ordinal}`, () => {
+      activeAutoSpeechEventIdRef.current = null;
+      processResponseSpeechQueue();
+    });
+
+    if (!spoken) {
+      activeAutoSpeechEventIdRef.current = null;
+      processResponseSpeechQueue();
+      return;
+    }
+
+    playedResponseEventIdsRef.current.add(nextEvent.id);
+  }, [
+    activeAutoSpeechEventIdRef,
+    playedResponseEventIdsRef,
+    queuedResponseEventsRef,
+    speakAssistantResponse,
+  ]);
+
+  const enqueueResponseEventsForSpeech = useCallback((events: AgentUserResponseEvent[]) => {
+    if (!isTextToSpeechEnabled || !ttsEnabledRef.current || !events.length) return;
+
+    const queuedIds = new Set(queuedResponseEventsRef.current.map((event) => event.id));
+    const activeId = activeAutoSpeechEventIdRef.current;
+    const unseenEvents = events.filter((event) => (
+      !playedResponseEventIdsRef.current.has(event.id)
+      && !queuedIds.has(event.id)
+      && event.id !== activeId
+    ));
+
+    if (!unseenEvents.length) return;
+
+    queuedResponseEventsRef.current = sortChatMessageRuntimeResponseEvents([
+      ...queuedResponseEventsRef.current,
+      ...unseenEvents,
+    ]);
+
+    processResponseSpeechQueue();
+  }, [
+    activeAutoSpeechEventIdRef,
+    isTextToSpeechEnabled,
+    playedResponseEventIdsRef,
+    processResponseSpeechQueue,
+    queuedResponseEventsRef,
+    ttsEnabledRef,
+  ]);
+
+  return {
+    enqueueResponseEventsForSpeech,
+    processResponseSpeechQueue,
   };
 }
 
