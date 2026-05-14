@@ -5199,6 +5199,19 @@ export function createChatMessageRuntimeProgressResponseState({
   };
 }
 
+export function createChatMessageRuntimeProgressTurnState<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  update: AgentProgressUpdate,
+  lifecycleState: AgentConversationState = 'running',
+) {
+  return {
+    conversationState: resolveChatMessageRuntimeConversationStateFromProgress(update, lifecycleState),
+    latestStepSummary: getChatMessageRuntimeLatestStepSummary(update),
+    progressMessages: createChatMessageRuntimeProgressMessages<TMessage>(update),
+  };
+}
+
 export function createChatMessageRuntimeSessionDisplayMessages<
   TMessage extends ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult>,
   TToolCall = unknown,

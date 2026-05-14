@@ -270,7 +270,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /formatChatRuntimeToolApprovalRequiredContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeToolApprovalRequiredContent,/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeToolApprovalRequiredContent/);
-  assert.match(screenSource, /createChatMessageRuntimeProgressMessages<ChatMessage>\(update\)/);
+  assert.match(screenSource, /createChatMessageRuntimeProgressTurnState<ChatMessage>\(update\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeProgressMessages<ChatMessage>\(update\)/);
+  assert.match(chatMessageChromeSource, /progressMessages: createChatMessageRuntimeProgressMessages<TMessage>\(update\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolApprovalRequiredMessage/);
@@ -2619,7 +2621,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /useChatMessageRuntimeHistoryWindowState,/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeHistoryWindowState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
-  assert.match(screenSource, /createChatMessageRuntimeProgressMessages<ChatMessage>\(update\)/);
+  assert.match(screenSource, /createChatMessageRuntimeProgressTurnState<ChatMessage>\(update\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeProgressTurnState/);
   assert.doesNotMatch(
     screenSource,
     /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,\s+\}\)/,
@@ -2868,9 +2871,11 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.doesNotMatch(screenSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
-  assert.match(screenSource, /const nextStepSummary = getChatMessageRuntimeLatestStepSummary\(update\);/);
+  assert.doesNotMatch(screenSource, /const nextStepSummary = getChatMessageRuntimeLatestStepSummary\(update\);/);
+  assert.match(screenSource, /progressTurnState\.latestStepSummary/);
+  assert.match(chatMessageChromeSource, /latestStepSummary: getChatMessageRuntimeLatestStepSummary\(update\),/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeLatestStepSummary/);
-  assert.match(screenSource, /setLatestStepSummary\(nextStepSummary\);/);
+  assert.match(screenSource, /setLatestStepSummary\(progressTurnState\.latestStepSummary\);/);
   assert.doesNotMatch(screenSource, /const latestStepSummaryRenderState = useMemo/);
   assert.match(chatMessageChromeSource, /renderState: getChatRuntimeStepSummaryMobileRenderState\(\{\s+summary: latestStepSummary,\s+colors,/);
   assert.match(screenSource, /latestStepSummary,\s+colors: theme\.colors,\s+onLoadEarlierMessages: loadEarlierMessages,/);
@@ -3986,8 +3991,10 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /getChatRuntimeDebugState,/);
   assert.doesNotMatch(screenSource, /resolveAgentProgressConversationState,/);
   assert.doesNotMatch(screenSource, /const resolveConversationStateFromProgress = /);
-  assert.match(screenSource, /resolveChatMessageRuntimeConversationStateFromProgress,/);
-  assert.match(screenSource, /resolveChatMessageRuntimeConversationStateFromProgress\(update, 'running'\)/);
+  assert.doesNotMatch(screenSource, /resolveChatMessageRuntimeConversationStateFromProgress,/);
+  assert.doesNotMatch(screenSource, /resolveChatMessageRuntimeConversationStateFromProgress\(update, 'running'\)/);
+  assert.match(screenSource, /createChatMessageRuntimeProgressTurnState<ChatMessage>\(update\)/);
+  assert.match(chatMessageChromeSource, /conversationState: resolveChatMessageRuntimeConversationStateFromProgress\(update, lifecycleState\),/);
   assert.match(chatMessageChromeSource, /resolveAgentProgressConversationState,/);
   assert.match(chatMessageChromeSource, /export function resolveChatMessageRuntimeConversationStateFromProgress/);
   assert.match(chatMessageChromeSource, /return resolveAgentProgressConversationState\(update, lifecycleState\);/);

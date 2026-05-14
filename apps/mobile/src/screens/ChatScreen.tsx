@@ -55,11 +55,11 @@ import {
   createChatMessageRuntimeFinalHistoryTurnMessages,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
-  createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatMessageRuntimeStreamingText,
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
+  createChatMessageRuntimeProgressTurnState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -86,8 +86,6 @@ import {
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
-  getChatMessageRuntimeLatestStepSummary,
-  resolveChatMessageRuntimeConversationStateFromProgress,
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeBranchActionsState,
   useChatMessageRuntimeToolApprovalResponseState,
@@ -888,8 +886,9 @@ export default function ChatScreen({ route, navigation }: any) {
           console.log('[ChatScreen] Request superseded within same session, skipping onProgress update');
           return;
         }
-        latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
-        setConversationState(latestConversationState);
+        const progressTurnState = createChatMessageRuntimeProgressTurnState<ChatMessage>(update);
+        latestConversationState = progressTurnState.conversationState;
+        setConversationState(progressTurnState.conversationState);
         const responseState = createChatMessageRuntimeProgressResponseState({
           update,
           requestSessionId,
@@ -914,11 +913,10 @@ export default function ChatScreen({ route, navigation }: any) {
           midTurnLegacyResponseText = responseState.legacyResponseText;
           speakAssistantResponse(responseState.legacyResponseText, 'mid-turn progress');
         }
-        const nextStepSummary = getChatMessageRuntimeLatestStepSummary(update);
-        if (nextStepSummary) {
-          setLatestStepSummary(nextStepSummary);
+        if (progressTurnState.latestStepSummary) {
+          setLatestStepSummary(progressTurnState.latestStepSummary);
         }
-        const progressMessages = createChatMessageRuntimeProgressMessages<ChatMessage>(update);
+        const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
           progressMessagesRef.current = progressMessages;
@@ -1272,8 +1270,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
-        latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
-        setConversationState(latestConversationState);
+        const progressTurnState = createChatMessageRuntimeProgressTurnState<ChatMessage>(update);
+        latestConversationState = progressTurnState.conversationState;
+        setConversationState(progressTurnState.conversationState);
         const responseState = createChatMessageRuntimeProgressResponseState({
           update,
           requestSessionId,
@@ -1298,11 +1297,10 @@ export default function ChatScreen({ route, navigation }: any) {
           midTurnLegacyResponseText = responseState.legacyResponseText;
           speakAssistantResponse(responseState.legacyResponseText, 'queued mid-turn progress');
         }
-        const nextStepSummary = getChatMessageRuntimeLatestStepSummary(update);
-        if (nextStepSummary) {
-          setLatestStepSummary(nextStepSummary);
+        if (progressTurnState.latestStepSummary) {
+          setLatestStepSummary(progressTurnState.latestStepSummary);
         }
-        const progressMessages = createChatMessageRuntimeProgressMessages<ChatMessage>(update);
+        const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {
           setMessages((m) => replaceChatMessageRuntimeTurnMessages(
             m,
