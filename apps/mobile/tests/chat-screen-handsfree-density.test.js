@@ -14,7 +14,9 @@ const chatMessageChromeSource = fs.readFileSync(
 
 test('renders the extracted handsfree status chip in the mobile chat composer', () => {
   assert.doesNotMatch(screenSource, /HandsFreeStatusChip/);
-  assert.match(screenSource, /handsFreeControlsVisible: mobileComposerVisibilityRenderState\.handsFreeControls\.isVisible,\s+handsFreeStatusPhase: handsFreeController\.state\.phase,\s+handsFreeStatusLabel: handsFreeController\.statusLabel,\s+handsFreeStatusEnabled: handsFree,\s+handsFreeStatusWakePhrase: handsFreeWakePhrase,\s+handsFreeStatusSleepPhrase: handsFreeSleepPhrase,\s+handsFreeStatusLastError: handsFreeController\.state\.lastError,\s+handsFreeStatusForegroundOnly: handsFreeForegroundOnly,/);
+  assert.doesNotMatch(screenSource, /handsFreeControlsVisible:/);
+  assert.match(screenSource, /handsFreeStatusPhase: handsFreeController\.state\.phase,\s+handsFreeStatusLabel: handsFreeController\.statusLabel,\s+handsFreeStatusEnabled: handsFree,\s+handsFreeStatusWakePhrase: handsFreeWakePhrase,\s+handsFreeStatusSleepPhrase: handsFreeSleepPhrase,\s+handsFreeStatusLastError: handsFreeController\.state\.lastError,\s+handsFreeStatusForegroundOnly: handsFreeForegroundOnly,/);
+  assert.match(chatMessageChromeSource, /isVisible: controlRenderState\.visibility\.handsFreeControls\.isVisible,/);
   assert.match(chatMessageChromeSource, /import \{ HandsFreeStatusChip \} from '\.\/HandsFreeStatusChip';/);
   assert.match(chatMessageChromeSource, /const handsFreeStatusSubtitle = handsFreeStatusEnabled\s+\? getHandsFreeStatusSubtitle\(\{[\s\S]*?phase: handsFreeStatusPhase,[\s\S]*?wakePhrase: handsFreeStatusWakePhrase,[\s\S]*?sleepPhrase: handsFreeStatusSleepPhrase,[\s\S]*?lastError: handsFreeStatusLastError,[\s\S]*?foregroundOnly: handsFreeStatusForegroundOnly,[\s\S]*?\}\)\s+: undefined;/);
   assert.match(chatMessageChromeSource, /status: \{\s+phase: handsFreeStatusPhase,\s+label: handsFreeStatusLabel,\s+subtitle: handsFreeStatusSubtitle,\s+\}/);
@@ -43,7 +45,11 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
 
 test('lets handsfree users queue a drafted message without sending immediately', () => {
   assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage, currentConversationId\);[\s\S]*?setInput\(''\);[\s\S]*?setPendingImages\(\[\]\);/);
-  assert.match(screenSource, /queueActionShouldRender: mobileComposerVisibilityRenderState\.queueAction\.shouldRender,\s+queueActionRenderState: mobileComposerQueueRenderState,\s+onQueueActionPress: queueComposerInput,/);
+  assert.doesNotMatch(screenSource, /queueActionShouldRender:/);
+  assert.doesNotMatch(screenSource, /queueActionRenderState:/);
+  assert.match(screenSource, /onQueueActionPress: queueComposerInput,/);
+  assert.match(chatMessageChromeSource, /shouldRender: controlRenderState\.visibility\.queueAction\.shouldRender/);
+  assert.match(chatMessageChromeSource, /renderState: controlRenderState\.queueAction/);
   assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.queueAction\}\s+styles=\{styles\.queueAction\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /<Text style=\{styles\.text\}>[\s\S]*?\{renderState\.label\}/);
@@ -86,8 +92,8 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(screenSource, /const wakeHandsFreeByUser = useCallback\(\(\) => \{[\s\S]*?handsFreeController\.wakeByUser\(\);[\s\S]*?void startRecording\(\);/);
   assert.doesNotMatch(screenSource, /const handsFreeControlState = getHandsFreeComposerControlState\(handsFreeController\.state\.phase\);/);
   assert.match(chatMessageChromeSource, /const handsFreeControlState = getHandsFreeComposerControlState\(handsFreeStatusPhase\);/);
-  assert.match(screenSource, /handsFreeControlsVisible: mobileComposerVisibilityRenderState\.handsFreeControls\.isVisible,[\s\S]*?handsFreeStatusPhase: handsFreeController\.state\.phase,[\s\S]*?handsFreeStatusForegroundOnly: handsFreeForegroundOnly,[\s\S]*?onWakeHandsFree: wakeHandsFreeByUser,[\s\S]*?onSleepHandsFree: sleepHandsFreeByUser,[\s\S]*?onResumeHandsFree: resumeHandsFreeByUser,[\s\S]*?onPauseHandsFree: pauseHandsFreeByUser,/);
-  assert.match(chatMessageChromeSource, /handsFreeControls: \{[\s\S]*?isVisible: handsFreeControlsVisible,[\s\S]*?status: \{[\s\S]*?phase: handsFreeStatusPhase,[\s\S]*?label: handsFreeStatusLabel,[\s\S]*?subtitle: handsFreeStatusSubtitle,[\s\S]*?\},[\s\S]*?controlState: handsFreeControlState,[\s\S]*?onWake: onWakeHandsFree,[\s\S]*?onSleep: onSleepHandsFree,[\s\S]*?onResume: onResumeHandsFree,[\s\S]*?onPause: onPauseHandsFree,[\s\S]*?\.\.\.chrome\.handsFreeControls,/);
+  assert.match(screenSource, /handsFreeStatusPhase: handsFreeController\.state\.phase,[\s\S]*?handsFreeStatusForegroundOnly: handsFreeForegroundOnly,[\s\S]*?onWakeHandsFree: wakeHandsFreeByUser,[\s\S]*?onSleepHandsFree: sleepHandsFreeByUser,[\s\S]*?onResumeHandsFree: resumeHandsFreeByUser,[\s\S]*?onPauseHandsFree: pauseHandsFreeByUser,/);
+  assert.match(chatMessageChromeSource, /handsFreeControls: \{[\s\S]*?isVisible: controlRenderState\.visibility\.handsFreeControls\.isVisible,[\s\S]*?status: \{[\s\S]*?phase: handsFreeStatusPhase,[\s\S]*?label: handsFreeStatusLabel,[\s\S]*?subtitle: handsFreeStatusSubtitle,[\s\S]*?\},[\s\S]*?controlState: handsFreeControlState,[\s\S]*?onWake: onWakeHandsFree,[\s\S]*?onSleep: onSleepHandsFree,[\s\S]*?onResume: onResumeHandsFree,[\s\S]*?onPause: onPauseHandsFree,[\s\S]*?\.\.\.chrome\.handsFreeControls,/);
   assert.match(chatMessageChromeSource, /const primaryOnPress = controlState\.primary\.action === 'wake'\s+\? onWake\s+: onSleep;/);
   assert.match(chatMessageChromeSource, /const secondaryOnPress = controlState\.secondary\.action === 'resume'\s+\? onResume\s+: onPause;/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{controlState\.primary\.accessibilityRole\}/);
@@ -97,12 +103,17 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(chatMessageChromeSource, /onPress=\{primaryOnPress\}[\s\S]*?\{controlState\.primary\.label\}/);
   assert.match(chatMessageChromeSource, /onPress=\{secondaryOnPress\}[\s\S]*?\{controlState\.secondary\.label\}/);
   assert.doesNotMatch(screenSource, /const micButtonLabel = getHandsFreeMicButtonLabel/);
-  assert.match(screenSource, /createChatComposerRuntimeControlRenderState\(\{[\s\S]*?micPhase: handsFreeController\.state\.phase,[\s\S]*?listening,[\s\S]*?colors: theme\.colors,[\s\S]*?\}\)/);
+  assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState/);
+  assert.match(screenSource, /composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+composerControlColors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /createChatComposerRuntimeControlRenderState\(\{[\s\S]*?micPhase: composerControlMicPhase,[\s\S]*?listening: composerControlListening,[\s\S]*?colors: composerControlColors,[\s\S]*?\}\)/);
   assert.match(chatMessageChromeSource, /const micLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: micPhase,[\s\S]*?listening,[\s\S]*?\}\);/);
   assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState\(\{[\s\S]*?label: micLabel,[\s\S]*?handsFree,[\s\S]*?listening,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,[\s\S]*?\}\),/);
-  assert.match(screenSource, /micButtonRenderState: mobileComposerMicRenderState,/);
+  assert.doesNotMatch(screenSource, /micButtonRenderState:/);
+  assert.match(chatMessageChromeSource, /renderState: controlRenderState\.micButton/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
-  assert.match(screenSource, /shouldUseHandsFreePrimaryControl: mobileComposerVisibilityRenderState\.micButton\.shouldUseHandsFreePrimaryControl,\s+onMicPressIn: handlePushToTalkPressIn,\s+onMicPressOut: handlePushToTalkPressOut,\s+onMicPress: handleHandsFreePrimaryControl,/);
+  assert.match(screenSource, /onMicPressIn: handlePushToTalkPressIn,\s+onMicPressOut: handlePushToTalkPressOut,\s+onMicPress: handleHandsFreePrimaryControl,/);
+  assert.match(chatMessageChromeSource, /onPressIn: controlRenderState\.visibility\.micButton\.shouldUsePushToTalk \? onMicPressIn : undefined/);
+  assert.match(chatMessageChromeSource, /onPress: controlRenderState\.visibility\.micButton\.shouldUseHandsFreePrimaryControl \? onMicPress : undefined/);
   assert.match(screenSource, /flexDirection:\s*handsFreeSurface\.controlsRow\.flexDirection/);
   assert.match(screenSource, /alignItems:\s*handsFreeSurface\.controlsRow\.alignItems/);
   assert.match(screenSource, /gap:\s*spacing\[handsFreeSurface\.controlsRow\.gap\]/);

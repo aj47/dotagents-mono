@@ -26,11 +26,11 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
-  createChatComposerRuntimeControlRenderState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
+  getChatComposerRuntimeQueueDebugMessage,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
@@ -234,6 +234,7 @@ const handsFreeCopy = getHandsFreeComposerCopyState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
 const mobileMessageActionCopy = getChatMessageActionCopyState();
+const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 
@@ -2988,40 +2989,6 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
-  const {
-    visibility: mobileComposerVisibilityRenderState,
-    imageAttachment: mobileComposerImageAttachmentRenderState,
-    textToSpeech: mobileComposerTextToSpeechRenderState,
-    editBeforeSend: mobileComposerEditBeforeSendRenderState,
-    queueAction: mobileComposerQueueRenderState,
-    submitAction: composerSubmitRenderState,
-    micButton: mobileComposerMicRenderState,
-  } = useMemo(
-    () => createChatComposerRuntimeControlRenderState({
-      hasContent: composerHasContent,
-      handsFree,
-      presentation: composerPresentation,
-      pendingImageCount: pendingImages.length,
-      ttsEnabled,
-      editBeforeSendEnabled: willCancel,
-      micPhase: handsFreeController.state.phase,
-      listening,
-      messageQueueEnabled,
-      colors: theme.colors,
-    }),
-    [
-      composerHasContent,
-      composerPresentation,
-      handsFree,
-      handsFreeController.state.phase,
-      listening,
-      messageQueueEnabled,
-      pendingImages.length,
-      theme.colors,
-      ttsEnabled,
-      willCancel,
-    ],
-  );
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildChatImageAttachmentMessage(input, pendingImages);
     if (!composedMessage.trim()) return;
@@ -3035,8 +3002,8 @@ export default function ChatScreen({ route, navigation }: any) {
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
     setInput('');
     setPendingImages([]);
-    setDebugInfo(mobileComposerQueueRenderState.debugMessage);
-  }, [currentConversationId, input, messageQueue, mobileComposerQueueRenderState.debugMessage, pendingImages]);
+    setDebugInfo(composerQueueDebugMessage);
+  }, [currentConversationId, input, messageQueue, pendingImages]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -3264,7 +3231,6 @@ export default function ChatScreen({ route, navigation }: any) {
     pendingImages,
     pendingImagesColors: theme.colors,
     onRemovePendingImage: removePendingImage,
-    handsFreeControlsVisible: mobileComposerVisibilityRenderState.handsFreeControls.isVisible,
     handsFreeStatusPhase: handsFreeController.state.phase,
     handsFreeStatusLabel: handsFreeController.statusLabel,
     handsFreeStatusEnabled: handsFree,
@@ -3276,12 +3242,17 @@ export default function ChatScreen({ route, navigation }: any) {
     onSleepHandsFree: sleepHandsFreeByUser,
     onResumeHandsFree: resumeHandsFreeByUser,
     onPauseHandsFree: pauseHandsFreeByUser,
-    imageAttachmentRenderState: mobileComposerImageAttachmentRenderState,
+    composerControlHasContent: composerHasContent,
+    composerControlPresentation: composerPresentation,
+    composerControlPendingImageCount: pendingImages.length,
+    composerControlTtsEnabled: ttsEnabled,
+    composerControlEditBeforeSendEnabled: willCancel,
+    composerControlMicPhase: handsFreeController.state.phase,
+    composerControlListening: listening,
+    composerControlMessageQueueEnabled: messageQueueEnabled,
+    composerControlColors: theme.colors,
     onImageAttachmentPress: handlePickImages,
-    textToSpeechRenderState: mobileComposerTextToSpeechRenderState,
     onTextToSpeechPress: toggleTts,
-    editBeforeSendShouldRender: mobileComposerVisibilityRenderState.editBeforeSendControl.shouldRender,
-    editBeforeSendRenderState: mobileComposerEditBeforeSendRenderState,
     onEditBeforeSendPress: () => setWillCancel((current) => !current),
     textEntryInputRef: inputRef,
     textEntryValue: input,
@@ -3294,14 +3265,8 @@ export default function ChatScreen({ route, navigation }: any) {
     textEntryLiveTranscript: liveTranscript,
     textEntryWakePhrase: handsFreeWakePhrase,
     textEntryPlaceholderFallback: composerPresentation.placeholder || composerPresentation.submitTitle,
-    queueActionShouldRender: mobileComposerVisibilityRenderState.queueAction.shouldRender,
-    queueActionRenderState: mobileComposerQueueRenderState,
     onQueueActionPress: queueComposerInput,
-    submitActionRenderState: composerSubmitRenderState,
     onSubmitActionPress: sendComposerInput,
-    micButtonRenderState: mobileComposerMicRenderState,
-    shouldUsePushToTalk: mobileComposerVisibilityRenderState.micButton.shouldUsePushToTalk,
-    shouldUseHandsFreePrimaryControl: mobileComposerVisibilityRenderState.micButton.shouldUseHandsFreePrimaryControl,
     onMicPressIn: handlePushToTalkPressIn,
     onMicPressOut: handlePushToTalkPressOut,
     onMicPress: handleHandsFreePrimaryControl,
@@ -3319,7 +3284,7 @@ export default function ChatScreen({ route, navigation }: any) {
     responseHistoryRemoteApiKey: config.apiKey,
     scrollToBottomVisible: !shouldAutoScroll,
     onScrollToBottom: handleScrollToBottomPress,
-    voiceOverlayVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
+    voiceOverlayListening: listening,
     voiceOverlayHandsFree: handsFree,
     voiceOverlayWillCancel: willCancel,
     voiceOverlayTranscript: liveTranscript,
