@@ -59,7 +59,7 @@ import {
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeFinalHistoryTurnMessages,
-  createChatMessageRuntimeHistoryDisplayMessages,
+  createChatMessageRuntimeRecoveredHistoryMessages,
   createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeProgressMessages,
@@ -2988,13 +2988,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
             await sessionStore.setServerConversationId(recoveryConversationId);
 
-            const recoveredMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
-              serverMessages,
-              {
-                includeId: true,
-                includeToolMessages: false,
-              },
-            );
+            const recoveredMessages = createChatMessageRuntimeRecoveredHistoryMessages<ChatMessage>(serverMessages);
 
             setMessages(recoveredMessages);
             await sessionStore.setMessages(recoveredMessages);

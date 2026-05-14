@@ -3779,6 +3779,22 @@ export function mergeChatMessageRuntimeFinalTurnMessagesWithProgress<
   return preserveChatMessageRuntimeDisplayContentFromProgress(finalTurnMessages, progressMessages);
 }
 
+export function createChatMessageRuntimeRecoveredHistoryMessages<
+  TMessage extends ChatDisplayMessageLike,
+  TToolCall = unknown,
+  TToolResult = unknown,
+>(
+  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
+): TMessage[] {
+  return createChatMessageRuntimeHistoryDisplayMessages(
+    historyMessages,
+    {
+      includeId: true,
+      includeToolMessages: false,
+    },
+  ) as unknown as TMessage[];
+}
+
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
   return formatChatRuntimeToolApprovalRequiredContent(toolName);
 }
