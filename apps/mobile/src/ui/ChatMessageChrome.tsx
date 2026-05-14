@@ -466,6 +466,31 @@ type ChatComposerRuntimeDraftState = {
   removePendingImage: (attachmentId: string) => void;
 };
 
+type ChatComposerTextEntryModifierKeys = {
+  shift: boolean;
+  ctrl: boolean;
+  meta: boolean;
+};
+
+type ChatComposerTextEntryWebKeyPressEvent = {
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  preventDefault?: () => void;
+};
+
+type ChatComposerRuntimeTextEntrySubmissionStateInput = {
+  hasContent: boolean;
+  platform: ChatComposerRuntimeDockChromeInput['platform'];
+  onChangeText: NonNullable<ChatComposerTextEntryProps['onChangeText']>;
+  onSubmit: () => void;
+};
+
+type ChatComposerRuntimeTextEntrySubmissionState = {
+  onChangeText: NonNullable<ChatComposerTextEntryProps['onChangeText']>;
+  onKeyPress: NonNullable<ChatComposerTextEntryProps['onKeyPress']>;
+};
+
 type ChatRuntimeMutableRef<T> = {
   current: T;
 };
@@ -5924,6 +5949,109 @@ export function useChatComposerRuntimeDraftState(): ChatComposerRuntimeDraftStat
     focusComposerInput,
     mergeVoiceTextIntoComposer,
     removePendingImage,
+  };
+}
+
+export function useChatComposerRuntimeTextEntrySubmissionState({
+  hasContent,
+  platform,
+  onChangeText,
+  onSubmit,
+}: ChatComposerRuntimeTextEntrySubmissionStateInput): ChatComposerRuntimeTextEntrySubmissionState {
+  const modifierKeysRef = useRef<ChatComposerTextEntryModifierKeys>({
+    shift: false,
+    ctrl: false,
+    meta: false,
+  });
+  const modifierTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressNextChangeRef = useRef(false);
+
+  const clearModifierTimeout = useCallback(() => {
+    if (modifierTimeoutRef.current) {
+      clearTimeout(modifierTimeoutRef.current);
+      modifierTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetModifierKeys = useCallback(() => {
+    modifierKeysRef.current = { shift: false, ctrl: false, meta: false };
+  }, []);
+
+  useEffect(() => clearModifierTimeout, [clearModifierTimeout]);
+
+  const handleTextEntryKeyPress = useCallback((event: ChatComposerTextEntryKeyPressEvent) => {
+    const key = event.nativeEvent.key;
+
+    if (platform === 'web') {
+      const webEvent = event.nativeEvent as ChatComposerTextEntryWebKeyPressEvent;
+      const isEnter = key === 'Enter';
+      const hasModifier = Boolean(webEvent.shiftKey || webEvent.ctrlKey || webEvent.metaKey);
+
+      if (isEnter && hasModifier) {
+        event.preventDefault?.();
+        webEvent.preventDefault?.();
+        if (hasContent) {
+          onSubmit();
+        }
+      }
+      return;
+    }
+
+    const setModifierWithTimeout = (modifier: keyof ChatComposerTextEntryModifierKeys) => {
+      modifierKeysRef.current[modifier] = true;
+      clearModifierTimeout();
+      modifierTimeoutRef.current = setTimeout(() => {
+        resetModifierKeys();
+      }, 500);
+    };
+
+    if (key === 'Shift') {
+      setModifierWithTimeout('shift');
+      return;
+    }
+
+    if (key === 'Control') {
+      setModifierWithTimeout('ctrl');
+      return;
+    }
+
+    if (key === 'Meta') {
+      setModifierWithTimeout('meta');
+      return;
+    }
+
+    if (key === 'Enter') {
+      clearModifierTimeout();
+      const hasModifier =
+        modifierKeysRef.current.shift ||
+        modifierKeysRef.current.ctrl ||
+        modifierKeysRef.current.meta;
+
+      if (hasModifier) {
+        suppressNextChangeRef.current = true;
+        if (hasContent) {
+          onSubmit();
+        }
+      }
+      resetModifierKeys();
+      return;
+    }
+
+    clearModifierTimeout();
+    resetModifierKeys();
+  }, [clearModifierTimeout, hasContent, onSubmit, platform, resetModifierKeys]);
+
+  const handleTextEntryChangeText = useCallback((text: string) => {
+    if (suppressNextChangeRef.current) {
+      suppressNextChangeRef.current = false;
+      return;
+    }
+    onChangeText(text);
+  }, [onChangeText]);
+
+  return {
+    onChangeText: handleTextEntryChangeText,
+    onKeyPress: handleTextEntryKeyPress,
   };
 }
 
