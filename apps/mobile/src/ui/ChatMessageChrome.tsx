@@ -2040,6 +2040,7 @@ type ChatMessageConversationToolActivityGroupThreadRenderStateInput =
 type ChatMessageConversationToolActivityGroupThreadRenderState = {
   groupRenderState: ToolActivityGroupMobileRenderState | null;
   groupThreadState: ChatMessageConversationToolActivityGroupThreadState;
+  groupOnlyThreadState: ChatMessageConversationToolActivityGroupRuntimeThreadState;
 };
 
 type ChatMessageConversationRuntimeThreadStateInput = {
@@ -2268,14 +2269,20 @@ export function createChatMessageConversationToolActivityGroupThreadRenderState(
     group,
     ...renderStateInput,
   });
+  const groupThreadState = createChatMessageConversationToolActivityGroupThreadState({
+    group,
+    groupRenderState,
+    itemKey,
+    onToggleGroup,
+  });
 
   return {
     groupRenderState,
-    groupThreadState: createChatMessageConversationToolActivityGroupThreadState({
-      group,
-      groupRenderState,
+    groupThreadState,
+    groupOnlyThreadState: createChatMessageConversationToolActivityGroupRuntimeThreadState({
       itemKey,
-      onToggleGroup,
+      groupRenderState,
+      groupThreadState,
     }),
   };
 }

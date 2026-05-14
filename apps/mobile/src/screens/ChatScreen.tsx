@@ -39,7 +39,6 @@ import {
   createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
-  createChatMessageConversationToolActivityGroupRuntimeThreadState,
   createChatMessageConversationToolActivityGroupThreadRenderState,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -3725,6 +3724,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const {
               groupRenderState,
               groupThreadState,
+              groupOnlyThreadState,
             } = createChatMessageConversationToolActivityGroupThreadRenderState({
               group,
               itemIndex: i,
@@ -3733,11 +3733,6 @@ export default function ChatScreen({ route, navigation }: any) {
               inheritedState: expandedMessages,
               colors: theme.colors,
               onToggleGroup: toggleGroupExpansion,
-            });
-            const groupOnlyThreadState = createChatMessageConversationToolActivityGroupRuntimeThreadState({
-              itemKey: i,
-              groupRenderState,
-              groupThreadState,
             });
             if (groupOnlyThreadState.shouldRenderThread) {
               return (
