@@ -3747,15 +3747,7 @@ export default function ChatScreen({ route, navigation }: any) {
               );
             }
 
-            const {
-              visibleMessageContent,
-              renderedToolEntries,
-              displayToolCallCount,
-              isExpanded,
-              isLiveStreamingAssistantMessage,
-              messageRenderState,
-              shouldRenderSurface,
-            } = createChatMessageConversationRenderContext({
+            const messageRenderContext = createChatMessageConversationRenderContext({
               message: m,
               messageIndex: i,
               isResponding: responding,
@@ -3771,12 +3763,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const messageThreadBody = createChatMessageConversationThreadBodyInput({
               message: m,
               messageIndex: i,
-              messageRenderState,
-              visibleMessageContent,
-              renderedToolEntries,
-              displayToolCallCount,
-              isExpanded,
-              isStreaming: isLiveStreamingAssistantMessage,
+              renderContext: messageRenderContext,
               turnDuration: turnDurationEntry,
               conversationId: currentSession?.serverConversationId,
               pendingBranchMessageIndex: branchingMessageIndex,
@@ -3807,7 +3794,7 @@ export default function ChatScreen({ route, navigation }: any) {
               onToggleMessageExpansion: toggleMessageExpansion,
             });
             if (!shouldRenderChatMessageConversationThread({
-              shouldRenderSurface,
+              renderContext: messageRenderContext,
               body: messageThreadBody,
             })) {
               return null;

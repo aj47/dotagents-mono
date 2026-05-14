@@ -274,6 +274,16 @@ type ChatMessageConversationRenderContextInput = {
   colors: Parameters<typeof getChatMessageMobileRenderState>[0]['colors'];
 };
 
+type ChatMessageConversationRenderContext = {
+  visibleMessageContent: string;
+  renderedToolEntries: readonly ChatMessageDisplayToolEntry[];
+  displayToolCallCount: number;
+  isExpanded: boolean;
+  isLiveStreamingAssistantMessage: boolean;
+  messageRenderState: ChatMessageMobileRenderState;
+  shouldRenderSurface: boolean;
+};
+
 type ChatMessageConversationToolActivityGroupRenderStateInput =
   Omit<ToolActivityGroupMobileRenderStateInput, 'group'>
   & {
@@ -1919,7 +1929,7 @@ export type ChatMessageThreadBodyPropsInput =
   };
 
 type ChatMessageConversationThreadVisibilityInput = {
-  shouldRenderSurface: boolean;
+  renderContext: Pick<ChatMessageConversationRenderContext, 'shouldRenderSurface'>;
   body: Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>;
 };
 
@@ -1946,12 +1956,7 @@ type ChatMessageConversationThreadBodyInput = {
     & ChatMessageConversationToolExecutionStackInput['message']
     & ChatMessageInlineActivityPropsInput['message'];
   messageIndex: number;
-  messageRenderState: ChatMessageConversationBodyPropsInput['messageRenderState'];
-  visibleMessageContent: string;
-  renderedToolEntries: ChatMessageConversationToolExecutionStackInput['renderedToolEntries'];
-  displayToolCallCount: number;
-  isExpanded: ChatMessageConversationToolExecutionStackInput['isExpanded'];
-  isStreaming: ChatMessageConversationContentInput['isStreaming'];
+  renderContext: ChatMessageConversationRenderContext;
   turnDuration?: ChatMessageConversationActionSetInput['turnDuration'];
   conversationId?: ChatMessageConversationActionSetInput['conversationId'];
   pendingBranchMessageIndex?: ChatMessageConversationActionSetInput['pendingBranchMessageIndex'];
@@ -2119,7 +2124,7 @@ export function createChatMessageConversationRenderContext({
   expandedMessages,
   resultOnlyToolLabel,
   colors,
-}: ChatMessageConversationRenderContextInput) {
+}: ChatMessageConversationRenderContextInput): ChatMessageConversationRenderContext {
   const messageDisplayState = getChatMessageDisplayState(message, {
     resultOnlyToolLabel,
   });
@@ -2200,10 +2205,10 @@ export function createChatMessageConversationToolActivityGroupThreadState({
 }
 
 export function shouldRenderChatMessageConversationThread({
-  shouldRenderSurface,
+  renderContext,
   body,
 }: ChatMessageConversationThreadVisibilityInput): boolean {
-  return shouldRenderSurface || !!body.inlineActivity;
+  return renderContext.shouldRenderSurface || !!body.inlineActivity;
 }
 
 export function createChatMessageConversationThreadPresentationState({
@@ -2382,12 +2387,7 @@ export function createChatMessageConversationRetryStatusInput({
 export function createChatMessageConversationThreadBodyInput({
   message,
   messageIndex,
-  messageRenderState,
-  visibleMessageContent,
-  renderedToolEntries,
-  displayToolCallCount,
-  isExpanded,
-  isStreaming,
+  renderContext,
   turnDuration,
   conversationId,
   pendingBranchMessageIndex,
@@ -2417,6 +2417,15 @@ export function createChatMessageConversationThreadBodyInput({
   onCopyMessage,
   onToggleMessageExpansion,
 }: ChatMessageConversationThreadBodyInput): ChatMessageThreadBodyPropsInput {
+  const {
+    visibleMessageContent,
+    renderedToolEntries,
+    displayToolCallCount,
+    isExpanded,
+    isLiveStreamingAssistantMessage,
+    messageRenderState,
+  } = renderContext;
+
   return {
     retryStatus: createChatMessageConversationRetryStatusInput({
       message,
@@ -2470,7 +2479,7 @@ export function createChatMessageConversationThreadBodyInput({
       ...createChatMessageConversationContentInput({
         messageIndex,
         visibleMessageContent,
-        isStreaming,
+        isStreaming: isLiveStreamingAssistantMessage,
         colors,
         assetBaseUrl,
         assetAuthToken,
