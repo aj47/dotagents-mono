@@ -63,6 +63,7 @@ import {
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
+  createChatMessageRuntimeUserTextMessage,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -1897,7 +1898,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear any previous failed message when starting a new send
     setLastFailedMessage(null);
 
-    const userMsg: ChatMessage = { role: 'user', content: text };
+    const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage(text);
 	    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
 	    const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;
@@ -2331,7 +2332,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     setDebugInfo(getChatMessageRuntimeDebugMessage('processingQueuedMessage'));
 
-    const userMsg: ChatMessage = { role: 'user', content: text };
+    const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage(text);
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
     const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;

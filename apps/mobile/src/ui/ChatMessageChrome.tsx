@@ -3262,6 +3262,20 @@ export type ChatMessageRuntimeAssistantTextMessage = {
   content: string;
 };
 
+export type ChatMessageRuntimeUserTextMessage = {
+  role: 'user';
+  content: string;
+};
+
+export function createChatMessageRuntimeUserTextMessage(
+  content: string,
+): ChatMessageRuntimeUserTextMessage {
+  return {
+    role: 'user',
+    content,
+  };
+}
+
 export function createChatMessageRuntimeAssistantTextMessage(
   content: string,
 ): ChatMessageRuntimeAssistantTextMessage {

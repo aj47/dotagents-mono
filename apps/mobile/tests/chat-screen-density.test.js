@@ -3523,6 +3523,12 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
   assert.match(screenSource, /updateLastChatMessageRuntimeAssistantErrorMessage\(\s+m,\s+errorMessage,\s+partialContent,\s+\)/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeAssistantErrorContent/);
+  assert.equal(
+    (screenSource.match(/const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage\(text\)/g) || []).length,
+    2,
+  );
+  assert.doesNotMatch(screenSource, /\{ role: 'user', content: text \}/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserTextMessage/);
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeAssistantErrorMessage/);
   assert.match(chatMessageChromeSource, /const errorMessageState = createChatMessageRuntimeAssistantErrorMessage\(errorMessage, partialContent\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantErrorMessage/);
