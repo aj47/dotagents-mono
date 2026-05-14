@@ -46,7 +46,6 @@ import {
   createChatMessageRuntimeDockChromeProps,
   createChatMessageRuntimeDebugPanelsRenderState,
   createChatMessageRuntimeSurfaceChromeProps,
-  createChatMessageRuntimeViewportContentRenderState,
   createChatMessageRuntimeViewportChromeProps,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
@@ -742,16 +741,6 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const {
-    loading: mobileRuntimeLoadingRenderState,
-    homeQuickStarts: mobileRuntimeHomeQuickStartsRenderState,
-  } = useMemo(
-    () => createChatMessageRuntimeViewportContentRenderState({
-      isLoadingMessages: sessionStore.isLoadingMessages,
-      messageCount: messages.length,
-    }),
-    [messages.length, sessionStore.isLoadingMessages],
-  );
   const hasLiveAgentTurn =
     responding ||
     conversationState === 'running' ||
@@ -3192,9 +3181,9 @@ export default function ChatScreen({ route, navigation }: any) {
     onScrollBeginDrag: handleScrollBeginDrag,
     onScrollEndDrag: handleScrollEndDrag,
     scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW.scrollEventThrottleMs,
-    loadingRenderState: mobileRuntimeLoadingRenderState,
+    viewportContentIsLoadingMessages: sessionStore.isLoadingMessages,
+    viewportContentMessageCount: messages.length,
     loadingSpinnerSource: isDark ? darkSpinner : lightSpinner,
-    homeQuickStartsRenderState: mobileRuntimeHomeQuickStartsRenderState,
     quickStartItems: promptQuickStarts,
     isLoadingQuickStartPrompts,
     runningPromptTaskId,

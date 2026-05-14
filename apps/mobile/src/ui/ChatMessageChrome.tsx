@@ -1506,9 +1506,9 @@ type ChatMessageRuntimeViewportChromePropsInput<
     | 'contentInsetAdjustmentBehavior'
   >
   & {
-    loadingRenderState: ChatRuntimeLoadingStateMobileRenderState;
+    viewportContentIsLoadingMessages: ChatMessageRuntimeViewportContentRenderStateInput['isLoadingMessages'];
+    viewportContentMessageCount: ChatMessageRuntimeViewportContentRenderStateInput['messageCount'];
     loadingSpinnerSource: ImageSourcePropType;
-    homeQuickStartsRenderState: ChatRuntimeHomeQuickStartsMobileRenderState;
     quickStartItems: readonly ChatConversationHomeQuickStartItem<TPrompt, TTask>[];
     isLoadingQuickStartPrompts: boolean;
     runningPromptTaskId?: string | null;
@@ -2882,9 +2882,9 @@ export function createChatMessageRuntimeViewportChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
 >({
-  loadingRenderState,
+  viewportContentIsLoadingMessages,
+  viewportContentMessageCount,
   loadingSpinnerSource,
-  homeQuickStartsRenderState,
   quickStartItems,
   isLoadingQuickStartPrompts,
   runningPromptTaskId,
@@ -2901,6 +2901,10 @@ export function createChatMessageRuntimeViewportChromeProps<
   debugPanelsRenderState,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
+  const contentRenderState = createChatMessageRuntimeViewportContentRenderState({
+    isLoadingMessages: viewportContentIsLoadingMessages,
+    messageCount: viewportContentMessageCount,
+  });
   const affordanceRenderState = createChatMessageConversationViewportAffordanceRenderState({
     visibleMessageCount,
     totalMessageCount,
@@ -2917,11 +2921,11 @@ export function createChatMessageRuntimeViewportChromeProps<
     keyboardShouldPersistTaps: viewportRenderState.surface.keyboardShouldPersistTaps,
     contentInsetAdjustmentBehavior: viewportRenderState.surface.contentInsetAdjustmentBehavior,
     loadingState: {
-      renderState: loadingRenderState,
+      renderState: contentRenderState.loading,
       spinnerSource: loadingSpinnerSource,
     },
     homeQuickStarts: {
-      shouldRender: homeQuickStartsRenderState.shouldRender,
+      shouldRender: contentRenderState.homeQuickStarts.shouldRender,
       items: quickStartItems,
       isLoading: isLoadingQuickStartPrompts,
       runningTaskId: runningPromptTaskId,
