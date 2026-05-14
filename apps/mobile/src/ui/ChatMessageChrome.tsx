@@ -90,8 +90,10 @@ import {
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeBranchMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
+  getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
+  getChatRuntimeStepSummaryMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
@@ -1295,6 +1297,22 @@ type ChatMessageStepSummaryCardProps = {
   styles: ChatMessageStepSummaryCardStyles;
 };
 
+type ChatMessageConversationViewportAffordanceRenderStateInput = {
+  visibleMessageCount: number;
+  totalMessageCount: number;
+  hiddenMessageCount: number;
+  messageHistoryLoadIncrement: number;
+  latestStepSummary: Parameters<typeof getChatRuntimeStepSummaryMobileRenderState>[0]['summary'];
+  colors:
+    & Parameters<typeof getChatRuntimeMessageHistoryBannerMobileRenderState>[0]['colors']
+    & Parameters<typeof getChatRuntimeStepSummaryMobileRenderState>[0]['colors'];
+};
+
+type ChatMessageConversationViewportAffordanceRenderState = {
+  historyBanner: Pick<ChatMessageHistoryBannerProps, 'renderState'>;
+  stepSummary: Pick<ChatMessageStepSummaryCardProps, 'renderState'>;
+};
+
 type ChatMessageScrollToBottomButtonProps = {
   renderState: ChatRuntimeScrollToBottomMobileRenderState;
   onPress?: (event: GestureResponderEvent) => void;
@@ -2491,6 +2509,34 @@ export function createChatMessageConversationHistoryWindowState<TMessage>({
     firstVisibleMessageIndex,
     visibleMessages: messages.slice(firstVisibleMessageIndex),
     hiddenMessageCount: firstVisibleMessageIndex,
+  };
+}
+
+export function createChatMessageConversationViewportAffordanceRenderState({
+  visibleMessageCount,
+  totalMessageCount,
+  hiddenMessageCount,
+  messageHistoryLoadIncrement,
+  latestStepSummary,
+  colors,
+}: ChatMessageConversationViewportAffordanceRenderStateInput): ChatMessageConversationViewportAffordanceRenderState {
+  return {
+    historyBanner: {
+      renderState: getChatRuntimeMessageHistoryBannerMobileRenderState({
+        visibleCount: visibleMessageCount,
+        totalCount: totalMessageCount,
+        hiddenCount: hiddenMessageCount,
+        loadIncrement: messageHistoryLoadIncrement,
+        includeScrollHint: true,
+        colors,
+      }),
+    },
+    stepSummary: {
+      renderState: getChatRuntimeStepSummaryMobileRenderState({
+        summary: latestStepSummary,
+        colors,
+      }),
+    },
   };
 }
 

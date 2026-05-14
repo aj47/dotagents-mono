@@ -35,6 +35,7 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationHistoryWindowState,
+  createChatMessageConversationViewportAffordanceRenderState,
   createChatMessageConversationThreadListRenderState,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
@@ -3405,23 +3406,16 @@ export default function ChatScreen({ route, navigation }: any) {
     messages,
     visibleMessageCount,
   });
-  const messageHistoryBannerRenderState = useMemo(
-    () => getChatRuntimeMessageHistoryBannerMobileRenderState({
-      visibleCount: visibleMessages.length,
-      totalCount: messages.length,
-      hiddenCount: hiddenMessageCount,
-      loadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
-      includeScrollHint: true,
+  const conversationViewportAffordanceRenderState = useMemo(
+    () => createChatMessageConversationViewportAffordanceRenderState({
+      visibleMessageCount: visibleMessages.length,
+      totalMessageCount: messages.length,
+      hiddenMessageCount,
+      messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
+      latestStepSummary,
       colors: theme.colors,
     }),
-    [hiddenMessageCount, messages.length, theme.colors, visibleMessages.length],
-  );
-  const latestStepSummaryRenderState = useMemo(
-    () => getChatRuntimeStepSummaryMobileRenderState({
-      summary: latestStepSummary,
-      colors: theme.colors,
-    }),
-    [latestStepSummary, theme.colors],
+    [hiddenMessageCount, latestStepSummary, messages.length, theme.colors, visibleMessages.length],
   );
   const conversationThreadStates = createChatMessageConversationThreadListRenderState({
     allMessages: messages,
@@ -3742,12 +3736,10 @@ export default function ChatScreen({ route, navigation }: any) {
           shortcutRenderState: promptLibraryShortcutRenderState,
         },
         historyBanner: {
-          renderState: messageHistoryBannerRenderState,
+          ...conversationViewportAffordanceRenderState.historyBanner,
           onLoadEarlier: handleLoadEarlierMessages,
         },
-        stepSummary: {
-          renderState: latestStepSummaryRenderState,
-        },
+        stepSummary: conversationViewportAffordanceRenderState.stepSummary,
         debugPanels: mobileRuntimeDebugPanelsRenderState,
       }}
       styles={chatMessageRuntimeSurfaceStyles}
