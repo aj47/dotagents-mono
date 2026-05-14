@@ -1972,7 +1972,9 @@ type ChatComposerRuntimeDockChromePropsInput = {
   pendingImagesRenderState: ChatComposerPendingImagesRailProps['renderState'];
   onRemovePendingImage: ChatComposerPendingImagesRailProps['onRemove'];
   handsFreeControlsVisible: ChatComposerHandsFreeControlsProps['isVisible'];
-  handsFreeStatus: ChatComposerRuntimeHandsFreeControlsProps['status'];
+  handsFreeStatusPhase: ChatComposerRuntimeHandsFreeControlsProps['status']['phase'];
+  handsFreeStatusLabel: ChatComposerRuntimeHandsFreeControlsProps['status']['label'];
+  handsFreeStatusSubtitle: ChatComposerRuntimeHandsFreeControlsProps['status']['subtitle'];
   handsFreeControlState: ChatComposerRuntimeHandsFreeControlsProps['controlState'];
   onWakeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onWake'];
   onSleepHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onSleep'];
@@ -4130,7 +4132,9 @@ export function createChatComposerRuntimeDockProps({
   pendingImagesRenderState,
   onRemovePendingImage,
   handsFreeControlsVisible,
-  handsFreeStatus,
+  handsFreeStatusPhase,
+  handsFreeStatusLabel,
+  handsFreeStatusSubtitle,
   handsFreeControlState,
   onWakeHandsFree,
   onSleepHandsFree,
@@ -4176,7 +4180,11 @@ export function createChatComposerRuntimeDockProps({
     },
     handsFreeControls: {
       isVisible: handsFreeControlsVisible,
-      status: handsFreeStatus,
+      status: {
+        phase: handsFreeStatusPhase,
+        label: handsFreeStatusLabel,
+        subtitle: handsFreeStatusSubtitle,
+      },
       controlState: handsFreeControlState,
       onWake: onWakeHandsFree,
       onSleep: onSleepHandsFree,
