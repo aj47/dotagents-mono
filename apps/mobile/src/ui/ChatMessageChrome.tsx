@@ -265,6 +265,18 @@ export type ChatComposerImageAttachmentAlertInput = ChatImageAttachmentMobileAle
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
 
+export interface ChatMessageRuntimeKillSwitchResultLike {
+  success: boolean;
+  message?: string | null;
+  error?: string | null;
+}
+
+export interface ChatMessageRuntimeKillSwitchResolvedAlertState {
+  title: string;
+  message: string;
+  webMessage: string;
+}
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -3140,6 +3152,36 @@ export function getChatMessageRuntimeKillSwitchAlertState(): ReturnType<
   typeof getChatRuntimeKillSwitchMobileAlertState
 > {
   return getChatRuntimeKillSwitchMobileAlertState();
+}
+
+export function getChatMessageRuntimeKillSwitchResultAlertState(
+  result: ChatMessageRuntimeKillSwitchResultLike,
+  alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
+): ChatMessageRuntimeKillSwitchResolvedAlertState {
+  const alertState = result.success ? alerts.success : alerts.failed;
+  const message = getChatRuntimeAlertMessage(
+    result.success ? result.message : result.error,
+    alertState.fallbackMessage,
+  );
+
+  return {
+    title: alertState.title,
+    message,
+    webMessage: result.success ? message : `${alertState.title}: ${message}`,
+  };
+}
+
+export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState(
+  error: unknown,
+  alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
+): ChatMessageRuntimeKillSwitchResolvedAlertState {
+  const message = getChatRuntimeAlertMessage(error, alerts.connectionFailed.fallbackMessage);
+
+  return {
+    title: alerts.connectionFailed.title,
+    message,
+    webMessage: `${alerts.connectionFailed.title}: ${message}`,
+  };
 }
 
 export function getChatMessageRuntimeBranchAlertState(): ReturnType<

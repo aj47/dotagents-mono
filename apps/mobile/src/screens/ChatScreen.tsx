@@ -76,6 +76,8 @@ import {
   getChatMessageRuntimeDebugState,
   getChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchAlertState,
+  getChatMessageRuntimeKillSwitchConnectionFailedAlertState,
+  getChatMessageRuntimeKillSwitchResultAlertState,
   getChatMessageRuntimeLatestStepSummary,
   getChatMessageRuntimeToolApprovalAlertState,
   getChatMessageToolExecutionCopyFailureAlertState,
@@ -504,18 +506,12 @@ export default function ChatScreen({ route, navigation }: any) {
       if (confirmed) {
         try {
           const result = await client.killSwitch();
-          if (result.success) {
-            window.alert(result.message || mobileRuntimeKillSwitchAlerts.success.fallbackMessage);
-          } else {
-            window.alert(
-              `${mobileRuntimeKillSwitchAlerts.failed.title}: ${result.error || mobileRuntimeKillSwitchAlerts.failed.fallbackMessage}`,
-            );
-          }
+          const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result, mobileRuntimeKillSwitchAlerts);
+          window.alert(resultAlert.webMessage);
         } catch (e: any) {
           console.error('[ChatScreen] Kill switch error:', e);
-          window.alert(
-            `${mobileRuntimeKillSwitchAlerts.connectionFailed.title}: ${formatChatMessageRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage)}`,
-          );
+          const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e, mobileRuntimeKillSwitchAlerts);
+          window.alert(failedAlert.webMessage);
         }
       }
       return;
@@ -532,23 +528,12 @@ export default function ChatScreen({ route, navigation }: any) {
           onPress: async () => {
             try {
               const result = await client.killSwitch();
-              if (result.success) {
-                Alert.alert(
-                  mobileRuntimeKillSwitchAlerts.success.title,
-                  result.message || mobileRuntimeKillSwitchAlerts.success.fallbackMessage,
-                );
-              } else {
-                Alert.alert(
-                  mobileRuntimeKillSwitchAlerts.failed.title,
-                  result.error || mobileRuntimeKillSwitchAlerts.failed.fallbackMessage,
-                );
-              }
+              const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result, mobileRuntimeKillSwitchAlerts);
+              Alert.alert(resultAlert.title, resultAlert.message);
             } catch (e: any) {
               console.error('[ChatScreen] Kill switch error:', e);
-              Alert.alert(
-                mobileRuntimeKillSwitchAlerts.connectionFailed.title,
-                formatChatMessageRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage),
-              );
+              const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e, mobileRuntimeKillSwitchAlerts);
+              Alert.alert(failedAlert.title, failedAlert.message);
             }
           },
         },
