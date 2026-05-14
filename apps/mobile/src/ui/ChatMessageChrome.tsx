@@ -421,6 +421,11 @@ type ChatRuntimeAgentSelectorOverlayState = {
   closeAgentSelector: () => void;
 };
 
+type ChatComposerRuntimeEditBeforeSendState = {
+  editBeforeSendEnabled: boolean;
+  toggleEditBeforeSend: () => void;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -5702,6 +5707,19 @@ export function useChatRuntimeAgentSelectorOverlayState(): ChatRuntimeAgentSelec
     agentSelectorVisible,
     openAgentSelector,
     closeAgentSelector,
+  };
+}
+
+export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntimeEditBeforeSendState {
+  const [editBeforeSendEnabled, setEditBeforeSendEnabled] = useState(false);
+
+  const toggleEditBeforeSend = useCallback(() => {
+    setEditBeforeSendEnabled((current) => !current);
+  }, []);
+
+  return {
+    editBeforeSendEnabled,
+    toggleEditBeforeSend,
   };
 }
 

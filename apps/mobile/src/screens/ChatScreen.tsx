@@ -28,6 +28,7 @@ import {
   useChatConversationHomePromptTaskRunState,
   useChatConversationHomePromptEditorState,
   useChatRuntimeAgentSelectorOverlayState,
+  useChatComposerRuntimeEditBeforeSendState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -300,6 +301,10 @@ export default function ChatScreen({ route, navigation }: any) {
     openAgentSelector,
     closeAgentSelector,
   } = useChatRuntimeAgentSelectorOverlayState();
+  const {
+    editBeforeSendEnabled: willCancel,
+    toggleEditBeforeSend,
+  } = useChatComposerRuntimeEditBeforeSendState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -654,7 +659,6 @@ export default function ChatScreen({ route, navigation }: any) {
   });
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
-	  const [willCancel, setWillCancel] = useState(false);
 	  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
 	  useEffect(() => {
 		if (!handsFreeDebugEnabled) {
@@ -2449,7 +2453,7 @@ export default function ChatScreen({ route, navigation }: any) {
       composerControlColors: theme.colors,
       onImageAttachmentPress: handlePickImages,
       onTextToSpeechPress: toggleTts,
-      onEditBeforeSendPress: () => setWillCancel((current) => !current),
+      onEditBeforeSendPress: toggleEditBeforeSend,
       textEntryInputRef: inputRef,
       textEntryValue: input,
       onTextEntryChangeText: handleInputChange,

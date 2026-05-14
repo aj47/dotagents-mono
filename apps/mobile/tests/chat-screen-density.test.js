@@ -1435,6 +1435,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /mobileComposerQueueRenderState/);
   assert.doesNotMatch(screenSource, /composerSubmitRenderState/);
   assert.doesNotMatch(screenSource, /mobileComposerMicRenderState/);
+  assert.match(screenSource, /useChatComposerRuntimeEditBeforeSendState,/);
+  assert.match(screenSource, /const \{\s+editBeforeSendEnabled: willCancel,\s+toggleEditBeforeSend,\s+\} = useChatComposerRuntimeEditBeforeSendState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeEditBeforeSendState/);
+  assert.match(chatMessageChromeSource, /const \[editBeforeSendEnabled, setEditBeforeSendEnabled\] = useState\(false\);/);
+  assert.doesNotMatch(screenSource, /const \[willCancel, setWillCancel\] = useState\(false\);/);
   assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,\s+composerControlPendingImageCount: pendingImages\.length,\s+composerControlTtsEnabled: ttsEnabled,\s+composerControlEditBeforeSendEnabled: willCancel,\s+composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+composerControlColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState\(\{\s+conversationState: composerControlConversationState,\s+isResponding: composerControlIsResponding,\s+isQueueEnabled: composerControlMessageQueueEnabled,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const controlRenderState = createChatComposerRuntimeControlRenderState\(\{\s+hasContent: composerControlHasContent,\s+handsFree: textEntryHandsFree,\s+presentation: composerControlPresentation,[\s\S]*?colors: composerControlColors,\s+\}\);/);
@@ -1458,7 +1463,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /textToSpeechRenderState:/);
   assert.doesNotMatch(screenSource, /editBeforeSendShouldRender:/);
   assert.doesNotMatch(screenSource, /editBeforeSendRenderState:/);
-  assert.match(screenSource, /onImageAttachmentPress: handlePickImages,\s+onTextToSpeechPress: toggleTts,\s+onEditBeforeSendPress: \(\) => setWillCancel\(\(current\) => !current\),/);
+  assert.match(screenSource, /onImageAttachmentPress: handlePickImages,\s+onTextToSpeechPress: toggleTts,\s+onEditBeforeSendPress: toggleEditBeforeSend,/);
   assert.match(chatMessageChromeSource, /imageAttachmentControl: \{\s+renderState: controlRenderState\.imageAttachment,\s+onPress: onImageAttachmentPress,\s+\.\.\.chrome\.imageAttachmentControl,/);
   assert.match(chatMessageChromeSource, /textToSpeechControl: \{\s+renderState: controlRenderState\.textToSpeech,\s+onPress: onTextToSpeechPress,\s+\.\.\.chrome\.textToSpeechControl,/);
   assert.match(chatMessageChromeSource, /editBeforeSendControl: \{\s+shouldRender: controlRenderState\.visibility\.editBeforeSendControl\.shouldRender,\s+renderState: controlRenderState\.editBeforeSend,\s+onPress: onEditBeforeSendPress,\s+\.\.\.chrome\.editBeforeSendControl,/);
