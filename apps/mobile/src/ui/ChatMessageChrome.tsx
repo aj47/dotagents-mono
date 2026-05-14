@@ -391,6 +391,13 @@ export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatM
   webMessage: string;
 }
 
+type ChatConversationHomePromptTaskRunState = {
+  runningPromptTaskId: string | null;
+  canRunPromptTask: boolean;
+  beginPromptTaskRun: (taskId: string) => void;
+  clearPromptTaskRun: () => void;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -5577,6 +5584,25 @@ export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState 
 
 export function getChatMessageCopyFeedbackResetDelayMs(): number {
   return getChatMessageCopyFeedbackState().feedbackResetDelayMs;
+}
+
+export function useChatConversationHomePromptTaskRunState(): ChatConversationHomePromptTaskRunState {
+  const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
+
+  const beginPromptTaskRun = useCallback((taskId: string) => {
+    setRunningPromptTaskId(taskId);
+  }, []);
+
+  const clearPromptTaskRun = useCallback(() => {
+    setRunningPromptTaskId(null);
+  }, []);
+
+  return {
+    runningPromptTaskId,
+    canRunPromptTask: runningPromptTaskId === null,
+    beginPromptTaskRun,
+    clearPromptTaskRun,
+  };
 }
 
 export function useChatMessageRuntimeBranchProgressState({

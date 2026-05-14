@@ -3819,6 +3819,14 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
 
 test('replaces the empty mobile chat home state with quick-start launchers', () => {
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,\s+quickStartCanAddPrompt: Boolean\(settingsClient\),[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
+  assert.match(screenSource, /useChatConversationHomePromptTaskRunState,/);
+  assert.match(screenSource, /const \{\s+runningPromptTaskId,\s+canRunPromptTask,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\} = useChatConversationHomePromptTaskRunState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptTaskRunState/);
+  assert.match(chatMessageChromeSource, /const \[runningPromptTaskId, setRunningPromptTaskId\] = useState<string \| null>\(null\);/);
+  assert.match(screenSource, /if \(!settingsClient \|\| !canRunPromptTask\) return;/);
+  assert.match(screenSource, /beginPromptTaskRun\(task\.id\);/);
+  assert.match(screenSource, /clearPromptTaskRun\(\);/);
+  assert.doesNotMatch(screenSource, /const \[runningPromptTaskId, setRunningPromptTaskId\] = useState<string \| null>\(null\);/);
   assert.match(screenSource, /runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /runningTaskId: runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.homeQuickStarts\}\s+styles=\{styles\.homeQuickStarts\}/);

@@ -25,6 +25,7 @@ import {
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
+  useChatConversationHomePromptTaskRunState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -182,7 +183,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
-  const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
+  const {
+    runningPromptTaskId,
+    canRunPromptTask,
+    beginPromptTaskRun,
+    clearPromptTaskRun,
+  } = useChatConversationHomePromptTaskRunState();
   const [remoteTtsProvider, setRemoteTtsProvider] =
     useState<ChatMessageRuntimeRemoteSpeechProvider>(DEFAULT_REMOTE_SPEECH_SETTINGS.provider);
   const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.voice);
@@ -424,8 +430,8 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   const handleRunPromptTask = useCallback(async (task: Loop) => {
-    if (!settingsClient || runningPromptTaskId) return;
-    setRunningPromptTaskId(task.id);
+    if (!settingsClient || !canRunPromptTask) return;
+    beginPromptTaskRun(task.id);
     try {
       await settingsClient.runLoop(task.id);
       const taskStartedAlert = getChatConversationHomePromptTaskStartedAlertState(task.name);
@@ -434,9 +440,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const failedAlert = getChatConversationHomePromptTaskRunFailedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
-      setRunningPromptTaskId(null);
+      clearPromptTaskRun();
     }
-  }, [runningPromptTaskId, settingsClient]);
+  }, [beginPromptTaskRun, canRunPromptTask, clearPromptTaskRun, settingsClient]);
 
   const openAddPromptModal = useCallback(() => {
     setEditingPrompt(null);
