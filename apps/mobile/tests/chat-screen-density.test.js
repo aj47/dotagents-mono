@@ -1622,10 +1622,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /editBeforeSend: getChatComposerEditBeforeSendMobileRenderState\(\{\s+isEnabled: editBeforeSendEnabled,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState\(\{\s+label: micLabel,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,\s+\}\),/);
   assert.match(screenSource, /useChatRuntimeTextToSpeechToggleChromeActionsState,/);
-  assert.match(screenSource, /const \{ toggleTextToSpeech: toggleTts \} = useChatRuntimeTextToSpeechToggleChromeActionsState\(\{\s+ttsEnabled,\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+handsFreePhaseRef,\s+clearIntendedSpeakingMessage,\s+clearQueuedResponseSpeech,\s+clearSpeakingMessage,\s+stopRemoteSpeech: stopRemoteTts,\s+voiceLog,\s+\}\);/);
+  assert.match(screenSource, /const \{ toggleTextToSpeech: toggleTts \} = useChatRuntimeTextToSpeechToggleChromeActionsState\(\{\s+ttsEnabled,\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+handsFreePhaseRef,\s+clearIntendedSpeakingMessage,\s+clearQueuedResponseSpeech,\s+clearSpeakingMessage,\s+voiceLog,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeTextToSpeechToggleActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeTextToSpeechToggleChromeActionsState/);
-  assert.match(chatMessageChromeSource, /useChatRuntimeTextToSpeechToggleActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,/);
+  assert.match(chatMessageChromeSource, /useChatRuntimeTextToSpeechToggleActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,[\s\S]*?stopRemoteSpeech: stopRemoteTts,/);
   assert.match(chatMessageChromeSource, /clearQueuedResponseSpeech\(\);[\s\S]*?clearSpeakingMessage\(\);/);
   assert.doesNotMatch(screenSource, /const toggleTts = async \(\) => \{/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = getChatComposerMobileSurfaceState\(\);/);
@@ -3673,14 +3673,14 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const \[speakingMessageIndex, setSpeakingMessageIndex\] = useState<number \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /const intendedSpeakingIndexRef = useRef<number \| null>\(null\);/);
   assert.match(screenSource, /useChatMessageRuntimeSpeechChromeActionsState,/);
-  assert.match(screenSource, /const \{ speakMessage \} = useChatMessageRuntimeSpeechChromeActionsState\(\{\s+speakingMessageIndex,\s+config,\s+effectiveTtsProvider,\s+effectiveRemoteTtsVoice,\s+effectiveRemoteTtsModel,\s+effectiveRemoteTtsRate,\s+handsFree,\s+handsFreeController,\s+intendedSpeakingIndexRef,\s+setIntendedSpeakingMessage,\s+startSpeakingMessage,\s+clearSpeakingMessage,\s+clearIntendedSpeakingMessage,\s+speakRemote: speakRemoteTts,\s+stopRemoteSpeech: stopRemoteTts,\s+voiceLog,\s+\}\);/);
+  assert.match(screenSource, /const \{ speakMessage \} = useChatMessageRuntimeSpeechChromeActionsState\(\{\s+speakingMessageIndex,\s+config,\s+effectiveTtsProvider,\s+effectiveRemoteTtsVoice,\s+effectiveRemoteTtsModel,\s+effectiveRemoteTtsRate,\s+handsFree,\s+handsFreeController,\s+intendedSpeakingIndexRef,\s+setIntendedSpeakingMessage,\s+startSpeakingMessage,\s+clearSpeakingMessage,\s+clearIntendedSpeakingMessage,\s+voiceLog,\s+\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeSpeechChromeCleanupState,/);
-  assert.match(screenSource, /useChatMessageRuntimeSpeechChromeCleanupState\(\{\s+stopRemoteSpeech: stopRemoteTts,\s+\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeSpeechChromeCleanupState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechCleanupState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechChromeActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechChromeCleanupState/);
-  assert.match(chatMessageChromeSource, /speakNative: Speech\.speak,[\s\S]*?stopNativeSpeech: Speech\.stop,/);
+  assert.match(chatMessageChromeSource, /speakNative: Speech\.speak,[\s\S]*?stopNativeSpeech: Speech\.stop,[\s\S]*?speakRemote: speakRemoteTts,[\s\S]*?stopRemoteSpeech: stopRemoteTts,/);
   assert.match(chatMessageChromeSource, /return \(\) => \{[\s\S]*?stopNativeSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);/);
   assert.match(chatMessageChromeSource, /setIntendedSpeakingMessage\(messageIndex\);/);
   assert.match(chatMessageChromeSource, /startSpeakingMessage\(messageIndex\);/);
@@ -4008,14 +4008,14 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(screenSource, /useChatMessageRuntimeResponseHistoryState,/);
   assert.match(screenSource, /const \{\s+respondToUserHistory,\s+playedResponseEventIdsRef,\s+queuedResponseEventsRef,\s+activeAutoSpeechEventIdRef,\s+recentAutoSpeechByTextRef,\s+replaceResponseHistory,\s+createFallbackResponseEvent,\s+mergeResponseEvents,\s+clearQueuedResponseSpeech,\s+resetResponseSpeechPlaybackState,\s+\} = useChatMessageRuntimeResponseHistoryState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeAssistantSpeechChromeActionsState,/);
-  assert.match(screenSource, /const \{ speakAssistantResponse \} = useChatMessageRuntimeAssistantSpeechChromeActionsState\(\{\s+ttsEnabledRef,\s+recentAutoSpeechByTextRef,\s+config,\s+effectiveTtsProvider,\s+effectiveRemoteTtsVoice,\s+effectiveRemoteTtsModel,\s+effectiveRemoteTtsRate,\s+handsFree,\s+handsFreeController,\s+speakRemote: speakRemoteTts,\s+voiceLog,\s+\}\);/);
+  assert.match(screenSource, /const \{ speakAssistantResponse \} = useChatMessageRuntimeAssistantSpeechChromeActionsState\(\{\s+ttsEnabledRef,\s+recentAutoSpeechByTextRef,\s+config,\s+effectiveTtsProvider,\s+effectiveRemoteTtsVoice,\s+effectiveRemoteTtsModel,\s+effectiveRemoteTtsRate,\s+handsFree,\s+handsFreeController,\s+voiceLog,\s+\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeResponseSpeechQueueActionsState,/);
   assert.match(screenSource, /const \{ enqueueResponseEventsForSpeech \} = useChatMessageRuntimeResponseSpeechQueueActionsState\(\{\s+isTextToSpeechEnabled: config\.ttsEnabled !== false,\s+ttsEnabledRef,\s+playedResponseEventIdsRef,\s+queuedResponseEventsRef,\s+activeAutoSpeechEventIdRef,\s+speakAssistantResponse,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseSpeechQueueActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeAssistantSpeechActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeAssistantSpeechChromeActionsState/);
-  assert.match(chatMessageChromeSource, /speakNative: Speech\.speak,/);
+  assert.match(chatMessageChromeSource, /speakNative: Speech\.speak,[\s\S]*?speakRemote: speakRemoteTts,/);
   assert.match(chatMessageChromeSource, /export const CHAT_MESSAGE_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;/);
   assert.match(chatMessageChromeSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
@@ -4148,6 +4148,8 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(chatMessageChromeSource, /providerId: effectiveTtsProvider/);
   assert.match(chatMessageChromeSource, /model: effectiveRemoteTtsModel \?\? undefined/);
   assert.doesNotMatch(screenSource, /effectiveTtsProvider === 'edge'/);
+  assert.doesNotMatch(screenSource, /speakRemoteTts|stopRemoteTts/);
+  assert.match(chatMessageChromeSource, /import \{ speakRemoteTts, stopRemoteTts \} from '\.\.\/lib\/remoteTts';/);
 });
 
 test('uses shared runtime presentation for mobile request and queue debug copy', () => {

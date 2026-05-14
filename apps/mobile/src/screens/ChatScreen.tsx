@@ -98,7 +98,6 @@ import {
 import type {
   ChatConversationHomeQuickStartItem,
 } from '../ui/ChatMessageChrome';
-import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
@@ -500,7 +499,6 @@ export default function ChatScreen({ route, navigation }: any) {
     clearIntendedSpeakingMessage,
     clearQueuedResponseSpeech,
     clearSpeakingMessage,
-    stopRemoteSpeech: stopRemoteTts,
     voiceLog,
   });
 
@@ -569,7 +567,6 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeRef,
     setHandsFreeRefValue,
     stopRecognitionOnly,
-    stopRemoteSpeech: stopRemoteTts,
     setDebugInfo,
   });
 
@@ -604,7 +601,6 @@ export default function ChatScreen({ route, navigation }: any) {
     effectiveRemoteTtsRate,
     handsFree,
     handsFreeController,
-    speakRemote: speakRemoteTts,
     voiceLog,
   });
 
@@ -631,14 +627,10 @@ export default function ChatScreen({ route, navigation }: any) {
     startSpeakingMessage,
     clearSpeakingMessage,
     clearIntendedSpeakingMessage,
-    speakRemote: speakRemoteTts,
-    stopRemoteSpeech: stopRemoteTts,
     voiceLog,
   });
 
-  useChatMessageRuntimeSpeechChromeCleanupState({
-    stopRemoteSpeech: stopRemoteTts,
-  });
+  useChatMessageRuntimeSpeechChromeCleanupState();
 
   useChatConversationHomeQuickStartCatalogLoadState({
     quickStartClient: settingsClient,

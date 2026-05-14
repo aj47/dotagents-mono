@@ -28,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
+import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   getChatDisplayExpansionState,
@@ -910,7 +911,7 @@ type ChatMessageRuntimeAssistantSpeechActionsStateInput = {
 
 type ChatMessageRuntimeAssistantSpeechChromeActionsStateInput = Omit<
   ChatMessageRuntimeAssistantSpeechActionsStateInput,
-  'speakNative'
+  'speakNative' | 'speakRemote'
 >;
 
 type ChatMessageRuntimeAssistantSpeechActionsState = {
@@ -985,7 +986,7 @@ type ChatMessageRuntimeSpeechActionsStateInput = {
 
 type ChatMessageRuntimeSpeechChromeActionsStateInput = Omit<
   ChatMessageRuntimeSpeechActionsStateInput,
-  'speakNative' | 'stopNativeSpeech'
+  'speakNative' | 'stopNativeSpeech' | 'speakRemote' | 'stopRemoteSpeech'
 >;
 
 type ChatMessageRuntimeSpeechActionsState = {
@@ -999,7 +1000,7 @@ type ChatMessageRuntimeSpeechCleanupStateInput = {
 
 type ChatMessageRuntimeSpeechChromeCleanupStateInput = Omit<
   ChatMessageRuntimeSpeechCleanupStateInput,
-  'stopNativeSpeech'
+  'stopNativeSpeech' | 'stopRemoteSpeech'
 >;
 
 type ChatComposerRuntimeEditBeforeSendState = {
@@ -1137,7 +1138,7 @@ type ChatRuntimeHandsFreeToggleActionsStateInput<TConfig extends object> = {
 
 type ChatRuntimeHandsFreeToggleChromeActionsStateInput<TConfig extends object> = Omit<
   ChatRuntimeHandsFreeToggleActionsStateInput<TConfig>,
-  'stopSpeech'
+  'stopSpeech' | 'stopRemoteSpeech'
 >;
 
 type ChatRuntimeHandsFreeToggleActionsState = {
@@ -1162,7 +1163,7 @@ type ChatRuntimeTextToSpeechToggleActionsStateInput<TConfig extends object> = {
 
 type ChatRuntimeTextToSpeechToggleChromeActionsStateInput<TConfig extends object> = Omit<
   ChatRuntimeTextToSpeechToggleActionsStateInput<TConfig>,
-  'stopSpeech'
+  'stopSpeech' | 'stopRemoteSpeech'
 >;
 
 type ChatRuntimeTextToSpeechToggleActionsState = {
@@ -8813,6 +8814,7 @@ export function useChatMessageRuntimeAssistantSpeechChromeActionsState(
   return useChatMessageRuntimeAssistantSpeechActionsState({
     ...input,
     speakNative: Speech.speak,
+    speakRemote: speakRemoteTts,
   });
 }
 
@@ -8978,6 +8980,8 @@ export function useChatMessageRuntimeSpeechChromeActionsState(
     ...input,
     speakNative: Speech.speak,
     stopNativeSpeech: Speech.stop,
+    speakRemote: speakRemoteTts,
+    stopRemoteSpeech: stopRemoteTts,
   });
 }
 
@@ -8993,12 +8997,12 @@ export function useChatMessageRuntimeSpeechCleanupState({
   }, [stopNativeSpeech, stopRemoteSpeech]);
 }
 
-export function useChatMessageRuntimeSpeechChromeCleanupState({
-  stopRemoteSpeech,
-}: ChatMessageRuntimeSpeechChromeCleanupStateInput): void {
+export function useChatMessageRuntimeSpeechChromeCleanupState(
+  _input: ChatMessageRuntimeSpeechChromeCleanupStateInput = {},
+): void {
   useChatMessageRuntimeSpeechCleanupState({
     stopNativeSpeech: Speech.stop,
-    stopRemoteSpeech,
+    stopRemoteSpeech: stopRemoteTts,
   });
 }
 
@@ -9215,6 +9219,7 @@ export function useChatRuntimeHandsFreeToggleChromeActionsState<TConfig extends 
   return useChatRuntimeHandsFreeToggleActionsState({
     ...input,
     stopSpeech: Speech.stop,
+    stopRemoteSpeech: stopRemoteTts,
   });
 }
 
@@ -9276,6 +9281,7 @@ export function useChatRuntimeTextToSpeechToggleChromeActionsState<TConfig exten
   return useChatRuntimeTextToSpeechToggleActionsState({
     ...input,
     stopSpeech: Speech.stop,
+    stopRemoteSpeech: stopRemoteTts,
   });
 }
 

@@ -115,10 +115,10 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
   assert.match(screenSource, /useChatRuntimeHandsFreeToggleChromeActionsState,/);
-  assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleChromeActionsState\(\{\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+setHandsFreeRefValue,\s+stopRecognitionOnly,\s+stopRemoteSpeech: stopRemoteTts,\s+setDebugInfo,\s+\}\);/);
+  assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleChromeActionsState\(\{\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+setHandsFreeRefValue,\s+stopRecognitionOnly,\s+setDebugInfo,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleChromeActionsState/);
-  assert.match(chatMessageChromeSource, /useChatRuntimeHandsFreeToggleActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,/);
+  assert.match(chatMessageChromeSource, /useChatRuntimeHandsFreeToggleActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,[\s\S]*?stopRemoteSpeech: stopRemoteTts,/);
   assert.match(chatMessageChromeSource, /const next = !handsFreeRef\.current;\s+setHandsFreeRefValue\(next\);/);
   assert.match(chatMessageChromeSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\(\);[\s\S]*?stopSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);[\s\S]*?getChatComposerHandsFreeDebugMessage\('disabled'\)/);
   assert.doesNotMatch(screenSource, /const next = !handsFreeRef\.current;\s*setHandsFreeRefValue\(next\);/);
