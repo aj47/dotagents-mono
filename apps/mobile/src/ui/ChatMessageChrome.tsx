@@ -3174,6 +3174,24 @@ type ChatMessageRuntimeToolApprovalResponseState = {
   clearToolApprovalResponse: () => void;
 };
 
+type ChatMessageRuntimeToolApprovalResponseClient = {
+  respondToToolApproval: (approvalId: string, approved: boolean) => Promise<{ success: boolean }>;
+};
+
+type ChatMessageRuntimeToolApprovalActionsStateInput<
+  TMessage extends ChatMessageRuntimeToolApprovalStateMessageLike,
+> = {
+  approvalClient?: ChatMessageRuntimeToolApprovalResponseClient | null;
+  beginToolApprovalResponse: (approvalId: string) => void;
+  clearToolApprovalResponse: () => void;
+  setMessages: Dispatch<SetStateAction<TMessage[]>>;
+  showAlert: (title: string, message: string) => void;
+};
+
+type ChatMessageRuntimeToolApprovalActionsState = {
+  respondToToolApproval: (approvalId: string, approved: boolean) => Promise<void>;
+};
+
 type ChatMessageRuntimeScrollControllerInput = {
   messages: readonly unknown[];
   sessionId?: string | null;
@@ -6635,6 +6653,49 @@ export function useChatMessageRuntimeToolApprovalResponseState({
     pendingToolApprovalResponseId,
     beginToolApprovalResponse,
     clearToolApprovalResponse,
+  };
+}
+
+export function useChatMessageRuntimeToolApprovalActionsState<
+  TMessage extends ChatMessageRuntimeToolApprovalStateMessageLike,
+>({
+  approvalClient,
+  beginToolApprovalResponse,
+  clearToolApprovalResponse,
+  setMessages,
+  showAlert,
+}: ChatMessageRuntimeToolApprovalActionsStateInput<TMessage>): ChatMessageRuntimeToolApprovalActionsState {
+  const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
+    if (!approvalClient) {
+      const connectionRequiredAlert = getChatMessageRuntimeToolApprovalConnectionRequiredAlertState();
+      showAlert(connectionRequiredAlert.title, connectionRequiredAlert.message);
+      return;
+    }
+
+    beginToolApprovalResponse(approvalId);
+    try {
+      const response = await approvalClient.respondToToolApproval(approvalId, approved);
+      setMessages((current) => removeChatMessageRuntimeToolApprovalMessage(current, approvalId));
+      if (!response.success) {
+        const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState();
+        showAlert(unavailableAlert.title, unavailableAlert.message);
+      }
+    } catch (error: unknown) {
+      const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error);
+      showAlert(failedAlert.title, failedAlert.message);
+    } finally {
+      clearToolApprovalResponse();
+    }
+  }, [
+    approvalClient,
+    beginToolApprovalResponse,
+    clearToolApprovalResponse,
+    setMessages,
+    showAlert,
+  ]);
+
+  return {
+    respondToToolApproval,
   };
 }
 

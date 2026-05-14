@@ -92,16 +92,13 @@ import {
   getChatMessageRuntimeKillSwitchResultAlertState,
   getChatMessageRuntimeLatestStepSummary,
   resolveChatMessageRuntimeConversationStateFromProgress,
-  getChatMessageRuntimeToolApprovalConnectionRequiredAlertState,
-  getChatMessageRuntimeToolApprovalFailedAlertState,
-  getChatMessageRuntimeToolApprovalUnavailableAlertState,
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeToolApprovalResponseState,
+  useChatMessageRuntimeToolApprovalActionsState,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
-  removeChatMessageRuntimeToolApprovalMessage,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -631,28 +628,13 @@ export default function ChatScreen({ route, navigation }: any) {
     ],
   );
 
-  const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
-    if (!settingsClient) {
-      const connectionRequiredAlert = getChatMessageRuntimeToolApprovalConnectionRequiredAlertState();
-      Alert.alert(connectionRequiredAlert.title, connectionRequiredAlert.message);
-      return;
-    }
-
-    beginToolApprovalResponse(approvalId);
-    try {
-      const response = await settingsClient.respondToToolApproval(approvalId, approved);
-      setMessages((current) => removeChatMessageRuntimeToolApprovalMessage(current, approvalId));
-      if (!response.success) {
-        const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState();
-        Alert.alert(unavailableAlert.title, unavailableAlert.message);
-      }
-    } catch (error: any) {
-      const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error);
-      Alert.alert(failedAlert.title, failedAlert.message);
-    } finally {
-      clearToolApprovalResponse();
-    }
-  }, [beginToolApprovalResponse, clearToolApprovalResponse, settingsClient]);
+  const { respondToToolApproval } = useChatMessageRuntimeToolApprovalActionsState<ChatMessage>({
+    approvalClient: settingsClient,
+    beginToolApprovalResponse,
+    clearToolApprovalResponse,
+    setMessages,
+    showAlert: Alert.alert,
+  });
   const {
     visibleMessageCount,
     loadEarlierMessages,

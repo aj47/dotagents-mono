@@ -257,7 +257,10 @@ test('shows the shared total agent time in the mobile chat header', () => {
 });
 
 test('lets mobile respond to desktop tool approval requests from progress updates', () => {
-  assert.match(screenSource, /settingsClient\.respondToToolApproval\(approvalId, approved\)/);
+  assert.match(screenSource, /useChatMessageRuntimeToolApprovalActionsState,/);
+  assert.match(screenSource, /const \{ respondToToolApproval \} = useChatMessageRuntimeToolApprovalActionsState<ChatMessage>\(\{\s+approvalClient: settingsClient,\s+beginToolApprovalResponse,\s+clearToolApprovalResponse,\s+setMessages,\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /settingsClient\.respondToToolApproval\(approvalId, approved\)/);
+  assert.match(chatMessageChromeSource, /approvalClient\.respondToToolApproval\(approvalId, approved\)/);
   assert.doesNotMatch(screenSource, /variant: 'approval'/);
   assert.doesNotMatch(screenSource, /toolApproval: update\.pendingToolApproval/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeToolApprovalRequiredContent,/);
@@ -268,10 +271,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolApprovalRequiredMessage/);
   assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeToolApprovalRequiredContent\(toolApproval\.toolName\)/);
-  assert.match(screenSource, /removeChatMessageRuntimeToolApprovalMessage,/);
-  assert.match(screenSource, /setMessages\(\(current\) => removeChatMessageRuntimeToolApprovalMessage\(current, approvalId\)\)/);
+  assert.doesNotMatch(screenSource, /removeChatMessageRuntimeToolApprovalMessage,/);
+  assert.doesNotMatch(screenSource, /setMessages\(\(current\) => removeChatMessageRuntimeToolApprovalMessage\(current, approvalId\)\)/);
   assert.match(chatMessageChromeSource, /export function removeChatMessageRuntimeToolApprovalMessage/);
   assert.match(chatMessageChromeSource, /message\.toolApproval\?\.approvalId !== approvalId/);
+  assert.match(chatMessageChromeSource, /setMessages\(\(current\) => removeChatMessageRuntimeToolApprovalMessage\(current, approvalId\)\)/);
   assert.doesNotMatch(screenSource, /current\.filter\(\(message\) => message\.toolApproval\?\.approvalId !== approvalId\)/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileAlertState,/);
@@ -292,11 +296,14 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(screenSource, /useChatMessageRuntimeToolApprovalResponseState,/);
   assert.match(screenSource, /const \{\s+pendingToolApprovalResponseId,\s+beginToolApprovalResponse,\s+clearToolApprovalResponse,\s+\} = useChatMessageRuntimeToolApprovalResponseState\(\{\s+sessionId: sessionStore\.currentSessionId,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeToolApprovalResponseState/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeToolApprovalActionsState/);
   assert.match(chatMessageChromeSource, /const \[pendingToolApprovalResponseId, setPendingToolApprovalResponseId\] = useState<string \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /setPendingToolApprovalResponseId\(null\);[\s\S]*?\}, \[sessionId\]\);/);
   assert.doesNotMatch(screenSource, /const \[pendingToolApprovalResponseId, setPendingToolApprovalResponseId\] = useState<string \| null>\(null\);/);
-  assert.match(screenSource, /beginToolApprovalResponse\(approvalId\);/);
-  assert.match(screenSource, /clearToolApprovalResponse\(\);/);
+  assert.doesNotMatch(screenSource, /beginToolApprovalResponse\(approvalId\);/);
+  assert.doesNotMatch(screenSource, /clearToolApprovalResponse\(\);/);
+  assert.match(chatMessageChromeSource, /beginToolApprovalResponse\(approvalId\);/);
+  assert.match(chatMessageChromeSource, /clearToolApprovalResponse\(\);/);
   assert.doesNotMatch(screenSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<Record<string, boolean>>\(\{\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeThreadExpansionState,/);
   assert.match(chatMessageChromeSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<ChatMessageRuntimeToolApprovalExpansionState>\(\{\}\);/);
@@ -306,12 +313,18 @@ test('lets mobile respond to desktop tool approval requests from progress update
   );
   assert.doesNotMatch(screenSource, /const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalAlertState,/);
-  assert.match(screenSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(\)/);
-  assert.match(screenSource, /Alert\.alert\(connectionRequiredAlert\.title, connectionRequiredAlert\.message\)/);
-  assert.match(screenSource, /getChatMessageRuntimeToolApprovalUnavailableAlertState\(\)/);
-  assert.match(screenSource, /Alert\.alert\(unavailableAlert\.title, unavailableAlert\.message\)/);
-  assert.match(screenSource, /getChatMessageRuntimeToolApprovalFailedAlertState\(error\)/);
-  assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(\)/);
+  assert.doesNotMatch(screenSource, /Alert\.alert\(connectionRequiredAlert\.title, connectionRequiredAlert\.message\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalUnavailableAlertState\(\)/);
+  assert.doesNotMatch(screenSource, /const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState\(\);[\s\S]*?Alert\.alert\(unavailableAlert\.title, unavailableAlert\.message\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalFailedAlertState\(error\)/);
+  assert.doesNotMatch(screenSource, /const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState\(error\);[\s\S]*?Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
+  assert.match(chatMessageChromeSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(\)/);
+  assert.match(chatMessageChromeSource, /showAlert\(connectionRequiredAlert\.title, connectionRequiredAlert\.message\)/);
+  assert.match(chatMessageChromeSource, /getChatMessageRuntimeToolApprovalUnavailableAlertState\(\)/);
+  assert.match(chatMessageChromeSource, /showAlert\(unavailableAlert\.title, unavailableAlert\.message\)/);
+  assert.match(chatMessageChromeSource, /getChatMessageRuntimeToolApprovalFailedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /showAlert\(failedAlert\.title, failedAlert\.message\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalUnavailableAlertState/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalFailedAlertState/);
