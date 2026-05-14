@@ -1771,10 +1771,13 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileAlertState,/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(chatMessageChromeSource, /from '@dotagents\/shared\/conversation-media-assets'/);
+  assert.match(screenSource, /createChatComposerRuntimeImagePickerLaunchOptions,/);
   assert.match(screenSource, /useChatComposerRuntimeImageAttachmentPickerState,/);
-  assert.match(screenSource, /const pickComposerImages = useCallback\(\s+\(selectionLimit: number\) => ImagePicker\.launchImageLibraryAsync\(\{\s+mediaTypes: ImagePicker\.MediaTypeOptions\.Images,\s+allowsMultipleSelection: true,\s+selectionLimit,\s+quality: 0\.8,\s+base64: true,\s+\}\),\s+\[\]\s+\);/);
+  assert.match(screenSource, /const pickComposerImages = useCallback\(\s+\(selectionLimit: number\) => ImagePicker\.launchImageLibraryAsync\(\s+createChatComposerRuntimeImagePickerLaunchOptions\(\{\s+mediaTypes: ImagePicker\.MediaTypeOptions\.Images,\s+selectionLimit,\s+\}\)\s+\),\s+\[\]\s+\);/);
   assert.match(screenSource, /const \{ handlePickImages \} = useChatComposerRuntimeImageAttachmentPickerState\(\{\s+pendingImages,\s+setPendingImages,\s+pickImages: pickComposerImages,\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS/);
+  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeImagePickerLaunchOptions/);
+  assert.match(chatMessageChromeSource, /allowsMultipleSelection: true,\s+selectionLimit,\s+quality: 0\.8,\s+base64: true,/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeImageAttachmentPickerState/);
   assert.match(chatMessageChromeSource, /CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS\.maxImages/);
   assert.match(chatMessageChromeSource, /CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS\.maxFileBytes/);
@@ -1785,6 +1788,9 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /export function getChatComposerRuntimeImageDataUrlBytes/);
   assert.match(chatMessageChromeSource, /export function getChatComposerRuntimeBase64ImageBytes/);
   assert.match(chatMessageChromeSource, /export function inferChatComposerRuntimeImageMimeType/);
+  assert.doesNotMatch(screenSource, /allowsMultipleSelection: true/);
+  assert.doesNotMatch(screenSource, /quality: 0\.8/);
+  assert.doesNotMatch(screenSource, /base64: true/);
   assert.doesNotMatch(screenSource, /const MAX_PENDING_IMAGES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS\.maxImages;/);
   assert.doesNotMatch(screenSource, /const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS\.maxFileBytes;/);
   assert.doesNotMatch(screenSource, /const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS\.maxTotalEmbeddedBytes;/);

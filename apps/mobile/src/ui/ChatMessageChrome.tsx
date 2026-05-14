@@ -580,6 +580,19 @@ type ChatComposerRuntimeImagePickerResult = {
   assets?: ChatComposerRuntimeImagePickerAsset[] | null;
 };
 
+type ChatComposerRuntimeImagePickerLaunchOptionsInput<TMediaTypes> = {
+  mediaTypes: TMediaTypes;
+  selectionLimit: number;
+};
+
+export type ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> = {
+  mediaTypes: TMediaTypes;
+  allowsMultipleSelection: true;
+  selectionLimit: number;
+  quality: number;
+  base64: true;
+};
+
 type ChatComposerRuntimeImageAttachmentPickerStateInput = {
   pendingImages: ChatComposerRuntimeImageAttachment[];
   setPendingImages: Dispatch<SetStateAction<ChatComposerRuntimeImageAttachment[]>>;
@@ -4524,6 +4537,19 @@ export function getChatComposerImageAttachmentAlertState(
   input: ChatComposerImageAttachmentAlertInput,
 ): ReturnType<typeof getChatImageAttachmentMobileAlertState> {
   return getChatImageAttachmentMobileAlertState(input);
+}
+
+export function createChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes>({
+  mediaTypes,
+  selectionLimit,
+}: ChatComposerRuntimeImagePickerLaunchOptionsInput<TMediaTypes>): ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> {
+  return {
+    mediaTypes,
+    allowsMultipleSelection: true,
+    selectionLimit,
+    quality: 0.8,
+    base64: true,
+  };
 }
 
 export function useChatComposerRuntimeImageAttachmentPickerState({

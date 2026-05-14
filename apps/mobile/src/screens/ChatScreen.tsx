@@ -39,6 +39,7 @@ import {
   createChatComposerHandsFreeTranscriptAddedDebugState,
   createChatComposerHandsFreePermissionDeniedDebugState,
   createChatComposerHandsFreeRecognizerErrorDebugState,
+  createChatComposerRuntimeImagePickerLaunchOptions,
   useChatComposerRuntimeImageAttachmentPickerState,
   useChatComposerRuntimeSubmissionActionsState,
   useChatComposerRuntimeHandsFreeControlActionsState,
@@ -321,13 +322,12 @@ export default function ChatScreen({ route, navigation }: any) {
     removePendingImage,
   } = useChatComposerRuntimeDraftState();
   const pickComposerImages = useCallback(
-    (selectionLimit: number) => ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit,
-      quality: 0.8,
-      base64: true,
-    }),
+    (selectionLimit: number) => ImagePicker.launchImageLibraryAsync(
+      createChatComposerRuntimeImagePickerLaunchOptions({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        selectionLimit,
+      })
+    ),
     []
   );
   const { handlePickImages } = useChatComposerRuntimeImageAttachmentPickerState({
