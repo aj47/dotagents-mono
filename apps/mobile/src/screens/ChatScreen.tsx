@@ -52,7 +52,10 @@ import {
   createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
+  getChatMessageRuntimeBranchAlertState,
   getChatMessageRuntimeHistoryWindowState,
+  getChatMessageRuntimeKillSwitchAlertState,
+  getChatMessageRuntimeToolApprovalAlertState,
   getChatMessageToolExecutionCopyFailureAlertState,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
@@ -99,11 +102,8 @@ import {
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
-  getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
-  getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeAlertMessage,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -191,10 +191,10 @@ const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
-const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
+const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
-const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
-const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
+const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState();
+const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();

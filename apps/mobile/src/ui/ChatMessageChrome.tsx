@@ -157,13 +157,16 @@ import {
   getChatRuntimeAgentSelectorMobileRenderState,
   getChatRuntimeBackMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
+  getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
+  getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeKillSwitchMobileVisibilityRenderState,
   getChatRuntimePinMobileRenderState,
+  getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
   getFollowUpInputPresentation,
   getSessionStatusMobileRenderState,
@@ -2984,6 +2987,24 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
 
 export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
   return getChatRuntimeMessageHistoryWindowMobileState();
+}
+
+export function getChatMessageRuntimeKillSwitchAlertState(): ReturnType<
+  typeof getChatRuntimeKillSwitchMobileAlertState
+> {
+  return getChatRuntimeKillSwitchMobileAlertState();
+}
+
+export function getChatMessageRuntimeBranchAlertState(): ReturnType<
+  typeof getChatRuntimeBranchMobileAlertState
+> {
+  return getChatRuntimeBranchMobileAlertState();
+}
+
+export function getChatMessageRuntimeToolApprovalAlertState(): ReturnType<
+  typeof getChatRuntimeToolApprovalMobileAlertState
+> {
+  return getChatRuntimeToolApprovalMobileAlertState();
 }
 
 export function createChatMessageRuntimeViewportChromeProps<
