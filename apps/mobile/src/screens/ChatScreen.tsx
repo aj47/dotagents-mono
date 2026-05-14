@@ -56,10 +56,7 @@ import type {
   ChatMessageScrollEvent,
   ChatMessageScrollViewportRef,
 } from '../ui/ChatMessageChrome';
-import {
-  getMessageQueuePanelMobileDockRenderState,
-  getMessageQueuePanelMobileWrapperRenderState,
-} from '@dotagents/shared/message-queue-utils';
+import { getMessageQueuePanelMobileWrapperRenderState } from '@dotagents/shared/message-queue-utils';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -2033,13 +2030,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const queuedMessages = messageQueue.getQueue(currentConversationId);
   const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
   const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
-  const messageQueuePanelDockRenderState = useMemo(
-    () => getMessageQueuePanelMobileDockRenderState({
-      isQueueEnabled: messageQueueEnabled,
-      messageCount: queuedMessages.length,
-    }),
-    [messageQueueEnabled, queuedMessages.length],
-  );
   const mobileRuntimeDebugPanelsRenderState = useMemo(
     () => getChatRuntimeDebugPanelsMobileRenderState({
       requestDebugText: debugInfo,
@@ -3438,7 +3428,7 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceOverlayLabel,
     voiceOverlayTranscript: liveTranscript,
     voiceOverlayTranscriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
-    queuePanelShouldRender: messageQueuePanelDockRenderState.shouldRender,
+    queuePanelEnabled: messageQueueEnabled,
     queuePanelConversationId: currentConversationId,
     queuedMessages,
     onRemoveQueuedMessage: handleRemoveQueuedMessage,

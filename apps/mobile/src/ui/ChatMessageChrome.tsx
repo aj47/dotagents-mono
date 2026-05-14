@@ -73,6 +73,7 @@ import {
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
+import { getMessageQueuePanelMobileDockRenderState } from '@dotagents/shared/message-queue-utils';
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupMobileRenderState,
@@ -1555,7 +1556,7 @@ type ChatMessageRuntimeDockChromePropsInput = {
   voiceOverlayLabel: ChatComposerVoiceOverlayProps['label'];
   voiceOverlayTranscript: ChatComposerVoiceOverlayProps['transcript'];
   voiceOverlayTranscriptNumberOfLines: ChatComposerVoiceOverlayProps['transcriptNumberOfLines'];
-  queuePanelShouldRender: ChatMessageQueuePanelDockProps['shouldRender'];
+  queuePanelEnabled: boolean;
   queuePanelConversationId: ChatMessageQueuePanelDockProps['panel']['conversationId'];
   queuedMessages: ChatMessageQueuePanelDockProps['panel']['messages'];
   onRemoveQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onRemove'];
@@ -2897,7 +2898,7 @@ export function createChatMessageRuntimeDockChromeProps({
   voiceOverlayLabel,
   voiceOverlayTranscript,
   voiceOverlayTranscriptNumberOfLines,
-  queuePanelShouldRender,
+  queuePanelEnabled,
   queuePanelConversationId,
   queuedMessages,
   onRemoveQueuedMessage,
@@ -2926,6 +2927,10 @@ export function createChatMessageRuntimeDockChromeProps({
     isResponding,
     colors,
   });
+  const queuePanelDockRenderState = getMessageQueuePanelMobileDockRenderState({
+    isQueueEnabled: queuePanelEnabled,
+    messageCount: queuedMessages.length,
+  });
 
   return {
     responseHistoryPanel: {
@@ -2950,7 +2955,7 @@ export function createChatMessageRuntimeDockChromeProps({
       transcriptNumberOfLines: voiceOverlayTranscriptNumberOfLines,
     },
     queuePanel: {
-      shouldRender: queuePanelShouldRender,
+      shouldRender: queuePanelDockRenderState.shouldRender,
       panel: {
         conversationId: queuePanelConversationId,
         messages: queuedMessages,
