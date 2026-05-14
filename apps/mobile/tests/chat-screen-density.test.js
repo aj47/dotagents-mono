@@ -4191,18 +4191,23 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeDebugPanelsRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeDebugPanelsRenderState = useMemo/);
   assert.match(screenSource, /useChatRuntimeRequestDebugState,/);
-  assert.match(screenSource, /const \{\s+requestDebugText: debugInfo,\s+setRequestDebugText: setDebugInfo,\s+\} = useChatRuntimeRequestDebugState\(\);/);
+  assert.match(screenSource, /const \{\s+requestDebugText: debugInfo,\s+setRequestDebugText: setDebugInfo,\s+clearRequestDebugText: clearDebugInfo,\s+\} = useChatRuntimeRequestDebugState\(\);/);
   assert.match(screenSource, /useChatRuntimeRequestTrackingState,/);
   assert.match(screenSource, /const \{\s+activeRequestIdRef,\s+currentSessionIdRef,\s+\} = useChatRuntimeRequestTrackingState\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestDebugState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestTrackingState/);
   assert.match(chatMessageChromeSource, /const \[requestDebugText, setRequestDebugText\] = useState\(''\);/);
+  assert.match(chatMessageChromeSource, /const clearRequestDebugText = useCallback\(\(\) => \{\s+setRequestDebugText\(''\);\s+\}, \[\]\);/);
   assert.match(chatMessageChromeSource, /const activeRequestIdRef = useRef<number>\(0\);/);
   assert.match(chatMessageChromeSource, /const currentSessionIdRef = useRef<string \| null>\(currentSessionId\);/);
   assert.doesNotMatch(screenSource, /const \[debugInfo, setDebugInfo\] = useState<string>\(''\);/);
   assert.doesNotMatch(screenSource, /const activeRequestIdRef = useRef<number>\(0\);/);
   assert.doesNotMatch(screenSource, /const currentSessionIdRef = useRef<string \| null>\(sessionStore\.currentSessionId\);/);
-  assert.doesNotMatch(screenSource, /clearRequestDebugText/);
+  assert.equal(
+    (screenSource.match(/clearDebugInfo\(\)/g) || []).length,
+    2,
+  );
+  assert.doesNotMatch(screenSource, /setDebugInfo\(''\)/);
   assert.doesNotMatch(screenSource, /handleNewChat/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(chatMessageChromeSource, /const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState\(\{\s+requestDebugText,\s+voiceDebugEnabled,\s+voiceEvents,\s+\}\);/);

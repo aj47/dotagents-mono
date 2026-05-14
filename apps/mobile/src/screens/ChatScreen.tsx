@@ -289,6 +289,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const {
     requestDebugText: debugInfo,
     setRequestDebugText: setDebugInfo,
+    clearRequestDebugText: clearDebugInfo,
   } = useChatRuntimeRequestDebugState();
   const {
     lastFailedMessage,
@@ -1176,7 +1177,7 @@ export default function ChatScreen({ route, navigation }: any) {
             ? connectionManager.getLatestRequestId(capturedSessionId) === capturedRequestId
             : true;
           if (stillLatest && currentSessionIdRef.current === capturedSessionId) {
-            setDebugInfo('');
+            clearDebugInfo();
           }
         }, 5000);
 
@@ -1419,7 +1420,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setConnectionState(null);
         setTimeout(() => {
           if (activeRequestIdRef.current === thisRequestId) {
-            setDebugInfo('');
+            clearDebugInfo();
           }
         }, 5000);
 
