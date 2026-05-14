@@ -1454,14 +1454,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
 test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(screenSource, /getChatImageAttachmentMobileRenderState,/);
   assert.match(screenSource, /getChatImageAttachmentMobileAlertState,/);
-  assert.match(screenSource, /const imageAttachmentRenderState = useMemo\(\s+\(\) => getChatImageAttachmentMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
   assert.match(screenSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatImageAttachmentMobileAlertInput\) => \{\s+const alertState = getChatImageAttachmentMobileAlertState\(input\);\s+Alert\.alert\(alertState\.title, alertState\.message\);\s+\}, \[\]\);/);
   assert.match(screenSource, /const imageAttachmentStyleState = getChatImageAttachmentMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
   assert.match(screenSource, /showImageAttachmentAlert\(\{\s+reason: 'limitReached',\s+maxImages: MAX_PENDING_IMAGES,\s+\}\);/);
   assert.match(screenSource, /showImageAttachmentAlert\(\{\s+reason: 'pickerError',\s+error,\s+\}\);/);
-  assert.match(screenSource, /pendingImages,\s+pendingImagesRenderState: imageAttachmentRenderState,\s+onRemovePendingImage: removePendingImage,/);
+  assert.match(screenSource, /pendingImages,\s+pendingImagesColors: theme\.colors,\s+onRemovePendingImage: removePendingImage,/);
+  assert.match(chatMessageChromeSource, /const pendingImagesRenderState = getChatImageAttachmentMobileRenderState\(\{\s+colors: pendingImagesColors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /pendingImagesRail: \{\s+images: pendingImages,\s+renderState: pendingImagesRenderState,\s+onRemove: onRemovePendingImage,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerPendingImagesRail\s+\{\.\.\.pendingImagesRail\}\s+styles=\{styles\.pendingImagesRail\}/);
   assert.match(chatMessageChromeSource, /pendingImagesRail: \{\s+row: styles\.pendingImagesRow,\s+card: styles\.pendingImageCard,\s+preview: styles\.pendingImagePreview,\s+removeButton: styles\.pendingImageRemoveButton,\s+\}/);

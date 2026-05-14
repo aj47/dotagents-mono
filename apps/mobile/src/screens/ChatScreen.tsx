@@ -394,12 +394,6 @@ export default function ChatScreen({ route, navigation }: any) {
     [theme.colors],
   );
   const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState.surface;
-  const imageAttachmentRenderState = useMemo(
-    () => getChatImageAttachmentMobileRenderState({
-      colors: theme.colors,
-    }),
-    [theme.colors],
-  );
   const showImageAttachmentAlert = useCallback((input: ChatImageAttachmentMobileAlertInput) => {
     const alertState = getChatImageAttachmentMobileAlertState(input);
     Alert.alert(alertState.title, alertState.message);
@@ -3367,7 +3361,7 @@ export default function ChatScreen({ route, navigation }: any) {
     speechPreviewLabel: mobileComposerControls.sttPreview.label,
     speechPreviewText: sttPreview,
     pendingImages,
-    pendingImagesRenderState: imageAttachmentRenderState,
+    pendingImagesColors: theme.colors,
     onRemovePendingImage: removePendingImage,
     handsFreeControlsVisible: mobileComposerVisibilityRenderState.handsFreeControls.isVisible,
     handsFreeStatusPhase: handsFreeController.state.phase,

@@ -193,11 +193,12 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
 test('uses shared pending image attachment presentation in the mobile composer', () => {
   assert.match(screenSource, /getChatImageAttachmentMobileRenderState/);
   assert.match(screenSource, /buildChatImageAttachmentMessage/);
-  assert.match(screenSource, /const imageAttachmentRenderState = useMemo\(\s+\(\) => getChatImageAttachmentMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
   assert.match(screenSource, /const imageAttachmentStyleState = getChatImageAttachmentMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
-  assert.match(screenSource, /pendingImagesRenderState: imageAttachmentRenderState/);
+  assert.match(screenSource, /pendingImagesColors: theme\.colors/);
+  assert.match(chatMessageChromeSource, /const pendingImagesRenderState = getChatImageAttachmentMobileRenderState\(\{\s+colors: pendingImagesColors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /renderState: pendingImagesRenderState/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.removeButton\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /activeOpacity=\{renderState\.removeButton\.pressedOpacity\}/);

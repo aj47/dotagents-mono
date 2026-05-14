@@ -59,7 +59,10 @@ import {
   type AgentDelegationPresentation,
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import type { ChatImageAttachmentMobileRenderState } from '@dotagents/shared/conversation-media-assets';
+import {
+  getChatImageAttachmentMobileRenderState,
+  type ChatImageAttachmentMobileRenderState,
+} from '@dotagents/shared/conversation-media-assets';
 import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
 import {
   getPromptLibraryEditorDismissActionState,
@@ -2081,7 +2084,7 @@ type ChatComposerRuntimeDockChromePropsInput = {
   speechPreviewLabel: ChatComposerSpeechPreviewProps['label'];
   speechPreviewText: ChatComposerSpeechPreviewProps['text'];
   pendingImages: ChatComposerPendingImagesRailProps['images'];
-  pendingImagesRenderState: ChatComposerPendingImagesRailProps['renderState'];
+  pendingImagesColors: Parameters<typeof getChatImageAttachmentMobileRenderState>[0]['colors'];
   onRemovePendingImage: ChatComposerPendingImagesRailProps['onRemove'];
   handsFreeControlsVisible: ChatComposerHandsFreeControlsProps['isVisible'];
   handsFreeStatusPhase: ChatComposerRuntimeHandsFreeControlsProps['status']['phase'];
@@ -4419,7 +4422,7 @@ export function createChatComposerRuntimeDockProps({
   speechPreviewLabel,
   speechPreviewText,
   pendingImages,
-  pendingImagesRenderState,
+  pendingImagesColors,
   onRemovePendingImage,
   handsFreeControlsVisible,
   handsFreeStatusPhase,
@@ -4458,6 +4461,10 @@ export function createChatComposerRuntimeDockProps({
   onMicPress,
   micWrapperRef,
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
+  const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
+    colors: pendingImagesColors,
+  });
+
   return {
     speechPreview: {
       label: speechPreviewLabel,
