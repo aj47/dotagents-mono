@@ -73,6 +73,7 @@ import {
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
+  getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
@@ -1722,8 +1723,11 @@ type ChatMessageThreadBodyContentProps =
 
 type ChatMessageExpandedContentPropsInput = Pick<
   ChatMessageThreadBodyContentProps['expanded'],
-  'streamingRenderState' | 'markdownContent' | 'assetBaseUrl' | 'assetAuthToken' | 'spinnerSource'
->;
+  'markdownContent' | 'assetBaseUrl' | 'assetAuthToken' | 'spinnerSource'
+> & {
+  isStreaming: boolean;
+  colors: Parameters<typeof getChatRuntimeStreamingContentMobileRenderState>[0]['colors'];
+};
 
 type ChatMessageThreadBodyProps = {
   styles: ChatMessageThreadBodyStyleSlots;
@@ -2095,12 +2099,19 @@ export function createChatMessageInlineActivityProps({
 }
 
 export function createChatMessageExpandedContentProps({
-  streamingRenderState,
+  isStreaming,
   markdownContent,
+  colors,
   assetBaseUrl,
   assetAuthToken,
   spinnerSource,
 }: ChatMessageExpandedContentPropsInput): ChatMessageThreadBodyContentProps['expanded'] {
+  const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState({
+    isStreaming,
+    content: markdownContent,
+    colors,
+  });
+
   return {
     streamingRenderState,
     markdownContent,

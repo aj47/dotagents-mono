@@ -3834,11 +3834,6 @@ export default function ChatScreen({ route, navigation }: any) {
               content: visibleMessageContent,
               displayToolCallCount,
             });
-            const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState({
-              isStreaming: isLiveStreamingAssistantMessage,
-              content: visibleMessageContent,
-              colors: theme.colors,
-            });
             const {
               state: toolExecutionState,
               allSuccess,
@@ -3992,8 +3987,9 @@ export default function ChatScreen({ route, navigation }: any) {
                     contentState: messageContentRenderState,
                     actionSet: messageActionSet,
                     expanded: createChatMessageExpandedContentProps({
-                      streamingRenderState: streamingContentRenderState,
+                      isStreaming: isLiveStreamingAssistantMessage,
                       markdownContent: visibleMessageContent,
+                      colors: theme.colors,
                       assetBaseUrl: config.baseUrl,
                       assetAuthToken: config.apiKey,
                       spinnerSource: isDark ? darkSpinner : lightSpinner,

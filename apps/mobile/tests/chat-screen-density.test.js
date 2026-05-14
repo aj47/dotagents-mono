@@ -2108,9 +2108,10 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(screenSource, /i === lastAssistantContentMessageIndex &&\s+isChatMessageConversationContent\(m\)/);
   assert.match(screenSource, /isLiveStreaming: isLiveStreamingAssistantMessage,/);
   assert.doesNotMatch(screenSource, /shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
-  assert.match(screenSource, /const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming: isLiveStreamingAssistantMessage,\s+content: visibleMessageContent,\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,[\s\S]*?expanded: createChatMessageExpandedContentProps\(\{[\s\S]*?streamingRenderState: streamingContentRenderState,[\s\S]*?markdownContent: visibleMessageContent,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
+  assert.doesNotMatch(screenSource, /const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming: isLiveStreamingAssistantMessage,\s+content: visibleMessageContent,\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,[\s\S]*?expanded: createChatMessageExpandedContentProps\(\{[\s\S]*?isStreaming: isLiveStreamingAssistantMessage,[\s\S]*?markdownContent: visibleMessageContent,[\s\S]*?colors: theme\.colors,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
+  assert.match(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming,\s+content: markdownContent,\s+colors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+streamingRenderState=\{expanded\.streamingRenderState\}[\s\S]*?markdownContent=\{expanded\.markdownContent\}[\s\S]*?spinnerSource=\{expanded\.spinnerSource\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /if \(!streamingRenderState\.shouldRender\) \{/);
