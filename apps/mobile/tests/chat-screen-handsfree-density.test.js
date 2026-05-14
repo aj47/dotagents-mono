@@ -47,7 +47,8 @@ test('lets handsfree users queue a drafted message without sending immediately',
 
 test('derives send-next availability from strict FIFO queue semantics', () => {
   assert.match(screenSource, /const nextQueuedMessage = !responding && !isMessageQueuePaused \? messageQueue\.peek\(currentConversationId\) : null;/);
-  assert.match(screenSource, /canProcessNext: !!nextQueuedMessage/);
+  assert.match(screenSource, /canProcessNextQueuedMessage: !!nextQueuedMessage/);
+  assert.match(chatMessageChromeSource, /canProcessNext: canProcessNextQueuedMessage/);
 });
 
 test('wires ChatScreen through the extracted handsfree controller and recognizer hooks', () => {

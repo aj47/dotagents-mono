@@ -3083,10 +3083,29 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [currentConversationId, handleProcessNextQueuedMessage, messageQueue, responding]);
 
-	// Keep sendRef in sync with the latest send() implementation for speech callbacks.
-	// IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
-	// We intentionally assign during render (not useEffect) so it is available immediately.
-	sendRef.current = send;
+  const handleRemoveQueuedMessage = useCallback((messageId: string) => {
+    messageQueue.removeFromQueue(currentConversationId, messageId);
+  }, [currentConversationId, messageQueue]);
+
+  const handleUpdateQueuedMessage = useCallback((messageId: string, text: string) => {
+    messageQueue.updateText(currentConversationId, messageId, text);
+  }, [currentConversationId, messageQueue]);
+
+  const handleRetryQueuedMessage = useCallback((messageId: string) => {
+    messageQueue.resetToPending(currentConversationId, messageId);
+    if (!responding) {
+      handleProcessNextQueuedMessage();
+    }
+  }, [currentConversationId, handleProcessNextQueuedMessage, messageQueue, responding]);
+
+  const handleClearQueuedMessages = useCallback(() => {
+    messageQueue.clearQueue(currentConversationId);
+  }, [currentConversationId, messageQueue]);
+
+  // Keep sendRef in sync with the latest send() implementation for speech callbacks.
+  // IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
+  // We intentionally assign during render (not useEffect) so it is available immediately.
+  sendRef.current = send;
 
 	const isWebPlatform = Platform.OS === 'web';
   const chatComposerRuntimeDockChrome = useMemo(
@@ -3537,52 +3556,36 @@ export default function ChatScreen({ route, navigation }: any) {
     micWrapperRef: micButtonRef,
   });
   const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps({
-    responseHistoryPanel: {
-      responses: respondToUserHistory,
-      ttsProvider: effectiveTtsProvider,
-      remoteTtsVoice: effectiveRemoteTtsVoice,
-      remoteTtsModel: effectiveRemoteTtsModel,
-      ttsRate: effectiveRemoteTtsRate,
-      ttsPitch: config.ttsPitch ?? 1.0,
-      ttsVoiceId: config.ttsVoiceId,
-      remoteBaseUrl: config.baseUrl,
-      remoteApiKey: config.apiKey,
-    },
+    responseHistoryResponses: respondToUserHistory,
+    responseHistoryTtsProvider: effectiveTtsProvider,
+    responseHistoryRemoteTtsVoice: effectiveRemoteTtsVoice,
+    responseHistoryRemoteTtsModel: effectiveRemoteTtsModel,
+    responseHistoryTtsRate: effectiveRemoteTtsRate,
+    responseHistoryTtsPitch: config.ttsPitch ?? 1.0,
+    responseHistoryTtsVoiceId: config.ttsVoiceId,
+    responseHistoryRemoteBaseUrl: config.baseUrl,
+    responseHistoryRemoteApiKey: config.apiKey,
     scrollToBottomRenderState,
     onScrollToBottom: handleScrollToBottomPress,
-    voiceOverlay: {
-      isVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
-      label: voiceOverlayLabel,
-      transcript: liveTranscript,
-      transcriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
-    },
-    queuePanel: {
-      shouldRender: messageQueuePanelDockRenderState.shouldRender,
-      panel: {
-        conversationId: currentConversationId,
-        messages: queuedMessages,
-        onRemove: (messageId) => messageQueue.removeFromQueue(currentConversationId, messageId),
-        onUpdate: (messageId, text) => messageQueue.updateText(currentConversationId, messageId, text),
-        onRetry: (messageId) => {
-          messageQueue.resetToPending(currentConversationId, messageId);
-          // If not already processing, trigger queue processing
-          if (!responding) {
-            handleProcessNextQueuedMessage();
-          }
-        },
-        onProcessNext: handleProcessNextQueuedMessage,
-        canProcessNext: !!nextQueuedMessage,
-        onClear: () => messageQueue.clearQueue(currentConversationId),
-        isPaused: isMessageQueuePaused,
-        onPause: handlePauseMessageQueue,
-        onResume: handleResumeMessageQueue,
-      },
-    },
-    connectionBanner: {
-      renderState: connectionBannerRenderState,
-      onRetry: () => {
-        void handleRetryLastFailedMessage();
-      },
+    voiceOverlayVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
+    voiceOverlayLabel,
+    voiceOverlayTranscript: liveTranscript,
+    voiceOverlayTranscriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
+    queuePanelShouldRender: messageQueuePanelDockRenderState.shouldRender,
+    queuePanelConversationId: currentConversationId,
+    queuedMessages,
+    onRemoveQueuedMessage: handleRemoveQueuedMessage,
+    onUpdateQueuedMessage: handleUpdateQueuedMessage,
+    onRetryQueuedMessage: handleRetryQueuedMessage,
+    onProcessNextQueuedMessage: handleProcessNextQueuedMessage,
+    canProcessNextQueuedMessage: !!nextQueuedMessage,
+    onClearQueuedMessages: handleClearQueuedMessages,
+    isMessageQueuePaused,
+    onPauseMessageQueue: handlePauseMessageQueue,
+    onResumeMessageQueue: handleResumeMessageQueue,
+    connectionBannerRenderState,
+    onConnectionBannerRetry: () => {
+      void handleRetryLastFailedMessage();
     },
     composer: chatComposerRuntimeDock,
   });

@@ -1468,12 +1468,38 @@ type ChatMessageRuntimeDockProps = {
 
 type ChatMessageRuntimeDockChromeProps = Omit<ChatMessageRuntimeDockProps, 'styles'>;
 
-type ChatMessageRuntimeDockChromePropsInput =
-  Omit<ChatMessageRuntimeDockChromeProps, 'scrollToBottomButton'>
-  & {
-    scrollToBottomRenderState: ChatRuntimeScrollToBottomMobileRenderState;
-    onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
-  };
+type ChatMessageRuntimeDockChromePropsInput = {
+  responseHistoryResponses: ChatMessageResponseHistoryPanelDockProps['responses'];
+  responseHistoryTtsProvider: ChatMessageResponseHistoryPanelDockProps['ttsProvider'];
+  responseHistoryRemoteTtsVoice: ChatMessageResponseHistoryPanelDockProps['remoteTtsVoice'];
+  responseHistoryRemoteTtsModel: ChatMessageResponseHistoryPanelDockProps['remoteTtsModel'];
+  responseHistoryTtsRate: ChatMessageResponseHistoryPanelDockProps['ttsRate'];
+  responseHistoryTtsPitch: ChatMessageResponseHistoryPanelDockProps['ttsPitch'];
+  responseHistoryTtsVoiceId: ChatMessageResponseHistoryPanelDockProps['ttsVoiceId'];
+  responseHistoryRemoteBaseUrl: ChatMessageResponseHistoryPanelDockProps['remoteBaseUrl'];
+  responseHistoryRemoteApiKey: ChatMessageResponseHistoryPanelDockProps['remoteApiKey'];
+  scrollToBottomRenderState: ChatRuntimeScrollToBottomMobileRenderState;
+  onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
+  voiceOverlayVisible: ChatComposerVoiceOverlayProps['isVisible'];
+  voiceOverlayLabel: ChatComposerVoiceOverlayProps['label'];
+  voiceOverlayTranscript: ChatComposerVoiceOverlayProps['transcript'];
+  voiceOverlayTranscriptNumberOfLines: ChatComposerVoiceOverlayProps['transcriptNumberOfLines'];
+  queuePanelShouldRender: ChatMessageQueuePanelDockProps['shouldRender'];
+  queuePanelConversationId: ChatMessageQueuePanelDockProps['panel']['conversationId'];
+  queuedMessages: ChatMessageQueuePanelDockProps['panel']['messages'];
+  onRemoveQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onRemove'];
+  onUpdateQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onUpdate'];
+  onRetryQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onRetry'];
+  onProcessNextQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onProcessNext'];
+  canProcessNextQueuedMessage: ChatMessageQueuePanelDockProps['panel']['canProcessNext'];
+  onClearQueuedMessages: ChatMessageQueuePanelDockProps['panel']['onClear'];
+  isMessageQueuePaused: ChatMessageQueuePanelDockProps['panel']['isPaused'];
+  onPauseMessageQueue: ChatMessageQueuePanelDockProps['panel']['onPause'];
+  onResumeMessageQueue: ChatMessageQueuePanelDockProps['panel']['onResume'];
+  connectionBannerRenderState: ChatMessageConnectionBannerProps['renderState'];
+  onConnectionBannerRetry?: ChatMessageConnectionBannerProps['onRetry'];
+  composer: ChatMessageRuntimeDockChromeProps['composer'];
+};
 
 type ChatMessageRuntimeSurfaceStyleSlots = {
   frame: ChatMessageConversationViewportStyleSlots['frame'];
@@ -2685,16 +2711,80 @@ export function createChatMessageRuntimeViewportChromeProps<
 }
 
 export function createChatMessageRuntimeDockChromeProps({
+  responseHistoryResponses,
+  responseHistoryTtsProvider,
+  responseHistoryRemoteTtsVoice,
+  responseHistoryRemoteTtsModel,
+  responseHistoryTtsRate,
+  responseHistoryTtsPitch,
+  responseHistoryTtsVoiceId,
+  responseHistoryRemoteBaseUrl,
+  responseHistoryRemoteApiKey,
   scrollToBottomRenderState,
   onScrollToBottom,
-  ...dockProps
+  voiceOverlayVisible,
+  voiceOverlayLabel,
+  voiceOverlayTranscript,
+  voiceOverlayTranscriptNumberOfLines,
+  queuePanelShouldRender,
+  queuePanelConversationId,
+  queuedMessages,
+  onRemoveQueuedMessage,
+  onUpdateQueuedMessage,
+  onRetryQueuedMessage,
+  onProcessNextQueuedMessage,
+  canProcessNextQueuedMessage,
+  onClearQueuedMessages,
+  isMessageQueuePaused,
+  onPauseMessageQueue,
+  onResumeMessageQueue,
+  connectionBannerRenderState,
+  onConnectionBannerRetry,
+  composer,
 }: ChatMessageRuntimeDockChromePropsInput): ChatMessageRuntimeDockChromeProps {
   return {
-    ...dockProps,
+    responseHistoryPanel: {
+      responses: responseHistoryResponses,
+      ttsProvider: responseHistoryTtsProvider,
+      remoteTtsVoice: responseHistoryRemoteTtsVoice,
+      remoteTtsModel: responseHistoryRemoteTtsModel,
+      ttsRate: responseHistoryTtsRate,
+      ttsPitch: responseHistoryTtsPitch,
+      ttsVoiceId: responseHistoryTtsVoiceId,
+      remoteBaseUrl: responseHistoryRemoteBaseUrl,
+      remoteApiKey: responseHistoryRemoteApiKey,
+    },
     scrollToBottomButton: {
       renderState: scrollToBottomRenderState,
       onPress: onScrollToBottom,
     },
+    voiceOverlay: {
+      isVisible: voiceOverlayVisible,
+      label: voiceOverlayLabel,
+      transcript: voiceOverlayTranscript,
+      transcriptNumberOfLines: voiceOverlayTranscriptNumberOfLines,
+    },
+    queuePanel: {
+      shouldRender: queuePanelShouldRender,
+      panel: {
+        conversationId: queuePanelConversationId,
+        messages: queuedMessages,
+        onRemove: onRemoveQueuedMessage,
+        onUpdate: onUpdateQueuedMessage,
+        onRetry: onRetryQueuedMessage,
+        onProcessNext: onProcessNextQueuedMessage,
+        canProcessNext: canProcessNextQueuedMessage,
+        onClear: onClearQueuedMessages,
+        isPaused: isMessageQueuePaused,
+        onPause: onPauseMessageQueue,
+        onResume: onResumeMessageQueue,
+      },
+    },
+    connectionBanner: {
+      renderState: connectionBannerRenderState,
+      onRetry: onConnectionBannerRetry,
+    },
+    composer,
   };
 }
 
