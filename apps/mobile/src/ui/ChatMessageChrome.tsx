@@ -4616,6 +4616,48 @@ export function createChatMessageRuntimeNoSessionAvailableDebugState() {
   };
 }
 
+function createChatMessageRuntimeDebugInfoState(
+  key: ChatMessageRuntimeDebugMessageKey,
+) {
+  return {
+    debugInfo: getChatMessageRuntimeDebugMessage(key),
+  };
+}
+
+function createChatMessageRuntimeQueueFailureState(
+  key: ChatMessageRuntimeDebugMessageKey,
+) {
+  return {
+    message: getChatMessageRuntimeDebugMessage(key),
+  };
+}
+
+export function createChatMessageRuntimeStartingRequestDebugState(baseUrl: string) {
+  return {
+    debugInfo: formatChatMessageRuntimeStartingRequestDebugMessage(baseUrl),
+  };
+}
+
+export function createChatMessageRuntimeRequestSentDebugState() {
+  return createChatMessageRuntimeDebugInfoState('requestSent');
+}
+
+export function createChatMessageRuntimeCompletedDebugState() {
+  return createChatMessageRuntimeDebugInfoState('completed');
+}
+
+export function createChatMessageRuntimeProcessingQueuedMessageDebugState() {
+  return createChatMessageRuntimeDebugInfoState('processingQueuedMessage');
+}
+
+export function createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState() {
+  return createChatMessageRuntimeQueueFailureState('sessionChangedDuringProcessing');
+}
+
+export function createChatMessageRuntimeRequestSupersededQueueFailureState() {
+  return createChatMessageRuntimeQueueFailureState('requestSuperseded');
+}
+
 export function formatChatMessageRuntimeStartingRequestDebugMessage(
   ...args: Parameters<typeof formatChatRuntimeStartingRequestDebugMessage>
 ): ReturnType<typeof formatChatRuntimeStartingRequestDebugMessage> {
@@ -4897,6 +4939,21 @@ export function createChatMessageRuntimeAssistantDebugErrorTurnState<
       messages,
       message,
     ),
+  };
+}
+
+export function createChatMessageRuntimeQueuedErrorState<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  error: unknown,
+) {
+  const message = formatChatMessageRuntimeAlertMessage(
+    error,
+    getChatMessageRuntimeDebugMessage('unknownError'),
+  );
+  return {
+    message,
+    turnState: createChatMessageRuntimeAssistantDebugErrorTurnState<TMessage>(message),
   };
 }
 

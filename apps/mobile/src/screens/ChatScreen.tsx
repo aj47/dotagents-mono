@@ -45,10 +45,15 @@ import {
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
-  formatChatMessageRuntimeAlertMessage,
   formatChatMessageRuntimeConnectionErrorMessage,
   createChatMessageRuntimeNoSessionAvailableDebugState,
-  formatChatMessageRuntimeStartingRequestDebugMessage,
+  createChatMessageRuntimeStartingRequestDebugState,
+  createChatMessageRuntimeRequestSentDebugState,
+  createChatMessageRuntimeCompletedDebugState,
+  createChatMessageRuntimeProcessingQueuedMessageDebugState,
+  createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState,
+  createChatMessageRuntimeRequestSupersededQueueFailureState,
+  createChatMessageRuntimeQueuedErrorState,
   createChatRuntimeMobileConfigState,
   createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimePendingTurnState,
@@ -57,7 +62,6 @@ import {
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
   createChatMessageRuntimeAssistantErrorTurnState,
-  createChatMessageRuntimeAssistantDebugErrorTurnState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -79,7 +83,6 @@ import {
   useChatMessageRuntimeThreadExpansionState,
   createChatMessageRuntimeChromeProps,
   useChatConversationHomeQuickStartActionsState,
-  getChatMessageRuntimeDebugMessage,
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchActionsState,
@@ -799,7 +802,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    setDebugInfo(formatChatMessageRuntimeStartingRequestDebugMessage(config.baseUrl));
+    setDebugInfo(createChatMessageRuntimeStartingRequestDebugState(config.baseUrl).debugInfo);
     // Clear any previous failed message when starting a new send
     clearLastFailedMessage();
 
@@ -871,7 +874,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
-      setDebugInfo(getChatMessageRuntimeDebugMessage('requestSent'));
+      setDebugInfo(createChatMessageRuntimeRequestSentDebugState().debugInfo);
 
       const onProgress = (update: AgentProgressUpdate) => {
         // Guard: skip update if session has changed since request started
@@ -976,7 +979,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
-        setDebugInfo(getChatMessageRuntimeDebugMessage('completed'));
+        setDebugInfo(createChatMessageRuntimeCompletedDebugState().debugInfo);
       }
 
       // Guard: skip final updates if this request is no longer the latest one for this session
@@ -1230,7 +1233,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    setDebugInfo(getChatMessageRuntimeDebugMessage('processingQueuedMessage'));
+    setDebugInfo(createChatMessageRuntimeProcessingQueuedMessageDebugState().debugInfo);
 
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
     const pendingTurnState = createChatMessageRuntimePendingTurnState<ChatMessage>(
@@ -1344,19 +1347,21 @@ export default function ChatScreen({ route, navigation }: any) {
       // Early exit guards - finalize queue status before returning to prevent stuck 'processing' items
       if (sessionStore.currentSessionId !== requestSessionId) {
         // Session changed - mark as failed so user can retry in correct session
+        const sessionChangedQueueFailureState = createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState();
         messageQueue.markFailed(
           currentConversationId,
           queuedMsg.id,
-          getChatMessageRuntimeDebugMessage('sessionChangedDuringProcessing'),
+          sessionChangedQueueFailureState.message,
         );
         return;
       }
       if (activeRequestIdRef.current !== thisRequestId) {
         // Request superseded - mark as failed so user can retry
+        const requestSupersededQueueFailureState = createChatMessageRuntimeRequestSupersededQueueFailureState();
         messageQueue.markFailed(
           currentConversationId,
           queuedMsg.id,
-          getChatMessageRuntimeDebugMessage('requestSuperseded'),
+          requestSupersededQueueFailureState.message,
         );
         return;
       }
@@ -1399,13 +1404,10 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
     } catch (e: any) {
       console.error('[ChatScreen] Queued message error:', e);
-      const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, getChatMessageRuntimeDebugMessage('unknownError'));
-      messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
+      const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>(e);
+      messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorState.message);
       setConversationState('blocked');
-      const queuedErrorTurnState = createChatMessageRuntimeAssistantDebugErrorTurnState<ChatMessage>(
-        queuedErrorMessage,
-      );
-      setMessages(queuedErrorTurnState.updateMessages);
+      setMessages(queuedErrorState.turnState.updateMessages);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
