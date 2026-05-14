@@ -4856,6 +4856,35 @@ export function updateLastChatMessageRuntimeAssistantErrorMessage<
   return updateLastChatMessageRuntimeConversationContent(messages, errorMessageState.content);
 }
 
+export function createChatMessageRuntimeAssistantErrorTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  errorMessage: string,
+  partialContent?: string | null,
+) {
+  return {
+    debugInfo: formatChatMessageRuntimeDebugError(errorMessage),
+    updateMessages: (messages: readonly TMessage[]) => updateLastChatMessageRuntimeAssistantErrorMessage(
+      messages,
+      errorMessage,
+      partialContent,
+    ),
+  };
+}
+
+export function createChatMessageRuntimeAssistantDebugErrorTurnState<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  message: string,
+) {
+  return {
+    updateMessages: (messages: readonly TMessage[]) => appendChatMessageRuntimeAssistantDebugErrorMessage(
+      messages,
+      message,
+    ),
+  };
+}
+
 export function replaceChatMessageRuntimeTurnMessages<TMessage>(
   messages: readonly TMessage[],
   messageCountBeforeTurn: number,

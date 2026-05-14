@@ -43,7 +43,6 @@ import {
   useChatComposerRuntimeHandsFreeControlActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
-  appendChatMessageRuntimeAssistantDebugErrorMessage,
   useChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
   formatChatMessageRuntimeAlertMessage,
@@ -57,6 +56,8 @@ import {
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
+  createChatMessageRuntimeAssistantErrorTurnState,
+  createChatMessageRuntimeAssistantDebugErrorTurnState,
   createChatMessageRuntimePendingTurnStatusState,
   createChatMessageRuntimeCompletedConversationState,
   useChatMessageRuntimeTurnDurations,
@@ -93,7 +94,6 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
-  updateLastChatMessageRuntimeAssistantErrorMessage,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatConversationHomeQuickStartItem,
@@ -1130,15 +1130,15 @@ export default function ChatScreen({ route, navigation }: any) {
       // Check if there's partial content we can show
       const partialContent = client.getPartialContent();
 
-      setDebugInfo(formatChatMessageRuntimeDebugError(errorMessage));
+      const errorTurnState = createChatMessageRuntimeAssistantErrorTurnState<ChatMessage>(
+        errorMessage,
+        partialContent,
+      );
+      setDebugInfo(errorTurnState.debugInfo);
       // Update the in-flight assistant message instead of appending a new one
       // This avoids duplicating the assistant loading placeholder and ensures
       // the retry pop logic removes the correct items
-      setMessages((m) => updateLastChatMessageRuntimeAssistantErrorMessage(
-        m,
-        errorMessage,
-        partialContent,
-      ));
+      setMessages(errorTurnState.updateMessages);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
@@ -1401,7 +1401,10 @@ export default function ChatScreen({ route, navigation }: any) {
       const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, getChatMessageRuntimeDebugMessage('unknownError'));
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
       setConversationState('blocked');
-      setMessages((m) => appendChatMessageRuntimeAssistantDebugErrorMessage(m, queuedErrorMessage));
+      const queuedErrorTurnState = createChatMessageRuntimeAssistantDebugErrorTurnState<ChatMessage>(
+        queuedErrorMessage,
+      );
+      setMessages(queuedErrorTurnState.updateMessages);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
