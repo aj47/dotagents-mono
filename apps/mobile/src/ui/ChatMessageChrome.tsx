@@ -1532,6 +1532,20 @@ export function showChatConversationHomePromptDeleteNativeConfirmAlert(
   ]);
 }
 
+export function createChatConversationHomePromptDeleteNativeConfirmPresenter(
+  showAlert: ChatRuntimeNativeConfirmAlertPresenter,
+): (input: ChatConversationHomePromptEditorDeleteNativeConfirmInput) => void {
+  return (input) => showChatConversationHomePromptDeleteNativeConfirmAlert(input, showAlert);
+}
+
+export function confirmChatRuntimeWebDialog(message: string): boolean {
+  return Boolean((globalThis as { confirm?: (message?: string) => boolean }).confirm?.(message));
+}
+
+export function showChatRuntimeWebAlert(message: string): void {
+  (globalThis as { alert?: (message?: string) => void }).alert?.(message);
+}
+
 export function formatChatConversationHomePromptDeleteFailedMessage(error: unknown): string {
   return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptDeleteFailed);
 }
@@ -3808,6 +3822,12 @@ export function showChatMessageRuntimeKillSwitchNativeConfirmAlert(
       onPress: input.onConfirm,
     },
   ]);
+}
+
+export function createChatMessageRuntimeKillSwitchNativeConfirmPresenter(
+  showAlert: ChatRuntimeNativeConfirmAlertPresenter,
+): (input: ChatMessageRuntimeKillSwitchNativeConfirmInput) => void {
+  return (input) => showChatMessageRuntimeKillSwitchNativeConfirmAlert(input, showAlert);
 }
 
 type ChatMessageRuntimeToolApprovalResponseStateInput = {

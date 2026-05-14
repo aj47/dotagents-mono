@@ -91,7 +91,9 @@ import {
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchActionsState,
-  showChatMessageRuntimeKillSwitchNativeConfirmAlert,
+  createChatMessageRuntimeKillSwitchNativeConfirmPresenter,
+  confirmChatRuntimeWebDialog,
+  showChatRuntimeWebAlert,
   useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeNavigateToChatActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
@@ -103,7 +105,7 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
-  showChatConversationHomePromptDeleteNativeConfirmAlert,
+  createChatConversationHomePromptDeleteNativeConfirmPresenter,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatConversationHomeQuickStartItem,
@@ -394,9 +396,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
     platform: Platform.OS,
     getKillSwitchClient: getSessionClient,
-    confirmWeb: (message) => window.confirm(message),
-    showWebAlert: (message) => window.alert(message),
-    confirmNative: (input) => showChatMessageRuntimeKillSwitchNativeConfirmAlert(input, Alert.alert),
+    confirmWeb: confirmChatRuntimeWebDialog,
+    showWebAlert: showChatRuntimeWebAlert,
+    confirmNative: createChatMessageRuntimeKillSwitchNativeConfirmPresenter(Alert.alert),
     showAlert: Alert.alert,
   });
 
@@ -726,8 +728,8 @@ export default function ChatScreen({ route, navigation }: any) {
     beginPromptEditorSave,
     clearPromptEditorSave,
     platform: Platform.OS,
-    confirmWeb: (message) => Boolean((globalThis as { confirm?: (message?: string) => boolean }).confirm?.(message)),
-    confirmNative: (input) => showChatConversationHomePromptDeleteNativeConfirmAlert(input, Alert.alert),
+    confirmWeb: confirmChatRuntimeWebDialog,
+    confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter(Alert.alert),
     showAlert: Alert.alert,
   });
 
