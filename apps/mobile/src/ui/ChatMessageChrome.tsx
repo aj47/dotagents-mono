@@ -105,6 +105,7 @@ import {
   getToolExecutionDetailMobileHeaderRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailResultState,
+  getToolExecutionMobileVisibilityRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -628,7 +629,6 @@ type ChatMessageDelegationCardPropsInput = Omit<
   displayToolCallCount: number;
   expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>;
   expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>;
-  toolPreviewShouldRender: boolean;
   roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots;
   colors: ChatMessageDelegationCardColors;
   onShowAllConversationPreview?: (runId: string) => void;
@@ -1965,7 +1965,6 @@ export function createChatMessageDelegationCardProps({
   displayToolCallCount,
   expandedDelegationConversationPreviews,
   expandedDelegationToolPreviews,
-  toolPreviewShouldRender,
   roleStyles,
   colors,
   onShowAllConversationPreview,
@@ -1999,6 +1998,9 @@ export function createChatMessageDelegationCardProps({
   const hiddenConversationCount = conversationPreviewState.hiddenCount;
   const toolPreviewState = cardState.toolPreview;
   const hiddenToolCount = toolPreviewState.hiddenCount;
+  const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState({
+    toolCallCount: displayToolCallCount,
+  });
 
   return {
     surface,
@@ -2029,7 +2031,7 @@ export function createChatMessageDelegationCardProps({
         : undefined,
     },
     toolPreview: {
-      shouldRender: toolPreviewShouldRender,
+      shouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
       label: formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount),
       rows: createChatMessageDelegationToolPreviewRows({
         rows: toolPreviewState.rows,

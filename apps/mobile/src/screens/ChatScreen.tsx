@@ -3958,7 +3958,6 @@ export default function ChatScreen({ route, navigation }: any) {
                     displayToolCallCount,
                     expandedDelegationConversationPreviews,
                     expandedDelegationToolPreviews,
-                    toolPreviewShouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
                     roleStyles: delegationConversationPreviewRoleStyles,
                     colors: theme.colors,
                     onShowAllConversationPreview: (runId) => {

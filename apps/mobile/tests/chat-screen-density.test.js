@@ -496,7 +496,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel\(\{/);
   assert.match(screenSource, /delegationCard: createChatMessageDelegationCardProps\(\{\s+isDelegation: m\.variant === 'delegation',\s+surface: mobileRuntimeDelegationCard,\s+delegation: m\.delegation,\s+toolEntries: renderedToolEntries,/);
   assert.match(screenSource, /displayToolCallCount,/);
-  assert.match(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
+  assert.doesNotMatch(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
+  assert.doesNotMatch(chatMessageChromeSource, /toolPreviewShouldRender/);
+  assert.match(chatMessageChromeSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /shouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
   assert.match(screenSource, /roleStyles: delegationConversationPreviewRoleStyles,/);
   assert.match(screenSource, /colors: theme\.colors,/);
   assert.doesNotMatch(screenSource, /presentation: delegationPresentation/);
@@ -1531,6 +1534,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /getToolExecutionDetailResultState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionCallDisplayState,/);
   assert.match(screenSource, /getToolExecutionMobileVisibilityRenderState,/);
+  assert.match(chatMessageChromeSource, /getToolExecutionMobileVisibilityRenderState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileBadgeColors,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileColors,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileContentColors,/);
@@ -1606,7 +1610,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const state = getToolExecutionCallDisplayState\(result\);/);
   assert.match(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
   assert.match(screenSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
-  assert.match(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
+  assert.doesNotMatch(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
+  assert.match(chatMessageChromeSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /shouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
   assert.match(screenSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(\{\s+visibility: toolExecutionVisibilityRenderState,\s+isExpanded,\s+compact: \{\s+renderState: toolExecutionExpandControl,\s+rows: toolExecutionRows\.compactRows,\s+onToggle: \(\) => toggleMessageExpansion\(i\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /shouldRender: visibility\.toolExecutionStack\.shouldRender,[\s\S]*?emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,/);
