@@ -1696,7 +1696,13 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /hasVisibleChatMessageContent,/);
   assert.match(chatMessageChromeSource, /hasVisibleChatMessageContent,/);
   assert.match(screenSource, /applyChatMessageAutoExpansionState,/);
-  assert.match(screenSource, /applyUserResponseToChatMessages,/);
+  assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages,/);
+  assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
+  assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages\(newMessages, finalResponseEvent\?\.text \|\| lastUserResponse\)/);
+  assert.match(chatMessageChromeSource, /applyUserResponseToChatMessages,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserResponseMessages/);
+  assert.match(chatMessageChromeSource, /return applyUserResponseToChatMessages\(messages, userResponse\)/);
+  assert.doesNotMatch(screenSource, /applyUserResponseToChatMessages,/);
   assert.doesNotMatch(screenSource, /const messageRenderContext = createChatMessageConversationRenderContext\(\{/);
   assert.doesNotMatch(screenSource, /const \{\s+visibleMessageContent,\s+renderedToolEntries,\s+displayToolCallCount,\s+isExpanded,\s+isLiveStreamingAssistantMessage,\s+messageRenderState,\s+shouldRenderSurface,\s+\} = createChatMessageConversationRenderContext/);
   assert.doesNotMatch(screenSource, /resultOnlyToolLabel: toolExecutionResultOnlyFallback\.label,/);
@@ -2313,12 +2319,16 @@ test('derives tool execution card status from displayed non-meta tool entries', 
 });
 
 test('keeps Codex thinking blocks display-only on mobile', () => {
-  assert.match(screenSource, /preserveChatMessageDisplayContentFromProgress,/);
+  assert.match(screenSource, /preserveChatMessageRuntimeDisplayContentFromProgress,/);
   assert.doesNotMatch(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /const preserveDisplayContentFromProgress = \(/);
   assert.doesNotMatch(screenSource, /displayContent: historyMsg\.displayContent/);
   assert.match(chatMessageChromeSource, /displayContent: historyMessage\.displayContent/);
-  assert.match(screenSource, /preserveChatMessageDisplayContentFromProgress\(finalTurnMessages, progressMsgs\)/);
+  assert.match(screenSource, /preserveChatMessageRuntimeDisplayContentFromProgress\(finalTurnMessages, progressMsgs\)/);
+  assert.match(chatMessageChromeSource, /preserveChatMessageDisplayContentFromProgress,/);
+  assert.match(chatMessageChromeSource, /export function preserveChatMessageRuntimeDisplayContentFromProgress/);
+  assert.match(chatMessageChromeSource, /return preserveChatMessageDisplayContentFromProgress\(finalMessages, progressMessages\)/);
+  assert.doesNotMatch(screenSource, /preserveChatMessageDisplayContentFromProgress,/);
 });
 
 test('uses shared runtime activity copy for mobile loading and thinking states', () => {

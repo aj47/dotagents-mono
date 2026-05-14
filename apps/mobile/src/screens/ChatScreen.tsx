@@ -65,6 +65,7 @@ import {
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeRetryMessage,
   createChatMessageRuntimeToolApprovalRequiredMessage,
+  createChatMessageRuntimeUserResponseMessages,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -98,6 +99,7 @@ import {
   isLastChatMessageRuntimeConversationContent,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
+  preserveChatMessageRuntimeDisplayContentFromProgress,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -127,8 +129,6 @@ import {
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
   getToolResultsSummary,
-  preserveChatMessageDisplayContentFromProgress,
-  applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
 } from '@dotagents/shared/chat-utils';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
@@ -1822,7 +1822,7 @@ export default function ChatScreen({ route, navigation }: any) {
       messages.push(createChatMessageRuntimeToolApprovalRequiredMessage(update.pendingToolApproval));
     }
 
-    const messagesWithUserResponse = applyUserResponseToChatMessages(
+    const messagesWithUserResponse = createChatMessageRuntimeUserResponseMessages(
       messages,
       update.userResponse || update.spokenContent,
     );
@@ -2198,7 +2198,7 @@ export default function ChatScreen({ route, navigation }: any) {
             startIndex: currentTurnStartIndex,
           },
         );
-		        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
+		        const finalTurnMessages = createChatMessageRuntimeUserResponseMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
 	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
@@ -2241,13 +2241,13 @@ export default function ChatScreen({ route, navigation }: any) {
               console.log('[ChatScreen] Merging: progress had more messages, preserving intermediate');
               mergedMessages = [...progressMsgs];
               // Replace/update the last message with the final one from history
-              mergedMessages[mergedMessages.length - 1] = preserveChatMessageDisplayContentFromProgress(
+              mergedMessages[mergedMessages.length - 1] = preserveChatMessageRuntimeDisplayContentFromProgress(
                 [finalTurnMessages[finalTurnMessages.length - 1]],
                 [mergedMessages[mergedMessages.length - 1]],
               )[0];
             } else {
               // History is authoritative when it has >= messages
-              mergedMessages = preserveChatMessageDisplayContentFromProgress(finalTurnMessages, progressMsgs);
+              mergedMessages = preserveChatMessageRuntimeDisplayContentFromProgress(finalTurnMessages, progressMsgs);
             }
             const result = replaceChatMessageRuntimeTurnMessages(
               m,
@@ -2584,7 +2584,7 @@ export default function ChatScreen({ route, navigation }: any) {
             startIndex: currentTurnStartIndex,
           },
         );
-	        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
+	        const finalTurnMessages = createChatMessageRuntimeUserResponseMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
         setMessages((m) => replaceChatMessageRuntimeTurnMessages(
           m,

@@ -47,9 +47,12 @@ import {
   type ChatMessageSpeechMobileRenderState,
 } from '@dotagents/shared/message-display-utils';
 import {
+  applyUserResponseToChatMessages,
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
   hasVisibleChatMessageContent,
+  preserveChatMessageDisplayContentFromProgress,
+  type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from '@dotagents/shared/chat-utils';
@@ -3440,6 +3443,24 @@ export function createChatMessageRuntimeCompletedTurnMessages<TMessage>(
 ): TMessage[] {
   const messagesBeforeTurn = messages.slice(0, messageCountBeforeTurn);
   return [...messagesBeforeTurn, userMessage, ...turnMessages];
+}
+
+export function createChatMessageRuntimeUserResponseMessages<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  messages: readonly TMessage[],
+  userResponse?: string,
+): TMessage[] {
+  return applyUserResponseToChatMessages(messages, userResponse);
+}
+
+export function preserveChatMessageRuntimeDisplayContentFromProgress<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  finalMessages: readonly TMessage[],
+  progressMessages: readonly ChatDisplayMessageLike[],
+): TMessage[] {
+  return preserveChatMessageDisplayContentFromProgress(finalMessages, progressMessages);
 }
 
 export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
