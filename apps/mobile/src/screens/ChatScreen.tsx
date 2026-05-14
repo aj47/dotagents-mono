@@ -34,9 +34,8 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatMessageConversationMessageRuntimeThreadState,
+  createChatMessageConversationMessageThreadRenderState,
   createChatMessageConversationRenderContext,
-  createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationToolActivityGroupThreadRenderState,
@@ -3753,7 +3752,12 @@ export default function ChatScreen({ route, navigation }: any) {
               resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
               colors: theme.colors,
             });
-            const messageThreadBody = createChatMessageConversationThreadBodyInput({
+            const {
+              threadState: messageThreadState,
+            } = createChatMessageConversationMessageThreadRenderState({
+              itemKey: i,
+              groupRenderState,
+              groupThreadState,
               message: m,
               messageIndex: i,
               renderContext: messageRenderContext,
@@ -3785,13 +3789,6 @@ export default function ChatScreen({ route, navigation }: any) {
               onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
               onCopyMessage: handleCopyMessage,
               onToggleMessageExpansion: toggleMessageExpansion,
-            });
-            const messageThreadState = createChatMessageConversationMessageRuntimeThreadState({
-              itemKey: i,
-              groupRenderState,
-              groupThreadState,
-              renderContext: messageRenderContext,
-              body: messageThreadBody,
             });
 
             return (

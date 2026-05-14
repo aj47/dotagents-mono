@@ -2081,6 +2081,17 @@ type ChatMessageConversationMessageRuntimeThreadStateInput =
 
 type ChatMessageConversationMessageRuntimeThreadState = ChatMessageConversationRenderableRuntimeThreadState;
 
+type ChatMessageConversationMessageThreadRenderStateInput =
+  ChatMessageConversationThreadBodyInput
+  & Pick<
+    ChatMessageConversationMessageRuntimeThreadStateInput,
+    'itemKey' | 'groupRenderState' | 'groupThreadState'
+  >;
+
+type ChatMessageConversationMessageThreadRenderState = {
+  threadState: ChatMessageConversationMessageRuntimeThreadState;
+};
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2334,6 +2345,25 @@ export function createChatMessageConversationMessageRuntimeThreadState({
     shouldRenderThread: shouldRenderChatMessageConversationThread({
       renderContext,
       body: runtimeThreadInput.body,
+    }),
+  };
+}
+
+export function createChatMessageConversationMessageThreadRenderState({
+  itemKey,
+  groupRenderState,
+  groupThreadState,
+  ...bodyInput
+}: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageThreadRenderState {
+  const body = createChatMessageConversationThreadBodyInput(bodyInput);
+
+  return {
+    threadState: createChatMessageConversationMessageRuntimeThreadState({
+      itemKey,
+      groupRenderState,
+      groupThreadState,
+      renderContext: bodyInput.renderContext,
+      body,
     }),
   };
 }
