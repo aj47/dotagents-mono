@@ -3811,6 +3811,28 @@ export function createChatMessageRuntimeRecoveredHistoryMessages<
   ) as unknown as TMessage[];
 }
 
+export function createChatMessageRuntimeRecoverableHistoryMessages<
+  TMessage extends ChatDisplayMessageLike,
+  TToolCall = unknown,
+  TToolResult = unknown,
+>(
+  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
+): TMessage[] | null {
+  const lastUserMessageIndex = findChatMessageRuntimeLastUserMessageIndex(historyMessages, -1);
+  const hasAssistantResponse = hasChatMessageRuntimeAssistantContentAfter(
+    historyMessages,
+    lastUserMessageIndex,
+  );
+
+  if (!hasAssistantResponse) {
+    return null;
+  }
+
+  return createChatMessageRuntimeRecoveredHistoryMessages<TMessage, TToolCall, TToolResult>(
+    historyMessages,
+  );
+}
+
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
   return formatChatRuntimeToolApprovalRequiredContent(toolName);
 }

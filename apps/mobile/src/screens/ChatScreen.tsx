@@ -59,7 +59,7 @@ import {
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeFinalHistoryTurnMessages,
-  createChatMessageRuntimeRecoveredHistoryMessages,
+  createChatMessageRuntimeRecoverableHistoryMessages,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
@@ -90,8 +90,6 @@ import {
   getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
-  findChatMessageRuntimeLastUserMessageIndex,
-  hasChatMessageRuntimeAssistantContentAfter,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
@@ -2979,16 +2977,12 @@ export default function ChatScreen({ route, navigation }: any) {
         const serverConversation = await retryClient.getConversation(recoveryConversationId);
         if (serverConversation && serverConversation.messages.length > 0) {
           const serverMessages = serverConversation.messages;
+          const recoveredMessages = createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>(serverMessages);
 
-          const lastUserMsgIndex = findChatMessageRuntimeLastUserMessageIndex(serverMessages, -1);
-          const hasAssistantResponse = hasChatMessageRuntimeAssistantContentAfter(serverMessages, lastUserMsgIndex);
-
-          if (hasAssistantResponse) {
+          if (recoveredMessages) {
             console.log('[ChatScreen] Retry: Server already has response, syncing state');
 
             await sessionStore.setServerConversationId(recoveryConversationId);
-
-            const recoveredMessages = createChatMessageRuntimeRecoveredHistoryMessages<ChatMessage>(serverMessages);
 
             setMessages(recoveredMessages);
             await sessionStore.setMessages(recoveredMessages);
