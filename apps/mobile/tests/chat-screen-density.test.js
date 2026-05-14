@@ -895,7 +895,7 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /export function createChatRuntimeSafeAreaMergedStyleSlots/);
   assert.match(chatMessageChromeSource, /scrollToBottomButton:\s*\{\s+bottom: layout\.scrollToBottomButton\.bottom,\s+\}/);
   assert.doesNotMatch(screenSource, /scrollToBottomButton:\s*\{\s*bottom:\s*mobileSafeAreaLayout\.scrollToBottomButton\.bottom,\s*\}/);
-  assert.match(screenSource, /const scrollToBottomRenderState = useMemo\(\s+\(\) => getChatRuntimeScrollToBottomMobileRenderState\(\{\s+isVisible: !shouldAutoScroll,\s+colors: theme\.colors,\s+\}\),\s+\[shouldAutoScroll, theme\.colors\],\s+\);/);
+  assert.doesNotMatch(screenSource, /const scrollToBottomRenderState = useMemo/);
   assert.match(screenSource, /createChatMessageConversationDockStyleSlots,/);
   assert.match(screenSource, /createChatMessageRuntimeDockStyleSlots,/);
   assert.match(screenSource, /const conversationDockStyles = useMemo\(\s+\(\) => createChatMessageConversationDockStyleSlots\(styles\),\s+\[styles\],\s+\);/);
@@ -904,8 +904,9 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationDockStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
   assert.match(screenSource, /const handleScrollToBottomPress = \(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollViewRef\.current\?\.scrollToEnd\(\{ animated: true \}\);\s+\};/);
-  assert.match(screenSource, /scrollToBottomRenderState,\s+onScrollToBottom: handleScrollToBottomPress,/);
+  assert.match(screenSource, /scrollToBottomVisible: !shouldAutoScroll,\s+onScrollToBottom: handleScrollToBottomPress,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockChromeProps/);
+  assert.match(chatMessageChromeSource, /const scrollToBottomRenderState = getChatRuntimeScrollToBottomMobileRenderState\(\{\s+isVisible: scrollToBottomVisible,\s+colors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /scrollToBottomButton: \{\s+renderState: scrollToBottomRenderState,\s+onPress: onScrollToBottom,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButton\s+\{\.\.\.scrollToBottomButton\}\s+style=\{styles\.scrollToBottomButtonStyle\}/);
   assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: \[\s+conversationDockStyles\.scrollToBottomButtonStyle,\s+safeAreaStyles\.scrollToBottomButton,\s+\]/);
@@ -1072,7 +1073,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /<ChatMessageHistoryBanner\s+\{\.\.\.historyBanner\}\s+styles=\{styles\.historyBanner\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageDebugPanelStack\s+\{\.\.\.debugPanels\}\s+panelStyle=\{styles\.debugPanels\.panelStyle\}\s+textStyle=\{styles\.debugPanels\.textStyle\}/);
-  assert.match(screenSource, /const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps\(\{[\s\S]*?responseHistoryResponses: respondToUserHistory,[\s\S]*?scrollToBottomRenderState,[\s\S]*?voiceOverlayVisible: mobileComposerVisibilityRenderState\.voiceOverlay\.isVisible,[\s\S]*?queuePanelShouldRender: messageQueuePanelDockRenderState\.shouldRender,[\s\S]*?connectionBannerRenderState,[\s\S]*?composer: chatComposerRuntimeDock,/);
+  assert.match(screenSource, /const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps\(\{[\s\S]*?responseHistoryResponses: respondToUserHistory,[\s\S]*?scrollToBottomVisible: !shouldAutoScroll,[\s\S]*?voiceOverlayVisible: mobileComposerVisibilityRenderState\.voiceOverlay\.isVisible,[\s\S]*?queuePanelShouldRender: messageQueuePanelDockRenderState\.shouldRender,[\s\S]*?connectionState,[\s\S]*?lastFailedMessage,[\s\S]*?isResponding: responding,[\s\S]*?colors: theme\.colors,[\s\S]*?composer: chatComposerRuntimeDock,/);
   assert.match(chatMessageChromeSource, /responseHistoryPanel: \{\s+responses: responseHistoryResponses,[\s\S]*?scrollToBottomButton: \{\s+renderState: scrollToBottomRenderState,/);
   assert.match(screenSource, /dock: chatMessageRuntimeDock,/);
   assert.doesNotMatch(screenSource, /shouldRender: respondToUserHistory\.length > 0/);
@@ -1129,9 +1130,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
 
 test('uses shared runtime presentation for mobile connection and retry banners', () => {
   assert.match(screenSource, /getChatRuntimeConnectionBannerMobileRenderState,/);
-  assert.match(screenSource, /const connectionBannerRenderState = useMemo\(/);
-  assert.match(screenSource, /getChatRuntimeConnectionBannerMobileRenderState\(\{\s*connectionState,\s*lastFailedMessage,\s*isResponding: responding,\s*colors: theme\.colors,/);
-  assert.match(screenSource, /connectionBannerRenderState,\s+onConnectionBannerRetry: \(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\},/);
+  assert.doesNotMatch(screenSource, /const connectionBannerRenderState = useMemo/);
+  assert.match(chatMessageChromeSource, /const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\);/);
+  assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+colors: theme\.colors,\s+onConnectionBannerRetry: \(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\},/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: onConnectionBannerRetry,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageConnectionBanner\s+\{\.\.\.connectionBanner\}\s+styles=\{styles\.connectionBanner\}/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+banner: styles\.connectionBanner,\s+reconnecting: styles\.connectionBannerReconnecting,\s+failed: styles\.connectionBannerFailed,\s+content: styles\.connectionBannerContent,/);

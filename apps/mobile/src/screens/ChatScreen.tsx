@@ -1369,13 +1369,6 @@ export default function ChatScreen({ route, navigation }: any) {
   // Auto-scroll state and ref for mobile chat
   const scrollViewRef = useRef<ChatMessageScrollViewportRef>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const scrollToBottomRenderState = useMemo(
-    () => getChatRuntimeScrollToBottomMobileRenderState({
-      isVisible: !shouldAutoScroll,
-      colors: theme.colors,
-    }),
-    [shouldAutoScroll, theme.colors],
-  );
   // Track scroll timeout for debouncing rapid message updates
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref to track current auto-scroll state for use in timeout callbacks
@@ -3305,15 +3298,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	});
 
 	const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({ handsFree, willCancel });
-  const connectionBannerRenderState = useMemo(
-    () => getChatRuntimeConnectionBannerMobileRenderState({
-      connectionState,
-      lastFailedMessage,
-      isResponding: responding,
-      colors: theme.colors,
-    }),
-    [connectionState, lastFailedMessage, responding, theme.colors],
-  );
 
   const {
     threadStates: conversationThreadStates,
@@ -3448,7 +3432,7 @@ export default function ChatScreen({ route, navigation }: any) {
     responseHistoryTtsVoiceId: config.ttsVoiceId,
     responseHistoryRemoteBaseUrl: config.baseUrl,
     responseHistoryRemoteApiKey: config.apiKey,
-    scrollToBottomRenderState,
+    scrollToBottomVisible: !shouldAutoScroll,
     onScrollToBottom: handleScrollToBottomPress,
     voiceOverlayVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
     voiceOverlayLabel,
@@ -3466,7 +3450,10 @@ export default function ChatScreen({ route, navigation }: any) {
     isMessageQueuePaused,
     onPauseMessageQueue: handlePauseMessageQueue,
     onResumeMessageQueue: handleResumeMessageQueue,
-    connectionBannerRenderState,
+    connectionState,
+    lastFailedMessage,
+    isResponding: responding,
+    colors: theme.colors,
     onConnectionBannerRetry: () => {
       void handleRetryLastFailedMessage();
     },

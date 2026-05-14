@@ -98,11 +98,13 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeBranchMobileRenderState,
+  getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
+  getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeStepSummaryMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
@@ -123,11 +125,13 @@ import {
   type ChatRuntimeBackMobileRenderState,
   type ChatRuntimeBranchMobileRenderState,
   type ChatRuntimeConnectionBannerMobileRenderState,
+  type ChatRuntimeConnectionBannerMobileRenderStateInput,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
+  type ChatRuntimeScrollToBottomMobileRenderStateInput,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
@@ -1545,7 +1549,7 @@ type ChatMessageRuntimeDockChromePropsInput = {
   responseHistoryTtsVoiceId: ChatMessageResponseHistoryPanelDockProps['ttsVoiceId'];
   responseHistoryRemoteBaseUrl: ChatMessageResponseHistoryPanelDockProps['remoteBaseUrl'];
   responseHistoryRemoteApiKey: ChatMessageResponseHistoryPanelDockProps['remoteApiKey'];
-  scrollToBottomRenderState: ChatRuntimeScrollToBottomMobileRenderState;
+  scrollToBottomVisible: ChatRuntimeScrollToBottomMobileRenderStateInput['isVisible'];
   onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
   voiceOverlayVisible: ChatComposerVoiceOverlayProps['isVisible'];
   voiceOverlayLabel: ChatComposerVoiceOverlayProps['label'];
@@ -1563,7 +1567,12 @@ type ChatMessageRuntimeDockChromePropsInput = {
   isMessageQueuePaused: ChatMessageQueuePanelDockProps['panel']['isPaused'];
   onPauseMessageQueue: ChatMessageQueuePanelDockProps['panel']['onPause'];
   onResumeMessageQueue: ChatMessageQueuePanelDockProps['panel']['onResume'];
-  connectionBannerRenderState: ChatMessageConnectionBannerProps['renderState'];
+  connectionState: ChatRuntimeConnectionBannerMobileRenderStateInput['connectionState'];
+  lastFailedMessage: ChatRuntimeConnectionBannerMobileRenderStateInput['lastFailedMessage'];
+  isResponding: ChatRuntimeConnectionBannerMobileRenderStateInput['isResponding'];
+  colors:
+    & ChatRuntimeScrollToBottomMobileRenderStateInput['colors']
+    & ChatRuntimeConnectionBannerMobileRenderStateInput['colors'];
   onConnectionBannerRetry?: ChatMessageConnectionBannerProps['onRetry'];
   composer: ChatMessageRuntimeDockChromeProps['composer'];
 };
@@ -2882,7 +2891,7 @@ export function createChatMessageRuntimeDockChromeProps({
   responseHistoryTtsVoiceId,
   responseHistoryRemoteBaseUrl,
   responseHistoryRemoteApiKey,
-  scrollToBottomRenderState,
+  scrollToBottomVisible,
   onScrollToBottom,
   voiceOverlayVisible,
   voiceOverlayLabel,
@@ -2900,10 +2909,24 @@ export function createChatMessageRuntimeDockChromeProps({
   isMessageQueuePaused,
   onPauseMessageQueue,
   onResumeMessageQueue,
-  connectionBannerRenderState,
+  connectionState,
+  lastFailedMessage,
+  isResponding,
+  colors,
   onConnectionBannerRetry,
   composer,
 }: ChatMessageRuntimeDockChromePropsInput): ChatMessageRuntimeDockChromeProps {
+  const scrollToBottomRenderState = getChatRuntimeScrollToBottomMobileRenderState({
+    isVisible: scrollToBottomVisible,
+    colors,
+  });
+  const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState({
+    connectionState,
+    lastFailedMessage,
+    isResponding,
+    colors,
+  });
+
   return {
     responseHistoryPanel: {
       responses: responseHistoryResponses,
