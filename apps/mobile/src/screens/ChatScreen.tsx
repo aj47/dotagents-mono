@@ -96,7 +96,6 @@ import {
   getChatComposerMobileControlState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
-  getChatComposerVoiceOverlayLabel,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeDebugState,
@@ -3259,8 +3258,6 @@ export default function ChatScreen({ route, navigation }: any) {
 		fallback: composerPresentation.placeholder || composerPresentation.submitTitle,
 	});
 
-	const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({ handsFree, willCancel });
-
   const {
     threadStates: conversationThreadStates,
     visibleMessageCount: conversationThreadVisibleMessageCount,
@@ -3394,7 +3391,8 @@ export default function ChatScreen({ route, navigation }: any) {
     scrollToBottomVisible: !shouldAutoScroll,
     onScrollToBottom: handleScrollToBottomPress,
     voiceOverlayVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
-    voiceOverlayLabel,
+    voiceOverlayHandsFree: handsFree,
+    voiceOverlayWillCancel: willCancel,
     voiceOverlayTranscript: liveTranscript,
     queuePanelEnabled: messageQueueEnabled,
     queuePanelConversationId: currentConversationId,

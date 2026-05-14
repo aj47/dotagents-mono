@@ -1513,9 +1513,11 @@ test('uses shared mobile icon chrome for pending image removal', () => {
 });
 
 test('keeps the live voice overlay compact by grouping status and transcript into one card', () => {
-  assert.match(screenSource, /getChatComposerVoiceOverlayLabel,/);
-  assert.match(screenSource, /const voiceOverlayLabel = getChatComposerVoiceOverlayLabel\(\{ handsFree, willCancel \}\);/);
-  assert.match(screenSource, /voiceOverlayVisible: mobileComposerVisibilityRenderState\.voiceOverlay\.isVisible,\s+voiceOverlayLabel,\s+voiceOverlayTranscript: liveTranscript,/);
+  assert.doesNotMatch(screenSource, /getChatComposerVoiceOverlayLabel,/);
+  assert.doesNotMatch(screenSource, /const voiceOverlayLabel = getChatComposerVoiceOverlayLabel\(\{ handsFree, willCancel \}\);/);
+  assert.match(chatMessageChromeSource, /getChatComposerVoiceOverlayLabel,/);
+  assert.match(chatMessageChromeSource, /const voiceOverlayLabel = getChatComposerVoiceOverlayLabel\(\{\s+handsFree: voiceOverlayHandsFree,\s+willCancel: voiceOverlayWillCancel,\s+\}\);/);
+  assert.match(screenSource, /voiceOverlayVisible: mobileComposerVisibilityRenderState\.voiceOverlay\.isVisible,\s+voiceOverlayHandsFree: handsFree,\s+voiceOverlayWillCancel: willCancel,\s+voiceOverlayTranscript: liveTranscript,/);
   assert.doesNotMatch(screenSource, /voiceOverlayTranscriptNumberOfLines:/);
   assert.match(chatMessageChromeSource, /const composerSurface = getChatComposerMobileSurfaceState\(\);/);
   assert.match(chatMessageChromeSource, /voiceOverlay: \{\s+isVisible: voiceOverlayVisible,\s+label: voiceOverlayLabel,\s+transcript: voiceOverlayTranscript,\s+transcriptNumberOfLines: composerSurface\.voiceOverlay\.transcriptNumberOfLines,\s+\}/);
@@ -1534,7 +1536,7 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(chatMessageChromeSource, /\{!!transcript && \(/);
   assert.match(chatMessageChromeSource, /voiceOverlay:\s*\{\s+bottom: layout\.voiceOverlay\.bottom,\s+\}/);
   assert.doesNotMatch(screenSource, /voiceOverlay:\s*\{\s*bottom:\s*mobileSafeAreaLayout\.voiceOverlay\.bottom,\s*\}/);
-  assert.match(screenSource, /voiceOverlayLabel,/);
+  assert.doesNotMatch(screenSource, /voiceOverlayLabel,/);
   assert.match(screenSource, /const voiceOverlaySurface = composerSurface\.voiceOverlay;/);
   assert.match(screenSource, /overlay:\s*\{[\s\S]*?position:\s*voiceOverlaySurface\.position,[\s\S]*?left:\s*voiceOverlaySurface\.left,[\s\S]*?right:\s*voiceOverlaySurface\.right,[\s\S]*?alignItems:\s*voiceOverlaySurface\.alignItems,/);
   assert.match(screenSource, /overlayCard:\s*\{[\s\S]*?maxWidth:\s*voiceOverlaySurface\.cardMaxWidth,[\s\S]*?paddingHorizontal:\s*voiceOverlaySurface\.cardPaddingHorizontal,[\s\S]*?paddingVertical:\s*voiceOverlaySurface\.cardPaddingVertical,/);

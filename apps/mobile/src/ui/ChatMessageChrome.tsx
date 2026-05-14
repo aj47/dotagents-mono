@@ -96,6 +96,7 @@ import {
   getChatComposerQueueMobileRenderState,
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileRenderState,
+  getChatComposerVoiceOverlayLabel,
   formatChatRuntimeDelegationAccessibilityLabel,
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
@@ -1569,7 +1570,8 @@ type ChatMessageRuntimeDockChromePropsInput = {
   scrollToBottomVisible: ChatRuntimeScrollToBottomMobileRenderStateInput['isVisible'];
   onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
   voiceOverlayVisible: ChatComposerVoiceOverlayProps['isVisible'];
-  voiceOverlayLabel: ChatComposerVoiceOverlayProps['label'];
+  voiceOverlayHandsFree: Parameters<typeof getChatComposerVoiceOverlayLabel>[0]['handsFree'];
+  voiceOverlayWillCancel: Parameters<typeof getChatComposerVoiceOverlayLabel>[0]['willCancel'];
   voiceOverlayTranscript: ChatComposerVoiceOverlayProps['transcript'];
   queuePanelEnabled: boolean;
   queuePanelConversationId: ChatMessageQueuePanelDockProps['panel']['conversationId'];
@@ -2913,7 +2915,8 @@ export function createChatMessageRuntimeDockChromeProps({
   scrollToBottomVisible,
   onScrollToBottom,
   voiceOverlayVisible,
-  voiceOverlayLabel,
+  voiceOverlayHandsFree,
+  voiceOverlayWillCancel,
   voiceOverlayTranscript,
   queuePanelEnabled,
   queuePanelConversationId,
@@ -2935,6 +2938,10 @@ export function createChatMessageRuntimeDockChromeProps({
   composer,
 }: ChatMessageRuntimeDockChromePropsInput): ChatMessageRuntimeDockChromeProps {
   const composerSurface = getChatComposerMobileSurfaceState();
+  const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({
+    handsFree: voiceOverlayHandsFree,
+    willCancel: voiceOverlayWillCancel,
+  });
   const scrollToBottomRenderState = getChatRuntimeScrollToBottomMobileRenderState({
     isVisible: scrollToBottomVisible,
     colors,
