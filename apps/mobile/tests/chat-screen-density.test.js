@@ -3740,9 +3740,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /const mobileMessageExpansionButtonColors = mobileMessageActionStyleState\.slotButtons\.expansion\.colors;/);
   assert.match(screenSource, /const mobileMessageCopyButtonColors = mobileMessageActionStyleState\.slotButtons\.copy\.colors;/);
   assert.match(screenSource, /const mobileMessageBranchButtonColors = mobileMessageActionStyleState\.slotButtons\.branch\.colors;/);
-  assert.match(screenSource, /const mobileMessageCopiedButtonColors = mobileMessageActionStyleState\.buttons\.copied\.colors;/);
+  assert.match(screenSource, /const mobileMessageCopiedButtonColors = mobileMessageActionStyleState\.activeSlotButtons\.copy\.colors;/);
   assert.match(screenSource, /const mobileMessageSpeechButtonColors = mobileMessageActionStyleState\.slotButtons\.speech\.colors;/);
-  assert.match(screenSource, /const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState\.buttons\.speechActive\.colors;/);
+  assert.match(screenSource, /const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState\.activeSlotButtons\.speech\.colors;/);
   assert.doesNotMatch(screenSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
   assert.match(chatMessageChromeSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
   assert.doesNotMatch(screenSource, /const messageExpansionRenderState = getChatMessageExpansionMobileRenderState/);

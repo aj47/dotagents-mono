@@ -148,9 +148,9 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageExpansionButtonColors = mobileMessageActionStyleState.slotButtons.expansion.colors;
   const mobileMessageCopyButtonColors = mobileMessageActionStyleState.slotButtons.copy.colors;
   const mobileMessageBranchButtonColors = mobileMessageActionStyleState.slotButtons.branch.colors;
-  const mobileMessageCopiedButtonColors = mobileMessageActionStyleState.buttons.copied.colors;
+  const mobileMessageCopiedButtonColors = mobileMessageActionStyleState.activeSlotButtons.copy.colors;
   const mobileMessageSpeechButtonColors = mobileMessageActionStyleState.slotButtons.speech.colors;
-  const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState.buttons.speechActive.colors;
+  const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState.activeSlotButtons.speech.colors;
   const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState.turnDuration.standard;
   const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState.turnDuration.live;
   const mobileMessageTurnDurationBadge = mobileMessageTurnDurationRenderState.badge;

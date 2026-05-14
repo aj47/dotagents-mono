@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   CHAT_MESSAGE_ACTION_PRESENTATION,
+  CHAT_MESSAGE_ACTION_MOBILE_ACTIVE_BUTTON_KIND_BY_SLOT,
   CHAT_MESSAGE_ACTION_MOBILE_BUTTON_KIND_BY_SLOT,
   CHAT_MESSAGE_ACTION_SEQUENCE,
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
@@ -35,6 +36,7 @@ import {
   getChatMessageActionLayoutRenderState,
   getChatMessageActionSequence,
   getChatMessageVisibleActionSlots,
+  getChatMessageActionMobileActiveButtonKindForSlot,
   getChatMessageActionMobileButtonKindForSlot,
   getChatMessageActionMobileButtonColors,
   getChatMessageActionMobileButtonRenderState,
@@ -856,10 +858,16 @@ describe('chat message display presentation', () => {
       copy: 'standard',
       expansion: 'standard',
     })
+    expect(CHAT_MESSAGE_ACTION_MOBILE_ACTIVE_BUTTON_KIND_BY_SLOT).toEqual({
+      copy: 'copied',
+      speech: 'speechActive',
+    })
     expect(getChatMessageActionMobileButtonKindForSlot('speech')).toBe('speech')
     expect(getChatMessageActionMobileButtonKindForSlot('branch')).toBe('branch')
     expect(getChatMessageActionMobileButtonKindForSlot('copy')).toBe('standard')
     expect(getChatMessageActionMobileButtonKindForSlot('expansion')).toBe('standard')
+    expect(getChatMessageActionMobileActiveButtonKindForSlot('copy')).toBe('copied')
+    expect(getChatMessageActionMobileActiveButtonKindForSlot('speech')).toBe('speechActive')
     expect(getChatMessageActionMobileButtonStateForSlot('speech')).toEqual(
       getChatMessageActionMobileButtonState('speech'),
     )
@@ -947,6 +955,16 @@ describe('chat message display presentation', () => {
         }),
         expansion: getChatMessageActionMobileButtonRenderState({
           kind: getChatMessageActionMobileButtonKindForSlot('expansion'),
+          colors: actionButtonRenderStateColors,
+        }),
+      },
+      activeSlotButtons: {
+        copy: getChatMessageActionMobileButtonRenderState({
+          kind: getChatMessageActionMobileActiveButtonKindForSlot('copy'),
+          colors: actionButtonRenderStateColors,
+        }),
+        speech: getChatMessageActionMobileButtonRenderState({
+          kind: getChatMessageActionMobileActiveButtonKindForSlot('speech'),
           colors: actionButtonRenderStateColors,
         }),
       },

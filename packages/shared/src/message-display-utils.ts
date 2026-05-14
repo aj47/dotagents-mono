@@ -971,6 +971,10 @@ export type ChatMessageActionMobileButtonKind =
   | "speechActive"
 
 export type ChatMessageActionMobileButtonSlot = Exclude<ChatMessageActionSlot, "turnDuration">
+export type ChatMessageActionMobileActiveButtonSlot = Extract<
+  ChatMessageActionMobileButtonSlot,
+  "copy" | "speech"
+>
 
 export const CHAT_MESSAGE_ACTION_MOBILE_BUTTON_KIND_BY_SLOT = {
   speech: "speech",
@@ -979,10 +983,21 @@ export const CHAT_MESSAGE_ACTION_MOBILE_BUTTON_KIND_BY_SLOT = {
   expansion: "standard",
 } as const satisfies Record<ChatMessageActionMobileButtonSlot, ChatMessageActionMobileButtonKind>
 
+export const CHAT_MESSAGE_ACTION_MOBILE_ACTIVE_BUTTON_KIND_BY_SLOT = {
+  copy: "copied",
+  speech: "speechActive",
+} as const satisfies Record<ChatMessageActionMobileActiveButtonSlot, ChatMessageActionMobileButtonKind>
+
 export function getChatMessageActionMobileButtonKindForSlot(
   slot: ChatMessageActionMobileButtonSlot,
 ): ChatMessageActionMobileButtonKind {
   return CHAT_MESSAGE_ACTION_MOBILE_BUTTON_KIND_BY_SLOT[slot]
+}
+
+export function getChatMessageActionMobileActiveButtonKindForSlot(
+  slot: ChatMessageActionMobileActiveButtonSlot,
+): ChatMessageActionMobileButtonKind {
+  return CHAT_MESSAGE_ACTION_MOBILE_ACTIVE_BUTTON_KIND_BY_SLOT[slot]
 }
 
 export function getChatMessageActionMobileButtonStateForSlot(
@@ -1018,6 +1033,10 @@ export interface ChatMessageActionMobileStyleRenderState {
   row: ReturnType<typeof getChatMessageActionMobileRowState>
   buttons: Record<ChatMessageActionMobileButtonKind, ChatMessageActionMobileButtonRenderState>
   slotButtons: Record<ChatMessageActionMobileButtonSlot, ChatMessageActionMobileButtonRenderState>
+  activeSlotButtons: Record<
+    ChatMessageActionMobileActiveButtonSlot,
+    ChatMessageActionMobileButtonRenderState
+  >
 }
 
 export interface ChatMessageActionMobileIconState {
@@ -1184,6 +1203,9 @@ export function getChatMessageActionMobileStyleRenderState({
   const getSlotButton = (slot: ChatMessageActionMobileButtonSlot) => {
     return buttons[getChatMessageActionMobileButtonKindForSlot(slot)]
   }
+  const getActiveSlotButton = (slot: ChatMessageActionMobileActiveButtonSlot) => {
+    return buttons[getChatMessageActionMobileActiveButtonKindForSlot(slot)]
+  }
 
   return {
     row: getChatMessageActionMobileRowState(),
@@ -1193,6 +1215,10 @@ export function getChatMessageActionMobileStyleRenderState({
       branch: getSlotButton("branch"),
       copy: getSlotButton("copy"),
       expansion: getSlotButton("expansion"),
+    },
+    activeSlotButtons: {
+      copy: getActiveSlotButton("copy"),
+      speech: getActiveSlotButton("speech"),
     },
   }
 }
