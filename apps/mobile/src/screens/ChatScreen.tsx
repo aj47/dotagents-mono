@@ -45,6 +45,7 @@ import {
   createChatMessageRetryStatusProps,
   createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
+  createChatMessageToolExecutionCompactPreviewRow,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -81,7 +82,6 @@ import {
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
-  getCompactToolExecutionPreview,
   getToolResultsSummary,
   getChatMessageDisplayState,
   hasVisibleChatMessageContent,
@@ -183,7 +183,6 @@ import {
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
 import {
-  getToolExecutionCompactMobileRenderState,
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
@@ -3870,20 +3869,15 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const toolExecutionExpandControl = getToolExecutionDetailMobileExpandControlRenderState();
-            const compactToolExecutionRows = renderedToolEntries.map(({ toolCall, label, origIdx, result: tcResult }) => {
-              const tcState = getToolExecutionCallDisplayState(tcResult);
-              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, tcResult ?? null);
-              const compactRenderState = getToolExecutionCompactMobileRenderState({
-                state: tcState,
-                preview: toolPreview,
-                colors: theme.colors,
-              });
-
-              return {
+            const compactToolExecutionRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) =>
+              createChatMessageToolExecutionCompactPreviewRow({
                 key: String(origIdx),
-                renderState: compactRenderState,
-              };
-            });
+                toolCall,
+                label,
+                result,
+                colors: theme.colors,
+              }),
+            );
             const stableMessageKey = m.id ?? String(i);
             const toolExecutionDetailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) => {
               const toolCallKey = `${stableMessageKey}-${origIdx}`;
@@ -4122,21 +4116,15 @@ export default function ChatScreen({ route, navigation }: any) {
                 })
               : null;
             const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount);
-            const delegationToolPreviewRows = delegationVisibleToolRows.map(({ toolCall, label, result }, toolIndex) => {
-              const toolState = getToolExecutionCallDisplayState(result);
-              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, result ?? null);
-              const renderState = getToolExecutionCompactMobileRenderState({
-                state: toolState,
-                preview: toolPreview,
-                colors: theme.colors,
-              });
-
-              return {
+            const delegationToolPreviewRows = delegationVisibleToolRows.map(({ toolCall, label, result }, toolIndex) =>
+              createChatMessageToolExecutionCompactPreviewRow({
                 key: `${toolCall.name}-${toolIndex}`,
-                preview: toolPreview,
-                renderState,
-              };
-            });
+                toolCall,
+                label,
+                result,
+                colors: theme.colors,
+              }),
+            );
             const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState({
               retryInfo: m.retryInfo,
               colors: theme.colors,

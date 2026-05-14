@@ -31,6 +31,10 @@ import {
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageContentRenderState,
 } from '@dotagents/shared/message-display-utils';
+import {
+  getCompactToolExecutionPreview,
+  type ChatMessageDisplayToolEntry,
+} from '@dotagents/shared/chat-utils';
 import type {
   AgentDelegationConversationPreviewRow,
   AgentDelegationPresentation,
@@ -72,16 +76,18 @@ import type {
   ChatSessionStatusMobileRenderState,
   ChatSessionStatusMobileStyleState,
 } from '@dotagents/shared/session-presentation';
-import type {
-  ToolExecutionCompactMobileRenderState,
-  ToolExecutionDetailMobileCollapseControlRenderState,
-  ToolExecutionDetailMobileCopyButtonRenderState,
-  ToolExecutionDetailMobileEmptyStateRenderState,
-  ToolExecutionDetailMobileExpandControlRenderState,
-  ToolExecutionDetailMobileHeaderRenderState,
-  ToolExecutionDetailMobilePendingResultRenderState,
-  ToolExecutionDetailMobileSectionHeaderRenderState,
-  ToolExecutionMobileVisibilityRenderState,
+import {
+  getToolExecutionCallDisplayState,
+  getToolExecutionCompactMobileRenderState,
+  type ToolExecutionCompactMobileRenderState,
+  type ToolExecutionDetailMobileCollapseControlRenderState,
+  type ToolExecutionDetailMobileCopyButtonRenderState,
+  type ToolExecutionDetailMobileEmptyStateRenderState,
+  type ToolExecutionDetailMobileExpandControlRenderState,
+  type ToolExecutionDetailMobileHeaderRenderState,
+  type ToolExecutionDetailMobilePendingResultRenderState,
+  type ToolExecutionDetailMobileSectionHeaderRenderState,
+  type ToolExecutionMobileVisibilityRenderState,
 } from '@dotagents/shared/tool-execution-display';
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
@@ -500,6 +506,14 @@ type ChatMessageDelegationToolPreviewRow = {
   key: string;
   preview: string;
   renderState: ToolExecutionCompactMobileRenderState;
+};
+
+type ChatMessageToolExecutionCompactPreviewRowInput = {
+  key: string;
+  toolCall: ChatMessageDisplayToolEntry['toolCall'];
+  label?: string;
+  result?: ChatMessageDisplayToolEntry['result'];
+  colors: Parameters<typeof getToolExecutionCompactMobileRenderState>[0]['colors'];
 };
 
 type ChatMessageDelegationCardProps = {
@@ -1898,6 +1912,27 @@ export function createChatMessageCollapsedPreviewProps({
     renderState,
     actionState,
     onPress: actionState.canToggle ? onToggle : undefined,
+  };
+}
+
+export function createChatMessageToolExecutionCompactPreviewRow({
+  key,
+  toolCall,
+  label,
+  result,
+  colors,
+}: ChatMessageToolExecutionCompactPreviewRowInput): ChatMessageDelegationToolPreviewRow {
+  const state = getToolExecutionCallDisplayState(result);
+  const preview = label ?? getCompactToolExecutionPreview(toolCall, result ?? null);
+
+  return {
+    key,
+    preview,
+    renderState: getToolExecutionCompactMobileRenderState({
+      state,
+      preview,
+      colors,
+    }),
   };
 }
 

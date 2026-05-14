@@ -554,10 +554,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /numberOfLines=\{surface\.toolPreviewLabelNumberOfLines\}/);
   assert.match(screenSource, /const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel\(displayToolCallCount\);/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationToolActivityLabel\(formatToolExecutionCount\('tool_call', displayToolCallCount\)\)/);
-  assert.match(screenSource, /delegationVisibleToolRows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>/);
-  assert.match(screenSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
-  assert.match(screenSource, /getToolExecutionCompactMobileRenderState,/);
-  assert.match(screenSource, /const renderState = getToolExecutionCompactMobileRenderState\(\{\s*state: toolState,\s*preview: toolPreview,\s*colors: theme\.colors,\s*\}\);/);
+  assert.match(screenSource, /delegationVisibleToolRows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
+  assert.match(chatMessageChromeSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
+  assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /renderState: getToolExecutionCompactMobileRenderState\(\{\s+state,\s+preview,\s+colors,/);
   assert.match(screenSource, /rows: delegationToolPreviewRows,/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{`\$\{toolPresentation\.label\}: \$\{toolPreview\}`\}/);
@@ -1471,7 +1471,7 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
   assert.doesNotMatch(screenSource, /formatToolExecutionCount,/);
   assert.match(screenSource, /getToolExecutionDetailArgumentsState,/);
-  assert.match(screenSource, /getToolExecutionCompactMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
   assert.match(screenSource, /getToolExecutionCompactMobileStyleRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileCopyButtonRenderState,/);
@@ -1551,12 +1551,12 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const allSuccess = hasToolResults && toolExecutionState === 'success';/);
   assert.doesNotMatch(screenSource, /const hasErrors = toolExecutionState === 'error';/);
   assert.doesNotMatch(screenSource, /const isPending = toolExecutionState === 'pending';/);
-  assert.match(screenSource, /const compactToolExecutionRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result: tcResult \}\) => \{/);
-  assert.match(screenSource, /const toolState = getToolExecutionCallDisplayState\(result\);/);
-  assert.match(screenSource, /const tcState = getToolExecutionCallDisplayState\(tcResult\);/);
+  assert.match(screenSource, /const compactToolExecutionRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result \}\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
+  assert.doesNotMatch(screenSource, /const tcState = getToolExecutionCallDisplayState\(tcResult\);/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[result\]\)/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[tcResult\]\)/);
-  assert.match(screenSource, /const compactRenderState = getToolExecutionCompactMobileRenderState\(\{\s*state: tcState,\s*preview: toolPreview,\s*colors: theme\.colors,\s*\}\);/);
+  assert.match(chatMessageChromeSource, /const state = getToolExecutionCallDisplayState\(result\);/);
+  assert.match(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
   assert.match(screenSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
   assert.match(screenSource, /toolPreview: \{\s+shouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,\s+label: delegationToolPreviewLabel,/);
   assert.match(screenSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(\{\s+visibility: toolExecutionVisibilityRenderState,\s+isExpanded,\s+compact: \{\s+renderState: toolExecutionExpandControl,\s+rows: compactToolExecutionRows,\s+onToggle: \(\) => toggleMessageExpansion\(i\),/);
@@ -2223,7 +2223,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
 
 test('labels result-only tool entries without showing raw tool_call text', () => {
   assert.match(screenSource, /resultOnlyToolLabel: toolExecutionResultOnlyFallback\.label/);
-  assert.match(screenSource, /const toolPreview = label \?\? getCompactToolExecutionPreview\(toolCall, tcResult \?\? null\);/);
+  assert.match(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
   assert.match(screenSource, /const toolNameLabel = label \?\? toolCall\.name;/);
   assert.match(screenSource, /toolName: toolNameLabel,/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.toolResultFallbackLabel/);
@@ -2520,6 +2520,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /createChatMessageInlineActivityProps,/);
   assert.match(screenSource, /createChatMessageRetryStatusProps,/);
   assert.match(screenSource, /createChatMessageToolApprovalProps,/);
+  assert.match(screenSource, /createChatMessageToolExecutionCompactPreviewRow,/);
   assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.match(screenSource, /createChatMessageThreadBodyProps,/);
@@ -2542,6 +2543,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionCompactPreviewRow/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
