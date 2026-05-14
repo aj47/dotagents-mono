@@ -187,10 +187,8 @@ import {
   getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
   getChatMessageActionMobileStyleRenderState,
-  getChatMessageCopyMobileRenderState,
   getChatDisplayExpansionState,
   getChatMessageMobileRenderState,
-  getChatMessageSpeechMobileRenderState,
   findLastChatMessageConversationContentIndex,
   isChatMessageLiveStreamingConversationContent,
   isChatMessageConversationContent,
@@ -3800,14 +3798,6 @@ export default function ChatScreen({ route, navigation }: any) {
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = getChatDisplayExpansionState(expandedMessages, i);
-            const isMessageCopied = copiedMessageIndex === i;
-            const messageCopyRenderState = getChatMessageCopyMobileRenderState({
-              role: m.role,
-              content: visibleMessageContent,
-              isAssistantComplete: !responding,
-              isCopied: isMessageCopied,
-              colors: theme.colors,
-            });
             const messageBranchRenderState = getChatRuntimeBranchMobileRenderState({
               conversationId: currentSession?.serverConversationId,
               role: m.role,
@@ -3857,15 +3847,6 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const messageContentRenderState = messageRenderState.content;
-            const isMessageSpeaking = speakingMessageIndex === i;
-            const messageSpeechRenderState = getChatMessageSpeechMobileRenderState({
-              role: m.role,
-              content: visibleMessageContent,
-              ttsEnabled,
-              isVisible: messageContentRenderState.speech.isVisible,
-              isSpeaking: isMessageSpeaking,
-              colors: theme.colors,
-            });
             const messageToneStyle = messageThreadSurfaceStyles.getToneStyle(messageRenderState.toneStyleSlot);
             const messageInlineActivityProps = createChatMessageInlineActivityProps({
               message: m,
@@ -3895,10 +3876,14 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.turnDuration,
               },
               speech: {
-                renderState: messageSpeechRenderState,
+                role: m.role,
+                content: visibleMessageContent,
+                ttsEnabled,
+                isVisible: messageContentRenderState.speech.isVisible,
+                isSpeaking: speakingMessageIndex === i,
+                colors: theme.colors,
                 onPress: () => speakMessage(i, visibleMessageContent),
                 ...messageActionStyles.speech,
-                isActive: isMessageSpeaking,
               },
               branch: {
                 renderState: messageBranchRenderState,
@@ -3910,10 +3895,13 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.branch,
               },
               copy: {
-                renderState: messageCopyRenderState,
+                role: m.role,
+                content: visibleMessageContent,
+                isAssistantComplete: !responding,
+                isCopied: copiedMessageIndex === i,
+                colors: theme.colors,
                 onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
                 ...messageActionStyles.copy,
-                isActive: isMessageCopied,
               },
               expansion: {
                 renderState: messageRenderState.expansion,

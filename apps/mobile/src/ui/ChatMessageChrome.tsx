@@ -27,6 +27,8 @@ import {
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionLayoutRenderState,
+  getChatMessageCopyMobileRenderState,
+  getChatMessageSpeechMobileRenderState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
@@ -187,6 +189,14 @@ type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'
   renderState: ChatMessageCopyMobileRenderState;
 };
 
+type ChatMessageSpeechActionSpecInput =
+  Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
+  & Parameters<typeof getChatMessageSpeechMobileRenderState>[0];
+
+type ChatMessageCopyActionSpecInput =
+  Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
+  & Parameters<typeof getChatMessageCopyMobileRenderState>[0];
+
 type ChatMessageExpansionActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
   renderState: ChatMessageExpansionMobileRenderState;
 };
@@ -202,8 +212,10 @@ type ChatMessageActionComponentsInput = {
   expansion: ChatMessageExpansionActionSpec;
 };
 
-type ChatMessageActionSetInput = Omit<ChatMessageActionComponentsInput, 'availability'> & {
+type ChatMessageActionSetInput = Omit<ChatMessageActionComponentsInput, 'availability' | 'speech' | 'copy'> & {
   contentRenderState: ChatMessageActionLayoutStateInput['renderState'];
+  speech: ChatMessageSpeechActionSpecInput;
+  copy: ChatMessageCopyActionSpecInput;
 };
 
 export type ChatMessageActionSet = {
@@ -1873,18 +1885,48 @@ export function createChatMessageActionComponents({
 
 export function createChatMessageActionSet({
   contentRenderState,
+  speech,
+  copy,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
+  const speechAction: ChatMessageSpeechActionSpec = {
+    ...speech,
+    renderState: getChatMessageSpeechMobileRenderState({
+      role: speech.role,
+      content: speech.content,
+      ttsEnabled: speech.ttsEnabled,
+      isVisible: speech.isVisible,
+      isSpeaking: speech.isSpeaking,
+      colors: speech.colors,
+    }),
+    isActive: speech.isSpeaking,
+  };
+  const copyAction: ChatMessageCopyActionSpec = {
+    ...copy,
+    renderState: getChatMessageCopyMobileRenderState({
+      role: copy.role,
+      content: copy.content,
+      isAssistantComplete: copy.isAssistantComplete,
+      isCopied: copy.isCopied,
+      colors: copy.colors,
+    }),
+    isActive: copy.isCopied,
+  };
+  const actionInput: Omit<ChatMessageActionComponentsInput, 'availability'> = {
+    ...input,
+    speech: speechAction,
+    copy: copyAction,
+  };
   const availability = getChatMessageActionAvailabilityRenderState({
-    turnDuration: input.turnDuration.renderState.shouldRender,
-    speech: input.speech.renderState.canSpeak,
-    branch: input.branch.renderState.canBranch,
-    copy: input.copy.renderState.canCopy,
-    expansion: input.expansion.renderState.canToggle,
+    turnDuration: actionInput.turnDuration.renderState.shouldRender,
+    speech: actionInput.speech.renderState.canSpeak,
+    branch: actionInput.branch.renderState.canBranch,
+    copy: actionInput.copy.renderState.canCopy,
+    expansion: actionInput.expansion.renderState.canToggle,
   });
   const components = createChatMessageActionComponents({
     availability,
-    ...input,
+    ...actionInput,
   });
   const layout = getChatMessageActionLayoutRenderState({
     availability,
