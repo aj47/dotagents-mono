@@ -69,6 +69,10 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeToolActivityGroups,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
+  applyChatMessageRuntimeAutoExpansionState,
+  toggleChatMessageRuntimeMessageExpansionState,
+  toggleChatMessageRuntimeToolCallExpansionState,
+  toggleChatMessageRuntimeToolApprovalExpansionState,
   toggleChatMessageRuntimeToolActivityGroupExpansionState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -129,7 +133,6 @@ import * as Clipboard from 'expo-clipboard';
 import {
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
-  applyChatMessageAutoExpansionState,
 } from '@dotagents/shared/chat-utils';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
@@ -147,7 +150,6 @@ import {
 } from '@dotagents/shared/text-to-speech-settings';
 import {
   sanitizeMessagesForModel,
-  toggleChatDisplayExpansionState,
 } from '@dotagents/shared/message-display-utils';
 import {
   computeTurnDurations,
@@ -1631,13 +1633,12 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
 
   const toggleMessageExpansion = useCallback((index: number) => {
-    setExpandedMessages(prev => toggleChatDisplayExpansionState(prev, index));
+    setExpandedMessages(prev => toggleChatMessageRuntimeMessageExpansionState(prev, index));
   }, []);
 
   // Toggle expansion of individual tool call details (input params and results)
   const toggleToolCallExpansion = useCallback((messageId: string, toolCallIndex: number) => {
-    const key = `${messageId}-${toolCallIndex}`;
-    setExpandedToolCalls(prev => toggleChatDisplayExpansionState(prev, key));
+    setExpandedToolCalls(prev => toggleChatMessageRuntimeToolCallExpansionState(prev, messageId, toolCallIndex));
   }, []);
 
   // Compute tool-activity groups for consecutive connected tool-call messages
@@ -1657,7 +1658,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [expandedMessages, toolActivityGroups.groups]);
 
   const toggleToolApprovalArguments = useCallback((approvalId: string) => {
-    setExpandedToolApprovals(prev => toggleChatDisplayExpansionState(prev, approvalId));
+    setExpandedToolApprovals(prev => toggleChatMessageRuntimeToolApprovalExpansionState(prev, approvalId));
   }, []);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
@@ -1667,7 +1668,7 @@ export default function ChatScreen({ route, navigation }: any) {
   // - Tool-only messages stay collapsed during streaming to avoid showing raw payload text
   // - Users can still manually expand any collapsed message
   useEffect(() => {
-    setExpandedMessages(prev => applyChatMessageAutoExpansionState(prev, messages, {
+    setExpandedMessages(prev => applyChatMessageRuntimeAutoExpansionState(prev, messages, {
       isResponding: responding,
     }));
   }, [messages, responding]);

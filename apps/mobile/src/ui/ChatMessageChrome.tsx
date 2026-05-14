@@ -50,6 +50,7 @@ import {
 } from '@dotagents/shared/message-display-utils';
 import {
   applyUserResponseToChatMessages,
+  applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
@@ -458,6 +459,9 @@ type ChatMessageConversationToolActivityGroupRenderStateInput =
 
 export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup;
 export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>;
+export type ChatMessageRuntimeMessageExpansionState = ChatDisplayExpansionStateMap<number>;
+export type ChatMessageRuntimeToolCallExpansionState = ChatDisplayExpansionStateMap<string>;
+export type ChatMessageRuntimeToolApprovalExpansionState = ChatDisplayExpansionStateMap<string>;
 export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpansionStateMap<string>;
 
 export type ChatMessageActionSet = {
@@ -3768,6 +3772,49 @@ export function createChatMessageRuntimeToolActivityGroups(
   messages: Parameters<typeof groupToolActivity>[0],
 ): ChatMessageRuntimeToolActivityGroups {
   return groupToolActivity(messages);
+}
+
+export function toggleChatMessageRuntimeMessageExpansionState(
+  messageState: ChatMessageRuntimeMessageExpansionState,
+  messageIndex: number,
+): ChatMessageRuntimeMessageExpansionState {
+  return toggleChatDisplayExpansionState(
+    messageState,
+    messageIndex,
+  ) as ChatMessageRuntimeMessageExpansionState;
+}
+
+export function toggleChatMessageRuntimeToolCallExpansionState(
+  toolCallState: ChatMessageRuntimeToolCallExpansionState,
+  messageId: string,
+  toolCallIndex: number,
+): ChatMessageRuntimeToolCallExpansionState {
+  return toggleChatDisplayExpansionState(
+    toolCallState,
+    `${messageId}-${toolCallIndex}`,
+  ) as ChatMessageRuntimeToolCallExpansionState;
+}
+
+export function toggleChatMessageRuntimeToolApprovalExpansionState(
+  toolApprovalState: ChatMessageRuntimeToolApprovalExpansionState,
+  approvalId: string,
+): ChatMessageRuntimeToolApprovalExpansionState {
+  return toggleChatDisplayExpansionState(
+    toolApprovalState,
+    approvalId,
+  ) as ChatMessageRuntimeToolApprovalExpansionState;
+}
+
+export function applyChatMessageRuntimeAutoExpansionState<TMessage extends ChatDisplayMessageLike>(
+  messageState: ChatMessageRuntimeMessageExpansionState,
+  messages: readonly TMessage[],
+  options: Parameters<typeof applyChatMessageAutoExpansionState>[2],
+): ChatMessageRuntimeMessageExpansionState {
+  return applyChatMessageAutoExpansionState(
+    messageState,
+    messages,
+    options,
+  ) as ChatMessageRuntimeMessageExpansionState;
 }
 
 export function toggleChatMessageRuntimeToolActivityGroupExpansionState(

@@ -282,6 +282,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
   assert.doesNotMatch(screenSource, /mobileRuntimeToolApprovalAlerts\.(connectionRequired|unavailable|failed)\.(title|message|fallbackMessage)/);
   assert.match(screenSource, /const toggleToolApprovalArguments = useCallback\(\(approvalId: string\) => \{/);
+  assert.match(screenSource, /toggleChatMessageRuntimeToolApprovalExpansionState\(prev, approvalId\)/);
+  assert.doesNotMatch(screenSource, /toggleChatDisplayExpansionState\(prev, approvalId\)/);
+  assert.match(chatMessageChromeSource, /export function toggleChatMessageRuntimeToolApprovalExpansionState/);
   assert.doesNotMatch(screenSource, /const toolApprovalId = m\.toolApproval\?\.approvalId \?\? '';/);
   assert.doesNotMatch(screenSource, /const isToolApprovalExpanded = toolApprovalId/);
   assert.doesNotMatch(screenSource, /const isToolApprovalResponding = toolApprovalId/);
@@ -1696,7 +1699,15 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /createChatMessageConversationRenderContext,/);
   assert.doesNotMatch(screenSource, /hasVisibleChatMessageContent,/);
   assert.match(chatMessageChromeSource, /hasVisibleChatMessageContent,/);
-  assert.match(screenSource, /applyChatMessageAutoExpansionState,/);
+  assert.doesNotMatch(screenSource, /applyChatMessageAutoExpansionState,/);
+  assert.match(screenSource, /applyChatMessageRuntimeAutoExpansionState,/);
+  assert.match(screenSource, /setExpandedMessages\(prev => applyChatMessageRuntimeAutoExpansionState\(prev, messages, \{/);
+  assert.match(screenSource, /toggleChatMessageRuntimeMessageExpansionState\(prev, index\)/);
+  assert.doesNotMatch(screenSource, /toggleChatDisplayExpansionState,/);
+  assert.match(chatMessageChromeSource, /applyChatMessageAutoExpansionState,/);
+  assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeAutoExpansionState/);
+  assert.match(chatMessageChromeSource, /return applyChatMessageAutoExpansionState\(\s+messageState,\s+messages,\s+options,/);
+  assert.match(chatMessageChromeSource, /export function toggleChatMessageRuntimeMessageExpansionState/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeProgressMessages/);
@@ -2174,6 +2185,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionRows = createChatMessageToolExecutionRows/);
   assert.doesNotMatch(screenSource, /const toolExecutionDetailRows = renderedToolEntries\.map/);
   assert.doesNotMatch(screenSource, /const isToolCallFullyExpanded = getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\);/);
+  assert.match(screenSource, /toggleChatMessageRuntimeToolCallExpansionState\(prev, messageId, toolCallIndex\)/);
+  assert.doesNotMatch(screenSource, /toggleChatDisplayExpansionState\(prev, key\)/);
+  assert.match(chatMessageChromeSource, /export function toggleChatMessageRuntimeToolCallExpansionState/);
+  assert.match(chatMessageChromeSource, /`\$\{messageId\}-\$\{toolCallIndex\}`/);
   assert.match(chatMessageChromeSource, /detailRows: entries\.map\(\(\{ toolCall, label, origIdx, result \}\) => \{[\s\S]*?const toolCallKey = `\$\{stableMessageKey\}-\$\{origIdx\}`;[\s\S]*?return createChatMessageToolExecutionDetailRow\(\{/);
   assert.match(chatMessageChromeSource, /key: toolCallKey,[\s\S]*?toolCall,[\s\S]*?label,[\s\S]*?result,[\s\S]*?isExpanded: getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionDetailRow/);
