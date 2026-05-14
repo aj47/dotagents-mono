@@ -68,6 +68,7 @@ import {
   getChatMessageRuntimeNextResponseEventOrdinal,
   sortChatMessageRuntimeResponseEvents,
   useChatMessageRuntimeTurnDurations,
+  useChatMessageRuntimeResponseHistoryState,
   createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
@@ -282,8 +283,7 @@ export default function ChatScreen({ route, navigation }: any) {
       intendedSpeakingIndexRef.current = null;
       Speech.stop();
       stopRemoteTts();
-      queuedResponseEventsRef.current = [];
-      activeAutoSpeechEventIdRef.current = null;
+      clearQueuedResponseSpeech();
       setSpeakingMessageIndex(null);
       // Only transition the hands-free controller when it was actually speaking;
       // calling onSpeechFinished mid-`processing` would prematurely return to
@@ -334,6 +334,18 @@ export default function ChatScreen({ route, navigation }: any) {
     mergeVoiceTextIntoComposer,
     removePendingImage,
   } = useChatComposerRuntimeDraftState();
+  const {
+    respondToUserHistory,
+    setRespondToUserHistory,
+    respondToUserHistoryRef,
+    nextResponseEventOrdinalRef,
+    playedResponseEventIdsRef,
+    queuedResponseEventsRef,
+    activeAutoSpeechEventIdRef,
+    recentAutoSpeechByTextRef,
+    clearQueuedResponseSpeech,
+    resetResponseSpeechPlaybackState,
+  } = useChatMessageRuntimeResponseHistoryState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -652,14 +664,6 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track progress messages so we can merge them with final conversationHistory
   // instead of replacing, preventing intermediate messages from disappearing (#1083)
   const progressMessagesRef = useRef<ChatMessage[]>([]);
-  // Track respond_to_user history for the current session (Issue #26)
-  const [respondToUserHistory, setRespondToUserHistory] = useState<AgentUserResponseEvent[]>([]);
-  const respondToUserHistoryRef = useRef<AgentUserResponseEvent[]>([]);
-  const nextResponseEventOrdinalRef = useRef(1);
-  const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
-  const queuedResponseEventsRef = useRef<AgentUserResponseEvent[]>([]);
-  const activeAutoSpeechEventIdRef = useRef<string | null>(null);
-  const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
@@ -1264,9 +1268,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setLatestStepSummary(null);
       // Clear respond_to_user history for the new session
 	      replaceResponseHistory([]);
-      playedResponseEventIdsRef.current = new Set();
-      queuedResponseEventsRef.current = [];
-      activeAutoSpeechEventIdRef.current = null;
+      resetResponseSpeechPlaybackState();
       // Clear stale in-flight marker when switching sessions.
       pendingLazyLoadSessionIdRef.current = null;
       // Clear skipNextPersistRef to prevent the first real message in the new session
@@ -1287,9 +1289,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // Extract respond_to_user content from saved messages for display (#32, #33)
         const savedResponses = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
 	        replaceResponseHistory(savedResponses);
-        playedResponseEventIdsRef.current = new Set(savedResponses.map((event) => event.id));
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventIdRef.current = null;
+        resetResponseSpeechPlaybackState(savedResponses.map((event) => event.id));
       } else if (currentSession.serverConversationId && hasServerAuth) {
         // Stub session — lazy-load messages from server
         setMessages([]);
@@ -1321,9 +1321,7 @@ export default function ChatScreen({ route, navigation }: any) {
             // Extract respond_to_user content from lazy-loaded messages (#32, #33)
             const lazyResponses = createChatMessageRuntimeResponseHistoryEvents(loadedMessages);
 	            replaceResponseHistory(lazyResponses);
-            playedResponseEventIdsRef.current = new Set(lazyResponses.map((event) => event.id));
-            queuedResponseEventsRef.current = [];
-            activeAutoSpeechEventIdRef.current = null;
+            resetResponseSpeechPlaybackState(lazyResponses.map((event) => event.id));
           })
           .catch((err) => {
             console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
@@ -1358,14 +1356,12 @@ export default function ChatScreen({ route, navigation }: any) {
       // Extract respond_to_user content from new session messages (#32, #33)
       const newResponses = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
 	      replaceResponseHistory(newResponses);
-      playedResponseEventIdsRef.current = new Set(newResponses.map((event) => event.id));
-      queuedResponseEventsRef.current = [];
-      activeAutoSpeechEventIdRef.current = null;
+      resetResponseSpeechPlaybackState(newResponses.map((event) => event.id));
     } else {
       setMessages([]);
 	      replaceResponseHistory([]);
     }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetThreadExpansionState]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetResponseSpeechPlaybackState, resetThreadExpansionState]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);

@@ -3698,12 +3698,23 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(screenSource, /createChatMessageRuntimeSpeechTextState,/);
   assert.match(screenSource, /const speechText = createChatMessageRuntimeSpeechTextState\(content\);/);
   assert.match(screenSource, /const ttsTextKey = speechText\.autoTextKey;/);
+  assert.match(screenSource, /useChatMessageRuntimeResponseHistoryState,/);
+  assert.match(screenSource, /const \{\s+respondToUserHistory,\s+setRespondToUserHistory,\s+respondToUserHistoryRef,\s+nextResponseEventOrdinalRef,\s+playedResponseEventIdsRef,\s+queuedResponseEventsRef,\s+activeAutoSpeechEventIdRef,\s+recentAutoSpeechByTextRef,\s+clearQueuedResponseSpeech,\s+resetResponseSpeechPlaybackState,\s+\} = useChatMessageRuntimeResponseHistoryState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryState/);
+  assert.match(chatMessageChromeSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.match(chatMessageChromeSource, /const clearQueuedResponseSpeech = useCallback\(\(\) => \{[\s\S]*?queuedResponseEventsRef\.current = \[\];[\s\S]*?activeAutoSpeechEventIdRef\.current = null;/);
+  assert.match(chatMessageChromeSource, /const resetResponseSpeechPlaybackState = useCallback\(\(playedEventIds: Iterable<string> = \[\]\) => \{[\s\S]*?playedResponseEventIdsRef\.current = new Set\(playedEventIds\);[\s\S]*?queuedResponseEventsRef\.current = \[\];[\s\S]*?activeAutoSpeechEventIdRef\.current = null;/);
   assert.match(chatMessageChromeSource, /preprocessTextForTTS/);
   assert.match(chatMessageChromeSource, /normalizeAutoTtsTextKey/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSpeechTextState/);
   assert.doesNotMatch(screenSource, /preprocessTextForTTS/);
   assert.doesNotMatch(screenSource, /normalizeAutoTtsTextKey/);
-  assert.match(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.doesNotMatch(screenSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);
+  assert.doesNotMatch(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.doesNotMatch(screenSource, /queuedResponseEventsRef\.current = \[\];\s+activeAutoSpeechEventIdRef\.current = null;/);
+  assert.match(screenSource, /clearQueuedResponseSpeech\(\);/);
+  assert.match(screenSource, /resetResponseSpeechPlaybackState\(savedResponses\.map\(\(event\) => event\.id\)\);/);
   assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
 });
 

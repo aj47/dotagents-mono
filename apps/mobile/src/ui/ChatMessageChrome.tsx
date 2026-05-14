@@ -463,6 +463,23 @@ type ChatComposerRuntimeDraftState = {
   removePendingImage: (attachmentId: string) => void;
 };
 
+type ChatRuntimeMutableRef<T> = {
+  current: T;
+};
+
+type ChatMessageRuntimeResponseHistoryState = {
+  respondToUserHistory: AgentUserResponseEvent[];
+  setRespondToUserHistory: Dispatch<SetStateAction<AgentUserResponseEvent[]>>;
+  respondToUserHistoryRef: ChatRuntimeMutableRef<AgentUserResponseEvent[]>;
+  nextResponseEventOrdinalRef: ChatRuntimeMutableRef<number>;
+  playedResponseEventIdsRef: ChatRuntimeMutableRef<Set<string>>;
+  queuedResponseEventsRef: ChatRuntimeMutableRef<AgentUserResponseEvent[]>;
+  activeAutoSpeechEventIdRef: ChatRuntimeMutableRef<string | null>;
+  recentAutoSpeechByTextRef: ChatRuntimeMutableRef<Map<string, number>>;
+  clearQueuedResponseSpeech: () => void;
+  resetResponseSpeechPlaybackState: (playedEventIds?: Iterable<string>) => void;
+};
+
 type ChatComposerRuntimeEditBeforeSendState = {
   editBeforeSendEnabled: boolean;
   toggleEditBeforeSend: () => void;
@@ -5870,6 +5887,40 @@ export function useChatComposerRuntimeDraftState(): ChatComposerRuntimeDraftStat
     focusComposerInput,
     mergeVoiceTextIntoComposer,
     removePendingImage,
+  };
+}
+
+export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeResponseHistoryState {
+  const [respondToUserHistory, setRespondToUserHistory] = useState<AgentUserResponseEvent[]>([]);
+  const respondToUserHistoryRef = useRef<AgentUserResponseEvent[]>([]);
+  const nextResponseEventOrdinalRef = useRef(1);
+  const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
+  const queuedResponseEventsRef = useRef<AgentUserResponseEvent[]>([]);
+  const activeAutoSpeechEventIdRef = useRef<string | null>(null);
+  const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
+
+  const clearQueuedResponseSpeech = useCallback(() => {
+    queuedResponseEventsRef.current = [];
+    activeAutoSpeechEventIdRef.current = null;
+  }, []);
+
+  const resetResponseSpeechPlaybackState = useCallback((playedEventIds: Iterable<string> = []) => {
+    playedResponseEventIdsRef.current = new Set(playedEventIds);
+    queuedResponseEventsRef.current = [];
+    activeAutoSpeechEventIdRef.current = null;
+  }, []);
+
+  return {
+    respondToUserHistory,
+    setRespondToUserHistory,
+    respondToUserHistoryRef,
+    nextResponseEventOrdinalRef,
+    playedResponseEventIdsRef,
+    queuedResponseEventsRef,
+    activeAutoSpeechEventIdRef,
+    recentAutoSpeechByTextRef,
+    clearQueuedResponseSpeech,
+    resetResponseSpeechPlaybackState,
   };
 }
 
