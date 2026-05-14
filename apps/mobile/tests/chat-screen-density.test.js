@@ -46,6 +46,8 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileStyles/);
   assert.match(chatRuntimeMobileStylesSource, /chatRuntimeSpinnerSource = useMemo\(\s+\(\) => createChatRuntimeThemeSpinnerSource\(\{\s+isDark,\s+darkSource: darkSpinnerSource,\s+lightSource: lightSpinnerSource,\s+\}\),\s+\[darkSpinnerSource, isDark, lightSpinnerSource\],\s+\);/);
   assert.match(chatRuntimeMobileStylesSource, /const styles = useMemo\(\(\) => createChatRuntimeMobileStyles\(theme\), \[theme\]\);/);
+  assert.doesNotMatch(chatScreenSource, /\s+styles,\s+\} = useChatRuntimeMobileStyleSlots/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /return \{[\s\S]*?\s+styles,\s+[\s\S]*?\};/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /return StyleSheet\.create\(\{/);
 });

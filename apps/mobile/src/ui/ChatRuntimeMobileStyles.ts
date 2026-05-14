@@ -1862,6 +1862,5 @@ export function useChatRuntimeMobileStyleSlots({
     chatRuntimeChrome,
     chatMessageRuntimeSurfaceStyles,
     chatRuntimeHeaderStyles,
-    styles,
   };
 }

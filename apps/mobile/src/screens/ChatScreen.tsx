@@ -148,7 +148,6 @@ export default function ChatScreen({ route, navigation }: any) {
     chatRuntimeChrome,
     chatMessageRuntimeSurfaceStyles,
     chatRuntimeHeaderStyles,
-    styles,
   } = useChatRuntimeMobileStyleSlots({
     theme,
     bottomInset: insets.bottom,
