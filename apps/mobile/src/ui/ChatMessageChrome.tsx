@@ -101,7 +101,9 @@ import {
   getToolExecutionCallDisplayState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
+  getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobileHeaderRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailResultState,
@@ -114,7 +116,6 @@ import {
   type ToolExecutionDetailMobileHeaderRenderState,
   type ToolExecutionDetailMobilePendingResultRenderState,
   type ToolExecutionDetailMobileSectionHeaderRenderState,
-  type ToolExecutionMobileVisibilityRenderState,
 } from '@dotagents/shared/tool-execution-display';
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
@@ -790,15 +791,14 @@ type ChatMessageToolExecutionStackProps = {
 };
 
 type ChatMessageToolExecutionStackPropsInput = {
-  visibility: Pick<ToolExecutionMobileVisibilityRenderState, 'toolExecutionStack' | 'emptyState'>;
+  displayToolCallCount: number;
+  colors: Parameters<typeof getToolExecutionDetailMobileCollapseControlRenderState>[0]['colors'];
   isExpanded: ChatMessageToolExecutionStackProps['isExpanded'];
-  compact: Pick<ChatMessageToolExecutionStackProps['compact'], 'renderState' | 'rows'> & {
+  compact: Pick<ChatMessageToolExecutionStackProps['compact'], 'rows'> & {
     onToggle?: ChatMessageToolExecutionStackProps['compact']['onPress'];
   };
   expanded: Pick<
     ChatMessageToolExecutionStackProps['expanded'],
-    | 'topCollapseRenderState'
-    | 'bottomCollapseRenderState'
     | 'isPending'
     | 'allSuccess'
     | 'hasErrors'
@@ -2299,7 +2299,8 @@ export function createChatMessageToolExecutionRows({
 }
 
 export function createChatMessageToolExecutionStackProps({
-  visibility,
+  displayToolCallCount,
+  colors,
   isExpanded,
   compact,
   expanded,
@@ -2307,16 +2308,31 @@ export function createChatMessageToolExecutionStackProps({
 }: ChatMessageToolExecutionStackPropsInput): ChatMessageConversationBodyProps['toolExecutionStack'] {
   const { onToggle: onCompactToggle, ...compactProps } = compact;
   const { emptyStateRenderState, onToggle: onExpandedToggle, ...expandedProps } = expanded;
+  const visibility = getToolExecutionMobileVisibilityRenderState({
+    toolCallCount: displayToolCallCount,
+  });
+  const compactRenderState = getToolExecutionDetailMobileExpandControlRenderState();
+  const topCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
+    placement: 'top',
+    toolCallCount: displayToolCallCount,
+    colors,
+  });
+  const bottomCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
+    colors,
+  });
 
   return {
     shouldRender: visibility.toolExecutionStack.shouldRender,
     isExpanded,
     compact: {
       ...compactProps,
+      renderState: compactRenderState,
       onPress: onCompactToggle,
     },
     expanded: {
       ...expandedProps,
+      topCollapseRenderState,
+      bottomCollapseRenderState,
       onCollapsePress: onExpandedToggle,
       emptyState: {
         shouldRender: visibility.emptyState.shouldRender,

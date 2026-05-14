@@ -176,13 +176,10 @@ import {
 } from '@dotagents/shared/tool-activity-grouping';
 import {
   getToolExecutionCompactMobileStyleRenderState,
-  getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailMobileEmptyStateRenderState,
-  getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileStyleRenderState,
-  getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
 } from '@dotagents/shared/tool-execution-display';
@@ -3823,9 +3820,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
             const renderedToolEntries = messageDisplayState.visibleToolEntries;
             const displayToolCallCount = messageDisplayState.displayToolCallCount;
-            const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState({
-              toolCallCount: displayToolCallCount,
-            });
             const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
               isResponding: responding,
               messageIndex: i,
@@ -3835,20 +3829,10 @@ export default function ChatScreen({ route, navigation }: any) {
               displayToolCallCount,
             });
             const {
-              state: toolExecutionState,
               allSuccess,
               hasErrors,
               isPending,
             } = getToolExecutionSummaryDisplayState(renderedToolEntries.map(entry => entry.result));
-            const toolExecutionTopCollapseControl = getToolExecutionDetailMobileCollapseControlRenderState({
-              placement: 'top',
-              toolCallCount: displayToolCallCount,
-              colors: theme.colors,
-            });
-            const toolExecutionBottomCollapseControl = getToolExecutionDetailMobileCollapseControlRenderState({
-              colors: theme.colors,
-            });
-            const toolExecutionExpandControl = getToolExecutionDetailMobileExpandControlRenderState();
             const stableMessageKey = m.id ?? String(i);
             const toolExecutionRows = createChatMessageToolExecutionRows({
               entries: renderedToolEntries,
@@ -3999,16 +3983,14 @@ export default function ChatScreen({ route, navigation }: any) {
                       onToggle: () => toggleMessageExpansion(i),
                     }),
                     toolExecutionStack: createChatMessageToolExecutionStackProps({
-                      visibility: toolExecutionVisibilityRenderState,
+                      displayToolCallCount,
+                      colors: theme.colors,
                       isExpanded,
                       compact: {
-                        renderState: toolExecutionExpandControl,
                         rows: toolExecutionRows.compactRows,
                         onToggle: () => toggleMessageExpansion(i),
                       },
                       expanded: {
-                        topCollapseRenderState: toolExecutionTopCollapseControl,
-                        bottomCollapseRenderState: toolExecutionBottomCollapseControl,
                         onToggle: () => toggleMessageExpansion(i),
                         isPending,
                         allSuccess,
