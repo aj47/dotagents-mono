@@ -1734,6 +1734,14 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /displayContent: \(m as ChatMessage\)\.displayContent/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSessionDisplayMessages/);
   assert.match(chatMessageChromeSource, /displayContent: message\.displayContent/);
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimeResponseHistoryEvents\((?:chatMessages|loadedMessages)\)/g) || []).length,
+    3,
+  );
+  assert.doesNotMatch(screenSource, /extractRespondToUserResponseEvents,/);
+  assert.doesNotMatch(screenSource, /const extractRespondToUserHistory = /);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeResponseHistoryEvents/);
+  assert.match(chatMessageChromeSource, /return extractRespondToUserResponseEvents\(messages, \{ idPrefix: 'mobile-history' \}\)/);
   assert.match(screenSource, /createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>\(serverMessages\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+historyMessages,\s+\{\s+\.\.\.displayOptions,\s+skipUserMessages,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRecoveredHistoryMessages/);

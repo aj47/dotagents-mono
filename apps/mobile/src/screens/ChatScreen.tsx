@@ -65,6 +65,7 @@ import {
   createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatMessageRuntimeSessionDisplayMessages,
+  createChatMessageRuntimeResponseHistoryEvents,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -120,7 +121,6 @@ import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import {
-  extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
   applyChatMessageAutoExpansionState,
@@ -215,17 +215,6 @@ const resolveConversationStateFromProgress = (
 ): AgentConversationState => {
   return resolveAgentProgressConversationState(update, lifecycleState);
 };
-
-type RespondToUserHistorySourceMessage = {
-  role: 'user' | 'assistant' | 'tool';
-  timestamp?: number;
-  toolCalls?: Array<{ name: string; arguments: unknown }>;
-};
-
-const extractRespondToUserHistory = (
-  messages: RespondToUserHistorySourceMessage[]
-): AgentUserResponseEvent[] =>
-  extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
 
 const getMessageLogMeta = (content: string) => ({
   length: content.length,
@@ -1526,7 +1515,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setMessages(chatMessages);
 
         // Extract respond_to_user content from saved messages for display (#32, #33)
-        const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
+        const savedResponses = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
 	        replaceResponseHistory(savedResponses);
         playedResponseEventIdsRef.current = new Set(savedResponses.map((event) => event.id));
         queuedResponseEventsRef.current = [];
@@ -1560,9 +1549,7 @@ export default function ChatScreen({ route, navigation }: any) {
             setMessages(loadedMessages);
 
             // Extract respond_to_user content from lazy-loaded messages (#32, #33)
-            const lazyResponses = extractRespondToUserHistory(
-              loadedMessages as RespondToUserHistorySourceMessage[]
-            );
+            const lazyResponses = createChatMessageRuntimeResponseHistoryEvents(loadedMessages);
 	            replaceResponseHistory(lazyResponses);
             playedResponseEventIdsRef.current = new Set(lazyResponses.map((event) => event.id));
             queuedResponseEventsRef.current = [];
@@ -1599,7 +1586,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages(chatMessages);
 
       // Extract respond_to_user content from new session messages (#32, #33)
-      const newResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
+      const newResponses = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
 	      replaceResponseHistory(newResponses);
       playedResponseEventIdsRef.current = new Set(newResponses.map((event) => event.id));
       queuedResponseEventsRef.current = [];

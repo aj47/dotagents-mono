@@ -48,6 +48,7 @@ import {
 } from '@dotagents/shared/message-display-utils';
 import {
   applyUserResponseToChatMessages,
+  extractRespondToUserResponseEvents,
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
   hasVisibleChatMessageContent,
@@ -64,6 +65,7 @@ import {
   type AgentDelegationConversationPreviewRow,
   type AgentDelegationPresentation,
   type AgentProgressUpdate,
+  type AgentUserResponseEvent,
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
@@ -3648,6 +3650,12 @@ export type ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult> = {
   toolResults?: TToolResult[];
 };
 
+export type ChatMessageRuntimeResponseHistorySourceMessage = {
+  role: 'user' | 'assistant' | 'tool';
+  timestamp?: number;
+  toolCalls?: Array<{ name: string; arguments: unknown }>;
+};
+
 type ChatMessageRuntimeSessionDisplayMessagesOptions = {
   includeId?: boolean;
 };
@@ -3708,6 +3716,12 @@ export function createChatMessageRuntimeSessionDisplayMessages<
     toolCalls: message.toolCalls,
     toolResults: message.toolResults,
   }) as TMessage);
+}
+
+export function createChatMessageRuntimeResponseHistoryEvents(
+  messages: ChatMessageRuntimeResponseHistorySourceMessage[],
+): AgentUserResponseEvent[] {
+  return extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
 }
 
 export function mergeChatMessageRuntimeToolResultsIntoLastMessage<
