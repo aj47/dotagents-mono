@@ -1989,6 +1989,19 @@ type ChatMessageRuntimeThreadProps = Omit<
   styles: ChatMessageRuntimeThreadStyleSlots;
 };
 
+type ChatMessageConversationToolActivityGroupThreadStateInput = {
+  group?: ToolActivityGroup | null;
+  groupRenderState?: ToolActivityGroupMobileRenderState | null;
+  itemKey: string | number;
+  onToggleGroup: (group: ToolActivityGroup) => void;
+};
+
+type ChatMessageConversationToolActivityGroupThreadState = {
+  groupOnlyThreadKey: string | number;
+  shouldRenderGroupOnlyThread: boolean;
+  onToggleGroup?: ChatMessageRuntimeThreadProps['onToggleGroup'];
+};
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2152,6 +2165,22 @@ export function createChatMessageConversationToolActivityGroupRenderState({
         colors,
       })
     : null;
+}
+
+export function createChatMessageConversationToolActivityGroupThreadState({
+  group,
+  groupRenderState,
+  itemKey,
+  onToggleGroup,
+}: ChatMessageConversationToolActivityGroupThreadStateInput): ChatMessageConversationToolActivityGroupThreadState {
+  return {
+    groupOnlyThreadKey: groupRenderState?.shouldRenderCollapsedHeader
+      ? `group-${groupRenderState.groupKey}`
+      : itemKey,
+    shouldRenderGroupOnlyThread: !!groupRenderState
+      && (groupRenderState.shouldSkipCollapsedItem || groupRenderState.shouldRenderCollapsedHeader),
+    onToggleGroup: group ? () => onToggleGroup(group) : undefined,
+  };
 }
 
 export function shouldRenderChatMessageConversationThread({

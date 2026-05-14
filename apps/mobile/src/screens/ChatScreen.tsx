@@ -38,6 +38,7 @@ import {
   createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationToolActivityGroupRenderState,
+  createChatMessageConversationToolActivityGroupThreadState,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -3744,12 +3745,18 @@ export default function ChatScreen({ route, navigation }: any) {
               inheritedState: expandedMessages,
               colors: theme.colors,
             });
-            if (groupRenderState?.shouldSkipCollapsedItem || groupRenderState?.shouldRenderCollapsedHeader) {
+            const groupThreadState = createChatMessageConversationToolActivityGroupThreadState({
+              group,
+              groupRenderState,
+              itemKey: i,
+              onToggleGroup: toggleGroupExpansion,
+            });
+            if (groupThreadState.shouldRenderGroupOnlyThread) {
               return (
                 <ChatMessageRuntimeThread
-                  key={groupRenderState.shouldRenderCollapsedHeader ? `group-${groupRenderState.groupKey}` : i}
+                  key={groupThreadState.groupOnlyThreadKey}
                   groupRenderState={groupRenderState}
-                  onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
+                  onToggleGroup={groupThreadState.onToggleGroup}
                   body={null}
                   styles={chatMessageConversationThreadStyles.runtimeThread}
                 />
@@ -3830,7 +3837,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <ChatMessageRuntimeThread
                 key={i}
                 groupRenderState={groupRenderState}
-                onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
+                onToggleGroup={groupThreadState.onToggleGroup}
                 styles={chatMessageConversationThreadStyles.runtimeThread}
                 body={messageThreadBody}
               />
