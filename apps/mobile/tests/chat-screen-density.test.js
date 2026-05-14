@@ -1926,20 +1926,16 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages,/);
-  assert.equal(
-    (screenSource.match(/createChatMessageRuntimeSessionDisplayMessages<ChatMessage>\(/g) || []).length,
-    3,
-  );
-  assert.match(screenSource, /createChatMessageRuntimeSessionDisplayMessages<ChatMessage>\(\s+result\.messages,\s+\{ includeId: true \},\s+\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeSessionDisplayMessages<ChatMessage>\(/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeSessionDisplayMessages<TMessage>\(\s+sessionMessages,\s+options,\s+\)/);
+  assert.match(chatMessageChromeSource, /applySessionMessages\(result\.messages, \{ includeId: true \}\)/);
   assert.doesNotMatch(screenSource, /currentSession\.messages\.map\(m => \(\{/);
   assert.doesNotMatch(screenSource, /result\.messages\.map\(m => \(\{/);
   assert.doesNotMatch(screenSource, /displayContent: \(m as ChatMessage\)\.displayContent/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSessionDisplayMessages/);
   assert.match(chatMessageChromeSource, /displayContent: message\.displayContent/);
-  assert.equal(
-    (screenSource.match(/createChatMessageRuntimeResponseHistoryEvents\((?:chatMessages|loadedMessages)\)/g) || []).length,
-    3,
-  );
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeResponseHistoryEvents\(/);
+  assert.match(chatMessageChromeSource, /const responseEvents = createChatMessageRuntimeResponseHistoryEvents\(chatMessages\);/);
   assert.doesNotMatch(screenSource, /extractRespondToUserResponseEvents,/);
   assert.doesNotMatch(screenSource, /const extractRespondToUserHistory = /);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeResponseHistoryEvents/);
@@ -3634,7 +3630,8 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeClipboardActionsState/);
   assert.match(chatMessageChromeSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
   assert.match(chatMessageChromeSource, /await copyText\(copyContent\);[\s\S]*?showCopiedMessageFeedback\(messageIndex\);/);
-  assert.match(screenSource, /clearCopiedMessageFeedback\(\);/);
+  assert.match(screenSource, /clearCopiedMessageFeedback,/);
+  assert.match(chatMessageChromeSource, /clearCopiedMessageFeedback\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyFailureAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFailureAlertState/);
   assert.match(chatMessageChromeSource, /const failedAlert = getChatMessageCopyFailureAlertState\(error\);[\s\S]*?showAlert\(failedAlert\.title, failedAlert\.message\);/);
@@ -3861,7 +3858,8 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(chatMessageChromeSource, /playedResponseEventIdsRef\.current\.add\(nextEvent\.id\)/);
   assert.doesNotMatch(screenSource, /clearQueuedResponseSpeech\(\);/);
   assert.match(chatMessageChromeSource, /clearQueuedResponseSpeech\(\);/);
-  assert.match(screenSource, /resetResponseSpeechPlaybackState\(savedResponses\.map\(\(event\) => event\.id\)\);/);
+  assert.doesNotMatch(screenSource, /resetResponseSpeechPlaybackState\(savedResponses\.map\(\(event\) => event\.id\)\);/);
+  assert.match(chatMessageChromeSource, /resetResponseSpeechPlaybackState\(responseEvents\.map\(\(event\) => event\.id\)\);/);
   assert.doesNotMatch(screenSource, /now - lastSpokenAt </);
 });
 
@@ -3886,13 +3884,16 @@ test('keeps message runtime refs in chat chrome state hooks', () => {
 test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.match(screenSource, /useChatMessageRuntimeSessionRefState,/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState,/);
+  assert.match(screenSource, /useChatMessageRuntimeSessionLoadState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionPersistState,/);
   assert.match(screenSource, /const \{\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+initialMessageRef,\s+initialMessageSentRef,\s+prevMessagesLengthRef,\s+prevSessionIdRef,\s+convoRef,\s+\} = useChatMessageRuntimeSessionRefState\(\{\s+initialMessage: route\?\.params\?\.initialMessage \?\? null,\s+\}\);/);
   assert.match(screenSource, /const clearRouteInitialMessage = useCallback\(\(\) => \{\s+navigation\?\.setParams\?\.\(\{ initialMessage: undefined \}\);\s+\}, \[navigation\]\);/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState\(\{\s+routeInitialMessage: route\?\.params\?\.initialMessage,\s+currentSessionId: sessionStore\.currentSessionId,\s+initialMessageRef,\s+initialMessageSentRef,\s+sendRef,\s+clearRouteInitialMessage,\s+voiceLog,\s+\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+currentSessionIdRef,\s+deletingSessionIdsSize: sessionStore\.deletingSessionIds\.size,\s+hasServerAuth: !!config\.baseUrl && !!config\.apiKey,\s+settingsClient,\s+createLazyLoadClient: createLazyLoadSettingsClient,\s+getCurrentSession: sessionStore\.getCurrentSession,\s+createNewSession: sessionStore\.createNewSession,\s+loadSessionMessages: sessionStore\.loadSessionMessages,\s+setMessages,\s+setLatestStepSummary,\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+resetThreadExpansionState,\s+clearCopiedMessageFeedback,\s+replaceResponseHistory,\s+resetResponseSpeechPlaybackState,\s+\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeSessionPersistState<ChatMessage>\(\{\s+messages,\s+currentSessionId: sessionStore\.currentSessionId,\s+deletingSessionIds: sessionStore\.deletingSessionIds,\s+prevSessionIdRef,\s+prevMessagesLengthRef,\s+skipNextPersistRef,\s+persistMessages: sessionStore\.setMessages,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionRefState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeInitialMessageState/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionLoadState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionPersistState<TMessage>/);
   assert.match(chatMessageChromeSource, /const lastLoadedSessionIdRef = useRef<string \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /const initialMessageRef = useRef<string \| null>\(initialMessage\);/);
@@ -3905,6 +3906,8 @@ test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.doesNotMatch(screenSource, /const initialMessageRef = useRef<string \| null>\(route\?\.params\?\.initialMessage \?\? null\);/);
   assert.doesNotMatch(screenSource, /Route initial message received\./);
   assert.doesNotMatch(screenSource, /initialMessageSentRef\.current = true;/);
+  assert.doesNotMatch(screenSource, /Load messages when currentSession changes/);
+  assert.doesNotMatch(screenSource, /sessionStore\.loadSessionMessages\(stubSessionId, client\)/);
   assert.doesNotMatch(screenSource, /const isSessionSwitch = prevSessionIdRef\.current !== null && prevSessionIdRef\.current !== currentSessionId;/);
   assert.doesNotMatch(screenSource, /prevMessagesLengthRef\.current = messages\.length;/);
   assert.doesNotMatch(screenSource, /const prevMessagesLengthRef = useRef\(0\);/);

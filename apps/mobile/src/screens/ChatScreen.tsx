@@ -57,14 +57,13 @@ import {
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeUserTextMessage,
-  createChatMessageRuntimeSessionDisplayMessages,
-  createChatMessageRuntimeResponseHistoryEvents,
   sortChatMessageRuntimeResponseEvents,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
   useChatMessageRuntimeInitialMessageState,
+  useChatMessageRuntimeSessionLoadState,
   useChatMessageRuntimeSessionPersistState,
   useChatMessageRuntimeResponseHistoryState,
   useChatMessageRuntimeAssistantSpeechActionsState,
@@ -160,6 +159,10 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
+  const createLazyLoadSettingsClient = useCallback(
+    () => new ExtendedSettingsApiClient(config.baseUrl, config.apiKey),
+    [config.apiKey, config.baseUrl],
+  );
   const quickStartCatalog = useChatConversationHomeQuickStartCatalogState();
   const {
     predefinedPrompts,
@@ -743,124 +746,26 @@ export default function ChatScreen({ route, navigation }: any) {
     showAlert: Alert.alert,
   });
 
-  // Load messages when currentSession changes (fixes #470)
-  useEffect(() => {
-    const currentSessionId = sessionStore.currentSessionId;
-    const hasServerAuth = !!config.baseUrl && !!config.apiKey;
-    let currentSession = sessionStore.getCurrentSession();
-    const shouldAttemptStubLoad = !!(
-      currentSession &&
-      currentSession.messages.length === 0 &&
-      currentSession.serverConversationId &&
-      hasServerAuth
-    );
-
-    // Avoid repeated work on stable sessions unless we still need to lazy-load stub messages.
-    if (lastLoadedSessionIdRef.current === currentSessionId && !shouldAttemptStubLoad) {
-      return;
-    }
-
-    const isSessionSwitch = lastLoadedSessionIdRef.current !== currentSessionId;
-    if (isSessionSwitch) {
-      resetThreadExpansionState();
-      clearCopiedMessageFeedback();
-      setLatestStepSummary(null);
-      // Clear respond_to_user history for the new session
-	      replaceResponseHistory([]);
-      resetResponseSpeechPlaybackState();
-      // Clear stale in-flight marker when switching sessions.
-      pendingLazyLoadSessionIdRef.current = null;
-      // Clear skipNextPersistRef to prevent the first real message in the new session
-      // from being skipped if a lazy-load from the previous session had set it.
-      skipNextPersistRef.current = false;
-    }
-
-    // If we have an existing session, always load its messages regardless of deletions
-    if (currentSession) {
-      lastLoadedSessionIdRef.current = currentSession.id;
-
-      if (currentSession.messages.length > 0) {
-        const chatMessages = createChatMessageRuntimeSessionDisplayMessages<ChatMessage>(
-          currentSession.messages,
-        );
-        setMessages(chatMessages);
-
-        // Extract respond_to_user content from saved messages for display (#32, #33)
-        const savedResponses = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
-	        replaceResponseHistory(savedResponses);
-        resetResponseSpeechPlaybackState(savedResponses.map((event) => event.id));
-      } else if (currentSession.serverConversationId && hasServerAuth) {
-        // Stub session — lazy-load messages from server
-        setMessages([]);
-	        replaceResponseHistory([]);
-        const stubSessionId = currentSession.id;
-        if (pendingLazyLoadSessionIdRef.current === stubSessionId) {
-          return;
-        }
-        pendingLazyLoadSessionIdRef.current = stubSessionId;
-        const client = settingsClient || new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
-        sessionStore.loadSessionMessages(stubSessionId, client)
-          .then((result) => {
-            if (!result) return;
-            // Ignore late results if the user switched sessions while loading.
-            if (currentSessionIdRef.current !== stubSessionId) return;
-            // Skip persistence whenever loadSessionMessages returned messages that are
-            // already in the store (both freshly fetched and in-flight bail-out cases)
-            // to avoid ID/updatedAt regeneration. The flag is always cleared by the
-            // persistence effect on the next render (or immediately if length is unchanged).
-            if (result.messages.length > 0) {
-              skipNextPersistRef.current = true;
-            }
-            const loadedMessages = createChatMessageRuntimeSessionDisplayMessages<ChatMessage>(
-              result.messages,
-              { includeId: true },
-            );
-            setMessages(loadedMessages);
-
-            // Extract respond_to_user content from lazy-loaded messages (#32, #33)
-            const lazyResponses = createChatMessageRuntimeResponseHistoryEvents(loadedMessages);
-	            replaceResponseHistory(lazyResponses);
-            resetResponseSpeechPlaybackState(lazyResponses.map((event) => event.id));
-          })
-          .catch((err) => {
-            console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
-          })
-          .finally(() => {
-            if (pendingLazyLoadSessionIdRef.current === stubSessionId) {
-              pendingLazyLoadSessionIdRef.current = null;
-            }
-          });
-      } else {
-        setMessages([]);
-	        replaceResponseHistory([]);
-      }
-      return;
-    }
-
-    // No current session - only auto-create if no deletions are in progress (fixes #571)
-    // This prevents race conditions where a new session is created before the deletion completes
-    if (sessionStore.deletingSessionIds.size > 0) {
-      return;
-    }
-
-    currentSession = sessionStore.createNewSession();
-    lastLoadedSessionIdRef.current = currentSession.id;
-
-    if (currentSession.messages.length > 0) {
-      const chatMessages = createChatMessageRuntimeSessionDisplayMessages<ChatMessage>(
-        currentSession.messages,
-      );
-      setMessages(chatMessages);
-
-      // Extract respond_to_user content from new session messages (#32, #33)
-      const newResponses = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
-	      replaceResponseHistory(newResponses);
-      resetResponseSpeechPlaybackState(newResponses.map((event) => event.id));
-    } else {
-      setMessages([]);
-	      replaceResponseHistory([]);
-    }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetResponseSpeechPlaybackState, resetThreadExpansionState]);
+  useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>({
+    currentSessionId: sessionStore.currentSessionId,
+    currentSessionIdRef,
+    deletingSessionIdsSize: sessionStore.deletingSessionIds.size,
+    hasServerAuth: !!config.baseUrl && !!config.apiKey,
+    settingsClient,
+    createLazyLoadClient: createLazyLoadSettingsClient,
+    getCurrentSession: sessionStore.getCurrentSession,
+    createNewSession: sessionStore.createNewSession,
+    loadSessionMessages: sessionStore.loadSessionMessages,
+    setMessages,
+    setLatestStepSummary,
+    lastLoadedSessionIdRef,
+    pendingLazyLoadSessionIdRef,
+    skipNextPersistRef,
+    resetThreadExpansionState,
+    clearCopiedMessageFeedback,
+    replaceResponseHistory,
+    resetResponseSpeechPlaybackState,
+  });
 
   useChatMessageRuntimeSessionPersistState<ChatMessage>({
     messages,

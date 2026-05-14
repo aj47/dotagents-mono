@@ -725,6 +725,48 @@ type ChatMessageRuntimeSessionPersistStateInput<TMessage> = {
   persistMessages: (messages: TMessage[]) => unknown;
 };
 
+type ChatMessageRuntimeSessionLoadMessage =
+  ChatMessageRuntimeSessionMessageLike<{ name: string; arguments: unknown }, unknown> &
+  ChatMessageRuntimeResponseHistorySourceMessage;
+
+type ChatMessageRuntimeSessionLoadSession<TMessage extends ChatMessageRuntimeSessionLoadMessage> = {
+  id: string;
+  messages: readonly TMessage[];
+  serverConversationId?: string | null;
+};
+
+type ChatMessageRuntimeSessionLoadResult<TMessage extends ChatMessageRuntimeSessionLoadMessage> = {
+  messages: readonly TMessage[];
+};
+
+type ChatMessageRuntimeSessionLoadStateInput<
+  TMessage extends ChatMessageRuntimeSessionLoadMessage,
+  TClient,
+> = {
+  currentSessionId?: string | null;
+  currentSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  deletingSessionIdsSize: number;
+  hasServerAuth: boolean;
+  settingsClient?: TClient | null;
+  createLazyLoadClient: () => TClient;
+  getCurrentSession: () => ChatMessageRuntimeSessionLoadSession<TMessage> | null;
+  createNewSession: () => ChatMessageRuntimeSessionLoadSession<TMessage>;
+  loadSessionMessages: (
+    sessionId: string,
+    client: TClient,
+  ) => Promise<ChatMessageRuntimeSessionLoadResult<TMessage> | null>;
+  setMessages: Dispatch<SetStateAction<TMessage[]>>;
+  setLatestStepSummary: Dispatch<SetStateAction<AgentStepSummary | null>>;
+  lastLoadedSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  pendingLazyLoadSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  skipNextPersistRef: ChatRuntimeMutableRef<boolean>;
+  resetThreadExpansionState: () => void;
+  clearCopiedMessageFeedback: () => void;
+  replaceResponseHistory: (events: AgentUserResponseEvent[]) => void;
+  resetResponseSpeechPlaybackState: (playedEventIds?: Iterable<string>) => void;
+  warn?: (message?: unknown, ...optionalParams: unknown[]) => void;
+};
+
 type ChatMessageRuntimeSessionRefStateInput = {
   initialMessage: string | null;
 };
@@ -7378,6 +7420,144 @@ export function useChatMessageRuntimeInitialMessageState({
     initialMessageRef,
     initialMessageSentRef,
     sendRef,
+  ]);
+}
+
+export function useChatMessageRuntimeSessionLoadState<
+  TMessage extends ChatMessageRuntimeSessionLoadMessage,
+  TClient,
+>({
+  currentSessionId,
+  currentSessionIdRef,
+  deletingSessionIdsSize,
+  hasServerAuth,
+  settingsClient,
+  createLazyLoadClient,
+  getCurrentSession,
+  createNewSession,
+  loadSessionMessages,
+  setMessages,
+  setLatestStepSummary,
+  lastLoadedSessionIdRef,
+  pendingLazyLoadSessionIdRef,
+  skipNextPersistRef,
+  resetThreadExpansionState,
+  clearCopiedMessageFeedback,
+  replaceResponseHistory,
+  resetResponseSpeechPlaybackState,
+  warn = console.warn,
+}: ChatMessageRuntimeSessionLoadStateInput<TMessage, TClient>): void {
+  useEffect(() => {
+    let currentSession = getCurrentSession();
+    const shouldAttemptStubLoad = !!(
+      currentSession &&
+      currentSession.messages.length === 0 &&
+      currentSession.serverConversationId &&
+      hasServerAuth
+    );
+
+    if (lastLoadedSessionIdRef.current === currentSessionId && !shouldAttemptStubLoad) {
+      return;
+    }
+
+    const applySessionMessages = (
+      sessionMessages: readonly TMessage[],
+      options?: ChatMessageRuntimeSessionDisplayMessagesOptions,
+    ) => {
+      const chatMessages = createChatMessageRuntimeSessionDisplayMessages<TMessage>(
+        sessionMessages,
+        options,
+      );
+      setMessages(chatMessages);
+      const responseEvents = createChatMessageRuntimeResponseHistoryEvents(chatMessages);
+      replaceResponseHistory(responseEvents);
+      resetResponseSpeechPlaybackState(responseEvents.map((event) => event.id));
+    };
+
+    const clearSessionMessages = () => {
+      setMessages([]);
+      replaceResponseHistory([]);
+    };
+
+    const isSessionSwitch = lastLoadedSessionIdRef.current !== currentSessionId;
+    if (isSessionSwitch) {
+      resetThreadExpansionState();
+      clearCopiedMessageFeedback();
+      setLatestStepSummary(null);
+      replaceResponseHistory([]);
+      resetResponseSpeechPlaybackState();
+      pendingLazyLoadSessionIdRef.current = null;
+      skipNextPersistRef.current = false;
+    }
+
+    if (currentSession) {
+      lastLoadedSessionIdRef.current = currentSession.id;
+
+      if (currentSession.messages.length > 0) {
+        applySessionMessages(currentSession.messages);
+      } else if (currentSession.serverConversationId && hasServerAuth) {
+        clearSessionMessages();
+        const stubSessionId = currentSession.id;
+        if (pendingLazyLoadSessionIdRef.current === stubSessionId) {
+          return;
+        }
+        pendingLazyLoadSessionIdRef.current = stubSessionId;
+        const client = settingsClient ?? createLazyLoadClient();
+        loadSessionMessages(stubSessionId, client)
+          .then((result) => {
+            if (!result) return;
+            if (currentSessionIdRef.current !== stubSessionId) return;
+            if (result.messages.length > 0) {
+              skipNextPersistRef.current = true;
+            }
+            applySessionMessages(result.messages, { includeId: true });
+          })
+          .catch((err) => {
+            warn('[ChatScreen] Failed to lazy-load session messages:', err);
+          })
+          .finally(() => {
+            if (pendingLazyLoadSessionIdRef.current === stubSessionId) {
+              pendingLazyLoadSessionIdRef.current = null;
+            }
+          });
+      } else {
+        clearSessionMessages();
+      }
+      return;
+    }
+
+    if (deletingSessionIdsSize > 0) {
+      return;
+    }
+
+    currentSession = createNewSession();
+    lastLoadedSessionIdRef.current = currentSession.id;
+
+    if (currentSession.messages.length > 0) {
+      applySessionMessages(currentSession.messages);
+    } else {
+      clearSessionMessages();
+    }
+  }, [
+    clearCopiedMessageFeedback,
+    createLazyLoadClient,
+    createNewSession,
+    currentSessionId,
+    currentSessionIdRef,
+    deletingSessionIdsSize,
+    getCurrentSession,
+    hasServerAuth,
+    lastLoadedSessionIdRef,
+    loadSessionMessages,
+    pendingLazyLoadSessionIdRef,
+    replaceResponseHistory,
+    resetResponseSpeechPlaybackState,
+    resetThreadExpansionState,
+    setLatestStepSummary,
+    setMessages,
+    settingsClient,
+    skipNextPersistRef,
+    warn,
   ]);
 }
 
