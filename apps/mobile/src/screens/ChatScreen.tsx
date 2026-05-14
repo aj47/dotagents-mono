@@ -33,6 +33,7 @@ import {
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
+  createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageConversationThreadPresentationState,
@@ -105,27 +106,19 @@ import {
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileRenderState,
   getChatComposerVoiceOverlayLabel,
-  getChatRuntimeAgentSelectorMobileRenderState,
-  getChatRuntimeBackMobileRenderState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeConnectionBannerMobileRenderState,
-  getChatRuntimeCurrentAgentLabel,
   getChatRuntimeDebugState,
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationCardMobileRenderState,
-  getChatRuntimeHandsFreeMobileRenderState,
-  getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
-  getChatRuntimeKillSwitchMobileRenderState,
-  getChatRuntimeKillSwitchMobileVisibilityRenderState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileSafeAreaLayoutState,
-  getChatRuntimePinMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStepSummaryMobileRenderState,
@@ -138,7 +131,6 @@ import {
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
-  getSessionStatusMobileRenderState,
   getSessionStatusMobileStyleRenderState,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -255,7 +247,6 @@ const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatRuntimeMessageHistoryWindowMobileState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
-const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState();
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
 const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
@@ -429,45 +420,15 @@ export default function ChatScreen({ route, navigation }: any) {
     const alertState = getChatImageAttachmentMobileAlertState(input);
     Alert.alert(alertState.title, alertState.message);
   }, []);
-  const mobileHeaderBackRenderState = useMemo(
-    () => getChatRuntimeBackMobileRenderState({ colors: theme.colors }),
-    [theme.colors],
-  );
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
-  const currentAgentLabel = getChatRuntimeCurrentAgentLabel(currentProfile?.name);
   const currentSession = sessionStore.getCurrentSession();
   const isCurrentSessionPinned = !!currentSession?.isPinned;
-  const mobileHeaderAgentSelectorRenderState = useMemo(
-    () => getChatRuntimeAgentSelectorMobileRenderState({
-      agentLabel: currentAgentLabel,
-      colors: theme.colors,
-    }),
-    [currentAgentLabel, theme.colors],
-  );
-  const headerPinMobileRenderState = useMemo(
-    () => getChatRuntimePinMobileRenderState({
-      isPinned: isCurrentSessionPinned,
-      colors: theme.colors,
-    }),
-    [isCurrentSessionPinned, theme.colors],
-  );
   const handsFree = !!config.handsFree;
-  const headerHandsFreeMobileRenderState = useMemo(
-    () => getChatRuntimeHandsFreeMobileRenderState({
-      isEnabled: handsFree,
-      colors: theme.colors,
-    }),
-    [handsFree, theme.colors],
-  );
-  const mobileHeaderKillSwitchRenderState = useMemo(
-    () => getChatRuntimeKillSwitchMobileRenderState({ colors: theme.colors }),
-    [theme.colors],
-  );
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
       return null;
@@ -851,20 +812,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
-  const headerConversationState = conversationState ?? (responding ? 'running' : null);
-  const headerConversationStatus = useMemo(
-    () => getSessionStatusMobileRenderState({
-      session: headerConversationState ? { conversationState: headerConversationState } : null,
-      colors: theme.colors,
-    }),
-    [headerConversationState, theme.colors],
-  );
-  const mobileHeaderKillSwitchVisibilityRenderState = useMemo(
-    () => getChatRuntimeKillSwitchMobileVisibilityRenderState({
-      conversationState: headerConversationState,
-    }),
-    [headerConversationState],
-  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mobileRuntimeLoadingRenderState = useMemo(
     () => getChatRuntimeLoadingStateMobileRenderState({
@@ -914,13 +861,27 @@ export default function ChatScreen({ route, navigation }: any) {
     () => computeTurnDurations(turnDurationMessages, !hasLiveAgentTurn, turnNow),
     [hasLiveAgentTurn, turnDurationMessages, turnNow],
   );
-  const headerTotalTurnDurationRenderState = useMemo(
-    () => getChatRuntimeTurnDurationHeaderMobileRenderState({
-      durationMs: turnDurations.totalMs,
-      isLive: turnDurations.hasLive,
+  const mobileHeaderRenderState = useMemo(
+    () => createChatRuntimeNavigationHeaderRenderState({
+      agentName: currentProfile?.name,
+      isPinned: isCurrentSessionPinned,
+      handsFree,
+      conversationState,
+      isResponding: responding,
+      turnDurationMs: turnDurations.totalMs,
+      turnDurationIsLive: turnDurations.hasLive,
       colors: theme.colors,
     }),
-    [theme.colors, turnDurations.hasLive, turnDurations.totalMs],
+    [
+      conversationState,
+      currentProfile?.name,
+      handsFree,
+      isCurrentSessionPinned,
+      responding,
+      theme.colors,
+      turnDurations.hasLive,
+      turnDurations.totalMs,
+    ],
   );
 
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
@@ -1076,25 +1037,16 @@ export default function ChatScreen({ route, navigation }: any) {
 
   useLayoutEffect(() => {
     navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
-      agentSelectorRenderState: mobileHeaderAgentSelectorRenderState,
+      ...mobileHeaderRenderState,
       onAgentSelectorPress: () => setAgentSelectorVisible(true),
-      agentSelectorLabelNumberOfLines: mobileHeaderSurface.agentSelectorText.numberOfLines,
-      backButtonRenderState: mobileHeaderBackRenderState,
       onBackButtonPress: () => navigation.navigate('Sessions'),
-      pinButtonRenderState: headerPinMobileRenderState,
       onPinButtonPress: handleToggleCurrentSessionPinned,
-      pinButtonIsActive: headerPinMobileRenderState.isPinned,
-      conversationStatusRenderState: headerConversationStatus,
       conversationStatusSpinnerSource: isDark ? darkSpinner : lightSpinner,
-      turnDurationRenderState: headerTotalTurnDurationRenderState,
-      killSwitchButtonShouldRender: mobileHeaderKillSwitchVisibilityRenderState.shouldRender,
-      killSwitchButtonRenderState: mobileHeaderKillSwitchRenderState,
       onKillSwitchButtonPress: handleKillSwitch,
-      handsFreeButtonRenderState: headerHandsFreeMobileRenderState,
       onHandsFreeButtonPress: toggleHandsFree,
       styles: chatRuntimeHeaderStyles,
     }));
-  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, headerConversationStatus, headerHandsFreeMobileRenderState, headerPinMobileRenderState, headerTotalTurnDurationRenderState, mobileHeaderAgentSelectorRenderState, mobileHeaderBackRenderState, mobileHeaderKillSwitchRenderState, mobileHeaderKillSwitchVisibilityRenderState.shouldRender, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);
+  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, mobileHeaderRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);
 
 		  useEffect(() => {
 			const subscription = AppState.addEventListener('change', (nextState) => {
