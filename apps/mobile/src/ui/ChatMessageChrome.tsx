@@ -3275,6 +3275,21 @@ export function createChatMessageRuntimeAssistantDebugErrorMessage(
   return createChatMessageRuntimeAssistantTextMessage(formatChatMessageRuntimeDebugError(message));
 }
 
+export type ChatMessageRuntimeRetryMessage = ChatMessageRuntimeAssistantTextMessage & {
+  variant: 'retry';
+  retryInfo: AgentRetryInfo;
+};
+
+export function createChatMessageRuntimeRetryMessage(
+  retryInfo: AgentRetryInfo,
+): ChatMessageRuntimeRetryMessage {
+  return {
+    ...createChatMessageRuntimeAssistantTextMessage(retryInfo.reason),
+    variant: 'retry',
+    retryInfo,
+  };
+}
+
 export type ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> = {
   role: 'assistant';
   content: string;

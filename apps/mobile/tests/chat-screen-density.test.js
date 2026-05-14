@@ -422,8 +422,12 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(clientSource, /delegation\?: ACPDelegationProgress;/);
   assert.match(clientSource, /variant\?: 'delegation' \| 'approval' \| 'retry';/);
   assert.match(screenSource, /!!update\.retryInfo\?\.isRetrying/);
-  assert.match(screenSource, /variant: 'retry'/);
-  assert.match(screenSource, /retryInfo: update\.retryInfo/);
+  assert.match(screenSource, /createChatMessageRuntimeRetryMessage\(update\.retryInfo\)/);
+  assert.doesNotMatch(screenSource, /variant: 'retry'/);
+  assert.doesNotMatch(screenSource, /retryInfo: update\.retryInfo/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRetryMessage/);
+  assert.match(chatMessageChromeSource, /variant: 'retry'/);
+  assert.match(chatMessageChromeSource, /retryInfo,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s*retryInfo: m\.retryInfo,\s*colors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeRetryStatusMobileRenderState,/);
@@ -2416,6 +2420,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.match(screenSource, /isChatMessageConversationContent,/);
   assert.match(screenSource, /&& isChatMessageConversationContent\(messages\[messages\.length - 1\]\)/);
+  assert.match(screenSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);
+  assert.doesNotMatch(screenSource, /messages\.push\(\{\s+role: 'assistant',\s+content: update\.streamingContent\.text,\s+\}\)/);
   assert.doesNotMatch(screenSource, /const lastAssistantContentMessageIndex = findLastChatMessageConversationContentIndex/);
   assert.match(chatMessageChromeSource, /const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex\(\s+allMessages,\s+\(message\) => message,\s+\(message\) => hasVisibleChatMessageContent\(message\),\s+\);/);
   assert.match(chatMessageChromeSource, /const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent\(\{\s+isResponding,\s+messageIndex,\s+lastConversationContentMessageIndex,\s+message,\s+content: visibleMessageContent,\s+displayToolCallCount,\s+\}\);/);

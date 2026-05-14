@@ -62,6 +62,7 @@ import {
   createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantPlaceholderMessage,
   createChatMessageRuntimeAssistantTextMessage,
+  createChatMessageRuntimeRetryMessage,
   createChatMessageRuntimeToolApprovalRequiredMessage,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -1842,12 +1843,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (update.retryInfo?.isRetrying) {
-      messages.push({
-        role: 'assistant',
-        content: update.retryInfo.reason,
-        variant: 'retry',
-        retryInfo: update.retryInfo,
-      });
+      messages.push(createChatMessageRuntimeRetryMessage(update.retryInfo));
     }
 
     if (update.streamingContent?.text) {
@@ -1857,10 +1853,7 @@ export default function ChatScreen({ route, navigation }: any) {
       ) {
         messages[messages.length - 1].content = update.streamingContent.text;
       } else {
-        messages.push({
-          role: 'assistant',
-          content: update.streamingContent.text,
-        });
+        messages.push(createChatMessageRuntimeAssistantTextMessage(update.streamingContent.text));
       }
     }
 
