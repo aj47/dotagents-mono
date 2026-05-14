@@ -34,7 +34,7 @@ import {
   getChatDisplayExpansionState,
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
-  getChatMessageActionMobileButtonStateForSlot,
+  getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageActionLayoutRenderState,
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
@@ -10619,10 +10619,7 @@ export function createChatMessageToolExecutionStackProps({
 export function createChatMessageActionStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatMessageActionStyleSlots {
-  const speechButton = getChatMessageActionMobileButtonStateForSlot('speech');
-  const branchButton = getChatMessageActionMobileButtonStateForSlot('branch');
-  const copyButton = getChatMessageActionMobileButtonStateForSlot('copy');
-  const expansionButton = getChatMessageActionMobileButtonStateForSlot('expansion');
+  const actionButtons = getChatMessageActionMobileButtonStatesBySlot();
 
   return {
     turnDuration: {
@@ -10632,25 +10629,25 @@ export function createChatMessageActionStyleSlots(
       liveTextStyle: styles.messageTurnDurationTextLive,
     },
     speech: {
-      hitSlop: speechButton.hitSlop,
+      hitSlop: actionButtons.speech.hitSlop,
       style: styles.speakButton,
       activeStyle: styles.speakButtonActive,
       pressedStyle: styles.speakButtonPressed,
     },
     branch: {
-      hitSlop: branchButton.hitSlop,
+      hitSlop: actionButtons.branch.hitSlop,
       style: styles.messageBranchButton,
       pressedStyle: styles.messageBranchButtonPressed,
       disabledStyle: styles.messageBranchButtonDisabled,
     },
     copy: {
-      hitSlop: copyButton.hitSlop,
+      hitSlop: actionButtons.copy.hitSlop,
       style: styles.messageCopyButton,
       activeStyle: styles.messageCopyButtonCopied,
       pressedStyle: styles.messageCopyButtonPressed,
     },
     expansion: {
-      hitSlop: expansionButton.hitSlop,
+      hitSlop: actionButtons.expansion.hitSlop,
       style: styles.messageExpandButton,
       pressedStyle: styles.messageExpandButtonPressed,
     },

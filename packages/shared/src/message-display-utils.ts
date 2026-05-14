@@ -1006,6 +1006,18 @@ export function getChatMessageActionMobileButtonStateForSlot(
   return getChatMessageActionMobileButtonState(getChatMessageActionMobileButtonKindForSlot(slot))
 }
 
+export function getChatMessageActionMobileButtonStatesBySlot(): Record<
+  ChatMessageActionMobileButtonSlot,
+  ReturnType<typeof getChatMessageActionMobileButtonState>
+> {
+  return {
+    speech: getChatMessageActionMobileButtonStateForSlot("speech"),
+    branch: getChatMessageActionMobileButtonStateForSlot("branch"),
+    copy: getChatMessageActionMobileButtonStateForSlot("copy"),
+    expansion: getChatMessageActionMobileButtonStateForSlot("expansion"),
+  }
+}
+
 export interface ChatMessageActionMobileTurnDurationBadgeStateInput {
   isLive?: boolean
 }

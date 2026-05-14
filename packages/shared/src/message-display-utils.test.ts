@@ -42,6 +42,7 @@ import {
   getChatMessageActionMobileButtonRenderState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionMobileButtonStateForSlot,
+  getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileRowState,
   getChatMessageActionMobileStyleRenderState,
@@ -880,6 +881,12 @@ describe('chat message display presentation', () => {
     expect(getChatMessageActionMobileButtonStateForSlot('expansion')).toEqual(
       getChatMessageActionMobileButtonState(),
     )
+    expect(getChatMessageActionMobileButtonStatesBySlot()).toEqual({
+      speech: getChatMessageActionMobileButtonStateForSlot('speech'),
+      branch: getChatMessageActionMobileButtonStateForSlot('branch'),
+      copy: getChatMessageActionMobileButtonStateForSlot('copy'),
+      expansion: getChatMessageActionMobileButtonStateForSlot('expansion'),
+    })
     const actionButtonRenderStateColors = {
       mutedForeground: '#737373',
       primary: '#2563eb',
