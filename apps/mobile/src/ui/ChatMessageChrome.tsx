@@ -4843,6 +4843,25 @@ export function replaceChatMessageRuntimeTurnMessages<TMessage>(
   return [...beforePlaceholder, ...turnMessages];
 }
 
+export function replaceChatMessageRuntimeFinalTurnMessages<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  finalTurnMessages: readonly TMessage[],
+  progressMessages: readonly ChatDisplayMessageLike[] = [],
+): TMessage[] {
+  const mergedMessages = mergeChatMessageRuntimeFinalTurnMessagesWithProgress(
+    finalTurnMessages,
+    progressMessages,
+  );
+  return replaceChatMessageRuntimeTurnMessages(
+    messages,
+    messageCountBeforeTurn,
+    mergedMessages,
+  );
+}
+
 export function createChatMessageRuntimeCompletedTurnMessages<TMessage>(
   messages: readonly TMessage[],
   messageCountBeforeTurn: number,

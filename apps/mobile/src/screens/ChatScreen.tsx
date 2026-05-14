@@ -94,7 +94,7 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
-  mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
+  replaceChatMessageRuntimeFinalTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -1042,14 +1042,11 @@ export default function ChatScreen({ route, navigation }: any) {
           const progressMsgs = progressMessagesRef.current;
           setMessages((m) => {
             console.log('[ChatScreen] Current messages before update:', m.length);
-            const mergedMessages = mergeChatMessageRuntimeFinalTurnMessagesWithProgress(
-              finalTurnMessages,
-              progressMsgs,
-            );
-            const result = replaceChatMessageRuntimeTurnMessages(
+            const result = replaceChatMessageRuntimeFinalTurnMessages(
               m,
               messageCountBeforeTurn,
-              mergedMessages,
+              finalTurnMessages,
+              progressMsgs,
             );
             console.log('[ChatScreen] Final messages count:', result.length);
             return result;
@@ -1370,7 +1367,7 @@ export default function ChatScreen({ route, navigation }: any) {
           },
         );
 
-        setMessages((m) => replaceChatMessageRuntimeTurnMessages(
+        setMessages((m) => replaceChatMessageRuntimeFinalTurnMessages(
           m,
           messageCountBeforeTurn,
           finalTurnMessages,

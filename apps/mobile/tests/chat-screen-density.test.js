@@ -1973,9 +1973,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /hasChatMessageRuntimeAssistantContentAfter\(\s+serverMessages,/);
   assert.match(chatMessageChromeSource, /hasChatMessageRuntimeAssistantContentAfter\(\s+historyMessages,\s+lastUserMessageIndex,\s+\)/);
   assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages,/);
+  assert.match(screenSource, /replaceChatMessageRuntimeFinalTurnMessages,/);
   assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+progressMessages,\s+\)/);
-  assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);
-  assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+\)/);
+  assert.match(screenSource, /replaceChatMessageRuntimeFinalTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+progressMsgs,\s+\)/);
+  assert.match(screenSource, /replaceChatMessageRuntimeFinalTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+\)/);
+  assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);
+  assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+\)/);
   assert.match(screenSource, /createChatMessageRuntimeCompletedTurnMessages,/);
   assert.match(screenSource, /createChatMessageRuntimeCompletedTurnMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+finalTurnMessages,\s+\)/);
   assert.match(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages,/);
@@ -1986,6 +1989,9 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /export function hasChatMessageRuntimeAssistantContentAfter/);
   assert.match(chatMessageChromeSource, /export function replaceChatMessageRuntimeTurnMessages/);
   assert.match(chatMessageChromeSource, /const beforePlaceholder = messages\.slice\(0, messageCountBeforeTurn \+ 1\)/);
+  assert.match(chatMessageChromeSource, /export function replaceChatMessageRuntimeFinalTurnMessages/);
+  assert.match(chatMessageChromeSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress\(\s+finalTurnMessages,\s+progressMessages,\s+\)/);
+  assert.match(chatMessageChromeSource, /replaceChatMessageRuntimeTurnMessages\(\s+messages,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedTurnMessages/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedTextTurnMessages/);
   assert.match(chatMessageChromeSource, /\[createChatMessageRuntimeAssistantTextMessage\(content\) as TMessage\]/);
@@ -2587,12 +2593,13 @@ test('derives tool execution card status from displayed non-meta tool entries', 
 
 test('keeps Codex thinking blocks display-only on mobile', () => {
   assert.doesNotMatch(screenSource, /preserveChatMessageRuntimeDisplayContentFromProgress,/);
-  assert.match(screenSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress,/);
+  assert.doesNotMatch(screenSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress,/);
+  assert.match(screenSource, /replaceChatMessageRuntimeFinalTurnMessages,/);
   assert.doesNotMatch(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /const preserveDisplayContentFromProgress = \(/);
   assert.doesNotMatch(screenSource, /displayContent: historyMsg\.displayContent/);
   assert.match(chatMessageChromeSource, /displayContent: historyMessage\.displayContent/);
-  assert.match(screenSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress\(\s+finalTurnMessages,\s+progressMsgs,\s+\)/);
+  assert.match(screenSource, /replaceChatMessageRuntimeFinalTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+progressMsgs,\s+\)/);
   assert.match(chatMessageChromeSource, /preserveChatMessageDisplayContentFromProgress,/);
   assert.match(chatMessageChromeSource, /export function preserveChatMessageRuntimeDisplayContentFromProgress/);
   assert.match(chatMessageChromeSource, /export function mergeChatMessageRuntimeFinalTurnMessagesWithProgress/);
