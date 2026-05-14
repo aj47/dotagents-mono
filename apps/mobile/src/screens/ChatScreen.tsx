@@ -26,6 +26,7 @@ import {
   useChatRuntimeStatusState,
   useChatRuntimeRequestDebugState,
   useChatRuntimeRequestTrackingState,
+  useChatRuntimeConnectionStatusSubscription,
   useChatRuntimeConnectionRetryState,
   useChatRuntimeConnectionRetryActionState,
   useChatRuntimeForegroundState,
@@ -44,7 +45,6 @@ import {
   createChatRuntimeNavigationHeaderRenderState,
   formatChatMessageRuntimeAlertMessage,
   formatChatMessageRuntimeConnectionErrorMessage,
-  formatChatMessageRuntimeConnectionStatus,
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatRuntimeMobileConfigState,
@@ -381,57 +381,25 @@ export default function ChatScreen({ route, navigation }: any) {
       return null;
     }
     const connection = connectionManager.getOrCreateConnection(currentSessionId);
-    // Note: Connection status callback is set up via subscribeToConnectionStatus in useEffect below
+    // Note: Connection status is subscribed through useChatRuntimeConnectionStatusSubscription below
     // This avoids overwriting the SessionConnectionManager's internal callback (PR review fix)
     return connection.client;
   }, [connectionManager, sessionStore.currentSessionId]);
 
-  // Subscribe to connection status changes for the current session
-  // Uses subscribeToConnectionStatus to avoid overwriting the internal callback in SessionConnectionManager
-  useEffect(() => {
-    const currentSessionId = sessionStore.currentSessionId;
-    if (!currentSessionId) {
-      // Reset both connection state and responding state when there's no session
-      // This prevents the UI from being stuck in "responding" state if the session
-      // is deleted/cleared while ChatScreen remains mounted (PR review fix #15)
-      setConnectionState(null);
-      setResponding(false);
-      setConversationState(null);
-      setLatestStepSummary(null);
-      return;
-    }
+  const logConnectionStatus = useCallback((statusMessage: string) => {
+    console.log('[ChatScreen] Connection status:', statusMessage);
+  }, []);
 
-    // Restore existing connection state when switching sessions
-    const existingState = connectionManager.getConnectionState(currentSessionId);
-    if (existingState) {
-      setConnectionState(existingState);
-    } else {
-      setConnectionState(null);
-    }
-
-    // Check if there's an active request for this session
-    const isActive = connectionManager.isConnectionActive(currentSessionId);
-    setResponding(isActive);
-    setConversationState(isActive ? 'running' : null);
-
-    // Ensure connection exists for subscription
-    connectionManager.getOrCreateConnection(currentSessionId);
-
-    // Subscribe to connection status changes for this session
-    // The callback uses currentSessionIdRef to always check against the latest session ID
-    const unsubscribe = connectionManager.subscribeToConnectionStatus(
-      currentSessionId,
-      (state) => {
-        // Only update UI if this is still the current session (using ref for latest value)
-        if (currentSessionIdRef.current === currentSessionId) {
-          setConnectionState(state);
-          console.log('[ChatScreen] Connection status:', formatChatMessageRuntimeConnectionStatus(state));
-        }
-      }
-    );
-
-    return unsubscribe;
-  }, [sessionStore.currentSessionId, connectionManager]);
+  useChatRuntimeConnectionStatusSubscription({
+    currentSessionId: sessionStore.currentSessionId,
+    connectionManager,
+    currentSessionIdRef,
+    setConnectionState,
+    setResponding,
+    setConversationState,
+    setLatestStepSummary,
+    logConnectionStatus,
+  });
 
   const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
     platform: Platform.OS,

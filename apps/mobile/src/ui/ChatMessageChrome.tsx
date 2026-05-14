@@ -737,6 +737,27 @@ type ChatRuntimeRequestTrackingState = {
   currentSessionIdRef: ChatRuntimeMutableRef<string | null>;
 };
 
+type ChatRuntimeConnectionStatusManager = {
+  getConnectionState: (sessionId: string) => RecoveryState | null | undefined;
+  isConnectionActive: (sessionId: string) => boolean;
+  getOrCreateConnection: (sessionId: string) => unknown;
+  subscribeToConnectionStatus: (
+    sessionId: string,
+    onStatusChange: (state: RecoveryState) => void,
+  ) => (() => void);
+};
+
+type ChatRuntimeConnectionStatusSubscriptionInput = {
+  currentSessionId: string | null;
+  connectionManager: ChatRuntimeConnectionStatusManager;
+  currentSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  setConnectionState: Dispatch<SetStateAction<RecoveryState | null>>;
+  setResponding: Dispatch<SetStateAction<boolean>>;
+  setConversationState: Dispatch<SetStateAction<AgentConversationState | null>>;
+  setLatestStepSummary: Dispatch<SetStateAction<AgentStepSummary | null>>;
+  logConnectionStatus?: (statusMessage: string) => void;
+};
+
 type ChatRuntimeForegroundStateInput = {
   handsFree: boolean;
   isFocused: boolean;
@@ -7130,6 +7151,51 @@ export function useChatRuntimeRequestTrackingState({
     activeRequestIdRef,
     currentSessionIdRef,
   };
+}
+
+export function useChatRuntimeConnectionStatusSubscription({
+  currentSessionId,
+  connectionManager,
+  currentSessionIdRef,
+  setConnectionState,
+  setResponding,
+  setConversationState,
+  setLatestStepSummary,
+  logConnectionStatus,
+}: ChatRuntimeConnectionStatusSubscriptionInput): void {
+  useEffect(() => {
+    if (!currentSessionId) {
+      setConnectionState(null);
+      setResponding(false);
+      setConversationState(null);
+      setLatestStepSummary(null);
+      return;
+    }
+
+    const existingState = connectionManager.getConnectionState(currentSessionId);
+    setConnectionState(existingState ?? null);
+
+    const isActive = connectionManager.isConnectionActive(currentSessionId);
+    setResponding(isActive);
+    setConversationState(isActive ? 'running' : null);
+
+    connectionManager.getOrCreateConnection(currentSessionId);
+
+    return connectionManager.subscribeToConnectionStatus(currentSessionId, (state) => {
+      if (currentSessionIdRef.current !== currentSessionId) return;
+      setConnectionState(state);
+      logConnectionStatus?.(formatChatMessageRuntimeConnectionStatus(state));
+    });
+  }, [
+    connectionManager,
+    currentSessionId,
+    currentSessionIdRef,
+    logConnectionStatus,
+    setConnectionState,
+    setConversationState,
+    setLatestStepSummary,
+    setResponding,
+  ]);
 }
 
 export function useChatRuntimeForegroundState({

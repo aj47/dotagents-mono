@@ -1314,6 +1314,14 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryState/);
   assert.match(chatMessageChromeSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
+  assert.match(screenSource, /useChatRuntimeConnectionStatusSubscription,/);
+  assert.match(screenSource, /const logConnectionStatus = useCallback\(\(statusMessage: string\) => \{\s+console\.log\('\[ChatScreen\] Connection status:', statusMessage\);\s+\}, \[\]\);/);
+  assert.match(screenSource, /useChatRuntimeConnectionStatusSubscription\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+connectionManager,\s+currentSessionIdRef,\s+setConnectionState,\s+setResponding,\s+setConversationState,\s+setLatestStepSummary,\s+logConnectionStatus,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionStatusSubscription/);
+  assert.match(chatMessageChromeSource, /connectionManager\.subscribeToConnectionStatus\(currentSessionId, \(state\) => \{/);
+  assert.match(chatMessageChromeSource, /logConnectionStatus\?\.\(formatChatMessageRuntimeConnectionStatus\(state\)\);/);
+  assert.doesNotMatch(screenSource, /connectionManager\.subscribeToConnectionStatus/);
+  assert.doesNotMatch(screenSource, /connectionManager\.isConnectionActive/);
   assert.match(screenSource, /useChatRuntimeConnectionRetryActionState,/);
   assert.match(screenSource, /const \{ handleRetryLastFailedMessage \} = useChatRuntimeConnectionRetryActionState<ChatMessage>\(\{\s+lastFailedMessage,\s+clearLastFailedMessage,\s+getSessionClient,\s+sessionStore,\s+setMessages,\s+send,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryActionState/);
@@ -1366,7 +1374,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(screenSource, /runtimeSurface\.connectionBanner/);
   assert.match(screenSource, /retryButtonText:\s*\{[\s\S]*?color:\s*connectionBannerSurfaceColors\.retryButton\.color/);
   assert.match(screenSource, /retryButtonText:\s*\{[\s\S]*?fontWeight:\s*connectionBannerSurface\.retryButton\.fontWeight/);
-  assert.match(screenSource, /formatChatMessageRuntimeConnectionStatus\(state\)/);
+  assert.doesNotMatch(screenSource, /formatChatMessageRuntimeConnectionStatus\(state\)/);
   assert.match(chatMessageChromeSource, /formatConnectionStatus,/);
   assert.match(chatMessageChromeSource, /export function formatChatMessageRuntimeConnectionStatus\(state: RecoveryState\): string \{\s+return formatConnectionStatus\(state\);\s+\}/);
   assert.doesNotMatch(screenSource, /formatConnectionStatus,/);
