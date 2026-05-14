@@ -4042,10 +4042,21 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeAssistantErrorContent/);
   assert.equal(
     (screenSource.match(/const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage\(text\)/g) || []).length,
+    0,
+  );
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimePendingTurnState<ChatMessage>\(\s+messagesRef\.current,\s+text,\s+\)/g) || []).length,
+    2,
+  );
+  assert.equal(
+    (screenSource.match(/setMessages\(pendingTurnState\.updateMessages\)/g) || []).length,
     2,
   );
   assert.doesNotMatch(screenSource, /\{ role: 'user', content: text \}/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserTextMessage\(text\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserTextMessage/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimePendingTurnState/);
+  assert.match(chatMessageChromeSource, /const userMessage = createChatMessageRuntimeUserTextMessage\(content\) as TMessage/);
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeAssistantErrorMessage/);
   assert.match(chatMessageChromeSource, /const errorMessageState = createChatMessageRuntimeAssistantErrorMessage\(errorMessage, partialContent\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantErrorMessage/);
@@ -4053,9 +4064,9 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /const queuedErrorMessage = formatChatMessageRuntimeAlertMessage\(e, getChatMessageRuntimeDebugMessage\('unknownError'\)\)/);
   assert.equal(
     (screenSource.match(/appendChatMessageRuntimePendingTurnMessages\(m, userMsg\)/g) || []).length,
-    2,
+    0,
   );
-  assert.match(screenSource, /appendChatMessageRuntimePendingTurnMessages,/);
+  assert.doesNotMatch(screenSource, /appendChatMessageRuntimePendingTurnMessages,/);
   assert.doesNotMatch(screenSource, /removeChatMessageRuntimePendingTurnMessages,/);
   assert.doesNotMatch(screenSource, /setMessages\(\(m\) => removeChatMessageRuntimePendingTurnMessages\(m\)\)/);
   assert.match(chatMessageChromeSource, /setMessages\(\(messages\) => removeChatMessageRuntimePendingTurnMessages\(messages\)\)/);
@@ -4065,6 +4076,7 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /export function appendChatMessageRuntimeAssistantDebugErrorMessage/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeAssistantDebugErrorMessage\(message\) as TMessage/);
   assert.match(chatMessageChromeSource, /export function appendChatMessageRuntimePendingTurnMessages/);
+  assert.match(chatMessageChromeSource, /updateMessages: \(messages\) => appendChatMessageRuntimePendingTurnMessages\(messages, userMessage\)/);
   assert.match(chatMessageChromeSource, /export function removeChatMessageRuntimePendingTurnMessages/);
   assert.match(chatMessageChromeSource, /return messages\.slice\(0, -2\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantPlaceholderMessage/);

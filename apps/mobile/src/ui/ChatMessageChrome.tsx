@@ -4699,6 +4699,28 @@ export function appendChatMessageRuntimePendingTurnMessages<
   ];
 }
 
+export type ChatMessageRuntimePendingTurnState<TMessage> = {
+  userMessage: TMessage;
+  currentMessages: readonly TMessage[];
+  messageCountBeforeTurn: number;
+  updateMessages: (messages: readonly TMessage[]) => TMessage[];
+};
+
+export function createChatMessageRuntimePendingTurnState<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  currentMessages: readonly TMessage[],
+  content: string,
+): ChatMessageRuntimePendingTurnState<TMessage> {
+  const userMessage = createChatMessageRuntimeUserTextMessage(content) as TMessage;
+  return {
+    userMessage,
+    currentMessages,
+    messageCountBeforeTurn: currentMessages.length,
+    updateMessages: (messages) => appendChatMessageRuntimePendingTurnMessages(messages, userMessage),
+  };
+}
+
 export function removeChatMessageRuntimePendingTurnMessages<TMessage>(
   messages: readonly TMessage[],
 ): TMessage[] {

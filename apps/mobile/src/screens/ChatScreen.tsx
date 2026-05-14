@@ -44,7 +44,6 @@ import {
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
-  appendChatMessageRuntimePendingTurnMessages,
   useChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
   formatChatMessageRuntimeAlertMessage,
@@ -55,7 +54,7 @@ import {
   createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
-  createChatMessageRuntimeUserTextMessage,
+  createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimeStreamingTurnState,
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
@@ -809,14 +808,20 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear any previous failed message when starting a new send
     clearLastFailedMessage();
 
-    const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage(text);
-	    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
-	    const currentMessages = messagesRef.current;
-    const messageCountBeforeTurn = currentMessages.length;
+    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
+    const pendingTurnState = createChatMessageRuntimePendingTurnState<ChatMessage>(
+      messagesRef.current,
+      text,
+    );
+    const {
+      userMessage: userMsg,
+      currentMessages,
+      messageCountBeforeTurn,
+    } = pendingTurnState;
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
     setLatestStepSummary(null);
-    setMessages((m) => appendChatMessageRuntimePendingTurnMessages(m, userMsg));
+    setMessages(pendingTurnState.updateMessages);
     setResponding(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -1233,12 +1238,18 @@ export default function ChatScreen({ route, navigation }: any) {
 
     setDebugInfo(getChatMessageRuntimeDebugMessage('processingQueuedMessage'));
 
-    const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage(text);
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
-    const currentMessages = messagesRef.current;
-    const messageCountBeforeTurn = currentMessages.length;
+    const pendingTurnState = createChatMessageRuntimePendingTurnState<ChatMessage>(
+      messagesRef.current,
+      text,
+    );
+    const {
+      userMessage: userMsg,
+      currentMessages,
+      messageCountBeforeTurn,
+    } = pendingTurnState;
     setLatestStepSummary(null);
-    setMessages((m) => appendChatMessageRuntimePendingTurnMessages(m, userMsg));
+    setMessages(pendingTurnState.updateMessages);
     setResponding(true);
     setConversationState('running');
 	    if (handsFree) {
