@@ -4011,6 +4011,20 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
 });
 
 test('loads saved prompts from the settings API for the mobile quick-start launcher', () => {
+  assert.match(screenSource, /useChatConversationHomeQuickStartCatalogState,/);
+  assert.match(screenSource, /const \{\s+predefinedPrompts,\s+setPredefinedPrompts,\s+availableSkills,\s+setAvailableSkills,\s+availableTasks,\s+setAvailableTasks,\s+isLoadingQuickStartPrompts,\s+beginQuickStartCatalogLoad,\s+finishQuickStartCatalogLoad,\s+clearQuickStartCatalog,\s+\} = useChatConversationHomeQuickStartCatalogState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatConversationHomeQuickStartCatalogState/);
+  assert.match(chatMessageChromeSource, /const \[predefinedPrompts, setPredefinedPrompts\] = useState<PredefinedPromptSummary\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /const \[availableSkills, setAvailableSkills\] = useState<Skill\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /const \[availableTasks, setAvailableTasks\] = useState<Loop\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /const \[isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts\] = useState\(false\);/);
+  assert.doesNotMatch(screenSource, /const \[predefinedPrompts, setPredefinedPrompts\] = useState<PredefinedPromptSummary\[\]>\(\[\]\);/);
+  assert.doesNotMatch(screenSource, /const \[availableSkills, setAvailableSkills\] = useState<Skill\[\]>\(\[\]\);/);
+  assert.doesNotMatch(screenSource, /const \[availableTasks, setAvailableTasks\] = useState<Loop\[\]>\(\[\]\);/);
+  assert.doesNotMatch(screenSource, /const \[isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts\] = useState\(false\);/);
+  assert.match(screenSource, /clearQuickStartCatalog\(\);/);
+  assert.match(screenSource, /beginQuickStartCatalogLoad\(\);/);
+  assert.match(screenSource, /finishQuickStartCatalogLoad\(\);/);
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
   assert.match(screenSource, /sortChatConversationHomePromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);

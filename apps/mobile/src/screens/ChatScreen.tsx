@@ -26,6 +26,7 @@ import {
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
   useChatConversationHomePromptTaskRunState,
+  useChatConversationHomeQuickStartCatalogState,
   useChatConversationHomePromptEditorState,
   useChatRuntimeAgentSelectorOverlayState,
   useChatComposerRuntimeEditBeforeSendState,
@@ -125,7 +126,6 @@ import type { HandsFreePhase } from '@dotagents/shared/types';
 import type {
   Loop,
   PredefinedPromptSummary,
-  Skill,
 } from '@dotagents/shared/api-types';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -184,10 +184,18 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
-  const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
-  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
-  const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
-  const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const {
+    predefinedPrompts,
+    setPredefinedPrompts,
+    availableSkills,
+    setAvailableSkills,
+    availableTasks,
+    setAvailableTasks,
+    isLoadingQuickStartPrompts,
+    beginQuickStartCatalogLoad,
+    finishQuickStartCatalogLoad,
+    clearQuickStartCatalog,
+  } = useChatConversationHomeQuickStartCatalogState();
   const {
     runningPromptTaskId,
     canRunPromptTask,
@@ -1106,16 +1114,13 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => {
     if (!settingsClient || !isFocused) {
       if (!settingsClient) {
-        setPredefinedPrompts([]);
-        setAvailableSkills([]);
-        setAvailableTasks([]);
-        setIsLoadingQuickStartPrompts(false);
+        clearQuickStartCatalog();
       }
       return;
     }
 
     let cancelled = false;
-    setIsLoadingQuickStartPrompts(true);
+    beginQuickStartCatalogLoad();
 
     Promise.allSettled([
       settingsClient.getSettings(),
@@ -1143,13 +1148,13 @@ export default function ChatScreen({ route, navigation }: any) {
       })
       .finally(() => {
         if (cancelled) return;
-        setIsLoadingQuickStartPrompts(false);
+        finishQuickStartCatalogLoad();
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isFocused, settingsClient]);
+  }, [beginQuickStartCatalogLoad, clearQuickStartCatalog, finishQuickStartCatalogLoad, isFocused, settingsClient]);
 
   const handleSavePrompt = async () => {
     const draft = { name: newPromptName, content: newPromptContent };

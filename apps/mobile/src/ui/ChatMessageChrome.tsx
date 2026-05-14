@@ -169,7 +169,7 @@ import {
   getMessageQueuePanelMobileDockRenderState,
   getMessageQueuePanelMobileWrapperRenderState,
 } from '@dotagents/shared/message-queue-utils';
-import type { PredefinedPromptSummary, Settings } from '@dotagents/shared/api-types';
+import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupExpansionInheritanceItems,
   getToolActivityGroupMobileRenderState,
@@ -396,6 +396,19 @@ type ChatConversationHomePromptTaskRunState = {
   canRunPromptTask: boolean;
   beginPromptTaskRun: (taskId: string) => void;
   clearPromptTaskRun: () => void;
+};
+
+type ChatConversationHomeQuickStartCatalogState = {
+  predefinedPrompts: PredefinedPromptSummary[];
+  setPredefinedPrompts: Dispatch<SetStateAction<PredefinedPromptSummary[]>>;
+  availableSkills: Skill[];
+  setAvailableSkills: Dispatch<SetStateAction<Skill[]>>;
+  availableTasks: Loop[];
+  setAvailableTasks: Dispatch<SetStateAction<Loop[]>>;
+  isLoadingQuickStartPrompts: boolean;
+  beginQuickStartCatalogLoad: () => void;
+  finishQuickStartCatalogLoad: () => void;
+  clearQuickStartCatalog: () => void;
 };
 
 type ChatConversationHomePromptEditorState = {
@@ -5642,6 +5655,41 @@ export function useChatConversationHomePromptTaskRunState(): ChatConversationHom
     canRunPromptTask: runningPromptTaskId === null,
     beginPromptTaskRun,
     clearPromptTaskRun,
+  };
+}
+
+export function useChatConversationHomeQuickStartCatalogState(): ChatConversationHomeQuickStartCatalogState {
+  const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
+  const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+
+  const beginQuickStartCatalogLoad = useCallback(() => {
+    setIsLoadingQuickStartPrompts(true);
+  }, []);
+
+  const finishQuickStartCatalogLoad = useCallback(() => {
+    setIsLoadingQuickStartPrompts(false);
+  }, []);
+
+  const clearQuickStartCatalog = useCallback(() => {
+    setPredefinedPrompts([]);
+    setAvailableSkills([]);
+    setAvailableTasks([]);
+    setIsLoadingQuickStartPrompts(false);
+  }, []);
+
+  return {
+    predefinedPrompts,
+    setPredefinedPrompts,
+    availableSkills,
+    setAvailableSkills,
+    availableTasks,
+    setAvailableTasks,
+    isLoadingQuickStartPrompts,
+    beginQuickStartCatalogLoad,
+    finishQuickStartCatalogLoad,
+    clearQuickStartCatalog,
   };
 }
 
