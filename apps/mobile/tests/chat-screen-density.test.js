@@ -1724,6 +1724,16 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages,/);
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimeSessionDisplayMessages<ChatMessage>\(/g) || []).length,
+    3,
+  );
+  assert.match(screenSource, /createChatMessageRuntimeSessionDisplayMessages<ChatMessage>\(\s+result\.messages,\s+\{ includeId: true \},\s+\)/);
+  assert.doesNotMatch(screenSource, /currentSession\.messages\.map\(m => \(\{/);
+  assert.doesNotMatch(screenSource, /result\.messages\.map\(m => \(\{/);
+  assert.doesNotMatch(screenSource, /displayContent: \(m as ChatMessage\)\.displayContent/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSessionDisplayMessages/);
+  assert.match(chatMessageChromeSource, /displayContent: message\.displayContent/);
   assert.match(screenSource, /createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>\(serverMessages\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+historyMessages,\s+\{\s+\.\.\.displayOptions,\s+skipUserMessages,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRecoveredHistoryMessages/);

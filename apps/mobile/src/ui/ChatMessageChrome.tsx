@@ -3638,6 +3638,20 @@ export type ChatMessageRuntimeFinalHistoryTurnMessagesOptions =
     userResponse?: string;
   };
 
+export type ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult> = {
+  id?: string;
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  displayContent?: string;
+  timestamp?: number;
+  toolCalls?: TToolCall[];
+  toolResults?: TToolResult[];
+};
+
+type ChatMessageRuntimeSessionDisplayMessagesOptions = {
+  includeId?: boolean;
+};
+
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
@@ -3673,6 +3687,27 @@ export function hasChatMessageRuntimeAssistantContentAfter(
     }
   }
   return false;
+}
+
+export function createChatMessageRuntimeSessionDisplayMessages<
+  TMessage extends ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult>,
+  TToolCall = unknown,
+  TToolResult = unknown,
+>(
+  sessionMessages: readonly ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult>[],
+  {
+    includeId = false,
+  }: ChatMessageRuntimeSessionDisplayMessagesOptions = {},
+): TMessage[] {
+  return sessionMessages.map((message) => ({
+    ...(includeId ? { id: message.id } : {}),
+    role: message.role,
+    content: message.content,
+    displayContent: message.displayContent,
+    timestamp: message.timestamp,
+    toolCalls: message.toolCalls,
+    toolResults: message.toolResults,
+  }) as TMessage);
 }
 
 export function mergeChatMessageRuntimeToolResultsIntoLastMessage<

@@ -64,6 +64,7 @@ import {
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -1519,14 +1520,9 @@ export default function ChatScreen({ route, navigation }: any) {
       lastLoadedSessionIdRef.current = currentSession.id;
 
       if (currentSession.messages.length > 0) {
-        const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
-          role: m.role,
-          content: m.content,
-          displayContent: (m as ChatMessage).displayContent,
-          timestamp: m.timestamp,
-          toolCalls: m.toolCalls,
-          toolResults: m.toolResults,
-        }));
+        const chatMessages = createChatMessageRuntimeSessionDisplayMessages<ChatMessage>(
+          currentSession.messages,
+        );
         setMessages(chatMessages);
 
         // Extract respond_to_user content from saved messages for display (#32, #33)
@@ -1557,15 +1553,10 @@ export default function ChatScreen({ route, navigation }: any) {
             if (result.messages.length > 0) {
               skipNextPersistRef.current = true;
             }
-            const loadedMessages = result.messages.map(m => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              displayContent: (m as ChatMessage).displayContent,
-              timestamp: m.timestamp,
-              toolCalls: m.toolCalls,
-              toolResults: m.toolResults,
-            }));
+            const loadedMessages = createChatMessageRuntimeSessionDisplayMessages<ChatMessage>(
+              result.messages,
+              { includeId: true },
+            );
             setMessages(loadedMessages);
 
             // Extract respond_to_user content from lazy-loaded messages (#32, #33)
@@ -1602,14 +1593,9 @@ export default function ChatScreen({ route, navigation }: any) {
     lastLoadedSessionIdRef.current = currentSession.id;
 
     if (currentSession.messages.length > 0) {
-      const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
-        role: m.role,
-        content: m.content,
-        displayContent: (m as ChatMessage).displayContent,
-        timestamp: m.timestamp,
-        toolCalls: m.toolCalls,
-        toolResults: m.toolResults,
-      }));
+      const chatMessages = createChatMessageRuntimeSessionDisplayMessages<ChatMessage>(
+        currentSession.messages,
+      );
       setMessages(chatMessages);
 
       // Extract respond_to_user content from new session messages (#32, #33)
