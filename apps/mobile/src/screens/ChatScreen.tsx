@@ -63,6 +63,7 @@ import {
   createChatMessageRuntimeAssistantErrorMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantTextMessage,
+  createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeRetryMessage,
   createChatMessageRuntimeToolApprovalRequiredMessage,
   createChatMessageConversationThreadStyleSlots,
@@ -2206,8 +2207,12 @@ export default function ChatScreen({ route, navigation }: any) {
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting completed response to background session:', requestSessionId);
             // Build the final messages array: messages before this turn + user message + new assistant messages
-	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
-	            const finalMessages = [...messagesBeforeTurn, userMsg, ...finalTurnMessages];
+	            const finalMessages = createChatMessageRuntimeCompletedTurnMessages(
+	              currentMessages,
+	              messageCountBeforeTurn,
+	              userMsg,
+	              finalTurnMessages,
+	            );
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping background persistence - request superseded within session:', {
@@ -2258,8 +2263,12 @@ export default function ChatScreen({ route, navigation }: any) {
           // This prevents an older request from overwriting newer history (PR review fix #14)
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting fallback response to background session:', requestSessionId);
-	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
-	            const finalMessages = [...messagesBeforeTurn, userMsg, createChatMessageRuntimeAssistantTextMessage(finalDisplayText)];
+	            const finalMessages = createChatMessageRuntimeCompletedTurnMessages(
+	              currentMessages,
+	              messageCountBeforeTurn,
+	              userMsg,
+	              [createChatMessageRuntimeAssistantTextMessage(finalDisplayText)],
+	            );
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping fallback background persistence - request superseded within session:', {

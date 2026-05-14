@@ -3400,6 +3400,16 @@ export function replaceChatMessageRuntimeTurnMessages<TMessage>(
   return [...beforePlaceholder, ...turnMessages];
 }
 
+export function createChatMessageRuntimeCompletedTurnMessages<TMessage>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  userMessage: TMessage,
+  turnMessages: readonly TMessage[],
+): TMessage[] {
+  const messagesBeforeTurn = messages.slice(0, messageCountBeforeTurn);
+  return [...messagesBeforeTurn, userMessage, ...turnMessages];
+}
+
 export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
   id?: string;
   role: 'user' | 'assistant' | 'tool';
