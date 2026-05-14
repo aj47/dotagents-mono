@@ -1549,6 +1549,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileSurfaceState,/);
   assert.match(screenSource, /getToolExecutionResultOnlyFallbackRenderState,/);
   assert.match(screenSource, /getToolExecutionSummaryDisplayState,/);
+  assert.match(chatMessageChromeSource, /getToolExecutionSummaryDisplayState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionCompactMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColorMap,/);
   assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColor,/);
@@ -1597,7 +1598,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailCopyState,/);
   assert.doesNotMatch(screenSource, /const toolExecutionDetailCopy = getToolExecutionDetailCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const toolExecutionStatusCopy = getToolExecutionStatusCopyState\(\);/);
-  assert.match(screenSource, /allSuccess,[\s\S]*?hasErrors,[\s\S]*?isPending,[\s\S]*?\} = getToolExecutionSummaryDisplayState\(renderedToolEntries\.map\(entry => entry\.result\)\);/);
+  assert.match(screenSource, /\{\s+hasErrors,\s+\} = getToolExecutionSummaryDisplayState\(renderedToolEntries\.map\(entry => entry\.result\)\);/);
+  assert.match(chatMessageChromeSource, /const executionSummary = getToolExecutionSummaryDisplayState\(\s+rowInput\.entries\.map\(entry => entry\.result\),\s+\);/);
+  assert.match(chatMessageChromeSource, /isPending: executionSummary\.isPending,\s+allSuccess: executionSummary\.allSuccess,\s+hasErrors: executionSummary\.hasErrors,/);
   assert.doesNotMatch(screenSource, /state: toolExecutionState,/);
   assert.doesNotMatch(screenSource, /const toolExecutionExpandControl = getToolExecutionDetailMobileExpandControlRenderState\(\);/);
   assert.doesNotMatch(screenSource, /const hasToolResults = renderedToolEntries\.some/);
@@ -1687,7 +1690,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /toolExecutionPending:\s*toolExecutionDetailColorsByState\.pending/);
   assert.match(screenSource, /toolExecutionSuccess:\s*toolExecutionDetailColorsByState\.success/);
   assert.match(screenSource, /toolExecutionError:\s*toolExecutionDetailColorsByState\.error/);
-  assert.match(screenSource, /expanded: \{\s+onToggle: \(\) => toggleMessageExpansion\(i\),\s+isPending,\s+allSuccess,\s+hasErrors,\s+emptyStateRenderState: toolExecutionDetailEmptyState,/);
+  assert.match(screenSource, /expanded: \{\s+onToggle: \(\) => toggleMessageExpansion\(i\),\s+emptyStateRenderState: toolExecutionDetailEmptyState,/);
+  assert.doesNotMatch(screenSource, /expanded: \{\s+onToggle: \(\) => toggleMessageExpansion\(i\),\s+isPending,\s+allSuccess,\s+hasErrors,/);
   assert.match(chatMessageChromeSource, /emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,\s+\}/);
   assert.doesNotMatch(screenSource, /emptyState: \{\s+shouldRender: toolExecutionVisibilityRenderState\.emptyState\.shouldRender/);
   assert.doesNotMatch(screenSource, /shouldRender: displayToolCallCount === 0/);

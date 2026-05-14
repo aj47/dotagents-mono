@@ -112,6 +112,7 @@ import {
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailResultState,
   getToolExecutionMobileVisibilityRenderState,
+  getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -828,12 +829,7 @@ type ChatMessageToolExecutionStackPropsInput = {
   compact: {
     onToggle?: ChatMessageToolExecutionStackProps['compact']['onPress'];
   };
-  expanded: Pick<
-    ChatMessageToolExecutionStackProps['expanded'],
-    | 'isPending'
-    | 'allSuccess'
-    | 'hasErrors'
-  > & {
+  expanded: {
     emptyStateRenderState: ToolExecutionDetailMobileEmptyStateRenderState;
     onToggle?: ChatMessageToolExecutionStackProps['expanded']['onCollapsePress'];
   };
@@ -2425,6 +2421,9 @@ export function createChatMessageToolExecutionStackProps({
     ...rowInput,
     colors,
   });
+  const executionSummary = getToolExecutionSummaryDisplayState(
+    rowInput.entries.map(entry => entry.result),
+  );
 
   return {
     shouldRender: visibility.toolExecutionStack.shouldRender,
@@ -2436,6 +2435,9 @@ export function createChatMessageToolExecutionStackProps({
     },
     expanded: {
       ...expandedProps,
+      isPending: executionSummary.isPending,
+      allSuccess: executionSummary.allSuccess,
+      hasErrors: executionSummary.hasErrors,
       topCollapseRenderState,
       bottomCollapseRenderState,
       onCollapsePress: onExpandedToggle,

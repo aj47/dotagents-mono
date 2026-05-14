@@ -3806,9 +3806,7 @@ export default function ChatScreen({ route, navigation }: any) {
               displayToolCallCount,
             });
             const {
-              allSuccess,
               hasErrors,
-              isPending,
             } = getToolExecutionSummaryDisplayState(renderedToolEntries.map(entry => entry.result));
             const messageRenderState = getChatMessageMobileRenderState({
               role: m.role,
@@ -3961,9 +3959,6 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                       expanded: {
                         onToggle: () => toggleMessageExpansion(i),
-                        isPending,
-                        allSuccess,
-                        hasErrors,
                         emptyStateRenderState: toolExecutionDetailEmptyState,
                       },
                     }),
