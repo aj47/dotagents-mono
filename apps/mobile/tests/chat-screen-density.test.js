@@ -2275,6 +2275,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeActivityContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeAssistantFeedbackContent,/);
+  assert.doesNotMatch(screenSource, /formatChatMessageRuntimeActivityContent/);
+  assert.doesNotMatch(screenSource, /formatChatMessageRuntimeAssistantFeedbackContent/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeViewportContentRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeLoadingStateMobileRenderState,/);
@@ -2289,9 +2291,14 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(
     screenSource,
-    /content: formatChatMessageRuntimeAssistantFeedbackContent\(thinkingContent, hasCurrentToolActivity\)/,
+    /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,\s+\}\)/,
   );
-  assert.match(screenSource, /content: formatChatMessageRuntimeActivityContent\(activeStep\)/);
+  assert.match(screenSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantFeedbackMessage/);
+  assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeAssistantFeedbackContent\(thinkingContent, hasToolActivity\)/);
+  assert.match(chatMessageChromeSource, /\.\.\.\(toolCalls && toolCalls\.length > 0 \? \{ toolCalls \} : \{\}\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeActivityMessage/);
+  assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeActivityContent\(step\)/);
   assert.match(screenSource, /const \{\s+threadStates: conversationThreadStates,\s+visibleMessageCount: conversationThreadVisibleMessageCount,\s+totalMessageCount: conversationThreadTotalMessageCount,\s+hiddenMessageCount,\s+\} = createChatMessageConversationRuntimeThreadListRenderState\(\{\s+messages,\s+visibleMessageCount,/);
   assert.doesNotMatch(screenSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);/);
   assert.doesNotMatch(screenSource, /const visibleMessages = messages\.slice\(firstVisibleMessageIndex\);/);

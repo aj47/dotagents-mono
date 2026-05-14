@@ -50,15 +50,15 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  formatChatMessageRuntimeActivityContent,
   formatChatMessageRuntimeAlertMessage,
   formatChatMessageRuntimeAssistantErrorContent,
-  formatChatMessageRuntimeAssistantFeedbackContent,
   formatChatMessageRuntimeConnectionErrorMessage,
   formatChatMessageRuntimeConnectionStatus,
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
+  createChatMessageRuntimeActivityMessage,
+  createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeToolApprovalRequiredMessage,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -1764,21 +1764,18 @@ export default function ChatScreen({ route, navigation }: any) {
         !!update.streamingContent?.text;
 
       if (hasCurrentAssistantFeedback) {
-        messages.push({
-          role: 'assistant',
-          content: formatChatMessageRuntimeAssistantFeedbackContent(thinkingContent, hasCurrentToolActivity),
-          toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
-          toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
-        });
+        messages.push(createChatMessageRuntimeAssistantFeedbackMessage({
+          thinkingContent,
+          hasToolActivity: hasCurrentToolActivity,
+          toolCalls: currentToolCalls,
+          toolResults: currentToolResults,
+        }));
       } else if (
         !update.isComplete &&
         !hasCurrentStateFeedback &&
         !isVerificationStep
       ) {
-        messages.push({
-          role: 'assistant',
-          content: formatChatMessageRuntimeActivityContent(activeStep),
-        });
+        messages.push(createChatMessageRuntimeActivityMessage(activeStep));
       }
     }
 

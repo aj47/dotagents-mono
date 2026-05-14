@@ -3251,6 +3251,51 @@ export function formatChatMessageRuntimeActivityContent(
   return formatChatRuntimeActivityContent(step);
 }
 
+export type ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> = {
+  role: 'assistant';
+  content: string;
+  toolCalls?: TToolCall[];
+  toolResults?: TToolResult[];
+};
+
+export type ChatMessageRuntimeAssistantFeedbackMessageInput<TToolCall, TToolResult> = {
+  thinkingContent: string | null | undefined;
+  hasToolActivity: boolean;
+  toolCalls?: TToolCall[];
+  toolResults?: TToolResult[];
+};
+
+export function createChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult>({
+  thinkingContent,
+  hasToolActivity,
+  toolCalls,
+  toolResults,
+}: ChatMessageRuntimeAssistantFeedbackMessageInput<
+  TToolCall,
+  TToolResult
+>): ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> {
+  return {
+    role: 'assistant',
+    content: formatChatMessageRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity),
+    ...(toolCalls && toolCalls.length > 0 ? { toolCalls } : {}),
+    ...(toolResults && toolResults.length > 0 ? { toolResults } : {}),
+  };
+}
+
+export type ChatMessageRuntimeActivityMessage = {
+  role: 'assistant';
+  content: string;
+};
+
+export function createChatMessageRuntimeActivityMessage(
+  step?: ChatRuntimeActivityStepLike | null,
+): ChatMessageRuntimeActivityMessage {
+  return {
+    role: 'assistant',
+    content: formatChatMessageRuntimeActivityContent(step),
+  };
+}
+
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
   return formatChatRuntimeToolApprovalRequiredContent(toolName);
 }
