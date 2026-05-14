@@ -1071,11 +1071,12 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /headerPinButton: createMinimumTouchTargetStyle\(\{\s+horizontalPadding: header\.header\.surface\.pinButton\.horizontalPadding,\s+verticalPadding: header\.header\.surface\.pinButton\.verticalPadding,\s+\}\),/);
   assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderPinButtonStyle\(inactiveHeaderPinButtonColors\)/);
   assert.match(screenSource, /headerPinButtonActive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderPinButtonStyle\(activeHeaderPinButtonColors\)/);
-  assert.match(screenSource, /headerKillSwitchIconContainer:\s*\{[\s\S]*?width:\s*headerSurface\.killSwitchButton\.size,[\s\S]*?borderRadius:\s*headerSurface\.killSwitchButton\.borderRadius,[\s\S]*?backgroundColor:\s*headerKillSwitchButtonColors\.button\.backgroundColor,[\s\S]*?alignItems:\s*headerSurface\.killSwitchButton\.alignItems,[\s\S]*?justifyContent:\s*headerSurface\.killSwitchButton\.justifyContent/);
+  assert.match(screenSource, /const createChatRuntimeMobileHeaderIconContainerStyle = \(\{\s+size,/);
+  assert.match(screenSource, /\.\.\.createChatRuntimeMobileHeaderIconContainerStyle\(\{\s+size: headerSurface\.killSwitchButton\.size,\s+borderRadius: headerSurface\.killSwitchButton\.borderRadius,\s+backgroundColor: headerKillSwitchButtonColors\.button\.backgroundColor,\s+alignItems: headerSurface\.killSwitchButton\.alignItems,\s+justifyContent: headerSurface\.killSwitchButton\.justifyContent,/);
   assert.match(chatMessageChromeSource, /iconContainerStyle \? \(/);
   assert.doesNotMatch(screenSource, /name=\{mobileHeaderKillSwitchRenderState\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /name=\{headerHandsFreeMobileRenderState\.icon\.name\}/);
-  assert.match(screenSource, /headerHandsFreeIconContainer:\s*\{[\s\S]*?width:\s*headerSurface\.handsFreeButton\.size,[\s\S]*?height:\s*headerSurface\.handsFreeButton\.size,[\s\S]*?alignItems:\s*headerSurface\.handsFreeButton\.alignItems,[\s\S]*?justifyContent:\s*headerSurface\.handsFreeButton\.justifyContent/);
+  assert.match(screenSource, /headerHandsFreeIconContainer:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderIconContainerStyle\(\{\s+size: headerSurface\.handsFreeButton\.size,\s+alignItems: headerSurface\.handsFreeButton\.alignItems,\s+justifyContent: headerSurface\.handsFreeButton\.justifyContent,/);
   assert.doesNotMatch(screenSource, /theme\.colors\[headerSurface\.pinButton\.(borderColorToken|backgroundColorToken|activeBorderColorToken|activeBackgroundColorToken)\]/);
   assert.doesNotMatch(screenSource, /theme\.colors\[headerSurface\.killSwitchButton\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /color=\{mobileHeaderKillSwitchAction\.icon\.color\}/);

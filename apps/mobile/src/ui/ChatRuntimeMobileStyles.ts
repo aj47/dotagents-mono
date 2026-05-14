@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   Platform,
   StyleSheet,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -196,6 +197,26 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     borderWidth: headerSurface.pinButton.borderWidth,
     borderColor: colors.button.borderColor,
     backgroundColor: colors.button.backgroundColor,
+  } as const);
+  const createChatRuntimeMobileHeaderIconContainerStyle = ({
+    size,
+    borderRadius: containerBorderRadius,
+    backgroundColor,
+    alignItems,
+    justifyContent,
+  }: {
+    size: number
+    borderRadius?: number
+    backgroundColor?: string
+    alignItems: ViewStyle["alignItems"]
+    justifyContent: ViewStyle["justifyContent"]
+  }) => ({
+    width: size,
+    height: size,
+    ...(containerBorderRadius == null ? {} : { borderRadius: containerBorderRadius }),
+    ...(backgroundColor == null ? {} : { backgroundColor }),
+    alignItems,
+    justifyContent,
   } as const);
   const createChatRuntimeMobileMessageActionButtonStyle = (
     button: typeof mobileMessageExpansionButton,
@@ -409,18 +430,20 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...createChatRuntimeMobileHeaderPinButtonStyle(activeHeaderPinButtonColors),
     },
     headerKillSwitchIconContainer: {
-      width: headerSurface.killSwitchButton.size,
-      height: headerSurface.killSwitchButton.size,
-      borderRadius: headerSurface.killSwitchButton.borderRadius,
-      backgroundColor: headerKillSwitchButtonColors.button.backgroundColor,
-      alignItems: headerSurface.killSwitchButton.alignItems,
-      justifyContent: headerSurface.killSwitchButton.justifyContent,
+      ...createChatRuntimeMobileHeaderIconContainerStyle({
+        size: headerSurface.killSwitchButton.size,
+        borderRadius: headerSurface.killSwitchButton.borderRadius,
+        backgroundColor: headerKillSwitchButtonColors.button.backgroundColor,
+        alignItems: headerSurface.killSwitchButton.alignItems,
+        justifyContent: headerSurface.killSwitchButton.justifyContent,
+      }),
     },
     headerHandsFreeIconContainer: {
-      width: headerSurface.handsFreeButton.size,
-      height: headerSurface.handsFreeButton.size,
-      alignItems: headerSurface.handsFreeButton.alignItems,
-      justifyContent: headerSurface.handsFreeButton.justifyContent,
+      ...createChatRuntimeMobileHeaderIconContainerStyle({
+        size: headerSurface.handsFreeButton.size,
+        alignItems: headerSurface.handsFreeButton.alignItems,
+        justifyContent: headerSurface.handsFreeButton.justifyContent,
+      }),
     },
     loadOlderContainer: {
       flexDirection: messageHistoryBannerSurface.flexDirection,
