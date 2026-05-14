@@ -37,6 +37,7 @@ import {
   createChatMessageActionStyleSlots,
   createChatMessageConversationActionSetInput,
   createChatMessageConversationContentInput,
+  createChatMessageConversationDelegationCardInput,
   createChatMessageConversationToolApprovalInput,
   createChatMessageConversationRenderContext,
   createChatMessageConversationToolExecutionStackInput,
@@ -183,7 +184,6 @@ import {
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
   sanitizeMessagesForModel,
-  setChatDisplayExpansionState,
   toggleChatDisplayExpansionState,
 } from '@dotagents/shared/message-display-utils';
 import {
@@ -3824,27 +3824,18 @@ export default function ChatScreen({ route, navigation }: any) {
                     retryInfo: m.retryInfo,
                     colors: theme.colors,
                   },
-                  delegationCard: {
-                    isDelegation: m.variant === 'delegation',
+                  delegationCard: createChatMessageConversationDelegationCardInput({
+                    message: m,
                     surface: mobileRuntimeDelegationCard,
-                    delegation: m.delegation,
                     toolEntries: renderedToolEntries,
                     displayToolCallCount,
                     expandedDelegationConversationPreviews,
                     expandedDelegationToolPreviews,
                     roleStyles: delegationConversationPreviewRoleStyles,
                     colors: theme.colors,
-                    onShowAllConversationPreview: (runId) => {
-                      setExpandedDelegationConversationPreviews((current) =>
-                        setChatDisplayExpansionState(current, runId, true),
-                      );
-                    },
-                    onShowAllToolPreview: (runId) => {
-                      setExpandedDelegationToolPreviews((current) =>
-                        setChatDisplayExpansionState(current, runId, true),
-                      );
-                    },
-                  },
+                    setExpandedDelegationConversationPreviews,
+                    setExpandedDelegationToolPreviews,
+                  }),
                   toolApproval: createChatMessageConversationToolApprovalInput({
                     message: m,
                     expandedToolApprovals,

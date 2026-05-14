@@ -502,7 +502,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /const delegationAccessibilityLabel = m\.delegation && delegationPresentation\s+\? formatChatRuntimeDelegationAccessibilityLabel\(/);
   assert.match(chatMessageChromeSource, /accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel\(\{/);
   assert.doesNotMatch(screenSource, /delegationCard: createChatMessageDelegationCardProps/);
-  assert.match(screenSource, /delegationCard: \{\s+isDelegation: m\.variant === 'delegation',\s+surface: mobileRuntimeDelegationCard,\s+delegation: m\.delegation,\s+toolEntries: renderedToolEntries,/);
+  assert.match(screenSource, /delegationCard: createChatMessageConversationDelegationCardInput\(\{\s+message: m,\s+surface: mobileRuntimeDelegationCard,\s+toolEntries: renderedToolEntries,/);
   assert.match(chatMessageChromeSource, /delegationCard: createChatMessageDelegationCardProps\(delegationCard\),/);
   assert.match(screenSource, /displayToolCallCount,/);
   assert.doesNotMatch(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
@@ -541,6 +541,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /messageCountLabel: messageCount > 0\s+\? formatChatRuntimeDelegationMessageCount\(messageCount\)\s+: null,/);
   assert.doesNotMatch(screenSource, /const isDelegationConversationPreviewExpanded = m\.delegation/);
   assert.doesNotMatch(screenSource, /getChatDisplayExpansionState\(expandedDelegationConversationPreviews, m\.delegation\.runId\)/);
+  assert.doesNotMatch(screenSource, /setChatDisplayExpansionState,/);
+  assert.match(screenSource, /delegationCard: createChatMessageConversationDelegationCardInput\(\{\s+message: m,\s+surface: mobileRuntimeDelegationCard,\s+toolEntries: renderedToolEntries,\s+displayToolCallCount,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationDelegationCardInput/);
+  assert.match(chatMessageChromeSource, /isDelegation: message\.variant === 'delegation',\s+surface,\s+delegation: message\.delegation,/);
   assert.match(screenSource, /expandedDelegationConversationPreviews,/);
   assert.doesNotMatch(screenSource, /const delegationConversationPreviewState = delegationCardState\?\.conversationPreview \?\? null;/);
   assert.match(chatMessageChromeSource, /const conversationPreviewState = cardState\.conversationPreview;/);
@@ -579,7 +583,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /styles\.conversationPreviewTimestamp/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{surface\.conversationPreviewTimestampNumberOfLines\}/);
   assert.match(chatMessageChromeSource, /conversationPreview\.hiddenCount > 0 && conversationPreview\.onShowAll \? \(/);
-  assert.match(screenSource, /onShowAllConversationPreview: \(runId\) => \{\s+setExpandedDelegationConversationPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
+  assert.match(screenSource, /setExpandedDelegationConversationPreviews,/);
+  assert.match(chatMessageChromeSource, /onShowAllConversationPreview: \(runId\) => \{\s+setExpandedDelegationConversationPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
   assert.match(chatMessageChromeSource, /onShowAll: onShowAllConversationPreview\s+\? \(\) => onShowAllConversationPreview\(delegation\.runId\)\s+: undefined,/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{conversationPreview\.moreAction\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{conversationPreview\.moreAction\.accessibilityLabel\}/);
@@ -634,7 +639,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.name\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /ellipsizeMode=\{renderState\.name\.ellipsizeMode\}/);
   assert.match(chatMessageChromeSource, /toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \(/);
-  assert.match(screenSource, /onShowAllToolPreview: \(runId\) => \{\s+setExpandedDelegationToolPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
+  assert.match(screenSource, /setExpandedDelegationToolPreviews,/);
+  assert.match(chatMessageChromeSource, /onShowAllToolPreview: \(runId\) => \{\s+setExpandedDelegationToolPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
   assert.match(chatMessageChromeSource, /onShowAll: onShowAllToolPreview\s+\? \(\) => onShowAllToolPreview\(delegation\.runId\)\s+: undefined,/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{toolPreview\.moreAction\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{toolPreview\.moreAction\.accessibilityLabel\}/);

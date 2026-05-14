@@ -1,4 +1,4 @@
-import { Fragment, type ComponentProps, type ReactNode, type Ref } from 'react';
+import { Fragment, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -31,6 +31,7 @@ import {
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
   isChatMessageLiveStreamingConversationContent,
+  setChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
   type ChatMessageActionAvailabilityRenderState,
@@ -724,6 +725,24 @@ type ChatMessageDelegationCardPropsInput = Omit<
   colors: ChatMessageDelegationCardColors;
   onShowAllConversationPreview?: (runId: string) => void;
   onShowAllToolPreview?: (runId: string) => void;
+};
+
+type ChatMessageDisplayExpansionStateSetter = Dispatch<SetStateAction<ChatDisplayExpansionStateMap<string>>>;
+
+type ChatMessageConversationDelegationCardInput = {
+  message: {
+    variant?: string;
+    delegation?: ACPDelegationProgress | null;
+  };
+  surface: ChatMessageDelegationCardPropsInput['surface'];
+  toolEntries: ChatMessageDelegationCardPropsInput['toolEntries'];
+  displayToolCallCount: ChatMessageDelegationCardPropsInput['displayToolCallCount'];
+  expandedDelegationConversationPreviews: ChatMessageDelegationCardPropsInput['expandedDelegationConversationPreviews'];
+  expandedDelegationToolPreviews: ChatMessageDelegationCardPropsInput['expandedDelegationToolPreviews'];
+  roleStyles: ChatMessageDelegationCardPropsInput['roleStyles'];
+  colors: ChatMessageDelegationCardPropsInput['colors'];
+  setExpandedDelegationConversationPreviews: ChatMessageDisplayExpansionStateSetter;
+  setExpandedDelegationToolPreviews: ChatMessageDisplayExpansionStateSetter;
 };
 
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
@@ -2132,6 +2151,41 @@ export function createChatMessageConversationToolApprovalInput({
     onToggleArguments,
     onDeny: (approvalId) => { void onRespondToToolApproval(approvalId, false); },
     onApprove: (approvalId) => { void onRespondToToolApproval(approvalId, true); },
+  };
+}
+
+export function createChatMessageConversationDelegationCardInput({
+  message,
+  surface,
+  toolEntries,
+  displayToolCallCount,
+  expandedDelegationConversationPreviews,
+  expandedDelegationToolPreviews,
+  roleStyles,
+  colors,
+  setExpandedDelegationConversationPreviews,
+  setExpandedDelegationToolPreviews,
+}: ChatMessageConversationDelegationCardInput): ChatMessageDelegationCardPropsInput {
+  return {
+    isDelegation: message.variant === 'delegation',
+    surface,
+    delegation: message.delegation,
+    toolEntries,
+    displayToolCallCount,
+    expandedDelegationConversationPreviews,
+    expandedDelegationToolPreviews,
+    roleStyles,
+    colors,
+    onShowAllConversationPreview: (runId) => {
+      setExpandedDelegationConversationPreviews((current) =>
+        setChatDisplayExpansionState(current, runId, true),
+      );
+    },
+    onShowAllToolPreview: (runId) => {
+      setExpandedDelegationToolPreviews((current) =>
+        setChatDisplayExpansionState(current, runId, true),
+      );
+    },
   };
 }
 
