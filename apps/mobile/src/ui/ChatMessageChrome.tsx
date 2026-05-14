@@ -62,6 +62,7 @@ import {
 import {
   createAgentDelegationProgressMessages,
   getAgentDelegationCardState,
+  resolveAgentProgressConversationState,
   type ACPDelegationProgress,
   type AgentRetryInfo,
   type AgentDelegationConversationPreviewRow,
@@ -4016,6 +4017,13 @@ export function getChatMessageRuntimeLatestStepSummary<T extends ChatRuntimeStep
   input: { latestSummary?: T | null; stepSummaries?: T[] | null },
 ): T | null {
   return getChatRuntimeLatestStepSummary(input);
+}
+
+export function resolveChatMessageRuntimeConversationStateFromProgress(
+  update: Parameters<typeof resolveAgentProgressConversationState>[0],
+  lifecycleState?: AgentConversationState,
+): AgentConversationState {
+  return resolveAgentProgressConversationState(update, lifecycleState);
 }
 
 export function getChatMessageRuntimeKillSwitchAlertState(): ReturnType<

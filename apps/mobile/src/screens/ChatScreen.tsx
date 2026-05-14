@@ -91,6 +91,7 @@ import {
   getChatMessageRuntimeKillSwitchConnectionFailedAlertState,
   getChatMessageRuntimeKillSwitchResultAlertState,
   getChatMessageRuntimeLatestStepSummary,
+  resolveChatMessageRuntimeConversationStateFromProgress,
   getChatMessageRuntimeToolApprovalConnectionRequiredAlertState,
   getChatMessageRuntimeToolApprovalFailedAlertState,
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
@@ -136,9 +137,6 @@ import {
   normalizeAutoTtsTextKey,
 } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import {
-  resolveAgentProgressConversationState,
-} from '@dotagents/shared/agent-progress';
 import {
   DEFAULT_EDGE_TTS_VOICE,
 } from '@dotagents/shared/providers';
@@ -205,13 +203,6 @@ const getApproxDataUrlBytes = (dataUrl: string) => {
 };
 
 type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
-
-const resolveConversationStateFromProgress = (
-  update: AgentProgressUpdate,
-  lifecycleState: 'running' | 'complete' = update.isComplete ? 'complete' : 'running'
-): AgentConversationState => {
-  return resolveAgentProgressConversationState(update, lifecycleState);
-};
 
 const getMessageLogMeta = (content: string) => ({
   length: content.length,
@@ -1929,7 +1920,7 @@ export default function ChatScreen({ route, navigation }: any) {
           console.log('[ChatScreen] Request superseded within same session, skipping onProgress update');
           return;
         }
-        latestConversationState = resolveConversationStateFromProgress(update, 'running');
+        latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
         if (update.responseEvents?.length) {
 	          lastResponseEvents = sortAgentUserResponseEvents(update.responseEvents);
@@ -2322,7 +2313,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
-        latestConversationState = resolveConversationStateFromProgress(update, 'running');
+        latestConversationState = resolveChatMessageRuntimeConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
         if (update.responseEvents?.length) {
 	          lastResponseEvents = sortAgentUserResponseEvents(update.responseEvents);

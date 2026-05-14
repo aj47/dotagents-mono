@@ -3541,6 +3541,13 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeDebugState,/);
+  assert.doesNotMatch(screenSource, /resolveAgentProgressConversationState,/);
+  assert.doesNotMatch(screenSource, /const resolveConversationStateFromProgress = /);
+  assert.match(screenSource, /resolveChatMessageRuntimeConversationStateFromProgress,/);
+  assert.match(screenSource, /resolveChatMessageRuntimeConversationStateFromProgress\(update, 'running'\)/);
+  assert.match(chatMessageChromeSource, /resolveAgentProgressConversationState,/);
+  assert.match(chatMessageChromeSource, /export function resolveChatMessageRuntimeConversationStateFromProgress/);
+  assert.match(chatMessageChromeSource, /return resolveAgentProgressConversationState\(update, lifecycleState\);/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeDebug = getChatMessageRuntimeDebugState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeDebugState,/);
   assert.match(screenSource, /getChatMessageRuntimeDebugMessage,/);
