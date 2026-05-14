@@ -19,6 +19,7 @@ import {
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditSaveActionState,
+  getQueuedMessageEditSubmitState,
   getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
@@ -100,9 +101,12 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   }, [isProcessing, message.text]);
 
   const handleSaveEdit = () => {
-    const trimmed = editText.trim();
-    if (trimmed && trimmed !== message.text) {
-      onUpdate(trimmed);
+    const editSubmitState = getQueuedMessageEditSubmitState(editText, message.text);
+    if (editSubmitState.shouldSubmit) {
+      onUpdate(editSubmitState.trimmedText);
+    }
+    if (editSubmitState.shouldRestoreOriginalText) {
+      setEditText(message.text);
     }
     setIsEditing(false);
   };

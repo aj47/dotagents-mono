@@ -6,6 +6,7 @@ import {
   getMessageQueuePanelCopyState,
   getMessageQueuePanelDesktopSurfaceState,
   getMessageQueuePanelState,
+  getQueuedMessageEditSubmitState,
   getQueuedMessageItemPresentation,
   type QueuedMessage,
 } from "@dotagents/shared/message-queue-utils"
@@ -90,12 +91,14 @@ function QueuedMessageItem({
   })
 
   const handleSaveEdit = () => {
-    const trimmed = editText.trim()
-    if (trimmed && trimmed !== message.text) {
-      updateMutation.mutate(trimmed)
+    const editSubmitState = getQueuedMessageEditSubmitState(editText, message.text)
+    if (editSubmitState.shouldSubmit) {
+      updateMutation.mutate(editSubmitState.trimmedText)
     } else {
       setIsEditing(false)
-      setEditText(message.text)
+      if (editSubmitState.shouldRestoreOriginalText) {
+        setEditText(message.text)
+      }
     }
   }
 

@@ -719,6 +719,12 @@ export interface MessageQueuePanelActionState {
 
 export type QueuedMessageEditSaveActionState = MessageQueuePanelActionState;
 
+export interface QueuedMessageEditSubmitState {
+  trimmedText: string;
+  shouldSubmit: boolean;
+  shouldRestoreOriginalText: boolean;
+}
+
 export interface MessageQueuePanelListToggleAccessibilityState {
   expanded: boolean;
 }
@@ -901,6 +907,20 @@ export interface QueuedMessageItemMobileRenderState {
 
 export function getQueuedMessageEditSaveActionState(text: string): QueuedMessageEditSaveActionState {
   return getMessageQueuePanelActionState(!!text.trim());
+}
+
+export function getQueuedMessageEditSubmitState(
+  draftText: string,
+  currentText: string,
+): QueuedMessageEditSubmitState {
+  const trimmedText = draftText.trim();
+  const shouldSubmit = trimmedText.length > 0 && trimmedText !== currentText;
+
+  return {
+    trimmedText,
+    shouldSubmit,
+    shouldRestoreOriginalText: !shouldSubmit,
+  };
 }
 
 export function getQueuedMessageItemPresentation(
