@@ -1017,6 +1017,7 @@ export interface ChatMessageActionMobileStyleRenderStateInput {
 export interface ChatMessageActionMobileStyleRenderState {
   row: ReturnType<typeof getChatMessageActionMobileRowState>
   buttons: Record<ChatMessageActionMobileButtonKind, ChatMessageActionMobileButtonRenderState>
+  slotButtons: Record<ChatMessageActionMobileButtonSlot, ChatMessageActionMobileButtonRenderState>
 }
 
 export interface ChatMessageActionMobileIconState {
@@ -1173,14 +1174,25 @@ export function getChatMessageActionMobileButtonRenderState({
 export function getChatMessageActionMobileStyleRenderState({
   colors,
 }: ChatMessageActionMobileStyleRenderStateInput): ChatMessageActionMobileStyleRenderState {
+  const buttons = {
+    standard: getChatMessageActionMobileButtonRenderState({ colors }),
+    branch: getChatMessageActionMobileButtonRenderState({ kind: "branch", colors }),
+    copied: getChatMessageActionMobileButtonRenderState({ kind: "copied", colors }),
+    speech: getChatMessageActionMobileButtonRenderState({ kind: "speech", colors }),
+    speechActive: getChatMessageActionMobileButtonRenderState({ kind: "speechActive", colors }),
+  }
+  const getSlotButton = (slot: ChatMessageActionMobileButtonSlot) => {
+    return buttons[getChatMessageActionMobileButtonKindForSlot(slot)]
+  }
+
   return {
     row: getChatMessageActionMobileRowState(),
-    buttons: {
-      standard: getChatMessageActionMobileButtonRenderState({ colors }),
-      branch: getChatMessageActionMobileButtonRenderState({ kind: "branch", colors }),
-      copied: getChatMessageActionMobileButtonRenderState({ kind: "copied", colors }),
-      speech: getChatMessageActionMobileButtonRenderState({ kind: "speech", colors }),
-      speechActive: getChatMessageActionMobileButtonRenderState({ kind: "speechActive", colors }),
+    buttons,
+    slotButtons: {
+      speech: getSlotButton("speech"),
+      branch: getSlotButton("branch"),
+      copy: getSlotButton("copy"),
+      expansion: getSlotButton("expansion"),
     },
   }
 }

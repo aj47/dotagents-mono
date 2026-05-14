@@ -141,13 +141,15 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerTurnDurationLiveColors = headerTurnDurationLiveStyleState.colors;
   const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
   const mobileMessageActionRow = mobileMessageActionStyleState.row;
-  const mobileMessageActionButton = mobileMessageActionStyleState.buttons.standard.button;
-  const mobileMessageBranchButton = mobileMessageActionStyleState.buttons.branch.button;
-  const mobileMessageSpeechButton = mobileMessageActionStyleState.buttons.speech.button;
-  const mobileMessageActionButtonColors = mobileMessageActionStyleState.buttons.standard.colors;
-  const mobileMessageBranchButtonColors = mobileMessageActionStyleState.buttons.branch.colors;
+  const mobileMessageExpansionButton = mobileMessageActionStyleState.slotButtons.expansion.button;
+  const mobileMessageCopyButton = mobileMessageActionStyleState.slotButtons.copy.button;
+  const mobileMessageBranchButton = mobileMessageActionStyleState.slotButtons.branch.button;
+  const mobileMessageSpeechButton = mobileMessageActionStyleState.slotButtons.speech.button;
+  const mobileMessageExpansionButtonColors = mobileMessageActionStyleState.slotButtons.expansion.colors;
+  const mobileMessageCopyButtonColors = mobileMessageActionStyleState.slotButtons.copy.colors;
+  const mobileMessageBranchButtonColors = mobileMessageActionStyleState.slotButtons.branch.colors;
   const mobileMessageCopiedButtonColors = mobileMessageActionStyleState.buttons.copied.colors;
-  const mobileMessageSpeechButtonColors = mobileMessageActionStyleState.buttons.speech.colors;
+  const mobileMessageSpeechButtonColors = mobileMessageActionStyleState.slotButtons.speech.colors;
   const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState.buttons.speechActive.colors;
   const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState.turnDuration.standard;
   const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState.turnDuration.live;
@@ -158,8 +160,8 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   const createChatRuntimeMobileMessageActionButtonStyle = (
-    button: typeof mobileMessageActionButton,
-    colors: typeof mobileMessageActionButtonColors,
+    button: typeof mobileMessageExpansionButton,
+    colors: typeof mobileMessageExpansionButtonColors,
   ) => ({
     alignSelf: button.alignSelf,
     width: button.width,
@@ -172,7 +174,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     flexShrink: button.flexShrink,
   } as const);
   const createChatRuntimeMobileMessageActionButtonPressedStyle = (
-    button: typeof mobileMessageActionButton,
+    button: typeof mobileMessageExpansionButton,
   ) => ({
     opacity: button.pressedOpacity,
   } as const);
@@ -1663,11 +1665,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     messageExpandButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(
-        mobileMessageActionButton,
-        mobileMessageActionButtonColors,
+        mobileMessageExpansionButton,
+        mobileMessageExpansionButtonColors,
       ),
     },
-    messageExpandButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageActionButton),
+    messageExpandButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageExpansionButton),
     messageActionsRow: {
       flexDirection: mobileMessageActionRow.flexDirection,
       alignItems: mobileMessageActionRow.alignItems,
@@ -1715,14 +1717,14 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     messageCopyButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(
-        mobileMessageActionButton,
-        mobileMessageActionButtonColors,
+        mobileMessageCopyButton,
+        mobileMessageCopyButtonColors,
       ),
     },
     messageCopyButtonCopied: {
       backgroundColor: mobileMessageCopiedButtonColors.backgroundColor,
     } as const,
-    messageCopyButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageActionButton),
+    messageCopyButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageCopyButton),
     // Per-message TTS button styles (#1078)
     speakButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(

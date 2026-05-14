@@ -932,6 +932,24 @@ describe('chat message display presentation', () => {
           colors: actionButtonRenderStateColors,
         }),
       },
+      slotButtons: {
+        speech: getChatMessageActionMobileButtonRenderState({
+          kind: getChatMessageActionMobileButtonKindForSlot('speech'),
+          colors: actionButtonRenderStateColors,
+        }),
+        branch: getChatMessageActionMobileButtonRenderState({
+          kind: getChatMessageActionMobileButtonKindForSlot('branch'),
+          colors: actionButtonRenderStateColors,
+        }),
+        copy: getChatMessageActionMobileButtonRenderState({
+          kind: getChatMessageActionMobileButtonKindForSlot('copy'),
+          colors: actionButtonRenderStateColors,
+        }),
+        expansion: getChatMessageActionMobileButtonRenderState({
+          kind: getChatMessageActionMobileButtonKindForSlot('expansion'),
+          colors: actionButtonRenderStateColors,
+        }),
+      },
     })
     expect(getChatMessageActionMobileIconColors(getChatMessageCopyMobileIconState(true), {
       mutedForeground: '#737373',
