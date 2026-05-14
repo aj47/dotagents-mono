@@ -3251,6 +3251,30 @@ export function formatChatMessageRuntimeActivityContent(
   return formatChatRuntimeActivityContent(step);
 }
 
+export type ChatMessageRuntimeAssistantTextMessage = {
+  role: 'assistant';
+  content: string;
+};
+
+export function createChatMessageRuntimeAssistantTextMessage(
+  content: string,
+): ChatMessageRuntimeAssistantTextMessage {
+  return {
+    role: 'assistant',
+    content,
+  };
+}
+
+export function createChatMessageRuntimeAssistantPlaceholderMessage(): ChatMessageRuntimeAssistantTextMessage {
+  return createChatMessageRuntimeAssistantTextMessage('');
+}
+
+export function createChatMessageRuntimeAssistantDebugErrorMessage(
+  message: string,
+): ChatMessageRuntimeAssistantTextMessage {
+  return createChatMessageRuntimeAssistantTextMessage(formatChatMessageRuntimeDebugError(message));
+}
+
 export type ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> = {
   role: 'assistant';
   content: string;

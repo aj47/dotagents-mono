@@ -3414,6 +3414,19 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
   assert.match(screenSource, /formatChatMessageRuntimeAssistantErrorContent\(errorMessage, partialContent\)/);
   assert.match(screenSource, /const queuedErrorMessage = formatChatMessageRuntimeAlertMessage\(e, getChatMessageRuntimeDebugMessage\('unknownError'\)\)/);
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimeAssistantPlaceholderMessage\(\)/g) || []).length,
+    2,
+  );
+  assert.match(screenSource, /createChatMessageRuntimeAssistantTextMessage\(finalDisplayText\)/);
+  assert.match(screenSource, /createChatMessageRuntimeAssistantDebugErrorMessage\(queuedErrorMessage\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantPlaceholderMessage/);
+  assert.match(chatMessageChromeSource, /return createChatMessageRuntimeAssistantTextMessage\(''\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantDebugErrorMessage/);
+  assert.match(chatMessageChromeSource, /formatChatMessageRuntimeDebugError\(message\)/);
+  assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: '' \}/);
+  assert.doesNotMatch(screenSource, /role: 'assistant' as const/);
+  assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: formatChatMessageRuntimeDebugError\(queuedErrorMessage\) \}/);
   assert.match(screenSource, /const mobileRuntimeDebugPanelsRenderState = useMemo\(\s+\(\) => createChatMessageRuntimeDebugPanelsRenderState\(\{\s+requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState\(\{[\s\S]*?return getChatRuntimeDebugPanelsMobileRenderState\(\{[\s\S]*?voiceEntryCount: resolvedVoiceEvents\.length,[\s\S]*?voiceRows: \[/);
   assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);

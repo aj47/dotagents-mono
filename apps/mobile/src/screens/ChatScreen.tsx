@@ -58,7 +58,10 @@ import {
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeActivityMessage,
+  createChatMessageRuntimeAssistantDebugErrorMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
+  createChatMessageRuntimeAssistantPlaceholderMessage,
+  createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeToolApprovalRequiredMessage,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -2048,7 +2051,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
     setLatestStepSummary(null);
-    setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
+    setMessages((m) => [...m, userMsg, createChatMessageRuntimeAssistantPlaceholderMessage()]);
     setResponding(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -2356,7 +2359,7 @@ export default function ChatScreen({ route, navigation }: any) {
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting fallback response to background session:', requestSessionId);
 	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
-	            const finalMessages = [...messagesBeforeTurn, userMsg, { role: 'assistant' as const, content: finalDisplayText }];
+	            const finalMessages = [...messagesBeforeTurn, userMsg, createChatMessageRuntimeAssistantTextMessage(finalDisplayText)];
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping fallback background persistence - request superseded within session:', {
@@ -2560,7 +2563,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;
     setLatestStepSummary(null);
-    setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
+    setMessages((m) => [...m, userMsg, createChatMessageRuntimeAssistantPlaceholderMessage()]);
     setResponding(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -2756,7 +2759,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, getChatMessageRuntimeDebugMessage('unknownError'));
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
       setConversationState('blocked');
-      setMessages((m) => [...m, { role: 'assistant', content: formatChatMessageRuntimeDebugError(queuedErrorMessage) }]);
+      setMessages((m) => [...m, createChatMessageRuntimeAssistantDebugErrorMessage(queuedErrorMessage)]);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
