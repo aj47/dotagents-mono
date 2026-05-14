@@ -65,6 +65,7 @@ import {
 } from '@dotagents/shared/conversation-media-assets';
 import {
   getHandsFreeComposerPlaceholder,
+  getHandsFreeMicButtonLabel,
   type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
 import {
@@ -2081,7 +2082,7 @@ type ChatComposerRuntimeControlRenderStateInput = {
   pendingImageCount?: number | null;
   ttsEnabled?: boolean;
   editBeforeSendEnabled?: boolean;
-  micLabel: string;
+  micPhase: Parameters<typeof getHandsFreeMicButtonLabel>[0]['phase'];
   listening?: boolean;
   messageQueueEnabled?: boolean;
   colors: ChatComposerRuntimeControlRenderStateColors;
@@ -4401,11 +4402,16 @@ export function createChatComposerRuntimeControlRenderState({
   pendingImageCount = 0,
   ttsEnabled = false,
   editBeforeSendEnabled = false,
-  micLabel,
+  micPhase,
   listening = false,
   messageQueueEnabled = false,
   colors,
 }: ChatComposerRuntimeControlRenderStateInput): ChatComposerRuntimeControlRenderState {
+  const micLabel = getHandsFreeMicButtonLabel({
+    handsFree,
+    phase: micPhase,
+    listening,
+  });
   const actionAvailability = getChatComposerMobileActionAvailabilityRenderState({
     hasContent,
     handsFree,

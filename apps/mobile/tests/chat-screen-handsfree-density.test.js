@@ -92,8 +92,9 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{controlState\.secondary\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /onPress=\{primaryOnPress\}[\s\S]*?\{controlState\.primary\.label\}/);
   assert.match(chatMessageChromeSource, /onPress=\{secondaryOnPress\}[\s\S]*?\{controlState\.secondary\.label\}/);
-  assert.match(screenSource, /const micButtonLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: handsFreeController\.state\.phase,[\s\S]*?listening,[\s\S]*?\}\);/);
-  assert.match(screenSource, /createChatComposerRuntimeControlRenderState\(\{[\s\S]*?micLabel: micButtonLabel,[\s\S]*?listening,[\s\S]*?colors: theme\.colors,[\s\S]*?\}\)/);
+  assert.doesNotMatch(screenSource, /const micButtonLabel = getHandsFreeMicButtonLabel/);
+  assert.match(screenSource, /createChatComposerRuntimeControlRenderState\(\{[\s\S]*?micPhase: handsFreeController\.state\.phase,[\s\S]*?listening,[\s\S]*?colors: theme\.colors,[\s\S]*?\}\)/);
+  assert.match(chatMessageChromeSource, /const micLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: micPhase,[\s\S]*?listening,[\s\S]*?\}\);/);
   assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState\(\{[\s\S]*?label: micLabel,[\s\S]*?handsFree,[\s\S]*?listening,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,[\s\S]*?\}\),/);
   assert.match(screenSource, /micButtonRenderState: mobileComposerMicRenderState,/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
@@ -133,7 +134,8 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(screenSource, /getHandsFreeStatusSubtitle/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerPlaceholder/);
   assert.match(chatMessageChromeSource, /getHandsFreeComposerPlaceholder/);
-  assert.match(screenSource, /getHandsFreeMicButtonLabel/);
+  assert.doesNotMatch(screenSource, /getHandsFreeMicButtonLabel/);
+  assert.match(chatMessageChromeSource, /getHandsFreeMicButtonLabel/);
   assert.doesNotMatch(screenSource, /getHandsFreePauseResumeLabel/);
   assert.doesNotMatch(screenSource, /handsFreeCopy\.controls\.wakeLabel/);
   assert.doesNotMatch(screenSource, /handsFreeCopy\.controls\.sleepLabel/);

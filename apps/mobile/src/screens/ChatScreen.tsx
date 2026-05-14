@@ -210,7 +210,6 @@ import {
   getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
-  getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
 } from '@dotagents/shared/hands-free-controller';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
@@ -3016,11 +3015,6 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
-  const micButtonLabel = getHandsFreeMicButtonLabel({
-    handsFree,
-    phase: handsFreeController.state.phase,
-    listening,
-  });
   const {
     visibility: mobileComposerVisibilityRenderState,
     imageAttachment: mobileComposerImageAttachmentRenderState,
@@ -3037,7 +3031,7 @@ export default function ChatScreen({ route, navigation }: any) {
       pendingImageCount: pendingImages.length,
       ttsEnabled,
       editBeforeSendEnabled: willCancel,
-      micLabel: micButtonLabel,
+      micPhase: handsFreeController.state.phase,
       listening,
       messageQueueEnabled,
       colors: theme.colors,
@@ -3046,9 +3040,9 @@ export default function ChatScreen({ route, navigation }: any) {
       composerHasContent,
       composerPresentation,
       handsFree,
+      handsFreeController.state.phase,
       listening,
       messageQueueEnabled,
-      micButtonLabel,
       pendingImages.length,
       theme.colors,
       ttsEnabled,
