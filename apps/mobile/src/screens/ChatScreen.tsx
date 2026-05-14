@@ -76,6 +76,9 @@ import {
   getChatConversationHomePromptLibraryCopyState,
   getChatConversationHomeQuickStartPressIntent,
   getChatMessageRuntimeBranchAlertState,
+  getChatMessageRuntimeBranchCreatedAlertState,
+  getChatMessageRuntimeBranchFailedAlertState,
+  getChatMessageRuntimeBranchUnavailableAlertState,
   getChatMessageRuntimeDebugState,
   getChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchAlertState,
@@ -659,10 +662,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
     const serverConversationId = currentSession?.serverConversationId;
     if (!settingsClient || !serverConversationId) {
-      Alert.alert(
-        mobileRuntimeBranchAlerts.unavailable.title,
-        mobileRuntimeBranchAlerts.unavailable.message,
-      );
+      const unavailableAlert = getChatMessageRuntimeBranchUnavailableAlertState(mobileRuntimeBranchAlerts);
+      Alert.alert(unavailableAlert.title, unavailableAlert.message);
       return;
     }
 
@@ -677,15 +678,11 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
 
-      Alert.alert(
-        mobileRuntimeBranchAlerts.created.title,
-        mobileRuntimeBranchAlerts.created.message,
-      );
+      const createdAlert = getChatMessageRuntimeBranchCreatedAlertState(mobileRuntimeBranchAlerts);
+      Alert.alert(createdAlert.title, createdAlert.message);
     } catch (error: any) {
-      Alert.alert(
-        mobileRuntimeBranchAlerts.failed.title,
-        formatChatMessageRuntimeAlertMessage(error, mobileRuntimeBranchAlerts.failed.fallbackMessage),
-      );
+      const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error, mobileRuntimeBranchAlerts);
+      Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
       setBranchingMessageIndex(null);
     }

@@ -277,6 +277,11 @@ export interface ChatMessageRuntimeKillSwitchResolvedAlertState {
   webMessage: string;
 }
 
+export interface ChatMessageRuntimeResolvedAlertState {
+  title: string;
+  message: string;
+}
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -3200,6 +3205,34 @@ export function getChatMessageRuntimeBranchAlertState(): ReturnType<
   typeof getChatRuntimeBranchMobileAlertState
 > {
   return getChatRuntimeBranchMobileAlertState();
+}
+
+export function getChatMessageRuntimeBranchUnavailableAlertState(
+  alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alerts.unavailable.title,
+    message: alerts.unavailable.message,
+  };
+}
+
+export function getChatMessageRuntimeBranchCreatedAlertState(
+  alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alerts.created.title,
+    message: alerts.created.message,
+  };
+}
+
+export function getChatMessageRuntimeBranchFailedAlertState(
+  error: unknown,
+  alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alerts.failed.title,
+    message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
+  };
 }
 
 export function getChatMessageRuntimeToolApprovalAlertState(): ReturnType<

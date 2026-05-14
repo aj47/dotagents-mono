@@ -3777,9 +3777,17 @@ test('lets mobile branch linked desktop conversations from individual messages',
     /const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState\(\);/,
   );
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchAlertState/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.unavailable\.title,\s*mobileRuntimeBranchAlerts\.unavailable\.message,\s*\)/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.created\.title,\s*mobileRuntimeBranchAlerts\.created\.message,\s*\)/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.failed\.title,\s*formatChatMessageRuntimeAlertMessage\(error, mobileRuntimeBranchAlerts\.failed\.fallbackMessage\),\s*\)/);
+  assert.match(screenSource, /getChatMessageRuntimeBranchUnavailableAlertState\(mobileRuntimeBranchAlerts\)/);
+  assert.match(screenSource, /Alert\.alert\(unavailableAlert\.title, unavailableAlert\.message\)/);
+  assert.match(screenSource, /getChatMessageRuntimeBranchCreatedAlertState\(mobileRuntimeBranchAlerts\)/);
+  assert.match(screenSource, /Alert\.alert\(createdAlert\.title, createdAlert\.message\)/);
+  assert.match(screenSource, /getChatMessageRuntimeBranchFailedAlertState\(error, mobileRuntimeBranchAlerts\)/);
+  assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchUnavailableAlertState/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchCreatedAlertState/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchFailedAlertState/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
+  assert.doesNotMatch(screenSource, /mobileRuntimeBranchAlerts\.(unavailable|created|failed)\.(title|message|fallbackMessage)/);
   assert.match(clientSource, /branchMessageIndex\?: number;/);
   assert.match(screenSource, /branchMessageIndex: historyMsg\.branchMessageIndex/);
   assert.doesNotMatch(screenSource, /const messageBranchRenderState = getChatRuntimeBranchMobileRenderState\(\{/);
