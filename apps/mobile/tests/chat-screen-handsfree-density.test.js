@@ -68,6 +68,16 @@ test('derives send-next availability from strict FIFO queue semantics', () => {
 test('wires ChatScreen through the extracted handsfree controller and recognizer hooks', () => {
   assert.match(screenSource, /useSpeechRecognizer\(/);
   assert.match(screenSource, /useHandsFreeController\(/);
+  assert.match(screenSource, /const chatRuntimeConfig = createChatRuntimeMobileConfigState\(config\);/);
+  assert.match(screenSource, /handsFreeMessageDebounceMs,[\s\S]*?handsFreeWakePhrase,[\s\S]*?handsFreeSleepPhrase,[\s\S]*?handsFreeDebugEnabled,[\s\S]*?handsFreeForegroundOnly,[\s\S]*?messageQueueEnabled,[\s\S]*?ttsEnabled: ttsEnabledSetting,/);
+  assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileConfigState/);
+  assert.match(chatMessageChromeSource, /DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS/);
+  assert.match(chatMessageChromeSource, /DEFAULT_HANDS_FREE_WAKE_PHRASE/);
+  assert.match(chatMessageChromeSource, /DEFAULT_HANDS_FREE_SLEEP_PHRASE/);
+  assert.match(chatMessageChromeSource, /DEFAULT_MOBILE_APP_CONFIG/);
+  assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/mobile-app-config'/);
+  assert.doesNotMatch(screenSource, /DEFAULT_HANDS_FREE_(MESSAGE_DEBOUNCE_MS|WAKE_PHRASE|SLEEP_PHRASE)/);
+  assert.doesNotMatch(screenSource, /DEFAULT_MOBILE_APP_CONFIG/);
   assert.match(screenSource, /handsFreeDebounceMs:\s*handsFreeMessageDebounceMs/);
   assert.match(screenSource, /handlePushToTalkPressIn/);
   assert.match(screenSource, /handlePushToTalkPressOut/);

@@ -15,12 +15,6 @@ import {
   useConfigContext,
   saveConfig,
 } from '../store/config';
-import {
-  DEFAULT_MOBILE_APP_CONFIG as DEFAULT_APP_CONFIG,
-  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-  DEFAULT_HANDS_FREE_WAKE_PHRASE,
-} from '@dotagents/shared/mobile-app-config';
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
@@ -68,6 +62,7 @@ import {
   formatChatMessageRuntimeConnectionStatus,
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
+  createChatRuntimeMobileConfigState,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeFinalHistoryTurnMessages,
   createChatMessageRuntimeRecoverableHistoryMessages,
@@ -310,13 +305,16 @@ export default function ChatScreen({ route, navigation }: any) {
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
-  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
-  const handsFreeWakePhrase = config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
-  const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
-  const handsFreeDebugEnabled = config.handsFreeDebug === true;
-  const handsFreeForegroundOnly = config.handsFreeForegroundOnly ?? DEFAULT_APP_CONFIG.handsFreeForegroundOnly ?? true;
-  const messageQueueEnabled = config.messageQueueEnabled ?? DEFAULT_APP_CONFIG.messageQueueEnabled ?? true;
-  const ttsEnabledSetting = config.ttsEnabled ?? DEFAULT_APP_CONFIG.ttsEnabled ?? true;
+  const chatRuntimeConfig = createChatRuntimeMobileConfigState(config);
+  const {
+    handsFreeMessageDebounceMs,
+    handsFreeWakePhrase,
+    handsFreeSleepPhrase,
+    handsFreeDebugEnabled,
+    handsFreeForegroundOnly,
+    messageQueueEnabled,
+    ttsEnabled: ttsEnabledSetting,
+  } = chatRuntimeConfig;
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
   useEffect(() => {

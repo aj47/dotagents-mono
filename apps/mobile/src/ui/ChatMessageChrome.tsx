@@ -121,6 +121,13 @@ import {
   computeTurnDurations,
   type TurnDurationMessage,
 } from '@dotagents/shared/turn-duration';
+import {
+  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  DEFAULT_MOBILE_APP_CONFIG,
+  type MobileAppConfig,
+} from '@dotagents/shared/mobile-app-config';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
   getTextToSpeechModelValue,
@@ -365,6 +372,16 @@ export interface ChatMessageRuntimeRemoteSpeechSettingsState {
   voice: string | undefined;
   model: string | undefined;
   rate: number;
+}
+
+export interface ChatRuntimeMobileConfigState {
+  handsFreeMessageDebounceMs: number;
+  handsFreeWakePhrase: string;
+  handsFreeSleepPhrase: string;
+  handsFreeDebugEnabled: boolean;
+  handsFreeForegroundOnly: boolean;
+  messageQueueEnabled: boolean;
+  ttsEnabled: boolean;
 }
 
 export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatMessageRuntimeResolvedAlertState {
@@ -3928,6 +3945,24 @@ export function createChatMessageRuntimeRemoteSpeechSettingsState(
     voice: ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue),
     model: getTextToSpeechModelValue(settings),
     rate: getTextToSpeechPlaybackRate(settings),
+  };
+}
+
+export function createChatRuntimeMobileConfigState(
+  config: MobileAppConfig,
+): ChatRuntimeMobileConfigState {
+  return {
+    handsFreeMessageDebounceMs:
+      config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+    handsFreeWakePhrase: config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE,
+    handsFreeSleepPhrase: config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+    handsFreeDebugEnabled: config.handsFreeDebug === true,
+    handsFreeForegroundOnly:
+      config.handsFreeForegroundOnly ?? DEFAULT_MOBILE_APP_CONFIG.handsFreeForegroundOnly ?? true,
+    messageQueueEnabled:
+      config.messageQueueEnabled ?? DEFAULT_MOBILE_APP_CONFIG.messageQueueEnabled ?? true,
+    ttsEnabled:
+      config.ttsEnabled ?? DEFAULT_MOBILE_APP_CONFIG.ttsEnabled ?? true,
   };
 }
 
