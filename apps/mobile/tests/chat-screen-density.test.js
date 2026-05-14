@@ -1420,7 +1420,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.queueAction\}\s+styles=\{styles\.queueAction\}/);
   assert.match(chatMessageChromeSource, /queueAction: \{\s+button: styles\.queueButton,\s+disabledButton: styles\.sendButtonDisabled,\s+text: styles\.queueButtonText,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerLabeledActionButton/);
-  assert.match(screenSource, /setDebugInfo\(composerQueueDebugMessage\)/);
+  assert.doesNotMatch(screenSource, /const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage\(\);/);
+  assert.match(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
   assert.match(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage\(\): string \{\s+return getChatComposerQueueMobileActionState\(\)\.debugMessage;\s+\}/);
   assert.match(chatMessageChromeSource, /disabled=\{renderState\.isDisabled\}/);
   assert.match(chatMessageChromeSource, /style=\{\[styles\.button, renderState\.isDisabled && styles\.disabledButton\]\}/);

@@ -196,7 +196,6 @@ const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYT
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs();
-const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -2907,7 +2906,7 @@ export default function ChatScreen({ route, navigation }: any) {
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
     setInput('');
     setPendingImages([]);
-    setDebugInfo(composerQueueDebugMessage);
+    setDebugInfo(getChatComposerRuntimeQueueDebugMessage());
   }, [currentConversationId, input, messageQueue, pendingImages]);
 
   // Track modifier keys for keyboard shortcut handling
