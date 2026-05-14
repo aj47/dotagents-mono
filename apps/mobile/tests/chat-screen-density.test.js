@@ -78,10 +78,12 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
 
 test('keeps agent selection in the navigation header for the mobile chat screen', () => {
   assert.match(screenSource, /useChatRuntimeNavigationHeaderOptions,/);
-  assert.match(screenSource, /createChatRuntimeNavigationHeaderRenderState,/);
+  assert.match(screenSource, /useChatRuntimeNavigationHeaderRenderState,/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeNavigationHeaderRenderState,/);
   assert.doesNotMatch(screenSource, /createChatRuntimeNavigationHeaderOptions,/);
   assert.doesNotMatch(screenSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(screenSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.mobileHeaderRenderState,/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderRenderState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderOptions/);
   assert.match(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeCurrentAgentLabel,/);
@@ -91,7 +93,8 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /export function getChatRuntimeHeaderChromeMobileStyleRenderState/);
   assert.match(sessionPresentationSource, /header: getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /getChatRuntimeAgentSelectorMobileRenderState,/);
-  assert.match(screenSource, /const mobileHeaderRenderState = useMemo\(\s+\(\) => createChatRuntimeNavigationHeaderRenderState\(\{\s+agentName: currentProfile\?\.name,[\s\S]*?colors: theme\.colors,\s+\}\),/);
+  assert.match(screenSource, /const mobileHeaderRenderState = useChatRuntimeNavigationHeaderRenderState\(\{\s+agentName: currentProfile\?\.name,[\s\S]*?colors: theme\.colors,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /return useMemo\(\s+\(\) => createChatRuntimeNavigationHeaderRenderState\(\{\s+agentName,[\s\S]*?colors,\s+\}\),/);
   assert.match(screenSource, /useChatRuntimeAgentSelectorOverlayState,/);
   assert.match(screenSource, /const \{\s+agentSelectorVisible,\s+openAgentSelector,\s+closeAgentSelector,\s+\} = useChatRuntimeAgentSelectorOverlayState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeAgentSelectorOverlayState/);

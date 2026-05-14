@@ -10029,6 +10029,40 @@ export function createChatRuntimeNavigationHeaderRenderState({
   };
 }
 
+export function useChatRuntimeNavigationHeaderRenderState({
+  agentName,
+  isPinned = false,
+  handsFree = false,
+  conversationState = null,
+  isResponding = false,
+  turnDurationMs = null,
+  turnDurationIsLive = false,
+  colors,
+}: ChatRuntimeNavigationHeaderRenderStateInput): ChatRuntimeNavigationHeaderRenderState {
+  return useMemo(
+    () => createChatRuntimeNavigationHeaderRenderState({
+      agentName,
+      isPinned,
+      handsFree,
+      conversationState,
+      isResponding,
+      turnDurationMs,
+      turnDurationIsLive,
+      colors,
+    }),
+    [
+      agentName,
+      isPinned,
+      handsFree,
+      conversationState,
+      isResponding,
+      turnDurationMs,
+      turnDurationIsLive,
+      colors,
+    ],
+  );
+}
+
 export function createChatRuntimeNavigationHeaderOptions({
   agentSelectorRenderState,
   onAgentSelectorPress,

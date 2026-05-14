@@ -45,7 +45,7 @@ import {
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderOptions,
-  createChatRuntimeNavigationHeaderRenderState,
+  useChatRuntimeNavigationHeaderRenderState,
   createChatMessageRuntimeNoSessionAvailableDebugState,
   createChatMessageRuntimeStartingRequestDebugState,
   createChatMessageRuntimeRequestSentDebugState,
@@ -451,28 +451,16 @@ export default function ChatScreen({ route, navigation }: any) {
     isResponding: responding,
     conversationState,
   });
-  const mobileHeaderRenderState = useMemo(
-    () => createChatRuntimeNavigationHeaderRenderState({
-      agentName: currentProfile?.name,
-      isPinned: isCurrentSessionPinned,
-      handsFree,
-      conversationState,
-      isResponding: responding,
-      turnDurationMs: turnDurations.totalMs,
-      turnDurationIsLive: turnDurations.hasLive,
-      colors: theme.colors,
-    }),
-    [
-      conversationState,
-      currentProfile?.name,
-      handsFree,
-      isCurrentSessionPinned,
-      responding,
-      theme.colors,
-      turnDurations.hasLive,
-      turnDurations.totalMs,
-    ],
-  );
+  const mobileHeaderRenderState = useChatRuntimeNavigationHeaderRenderState({
+    agentName: currentProfile?.name,
+    isPinned: isCurrentSessionPinned,
+    handsFree,
+    conversationState,
+    isResponding: responding,
+    turnDurationMs: turnDurations.totalMs,
+    turnDurationIsLive: turnDurations.hasLive,
+    colors: theme.colors,
+  });
 
   const { respondToToolApproval } = useChatMessageRuntimeToolApprovalActionsState<ChatMessage>({
     approvalClient: settingsClient,
