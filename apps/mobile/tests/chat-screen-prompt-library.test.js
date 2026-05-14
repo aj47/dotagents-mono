@@ -234,7 +234,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteActionsState,/);
-  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: chatRuntimeChromeEnvironment\.platform,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: chatRuntimeChrome\.platform,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(screenSource, /createChatConversationHomePromptDeleteNativeConfirmPresenter,/);
   assert.doesNotMatch(screenSource, /showChatConversationHomePromptDeleteNativeConfirmAlert,/);
   assert.match(chatMessageChromeSource, /export function showChatConversationHomePromptDeleteNativeConfirmAlert/);
@@ -272,12 +272,12 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+colors: chatRuntimeChromeEnvironment\.colors,\s+platform: chatRuntimeChromeEnvironment\.platform,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+colors: chatRuntimeChrome\.colors,\s+platform: chatRuntimeChrome\.platform,/);
   assert.match(screenSource, /surface: \{\s+keyboardVerticalOffset: headerHeight,/);
   assert.doesNotMatch(screenSource, /surface: \{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
   assert.match(screenSource, /promptEditorIsEditing,/);
-  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.match(chatScreenSource, /styles: chatRuntimeChrome\.messageRuntimeStyles,/);
   assert.doesNotMatch(chatScreenSource, /surface: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(screenSource, /title: getPromptLibraryEditorTitle\(Boolean\(editingPrompt\)\)/);

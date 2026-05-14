@@ -145,10 +145,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
   const {
-    chatRuntimeChromeEnvironment,
-    chatRuntimeSpinnerSource,
+    chatRuntimeChrome,
     chatMessageRuntimeSurfaceStyles,
-    chatMessageRuntimeChromeStyles,
     chatRuntimeHeaderStyles,
     styles,
   } = useChatRuntimeMobileStyleSlots({
@@ -398,7 +396,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
-    platform: chatRuntimeChromeEnvironment.platform,
+    platform: chatRuntimeChrome.platform,
     getKillSwitchClient: getSessionClient,
     confirmWeb: confirmChatRuntimeWebDialog,
     showWebAlert: showChatRuntimeWebAlert,
@@ -633,8 +631,8 @@ export default function ChatScreen({ route, navigation }: any) {
 
   useChatRuntimeNavigationHeaderChromeOptions({
     navigation,
-    colors: chatRuntimeChromeEnvironment.colors,
-    spinnerSource: chatRuntimeSpinnerSource,
+    colors: chatRuntimeChrome.colors,
+    spinnerSource: chatRuntimeChrome.spinnerSource,
     agentName: currentProfile?.name,
     isPinned: isCurrentSessionPinned,
     handsFree,
@@ -727,7 +725,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setPredefinedPrompts,
     beginPromptEditorSave,
     clearPromptEditorSave,
-    platform: chatRuntimeChromeEnvironment.platform,
+    platform: chatRuntimeChrome.platform,
     confirmWeb: confirmChatRuntimeWebDialog,
     confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter(Alert.alert),
     showAlert: Alert.alert,
@@ -1540,7 +1538,7 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
     clearComposerDraft,
     setDebugInfo,
-    platform: chatRuntimeChromeEnvironment.platform,
+    platform: chatRuntimeChrome.platform,
     onTextEntryChangeText: setInput,
   });
 
@@ -1570,10 +1568,10 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
-    colors: chatRuntimeChromeEnvironment.colors,
-    platform: chatRuntimeChromeEnvironment.platform,
-    spinnerSource: chatRuntimeSpinnerSource,
-    styles: chatMessageRuntimeChromeStyles,
+    colors: chatRuntimeChrome.colors,
+    platform: chatRuntimeChrome.platform,
+    spinnerSource: chatRuntimeChrome.spinnerSource,
+    styles: chatRuntimeChrome.messageRuntimeStyles,
     composer: {
       speechPreviewText: sttPreview,
       pendingImages,
