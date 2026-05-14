@@ -36,11 +36,9 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionSet,
   createChatMessageActionStyleSlots,
-  createChatMessageCollapsedPreviewProps,
   createChatMessageDelegationCardProps,
   createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
-  createChatMessageExpandedContentProps,
   createChatMessageInlineActivityProps,
   createChatMessageRetryStatusProps,
   createChatMessageToolApprovalProps,
@@ -3944,19 +3942,19 @@ export default function ChatScreen({ route, navigation }: any) {
                   conversation: createChatMessageConversationBodyProps({
                     contentState: messageContentRenderState,
                     actionSet: messageActionSet,
-                    expanded: createChatMessageExpandedContentProps({
+                    expanded: {
                       isStreaming: isLiveStreamingAssistantMessage,
                       markdownContent: visibleMessageContent,
                       colors: theme.colors,
                       assetBaseUrl: config.baseUrl,
                       assetAuthToken: config.apiKey,
                       spinnerSource: isDark ? darkSpinner : lightSpinner,
-                    }),
-                    collapsed: createChatMessageCollapsedPreviewProps({
+                    },
+                    collapsed: {
                       renderState: messageRenderState.collapsedPreview,
                       actionState: messageRenderState.collapsedPreviewAction,
                       onToggle: () => toggleMessageExpansion(i),
-                    }),
+                    },
                     toolExecutionStack: createChatMessageToolExecutionStackProps({
                       displayToolCallCount,
                       colors: theme.colors,

@@ -1779,8 +1779,8 @@ export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conve
 export type ChatMessageConversationBodyPropsInput = {
   contentState: ChatMessageThreadBodyContentProps['contentState'];
   actionSet: ChatMessageActionSet;
-  expanded: ChatMessageThreadBodyContentProps['expanded'];
-  collapsed: ChatMessageThreadBodyContentProps['collapsed'];
+  expanded: ChatMessageExpandedContentPropsInput;
+  collapsed: ChatMessageCollapsedPreviewPropsInput;
   toolExecutionStack: ChatMessageConversationBodyProps['toolExecutionStack'];
 };
 
@@ -2011,8 +2011,8 @@ export function createChatMessageConversationBodyProps({
       contentState,
       slots: actionSet.visibleSlots,
       components: actionSet.components,
-      expanded,
-      collapsed,
+      expanded: createChatMessageExpandedContentProps(expanded),
+      collapsed: createChatMessageCollapsedPreviewProps(collapsed),
     },
     toolExecutionStack,
     standaloneActions: {
