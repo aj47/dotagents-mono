@@ -439,6 +439,31 @@ type ChatConversationHomePromptEditorSaveActionsState = {
   handleSavePrompt: () => Promise<void>;
 };
 
+type ChatConversationHomePromptEditorDeleteNativeConfirmInput = Pick<
+  ChatConversationHomePromptDeleteConfirmAlertState,
+  'title' | 'message' | 'cancelLabel' | 'deleteLabel'
+> & {
+  onConfirm: () => void;
+};
+
+type ChatConversationHomePromptEditorDeleteActionsStateInput<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+> = {
+  promptClient?: TPromptEditorClient | null;
+  predefinedPrompts: PredefinedPromptSummary[];
+  setPredefinedPrompts: Dispatch<SetStateAction<PredefinedPromptSummary[]>>;
+  beginPromptEditorSave: () => void;
+  clearPromptEditorSave: () => void;
+  platform: string;
+  confirmWeb: (message: string) => boolean;
+  confirmNative: (input: ChatConversationHomePromptEditorDeleteNativeConfirmInput) => void;
+  showAlert: (title: string, message: string) => void;
+};
+
+type ChatConversationHomePromptEditorDeleteActionsState = {
+  handleDeletePrompt: (prompt: PredefinedPromptSummary) => void;
+};
+
 type ChatConversationHomePromptTaskRunState = {
   runningPromptTaskId: string | null;
   canRunPromptTask: boolean;
@@ -6333,6 +6358,71 @@ export function useChatConversationHomePromptEditorSaveActionsState<
 
   return {
     handleSavePrompt,
+  };
+}
+
+export function useChatConversationHomePromptEditorDeleteActionsState<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+>({
+  promptClient,
+  predefinedPrompts,
+  setPredefinedPrompts,
+  beginPromptEditorSave,
+  clearPromptEditorSave,
+  platform,
+  confirmWeb,
+  confirmNative,
+  showAlert,
+}: ChatConversationHomePromptEditorDeleteActionsStateInput<TPromptEditorClient>): ChatConversationHomePromptEditorDeleteActionsState {
+  const handleDeletePrompt = useCallback((prompt: PredefinedPromptSummary) => {
+    if (!promptClient) return;
+
+    const deletePrompt = async () => {
+      beginPromptEditorSave();
+      try {
+        const updatedPrompts = deleteChatConversationHomePromptFromList(predefinedPrompts, prompt.id);
+        await promptClient.updateSettings({ predefinedPrompts: updatedPrompts });
+        setPredefinedPrompts(updatedPrompts);
+      } catch (error: any) {
+        console.error('[ChatConversationHome] Error deleting prompt:', error);
+        const failedAlert = getChatConversationHomePromptDeleteFailedAlertState(error);
+        showAlert(failedAlert.title, failedAlert.message);
+      } finally {
+        clearPromptEditorSave();
+      }
+    };
+
+    const confirmAlert = getChatConversationHomePromptDeleteConfirmAlertState(prompt.name);
+    if (platform === 'web') {
+      if (confirmWeb(confirmAlert.webMessage)) {
+        void deletePrompt();
+      }
+      return;
+    }
+
+    confirmNative({
+      title: confirmAlert.title,
+      message: confirmAlert.message,
+      cancelLabel: confirmAlert.cancelLabel,
+      deleteLabel: confirmAlert.deleteLabel,
+      onConfirm: () => {
+        void deletePrompt();
+      },
+    });
+  }, [
+    beginPromptEditorSave,
+    clearPromptEditorSave,
+    confirmNative,
+    confirmWeb,
+    platform,
+    predefinedPrompts,
+    promptClient,
+    setPredefinedPrompts,
+    showAlert,
+  ]);
+
+  return {
+    handleDeletePrompt,
   };
 }
 

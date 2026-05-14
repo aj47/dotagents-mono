@@ -15,8 +15,7 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
-  getChatConversationHomePromptDeleteConfirmAlertState,
-  getChatConversationHomePromptDeleteFailedAlertState,
+  useChatConversationHomePromptEditorDeleteActionsState,
   useChatConversationHomePromptEditorSaveActionsState,
   useChatConversationHomePromptTaskRunActionsState,
   useChatConversationHomePromptTaskRunState,
@@ -33,7 +32,6 @@ import {
   useChatRuntimeHandsFreeMutableState,
   useChatComposerRuntimeDraftState,
   useChatComposerRuntimeTextEntrySubmissionState,
-  deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   getChatComposerHandsFreeDebugMessage,
@@ -1061,39 +1059,22 @@ export default function ChatScreen({ route, navigation }: any) {
     showAlert: Alert.alert,
   });
 
-  const handleDeletePrompt = useCallback((prompt: PredefinedPromptSummary) => {
-    if (!settingsClient) return;
-
-    const deletePrompt = async () => {
-      beginPromptEditorSave();
-      try {
-        const updatedPrompts = deleteChatConversationHomePromptFromList(predefinedPrompts, prompt.id);
-        await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
-        setPredefinedPrompts(updatedPrompts);
-      } catch (error: any) {
-        console.error('[ChatScreen] Error deleting prompt:', error);
-        const failedAlert = getChatConversationHomePromptDeleteFailedAlertState(error);
-        Alert.alert(failedAlert.title, failedAlert.message);
-      } finally {
-        clearPromptEditorSave();
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmFn = (globalThis as { confirm?: (message?: string) => boolean }).confirm;
-      const confirmAlert = getChatConversationHomePromptDeleteConfirmAlertState(prompt.name);
-      if (confirmFn?.(confirmAlert.webMessage)) {
-        void deletePrompt();
-      }
-      return;
-    }
-
-    const confirmAlert = getChatConversationHomePromptDeleteConfirmAlertState(prompt.name);
-    Alert.alert(confirmAlert.title, confirmAlert.message, [
-      { text: confirmAlert.cancelLabel, style: 'cancel' },
-      { text: confirmAlert.deleteLabel, style: 'destructive', onPress: () => { void deletePrompt(); } },
-    ]);
-  }, [beginPromptEditorSave, clearPromptEditorSave, predefinedPrompts, settingsClient]);
+  const { handleDeletePrompt } = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>({
+    promptClient: settingsClient,
+    predefinedPrompts,
+    setPredefinedPrompts,
+    beginPromptEditorSave,
+    clearPromptEditorSave,
+    platform: Platform.OS,
+    confirmWeb: (message) => Boolean((globalThis as { confirm?: (message?: string) => boolean }).confirm?.(message)),
+    confirmNative: ({ title, message, cancelLabel, deleteLabel, onConfirm }) => {
+      Alert.alert(title, message, [
+        { text: cancelLabel, style: 'cancel' },
+        { text: deleteLabel, style: 'destructive', onPress: onConfirm },
+      ]);
+    },
+    showAlert: Alert.alert,
+  });
 
   // Load messages when currentSession changes (fixes #470)
   useEffect(() => {
