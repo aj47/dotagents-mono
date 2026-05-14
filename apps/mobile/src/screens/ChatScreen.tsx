@@ -59,12 +59,9 @@ import {
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeHistoryDisplayMessages,
-  createChatMessageRuntimeActivityMessage,
-  createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeCompletedTurnMessages,
-  createChatMessageRuntimeRetryMessage,
-  createChatMessageRuntimeToolApprovalRequiredMessage,
+  createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -95,8 +92,6 @@ import {
   getChatMessageCopyFeedbackResetDelayMs,
   findChatMessageRuntimeLastUserMessageIndex,
   hasChatMessageRuntimeAssistantContentAfter,
-  hasChatMessageRuntimeMessagesAfter,
-  isLastChatMessageRuntimeConversationContent,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
   preserveChatMessageRuntimeDisplayContentFromProgress,
@@ -128,7 +123,6 @@ import {
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
-  getToolResultsSummary,
   applyChatMessageAutoExpansionState,
 } from '@dotagents/shared/chat-utils';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
@@ -138,7 +132,6 @@ import {
 } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
-  createAgentDelegationProgressMessages as createDelegationProgressMessages,
   resolveAgentProgressConversationState,
 } from '@dotagents/shared/agent-progress';
 import {
@@ -1737,98 +1730,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const convoRef = useRef<string | undefined>(undefined);
 
-  const convertProgressToMessages = useCallback((update: AgentProgressUpdate): ChatMessage[] => {
-    const messages: ChatMessage[] = [];
-    const delegationMessages = createDelegationProgressMessages(update.steps);
-    console.log('[convertProgressToMessages] Processing update, steps:', update.steps?.length || 0, 'history:', update.conversationHistory?.length || 0, 'isComplete:', update.isComplete);
-
-    if (update.steps && update.steps.length > 0) {
-      let currentToolCalls: any[] = [];
-      let currentToolResults: any[] = [];
-      let thinkingContent = '';
-
-      for (const step of update.steps) {
-        const stepContent = step.content || step.llmContent;
-        if (step.type === 'thinking' && stepContent) {
-          thinkingContent = stepContent;
-        } else if (step.type === 'tool_call') {
-          if (step.toolCall) {
-            currentToolCalls.push(step.toolCall);
-          }
-          if (step.toolResult) {
-            currentToolResults.push(step.toolResult);
-          }
-        } else if (step.type === 'tool_result' && step.toolResult) {
-          currentToolResults.push(step.toolResult);
-        } else if (step.type === 'completion' && stepContent) {
-          thinkingContent = stepContent;
-        }
-      }
-
-      const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
-      const isVerificationStep = activeStep?.title?.toLowerCase().includes('verifying');
-      const hasCurrentToolActivity = currentToolCalls.length > 0 || currentToolResults.length > 0;
-      const hasCurrentAssistantFeedback = hasCurrentToolActivity || thinkingContent.trim().length > 0;
-      const hasCurrentStateFeedback =
-        hasCurrentAssistantFeedback ||
-        !!update.pendingToolApproval ||
-        !!update.retryInfo?.isRetrying ||
-        delegationMessages.length > 0 ||
-        !!update.streamingContent?.text;
-
-      if (hasCurrentAssistantFeedback) {
-        messages.push(createChatMessageRuntimeAssistantFeedbackMessage({
-          thinkingContent,
-          hasToolActivity: hasCurrentToolActivity,
-          toolCalls: currentToolCalls,
-          toolResults: currentToolResults,
-        }));
-      } else if (
-        !update.isComplete &&
-        !hasCurrentStateFeedback &&
-        !isVerificationStep
-      ) {
-        messages.push(createChatMessageRuntimeActivityMessage(activeStep));
-      }
-    }
-
-    if (update.conversationHistory && update.conversationHistory.length > 0) {
-      const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(update.conversationHistory);
-      const hasAssistantMessages = hasChatMessageRuntimeMessagesAfter(update.conversationHistory, currentTurnStartIndex);
-      if (hasAssistantMessages) {
-        messages.length = 0;
-        messages.push(...createChatMessageRuntimeHistoryDisplayMessages(update.conversationHistory, {
-          startIndex: currentTurnStartIndex + 1,
-        }));
-      }
-    }
-
-    if (update.retryInfo?.isRetrying) {
-      messages.push(createChatMessageRuntimeRetryMessage(update.retryInfo));
-    }
-
-    if (update.streamingContent?.text) {
-      if (
-        messages.length > 0
-        && isLastChatMessageRuntimeConversationContent(messages)
-      ) {
-        messages[messages.length - 1].content = update.streamingContent.text;
-      } else {
-        messages.push(createChatMessageRuntimeAssistantTextMessage(update.streamingContent.text));
-      }
-    }
-
-    if (update.pendingToolApproval) {
-      messages.push(createChatMessageRuntimeToolApprovalRequiredMessage(update.pendingToolApproval));
-    }
-
-    const messagesWithUserResponse = createChatMessageRuntimeUserResponseMessages(
-      messages,
-      update.userResponse || update.spokenContent,
-    );
-    return [...messagesWithUserResponse, ...delegationMessages];
-  }, []);
-
   // Get the current conversation ID for queue operations
   const currentConversationId = sessionStore.currentSessionId || 'default';
 
@@ -2102,7 +2003,7 @@ export default function ChatScreen({ route, navigation }: any) {
         if (nextStepSummary) {
           setLatestStepSummary(nextStepSummary);
         }
-        const progressMessages = convertProgressToMessages(update);
+        const progressMessages = createChatMessageRuntimeProgressMessages<ChatMessage>(update);
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
           progressMessagesRef.current = progressMessages;
@@ -2516,7 +2417,7 @@ export default function ChatScreen({ route, navigation }: any) {
         if (nextStepSummary) {
           setLatestStepSummary(nextStepSummary);
         }
-        const progressMessages = convertProgressToMessages(update);
+        const progressMessages = createChatMessageRuntimeProgressMessages<ChatMessage>(update);
         if (progressMessages.length > 0) {
           setMessages((m) => replaceChatMessageRuntimeTurnMessages(
             m,

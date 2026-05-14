@@ -237,10 +237,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /formatChatRuntimeToolApprovalRequiredContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeToolApprovalRequiredContent,/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeToolApprovalRequiredContent/);
-  assert.match(
-    screenSource,
-    /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/,
-  );
+  assert.match(screenSource, /createChatMessageRuntimeProgressMessages<ChatMessage>\(update\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolApprovalRequiredMessage/);
   assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeToolApprovalRequiredContent\(toolApproval\.toolName\)/);
   assert.match(screenSource, /removeChatMessageRuntimeToolApprovalMessage,/);
@@ -426,8 +425,10 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(clientSource, /ACPDelegationProgress,/);
   assert.match(clientSource, /delegation\?: ACPDelegationProgress;/);
   assert.match(clientSource, /variant\?: 'delegation' \| 'approval' \| 'retry';/);
-  assert.match(screenSource, /!!update\.retryInfo\?\.isRetrying/);
-  assert.match(screenSource, /createChatMessageRuntimeRetryMessage\(update\.retryInfo\)/);
+  assert.doesNotMatch(screenSource, /!!update\.retryInfo\?\.isRetrying/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeRetryMessage\(update\.retryInfo\)/);
+  assert.match(chatMessageChromeSource, /!!update\.retryInfo\?\.isRetrying/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeRetryMessage\(update\.retryInfo\)/);
   assert.doesNotMatch(screenSource, /variant: 'retry'/);
   assert.doesNotMatch(screenSource, /retryInfo: update\.retryInfo/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRetryMessage/);
@@ -1697,7 +1698,9 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /hasVisibleChatMessageContent,/);
   assert.match(screenSource, /applyChatMessageAutoExpansionState,/);
   assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages,/);
-  assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeProgressMessages/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
   assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages\(newMessages, finalResponseEvent\?\.text \|\| lastUserResponse\)/);
   assert.match(chatMessageChromeSource, /applyUserResponseToChatMessages,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserResponseMessages/);
@@ -1712,13 +1715,16 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
   assert.match(chatMessageChromeSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
   assert.match(chatMessageChromeSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
-  assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(update\.conversationHistory, \{\s+startIndex: currentTurnStartIndex \+ 1,\s+\}\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(update\.conversationHistory, \{\s+startIndex: currentTurnStartIndex \+ 1,\s+\}\)/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(update\.conversationHistory, \{\s+startIndex: currentTurnStartIndex \+ 1,\s+\}\)/);
   assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
-  assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(update\.conversationHistory\)/);
+  assert.doesNotMatch(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(update\.conversationHistory\)/);
+  assert.match(chatMessageChromeSource, /findChatMessageRuntimeLastUserMessageIndex\(update\.conversationHistory\)/);
   assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(response\.conversationHistory\)/);
   assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(serverMessages, -1\)/);
-  assert.match(screenSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
+  assert.doesNotMatch(screenSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
+  assert.match(chatMessageChromeSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
   assert.match(screenSource, /hasChatMessageRuntimeAssistantContentAfter\(serverMessages, lastUserMsgIndex\)/);
   assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages,/);
   assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+progressMessages,\s+\)/);
@@ -2350,11 +2356,17 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(screenSource, /getChatMessageRuntimeHistoryWindowState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
-  assert.match(
+  assert.match(screenSource, /createChatMessageRuntimeProgressMessages<ChatMessage>\(update\)/);
+  assert.doesNotMatch(
     screenSource,
     /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,\s+\}\)/,
   );
-  assert.match(screenSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
+  assert.match(
+    chatMessageChromeSource,
+    /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,\s+\}\)/,
+  );
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantFeedbackMessage/);
   assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeAssistantFeedbackContent\(thinkingContent, hasToolActivity\)/);
   assert.match(chatMessageChromeSource, /\.\.\.\(toolCalls && toolCalls\.length > 0 \? \{ toolCalls \} : \{\}\)/);
@@ -2477,7 +2489,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.doesNotMatch(screenSource, /isChatMessageConversationContent,/);
   assert.match(chatMessageChromeSource, /isChatMessageConversationContent,/);
-  assert.match(screenSource, /&& isLastChatMessageRuntimeConversationContent\(messages\)/);
+  assert.doesNotMatch(screenSource, /&& isLastChatMessageRuntimeConversationContent\(messages\)/);
+  assert.match(chatMessageChromeSource, /&& isLastChatMessageRuntimeConversationContent\(messages\)/);
   assert.match(chatMessageChromeSource, /export function isLastChatMessageRuntimeConversationContent/);
   assert.match(chatMessageChromeSource, /return !!lastMessage && isChatMessageConversationContent\(lastMessage\)/);
   assert.equal(
@@ -2490,7 +2503,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   );
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeConversationContent/);
   assert.match(chatMessageChromeSource, /copy\[i\] = \{ \.\.\.copy\[i\], content \} as TMessage/);
-  assert.match(screenSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);
   assert.doesNotMatch(screenSource, /messages\.push\(\{\s+role: 'assistant',\s+content: update\.streamingContent\.text,\s+\}\)/);
   assert.doesNotMatch(screenSource, /const lastAssistantContentMessageIndex = findLastChatMessageConversationContentIndex/);
   assert.match(chatMessageChromeSource, /const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex\(\s+allMessages,\s+\(message\) => message,\s+\(message\) => hasVisibleChatMessageContent\(message\),\s+\);/);

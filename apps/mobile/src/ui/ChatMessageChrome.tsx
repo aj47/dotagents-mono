@@ -57,11 +57,13 @@ import {
   type ChatMessageDisplayToolEntry,
 } from '@dotagents/shared/chat-utils';
 import {
+  createAgentDelegationProgressMessages,
   getAgentDelegationCardState,
   type ACPDelegationProgress,
   type AgentRetryInfo,
   type AgentDelegationConversationPreviewRow,
   type AgentDelegationPresentation,
+  type AgentProgressUpdate,
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
@@ -3461,6 +3463,102 @@ export function preserveChatMessageRuntimeDisplayContentFromProgress<
   progressMessages: readonly ChatDisplayMessageLike[],
 ): TMessage[] {
   return preserveChatMessageDisplayContentFromProgress(finalMessages, progressMessages);
+}
+
+export function createChatMessageRuntimeProgressMessages<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  update: AgentProgressUpdate,
+): TMessage[] {
+  const messages: TMessage[] = [];
+  const delegationMessages = createAgentDelegationProgressMessages(update.steps) as unknown as TMessage[];
+  console.log('[convertProgressToMessages] Processing update, steps:', update.steps?.length || 0, 'history:', update.conversationHistory?.length || 0, 'isComplete:', update.isComplete);
+
+  if (update.steps && update.steps.length > 0) {
+    let currentToolCalls: any[] = [];
+    let currentToolResults: any[] = [];
+    let thinkingContent = '';
+
+    for (const step of update.steps) {
+      const stepContent = step.content || step.llmContent;
+      if (step.type === 'thinking' && stepContent) {
+        thinkingContent = stepContent;
+      } else if (step.type === 'tool_call') {
+        if (step.toolCall) {
+          currentToolCalls.push(step.toolCall);
+        }
+        if (step.toolResult) {
+          currentToolResults.push(step.toolResult);
+        }
+      } else if (step.type === 'tool_result' && step.toolResult) {
+        currentToolResults.push(step.toolResult);
+      } else if (step.type === 'completion' && stepContent) {
+        thinkingContent = stepContent;
+      }
+    }
+
+    const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
+    const isVerificationStep = activeStep?.title?.toLowerCase().includes('verifying');
+    const hasCurrentToolActivity = currentToolCalls.length > 0 || currentToolResults.length > 0;
+    const hasCurrentAssistantFeedback = hasCurrentToolActivity || thinkingContent.trim().length > 0;
+    const hasCurrentStateFeedback =
+      hasCurrentAssistantFeedback ||
+      !!update.pendingToolApproval ||
+      !!update.retryInfo?.isRetrying ||
+      delegationMessages.length > 0 ||
+      !!update.streamingContent?.text;
+
+    if (hasCurrentAssistantFeedback) {
+      messages.push(createChatMessageRuntimeAssistantFeedbackMessage({
+        thinkingContent,
+        hasToolActivity: hasCurrentToolActivity,
+        toolCalls: currentToolCalls,
+        toolResults: currentToolResults,
+      }) as unknown as TMessage);
+    } else if (
+      !update.isComplete &&
+      !hasCurrentStateFeedback &&
+      !isVerificationStep
+    ) {
+      messages.push(createChatMessageRuntimeActivityMessage(activeStep) as unknown as TMessage);
+    }
+  }
+
+  if (update.conversationHistory && update.conversationHistory.length > 0) {
+    const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(update.conversationHistory);
+    const hasAssistantMessages = hasChatMessageRuntimeMessagesAfter(update.conversationHistory, currentTurnStartIndex);
+    if (hasAssistantMessages) {
+      messages.length = 0;
+      messages.push(...createChatMessageRuntimeHistoryDisplayMessages(update.conversationHistory, {
+        startIndex: currentTurnStartIndex + 1,
+      }) as unknown as TMessage[]);
+    }
+  }
+
+  if (update.retryInfo?.isRetrying) {
+    messages.push(createChatMessageRuntimeRetryMessage(update.retryInfo) as unknown as TMessage);
+  }
+
+  if (update.streamingContent?.text) {
+    if (
+      messages.length > 0
+      && isLastChatMessageRuntimeConversationContent(messages)
+    ) {
+      messages[messages.length - 1].content = update.streamingContent.text;
+    } else {
+      messages.push(createChatMessageRuntimeAssistantTextMessage(update.streamingContent.text) as unknown as TMessage);
+    }
+  }
+
+  if (update.pendingToolApproval) {
+    messages.push(createChatMessageRuntimeToolApprovalRequiredMessage(update.pendingToolApproval) as unknown as TMessage);
+  }
+
+  const messagesWithUserResponse = createChatMessageRuntimeUserResponseMessages(
+    messages,
+    update.userResponse || update.spokenContent,
+  );
+  return [...messagesWithUserResponse, ...delegationMessages];
 }
 
 export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
