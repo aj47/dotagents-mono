@@ -158,7 +158,7 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(screenSource, /handsFreeSurface\.debugPanel\.borderLeftWidth/);
   assert.match(screenSource, /borderLeftColor:\s*handsFreeSurfaceColors\.debugPanel\.borderLeftColor/);
   assert.match(screenSource, /color:\s*handsFreeSurfaceColors\.debugText\.color/);
-  assert.match(screenSource, /resolveMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform\)/);
+  assert.match(screenSource, /resolveChatRuntimeMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform\)/);
   assert.doesNotMatch(screenSource, /formatHandsFreeSleepingDebugMessage/);
   assert.doesNotMatch(screenSource, /formatHandsFreeRecognizerErrorDebugMessage/);
   assert.match(chatMessageChromeSource, /formatHandsFreeSleepingDebugMessage/);

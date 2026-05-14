@@ -4,7 +4,6 @@ import {
   Platform,
   Alert,
   AppState,
-  useWindowDimensions,
   type AppStateStatus,
 } from 'react-native';
 
@@ -120,6 +119,7 @@ import {
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
   replaceChatMessageRuntimeTurnMessages,
+  resolveChatRuntimeMobileFontFamily,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
@@ -156,7 +156,6 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
-import { resolveMobileFontFamily } from '../ui/mobileTypography';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
@@ -183,8 +182,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
-  const { height: screenHeight } = useWindowDimensions();
-  const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const chatMessageConversationThreadStyles = useMemo(
     () => createChatMessageConversationThreadStyleSlots(styles),
     [styles],
@@ -2932,7 +2930,7 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 }
 
-function createStyles(theme: Theme, screenHeight: number) {
+function createStyles(theme: Theme) {
   const chatChromeStyleState = createChatRuntimeMobileChromeStyleState({
     colors: theme.colors,
     platform: Platform.OS,
@@ -3201,7 +3199,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       opacity: headerTurnDurationLiveBadge.opacity,
     } as const,
     headerDurationChipText: {
-      fontFamily: resolveMobileFontFamily(headerTurnDurationBadge.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(headerTurnDurationBadge.fontFamilyByPlatform),
       fontSize: headerTurnDurationBadge.fontSize,
       lineHeight: headerTurnDurationBadge.lineHeight,
       fontWeight: headerTurnDurationBadge.fontWeight,
@@ -3940,7 +3938,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     debugText: {
       fontSize: handsFreeSurface.debugText.fontSize,
       color: handsFreeSurfaceColors.debugText.color,
-      fontFamily: resolveMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform),
     },
     connectionBanner: {
       paddingHorizontal: spacing[connectionBannerSurface.paddingHorizontal],
@@ -4076,13 +4074,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: toolApprovalSurfaceColors.toolLabel.color,
     },
     toolApprovalTool: {
-      fontFamily: resolveMobileFontFamily(toolApprovalSurface.toolName.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.toolName.fontFamilyByPlatform),
       fontSize: toolApprovalSurface.toolName.fontSize,
       color: toolApprovalSurfaceColors.toolName.color,
       flexShrink: toolApprovalSurface.toolName.flexShrink,
     },
     toolApprovalArgumentsPreview: {
-      fontFamily: resolveMobileFontFamily(toolApprovalSurface.argumentsPreview.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.argumentsPreview.fontFamilyByPlatform),
       fontSize: toolApprovalSurface.argumentsPreview.fontSize,
       lineHeight: toolApprovalSurface.argumentsPreview.lineHeight,
       borderWidth: toolApprovalSurface.argumentsPreview.borderWidth,
@@ -4116,7 +4114,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: toolApprovalSurfaceColors.fullArguments.backgroundColor,
     },
     toolApprovalArgumentsFull: {
-      fontFamily: resolveMobileFontFamily(toolApprovalSurface.fullArguments.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.fullArguments.fontFamilyByPlatform),
       fontSize: toolApprovalSurface.fullArguments.fontSize,
       lineHeight: toolApprovalSurface.fullArguments.lineHeight,
       padding: toolApprovalSurface.fullArguments.padding,
@@ -4205,7 +4203,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       opacity: compactToolExecution.pressedOpacity,
     },
     toolCallCompactName: {
-      fontFamily: resolveMobileFontFamily(compactToolExecution.name.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(compactToolExecution.name.fontFamilyByPlatform),
       fontSize: compactToolExecution.name.fontSize,
       fontWeight: compactToolExecution.name.fontWeight,
       flexShrink: compactToolExecution.name.flexShrink,
@@ -4273,13 +4271,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: toolActivityGroupSurfaceColors.countBadge.backgroundColor,
     },
     toolActivityGroupCountBadgeText: {
-      fontFamily: resolveMobileFontFamily(toolActivityGroupSurface.countBadge.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.countBadge.fontFamilyByPlatform),
       fontSize: toolActivityGroupSurface.countBadge.fontSize,
       fontWeight: toolActivityGroupSurface.countBadge.fontWeight,
       color: toolActivityGroupSurfaceColors.countBadge.color,
     },
     toolActivityGroupPreviewLine: {
-      fontFamily: resolveMobileFontFamily(toolActivityGroupSurface.preview.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.preview.fontFamilyByPlatform),
       fontSize: toolActivityGroupSurface.preview.fontSize,
       color: toolActivityGroupSurfaceColors.preview.color,
       flexShrink: toolActivityGroupSurface.preview.flexShrink,
@@ -4312,7 +4310,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderBottomColor: toolExecutionDetailContentColors.section.borderBottomColor,
     },
     toolName: {
-      fontFamily: resolveMobileFontFamily(detailedToolExecution.toolName.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.toolName.fontFamilyByPlatform),
       fontWeight: detailedToolExecution.toolName.fontWeight,
       color: toolExecutionDetailContentColors.toolName.color,
       fontSize: detailedToolExecution.toolName.fontSize,
@@ -4368,7 +4366,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: toolExecutionDetailContentColors.payloadType.color,
     },
     toolPayloadPreview: {
-      fontFamily: resolveMobileFontFamily(detailedToolExecution.payloadPreview.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.payloadPreview.fontFamilyByPlatform),
       fontSize: detailedToolExecution.payloadPreview.fontSize,
       lineHeight: detailedToolExecution.payloadPreview.lineHeight,
       paddingHorizontal: detailedToolExecution.payloadPreview.paddingHorizontal,
@@ -4409,7 +4407,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       overflow: detailedToolExecution.scroll.overflow,
     },
     toolParamsCode: {
-      fontFamily: resolveMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
       fontSize: detailedToolExecution.codeBlock.fontSize,
       color: toolExecutionDetailContentColors.codeBlock.color,
       backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
@@ -4449,7 +4447,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolResultCharCount: {
       fontSize: detailedToolExecution.characterCount.fontSize,
-      fontFamily: resolveMobileFontFamily(detailedToolExecution.characterCount.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.characterCount.fontFamilyByPlatform),
       color: toolExecutionDetailContentColors.characterCount.color,
       opacity: detailedToolExecution.characterCount.opacity,
     },
@@ -4488,7 +4486,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       overflow: detailedToolExecution.scroll.overflow,
     },
     toolResultCode: {
-      fontFamily: resolveMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
       fontSize: detailedToolExecution.codeBlock.fontSize,
       color: toolExecutionDetailContentColors.codeBlock.color,
       backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
@@ -4505,7 +4503,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginBottom: detailedToolExecution.error.labelMarginBottom,
     },
     toolResultErrorText: {
-      fontFamily: resolveMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
       fontSize: detailedToolExecution.codeBlock.fontSize,
       color: toolResultErrorColors.color,
       backgroundColor: toolResultErrorColors.backgroundColor,
@@ -4574,7 +4572,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       opacity: mobileMessageTurnDurationLiveBadge.opacity,
     } as const,
     messageTurnDurationText: {
-      fontFamily: resolveMobileFontFamily(mobileMessageTurnDurationBadge.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(mobileMessageTurnDurationBadge.fontFamilyByPlatform),
       fontSize: mobileMessageTurnDurationBadge.fontSize,
       lineHeight: mobileMessageTurnDurationBadge.lineHeight,
       fontWeight: mobileMessageTurnDurationBadge.fontWeight,
