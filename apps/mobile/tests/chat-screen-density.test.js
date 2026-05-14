@@ -3903,8 +3903,9 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(screenSource, /const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeRemoteSpeechSettingsState,/);
   assert.match(screenSource, /const \{\s+remoteTtsProvider,\s+remoteTtsVoice,\s+remoteTtsModel,\s+remoteTtsRate,\s+applyRemoteSpeechSettings,\s+\} = useChatMessageRuntimeRemoteSpeechSettingsState\(DEFAULT_REMOTE_SPEECH_SETTINGS\);/);
-  assert.match(screenSource, /const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState\(settings\);/);
-  assert.match(screenSource, /applyRemoteSpeechSettings\(remoteSpeechSettings\)/);
+  assert.doesNotMatch(screenSource, /const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState\(settings\);/);
+  assert.match(chatMessageChromeSource, /const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState\(settings\);/);
+  assert.match(chatMessageChromeSource, /applyRemoteSpeechSettings\(remoteSpeechSettings\)/);
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeRemoteSpeechProvider/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRemoteSpeechSettingsState/);
@@ -4260,8 +4261,12 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
 
 test('loads saved prompts from the settings API for the mobile quick-start launcher', () => {
   assert.match(screenSource, /useChatConversationHomeQuickStartCatalogState,/);
-  assert.match(screenSource, /const \{\s+predefinedPrompts,\s+setPredefinedPrompts,\s+availableSkills,\s+setAvailableSkills,\s+availableTasks,\s+setAvailableTasks,\s+isLoadingQuickStartPrompts,\s+beginQuickStartCatalogLoad,\s+finishQuickStartCatalogLoad,\s+clearQuickStartCatalog,\s+\} = useChatConversationHomeQuickStartCatalogState\(\);/);
+  assert.match(screenSource, /useChatConversationHomeQuickStartCatalogLoadState,/);
+  assert.match(screenSource, /const quickStartCatalog = useChatConversationHomeQuickStartCatalogState\(\);/);
+  assert.match(screenSource, /const \{\s+predefinedPrompts,\s+setPredefinedPrompts,\s+availableSkills,\s+availableTasks,\s+isLoadingQuickStartPrompts,\s+\} = quickStartCatalog;/);
+  assert.match(screenSource, /useChatConversationHomeQuickStartCatalogLoadState\(\{\s+quickStartClient: settingsClient,\s+isFocused,\s+catalog: quickStartCatalog,\s+applyRemoteSpeechSettings,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomeQuickStartCatalogState/);
+  assert.match(chatMessageChromeSource, /export function useChatConversationHomeQuickStartCatalogLoadState/);
   assert.match(chatMessageChromeSource, /const \[predefinedPrompts, setPredefinedPrompts\] = useState<PredefinedPromptSummary\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const \[availableSkills, setAvailableSkills\] = useState<Skill\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const \[availableTasks, setAvailableTasks\] = useState<Loop\[\]>\(\[\]\);/);
@@ -4270,12 +4275,13 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.doesNotMatch(screenSource, /const \[availableSkills, setAvailableSkills\] = useState<Skill\[\]>\(\[\]\);/);
   assert.doesNotMatch(screenSource, /const \[availableTasks, setAvailableTasks\] = useState<Loop\[\]>\(\[\]\);/);
   assert.doesNotMatch(screenSource, /const \[isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts\] = useState\(false\);/);
-  assert.match(screenSource, /clearQuickStartCatalog\(\);/);
-  assert.match(screenSource, /beginQuickStartCatalogLoad\(\);/);
-  assert.match(screenSource, /finishQuickStartCatalogLoad\(\);/);
-  assert.match(screenSource, /settingsClient\.getSettings\(\)/);
-  assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
-  assert.match(screenSource, /sortChatConversationHomePromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
+  assert.doesNotMatch(screenSource, /clearQuickStartCatalog\(\);/);
+  assert.doesNotMatch(screenSource, /beginQuickStartCatalogLoad\(\);/);
+  assert.doesNotMatch(screenSource, /finishQuickStartCatalogLoad\(\);/);
+  assert.doesNotMatch(screenSource, /settingsClient\.getSettings\(\)/);
+  assert.match(chatMessageChromeSource, /quickStartClient\.getSettings\(\)/);
+  assert.match(chatMessageChromeSource, /settings\.predefinedPrompts \|\| \[\]/);
+  assert.match(chatMessageChromeSource, /sortChatConversationHomePromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
   assert.match(chatMessageChromeSource, /sortPredefinedPromptsByUpdatedAt\(prompts\)/);
   assert.match(chatMessageChromeSource, /export function sortChatConversationHomePromptsByUpdatedAt/);
   assert.doesNotMatch(screenSource, /sortPredefinedPromptsByUpdatedAt/);
@@ -4612,8 +4618,10 @@ test('lets mobile branch linked desktop conversations from individual messages',
 });
 
 test('loads predefined prompts, skills, and tasks directly into mobile quick-start launchers', () => {
-  assert.match(screenSource, /settingsClient\.getSkills\(\)/);
-  assert.match(screenSource, /settingsClient\.getLoops\(\)/);
+  assert.doesNotMatch(screenSource, /settingsClient\.getSkills\(\)/);
+  assert.doesNotMatch(screenSource, /settingsClient\.getLoops\(\)/);
+  assert.match(chatMessageChromeSource, /quickStartClient\.getSkills\(\)/);
+  assert.match(chatMessageChromeSource, /quickStartClient\.getLoops\(\)/);
   assert.doesNotMatch(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
   assert.doesNotMatch(screenSource, /createChatConversationHomeQuickStartItems\(\{/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,/);

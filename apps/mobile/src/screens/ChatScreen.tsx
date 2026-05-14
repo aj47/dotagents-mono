@@ -20,6 +20,7 @@ import {
   useChatConversationHomePromptTaskRunActionsState,
   useChatConversationHomePromptTaskRunState,
   useChatConversationHomeQuickStartCatalogState,
+  useChatConversationHomeQuickStartCatalogLoadState,
   useChatConversationHomePromptEditorState,
   useChatRuntimeAgentSelectorOverlayState,
   useChatComposerRuntimeEditBeforeSendState,
@@ -35,7 +36,6 @@ import {
   useChatRuntimeTextToSpeechToggleActionsState,
   useChatComposerRuntimeDraftState,
   useChatComposerRuntimeTextEntrySubmissionState,
-  sortChatConversationHomePromptsByUpdatedAt,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   getChatComposerHandsFreeDebugMessage,
   useChatComposerRuntimeImageAttachmentPickerState,
@@ -72,7 +72,6 @@ import {
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
-  createChatMessageRuntimeRemoteSpeechSettingsState,
   createChatMessageRuntimeEffectiveRemoteSpeechSettingsState,
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   useChatMessageRuntimeRemoteSpeechSettingsState,
@@ -159,18 +158,14 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
+  const quickStartCatalog = useChatConversationHomeQuickStartCatalogState();
   const {
     predefinedPrompts,
     setPredefinedPrompts,
     availableSkills,
-    setAvailableSkills,
     availableTasks,
-    setAvailableTasks,
     isLoadingQuickStartPrompts,
-    beginQuickStartCatalogLoad,
-    finishQuickStartCatalogLoad,
-    clearQuickStartCatalog,
-  } = useChatConversationHomeQuickStartCatalogState();
+  } = quickStartCatalog;
   const {
     runningPromptTaskId,
     canRunPromptTask,
@@ -696,54 +691,12 @@ export default function ChatScreen({ route, navigation }: any) {
     stopRemoteSpeech: stopRemoteTts,
   });
 
-  useEffect(() => {
-    if (!settingsClient || !isFocused) {
-      if (!settingsClient) {
-        clearQuickStartCatalog();
-      }
-      return;
-    }
-
-    let cancelled = false;
-    beginQuickStartCatalogLoad();
-
-    Promise.allSettled([
-      settingsClient.getSettings(),
-      settingsClient.getSkills(),
-      settingsClient.getLoops(),
-    ] as const)
-      .then(([settingsResult, skillsResult, loopsResult]) => {
-        if (cancelled) return;
-
-        if (settingsResult.status === 'fulfilled') {
-          const settings = settingsResult.value;
-          const nextPrompts = sortChatConversationHomePromptsByUpdatedAt(settings.predefinedPrompts || []);
-          const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
-          setPredefinedPrompts(nextPrompts);
-          applyRemoteSpeechSettings(remoteSpeechSettings);
-        } else {
-          setPredefinedPrompts([]);
-        }
-
-        setAvailableSkills(skillsResult.status === 'fulfilled' ? skillsResult.value.skills : []);
-        setAvailableTasks(loopsResult.status === 'fulfilled' ? loopsResult.value.loops : []);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        finishQuickStartCatalogLoad();
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    applyRemoteSpeechSettings,
-    beginQuickStartCatalogLoad,
-    clearQuickStartCatalog,
-    finishQuickStartCatalogLoad,
+  useChatConversationHomeQuickStartCatalogLoadState({
+    quickStartClient: settingsClient,
     isFocused,
-    settingsClient,
-  ]);
+    catalog: quickStartCatalog,
+    applyRemoteSpeechSettings,
+  });
 
   const { handleSavePrompt } = useChatConversationHomePromptEditorSaveActionsState<ExtendedSettingsApiClient>({
     promptClient: settingsClient,

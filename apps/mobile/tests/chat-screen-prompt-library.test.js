@@ -34,8 +34,10 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle,/);
   assert.match(chatMessageChromeSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription,/);
   assert.match(chatMessageChromeSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback,/);
-  assert.match(screenSource, /settingsClient\.getSkills\(\)/);
-  assert.match(screenSource, /settingsClient\.getLoops\(\)/);
+  assert.doesNotMatch(screenSource, /settingsClient\.getSkills\(\)/);
+  assert.doesNotMatch(screenSource, /settingsClient\.getLoops\(\)/);
+  assert.match(chatMessageChromeSource, /quickStartClient\.getSkills\(\)/);
+  assert.match(chatMessageChromeSource, /quickStartClient\.getLoops\(\)/);
   assert.match(screenSource, /handleRunPromptTask/);
   assert.doesNotMatch(chatMessageChromeSource, /getPromptLibraryShortcutSourceLabel\(item\.source\)/);
   assert.match(chatMessageChromeSource, /type PromptLibraryLauncherShortcutSource,/);

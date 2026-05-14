@@ -505,6 +505,21 @@ type ChatConversationHomeQuickStartCatalogState = {
   clearQuickStartCatalog: () => void;
 };
 
+type ChatConversationHomeQuickStartCatalogClient = {
+  getSettings: () => Promise<Settings>;
+  getSkills: () => Promise<{ skills: Skill[] }>;
+  getLoops: () => Promise<{ loops: Loop[] }>;
+};
+
+type ChatConversationHomeQuickStartCatalogLoadStateInput<
+  TQuickStartCatalogClient extends ChatConversationHomeQuickStartCatalogClient,
+> = {
+  quickStartClient?: TQuickStartCatalogClient | null;
+  isFocused: boolean;
+  catalog: ChatConversationHomeQuickStartCatalogState;
+  applyRemoteSpeechSettings: (settings: ChatMessageRuntimeRemoteSpeechSettingsState) => void;
+};
+
 type ChatConversationHomePromptEditorState = {
   promptEditorVisible: boolean;
   promptEditorEditingPrompt: PredefinedPromptSummary | null;
@@ -6787,6 +6802,76 @@ export function useChatConversationHomeQuickStartCatalogState(): ChatConversatio
     finishQuickStartCatalogLoad,
     clearQuickStartCatalog,
   };
+}
+
+export function useChatConversationHomeQuickStartCatalogLoadState<
+  TQuickStartCatalogClient extends ChatConversationHomeQuickStartCatalogClient,
+>({
+  quickStartClient,
+  isFocused,
+  catalog,
+  applyRemoteSpeechSettings,
+}: ChatConversationHomeQuickStartCatalogLoadStateInput<TQuickStartCatalogClient>): void {
+  const {
+    setPredefinedPrompts,
+    setAvailableSkills,
+    setAvailableTasks,
+    beginQuickStartCatalogLoad,
+    finishQuickStartCatalogLoad,
+    clearQuickStartCatalog,
+  } = catalog;
+
+  useEffect(() => {
+    if (!quickStartClient || !isFocused) {
+      if (!quickStartClient) {
+        clearQuickStartCatalog();
+      }
+      return;
+    }
+
+    let cancelled = false;
+    beginQuickStartCatalogLoad();
+
+    Promise.allSettled([
+      quickStartClient.getSettings(),
+      quickStartClient.getSkills(),
+      quickStartClient.getLoops(),
+    ] as const)
+      .then(([settingsResult, skillsResult, loopsResult]) => {
+        if (cancelled) return;
+
+        if (settingsResult.status === 'fulfilled') {
+          const settings = settingsResult.value;
+          const nextPrompts = sortChatConversationHomePromptsByUpdatedAt(settings.predefinedPrompts || []);
+          const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
+          setPredefinedPrompts(nextPrompts);
+          applyRemoteSpeechSettings(remoteSpeechSettings);
+        } else {
+          setPredefinedPrompts([]);
+        }
+
+        setAvailableSkills(skillsResult.status === 'fulfilled' ? skillsResult.value.skills : []);
+        setAvailableTasks(loopsResult.status === 'fulfilled' ? loopsResult.value.loops : []);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        finishQuickStartCatalogLoad();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyRemoteSpeechSettings,
+    beginQuickStartCatalogLoad,
+    clearQuickStartCatalog,
+    finishQuickStartCatalogLoad,
+    isFocused,
+    quickStartClient,
+    setAvailableSkills,
+    setAvailableTasks,
+    setPredefinedPrompts,
+  ]);
 }
 
 export function useChatConversationHomePromptEditorState(): ChatConversationHomePromptEditorState {
