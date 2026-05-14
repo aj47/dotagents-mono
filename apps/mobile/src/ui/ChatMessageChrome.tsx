@@ -3613,6 +3613,12 @@ export type ChatMessageRuntimeToolApprovalLike = {
   toolName: string;
 };
 
+export type ChatMessageRuntimeToolApprovalStateMessageLike = {
+  toolApproval?: {
+    approvalId?: string;
+  } | null;
+};
+
 export type ChatMessageRuntimeToolApprovalRequiredMessage<
   TToolApproval extends ChatMessageRuntimeToolApprovalLike,
 > = {
@@ -3633,6 +3639,15 @@ export function createChatMessageRuntimeToolApprovalRequiredMessage<
     variant: 'approval',
     toolApproval,
   };
+}
+
+export function removeChatMessageRuntimeToolApprovalMessage<
+  TMessage extends ChatMessageRuntimeToolApprovalStateMessageLike,
+>(
+  messages: readonly TMessage[],
+  approvalId: string,
+): TMessage[] {
+  return messages.filter((message) => message.toolApproval?.approvalId !== approvalId);
 }
 
 export function getChatMessageRuntimeLatestStepSummary<T extends ChatRuntimeStepSummaryLike>(

@@ -243,6 +243,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   );
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolApprovalRequiredMessage/);
   assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeToolApprovalRequiredContent\(toolApproval\.toolName\)/);
+  assert.match(screenSource, /removeChatMessageRuntimeToolApprovalMessage,/);
+  assert.match(screenSource, /setMessages\(\(current\) => removeChatMessageRuntimeToolApprovalMessage\(current, approvalId\)\)/);
+  assert.match(chatMessageChromeSource, /export function removeChatMessageRuntimeToolApprovalMessage/);
+  assert.match(chatMessageChromeSource, /message\.toolApproval\?\.approvalId !== approvalId/);
+  assert.doesNotMatch(screenSource, /current\.filter\(\(message\) => message\.toolApproval\?\.approvalId !== approvalId\)/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);

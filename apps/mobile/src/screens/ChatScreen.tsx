@@ -97,6 +97,7 @@ import {
   hasChatMessageRuntimeMessagesAfter,
   isLastChatMessageRuntimeConversationContent,
   removeChatMessageRuntimePendingTurnMessages,
+  removeChatMessageRuntimeToolApprovalMessage,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -754,7 +755,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setPendingToolApprovalResponseId(approvalId);
     try {
       const response = await settingsClient.respondToToolApproval(approvalId, approved);
-      setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
+      setMessages((current) => removeChatMessageRuntimeToolApprovalMessage(current, approvalId));
       if (!response.success) {
         const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState();
         Alert.alert(unavailableAlert.title, unavailableAlert.message);
