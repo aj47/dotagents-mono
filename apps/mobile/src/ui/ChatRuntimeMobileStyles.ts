@@ -188,6 +188,15 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     fontWeight: badge.fontWeight,
     color: colors.text.color,
   } as const);
+  const createChatRuntimeMobileHeaderPinButtonStyle = (
+    colors: typeof inactiveHeaderPinButtonColors,
+  ) => ({
+    ...headerPinButton,
+    borderRadius: radius[headerSurface.pinButton.borderRadius],
+    borderWidth: headerSurface.pinButton.borderWidth,
+    borderColor: colors.button.borderColor,
+    backgroundColor: colors.button.backgroundColor,
+  } as const);
   const createChatRuntimeMobileMessageActionButtonStyle = (
     button: typeof mobileMessageExpansionButton,
     colors: typeof mobileMessageExpansionButtonColors,
@@ -394,15 +403,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
-      ...headerPinButton,
-      borderRadius: radius[headerSurface.pinButton.borderRadius],
-      borderWidth: headerSurface.pinButton.borderWidth,
-      borderColor: inactiveHeaderPinButtonColors.button.borderColor,
-      backgroundColor: inactiveHeaderPinButtonColors.button.backgroundColor,
+      ...createChatRuntimeMobileHeaderPinButtonStyle(inactiveHeaderPinButtonColors),
     },
     headerPinButtonActive: {
-      borderColor: activeHeaderPinButtonColors.button.borderColor,
-      backgroundColor: activeHeaderPinButtonColors.button.backgroundColor,
+      ...createChatRuntimeMobileHeaderPinButtonStyle(activeHeaderPinButtonColors),
     },
     headerKillSwitchIconContainer: {
       width: headerSurface.killSwitchButton.size,
