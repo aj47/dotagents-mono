@@ -32,7 +32,10 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
   assert.match(chatMessageChromeSource, /getHandsFreeComposerMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceColors,/);
-  assert.match(screenSource, /const handsFreeCopy = getChatComposerHandsFreeCopyState\(\);/);
+  assert.doesNotMatch(screenSource, /const handsFreeCopy = getChatComposerHandsFreeCopyState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatComposerHandsFreeCopyState,/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage,/);
+  assert.match(chatMessageChromeSource, /export function getChatComposerHandsFreeDebugMessage/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
@@ -72,7 +75,7 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
   assert.match(screenSource, /const next = !handsFreeRef\.current;\s*handsFreeRef\.current = next;/);
-  assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?handsFreeCopy\.debug\.disabled/);
+  assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?getChatComposerHandsFreeDebugMessage\('disabled'\)/);
 });
 
 test('falls back to normal direct-send handling for stale handsfree finalizations after toggle-off', () => {
@@ -140,7 +143,7 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
 });
 
 test('uses shared handsfree composer presentation helpers instead of local phase copy', () => {
-  assert.match(screenSource, /handsFreeCopy/);
+  assert.doesNotMatch(screenSource, /handsFreeCopy/);
   assert.match(screenSource, /backgroundColor:\s*handsFreeSurfaceColors\.debugPanel\.backgroundColor/);
   assert.match(screenSource, /handsFreeSurface\.debugPanel\.borderLeftWidth/);
   assert.match(screenSource, /borderLeftColor:\s*handsFreeSurfaceColors\.debugPanel\.borderLeftColor/);
@@ -152,8 +155,13 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(chatMessageChromeSource, /formatHandsFreeRecognizerErrorDebugMessage/);
   assert.match(screenSource, /formatChatComposerHandsFreeSleepingDebugMessage/);
   assert.match(screenSource, /formatChatComposerHandsFreeRecognizerErrorDebugMessage/);
-  assert.match(screenSource, /handsFreeCopy\.debug\.transcriptAdded/);
-  assert.match(screenSource, /handsFreeCopy\.debug\.permissionDenied/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('transcriptAdded'\)/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('permissionDenied'\)/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('awake'\)/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('resumed'\)/);
+  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('paused'\)/);
+  assert.doesNotMatch(screenSource, /handsFreeCopy\.debug\.(transcriptAdded|permissionDenied|enabled|disabled|awake|resumed|paused)/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerControlState/);
   assert.match(chatMessageChromeSource, /getHandsFreeComposerControlState/);
   assert.doesNotMatch(screenSource, /getHandsFreeStatusSubtitle/);

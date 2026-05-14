@@ -3163,6 +3163,17 @@ export function getChatComposerHandsFreeCopyState(): ReturnType<typeof getHandsF
   return getHandsFreeComposerCopyState();
 }
 
+export type ChatComposerHandsFreeDebugMessageKey = Exclude<
+  keyof ReturnType<typeof getHandsFreeComposerCopyState>['debug'],
+  'voiceDebugTitle'
+>;
+
+export function getChatComposerHandsFreeDebugMessage(
+  key: ChatComposerHandsFreeDebugMessageKey,
+): string {
+  return getHandsFreeComposerCopyState().debug[key];
+}
+
 export function formatChatComposerHandsFreeRecognizerErrorDebugMessage(
   ...args: Parameters<typeof formatHandsFreeRecognizerErrorDebugMessage>
 ): ReturnType<typeof formatHandsFreeRecognizerErrorDebugMessage> {

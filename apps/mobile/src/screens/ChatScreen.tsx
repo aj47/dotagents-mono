@@ -42,7 +42,7 @@ import {
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   formatChatComposerHandsFreeSleepingDebugMessage,
   getChatComposerImageAttachmentAlertState,
-  getChatComposerHandsFreeCopyState,
+  getChatComposerHandsFreeDebugMessage,
   getChatComposerRuntimeQueueDebugMessage,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaLayoutState,
@@ -203,7 +203,6 @@ const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState(
 const mobileRuntimeDebug = getChatMessageRuntimeDebugState();
 const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState();
-const handsFreeCopy = getChatComposerHandsFreeCopyState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
@@ -839,7 +838,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 			if (mode === 'edit') {
 				setInput((current) => mergeVoiceText(current, finalText));
-				setDebugInfo(handsFreeCopy.debug.transcriptAdded);
+				setDebugInfo(getChatComposerHandsFreeDebugMessage('transcriptAdded'));
 				setTimeout(() => inputRef.current?.focus(), 0);
 				return;
 			}
@@ -861,7 +860,7 @@ export default function ChatScreen({ route, navigation }: any) {
 			setDebugInfo(formatChatComposerHandsFreeRecognizerErrorDebugMessage(message));
 		},
 		onPermissionDenied: () => {
-			setDebugInfo(handsFreeCopy.debug.permissionDenied);
+			setDebugInfo(getChatComposerHandsFreeDebugMessage('permissionDenied'));
 		},
 			log: voiceLog,
 		  });
@@ -877,9 +876,9 @@ export default function ChatScreen({ route, navigation }: any) {
       void stopRecognitionOnly?.();
       Speech.stop();
       stopRemoteTts();
-      setDebugInfo(handsFreeCopy.debug.disabled);
+      setDebugInfo(getChatComposerHandsFreeDebugMessage('disabled'));
     } else {
-      setDebugInfo(handsFreeCopy.debug.enabled);
+      setDebugInfo(getChatComposerHandsFreeDebugMessage('enabled'));
     }
   }, [config, handsFreeController, setConfig, stopRecognitionOnly]);
 
@@ -3029,7 +3028,7 @@ export default function ChatScreen({ route, navigation }: any) {
 			if (!listening) {
 				void startRecording();
 			}
-			setDebugInfo(handsFreeCopy.debug.awake);
+			setDebugInfo(getChatComposerHandsFreeDebugMessage('awake'));
 		}, [handsFreeController.wakeByUser, listening, startRecording]);
 
 		const sleepHandsFreeByUser = useCallback(() => {
@@ -3042,14 +3041,14 @@ export default function ChatScreen({ route, navigation }: any) {
 			if (!listening) {
 				void startRecording();
 			}
-			setDebugInfo(handsFreeCopy.debug.resumed);
+			setDebugInfo(getChatComposerHandsFreeDebugMessage('resumed'));
 		}, [handsFreeController.resumeByUser, listening, startRecording]);
 
 		const pauseHandsFreeByUser = useCallback(() => {
 			handsFreeController.pauseByUser();
 			Speech.stop();
 			void stopRecognitionOnly();
-			setDebugInfo(handsFreeCopy.debug.paused);
+			setDebugInfo(getChatComposerHandsFreeDebugMessage('paused'));
 		}, [handsFreeController.pauseByUser, stopRecognitionOnly]);
 
 		const handleHandsFreePrimaryControl = useCallback(() => {
