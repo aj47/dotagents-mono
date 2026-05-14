@@ -35,13 +35,12 @@ import {
   useChatRuntimeHandsFreeToggleActionsState,
   useChatRuntimeTextToSpeechToggleActionsState,
   useChatComposerRuntimeDraftState,
-  useChatComposerRuntimeTextEntrySubmissionState,
   createChatComposerHandsFreeTranscriptAddedDebugState,
   createChatComposerHandsFreePermissionDeniedDebugState,
   createChatComposerHandsFreeRecognizerErrorDebugState,
   createChatComposerRuntimeImagePickerLaunchOptions,
   useChatComposerRuntimeImageAttachmentPickerState,
-  useChatComposerRuntimeSubmissionActionsState,
+  useChatComposerRuntimeSubmissionChromeState,
   useChatComposerRuntimeHandsFreeControlActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
@@ -1473,7 +1472,8 @@ export default function ChatScreen({ route, navigation }: any) {
     composerHasContent,
     sendComposerInput,
     queueComposerInput,
-  } = useChatComposerRuntimeSubmissionActionsState({
+    textEntrySubmissionState: composerTextEntrySubmissionState,
+  } = useChatComposerRuntimeSubmissionChromeState({
     input,
     pendingImages,
     currentConversationId,
@@ -1481,13 +1481,8 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
     clearComposerDraft,
     setDebugInfo,
-  });
-
-  const composerTextEntrySubmissionState = useChatComposerRuntimeTextEntrySubmissionState({
-    hasContent: composerHasContent,
     platform: Platform.OS,
-    onChangeText: setInput,
-    onSubmit: sendComposerInput,
+    onTextEntryChangeText: setInput,
   });
 
   const {

@@ -659,6 +659,19 @@ type ChatComposerRuntimeSubmissionActionsState = {
   queueComposerInput: () => void;
 };
 
+type ChatComposerRuntimeSubmissionChromeStateInput =
+  & ChatComposerRuntimeSubmissionActionsStateInput
+  & {
+    platform: ChatComposerRuntimeTextEntrySubmissionStateInput['platform'];
+    onTextEntryChangeText: ChatComposerRuntimeTextEntrySubmissionStateInput['onChangeText'];
+  };
+
+type ChatComposerRuntimeSubmissionChromeState =
+  & ChatComposerRuntimeSubmissionActionsState
+  & {
+    textEntrySubmissionState: ChatComposerRuntimeTextEntrySubmissionState;
+  };
+
 type ChatComposerRuntimeHandsFreeController = {
   state: {
     phase: HandsFreePhase;
@@ -7792,6 +7805,25 @@ export function useChatComposerRuntimeSubmissionActionsState({
     composerHasContent,
     sendComposerInput,
     queueComposerInput,
+  };
+}
+
+export function useChatComposerRuntimeSubmissionChromeState({
+  platform,
+  onTextEntryChangeText,
+  ...submissionInput
+}: ChatComposerRuntimeSubmissionChromeStateInput): ChatComposerRuntimeSubmissionChromeState {
+  const submissionActions = useChatComposerRuntimeSubmissionActionsState(submissionInput);
+  const textEntrySubmissionState = useChatComposerRuntimeTextEntrySubmissionState({
+    hasContent: submissionActions.composerHasContent,
+    platform,
+    onChangeText: onTextEntryChangeText,
+    onSubmit: submissionActions.sendComposerInput,
+  });
+
+  return {
+    ...submissionActions,
+    textEntrySubmissionState,
   };
 }
 

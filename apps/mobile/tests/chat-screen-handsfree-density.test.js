@@ -53,7 +53,8 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
 });
 
 test('lets handsfree users queue a drafted message without sending immediately', () => {
-  assert.match(screenSource, /useChatComposerRuntimeSubmissionActionsState,/);
+  assert.match(screenSource, /useChatComposerRuntimeSubmissionChromeState,/);
+  assert.doesNotMatch(chatScreenSource, /useChatComposerRuntimeSubmissionActionsState,/);
   assert.doesNotMatch(screenSource, /const queueComposerInput = useCallback\(\(\) => \{/);
   assert.match(chatMessageChromeSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?queue\.enqueue\(currentConversationId, composedMessage, currentConversationId\);[\s\S]*?clearComposerDraft\(\);/);
   assert.doesNotMatch(screenSource, /queueActionShouldRender:/);

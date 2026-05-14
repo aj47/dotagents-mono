@@ -1496,8 +1496,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
-  assert.match(screenSource, /useChatComposerRuntimeSubmissionActionsState,/);
-  assert.match(screenSource, /const \{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+\} = useChatComposerRuntimeSubmissionActionsState\(\{\s+input,\s+pendingImages,\s+currentConversationId,\s+queue: messageQueue,\s+send,\s+clearComposerDraft,\s+setDebugInfo,\s+\}\);/);
+  assert.match(screenSource, /useChatComposerRuntimeSubmissionChromeState,/);
+  assert.match(screenSource, /const \{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+textEntrySubmissionState: composerTextEntrySubmissionState,\s+\} = useChatComposerRuntimeSubmissionChromeState\(\{\s+input,\s+pendingImages,\s+currentConversationId,\s+queue: messageQueue,\s+send,\s+clearComposerDraft,\s+setDebugInfo,\s+platform: Platform\.OS,\s+onTextEntryChangeText: setInput,\s+\}\);/);
+  assert.doesNotMatch(chatScreenSource, /useChatComposerRuntimeSubmissionActionsState,/);
   assert.doesNotMatch(screenSource, /hasChatComposerRuntimeMessageContent,/);
   assert.doesNotMatch(screenSource, /buildChatComposerRuntimeMessageContent,/);
   assert.doesNotMatch(screenSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
@@ -1517,6 +1518,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeFollowUpPresentationState/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionActionsState/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionChromeState/);
+  assert.match(chatMessageChromeSource, /const submissionActions = useChatComposerRuntimeSubmissionActionsState\(submissionInput\);/);
   assert.match(chatMessageChromeSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
   assert.match(chatMessageChromeSource, /const composedMessage = buildChatComposerRuntimeMessageContent\(input, pendingImages\);/);
   assert.match(chatMessageChromeSource, /export function hasChatComposerRuntimeMessageContent/);
@@ -1680,7 +1683,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ busy: listening \}\}/);
   assert.doesNotMatch(screenSource, /WebkitTouchCallout: 'none'/);
   assert.doesNotMatch(screenSource, /touchAction: 'manipulation'/);
-  assert.match(screenSource, /const composerTextEntrySubmissionState = useChatComposerRuntimeTextEntrySubmissionState\(\{\s+hasContent: composerHasContent,\s+platform: Platform\.OS,\s+onChangeText: setInput,\s+onSubmit: sendComposerInput,\s+\}\);/);
+  assert.doesNotMatch(chatScreenSource, /useChatComposerRuntimeTextEntrySubmissionState,/);
+  assert.doesNotMatch(screenSource, /const composerTextEntrySubmissionState = useChatComposerRuntimeTextEntrySubmissionState/);
+  assert.match(chatMessageChromeSource, /const textEntrySubmissionState = useChatComposerRuntimeTextEntrySubmissionState\(\{\s+hasContent: submissionActions\.composerHasContent,\s+platform,\s+onChangeText: onTextEntryChangeText,\s+onSubmit: submissionActions\.sendComposerInput,\s+\}\);/);
   assert.match(screenSource, /textEntryInputRef: inputRef,\s+textEntryValue: input,\s+onTextEntryChangeText: composerTextEntrySubmissionState\.onChangeText,\s+onTextEntryKeyPress: composerTextEntrySubmissionState\.onKeyPress,\s+textEntryHandsFree: handsFree,\s+textEntryListening: listening,\s+textEntryWillCancel: willCancel,\s+textEntryLiveTranscript: liveTranscript,\s+textEntryWakePhrase: handsFreeWakePhrase,\s+onQueueActionPress: queueComposerInput,/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeTextEntrySubmissionState/);
   assert.match(chatMessageChromeSource, /const modifierKeysRef = useRef<ChatComposerTextEntryModifierKeys>/);
@@ -3370,7 +3375,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatComposerTextEntry/);
   assert.match(chatMessageChromeSource, /export type ChatComposerTextEntryRef = TextInput;/);
   assert.match(chatMessageChromeSource, /export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>\['onKeyPress'\]>>\[0\];/);
-  assert.match(screenSource, /useChatComposerRuntimeTextEntrySubmissionState,/);
+  assert.match(screenSource, /useChatComposerRuntimeSubmissionChromeState,/);
+  assert.doesNotMatch(screenSource, /useChatComposerRuntimeTextEntrySubmissionState,/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeTextEntrySubmissionState/);
   assert.doesNotMatch(screenSource, /ChatMessageScrollEvent,/);
   assert.doesNotMatch(screenSource, /ChatMessageScrollViewportRef,/);
