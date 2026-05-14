@@ -4118,6 +4118,14 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
     (screenSource.match(/setMessages\(pendingTurnState\.updateMessages\)/g) || []).length,
     2,
   );
+  assert.match(screenSource, /applyChatMessageRuntimePendingTurnStatusState,/);
+  assert.equal(
+    (screenSource.match(/applyChatMessageRuntimePendingTurnStatusState\(pendingTurnState, \{\s+setLatestStepSummary,\s+setResponding,\s+setConversationState,\s+\}\);/g) || []).length,
+    2,
+  );
+  assert.doesNotMatch(screenSource, /setLatestStepSummary\(pendingTurnState\.latestStepSummary\)/);
+  assert.doesNotMatch(screenSource, /setResponding\(pendingTurnState\.responding\)/);
+  assert.doesNotMatch(screenSource, /setConversationState\(pendingTurnState\.conversationState\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState\(\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedConversationState,/);
@@ -4140,6 +4148,10 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /responding: pendingTurnStatusState\.responding/);
   assert.match(chatMessageChromeSource, /conversationState: pendingTurnStatusState\.conversationState/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimePendingTurnStatusState/);
+  assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimePendingTurnStatusState/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setLatestStepSummary\(pendingTurnState\.latestStepSummary\)/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setResponding\(pendingTurnState\.responding\)/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setConversationState\(pendingTurnState\.conversationState\)/);
   assert.match(chatMessageChromeSource, /conversationState: 'running' as AgentConversationState/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedConversationState/);
   assert.match(chatMessageChromeSource, /return conversationState === 'running' \? 'complete' : conversationState/);
