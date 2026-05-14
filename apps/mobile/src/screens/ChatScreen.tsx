@@ -73,6 +73,7 @@ import {
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeRemoteSpeechSettingsState,
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
+  useChatMessageRuntimeRemoteSpeechSettingsState,
   useChatMessageRuntimeThreadExpansionState,
   createChatMessageRuntimeChromeProps,
   getChatConversationHomeQuickStartPressIntent,
@@ -202,11 +203,13 @@ export default function ChatScreen({ route, navigation }: any) {
     beginPromptTaskRun,
     clearPromptTaskRun,
   } = useChatConversationHomePromptTaskRunState();
-  const [remoteTtsProvider, setRemoteTtsProvider] =
-    useState<ChatMessageRuntimeRemoteSpeechProvider>(DEFAULT_REMOTE_SPEECH_SETTINGS.provider);
-  const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.voice);
-  const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.model);
-  const [remoteTtsRate, setRemoteTtsRate] = useState(DEFAULT_REMOTE_SPEECH_SETTINGS.rate);
+  const {
+    remoteTtsProvider,
+    remoteTtsVoice,
+    remoteTtsModel,
+    remoteTtsRate,
+    applyRemoteSpeechSettings,
+  } = useChatMessageRuntimeRemoteSpeechSettingsState(DEFAULT_REMOTE_SPEECH_SETTINGS);
   const {
     pendingToolApprovalResponseId,
     beginToolApprovalResponse,
@@ -1135,10 +1138,7 @@ export default function ChatScreen({ route, navigation }: any) {
           const nextPrompts = sortChatConversationHomePromptsByUpdatedAt(settings.predefinedPrompts || []);
           const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
           setPredefinedPrompts(nextPrompts);
-          setRemoteTtsProvider(remoteSpeechSettings.provider);
-          setRemoteTtsVoice(remoteSpeechSettings.voice);
-          setRemoteTtsModel(remoteSpeechSettings.model);
-          setRemoteTtsRate(remoteSpeechSettings.rate);
+          applyRemoteSpeechSettings(remoteSpeechSettings);
         } else {
           setPredefinedPrompts([]);
         }
@@ -1154,7 +1154,14 @@ export default function ChatScreen({ route, navigation }: any) {
     return () => {
       cancelled = true;
     };
-  }, [beginQuickStartCatalogLoad, clearQuickStartCatalog, finishQuickStartCatalogLoad, isFocused, settingsClient]);
+  }, [
+    applyRemoteSpeechSettings,
+    beginQuickStartCatalogLoad,
+    clearQuickStartCatalog,
+    finishQuickStartCatalogLoad,
+    isFocused,
+    settingsClient,
+  ]);
 
   const handleSavePrompt = async () => {
     const draft = { name: newPromptName, content: newPromptContent };

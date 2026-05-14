@@ -375,6 +375,18 @@ export interface ChatMessageRuntimeRemoteSpeechSettingsState {
   rate: number;
 }
 
+type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
+  remoteTtsProvider: ChatMessageRuntimeRemoteSpeechProvider;
+  setRemoteTtsProvider: Dispatch<SetStateAction<ChatMessageRuntimeRemoteSpeechProvider>>;
+  remoteTtsVoice: string | undefined;
+  setRemoteTtsVoice: Dispatch<SetStateAction<string | undefined>>;
+  remoteTtsModel: string | undefined;
+  setRemoteTtsModel: Dispatch<SetStateAction<string | undefined>>;
+  remoteTtsRate: number;
+  setRemoteTtsRate: Dispatch<SetStateAction<number>>;
+  applyRemoteSpeechSettings: (settings: ChatMessageRuntimeRemoteSpeechSettingsState) => void;
+};
+
 export interface ChatRuntimeMobileConfigState {
   handsFreeMessageDebounceMs: number;
   handsFreeWakePhrase: string;
@@ -4282,6 +4294,35 @@ export function createChatMessageRuntimeRemoteSpeechSettingsState(
     voice: ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue),
     model: getTextToSpeechModelValue(settings),
     rate: getTextToSpeechPlaybackRate(settings),
+  };
+}
+
+export function useChatMessageRuntimeRemoteSpeechSettingsState(
+  initialSettings: ChatMessageRuntimeRemoteSpeechSettingsState = getChatMessageRuntimeDefaultRemoteSpeechSettingsState(),
+): ChatMessageRuntimeRemoteSpeechSettingsHookState {
+  const [remoteTtsProvider, setRemoteTtsProvider] =
+    useState<ChatMessageRuntimeRemoteSpeechProvider>(initialSettings.provider);
+  const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(initialSettings.voice);
+  const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>(initialSettings.model);
+  const [remoteTtsRate, setRemoteTtsRate] = useState(initialSettings.rate);
+
+  const applyRemoteSpeechSettings = useCallback((settings: ChatMessageRuntimeRemoteSpeechSettingsState) => {
+    setRemoteTtsProvider(settings.provider);
+    setRemoteTtsVoice(settings.voice);
+    setRemoteTtsModel(settings.model);
+    setRemoteTtsRate(settings.rate);
+  }, []);
+
+  return {
+    remoteTtsProvider,
+    setRemoteTtsProvider,
+    remoteTtsVoice,
+    setRemoteTtsVoice,
+    remoteTtsModel,
+    setRemoteTtsModel,
+    remoteTtsRate,
+    setRemoteTtsRate,
+    applyRemoteSpeechSettings,
   };
 }
 
