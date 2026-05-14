@@ -1164,7 +1164,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /quickStartItems: promptQuickStarts,[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
   assert.match(screenSource, /viewport: \{[\s\S]*?messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement,\s+latestStepSummary,\s+colors: theme\.colors,\s+onLoadEarlierMessages: handleLoadEarlierMessages,/);
   assert.match(chatMessageChromeSource, /visibleMessageCount: conversationThreadListState\.visibleMessageCount,\s+totalMessageCount: conversationThreadListState\.totalMessageCount,\s+hiddenMessageCount: conversationThreadListState\.hiddenMessageCount,/);
-  assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
+  assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeViewportChromeProps/);
   assert.match(chatMessageChromeSource, /const affordanceRenderState = createChatMessageConversationViewportAffordanceRenderState\(\{\s+visibleMessageCount,\s+totalMessageCount,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement,\s+latestStepSummary,\s+colors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /loadingState: \{\s+renderState: contentRenderState\.loading,\s+spinnerSource: loadingSpinnerSource,\s+\}/);
@@ -3719,9 +3719,12 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: '' \}/);
   assert.doesNotMatch(screenSource, /role: 'assistant' as const/);
   assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: formatChatMessageRuntimeDebugError\(queuedErrorMessage\) \}/);
-  assert.match(screenSource, /const mobileRuntimeDebugPanelsRenderState = useMemo\(\s+\(\) => createChatMessageRuntimeDebugPanelsRenderState\(\{\s+requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
+  assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeDebugPanelsRenderState,/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeDebugPanelsRenderState = useMemo/);
+  assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
+  assert.match(chatMessageChromeSource, /const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState\(\{\s+requestDebugText,\s+voiceDebugEnabled,\s+voiceEvents,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState\(\{[\s\S]*?return getChatRuntimeDebugPanelsMobileRenderState\(\{[\s\S]*?voiceEntryCount: resolvedVoiceEvents\.length,[\s\S]*?voiceRows: \[/);
-  assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
+  assert.doesNotMatch(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
   assert.doesNotMatch(screenSource, /requestShouldRender: Boolean\(debugInfo\)/);
   assert.doesNotMatch(screenSource, /voiceShouldRender: handsFreeDebugEnabled && voiceEvents\.length > 0/);
   assert.doesNotMatch(screenSource, /\{ key: 'voice-debug-title', text: handsFreeCopy\.debug\.voiceDebugTitle \}/);

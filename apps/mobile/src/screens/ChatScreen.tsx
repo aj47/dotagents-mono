@@ -75,7 +75,6 @@ import {
   toggleChatMessageRuntimeToolCallExpansionState,
   toggleChatMessageRuntimeToolApprovalExpansionState,
   toggleChatMessageRuntimeToolActivityGroupExpansionState,
-  createChatMessageRuntimeDebugPanelsRenderState,
   createChatMessageRuntimeChromeProps,
   getChatConversationHomeQuickStartPressIntent,
   getChatMessageRuntimeBranchCreatedAlertState,
@@ -1567,15 +1566,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const queuedMessages = messageQueue.getQueue(currentConversationId);
   const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
   const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
-  const mobileRuntimeDebugPanelsRenderState = useMemo(
-    () => createChatMessageRuntimeDebugPanelsRenderState({
-      requestDebugText: debugInfo,
-      voiceDebugEnabled: handsFreeDebugEnabled,
-      voiceEvents,
-    }),
-    [debugInfo, handsFreeDebugEnabled, voiceEvents],
-  );
-
   const handlePickImages = useCallback(async () => {
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
       showImageAttachmentAlert({
@@ -2748,7 +2738,9 @@ export default function ChatScreen({ route, navigation }: any) {
       latestStepSummary,
       colors: theme.colors,
       onLoadEarlierMessages: handleLoadEarlierMessages,
-      debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,
+      requestDebugText: debugInfo,
+      voiceDebugEnabled: handsFreeDebugEnabled,
+      voiceEvents,
     },
     surface: {
       platform: Platform.OS,

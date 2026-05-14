@@ -1901,7 +1901,9 @@ type ChatMessageRuntimeViewportChromePropsInput<
       & Parameters<typeof getPromptLibraryMobileShortcutRenderState>[0]
       & Parameters<typeof getChatRuntimeViewportMobileRenderState>[0]['colors'];
     onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
-    debugPanelsRenderState: ChatRuntimeDebugPanelsMobileRenderState;
+    requestDebugText?: ChatMessageRuntimeDebugPanelsRenderStateInput['requestDebugText'];
+    voiceDebugEnabled?: ChatMessageRuntimeDebugPanelsRenderStateInput['voiceDebugEnabled'];
+    voiceEvents?: ChatMessageRuntimeDebugPanelsRenderStateInput['voiceEvents'];
   };
 
 type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel>;
@@ -4432,7 +4434,9 @@ export function createChatMessageRuntimeViewportChromeProps<
   latestStepSummary,
   colors,
   onLoadEarlierMessages,
-  debugPanelsRenderState,
+  requestDebugText,
+  voiceDebugEnabled,
+  voiceEvents,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
   const contentRenderState = createChatMessageRuntimeViewportContentRenderState({
@@ -4449,6 +4453,11 @@ export function createChatMessageRuntimeViewportChromeProps<
   });
   const shortcutRenderState = getPromptLibraryMobileShortcutRenderState(colors);
   const viewportRenderState = getChatRuntimeViewportMobileRenderState({ colors });
+  const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState({
+    requestDebugText,
+    voiceDebugEnabled,
+    voiceEvents,
+  });
 
   return {
     ...scrollViewportProps,
