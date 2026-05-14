@@ -3810,7 +3810,6 @@ export default function ChatScreen({ route, navigation }: any) {
               isLiveStreaming: isLiveStreamingAssistantMessage,
               colors: theme.colors,
             });
-            const messageContentRenderState = messageRenderState.content;
             const messageInlineActivityProps = createChatMessageInlineActivityProps({
               message: m,
               isResponding: responding,
@@ -3872,7 +3871,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   },
                   inlineActivity: messageInlineActivityProps,
                   conversation: {
-                    contentState: messageContentRenderState,
+                    messageRenderState,
                     actionSet: {
                       turnDuration: {
                         role: m.role,
@@ -3885,7 +3884,6 @@ export default function ChatScreen({ route, navigation }: any) {
                         role: m.role,
                         content: visibleMessageContent,
                         ttsEnabled,
-                        isVisible: messageContentRenderState.speech.isVisible,
                         isSpeaking: speakingMessageIndex === i,
                         colors: theme.colors,
                         onPress: () => speakMessage(i, visibleMessageContent),
@@ -3911,7 +3909,6 @@ export default function ChatScreen({ route, navigation }: any) {
                         ...messageActionStyles.copy,
                       },
                       expansion: {
-                        renderState: messageRenderState.expansion,
                         onPress: () => toggleMessageExpansion(i),
                         ...messageActionStyles.expansion,
                       },
@@ -3925,8 +3922,6 @@ export default function ChatScreen({ route, navigation }: any) {
                       spinnerSource: isDark ? darkSpinner : lightSpinner,
                     },
                     collapsed: {
-                      renderState: messageRenderState.collapsedPreview,
-                      actionState: messageRenderState.collapsedPreviewAction,
                       onToggle: () => toggleMessageExpansion(i),
                     },
                     toolExecutionStack: {

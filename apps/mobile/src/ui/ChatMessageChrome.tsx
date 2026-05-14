@@ -202,7 +202,7 @@ type ChatMessageBranchActionSpecInput =
 
 type ChatMessageSpeechActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
-  & Parameters<typeof getChatMessageSpeechMobileRenderState>[0];
+  & Omit<Parameters<typeof getChatMessageSpeechMobileRenderState>[0], 'isVisible'>;
 
 type ChatMessageCopyActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
@@ -211,6 +211,8 @@ type ChatMessageCopyActionSpecInput =
 type ChatMessageExpansionActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
   renderState: ChatMessageExpansionMobileRenderState;
 };
+
+type ChatMessageExpansionActionSpecInput = Omit<ChatMessageExpansionActionSpec, 'renderState'>;
 
 type ChatMessageTurnDurationActionSpec = ChatMessageTurnDurationBadgeProps;
 
@@ -229,14 +231,17 @@ type ChatMessageActionComponentsInput = {
 
 type ChatMessageActionSetInput = Omit<
   ChatMessageActionComponentsInput,
-  'availability' | 'turnDuration' | 'speech' | 'branch' | 'copy'
+  'availability' | 'turnDuration' | 'speech' | 'branch' | 'copy' | 'expansion'
 > & {
-  contentRenderState: ChatMessageActionLayoutStateInput['renderState'];
+  messageRenderState: ChatMessageMobileRenderState;
   turnDuration: ChatMessageTurnDurationActionSpecInput;
   speech: ChatMessageSpeechActionSpecInput;
   branch: ChatMessageBranchActionSpecInput;
   copy: ChatMessageCopyActionSpecInput;
+  expansion: ChatMessageExpansionActionSpecInput;
 };
+
+type ChatMessageMobileRenderState = ReturnType<typeof getChatMessageMobileRenderState>;
 
 type ChatMessageRenderStateInput =
   Omit<Parameters<typeof getChatMessageMobileRenderState>[0], 'hasErrors'>
@@ -1778,10 +1783,10 @@ type ChatMessageThreadBodyProps = {
 export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
 export type ChatMessageConversationBodyPropsInput = {
-  contentState: ChatMessageContentRenderState;
-  actionSet: Omit<ChatMessageActionSetInput, 'contentRenderState'>;
+  messageRenderState: ChatMessageMobileRenderState;
+  actionSet: Omit<ChatMessageActionSetInput, 'messageRenderState'>;
   expanded: ChatMessageExpandedContentPropsInput;
-  collapsed: ChatMessageCollapsedPreviewPropsInput;
+  collapsed: Pick<ChatMessageCollapsedPreviewPropsInput, 'onToggle'>;
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
 };
 
@@ -1927,13 +1932,15 @@ export function createChatMessageActionComponents({
 }
 
 export function createChatMessageActionSet({
-  contentRenderState,
+  messageRenderState,
   turnDuration,
   speech,
   branch,
   copy,
+  expansion,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
+  const contentRenderState = messageRenderState.content;
   const turnDurationAction: ChatMessageTurnDurationActionSpec = {
     ...turnDuration,
     renderState: getChatRuntimeTurnDurationMessageMobileRenderState({
@@ -1949,7 +1956,7 @@ export function createChatMessageActionSet({
       role: speech.role,
       content: speech.content,
       ttsEnabled: speech.ttsEnabled,
-      isVisible: speech.isVisible,
+      isVisible: contentRenderState.speech.isVisible,
       isSpeaking: speech.isSpeaking,
       colors: speech.colors,
     }),
@@ -1999,6 +2006,10 @@ export function createChatMessageActionSet({
     speech: speechAction,
     branch: branchAction,
     copy: copyAction,
+    expansion: {
+      ...expansion,
+      renderState: messageRenderState.expansion,
+    },
   };
   const availability = getChatMessageActionAvailabilityRenderState({
     turnDuration: actionInput.turnDuration.renderState.shouldRender,
@@ -2024,14 +2035,15 @@ export function createChatMessageActionSet({
 }
 
 export function createChatMessageConversationBodyProps({
-  contentState,
+  messageRenderState,
   actionSet: actionSetInput,
   expanded,
   collapsed,
   toolExecutionStack,
 }: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
+  const contentState = messageRenderState.content;
   const actionSet = createChatMessageActionSet({
-    contentRenderState: contentState,
+    messageRenderState,
     ...actionSetInput,
   });
 
@@ -2041,7 +2053,11 @@ export function createChatMessageConversationBodyProps({
       slots: actionSet.visibleSlots,
       components: actionSet.components,
       expanded: createChatMessageExpandedContentProps(expanded),
-      collapsed: createChatMessageCollapsedPreviewProps(collapsed),
+      collapsed: createChatMessageCollapsedPreviewProps({
+        renderState: messageRenderState.collapsedPreview,
+        actionState: messageRenderState.collapsedPreviewAction,
+        ...collapsed,
+      }),
     },
     toolExecutionStack: createChatMessageToolExecutionStackProps(toolExecutionStack),
     standaloneActions: {
