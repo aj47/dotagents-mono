@@ -3373,6 +3373,15 @@ export function updateLastChatMessageRuntimeConversationContent<
   return copy;
 }
 
+export function replaceChatMessageRuntimeTurnMessages<TMessage>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  turnMessages: readonly TMessage[],
+): TMessage[] {
+  const beforePlaceholder = messages.slice(0, messageCountBeforeTurn + 1);
+  return [...beforePlaceholder, ...turnMessages];
+}
+
 export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
   id?: string;
   role: 'user' | 'assistant' | 'tool';

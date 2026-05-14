@@ -96,6 +96,7 @@ import {
   hasChatMessageRuntimeAssistantContentAfter,
   hasChatMessageRuntimeMessagesAfter,
   isLastChatMessageRuntimeConversationContent,
+  replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -2102,11 +2103,11 @@ export default function ChatScreen({ route, navigation }: any) {
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
           progressMessagesRef.current = progressMessages;
-          setMessages((m) => {
-            const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-            const newMessages = [...beforePlaceholder, ...progressMessages];
-            return newMessages;
-          });
+          setMessages((m) => replaceChatMessageRuntimeTurnMessages(
+            m,
+            messageCountBeforeTurn,
+            progressMessages,
+          ));
         }
       };
 
@@ -2221,8 +2222,6 @@ export default function ChatScreen({ route, navigation }: any) {
           const progressMsgs = progressMessagesRef.current;
           setMessages((m) => {
             console.log('[ChatScreen] Current messages before update:', m.length);
-            const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-            console.log('[ChatScreen] beforePlaceholder count:', beforePlaceholder.length);
             // If progress had more messages than conversationHistory, keep progress messages
             // and only update/append the final message from history
             let mergedMessages: ChatMessage[];
@@ -2243,7 +2242,11 @@ export default function ChatScreen({ route, navigation }: any) {
               // History is authoritative when it has >= messages
               mergedMessages = preserveChatMessageDisplayContentFromProgress(finalTurnMessages, progressMsgs);
             }
-            const result = [...beforePlaceholder, ...mergedMessages];
+            const result = replaceChatMessageRuntimeTurnMessages(
+              m,
+              messageCountBeforeTurn,
+              mergedMessages,
+            );
             console.log('[ChatScreen] Final messages count:', result.length);
             return result;
           });
@@ -2504,10 +2507,11 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
-          setMessages((m) => {
-            const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-            return [...beforePlaceholder, ...progressMessages];
-          });
+          setMessages((m) => replaceChatMessageRuntimeTurnMessages(
+            m,
+            messageCountBeforeTurn,
+            progressMessages,
+          ));
         }
       };
 
@@ -2571,10 +2575,11 @@ export default function ChatScreen({ route, navigation }: any) {
         );
 	        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
-        setMessages((m) => {
-          const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-          return [...beforePlaceholder, ...finalTurnMessages];
-        });
+        setMessages((m) => replaceChatMessageRuntimeTurnMessages(
+          m,
+          messageCountBeforeTurn,
+          finalTurnMessages,
+        ));
       } else if (finalDisplayText) {
         setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalDisplayText));
       }
