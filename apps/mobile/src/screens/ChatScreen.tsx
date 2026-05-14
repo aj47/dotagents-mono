@@ -37,6 +37,7 @@ import {
   createChatMessageActionSet,
   createChatMessageActionStyleSlots,
   createChatMessageCollapsedPreviewProps,
+  createChatMessageDelegationCardProps,
   createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
   createChatMessageExpandedContentProps,
@@ -4109,6 +4110,16 @@ export default function ChatScreen({ route, navigation }: any) {
             const delegationMessageCountLabel = delegationMessageCount > 0
               ? formatChatRuntimeDelegationMessageCount(delegationMessageCount)
               : null;
+            const delegationAccessibilityLabel = m.delegation && delegationPresentation
+              ? formatChatRuntimeDelegationAccessibilityLabel({
+                  agentName: m.delegation.agentName,
+                  statusLabel: delegationPresentation.statusLabel,
+                  subtitle: delegationPresentation.subtitle,
+                  sourceLabel: delegationPresentation.sourceLabel,
+                  trackingLabel: delegationPresentation.trackingLabel,
+                  messageCount: delegationMessageCount,
+                })
+              : null;
             const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount);
             const delegationToolPreviewRows = delegationVisibleToolRows.map(({ toolCall, label, result }, toolIndex) => {
               const toolState = getToolExecutionCallDisplayState(result);
@@ -4142,18 +4153,12 @@ export default function ChatScreen({ route, navigation }: any) {
                     isRetry: m.variant === 'retry',
                     renderState: retryStatusRenderState,
                   }),
-                  delegationCard: m.variant === 'delegation' && m.delegation && delegationPresentation ? {
+                  delegationCard: createChatMessageDelegationCardProps({
+                    isDelegation: m.variant === 'delegation',
                     surface: mobileRuntimeDelegationCard,
-                    agentName: m.delegation.agentName,
+                    agentName: m.delegation?.agentName,
                     presentation: delegationPresentation,
-                    accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel({
-                      agentName: m.delegation.agentName,
-                      statusLabel: delegationPresentation.statusLabel,
-                      subtitle: delegationPresentation.subtitle,
-                      sourceLabel: delegationPresentation.sourceLabel,
-                      trackingLabel: delegationPresentation.trackingLabel,
-                      messageCount: delegationMessageCount,
-                    }),
+                    accessibilityLabel: delegationAccessibilityLabel,
                     messageCountLabel: delegationMessageCountLabel,
                     statusStyles: delegationStatusRenderState?.styles ?? null,
                     conversationPreview: {
@@ -4179,7 +4184,7 @@ export default function ChatScreen({ route, navigation }: any) {
                         );
                       },
                     },
-                  } : null,
+                  }),
                   toolApproval: createChatMessageToolApprovalProps({
                     isApproval: m.variant === 'approval',
                     renderState: toolApprovalRenderState,

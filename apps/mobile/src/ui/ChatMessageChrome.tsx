@@ -527,6 +527,16 @@ type ChatMessageDelegationCardProps = {
   styles: ChatMessageDelegationCardStyles;
 };
 
+type ChatMessageDelegationCardPropsInput = Omit<
+  ChatMessageDelegationCardProps,
+  'agentName' | 'presentation' | 'accessibilityLabel' | 'styles'
+> & {
+  isDelegation: boolean;
+  agentName?: string | null;
+  presentation?: AgentDelegationPresentation | null;
+  accessibilityLabel?: string | null;
+};
+
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
 
 type ChatMessageToolActivityGroupToggleStyles = {
@@ -1781,6 +1791,31 @@ export function createChatMessageRetryStatusProps({
   return isRetry && renderState.shouldRender
     ? {
         renderState,
+      }
+    : null;
+}
+
+export function createChatMessageDelegationCardProps({
+  isDelegation,
+  surface,
+  agentName,
+  presentation,
+  accessibilityLabel,
+  messageCountLabel,
+  statusStyles,
+  conversationPreview,
+  toolPreview,
+}: ChatMessageDelegationCardPropsInput): ChatMessageThreadBodyProps['delegationCard'] {
+  return isDelegation && presentation
+    ? {
+        surface,
+        agentName: agentName ?? '',
+        presentation,
+        accessibilityLabel: accessibilityLabel ?? '',
+        messageCountLabel,
+        statusStyles,
+        conversationPreview,
+        toolPreview,
       }
     : null;
 }
