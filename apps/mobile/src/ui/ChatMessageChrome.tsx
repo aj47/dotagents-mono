@@ -2059,8 +2059,17 @@ type ChatMessageRuntimeChromePropsInput<
   composerChrome: ChatComposerRuntimeDockChromeInput;
   composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome'>;
   dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer'>;
-  viewport: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>;
-  surface: Omit<ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>, 'dock' | 'viewport'>;
+  threadList: ChatMessageConversationRuntimeThreadListRenderStateInput & {
+    threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
+  };
+  viewport: Omit<
+    ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>,
+    'visibleMessageCount' | 'totalMessageCount' | 'hiddenMessageCount'
+  >;
+  surface: Omit<
+    ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>,
+    'dock' | 'viewport' | 'threadStates' | 'threadStyles'
+  >;
 };
 
 type ChatRuntimeMobileSafeAreaLayout = ReturnType<typeof getChatRuntimeMobileSafeAreaLayoutState>;
@@ -4638,15 +4647,26 @@ export function createChatMessageRuntimeChromeProps<
   composerChrome,
   composer,
   dock,
+  threadList,
   viewport,
   surface,
 }: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
+  const {
+    threadStyles,
+    ...threadListInput
+  } = threadList;
+  const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState(threadListInput);
   const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps(composerChrome);
   const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
     chrome: chatComposerRuntimeDockChrome,
     ...composer,
   });
-  const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps(viewport);
+  const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps({
+    ...viewport,
+    visibleMessageCount: conversationThreadListState.visibleMessageCount,
+    totalMessageCount: conversationThreadListState.totalMessageCount,
+    hiddenMessageCount: conversationThreadListState.hiddenMessageCount,
+  });
   const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps({
     ...dock,
     composer: chatComposerRuntimeDock,
@@ -4656,6 +4676,8 @@ export function createChatMessageRuntimeChromeProps<
     ...surface,
     dock: chatMessageRuntimeDock,
     viewport: chatMessageRuntimeViewport,
+    threadStates: conversationThreadListState.threadStates,
+    threadStyles,
   });
 }
 
