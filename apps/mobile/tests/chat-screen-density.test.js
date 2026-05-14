@@ -485,7 +485,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatRuntimeDelegationConversationPreviewRoleStyleSlots,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
-  assert.match(screenSource, /const chatMessageConversationThreadPresentation = useMemo\(\s+\(\) => createChatMessageConversationThreadPresentationState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.doesNotMatch(screenSource, /createChatMessageConversationThreadPresentationState/);
+  assert.match(screenSource, /presentationColors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /const presentation = createChatMessageConversationThreadPresentationState\(\{\s+colors: presentationColors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const delegationCardRenderState = getChatRuntimeDelegationCardMobileRenderState\(\{\s+colors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /delegationSurface: delegationCardRenderState\.surface,/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeDelegationCardRenderState = useMemo/);
@@ -517,7 +519,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /const delegationAccessibilityLabel = m\.delegation && delegationPresentation\s+\? formatChatRuntimeDelegationAccessibilityLabel\(/);
   assert.match(chatMessageChromeSource, /accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel\(\{/);
   assert.doesNotMatch(screenSource, /delegationCard: createChatMessageDelegationCardProps/);
-  assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,[\s\S]*?presentation: chatMessageConversationThreadPresentation,/);
+  assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,[\s\S]*?presentationColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /delegationCard: createChatMessageConversationDelegationCardInput\(\{\s+message,\s+surface: presentation\.delegationSurface,\s+toolEntries: renderedToolEntries,/);
   assert.match(chatMessageChromeSource, /delegationCard: createChatMessageDelegationCardProps\(delegationCard\),/);
   assert.doesNotMatch(screenSource, /displayToolCallCount,/);
@@ -560,7 +562,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /const isDelegationConversationPreviewExpanded = m\.delegation/);
   assert.doesNotMatch(screenSource, /getChatDisplayExpansionState\(expandedDelegationConversationPreviews, m\.delegation\.runId\)/);
   assert.doesNotMatch(screenSource, /setChatDisplayExpansionState,/);
-  assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,[\s\S]*?presentation: chatMessageConversationThreadPresentation,/);
+  assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,[\s\S]*?presentationColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationDelegationCardInput/);
   assert.match(chatMessageChromeSource, /isDelegation: message\.variant === 'delegation',\s+surface,\s+delegation: message\.delegation,/);
   assert.match(screenSource, /expandedDelegationConversationPreviews,/);
@@ -2701,7 +2703,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
-  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeSurface,[\s\S]*?createChatMessageConversationRuntimeThreadListRenderState,[\s\S]*?createChatMessageConversationThreadPresentationState,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeSurface,[\s\S]*?createChatMessageConversationRuntimeThreadListRenderState,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.doesNotMatch(screenSource, /createChatMessageConversationThreadPresentationState,/);
   assert.doesNotMatch(screenSource, /ChatMessageConversationRuntimeThreadList,/);
   assert.doesNotMatch(screenSource, /ChatMessageConversationRuntimeThread,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationMessageThreadRenderState,/);
@@ -2859,12 +2862,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationRenderContext,/);
   assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState,/);
-  assert.match(screenSource, /createChatMessageConversationThreadPresentationState,/);
+  assert.doesNotMatch(screenSource, /createChatMessageConversationThreadPresentationState,/);
   assert.match(screenSource, /createChatMessageConversationThreadStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageActionStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageThreadBodyProps,/);
   assert.match(screenSource, /const chatMessageConversationThreadStyles = useMemo\(\s+\(\) => createChatMessageConversationThreadStyleSlots\(styles\),\s+\[styles\],\s+\);/);
-  assert.match(screenSource, /const chatMessageConversationThreadPresentation = useMemo\(\s+\(\) => createChatMessageConversationThreadPresentationState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.match(screenSource, /presentationColors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /presentation: ChatMessageConversationThreadPresentationState;/);
   assert.match(screenSource, /const mobileMessageActionCopy = getChatMessageActionCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
   assert.doesNotMatch(screenSource, /const messageSpeechRenderState = getChatMessageSpeechMobileRenderState\(\{/);

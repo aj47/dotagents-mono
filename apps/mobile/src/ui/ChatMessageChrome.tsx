@@ -2425,11 +2425,14 @@ type ChatMessageConversationHistoryWindowState<TMessage> = {
 type ChatMessageConversationRuntimeThreadListRenderStateInput =
   Omit<
     ChatMessageConversationThreadListRenderStateInput,
-    'allMessages' | 'messages' | 'firstMessageIndex'
+    'allMessages' | 'messages' | 'firstMessageIndex' | 'presentation'
   >
   & ChatMessageConversationHistoryWindowStateInput<
     ChatMessageConversationThreadListRenderStateInput['messages'][number]
-  >;
+  >
+  & {
+    presentationColors: ChatMessageConversationThreadPresentationStateInput['colors'];
+  };
 
 type ChatMessageConversationRuntimeThreadListRenderState = {
   threadStates: ChatMessageConversationRenderableRuntimeThreadState[];
@@ -3094,6 +3097,7 @@ export function createChatMessageConversationThreadListRenderState({
 export function createChatMessageConversationRuntimeThreadListRenderState({
   messages,
   visibleMessageCount,
+  presentationColors,
   ...threadListInput
 }: ChatMessageConversationRuntimeThreadListRenderStateInput): ChatMessageConversationRuntimeThreadListRenderState {
   const {
@@ -3104,6 +3108,9 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
     messages,
     visibleMessageCount,
   });
+  const presentation = createChatMessageConversationThreadPresentationState({
+    colors: presentationColors,
+  });
 
   return {
     threadStates: createChatMessageConversationThreadListRenderState({
@@ -3111,6 +3118,7 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
       allMessages: messages,
       messages: visibleMessages,
       firstMessageIndex: firstVisibleMessageIndex,
+      presentation,
     }),
     visibleMessageCount: visibleMessages.length,
     totalMessageCount: messages.length,

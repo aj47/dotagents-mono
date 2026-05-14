@@ -37,7 +37,6 @@ import {
   createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationRuntimeThreadListRenderState,
-  createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -279,12 +278,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const chatMessageConversationThreadStyles = useMemo(
     () => createChatMessageConversationThreadStyleSlots(styles),
     [styles],
-  );
-  const chatMessageConversationThreadPresentation = useMemo(
-    () => createChatMessageConversationThreadPresentationState({
-      colors: theme.colors,
-    }),
-    [theme.colors],
   );
   const chatRuntimeHeaderStyles = useMemo(
     () => createChatRuntimeHeaderStyleSlots(styles),
@@ -3172,10 +3165,10 @@ export default function ChatScreen({ route, navigation }: any) {
     ttsEnabled,
     colors: theme.colors,
     actionStyles: chatMessageConversationThreadStyles.actionSet,
+    presentationColors: theme.colors,
     assetBaseUrl: config.baseUrl,
     assetAuthToken: config.apiKey,
     spinnerSource: isDark ? darkSpinner : lightSpinner,
-    presentation: chatMessageConversationThreadPresentation,
     expandedDelegationConversationPreviews,
     expandedDelegationToolPreviews,
     setExpandedDelegationConversationPreviews,
