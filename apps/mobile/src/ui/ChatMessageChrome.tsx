@@ -1948,16 +1948,26 @@ type ChatMessageConversationThreadPresentationState = {
   toolExecutionEmptyStateRenderState: ChatMessageConversationToolExecutionStackInput['emptyStateRenderState'];
 };
 
+type ChatMessageConversationTurnDurationInput = {
+  message: {
+    timestamp?: number;
+  };
+  byUserTimestamp: {
+    get(timestamp: number): ChatMessageConversationActionSetInput['turnDuration'];
+  };
+};
+
 type ChatMessageConversationThreadBodyInput = {
   message: ChatMessageConversationActionSetInput['message']
     & ChatMessageConversationRetryStatusInput['message']
     & ChatMessageConversationDelegationCardInput['message']
     & ChatMessageConversationToolApprovalInput['message']
     & ChatMessageConversationToolExecutionStackInput['message']
-    & ChatMessageInlineActivityPropsInput['message'];
+    & ChatMessageInlineActivityPropsInput['message']
+    & ChatMessageConversationTurnDurationInput['message'];
   messageIndex: number;
   renderContext: ChatMessageConversationRenderContext;
-  turnDuration?: ChatMessageConversationActionSetInput['turnDuration'];
+  turnDurationsByUserTimestamp: ChatMessageConversationTurnDurationInput['byUserTimestamp'];
   conversationId?: ChatMessageConversationActionSetInput['conversationId'];
   pendingBranchMessageIndex?: ChatMessageConversationActionSetInput['pendingBranchMessageIndex'];
   isResponding: ChatMessageConversationActionSetInput['isResponding'];
@@ -2232,6 +2242,15 @@ export function createChatMessageConversationThreadPresentationState({
   };
 }
 
+export function getChatMessageConversationTurnDuration({
+  message,
+  byUserTimestamp,
+}: ChatMessageConversationTurnDurationInput): ChatMessageConversationActionSetInput['turnDuration'] {
+  return typeof message.timestamp === 'number'
+    ? byUserTimestamp.get(message.timestamp)
+    : undefined;
+}
+
 export function createChatMessageConversationActionSetInput({
   message,
   messageIndex,
@@ -2388,7 +2407,7 @@ export function createChatMessageConversationThreadBodyInput({
   message,
   messageIndex,
   renderContext,
-  turnDuration,
+  turnDurationsByUserTimestamp,
   conversationId,
   pendingBranchMessageIndex,
   isResponding,
@@ -2425,6 +2444,10 @@ export function createChatMessageConversationThreadBodyInput({
     isLiveStreamingAssistantMessage,
     messageRenderState,
   } = renderContext;
+  const turnDuration = getChatMessageConversationTurnDuration({
+    message,
+    byUserTimestamp: turnDurationsByUserTimestamp,
+  });
 
   return {
     retryStatus: createChatMessageConversationRetryStatusInput({

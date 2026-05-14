@@ -3756,15 +3756,11 @@ export default function ChatScreen({ route, navigation }: any) {
               resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
               colors: theme.colors,
             });
-            const turnDurationEntry =
-              typeof m.timestamp === 'number'
-                ? turnDurations.byUserTimestamp.get(m.timestamp)
-                : undefined;
             const messageThreadBody = createChatMessageConversationThreadBodyInput({
               message: m,
               messageIndex: i,
               renderContext: messageRenderContext,
-              turnDuration: turnDurationEntry,
+              turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,
               conversationId: currentSession?.serverConversationId,
               pendingBranchMessageIndex: branchingMessageIndex,
               isResponding: responding,
