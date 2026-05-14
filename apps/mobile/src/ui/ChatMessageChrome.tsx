@@ -2985,6 +2985,13 @@ type ChatMessageRuntimeChromePropsInput<
   >;
 };
 
+type ChatMessageRuntimeChromeSurfaceProps<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = ChatMessageRuntimeChromePropsInput<TPrompt, TTask> & {
+  surfaceStyles: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['styles'];
+};
+
 type ChatRuntimeMobileSafeAreaLayout = ReturnType<typeof getChatRuntimeMobileSafeAreaLayoutState>;
 
 type ChatRuntimeMobileSafeAreaStyleSlots = {
@@ -6860,6 +6867,23 @@ export function createChatMessageRuntimeChromeProps<
     threadStates: conversationThreadListState.threadStates,
     threadStyles: styles.threadStyles,
   });
+}
+
+export function ChatMessageRuntimeChromeSurface<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  surfaceStyles,
+  ...chromePropsInput
+}: ChatMessageRuntimeChromeSurfaceProps<TPrompt, TTask>) {
+  const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<TPrompt, TTask>(chromePropsInput);
+
+  return (
+    <ChatMessageRuntimeSurface
+      {...chatMessageRuntimeSurface}
+      styles={surfaceStyles}
+    />
+  );
 }
 
 export function createChatMessageConversationThreadListRenderState({

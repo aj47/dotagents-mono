@@ -1215,14 +1215,15 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /const viewportSurface = viewportStyleState\.surface;/);
   assert.match(screenSource, /const viewportSurfaceColors = viewportStyleState\.colors;/);
   assert.match(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
-  assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
+  assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
+  assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeChromeProps,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
-  assert.match(chatRuntimeMobileStylesSource, /const chatMessageRuntimeSurfaceChrome = useMemo\(\s+\(\) => \(\{\s+styles: chatMessageRuntimeSurfaceStyles,\s+\}\),\s+\[chatMessageRuntimeSurfaceStyles\],\s+\);/);
+  assert.match(chatRuntimeMobileStylesSource, /const chatMessageRuntimeSurfaceChrome = useMemo\(\s+\(\) => \(\{\s+surfaceStyles: chatMessageRuntimeSurfaceStyles,\s+\}\),\s+\[chatMessageRuntimeSurfaceStyles\],\s+\);/);
   assert.match(chatRuntimeMobileStylesSource, /surface: chatMessageRuntimeSurfaceChrome,/);
-  assert.match(chatScreenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+\{\.\.\.chatRuntimeChrome\.surface\}/);
+  assert.match(chatScreenSource, /<ChatMessageRuntimeChromeSurface<PredefinedPromptSummary, Loop>\s+\{\.\.\.chatMessageRuntimeSurface\}\s+\{\.\.\.chatRuntimeChrome\.surface\}/);
   assert.doesNotMatch(chatScreenSource, /chatMessageRuntimeSurfaceStyles/);
   assert.match(screenSource, /const chatMessageRuntimeChromeStyles = useMemo\(\s+\(\) => \(\{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,\s+threadStyles: chatMessageConversationThreadStyles\.runtimeThread,\s+promptEditorStyles: promptEditorModalStyles,\s+\}\),\s+\[chatMessageConversationThreadStyles, promptEditorModalStyles\],\s+\);/);
   assert.match(chatScreenSource, /\.\.\.chatRuntimeChrome\.messageRuntime,/);
@@ -1241,6 +1242,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /overlays=\{\{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSurfaceChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeChromeProps/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeChromeSurface/);
   assert.match(chatMessageChromeSource, /const keyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior\(platform\);/);
   assert.match(chatMessageChromeSource, /frame: \{\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+\}/);
   assert.match(chatMessageChromeSource, /overlays: \{\s+agentSelector: \{\s+visible: agentSelectorVisible,\s+onClose: onAgentSelectorClose,\s+\},[\s\S]*?promptEditor: \{\s+visible: promptEditorVisible,/);
@@ -1262,7 +1264,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /agentSelector=\{<AgentSelectorSheet \{\.\.\.agentSelector\} \/>\}/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModal \{\.\.\.promptEditor\} \/>/);
   assert.match(chatMessageChromeSource, /\{agentSelector\}[\s\S]*?\{promptEditor\}/);
-  assert.match(screenSource, /ChatMessageRuntimeSurface,/);
+  assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
   assert.match(screenSource, /createChatMessageRuntimeViewportStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeViewportStyles = useMemo\(\s+\(\) => createChatMessageRuntimeViewportStyleSlots\(\{\s+conversationViewportStyles,\s+safeAreaStyles: chatSafeAreaStyles,\s+\}\),\s+\[conversationViewportStyles, chatSafeAreaStyles\],\s+\);/);
   assert.match(screenSource, /viewport: \{\s+scrollRef: scrollViewRef,/);
@@ -1298,7 +1300,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /contentContainerStyle=\{contentContainerStyle\}/);
   assert.match(chatMessageChromeSource, /keyboardShouldPersistTaps=\{keyboardShouldPersistTaps\}/);
   assert.match(chatMessageChromeSource, /contentInsetAdjustmentBehavior=\{contentInsetAdjustmentBehavior\}/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.match(screenSource, /viewportContentIsLoadingMessages: sessionStore\.isLoadingMessages,\s+viewportContentMessageCount: messages\.length,\s+quickStartPrompts: predefinedPrompts,/);
   assert.doesNotMatch(screenSource, /loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,\s+quickStartCanAddPrompt: Boolean\(settingsClient\),[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
@@ -1532,7 +1534,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockChromeProps,/);
-  assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
+  assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
   assert.match(screenSource, /useChatComposerRuntimeSubmissionChromeState,/);
   assert.match(screenSource, /const \{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+textEntrySubmissionState: composerTextEntrySubmissionState,\s+\} = useChatComposerRuntimeSubmissionChromeState\(\{\s+input,\s+pendingImages,\s+currentConversationId,\s+queue: messageQueue,\s+send,\s+clearComposerDraft,\s+setDebugInfo,\s+\.\.\.chatRuntimeChrome\.environment,\s+onTextEntryChangeText: setInput,\s+\}\);/);
@@ -3373,7 +3375,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
-  assert.match(chatScreenSource, /import \{[\s\S]*?ChatMessageRuntimeSurface,[\s\S]*?createChatMessageRuntimeChromeProps,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.match(chatScreenSource, /import \{[\s\S]*?ChatMessageRuntimeChromeSurface,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageConversationRuntimeThreadListRenderState,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageConversationThreadStyleSlots,/);
   assert.match(chatRuntimeMobileStylesSource, /createChatMessageConversationThreadStyleSlots,/);
@@ -4728,7 +4731,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /export function deleteChatConversationHomePromptFromList/);
   assert.doesNotMatch(screenSource, /updatePredefinedPromptList/);
   assert.doesNotMatch(screenSource, /deletePredefinedPromptFromList/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{[\s\S]*?surface: \{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = \{[\s\S]*?surface: \{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
   assert.doesNotMatch(screenSource, /<ChatConversationHomePromptEditorModal/);
   assert.doesNotMatch(screenSource, /<Modal/);
   assert.doesNotMatch(screenSource, /<TouchableOpacity/);

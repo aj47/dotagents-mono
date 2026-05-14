@@ -1866,7 +1866,7 @@ export function useChatRuntimeMobileStyleSlots() {
   );
   const chatMessageRuntimeSurfaceChrome = useMemo(
     () => ({
-      styles: chatMessageRuntimeSurfaceStyles,
+      surfaceStyles: chatMessageRuntimeSurfaceStyles,
     }),
     [chatMessageRuntimeSurfaceStyles],
   );

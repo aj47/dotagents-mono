@@ -10,7 +10,7 @@ import {
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
-  ChatMessageRuntimeSurface,
+  ChatMessageRuntimeChromeSurface,
   useChatConversationHomePromptEditorDeleteActionsState,
   useChatConversationHomePromptEditorSaveActionsState,
   useChatConversationHomePromptTaskRunActionsState,
@@ -84,7 +84,6 @@ import {
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   useChatMessageRuntimeRemoteSpeechSettingsState,
   useChatMessageRuntimeThreadExpansionState,
-  createChatMessageRuntimeChromeProps,
   useChatConversationHomeQuickStartActionsState,
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
@@ -1548,7 +1547,7 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
   });
 
-  const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
+  const chatMessageRuntimeSurface = {
     ...chatRuntimeChrome.messageRuntime,
     composer: {
       speechPreviewText: sttPreview,
@@ -1697,10 +1696,10 @@ export default function ChatScreen({ route, navigation }: any) {
       onPromptEditorClose: closePromptModal,
       onPromptEditorSave: handleSavePrompt,
     },
-  });
+  };
 
   return (
-    <ChatMessageRuntimeSurface
+    <ChatMessageRuntimeChromeSurface<PredefinedPromptSummary, Loop>
       {...chatMessageRuntimeSurface}
       {...chatRuntimeChrome.surface}
     />
