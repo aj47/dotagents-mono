@@ -704,6 +704,17 @@ type ChatMessageRuntimeSendRefState = {
   syncSendRef: (send: ChatMessageRuntimeSendCallback) => void;
 };
 
+type ChatMessageRuntimeInitialMessageStateInput = {
+  routeInitialMessage: unknown;
+  currentSessionId?: string | null;
+  initialMessageRef: ChatRuntimeMutableRef<string | null>;
+  initialMessageSentRef: ChatRuntimeMutableRef<boolean>;
+  sendRef: ChatRuntimeMutableRef<ChatMessageRuntimeSendCallback>;
+  clearRouteInitialMessage?: () => void;
+  voiceLog: VoiceDebugLog;
+  autoSendDelayMs?: number;
+};
+
 type ChatMessageRuntimeSessionRefStateInput = {
   initialMessage: string | null;
 };
@@ -7316,6 +7327,48 @@ export function useChatMessageRuntimeSessionRefState({
     prevSessionIdRef,
     convoRef,
   };
+}
+
+export function useChatMessageRuntimeInitialMessageState({
+  routeInitialMessage,
+  currentSessionId,
+  initialMessageRef,
+  initialMessageSentRef,
+  sendRef,
+  clearRouteInitialMessage,
+  voiceLog,
+  autoSendDelayMs = 300,
+}: ChatMessageRuntimeInitialMessageStateInput): void {
+  useEffect(() => {
+    const nextInitial = routeInitialMessage;
+    if (!nextInitial || typeof nextInitial !== 'string') return;
+    initialMessageRef.current = nextInitial;
+    initialMessageSentRef.current = false;
+    voiceLog('state-transition', 'Route initial message received.', { initialMessage: nextInitial });
+  }, [initialMessageRef, initialMessageSentRef, routeInitialMessage, voiceLog]);
+
+  useEffect(() => {
+    if (!initialMessageRef.current || initialMessageSentRef.current) return undefined;
+    if (!currentSessionId) return undefined;
+    initialMessageSentRef.current = true;
+    const msg = initialMessageRef.current;
+    initialMessageRef.current = null;
+    try {
+      clearRouteInitialMessage?.();
+    } catch {}
+
+    const timer = setTimeout(() => {
+      void sendRef.current(msg);
+    }, autoSendDelayMs);
+    return () => clearTimeout(timer);
+  }, [
+    autoSendDelayMs,
+    clearRouteInitialMessage,
+    currentSessionId,
+    initialMessageRef,
+    initialMessageSentRef,
+    sendRef,
+  ]);
 }
 
 export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeResponseHistoryState {

@@ -64,6 +64,7 @@ import {
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
+  useChatMessageRuntimeInitialMessageState,
   useChatMessageRuntimeResponseHistoryState,
   useChatMessageRuntimeAssistantSpeechActionsState,
   useChatMessageRuntimeResponseSpeechQueueActionsState,
@@ -531,6 +532,18 @@ export default function ChatScreen({ route, navigation }: any) {
     isVoiceDebugEnabled: handsFreeDebugEnabled,
     clearVoiceDebug,
   });
+  const clearRouteInitialMessage = useCallback(() => {
+    navigation?.setParams?.({ initialMessage: undefined });
+  }, [navigation]);
+  useChatMessageRuntimeInitialMessageState({
+    routeInitialMessage: route?.params?.initialMessage,
+    currentSessionId: sessionStore.currentSessionId,
+    initialMessageRef,
+    initialMessageSentRef,
+    sendRef,
+    clearRouteInitialMessage,
+    voiceLog,
+  });
 
   const handsFreeController = useHandsFreeController({
     enabled: handsFree,
@@ -847,28 +860,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	      replaceResponseHistory([]);
     }
 	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetResponseSpeechPlaybackState, resetThreadExpansionState]);
-
-  // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
-	useEffect(() => {
-		const nextInitial = route?.params?.initialMessage;
-		if (!nextInitial || typeof nextInitial !== 'string') return;
-		initialMessageRef.current = nextInitial;
-		initialMessageSentRef.current = false;
-		voiceLog('state-transition', 'Route initial message received.', { initialMessage: nextInitial });
-	}, [route?.params?.initialMessage, voiceLog]);
-  useEffect(() => {
-    if (!initialMessageRef.current || initialMessageSentRef.current) return;
-    if (!sessionStore.currentSessionId) return;
-    initialMessageSentRef.current = true;
-    const msg = initialMessageRef.current;
-    initialMessageRef.current = null;
-		try { navigation?.setParams?.({ initialMessage: undefined }); } catch {}
-    // Small delay to ensure the session is fully loaded and the component is rendered
-    const timer = setTimeout(() => {
-      void sendRef.current(msg);
-    }, 300);
-    return () => clearTimeout(timer);
-	}, [navigation, sessionStore.currentSessionId]);
 
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
