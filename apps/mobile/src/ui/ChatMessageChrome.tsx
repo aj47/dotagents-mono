@@ -715,6 +715,16 @@ type ChatMessageRuntimeInitialMessageStateInput = {
   autoSendDelayMs?: number;
 };
 
+type ChatMessageRuntimeSessionPersistStateInput<TMessage> = {
+  messages: TMessage[];
+  currentSessionId?: string | null;
+  deletingSessionIds: ReadonlySet<string>;
+  prevSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  prevMessagesLengthRef: ChatRuntimeMutableRef<number>;
+  skipNextPersistRef: ChatRuntimeMutableRef<boolean>;
+  persistMessages: (messages: TMessage[]) => unknown;
+};
+
 type ChatMessageRuntimeSessionRefStateInput = {
   initialMessage: string | null;
 };
@@ -7368,6 +7378,51 @@ export function useChatMessageRuntimeInitialMessageState({
     initialMessageRef,
     initialMessageSentRef,
     sendRef,
+  ]);
+}
+
+export function useChatMessageRuntimeSessionPersistState<TMessage>({
+  messages,
+  currentSessionId,
+  deletingSessionIds,
+  prevSessionIdRef,
+  prevMessagesLengthRef,
+  skipNextPersistRef,
+  persistMessages,
+}: ChatMessageRuntimeSessionPersistStateInput<TMessage>): void {
+  useEffect(() => {
+    if (currentSessionId && deletingSessionIds.has(currentSessionId)) {
+      return;
+    }
+
+    const isSessionSwitch = prevSessionIdRef.current !== null && prevSessionIdRef.current !== currentSessionId;
+    prevSessionIdRef.current = currentSessionId ?? null;
+
+    if (isSessionSwitch) {
+      prevMessagesLengthRef.current = messages.length;
+      return;
+    }
+
+    if (messages.length > 0 && messages.length !== prevMessagesLengthRef.current) {
+      if (skipNextPersistRef.current) {
+        // Lazy-loaded messages are already saved by the session store.
+        skipNextPersistRef.current = false;
+      } else {
+        void persistMessages(messages);
+      }
+    } else if (skipNextPersistRef.current) {
+      // Clear stale lazy-load skips when the hydrated count did not change.
+      skipNextPersistRef.current = false;
+    }
+    prevMessagesLengthRef.current = messages.length;
+  }, [
+    currentSessionId,
+    deletingSessionIds,
+    messages,
+    persistMessages,
+    prevMessagesLengthRef,
+    prevSessionIdRef,
+    skipNextPersistRef,
   ]);
 }
 

@@ -65,6 +65,7 @@ import {
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
   useChatMessageRuntimeInitialMessageState,
+  useChatMessageRuntimeSessionPersistState,
   useChatMessageRuntimeResponseHistoryState,
   useChatMessageRuntimeAssistantSpeechActionsState,
   useChatMessageRuntimeResponseSpeechQueueActionsState,
@@ -861,39 +862,15 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetResponseSpeechPlaybackState, resetThreadExpansionState]);
 
-  useEffect(() => {
-    const currentSessionId = sessionStore.currentSessionId;
-
-    // Don't save messages if the current session is being deleted (fixes #571)
-    // Only skip if the current session is in the deleting set, not for any deletion
-    if (currentSessionId && sessionStore.deletingSessionIds.has(currentSessionId)) {
-      return;
-    }
-
-    const isSessionSwitch = prevSessionIdRef.current !== null && prevSessionIdRef.current !== currentSessionId;
-    prevSessionIdRef.current = currentSessionId;
-
-    if (isSessionSwitch) {
-      prevMessagesLengthRef.current = messages.length;
-      return;
-    }
-
-    if (messages.length > 0 && messages.length !== prevMessagesLengthRef.current) {
-      if (skipNextPersistRef.current) {
-        // Messages were just hydrated from a server lazy-load and are already
-        // saved by loadSessionMessages; skip to avoid ID/updatedAt regeneration.
-        skipNextPersistRef.current = false;
-      } else {
-        sessionStore.setMessages(messages);
-      }
-    } else if (skipNextPersistRef.current) {
-      // Length didn't change (or is 0), so the effect above won't fire — clear
-      // the flag now to prevent it from accidentally skipping the next real
-      // message persistence (e.g., lazy-load returned same count as before).
-      skipNextPersistRef.current = false;
-    }
-    prevMessagesLengthRef.current = messages.length;
-  }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
+  useChatMessageRuntimeSessionPersistState<ChatMessage>({
+    messages,
+    currentSessionId: sessionStore.currentSessionId,
+    deletingSessionIds: sessionStore.deletingSessionIds,
+    prevSessionIdRef,
+    prevMessagesLengthRef,
+    skipNextPersistRef,
+    persistMessages: sessionStore.setMessages,
+  });
 
   // Get the current conversation ID for queue operations
   const currentConversationId = sessionStore.currentSessionId || 'default';

@@ -3886,21 +3886,27 @@ test('keeps message runtime refs in chat chrome state hooks', () => {
 test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.match(screenSource, /useChatMessageRuntimeSessionRefState,/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState,/);
+  assert.match(screenSource, /useChatMessageRuntimeSessionPersistState,/);
   assert.match(screenSource, /const \{\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+initialMessageRef,\s+initialMessageSentRef,\s+prevMessagesLengthRef,\s+prevSessionIdRef,\s+convoRef,\s+\} = useChatMessageRuntimeSessionRefState\(\{\s+initialMessage: route\?\.params\?\.initialMessage \?\? null,\s+\}\);/);
   assert.match(screenSource, /const clearRouteInitialMessage = useCallback\(\(\) => \{\s+navigation\?\.setParams\?\.\(\{ initialMessage: undefined \}\);\s+\}, \[navigation\]\);/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState\(\{\s+routeInitialMessage: route\?\.params\?\.initialMessage,\s+currentSessionId: sessionStore\.currentSessionId,\s+initialMessageRef,\s+initialMessageSentRef,\s+sendRef,\s+clearRouteInitialMessage,\s+voiceLog,\s+\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeSessionPersistState<ChatMessage>\(\{\s+messages,\s+currentSessionId: sessionStore\.currentSessionId,\s+deletingSessionIds: sessionStore\.deletingSessionIds,\s+prevSessionIdRef,\s+prevMessagesLengthRef,\s+skipNextPersistRef,\s+persistMessages: sessionStore\.setMessages,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionRefState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeInitialMessageState/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionPersistState<TMessage>/);
   assert.match(chatMessageChromeSource, /const lastLoadedSessionIdRef = useRef<string \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /const initialMessageRef = useRef<string \| null>\(initialMessage\);/);
   assert.match(chatMessageChromeSource, /const prevMessagesLengthRef = useRef\(0\);/);
   assert.match(chatMessageChromeSource, /const convoRef = useRef<string \| undefined>\(undefined\);/);
   assert.match(chatMessageChromeSource, /Route initial message received\./);
+  assert.match(chatMessageChromeSource, /void persistMessages\(messages\);/);
   assert.match(chatMessageChromeSource, /setTimeout\(\(\) => \{\s+void sendRef\.current\(msg\);/);
   assert.doesNotMatch(screenSource, /const lastLoadedSessionIdRef = useRef<string \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /const initialMessageRef = useRef<string \| null>\(route\?\.params\?\.initialMessage \?\? null\);/);
   assert.doesNotMatch(screenSource, /Route initial message received\./);
   assert.doesNotMatch(screenSource, /initialMessageSentRef\.current = true;/);
+  assert.doesNotMatch(screenSource, /const isSessionSwitch = prevSessionIdRef\.current !== null && prevSessionIdRef\.current !== currentSessionId;/);
+  assert.doesNotMatch(screenSource, /prevMessagesLengthRef\.current = messages\.length;/);
   assert.doesNotMatch(screenSource, /const prevMessagesLengthRef = useRef\(0\);/);
   assert.doesNotMatch(screenSource, /const convoRef = useRef<string \| undefined>\(undefined\);/);
   assert.doesNotMatch(chatScreenSource, /useRef,/);
