@@ -887,7 +887,10 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(screenSource, /composerStyles: chatComposerRuntimeDockStyles/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationDockStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
-  assert.match(screenSource, /scrollToBottomButton: \{\s+renderState: scrollToBottomRenderState,\s+onPress: \(\) => \{\s+setShouldAutoScroll\(true\);/);
+  assert.match(screenSource, /const handleScrollToBottomPress = \(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollViewRef\.current\?\.scrollToEnd\(\{ animated: true \}\);\s+\};/);
+  assert.match(screenSource, /scrollToBottomRenderState,\s+onScrollToBottom: handleScrollToBottomPress,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockChromeProps/);
+  assert.match(chatMessageChromeSource, /scrollToBottomButton: \{\s+renderState: scrollToBottomRenderState,\s+onPress: onScrollToBottom,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButton\s+\{\.\.\.scrollToBottomButton\}\s+style=\{styles\.scrollToBottomButtonStyle\}/);
   assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: \[\s+conversationDockStyles\.scrollToBottomButtonStyle,\s+safeAreaStyles\.scrollToBottomButton,\s+\]/);
   assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: safeAreaStyles\.scrollToBottomButtonStyle,/);
@@ -1042,7 +1045,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /<ChatMessageHistoryBanner\s+\{\.\.\.historyBanner\}\s+styles=\{styles\.historyBanner\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageDebugPanelStack\s+\{\.\.\.debugPanels\}\s+panelStyle=\{styles\.debugPanels\.panelStyle\}\s+textStyle=\{styles\.debugPanels\.textStyle\}/);
-  assert.match(screenSource, /dock=\{\{[\s\S]*?responseHistoryPanel: \{\s+responses: respondToUserHistory,[\s\S]*?scrollToBottomButton: \{[\s\S]*?voiceOverlay: \{[\s\S]*?queuePanel: \{[\s\S]*?connectionBanner: \{[\s\S]*?composer: \{/);
+  assert.match(screenSource, /const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps\(\{[\s\S]*?responseHistoryPanel: \{\s+responses: respondToUserHistory,[\s\S]*?scrollToBottomRenderState,[\s\S]*?voiceOverlay: \{[\s\S]*?queuePanel: \{[\s\S]*?connectionBanner: \{[\s\S]*?composer: \{/);
+  assert.match(screenSource, /dock=\{chatMessageRuntimeDock\}/);
   assert.doesNotMatch(screenSource, /shouldRender: respondToUserHistory\.length > 0/);
   assert.doesNotMatch(screenSource, /<ChatMessageRuntimeDock/);
   assert.doesNotMatch(screenSource, /<\/ChatMessageConversationViewport>\s*<ChatMessageConversationDock/);
@@ -1095,7 +1099,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(screenSource, /getChatRuntimeConnectionBannerMobileRenderState,/);
   assert.match(screenSource, /const connectionBannerRenderState = useMemo\(/);
   assert.match(screenSource, /getChatRuntimeConnectionBannerMobileRenderState\(\{\s*connectionState,\s*lastFailedMessage,\s*isResponding: responding,\s*colors: theme\.colors,/);
-  assert.match(screenSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: handleRetryLastFailedMessage,\s+\}/);
+  assert.match(screenSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: \(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\},\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageConnectionBanner\s+\{\.\.\.connectionBanner\}\s+styles=\{styles\.connectionBanner\}/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+banner: styles\.connectionBanner,\s+reconnecting: styles\.connectionBannerReconnecting,\s+failed: styles\.connectionBannerFailed,\s+content: styles\.connectionBannerContent,/);
   assert.match(chatMessageChromeSource, /icon: styles\.connectionBannerIcon,\s+textContainer: styles\.connectionBannerTextContainer,\s+title: styles\.connectionBannerText,\s+subtitle: styles\.connectionBannerSubtext,/);

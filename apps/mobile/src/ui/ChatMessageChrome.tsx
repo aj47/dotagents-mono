@@ -1466,6 +1466,15 @@ type ChatMessageRuntimeDockProps = {
   styles: ChatMessageRuntimeDockStyleSlots;
 };
 
+type ChatMessageRuntimeDockChromeProps = Omit<ChatMessageRuntimeDockProps, 'styles'>;
+
+type ChatMessageRuntimeDockChromePropsInput =
+  Omit<ChatMessageRuntimeDockChromeProps, 'scrollToBottomButton'>
+  & {
+    scrollToBottomRenderState: ChatRuntimeScrollToBottomMobileRenderState;
+    onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
+  };
+
 type ChatMessageRuntimeSurfaceStyleSlots = {
   frame: ChatMessageConversationViewportStyleSlots['frame'];
   dock: ChatMessageRuntimeDockStyleSlots;
@@ -2611,6 +2620,20 @@ export function createChatMessageRuntimeViewportChromeProps<
     },
     stepSummary: affordanceRenderState.stepSummary,
     debugPanels: debugPanelsRenderState,
+  };
+}
+
+export function createChatMessageRuntimeDockChromeProps({
+  scrollToBottomRenderState,
+  onScrollToBottom,
+  ...dockProps
+}: ChatMessageRuntimeDockChromePropsInput): ChatMessageRuntimeDockChromeProps {
+  return {
+    ...dockProps,
+    scrollToBottomButton: {
+      renderState: scrollToBottomRenderState,
+      onPress: onScrollToBottom,
+    },
   };
 }
 
