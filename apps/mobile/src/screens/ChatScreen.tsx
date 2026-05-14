@@ -35,6 +35,8 @@ import {
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
   createChatComposerRuntimeFollowUpPresentationState,
+  buildChatComposerRuntimeMessageContent,
+  hasChatComposerRuntimeMessageContent,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -151,7 +153,6 @@ import {
   sanitizeMessagesForModel,
 } from '@dotagents/shared/message-display-utils';
 import {
-  buildChatImageAttachmentMessage,
   extractDataImageMarkdownReferences,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
@@ -2562,15 +2563,15 @@ export default function ChatScreen({ route, navigation }: any) {
     [availableSkills, availableTasks, predefinedPrompts, settingsClient]
   );
 
-  const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+  const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
   const sendComposerInput = useCallback(() => {
-    const composedMessage = buildChatImageAttachmentMessage(input, pendingImages);
+    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
     if (!composedMessage.trim()) return;
     void send(composedMessage, { fromComposer: true });
   }, [input, pendingImages, send]);
 
   const queueComposerInput = useCallback(() => {
-    const composedMessage = buildChatImageAttachmentMessage(input, pendingImages);
+    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
     if (!composedMessage.trim()) return;
 
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);

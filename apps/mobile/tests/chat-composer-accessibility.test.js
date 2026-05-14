@@ -224,7 +224,9 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
 
 test('uses shared pending image attachment presentation in the mobile composer', () => {
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState/);
-  assert.match(screenSource, /buildChatImageAttachmentMessage/);
+  assert.match(screenSource, /buildChatComposerRuntimeMessageContent/);
+  assert.doesNotMatch(screenSource, /buildChatImageAttachmentMessage/);
+  assert.match(chatMessageChromeSource, /buildChatImageAttachmentMessage/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
   assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);

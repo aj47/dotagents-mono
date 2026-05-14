@@ -1345,6 +1345,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /createChatComposerRuntimeDockProps,/);
   assert.match(screenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
+  assert.match(screenSource, /hasChatComposerRuntimeMessageContent,/);
+  assert.match(screenSource, /buildChatComposerRuntimeMessageContent,/);
+  assert.match(screenSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
+  assert.match(screenSource, /const composedMessage = buildChatComposerRuntimeMessageContent\(input, pendingImages\);/);
   assert.match(screenSource, /const chatComposerStyles = useMemo\(\s+\(\) => createChatComposerStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const chatComposerRuntimeDockStyles = useMemo\(\s+\(\) => createChatComposerRuntimeDockStyleSlots\(\{/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
@@ -1357,8 +1361,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeFollowUpPresentationState/);
+  assert.match(chatMessageChromeSource, /export function hasChatComposerRuntimeMessageContent/);
+  assert.match(chatMessageChromeSource, /export function buildChatComposerRuntimeMessageContent/);
   assert.doesNotMatch(screenSource, /getFollowUpInputPresentation/);
   assert.match(chatMessageChromeSource, /getFollowUpInputPresentation/);
+  assert.doesNotMatch(screenSource, /buildChatImageAttachmentMessage/);
+  assert.match(chatMessageChromeSource, /buildChatImageAttachmentMessage,/);
   assert.match(chatMessageChromeSource, /activeOpacity: composerSurface\.accessoryButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /controlPressedOpacity: handsFreeSurface\.controlButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);

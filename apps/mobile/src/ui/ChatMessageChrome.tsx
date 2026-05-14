@@ -75,9 +75,11 @@ import {
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
+  buildChatImageAttachmentMessage,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
   type ChatImageAttachmentMobileAlertInput,
+  type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
 } from '@dotagents/shared/conversation-media-assets';
 import {
@@ -283,6 +285,7 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
 export type ChatComposerImageAttachmentAlertInput = ChatImageAttachmentMobileAlertInput;
+export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput;
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
 
@@ -5910,6 +5913,20 @@ export function createChatComposerRuntimeFollowUpPresentationState({
     conversationState: conversationState ?? (isResponding ? 'running' : 'complete'),
     isQueueEnabled,
   });
+}
+
+export function hasChatComposerRuntimeMessageContent(
+  input: string,
+  pendingImages: readonly ChatComposerRuntimeImageAttachment[],
+): boolean {
+  return input.trim().length > 0 || pendingImages.length > 0;
+}
+
+export function buildChatComposerRuntimeMessageContent(
+  input: string,
+  pendingImages: readonly ChatComposerRuntimeImageAttachment[],
+): string {
+  return buildChatImageAttachmentMessage(input, pendingImages);
 }
 
 export function createChatComposerRuntimeControlRenderState({
