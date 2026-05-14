@@ -3190,6 +3190,14 @@ export function getChatMessageRuntimeDebugState(): ReturnType<typeof getChatRunt
   return getChatRuntimeDebugState();
 }
 
+export type ChatMessageRuntimeDebugMessageKey = keyof ReturnType<typeof getChatRuntimeDebugState>;
+
+export function getChatMessageRuntimeDebugMessage(
+  key: ChatMessageRuntimeDebugMessageKey,
+): string {
+  return getChatRuntimeDebugState()[key];
+}
+
 export function formatChatMessageRuntimeAlertMessage(
   ...args: Parameters<typeof getChatRuntimeAlertMessage>
 ): ReturnType<typeof getChatRuntimeAlertMessage> {

@@ -76,7 +76,7 @@ import {
   getChatMessageRuntimeBranchCreatedAlertState,
   getChatMessageRuntimeBranchFailedAlertState,
   getChatMessageRuntimeBranchUnavailableAlertState,
-  getChatMessageRuntimeDebugState,
+  getChatMessageRuntimeDebugMessage,
   getChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchAlertState,
   getChatMessageRuntimeKillSwitchConfirmationAlertState,
@@ -200,7 +200,6 @@ const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYT
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState();
-const mobileRuntimeDebug = getChatMessageRuntimeDebugState();
 const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
@@ -2051,7 +2050,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo(formatChatMessageRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
+      setDebugInfo(formatChatMessageRuntimeDebugError(getChatMessageRuntimeDebugMessage('noSessionAvailable')));
       return;
     }
 
@@ -2121,7 +2120,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
-      setDebugInfo(mobileRuntimeDebug.requestSent);
+      setDebugInfo(getChatMessageRuntimeDebugMessage('requestSent'));
 
       const onProgress = (update: AgentProgressUpdate) => {
         // Guard: skip update if session has changed since request started
@@ -2226,7 +2225,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
-        setDebugInfo(mobileRuntimeDebug.completed);
+        setDebugInfo(getChatMessageRuntimeDebugMessage('completed'));
       }
 
       // Guard: skip final updates if this request is no longer the latest one for this session
@@ -2565,13 +2564,13 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.markFailed(
         currentConversationId,
         queuedMsg.id,
-        mobileRuntimeDebug.noSessionAvailable,
+        getChatMessageRuntimeDebugMessage('noSessionAvailable'),
       );
-      setDebugInfo(formatChatMessageRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
+      setDebugInfo(formatChatMessageRuntimeDebugError(getChatMessageRuntimeDebugMessage('noSessionAvailable')));
       return;
     }
 
-    setDebugInfo(mobileRuntimeDebug.processingQueuedMessage);
+    setDebugInfo(getChatMessageRuntimeDebugMessage('processingQueuedMessage'));
 
     const userMsg: ChatMessage = { role: 'user', content: text };
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
@@ -2681,7 +2680,7 @@ export default function ChatScreen({ route, navigation }: any) {
         messageQueue.markFailed(
           currentConversationId,
           queuedMsg.id,
-          mobileRuntimeDebug.sessionChangedDuringProcessing,
+          getChatMessageRuntimeDebugMessage('sessionChangedDuringProcessing'),
         );
         return;
       }
@@ -2690,7 +2689,7 @@ export default function ChatScreen({ route, navigation }: any) {
         messageQueue.markFailed(
           currentConversationId,
           queuedMsg.id,
-          mobileRuntimeDebug.requestSuperseded,
+          getChatMessageRuntimeDebugMessage('requestSuperseded'),
         );
         return;
       }
@@ -2771,7 +2770,7 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
     } catch (e: any) {
       console.error('[ChatScreen] Queued message error:', e);
-      const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, mobileRuntimeDebug.unknownError);
+      const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, getChatMessageRuntimeDebugMessage('unknownError'));
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
       setConversationState('blocked');
       setMessages((m) => [...m, { role: 'assistant', content: formatChatMessageRuntimeDebugError(queuedErrorMessage) }]);
