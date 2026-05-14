@@ -1279,6 +1279,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
 test('uses shared runtime presentation for mobile connection and retry banners', () => {
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /const connectionBannerRenderState = useMemo/);
+  assert.match(screenSource, /useChatRuntimeConnectionRetryState,/);
+  assert.match(screenSource, /const \{\s+lastFailedMessage,\s+setLastFailedMessage,\s+clearLastFailedMessage,\s+\} = useChatRuntimeConnectionRetryState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryState/);
+  assert.match(chatMessageChromeSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
+  assert.doesNotMatch(screenSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\);/);
   assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+colors: theme\.colors,\s+onConnectionBannerRetry: \(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\},/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: onConnectionBannerRetry,\s+\}/);
@@ -1288,6 +1293,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /retryButton: styles\.retryButton,\s+retryButtonText: styles\.retryButtonText,\s+\}/);
   assert.match(screenSource, /const handleRetryLastFailedMessage = async \(\) => \{/);
   assert.match(screenSource, /const messageToRetry = lastFailedMessage;/);
+  assert.match(screenSource, /clearLastFailedMessage\(\);/);
   assert.match(screenSource, /const retryClient = getSessionClient\(\);/);
   assert.match(screenSource, /await sessionStore\.setServerConversationId\(recoveryConversationId\);/);
   assert.match(screenSource, /setTimeout\(\(\) => send\(messageToRetry\), 0\);/);

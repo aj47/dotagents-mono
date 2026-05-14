@@ -432,6 +432,12 @@ type ChatRuntimeRequestDebugState = {
   clearRequestDebugText: () => void;
 };
 
+type ChatRuntimeConnectionRetryState = {
+  lastFailedMessage: string | null;
+  setLastFailedMessage: Dispatch<SetStateAction<string | null>>;
+  clearLastFailedMessage: () => void;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -5740,6 +5746,20 @@ export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState 
     requestDebugText,
     setRequestDebugText,
     clearRequestDebugText,
+  };
+}
+
+export function useChatRuntimeConnectionRetryState(): ChatRuntimeConnectionRetryState {
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+
+  const clearLastFailedMessage = useCallback(() => {
+    setLastFailedMessage(null);
+  }, []);
+
+  return {
+    lastFailedMessage,
+    setLastFailedMessage,
+    clearLastFailedMessage,
   };
 }
 

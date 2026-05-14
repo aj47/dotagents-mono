@@ -30,6 +30,7 @@ import {
   useChatRuntimeAgentSelectorOverlayState,
   useChatComposerRuntimeEditBeforeSendState,
   useChatRuntimeRequestDebugState,
+  useChatRuntimeConnectionRetryState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -311,6 +312,11 @@ export default function ChatScreen({ route, navigation }: any) {
     setRequestDebugText: setDebugInfo,
     clearRequestDebugText,
   } = useChatRuntimeRequestDebugState();
+  const {
+    lastFailedMessage,
+    setLastFailedMessage,
+    clearLastFailedMessage,
+  } = useChatRuntimeConnectionRetryState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -662,8 +668,6 @@ export default function ChatScreen({ route, navigation }: any) {
     messages,
     isResponding: responding,
   });
-  // Track the last failed message for retry functionality
-  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
 	  useEffect(() => {
 		if (!handsFreeDebugEnabled) {
@@ -1568,7 +1572,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     setDebugInfo(formatChatMessageRuntimeStartingRequestDebugMessage(config.baseUrl));
     // Clear any previous failed message when starting a new send
-    setLastFailedMessage(null);
+    clearLastFailedMessage();
 
     const userMsg: ChatMessage = createChatMessageRuntimeUserTextMessage(text);
 	    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
@@ -2596,7 +2600,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const handleRetryLastFailedMessage = async () => {
     const messageToRetry = lastFailedMessage;
     if (!messageToRetry) return;
-    setLastFailedMessage(null);
+    clearLastFailedMessage();
 
     // Use the recovery conversation ID if available, so the retry resumes
     // the same server-created conversation when the first attempt failed mid-stream.
