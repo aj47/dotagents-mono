@@ -109,6 +109,7 @@ import {
 import {
   formatVoiceDebugEntry,
   type VoiceDebugEntry,
+  type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
@@ -786,6 +787,10 @@ type ChatRuntimeHandsFreeToggleController = {
   reset: () => void;
 };
 
+type ChatRuntimeTextToSpeechToggleController = {
+  onSpeechFinished: () => void;
+};
+
 type ChatRuntimeHandsFreeToggleActionsStateInput<TConfig extends object> = {
   config: TConfig;
   setConfig: (config: TConfig) => void;
@@ -801,6 +806,26 @@ type ChatRuntimeHandsFreeToggleActionsStateInput<TConfig extends object> = {
 
 type ChatRuntimeHandsFreeToggleActionsState = {
   toggleHandsFree: () => Promise<void>;
+};
+
+type ChatRuntimeTextToSpeechToggleActionsStateInput<TConfig extends object> = {
+  ttsEnabled: boolean;
+  config: TConfig;
+  setConfig: (config: TConfig) => void;
+  saveConfig: (config: TConfig) => unknown | Promise<unknown>;
+  handsFreeController: ChatRuntimeTextToSpeechToggleController;
+  handsFreeRef: ChatRuntimeMutableRef<boolean>;
+  handsFreePhaseRef: ChatRuntimeMutableRef<HandsFreePhase>;
+  clearIntendedSpeakingMessage: () => void;
+  clearQueuedResponseSpeech: () => void;
+  clearSpeakingMessage: () => void;
+  stopSpeech: () => void;
+  stopRemoteSpeech: () => void;
+  voiceLog: VoiceDebugLog;
+};
+
+type ChatRuntimeTextToSpeechToggleActionsState = {
+  toggleTextToSpeech: () => Promise<void>;
 };
 
 type ChatRuntimeConnectionRetryState = {
@@ -7323,6 +7348,58 @@ export function useChatRuntimeHandsFreeToggleActionsState<TConfig extends object
 
   return {
     toggleHandsFree,
+  };
+}
+
+export function useChatRuntimeTextToSpeechToggleActionsState<TConfig extends object>({
+  ttsEnabled,
+  config,
+  setConfig,
+  saveConfig,
+  handsFreeController,
+  handsFreeRef,
+  handsFreePhaseRef,
+  clearIntendedSpeakingMessage,
+  clearQueuedResponseSpeech,
+  clearSpeakingMessage,
+  stopSpeech,
+  stopRemoteSpeech,
+  voiceLog,
+}: ChatRuntimeTextToSpeechToggleActionsStateInput<TConfig>): ChatRuntimeTextToSpeechToggleActionsState {
+  const toggleTextToSpeech = useCallback(async () => {
+    const next = !ttsEnabled;
+    if (!next) {
+      clearIntendedSpeakingMessage();
+      stopSpeech();
+      stopRemoteSpeech();
+      clearQueuedResponseSpeech();
+      clearSpeakingMessage();
+      if (handsFreeRef.current && handsFreePhaseRef.current === 'speaking') {
+        handsFreeController.onSpeechFinished();
+        voiceLog('tts-stopped', 'Assistant speech stopped from speaker toggle.');
+      }
+    }
+    const nextConfig = { ...config, ttsEnabled: next };
+    setConfig(nextConfig);
+    try { await saveConfig(nextConfig); } catch {}
+  }, [
+    clearIntendedSpeakingMessage,
+    clearQueuedResponseSpeech,
+    clearSpeakingMessage,
+    config,
+    handsFreeController,
+    handsFreePhaseRef,
+    handsFreeRef,
+    saveConfig,
+    setConfig,
+    stopRemoteSpeech,
+    stopSpeech,
+    ttsEnabled,
+    voiceLog,
+  ]);
+
+  return {
+    toggleTextToSpeech,
   };
 }
 

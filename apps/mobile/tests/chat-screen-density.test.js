@@ -1528,6 +1528,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /textToSpeech: getChatComposerTextToSpeechMobileRenderState\(\{\s+isEnabled: ttsEnabled,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /editBeforeSend: getChatComposerEditBeforeSendMobileRenderState\(\{\s+isEnabled: editBeforeSendEnabled,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState\(\{\s+label: micLabel,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,\s+\}\),/);
+  assert.match(screenSource, /useChatRuntimeTextToSpeechToggleActionsState,/);
+  assert.match(screenSource, /const \{ toggleTextToSpeech: toggleTts \} = useChatRuntimeTextToSpeechToggleActionsState\(\{\s+ttsEnabled,\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+handsFreePhaseRef,\s+clearIntendedSpeakingMessage,\s+clearQueuedResponseSpeech,\s+clearSpeakingMessage,\s+stopSpeech: Speech\.stop,\s+stopRemoteSpeech: stopRemoteTts,\s+voiceLog,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeTextToSpeechToggleActionsState/);
+  assert.match(chatMessageChromeSource, /clearQueuedResponseSpeech\(\);[\s\S]*?clearSpeakingMessage\(\);/);
+  assert.doesNotMatch(screenSource, /const toggleTts = async \(\) => \{/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = getChatComposerMobileSurfaceState\(\);/);
   assert.match(chatMessageChromeSource, /inputArea:\s*\{\s+paddingBottom: layout\.inputArea\.paddingBottom,\s+\}/);
   assert.doesNotMatch(screenSource, /inputArea:\s*\{\s*paddingBottom:\s*mobileSafeAreaLayout\.inputArea\.paddingBottom,\s*\}/);
@@ -3826,7 +3831,8 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.doesNotMatch(screenSource, /setRespondToUserHistory\(sortedEvents\)/);
   assert.doesNotMatch(screenSource, /const merged = new Map\(respondToUserHistoryRef\.current/);
   assert.doesNotMatch(screenSource, /queuedResponseEventsRef\.current = \[\];\s+activeAutoSpeechEventIdRef\.current = null;/);
-  assert.match(screenSource, /clearQueuedResponseSpeech\(\);/);
+  assert.doesNotMatch(screenSource, /clearQueuedResponseSpeech\(\);/);
+  assert.match(chatMessageChromeSource, /clearQueuedResponseSpeech\(\);/);
   assert.match(screenSource, /resetResponseSpeechPlaybackState\(savedResponses\.map\(\(event\) => event\.id\)\);/);
   assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
 });

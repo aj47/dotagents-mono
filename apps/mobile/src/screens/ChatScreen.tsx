@@ -32,6 +32,7 @@ import {
   useChatRuntimeForegroundState,
   useChatRuntimeHandsFreeMutableState,
   useChatRuntimeHandsFreeToggleActionsState,
+  useChatRuntimeTextToSpeechToggleActionsState,
   useChatComposerRuntimeDraftState,
   useChatComposerRuntimeTextEntrySubmissionState,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -263,29 +264,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
   // TTS toggle
   const ttsEnabled = ttsEnabledSetting;
-  const toggleTts = async () => {
-    const next = !ttsEnabled;
-    // Stop any currently playing TTS when disabling. The speaker icon doubles
-    // as a "mute" control, so it must silence both native and remote (Edge)
-    // playback and clear the auto-speech queue/state so nothing resumes.
-    if (!next) {
-      clearIntendedSpeakingMessage();
-      Speech.stop();
-      stopRemoteTts();
-      clearQueuedResponseSpeech();
-      clearSpeakingMessage();
-      // Only transition the hands-free controller when it was actually speaking;
-      // calling onSpeechFinished mid-`processing` would prematurely return to
-      // listening while a request is still in-flight.
-      if (handsFreeRef.current && handsFreePhaseRef.current === 'speaking') {
-        handsFreeController.onSpeechFinished();
-        voiceLog('tts-stopped', 'Assistant speech stopped from speaker toggle.');
-      }
-    }
-    const nextCfg = { ...config, ttsEnabled: next } as any;
-    setConfig(nextCfg);
-    try { await saveConfig(nextCfg); } catch {}
-  };
 
   const {
     responding,
@@ -575,6 +553,21 @@ export default function ChatScreen({ route, navigation }: any) {
     wakePhrase: handsFreeWakePhrase,
     sleepPhrase: handsFreeSleepPhrase,
     log: voiceLog,
+  });
+  const { toggleTextToSpeech: toggleTts } = useChatRuntimeTextToSpeechToggleActionsState({
+    ttsEnabled,
+    config,
+    setConfig,
+    saveConfig,
+    handsFreeController,
+    handsFreeRef,
+    handsFreePhaseRef,
+    clearIntendedSpeakingMessage,
+    clearQueuedResponseSpeech,
+    clearSpeakingMessage,
+    stopSpeech: Speech.stop,
+    stopRemoteSpeech: stopRemoteTts,
+    voiceLog,
   });
   useEffect(() => {
     setHandsFreePhaseRefValue(handsFreeController.state.phase);
