@@ -32,12 +32,11 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   createChatMessageActionSlotRenderMap,
+  createChatMessageActionSlotRenderState,
   getChatDisplayExpansionState,
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonStatesBySlot,
-  getChatMessageActionLayoutRenderState,
-  getChatMessageActionSlotRenderEntries,
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
@@ -50,8 +49,6 @@ import {
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
   type ChatMessageActionAvailabilityRenderState,
-  type ChatMessageActionLayoutStateInput,
-  type ChatMessageActionSlot,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
@@ -7433,15 +7430,14 @@ export function createChatMessageConversationThreadBodyInput({
   };
 }
 
-export function createChatMessageActionComponents({
-  availability,
+function createChatMessageActionRenderers({
   turnDuration,
   speech,
   branch,
   copy,
   expansion,
-}: ChatMessageActionComponentsInput): ChatMessageActionComponentMap {
-  return createChatMessageActionSlotRenderMap<ReactNode>(availability, {
+}: Omit<ChatMessageActionComponentsInput, 'availability'>) {
+  return {
     turnDuration: () => (
       <ChatMessageTurnDurationBadge
         renderState={turnDuration.renderState}
@@ -7455,7 +7451,17 @@ export function createChatMessageActionComponents({
     branch: () => renderChatMessageActionButton(branch),
     copy: () => renderChatMessageActionButton(copy),
     expansion: () => renderChatMessageActionButton(expansion),
-  });
+  };
+}
+
+export function createChatMessageActionComponents({
+  availability,
+  ...input
+}: ChatMessageActionComponentsInput): ChatMessageActionComponentMap {
+  return createChatMessageActionSlotRenderMap<ReactNode>(
+    availability,
+    createChatMessageActionRenderers(input),
+  );
 }
 
 export function createChatMessageActionSet({
@@ -7545,20 +7551,16 @@ export function createChatMessageActionSet({
     copy: actionInput.copy.renderState.canCopy,
     expansion: actionInput.expansion.renderState.canToggle,
   });
-  const components = createChatMessageActionComponents({
-    availability,
-    ...actionInput,
-  });
-  const layout = getChatMessageActionLayoutRenderState({
+  const actionRenderState = createChatMessageActionSlotRenderState<ReactNode>({
     availability,
     renderState: contentRenderState,
+    renderers: createChatMessageActionRenderers(actionInput),
   });
-  const entries = getChatMessageActionSlotRenderEntries(layout.visibleSlots, components);
 
   return {
-    entries,
-    shouldRenderActionSlots: layout.shouldRenderActionSlots,
-    shouldRenderStandaloneActions: layout.shouldRenderStandaloneRow,
+    entries: actionRenderState.entries,
+    shouldRenderActionSlots: actionRenderState.shouldRenderActionSlots,
+    shouldRenderStandaloneActions: actionRenderState.shouldRenderStandaloneRow,
   };
 }
 

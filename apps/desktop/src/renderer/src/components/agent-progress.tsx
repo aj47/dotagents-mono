@@ -93,12 +93,10 @@ import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
   applyChatDisplayGroupedExpansionInheritance,
-  createChatMessageActionSlotRenderMap,
+  createChatMessageActionSlotRenderState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionCopyState,
   getChatMessageActionDesktopSurfaceState,
-  getChatMessageActionLayoutRenderState,
-  getChatMessageActionSlotRenderEntries,
   getChatDisplayExpansionState,
   getChatDisplayGroupedExpansionState,
   getChatMessageContentRenderState,
@@ -1274,9 +1272,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     copy: messageCopyAction.canCopy,
     expansion: messageExpansionAction.canToggle,
   })
-  const messageActionComponents = createChatMessageActionSlotRenderMap<React.ReactNode>(
-    messageActionAvailabilityRenderState,
-    {
+  const messageActionRenderState = createChatMessageActionSlotRenderState<React.ReactNode>({
+    availability: messageActionAvailabilityRenderState,
+    renderState: messageContentRenderState,
+    renderers: {
       turnDuration: () => (
         <span
           className={cn(
@@ -1357,17 +1356,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         </button>
       ),
     },
-  )
-  const messageActionLayout = getChatMessageActionLayoutRenderState({
-    availability: messageActionAvailabilityRenderState,
-    renderState: messageContentRenderState,
   })
-  const visibleMessageActionSlots = messageActionLayout.visibleSlots
-  const shouldRenderMessageActionSlots = messageActionLayout.shouldRenderActionSlots
-  const visibleMessageActionEntries = getChatMessageActionSlotRenderEntries(
-    visibleMessageActionSlots,
-    messageActionComponents,
-  )
+  const shouldRenderMessageActionSlots = messageActionRenderState.shouldRenderActionSlots
+  const visibleMessageActionEntries = messageActionRenderState.entries
 
   return (
     <div className={cn(

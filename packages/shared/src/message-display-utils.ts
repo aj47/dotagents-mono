@@ -684,6 +684,13 @@ export interface ChatMessageActionSlotRenderEntry<T> {
   slot: ChatMessageActionSlot
   item: T | null
 }
+export interface ChatMessageActionSlotRenderStateInput<T> extends ChatMessageActionLayoutRenderStateInput {
+  renderers: ChatMessageActionSlotRenderers<T>
+}
+export interface ChatMessageActionSlotRenderState<T> extends ChatMessageActionLayoutState {
+  components: ChatMessageActionSlotRenderMap<T>
+  entries: ChatMessageActionSlotRenderEntry<T>[]
+}
 
 export function createChatMessageActionSlotRenderMap<T>(
   availability: ChatMessageActionAvailabilityRenderState,
@@ -706,6 +713,24 @@ export function getChatMessageActionSlotRenderEntries<T>(
     slot,
     item: components[slot],
   }))
+}
+
+export function createChatMessageActionSlotRenderState<T>({
+  availability,
+  renderState,
+  renderers,
+}: ChatMessageActionSlotRenderStateInput<T>): ChatMessageActionSlotRenderState<T> {
+  const components = createChatMessageActionSlotRenderMap(availability, renderers)
+  const layout = getChatMessageActionLayoutRenderState({
+    availability,
+    renderState,
+  })
+
+  return {
+    ...layout,
+    components,
+    entries: getChatMessageActionSlotRenderEntries(layout.visibleSlots, components),
+  }
 }
 
 export function getChatMessageActionDesktopSurfaceState(): typeof CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.desktop {

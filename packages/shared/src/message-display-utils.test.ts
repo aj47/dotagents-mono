@@ -20,6 +20,7 @@ import {
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
   createChatMessageActionSlotRenderMap,
+  createChatMessageActionSlotRenderState,
   getChatMessageActionSlotRenderEntries,
   getChatMessageCollapseThreshold,
   getChatMessageCollapsedPreview,
@@ -532,6 +533,60 @@ describe('chat message display presentation', () => {
       { slot: 'copy', item: 'copy' },
       { slot: 'expansion', item: null },
     ])
+    const actionRenderStateCalls: string[] = []
+    expect(createChatMessageActionSlotRenderState({
+      availability: getChatMessageActionAvailabilityRenderState({
+        turnDuration: true,
+        speech: false,
+        branch: true,
+        copy: true,
+        expansion: false,
+      }),
+      renderState: getChatMessageContentRenderState({
+        content: '',
+        isExpanded: false,
+        shouldCollapse: false,
+      }),
+      renderers: {
+        turnDuration: () => {
+          actionRenderStateCalls.push('turnDuration')
+          return 'duration'
+        },
+        speech: () => {
+          actionRenderStateCalls.push('speech')
+          return 'speech'
+        },
+        branch: () => {
+          actionRenderStateCalls.push('branch')
+          return 'branch'
+        },
+        copy: () => {
+          actionRenderStateCalls.push('copy')
+          return 'copy'
+        },
+        expansion: () => {
+          actionRenderStateCalls.push('expansion')
+          return 'expansion'
+        },
+      },
+    })).toEqual({
+      visibleSlots: ['turnDuration', 'branch', 'copy'],
+      shouldRenderActionSlots: true,
+      shouldRenderStandaloneRow: true,
+      components: {
+        turnDuration: 'duration',
+        speech: null,
+        branch: 'branch',
+        copy: 'copy',
+        expansion: null,
+      },
+      entries: [
+        { slot: 'turnDuration', item: 'duration' },
+        { slot: 'branch', item: 'branch' },
+        { slot: 'copy', item: 'copy' },
+      ],
+    })
+    expect(actionRenderStateCalls).toEqual(['turnDuration', 'branch', 'copy'])
     expect(getChatMessageActionLayoutRenderState({
       availability: getChatMessageActionAvailabilityRenderState({
         turnDuration: true,
