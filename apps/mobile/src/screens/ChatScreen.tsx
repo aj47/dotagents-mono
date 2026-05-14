@@ -2,8 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } fr
 import {
   Platform,
   Alert,
-  AppState,
-  type AppStateStatus,
 } from 'react-native';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -32,6 +30,7 @@ import {
   useChatComposerRuntimeEditBeforeSendState,
   useChatRuntimeRequestDebugState,
   useChatRuntimeConnectionRetryState,
+  useChatRuntimeForegroundState,
   useChatComposerRuntimeDraftState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
@@ -269,9 +268,10 @@ export default function ChatScreen({ route, navigation }: any) {
   // bail before queueing or playing audio.
   const ttsEnabledRef = useRef<boolean>(ttsEnabledSetting);
   useEffect(() => { ttsEnabledRef.current = ttsEnabledSetting; }, [ttsEnabledSetting]);
-  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
-  const isAppActive = appState === 'active';
-  const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
+  const { handsFreeRuntimeActive } = useChatRuntimeForegroundState({
+    handsFree,
+    isFocused,
+  });
 
   // TTS toggle
   const ttsEnabled = ttsEnabledSetting;
@@ -789,13 +789,6 @@ export default function ChatScreen({ route, navigation }: any) {
       styles: chatRuntimeHeaderStyles,
     }));
   }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, mobileHeaderRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree, openAgentSelector]);
-
-		  useEffect(() => {
-			const subscription = AppState.addEventListener('change', (nextState) => {
-				setAppState(nextState);
-		});
-		return () => subscription.remove();
-	  }, []);
 
 	  useEffect(() => {
 		if (!handsFree) {

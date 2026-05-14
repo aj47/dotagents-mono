@@ -73,6 +73,14 @@ test('derives send-next availability from strict FIFO queue semantics', () => {
 test('wires ChatScreen through the extracted handsfree controller and recognizer hooks', () => {
   assert.match(screenSource, /useSpeechRecognizer\(/);
   assert.match(screenSource, /useHandsFreeController\(/);
+  assert.match(screenSource, /useChatRuntimeForegroundState,/);
+  assert.match(screenSource, /const \{ handsFreeRuntimeActive \} = useChatRuntimeForegroundState\(\{\s+handsFree,\s+isFocused,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeForegroundState/);
+  assert.match(chatMessageChromeSource, /const \[appState, setAppState\] = useState<AppStateStatus>\(AppState\.currentState\);/);
+  assert.match(chatMessageChromeSource, /AppState\.addEventListener\('change', \(nextState\) => \{[\s\S]*?setAppState\(nextState\);/);
+  assert.match(chatMessageChromeSource, /handsFreeRuntimeActive: handsFree && isFocused && isAppActive,/);
+  assert.doesNotMatch(screenSource, /const \[appState, setAppState\] = useState<AppStateStatus>\(AppState\.currentState\);/);
+  assert.doesNotMatch(screenSource, /AppState\.addEventListener/);
   assert.match(screenSource, /const chatRuntimeConfig = createChatRuntimeMobileConfigState\(config\);/);
   assert.match(screenSource, /handsFreeMessageDebounceMs,[\s\S]*?handsFreeWakePhrase,[\s\S]*?handsFreeSleepPhrase,[\s\S]*?handsFreeDebugEnabled,[\s\S]*?handsFreeForegroundOnly,[\s\S]*?messageQueueEnabled,[\s\S]*?ttsEnabled: ttsEnabledSetting,/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileConfigState/);

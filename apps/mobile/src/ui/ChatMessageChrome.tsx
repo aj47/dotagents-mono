@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -13,6 +14,7 @@ import {
   View,
   type AccessibilityRole,
   type AccessibilityState,
+  type AppStateStatus,
   type GestureResponderEvent,
   type ImageSourcePropType,
   type ImageStyle,
@@ -499,6 +501,17 @@ type ChatRuntimeRequestDebugState = {
   requestDebugText: string;
   setRequestDebugText: Dispatch<SetStateAction<string>>;
   clearRequestDebugText: () => void;
+};
+
+type ChatRuntimeForegroundStateInput = {
+  handsFree: boolean;
+  isFocused: boolean;
+};
+
+type ChatRuntimeForegroundState = {
+  appState: AppStateStatus;
+  isAppActive: boolean;
+  handsFreeRuntimeActive: boolean;
 };
 
 type ChatRuntimeConnectionRetryState = {
@@ -5990,6 +6003,29 @@ export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState 
     requestDebugText,
     setRequestDebugText,
     clearRequestDebugText,
+  };
+}
+
+export function useChatRuntimeForegroundState({
+  handsFree,
+  isFocused,
+}: ChatRuntimeForegroundStateInput): ChatRuntimeForegroundState {
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      setAppState(nextState);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  const isAppActive = appState === 'active';
+
+  return {
+    appState,
+    isAppActive,
+    handsFreeRuntimeActive: handsFree && isFocused && isAppActive,
   };
 }
 
