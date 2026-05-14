@@ -19,6 +19,7 @@ import {
   sanitizeMessagesForModel,
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
+  createChatMessageActionSlotRenderMap,
   getChatMessageCollapseThreshold,
   getChatMessageCollapsedPreview,
   getChatMessageCollapsedPreviewMobileActionState,
@@ -482,6 +483,45 @@ describe('chat message display presentation', () => {
         canRender: false,
       },
     })
+    const actionRenderCalls: string[] = []
+    expect(createChatMessageActionSlotRenderMap(
+      getChatMessageActionAvailabilityRenderState({
+        turnDuration: true,
+        speech: true,
+        branch: false,
+        copy: true,
+        expansion: false,
+      }),
+      {
+        turnDuration: () => {
+          actionRenderCalls.push('turnDuration')
+          return 'duration'
+        },
+        speech: () => {
+          actionRenderCalls.push('speech')
+          return 'speech'
+        },
+        branch: () => {
+          actionRenderCalls.push('branch')
+          return 'branch'
+        },
+        copy: () => {
+          actionRenderCalls.push('copy')
+          return 'copy'
+        },
+        expansion: () => {
+          actionRenderCalls.push('expansion')
+          return 'expansion'
+        },
+      },
+    )).toEqual({
+      turnDuration: 'duration',
+      speech: 'speech',
+      branch: null,
+      copy: 'copy',
+      expansion: null,
+    })
+    expect(actionRenderCalls).toEqual(['turnDuration', 'speech', 'copy'])
     expect(getChatMessageActionLayoutRenderState({
       availability: getChatMessageActionAvailabilityRenderState({
         turnDuration: true,

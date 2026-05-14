@@ -3631,8 +3631,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /delegationCard: createChatMessageDelegationCardProps\(delegationCard\),/);
   assert.match(chatMessageChromeSource, /toolApproval: createChatMessageToolApprovalProps\(toolApproval\),/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
-  assert.match(chatMessageChromeSource, /turnDuration: availability\.turnDuration\.canRender \? \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
-  assert.match(chatMessageChromeSource, /speech: renderChatMessageActionButton\(speech, availability\.speech\.canRender\),/);
+  assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(availability, \{/);
+  assert.match(chatMessageChromeSource, /turnDuration: \(\) => \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
+  assert.match(chatMessageChromeSource, /speech: \(\) => renderChatMessageActionButton\(speech\),/);
   assert.match(chatMessageChromeSource, /const components = createChatMessageActionComponents\(\{\s+availability,\s+\.\.\.actionInput,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const availability = getChatMessageActionAvailabilityRenderState\(\{\s+turnDuration: actionInput\.turnDuration\.renderState\.shouldRender,\s+speech: actionInput\.speech\.renderState\.canSpeak,\s+branch: actionInput\.branch\.renderState\.canBranch,\s+copy: actionInput\.copy\.renderState\.canCopy,\s+expansion: actionInput\.expansion\.renderState\.canToggle,\s+\}\);/);
   assert.doesNotMatch(screenSource, /isVisible: messageContentRenderState\.speech\.isVisible,/);

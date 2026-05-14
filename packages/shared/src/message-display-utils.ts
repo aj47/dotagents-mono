@@ -677,6 +677,23 @@ export function getChatMessageVisibleActionSlots(
   return CHAT_MESSAGE_ACTION_SEQUENCE.filter((actionSlot) => availability[actionSlot])
 }
 
+export type ChatMessageActionSlotRenderer<T> = () => T | null
+export type ChatMessageActionSlotRenderMap<T> = Record<ChatMessageActionSlot, T | null>
+export type ChatMessageActionSlotRenderers<T> = Record<ChatMessageActionSlot, ChatMessageActionSlotRenderer<T>>
+
+export function createChatMessageActionSlotRenderMap<T>(
+  availability: ChatMessageActionAvailabilityRenderState,
+  renderers: ChatMessageActionSlotRenderers<T>,
+): ChatMessageActionSlotRenderMap<T> {
+  return {
+    turnDuration: availability.turnDuration.canRender ? renderers.turnDuration() : null,
+    speech: availability.speech.canRender ? renderers.speech() : null,
+    branch: availability.branch.canRender ? renderers.branch() : null,
+    copy: availability.copy.canRender ? renderers.copy() : null,
+    expansion: availability.expansion.canRender ? renderers.expansion() : null,
+  }
+}
+
 export function getChatMessageActionDesktopSurfaceState(): typeof CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.desktop {
   return CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.desktop
 }

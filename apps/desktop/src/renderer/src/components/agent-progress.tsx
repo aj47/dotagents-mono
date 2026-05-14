@@ -93,6 +93,7 @@ import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
   applyChatDisplayGroupedExpansionInheritance,
+  createChatMessageActionSlotRenderMap,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionCopyState,
   getChatMessageActionDesktopSurfaceState,
@@ -119,7 +120,6 @@ import {
   sanitizeMessageContentForSpeech,
   setChatDisplayExpansionState,
   stripMarkdownMediaPayloads,
-  type ChatMessageActionSlot,
 } from "@dotagents/shared/message-display-utils"
 import { normalizeMarkdownThoughtContent } from "@dotagents/shared/markdown-render-parts"
 import { toast } from "sonner"
@@ -1273,87 +1273,90 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     copy: messageCopyAction.canCopy,
     expansion: messageExpansionAction.canToggle,
   })
-  const messageActionComponents = {
-    turnDuration: messageActionAvailabilityRenderState.turnDuration.canRender && (
-      <span
-        className={cn(
-          desktopChatMessageActionSurface.turnDurationBadgeClassName,
-          messageTurnDurationBadgeState.isLive && desktopChatMessageActionSurface.turnDurationLiveClassName,
-        )}
-        title={messageTurnDurationBadgeState.title ?? undefined}
-      >
-        <Clock className={desktopChatMessageActionSurface.turnDurationIconClassName} aria-hidden="true" />
-        {messageTurnDurationBadgeState.label}
-      </span>
-    ),
-    speech: messageActionAvailabilityRenderState.speech.canRender && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          void desktopTtsClient.controlPlayback({
-            type: "pause",
-            playbackId,
-            reason: "agent-progress-message-pause",
-          })
-        }}
-        className={cn(
-          desktopChatMessageActionSurface.buttonClassName,
-          isTTSPlaying && desktopChatMessageActionSurface.activeButtonClassName
-        )}
-        title={isGeneratingAudio
-          ? chatMessageActionCopy.speech.generatingAudioTitle
-          : chatMessageActionCopy.speech.pauseLabel}
-        aria-label={isGeneratingAudio
-          ? chatMessageActionCopy.speech.generatingAudioLabel
-          : chatMessageActionCopy.speech.pauseLabel}
-      >
-        {isGeneratingAudio ? (
-          <Loader2 className={desktopChatMessageActionSurface.generatingAudioIconClassName} />
-        ) : (
-          <Volume2 className={desktopChatMessageActionSurface.playingAudioIconClassName} />
-        )}
-      </button>
-    ),
-    branch: messageActionAvailabilityRenderState.branch.canRender && (
-      <button
-        onClick={handleBranchFromMessage}
-        className={desktopChatMessageActionSurface.buttonClassName}
-        title={messageBranchTitle}
-        aria-label={messageBranchAccessibilityLabel}
-      >
-        <GitBranch className={desktopChatMessageActionSurface.branchIconClassName} />
-      </button>
-    ),
-    copy: messageActionAvailabilityRenderState.copy.canRender && (
-      <button
-        onClick={handleCopyResponse}
-        className={desktopChatMessageActionSurface.buttonClassName}
-        title={messageCopyTitle}
-        aria-label={messageCopyAccessibilityLabel}
-      >
-        {isCopied ? (
-          <CheckCheck className={desktopChatMessageActionSurface.copiedIconClassName} />
-        ) : (
-          <Copy className={desktopChatMessageActionSurface.copyIconClassName} />
-        )}
-      </button>
-    ),
-    expansion: messageActionAvailabilityRenderState.expansion.canRender && (
-      <button
-        onClick={handleChevronClick}
-        className={desktopChatMessageActionSurface.buttonClassName}
-        title={messageExpansionTitle}
-        aria-label={messageExpansionAccessibilityLabel}
-        aria-expanded={messageExpansionAction.isExpanded}
-      >
-        {isExpanded ? (
-          <ChevronUp className={desktopChatMessageActionSurface.toggleIconClassName} />
-        ) : (
-          <ChevronDown className={desktopChatMessageActionSurface.toggleIconClassName} />
-        )}
-      </button>
-    ),
-  } satisfies Record<ChatMessageActionSlot, React.ReactNode>
+  const messageActionComponents = createChatMessageActionSlotRenderMap<React.ReactNode>(
+    messageActionAvailabilityRenderState,
+    {
+      turnDuration: () => (
+        <span
+          className={cn(
+            desktopChatMessageActionSurface.turnDurationBadgeClassName,
+            messageTurnDurationBadgeState.isLive && desktopChatMessageActionSurface.turnDurationLiveClassName,
+          )}
+          title={messageTurnDurationBadgeState.title ?? undefined}
+        >
+          <Clock className={desktopChatMessageActionSurface.turnDurationIconClassName} aria-hidden="true" />
+          {messageTurnDurationBadgeState.label}
+        </span>
+      ),
+      speech: () => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            void desktopTtsClient.controlPlayback({
+              type: "pause",
+              playbackId,
+              reason: "agent-progress-message-pause",
+            })
+          }}
+          className={cn(
+            desktopChatMessageActionSurface.buttonClassName,
+            isTTSPlaying && desktopChatMessageActionSurface.activeButtonClassName
+          )}
+          title={isGeneratingAudio
+            ? chatMessageActionCopy.speech.generatingAudioTitle
+            : chatMessageActionCopy.speech.pauseLabel}
+          aria-label={isGeneratingAudio
+            ? chatMessageActionCopy.speech.generatingAudioLabel
+            : chatMessageActionCopy.speech.pauseLabel}
+        >
+          {isGeneratingAudio ? (
+            <Loader2 className={desktopChatMessageActionSurface.generatingAudioIconClassName} />
+          ) : (
+            <Volume2 className={desktopChatMessageActionSurface.playingAudioIconClassName} />
+          )}
+        </button>
+      ),
+      branch: () => (
+        <button
+          onClick={handleBranchFromMessage}
+          className={desktopChatMessageActionSurface.buttonClassName}
+          title={messageBranchTitle}
+          aria-label={messageBranchAccessibilityLabel}
+        >
+          <GitBranch className={desktopChatMessageActionSurface.branchIconClassName} />
+        </button>
+      ),
+      copy: () => (
+        <button
+          onClick={handleCopyResponse}
+          className={desktopChatMessageActionSurface.buttonClassName}
+          title={messageCopyTitle}
+          aria-label={messageCopyAccessibilityLabel}
+        >
+          {isCopied ? (
+            <CheckCheck className={desktopChatMessageActionSurface.copiedIconClassName} />
+          ) : (
+            <Copy className={desktopChatMessageActionSurface.copyIconClassName} />
+          )}
+        </button>
+      ),
+      expansion: () => (
+        <button
+          onClick={handleChevronClick}
+          className={desktopChatMessageActionSurface.buttonClassName}
+          title={messageExpansionTitle}
+          aria-label={messageExpansionAccessibilityLabel}
+          aria-expanded={messageExpansionAction.isExpanded}
+        >
+          {isExpanded ? (
+            <ChevronUp className={desktopChatMessageActionSurface.toggleIconClassName} />
+          ) : (
+            <ChevronDown className={desktopChatMessageActionSurface.toggleIconClassName} />
+          )}
+        </button>
+      ),
+    },
+  )
   const messageActionLayout = getChatMessageActionLayoutRenderState({
     availability: messageActionAvailabilityRenderState,
     renderState: messageContentRenderState,

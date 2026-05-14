@@ -31,6 +31,7 @@ import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
   applyChatDisplayGroupedExpansionInheritance,
+  createChatMessageActionSlotRenderMap,
   getChatDisplayExpansionState,
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
@@ -4223,12 +4224,7 @@ export function ChatMessageActionIconButton({
   );
 }
 
-function renderChatMessageActionButton(
-  spec: ChatMessageActionButtonSpec,
-  canRender: boolean,
-) {
-  if (!canRender) return null;
-
+function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
   return (
     <ChatMessageActionIconButton
       onPress={spec.onPress}
@@ -7443,8 +7439,8 @@ export function createChatMessageActionComponents({
   copy,
   expansion,
 }: ChatMessageActionComponentsInput): Record<ChatMessageActionSlot, ReactNode> {
-  return {
-    turnDuration: availability.turnDuration.canRender ? (
+  return createChatMessageActionSlotRenderMap<ReactNode>(availability, {
+    turnDuration: () => (
       <ChatMessageTurnDurationBadge
         renderState={turnDuration.renderState}
         style={turnDuration.style}
@@ -7452,12 +7448,12 @@ export function createChatMessageActionComponents({
         textStyle={turnDuration.textStyle}
         liveTextStyle={turnDuration.liveTextStyle}
       />
-    ) : null,
-    speech: renderChatMessageActionButton(speech, availability.speech.canRender),
-    branch: renderChatMessageActionButton(branch, availability.branch.canRender),
-    copy: renderChatMessageActionButton(copy, availability.copy.canRender),
-    expansion: renderChatMessageActionButton(expansion, availability.expansion.canRender),
-  };
+    ),
+    speech: () => renderChatMessageActionButton(speech),
+    branch: () => renderChatMessageActionButton(branch),
+    copy: () => renderChatMessageActionButton(copy),
+    expansion: () => renderChatMessageActionButton(expansion),
+  });
 }
 
 export function createChatMessageActionSet({
