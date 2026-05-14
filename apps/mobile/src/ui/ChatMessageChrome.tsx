@@ -3241,6 +3241,34 @@ export function getChatMessageRuntimeToolApprovalAlertState(): ReturnType<
   return getChatRuntimeToolApprovalMobileAlertState();
 }
 
+export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState(
+  alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alerts.connectionRequired.title,
+    message: alerts.connectionRequired.message,
+  };
+}
+
+export function getChatMessageRuntimeToolApprovalUnavailableAlertState(
+  alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alerts.unavailable.title,
+    message: alerts.unavailable.message,
+  };
+}
+
+export function getChatMessageRuntimeToolApprovalFailedAlertState(
+  error: unknown,
+  alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alerts.failed.title,
+    message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
+  };
+}
+
 export function createChatMessageRuntimeViewportChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },

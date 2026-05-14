@@ -86,6 +86,9 @@ import {
   getChatMessageRuntimeKillSwitchResultAlertState,
   getChatMessageRuntimeLatestStepSummary,
   getChatMessageRuntimeToolApprovalAlertState,
+  getChatMessageRuntimeToolApprovalConnectionRequiredAlertState,
+  getChatMessageRuntimeToolApprovalFailedAlertState,
+  getChatMessageRuntimeToolApprovalUnavailableAlertState,
   getChatMessageToolExecutionCopyFailureAlertState,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
@@ -748,10 +751,8 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!settingsClient) {
-      Alert.alert(
-        mobileRuntimeToolApprovalAlerts.connectionRequired.title,
-        mobileRuntimeToolApprovalAlerts.connectionRequired.message,
-      );
+      const connectionRequiredAlert = getChatMessageRuntimeToolApprovalConnectionRequiredAlertState(mobileRuntimeToolApprovalAlerts);
+      Alert.alert(connectionRequiredAlert.title, connectionRequiredAlert.message);
       return;
     }
 
@@ -760,16 +761,12 @@ export default function ChatScreen({ route, navigation }: any) {
       const response = await settingsClient.respondToToolApproval(approvalId, approved);
       setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
       if (!response.success) {
-        Alert.alert(
-          mobileRuntimeToolApprovalAlerts.unavailable.title,
-          mobileRuntimeToolApprovalAlerts.unavailable.message,
-        );
+        const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState(mobileRuntimeToolApprovalAlerts);
+        Alert.alert(unavailableAlert.title, unavailableAlert.message);
       }
     } catch (error: any) {
-      Alert.alert(
-        mobileRuntimeToolApprovalAlerts.failed.title,
-        formatChatMessageRuntimeAlertMessage(error, mobileRuntimeToolApprovalAlerts.failed.fallbackMessage),
-      );
+      const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error, mobileRuntimeToolApprovalAlerts);
+      Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
       setPendingToolApprovalResponseId(null);
     }

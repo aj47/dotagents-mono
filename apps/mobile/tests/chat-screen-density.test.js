@@ -262,9 +262,17 @@ test('lets mobile respond to desktop tool approval requests from progress update
     /const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState\(\);/,
   );
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalAlertState/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.connectionRequired\.title,\s*mobileRuntimeToolApprovalAlerts\.connectionRequired\.message,\s*\)/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.unavailable\.title,\s*mobileRuntimeToolApprovalAlerts\.unavailable\.message,\s*\)/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.failed\.title,\s*formatChatMessageRuntimeAlertMessage\(error, mobileRuntimeToolApprovalAlerts\.failed\.fallbackMessage\),\s*\)/);
+  assert.match(screenSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(mobileRuntimeToolApprovalAlerts\)/);
+  assert.match(screenSource, /Alert\.alert\(connectionRequiredAlert\.title, connectionRequiredAlert\.message\)/);
+  assert.match(screenSource, /getChatMessageRuntimeToolApprovalUnavailableAlertState\(mobileRuntimeToolApprovalAlerts\)/);
+  assert.match(screenSource, /Alert\.alert\(unavailableAlert\.title, unavailableAlert\.message\)/);
+  assert.match(screenSource, /getChatMessageRuntimeToolApprovalFailedAlertState\(error, mobileRuntimeToolApprovalAlerts\)/);
+  assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalUnavailableAlertState/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalFailedAlertState/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
+  assert.doesNotMatch(screenSource, /mobileRuntimeToolApprovalAlerts\.(connectionRequired|unavailable|failed)\.(title|message|fallbackMessage)/);
   assert.match(screenSource, /const toggleToolApprovalArguments = useCallback\(\(approvalId: string\) => \{/);
   assert.doesNotMatch(screenSource, /const toolApprovalId = m\.toolApproval\?\.approvalId \?\? '';/);
   assert.doesNotMatch(screenSource, /const isToolApprovalExpanded = toolApprovalId/);
