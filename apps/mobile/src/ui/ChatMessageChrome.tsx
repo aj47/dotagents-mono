@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -2883,6 +2883,16 @@ type ChatMessageConversationHistoryWindowState<TMessage> = {
   hiddenMessageCount: number;
 };
 
+type ChatMessageRuntimeHistoryWindowStateInput = {
+  messageCount: number;
+  sessionId?: string | null;
+};
+
+type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatMessageRuntimeHistoryWindowState> & {
+  visibleMessageCount: number;
+  loadEarlierMessages: () => void;
+};
+
 type ChatMessageConversationRuntimeThreadListRenderStateInput =
   Omit<
     ChatMessageConversationThreadListRenderStateInput,
@@ -3322,6 +3332,39 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
 
 export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
   return getChatRuntimeMessageHistoryWindowMobileState();
+}
+
+export function useChatMessageRuntimeHistoryWindowState({
+  messageCount,
+  sessionId,
+}: ChatMessageRuntimeHistoryWindowStateInput): ChatMessageRuntimeHistoryWindowState {
+  const historyWindow = useMemo(() => getChatMessageRuntimeHistoryWindowState(), []);
+  const [visibleMessageCount, setVisibleMessageCount] = useState<number>(
+    historyWindow.initialVisibleCount,
+  );
+  const loadEarlierMessages = useCallback(() => {
+    setVisibleMessageCount((current) =>
+      Math.min(messageCount, current + historyWindow.loadIncrement),
+    );
+  }, [historyWindow.loadIncrement, messageCount]);
+
+  useEffect(() => {
+    setVisibleMessageCount(historyWindow.initialVisibleCount);
+  }, [historyWindow.initialVisibleCount, sessionId]);
+
+  useEffect(() => {
+    setVisibleMessageCount((current) => {
+      if (messageCount === 0) return historyWindow.initialVisibleCount;
+      const next = Math.max(historyWindow.initialVisibleCount, current);
+      return Math.min(messageCount, next);
+    });
+  }, [historyWindow.initialVisibleCount, messageCount]);
+
+  return {
+    ...historyWindow,
+    visibleMessageCount,
+    loadEarlierMessages,
+  };
 }
 
 export function getChatComposerImageAttachmentAlertState(

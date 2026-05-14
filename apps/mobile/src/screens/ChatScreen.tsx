@@ -79,7 +79,7 @@ import {
   getChatMessageRuntimeBranchFailedAlertState,
   getChatMessageRuntimeBranchUnavailableAlertState,
   getChatMessageRuntimeDebugMessage,
-  getChatMessageRuntimeHistoryWindowState,
+  useChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchConfirmationAlertState,
   getChatMessageRuntimeKillSwitchConnectionFailedAlertState,
   getChatMessageRuntimeKillSwitchResultAlertState,
@@ -145,7 +145,6 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes;
-const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs();
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
@@ -590,9 +589,18 @@ export default function ChatScreen({ route, navigation }: any) {
       setPendingToolApprovalResponseId(null);
     }
   }, [settingsClient]);
-  const [visibleMessageCount, setVisibleMessageCount] = useState<number>(
-    CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount,
-  );
+  const {
+    visibleMessageCount,
+    loadEarlierMessages,
+    loadIncrement: messageHistoryLoadIncrement,
+    scrollEventThrottleMs,
+    dragEndDebounceMs,
+    bottomResumeThresholdPx,
+    topLoadThresholdPx,
+  } = useChatMessageRuntimeHistoryWindowState({
+    messageCount: messages.length,
+    sessionId: sessionStore.currentSessionId,
+  });
   // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
   const messagesRef = useRef<ChatMessage[]>(messages);
   // Track progress messages so we can merge them with final conversationHistory
@@ -1103,8 +1111,8 @@ export default function ChatScreen({ route, navigation }: any) {
     dragEndTimeoutRef.current = setTimeout(() => {
       isUserDraggingRef.current = false;
       dragEndTimeoutRef.current = null;
-    }, CHAT_MESSAGE_HISTORY_WINDOW.dragEndDebounceMs);
-  }, []);
+    }, dragEndDebounceMs);
+  }, [dragEndDebounceMs]);
 
   // Handle scroll events to detect when user scrolls away from bottom
   const handleScroll = useCallback((event: ChatMessageScrollEvent) => {
@@ -1112,8 +1120,8 @@ export default function ChatScreen({ route, navigation }: any) {
     // Keep auto-scroll behavior aligned with the shared chat history window.
     const isAtBottom =
       layoutMeasurement.height + contentOffset.y >=
-      contentSize.height - CHAT_MESSAGE_HISTORY_WINDOW.bottomResumeThresholdPx;
-    const isNearTop = contentOffset.y <= CHAT_MESSAGE_HISTORY_WINDOW.topLoadThresholdPx;
+      contentSize.height - bottomResumeThresholdPx;
+    const isNearTop = contentOffset.y <= topLoadThresholdPx;
 
     if (isAtBottom && !shouldAutoScroll) {
       // User scrolled back to bottom, resume auto-scroll
@@ -1123,23 +1131,16 @@ export default function ChatScreen({ route, navigation }: any) {
       setShouldAutoScroll(false);
     }
     if (isNearTop && visibleMessageCount < messages.length) {
-      setVisibleMessageCount((current) =>
-        Math.min(messages.length, current + CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement),
-      );
+      loadEarlierMessages();
     }
-  }, [messages.length, shouldAutoScroll, visibleMessageCount]);
-
-  useEffect(() => {
-    setVisibleMessageCount(CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount);
-  }, [sessionStore.currentSessionId]);
-
-  useEffect(() => {
-    setVisibleMessageCount((current) => {
-      if (messages.length === 0) return CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount;
-      const next = Math.max(CHAT_MESSAGE_HISTORY_WINDOW.initialVisibleCount, current);
-      return Math.min(messages.length, next);
-    });
-  }, [messages.length]);
+  }, [
+    bottomResumeThresholdPx,
+    loadEarlierMessages,
+    messages.length,
+    shouldAutoScroll,
+    topLoadThresholdPx,
+    visibleMessageCount,
+  ]);
 
   // Scroll to bottom when messages change and auto-scroll is enabled
   // Uses debouncing to handle rapid streaming updates efficiently
@@ -2558,11 +2559,6 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
-  const handleLoadEarlierMessages = () => {
-    setVisibleMessageCount((current) =>
-      Math.min(messages.length, current + CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement),
-    );
-  };
   const handleScrollToBottomPress = () => {
     setShouldAutoScroll(true);
     scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -2695,7 +2691,7 @@ export default function ChatScreen({ route, navigation }: any) {
       onScroll: handleScroll,
       onScrollBeginDrag: handleScrollBeginDrag,
       onScrollEndDrag: handleScrollEndDrag,
-      scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW.scrollEventThrottleMs,
+      scrollEventThrottle: scrollEventThrottleMs,
       viewportContentIsLoadingMessages: sessionStore.isLoadingMessages,
       viewportContentMessageCount: messages.length,
       loadingSpinnerSource: isDark ? darkSpinner : lightSpinner,
@@ -2708,10 +2704,10 @@ export default function ChatScreen({ route, navigation }: any) {
       onQuickStartPress: handleQuickStartPress,
       onEditPrompt: openEditPromptModal,
       onDeletePrompt: handleDeletePrompt,
-      messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
+      messageHistoryLoadIncrement,
       latestStepSummary,
       colors: theme.colors,
-      onLoadEarlierMessages: handleLoadEarlierMessages,
+      onLoadEarlierMessages: loadEarlierMessages,
       requestDebugText: debugInfo,
       voiceDebugEnabled: handsFreeDebugEnabled,
       voiceEvents,
