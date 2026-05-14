@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   getChatDisplayExpansionState,
+  getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionLayoutRenderState,
@@ -308,6 +309,12 @@ type ChatMessageActionSetInput = Omit<
   branch: ChatMessageBranchActionSpecInput;
   copy: ChatMessageCopyActionSpecInput;
   expansion: ChatMessageExpansionActionSpecInput;
+};
+
+type ChatMessageCopyFeedbackState = {
+  feedbackResetDelayMs: number;
+  failedTitle: string;
+  failedMessage: string;
 };
 
 type ChatMessageMobileRenderState = ReturnType<typeof getChatMessageMobileRenderState>;
@@ -3558,6 +3565,16 @@ export function createChatMessageActionSet({
     components,
     visibleSlots: layout.visibleSlots,
     shouldRenderStandaloneActions: layout.shouldRenderStandaloneRow,
+  };
+}
+
+export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState {
+  const copyState = getChatMessageActionCopyState().copy;
+
+  return {
+    feedbackResetDelayMs: copyState.feedbackResetDelayMs,
+    failedTitle: copyState.failedTitle,
+    failedMessage: copyState.failedMessage,
   };
 }
 

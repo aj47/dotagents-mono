@@ -47,6 +47,7 @@ import {
   createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportContentRenderState,
   createChatMessageRuntimeViewportChromeProps,
+  getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -144,7 +145,6 @@ import {
   getToolExecutionResultOnlyFallbackRenderState,
 } from '@dotagents/shared/tool-execution-display';
 import {
-  getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageMobileRenderState,
@@ -232,7 +232,7 @@ const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertSta
 const handsFreeCopy = getHandsFreeComposerCopyState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
-const mobileMessageActionCopy = getChatMessageActionCopyState();
+const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
 const promptLibraryCopy = getPromptLibraryCopyState();
 const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
@@ -684,11 +684,11 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       copiedMessageTimeoutRef.current = setTimeout(() => {
         setCopiedMessageIndex((current) => (current === messageIndex ? null : current));
-      }, mobileMessageActionCopy.copy.feedbackResetDelayMs);
+      }, messageCopyFeedbackState.feedbackResetDelayMs);
     } catch (error) {
       Alert.alert(
-        mobileMessageActionCopy.copy.failedTitle,
-        getChatRuntimeAlertMessage(error, mobileMessageActionCopy.copy.failedMessage),
+        messageCopyFeedbackState.failedTitle,
+        getChatRuntimeAlertMessage(error, messageCopyFeedbackState.failedMessage),
       );
     }
   }, []);

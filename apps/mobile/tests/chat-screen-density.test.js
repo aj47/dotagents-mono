@@ -2825,7 +2825,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /hitSlop=\{renderState\.hitSlop\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.text\}/);
-  assert.match(screenSource, /getChatMessageActionCopyState,/);
+  assert.doesNotMatch(screenSource, /getChatMessageActionCopyState,/);
+  assert.match(chatMessageChromeSource, /getChatMessageActionCopyState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionLayoutState,/);
   assert.match(screenSource, /getChatMessageActionMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonColors,/);
@@ -2869,7 +2870,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /const chatMessageConversationThreadStyles = useMemo\(\s+\(\) => createChatMessageConversationThreadStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /presentationColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /presentation: ChatMessageConversationThreadPresentationState;/);
-  assert.match(screenSource, /const mobileMessageActionCopy = getChatMessageActionCopyState\(\);/);
+  assert.match(screenSource, /const messageCopyFeedbackState = getChatMessageCopyFeedbackState\(\);/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageCopyFeedbackState\(\): ChatMessageCopyFeedbackState \{\s+const copyState = getChatMessageActionCopyState\(\)\.copy;/);
   assert.doesNotMatch(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
   assert.doesNotMatch(screenSource, /const messageSpeechRenderState = getChatMessageSpeechMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /renderState: getChatMessageSpeechMobileRenderState\(\{\s+role: speech\.role,\s+content: speech\.content,\s+ttsEnabled: speech\.ttsEnabled,\s+isVisible: contentRenderState\.speech\.isVisible,\s+isSpeaking: speech\.isSpeaking,\s+colors: speech\.colors,\s+\}\),/);
@@ -3070,8 +3072,8 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.match(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
   assert.match(screenSource, /Clipboard\.setStringAsync\(copyContent\)/);
-  assert.match(screenSource, /mobileMessageActionCopy\.copy\.failedTitle/);
-  assert.match(screenSource, /mobileMessageActionCopy\.copy\.feedbackResetDelayMs/);
+  assert.match(screenSource, /messageCopyFeedbackState\.failedTitle/);
+  assert.match(screenSource, /messageCopyFeedbackState\.feedbackResetDelayMs/);
   assert.doesNotMatch(screenSource, /const messageCopyRenderState = getChatMessageCopyMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /renderState: getChatMessageCopyMobileRenderState\(\{\s+role: copy\.role,\s+content: copy\.content,\s+isAssistantComplete: copy\.isAssistantComplete,\s+isCopied: copy\.isCopied,\s+colors: copy\.colors,\s+\}\),/);
   assert.match(screenSource, /copiedMessageIndex,/);
