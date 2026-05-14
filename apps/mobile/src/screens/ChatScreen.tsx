@@ -85,6 +85,7 @@ import {
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
   getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
+  useChatMessageRuntimeBranchProgressState,
   useChatMessageCopyFeedbackState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
@@ -187,7 +188,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.model);
   const [remoteTtsRate, setRemoteTtsRate] = useState(DEFAULT_REMOTE_SPEECH_SETTINGS.rate);
   const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
-  const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
+  const {
+    pendingBranchMessageIndex,
+    beginBranchMessage,
+    clearBranchMessage,
+  } = useChatMessageRuntimeBranchProgressState({
+    sessionId: sessionStore.currentSessionId,
+  });
   const {
     copiedMessageIndex,
     clearCopiedMessageFeedback,
@@ -498,7 +505,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    setBranchingMessageIndex(messageIndex);
+    beginBranchMessage(messageIndex);
     try {
       const branchedConversation = await settingsClient.branchConversation(serverConversationId, { messageIndex });
       await sessionStore.syncWithServer(settingsClient);
@@ -515,9 +522,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
-      setBranchingMessageIndex(null);
+      clearBranchMessage();
     }
-  }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
+  }, [beginBranchMessage, clearBranchMessage, currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const turnDurations = useChatMessageRuntimeTurnDurations({
@@ -2499,7 +2506,7 @@ export default function ChatScreen({ route, navigation }: any) {
       expandedMessages,
       turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,
       conversationId: currentSession?.serverConversationId,
-      pendingBranchMessageIndex: branchingMessageIndex,
+      pendingBranchMessageIndex,
       isResponding: responding,
       speakingMessageIndex,
       copiedMessageIndex,

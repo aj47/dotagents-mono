@@ -2893,6 +2893,16 @@ type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatMessageRunt
   loadEarlierMessages: () => void;
 };
 
+type ChatMessageRuntimeBranchProgressStateInput = {
+  sessionId?: string | null;
+};
+
+type ChatMessageRuntimeBranchProgressState = {
+  pendingBranchMessageIndex: number | null;
+  beginBranchMessage: (messageIndex: number) => void;
+  clearBranchMessage: () => void;
+};
+
 type ChatMessageRuntimeScrollControllerInput = {
   messages: readonly unknown[];
   sessionId?: string | null;
@@ -5557,6 +5567,30 @@ export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState 
 
 export function getChatMessageCopyFeedbackResetDelayMs(): number {
   return getChatMessageCopyFeedbackState().feedbackResetDelayMs;
+}
+
+export function useChatMessageRuntimeBranchProgressState({
+  sessionId,
+}: ChatMessageRuntimeBranchProgressStateInput = {}): ChatMessageRuntimeBranchProgressState {
+  const [pendingBranchMessageIndex, setPendingBranchMessageIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPendingBranchMessageIndex(null);
+  }, [sessionId]);
+
+  const beginBranchMessage = useCallback((messageIndex: number) => {
+    setPendingBranchMessageIndex(messageIndex);
+  }, []);
+
+  const clearBranchMessage = useCallback(() => {
+    setPendingBranchMessageIndex(null);
+  }, []);
+
+  return {
+    pendingBranchMessageIndex,
+    beginBranchMessage,
+    clearBranchMessage,
+  };
 }
 
 export function useChatMessageCopyFeedbackState(

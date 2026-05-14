@@ -4182,7 +4182,12 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
 });
 
 test('lets mobile branch linked desktop conversations from individual messages', () => {
-  assert.match(screenSource, /const \[branchingMessageIndex, setBranchingMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(screenSource, /useChatMessageRuntimeBranchProgressState,/);
+  assert.match(screenSource, /const \{\s+pendingBranchMessageIndex,\s+beginBranchMessage,\s+clearBranchMessage,\s+\} = useChatMessageRuntimeBranchProgressState\(\{\s+sessionId: sessionStore\.currentSessionId,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeBranchProgressState/);
+  assert.match(chatMessageChromeSource, /const \[pendingBranchMessageIndex, setPendingBranchMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /setPendingBranchMessageIndex\(null\);[\s\S]*?\}, \[sessionId\]\);/);
+  assert.doesNotMatch(screenSource, /const \[branchingMessageIndex, setBranchingMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /settingsClient\.branchConversation\(serverConversationId, \{ messageIndex \}\)/);
   assert.match(screenSource, /await sessionStore\.syncWithServer\(settingsClient\)/);
   assert.match(screenSource, /sessionStore\.findSessionByServerConversationId\(branchedConversation\.id\)/);
@@ -4215,7 +4220,9 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /branchMessageIndex: historyMessage\.branchMessageIndex/);
   assert.doesNotMatch(screenSource, /const messageBranchRenderState = getChatRuntimeBranchMobileRenderState\(\{/);
   assert.doesNotMatch(screenSource, /const messageBranchIndex = messageBranchRenderState\.messageIndex;/);
-  assert.match(screenSource, /conversationId: currentSession\?\.serverConversationId,\s+pendingBranchMessageIndex: branchingMessageIndex,/);
+  assert.match(screenSource, /beginBranchMessage\(messageIndex\);/);
+  assert.match(screenSource, /clearBranchMessage\(\);/);
+  assert.match(screenSource, /conversationId: currentSession\?\.serverConversationId,\s+pendingBranchMessageIndex,/);
   assert.match(chatMessageChromeSource, /branch: \{\s+conversationId,\s+role: message\.role,\s+branchMessageIndex: message\.branchMessageIndex,\s+fallbackMessageIndex: messageIndex,\s+pendingMessageIndex: pendingBranchMessageIndex,\s+colors,\s+onBranchMessage,/);
   assert.match(chatMessageChromeSource, /const branchRenderState = getChatRuntimeBranchMobileRenderState\(\{\s+conversationId,\s+role: branchRole,\s+branchMessageIndex,\s+fallbackMessageIndex,\s+pendingMessageIndex,\s+colors: branchColors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(branchRenderState\.messageIndex != null\) \{\s+onBranchMessage\?\.\(branchRenderState\.messageIndex\);/);
