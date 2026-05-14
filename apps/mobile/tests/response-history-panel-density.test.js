@@ -131,7 +131,7 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
   assert.match(source, /\{responseHistoryRenderState\.items\.map\(\(item\) => \{/);
   assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
-  assert.match(source, /\{item\.displayIndex > 0 && <View style=\{styles\.separator\} \/>/);
+  assert.match(source, /\{item\.shouldRenderSeparator && <View style=\{styles\.separator\} \/>/);
   assert.match(source, /<AnimatedResponseItem isNewest=\{item\.isNewest\} animation=\{responseHistoryAnimation\}>/);
   assert.match(source, /\{item\.timestampLabel\}/);
   assert.match(source, /onPress=\{\(\) => onSpeakResponse\(response\.text, item\.originalIndex\)\}/);
@@ -145,6 +145,7 @@ test('mobile response history keeps hook state stable while adding collapsed lat
   assert.doesNotMatch(source, /formatAgentResponseHistoryTimestamp/);
   assert.doesNotMatch(source, /getLatestAgentResponseHistoryEntry/);
   assert.doesNotMatch(source, /const isSpeaking = speakingIndex === item\.originalIndex;/);
+  assert.doesNotMatch(source, /item\.displayIndex > 0/);
   assert.doesNotMatch(source, /const \[isCollapsed, setIsCollapsed\] = useState\(true\);/);
   assert.doesNotMatch(source, /const \[speakingIndex, setSpeakingIndex\] = useState<number \| null>\(null\);/);
   assert.doesNotMatch(source, /handleSpeak/);

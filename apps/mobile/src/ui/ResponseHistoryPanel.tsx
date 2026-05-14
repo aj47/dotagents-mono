@@ -236,7 +236,7 @@ export function ResponseHistoryPanel({
             const speechActionState = item.speechActionState;
             return (
               <React.Fragment key={item.key}>
-                {item.displayIndex > 0 && <View style={styles.separator} />}
+                {item.shouldRenderSeparator && <View style={styles.separator} />}
                 <AnimatedResponseItem isNewest={item.isNewest} animation={responseHistoryAnimation}>
                   <View style={styles.responseItem}>
                     <View style={styles.responseHeader}>

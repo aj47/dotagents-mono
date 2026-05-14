@@ -14,6 +14,7 @@ export interface AgentResponseHistoryRenderItem<T> {
   displayIndex: number;
   key: string;
   isNewest: boolean;
+  shouldRenderSeparator: boolean;
   timestampLabel: string;
 }
 
@@ -452,6 +453,7 @@ export function getAgentResponseHistoryRenderItems<T extends { id?: string | nul
       displayIndex,
       key: entry.id ?? `${entry.timestamp}-${displayIndex}`,
       isNewest: animateNewest && displayIndex === 0 && entry.timestamp === newestTimestamp,
+      shouldRenderSeparator: displayIndex > 0,
       timestampLabel: formatAgentResponseHistoryTimestamp(entry.timestamp),
     }));
 }

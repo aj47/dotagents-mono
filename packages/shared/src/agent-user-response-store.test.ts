@@ -186,6 +186,7 @@ describe('agent-user-response-store', () => {
         displayIndex: 0,
         key: 'second',
         isNewest: true,
+        shouldRenderSeparator: false,
         timestampLabel: expect.stringMatching(/\d{1,2}:\d{2}:\d{2}/),
       },
       {
@@ -194,6 +195,7 @@ describe('agent-user-response-store', () => {
         displayIndex: 1,
         key: 'first',
         isNewest: false,
+        shouldRenderSeparator: true,
         timestampLabel: expect.stringMatching(/\d{1,2}:\d{2}:\d{2}/),
       },
     ]);
@@ -203,6 +205,7 @@ describe('agent-user-response-store', () => {
         displayIndex: 0,
         key: '3000-0',
         isNewest: false,
+        shouldRenderSeparator: false,
         timestampLabel: expect.stringMatching(/\d{1,2}:\d{2}:\d{2}/),
       },
     ]);
