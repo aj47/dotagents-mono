@@ -52,6 +52,7 @@ import {
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
+  type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageContentRenderState,
@@ -1381,10 +1382,10 @@ export type ChatMessageRuntimeToolApprovalExpansionState = ChatDisplayExpansionS
 export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpansionStateMap<string>;
 
 type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;
+type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;
 
 export type ChatMessageActionSet = {
-  components: ChatMessageActionComponentMap;
-  visibleSlots: ChatMessageActionSlot[];
+  entries: ChatMessageActionEntry[];
   shouldRenderActionSlots: boolean;
   shouldRenderStandaloneActions: boolean;
 };
@@ -1937,8 +1938,7 @@ type ChatMessageTurnDurationBadgeProps = {
 
 type ChatMessageActionSlotListProps = {
   shouldRender?: boolean;
-  slots: readonly ChatMessageActionSlot[];
-  components: ChatMessageActionComponentMap;
+  entries: readonly ChatMessageActionEntry[];
   rowStyle?: StyleProp<ViewStyle>;
 };
 
@@ -3350,8 +3350,7 @@ type ChatMessageInlineActivityPropsInput = Pick<ChatMessageInlineActivityProps, 
 type ChatMessageContentRowProps = {
   children: ReactNode;
   shouldRenderActionSlots: boolean;
-  slots: readonly ChatMessageActionSlot[];
-  components: ChatMessageActionComponentMap;
+  entries: readonly ChatMessageActionEntry[];
   rowStyle: StyleProp<ViewStyle>;
   bodyStyle?: StyleProp<ViewStyle>;
 };
@@ -3424,8 +3423,7 @@ type ChatMessageConversationContentProps = {
   contentState: ChatMessageConversationContentState;
   rowStyle: StyleProp<ViewStyle>;
   shouldRenderActionSlots: boolean;
-  slots: readonly ChatMessageActionSlot[];
-  components: ChatMessageActionComponentMap;
+  entries: readonly ChatMessageActionEntry[];
   expanded: ChatMessageExpandedContentProps & {
     bodyStyle: StyleProp<ViewStyle>;
   };
@@ -7555,10 +7553,10 @@ export function createChatMessageActionSet({
     availability,
     renderState: contentRenderState,
   });
+  const entries = getChatMessageActionSlotRenderEntries(layout.visibleSlots, components);
 
   return {
-    components,
-    visibleSlots: layout.visibleSlots,
+    entries,
     shouldRenderActionSlots: layout.shouldRenderActionSlots,
     shouldRenderStandaloneActions: layout.shouldRenderStandaloneRow,
   };
@@ -10129,8 +10127,7 @@ export function createChatMessageConversationBodyProps({
     content: {
       contentState,
       shouldRenderActionSlots: actionSet.shouldRenderActionSlots,
-      slots: actionSet.visibleSlots,
-      components: actionSet.components,
+      entries: actionSet.entries,
       expanded: createChatMessageExpandedContentProps(expanded),
       collapsed: createChatMessageCollapsedPreviewProps({
         renderState: messageRenderState.collapsedPreview,
@@ -10141,8 +10138,7 @@ export function createChatMessageConversationBodyProps({
     toolExecutionStack: createChatMessageToolExecutionStackProps(toolExecutionStack),
     standaloneActions: {
       shouldRender: actionSet.shouldRenderStandaloneActions,
-      slots: actionSet.visibleSlots,
-      components: actionSet.components,
+      entries: actionSet.entries,
     },
   };
 }
@@ -14901,8 +14897,7 @@ export function ChatMessageConversationContent({
   contentState,
   rowStyle,
   shouldRenderActionSlots,
-  slots,
-  components,
+  entries,
   expanded,
   collapsed,
 }: ChatMessageConversationContentProps) {
@@ -14912,8 +14907,7 @@ export function ChatMessageConversationContent({
         rowStyle={rowStyle}
         bodyStyle={expanded.bodyStyle}
         shouldRenderActionSlots={shouldRenderActionSlots}
-        slots={slots}
-        components={components}
+        entries={entries}
       >
         <ChatMessageExpandedContent
           streamingRenderState={expanded.streamingRenderState}
@@ -14932,8 +14926,7 @@ export function ChatMessageConversationContent({
       <ChatMessageContentRow
         rowStyle={rowStyle}
         shouldRenderActionSlots={shouldRenderActionSlots}
-        slots={slots}
-        components={components}
+        entries={entries}
       >
         <ChatMessageCollapsedPreview
           renderState={collapsed.renderState}
@@ -14953,8 +14946,7 @@ export function ChatMessageConversationContent({
 export function ChatMessageContentRow({
   children,
   shouldRenderActionSlots,
-  slots,
-  components,
+  entries,
   rowStyle,
   bodyStyle,
 }: ChatMessageContentRowProps) {
@@ -14967,8 +14959,7 @@ export function ChatMessageContentRow({
       ) : children}
       <ChatMessageActionSlotList
         shouldRender={shouldRenderActionSlots}
-        slots={slots}
-        components={components}
+        entries={entries}
       />
     </View>
   );
@@ -14976,16 +14967,14 @@ export function ChatMessageContentRow({
 
 export function ChatMessageStandaloneActions({
   shouldRender,
-  slots,
-  components,
+  entries,
   rowStyle,
 }: ChatMessageStandaloneActionsProps) {
   if (!shouldRender) return null;
 
   return (
     <ChatMessageActionSlotList
-      slots={slots}
-      components={components}
+      entries={entries}
       rowStyle={rowStyle}
     />
   );
@@ -14993,13 +14982,12 @@ export function ChatMessageStandaloneActions({
 
 export function ChatMessageActionSlotList({
   shouldRender = true,
-  slots,
-  components,
+  entries,
   rowStyle,
 }: ChatMessageActionSlotListProps) {
   if (!shouldRender) return null;
 
-  const content = getChatMessageActionSlotRenderEntries(slots, components).map(({ slot, item }) => (
+  const content = entries.map(({ slot, item }) => (
     <Fragment key={slot}>
       {item}
     </Fragment>
