@@ -45,7 +45,6 @@ import {
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
-  formatChatMessageRuntimeConnectionErrorMessage,
   createChatMessageRuntimeNoSessionAvailableDebugState,
   createChatMessageRuntimeStartingRequestDebugState,
   createChatMessageRuntimeRequestSentDebugState,
@@ -53,6 +52,7 @@ import {
   createChatMessageRuntimeProcessingQueuedMessageDebugState,
   createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatMessageRuntimeRequestSupersededQueueFailureState,
+  createChatMessageRuntimeConnectionErrorTurnState,
   createChatMessageRuntimeQueuedErrorState,
   createChatRuntimeMobileConfigState,
   createChatMessageRuntimeFinalResponseTurnState,
@@ -61,7 +61,6 @@ import {
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
-  createChatMessageRuntimeAssistantErrorTurnState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -1123,19 +1122,17 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       setConversationState('blocked');
 
-      const recoveryState = connectionState;
-      const errorMessage = formatChatMessageRuntimeConnectionErrorMessage(e.message, recoveryState);
-
       // Save the failed message for retry
       setLastFailedMessage(text);
 
       // Check if there's partial content we can show
       const partialContent = client.getPartialContent();
 
-      const errorTurnState = createChatMessageRuntimeAssistantErrorTurnState<ChatMessage>(
-        errorMessage,
+      const errorTurnState = createChatMessageRuntimeConnectionErrorTurnState<ChatMessage>({
+        message: e.message,
+        recoveryState: connectionState,
         partialContent,
-      );
+      });
       setDebugInfo(errorTurnState.debugInfo);
       // Update the in-flight assistant message instead of appending a new one
       // This avoids duplicating the assistant loading placeholder and ensures

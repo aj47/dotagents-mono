@@ -4087,10 +4087,16 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /getChatMessageRuntimeDebugMessage\('unknownError'\)/);
   assert.doesNotMatch(screenSource, /mobileRuntimeDebug\.(noSessionAvailable|requestSent|completed|processingQueuedMessage|sessionChangedDuringProcessing|requestSuperseded|unknownError)/);
   assert.doesNotMatch(screenSource, /setDebugInfo\(formatChatMessageRuntimeDebugError\(errorMessage\)\)/);
-  assert.match(screenSource, /const errorTurnState = createChatMessageRuntimeAssistantErrorTurnState<ChatMessage>\(\s+errorMessage,\s+partialContent,\s+\);/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantErrorTurnState,/);
+  assert.doesNotMatch(screenSource, /const errorTurnState = createChatMessageRuntimeAssistantErrorTurnState<ChatMessage>\(\s+errorMessage,\s+partialContent,\s+\);/);
+  assert.match(screenSource, /createChatMessageRuntimeConnectionErrorTurnState,/);
+  assert.match(screenSource, /const errorTurnState = createChatMessageRuntimeConnectionErrorTurnState<ChatMessage>\(\{\s+message: e\.message,\s+recoveryState: connectionState,\s+partialContent,\s+\}\);/);
   assert.match(screenSource, /setDebugInfo\(errorTurnState\.debugInfo\)/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeStartingRequestDebugMessage\(config\.baseUrl\)/);
-  assert.match(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
+  assert.doesNotMatch(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeConnectionErrorTurnState/);
+  assert.match(chatMessageChromeSource, /const errorMessage = formatChatMessageRuntimeConnectionErrorMessage\(message, recoveryState\)/);
+  assert.match(chatMessageChromeSource, /return createChatMessageRuntimeAssistantErrorTurnState<TMessage>\(/);
   assert.doesNotMatch(screenSource, /updateLastChatMessageRuntimeAssistantErrorMessage,/);
   assert.doesNotMatch(screenSource, /updateLastChatMessageRuntimeAssistantErrorMessage\(\s+m,\s+errorMessage,\s+partialContent,\s+\)/);
   assert.match(screenSource, /setMessages\(errorTurnState\.updateMessages\)/);

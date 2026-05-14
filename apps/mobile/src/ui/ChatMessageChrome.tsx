@@ -4929,6 +4929,26 @@ export function createChatMessageRuntimeAssistantErrorTurnState<
   };
 }
 
+export type ChatMessageRuntimeConnectionErrorTurnStateInput = {
+  message: string;
+  recoveryState: Parameters<typeof formatChatMessageRuntimeConnectionErrorMessage>[1];
+  partialContent?: string | null;
+};
+
+export function createChatMessageRuntimeConnectionErrorTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>({
+  message,
+  recoveryState,
+  partialContent,
+}: ChatMessageRuntimeConnectionErrorTurnStateInput) {
+  const errorMessage = formatChatMessageRuntimeConnectionErrorMessage(message, recoveryState);
+  return createChatMessageRuntimeAssistantErrorTurnState<TMessage>(
+    errorMessage,
+    partialContent,
+  );
+}
+
 export function createChatMessageRuntimeAssistantDebugErrorTurnState<
   TMessage extends ChatMessageRuntimePendingTurnMessage,
 >(
