@@ -666,6 +666,11 @@ type ChatComposerRuntimeHandsFreeRecognizerLifecycleStateInput = {
   errorResetDelayMs?: number;
 };
 
+type ChatComposerRuntimeVoiceDebugResetStateInput = {
+  isVoiceDebugEnabled: boolean;
+  clearVoiceDebug: () => void;
+};
+
 type ChatRuntimeMutableRef<T> = {
   current: T;
 };
@@ -7161,6 +7166,17 @@ export function useChatComposerRuntimeHandsFreeRecognizerLifecycleState({
     startRecording,
     stopRecognitionOnly,
   ]);
+}
+
+export function useChatComposerRuntimeVoiceDebugResetState({
+  isVoiceDebugEnabled,
+  clearVoiceDebug,
+}: ChatComposerRuntimeVoiceDebugResetStateInput): void {
+  useEffect(() => {
+    if (!isVoiceDebugEnabled) {
+      clearVoiceDebug();
+    }
+  }, [clearVoiceDebug, isVoiceDebugEnabled]);
 }
 
 export function useChatMessageRuntimeMessageState<TMessage>(): ChatMessageRuntimeMessageState<TMessage> {

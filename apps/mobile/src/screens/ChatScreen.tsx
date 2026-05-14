@@ -42,6 +42,7 @@ import {
   useChatComposerRuntimeSubmissionActionsState,
   useChatComposerRuntimeHandsFreeControlActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
+  useChatComposerRuntimeVoiceDebugResetState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
   useChatRuntimeNavigationHeaderOptions,
@@ -530,12 +531,11 @@ export default function ChatScreen({ route, navigation }: any) {
     messages,
     isResponding: responding,
   });
-	  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
-	  useEffect(() => {
-		if (!handsFreeDebugEnabled) {
-			clearVoiceDebug();
-		}
-	  }, [clearVoiceDebug, handsFreeDebugEnabled]);
+  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
+  useChatComposerRuntimeVoiceDebugResetState({
+    isVoiceDebugEnabled: handsFreeDebugEnabled,
+    clearVoiceDebug,
+  });
 
   const handsFreeController = useHandsFreeController({
     enabled: handsFree,

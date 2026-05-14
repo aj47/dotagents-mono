@@ -129,11 +129,16 @@ test('falls back to normal direct-send handling for stale handsfree finalization
 test('surfaces recent voice debug events in chat when internal diagnostics are enabled', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
+  assert.match(screenSource, /useChatComposerRuntimeVoiceDebugResetState,/);
+  assert.match(screenSource, /useChatComposerRuntimeVoiceDebugResetState\(\{\s+isVoiceDebugEnabled: handsFreeDebugEnabled,\s+clearVoiceDebug,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeVoiceDebugResetState/);
+  assert.match(chatMessageChromeSource, /if \(!isVoiceDebugEnabled\) \{[\s\S]*?clearVoiceDebug\(\);/);
   assert.match(screenSource, /voiceDebugEnabled: handsFreeDebugEnabled/);
   assert.match(screenSource, /voiceEvents,/);
   assert.doesNotMatch(screenSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
   assert.match(chatMessageChromeSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
   assert.doesNotMatch(screenSource, /formatVoiceDebugEntry\(entry\)/);
+  assert.doesNotMatch(screenSource, /clearVoiceDebug\(\);/);
   assert.match(chatMessageChromeSource, /formatVoiceDebugEntry\(entry\)/);
   assert.doesNotMatch(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
   assert.match(chatMessageChromeSource, /const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState\(\{/);
