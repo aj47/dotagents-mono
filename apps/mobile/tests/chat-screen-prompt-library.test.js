@@ -234,7 +234,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteActionsState,/);
-  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: chatRuntimeChrome\.platform,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\.\.\.chatRuntimeChrome\.environment,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(screenSource, /createChatConversationHomePromptDeleteNativeConfirmPresenter,/);
   assert.doesNotMatch(screenSource, /showChatConversationHomePromptDeleteNativeConfirmAlert,/);
   assert.match(chatMessageChromeSource, /export function showChatConversationHomePromptDeleteNativeConfirmAlert/);

@@ -57,6 +57,8 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.doesNotMatch(chatScreenSource, /\s+styles,\s+\} = useChatRuntimeMobileStyleSlots/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /return \{[\s\S]*?\s+styles,\s+[\s\S]*?\};/);
   assert.match(chatRuntimeMobileStylesSource, /const chatRuntimeHeaderChrome = useMemo\(\s+\(\) => \(\{\s+colors: chatRuntimeChromeEnvironment\.colors,\s+spinnerSource: chatRuntimeSpinnerSource,\s+styles: chatRuntimeHeaderStyles,\s+\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /const chatRuntimeChromeEnvironmentProps = useMemo\(\s+\(\) => \(\{\s+platform: chatRuntimeChromeEnvironment\.platform,\s+\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /environment: chatRuntimeChromeEnvironmentProps,/);
   assert.match(chatRuntimeMobileStylesSource, /header: chatRuntimeHeaderChrome,/);
   assert.match(chatRuntimeMobileStylesSource, /messageRuntime: chatMessageRuntimeChrome,/);
   assert.doesNotMatch(chatScreenSource, /chatRuntimeHeaderStyles/);
@@ -967,7 +969,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchMobileAlertState,/);
   assert.match(chatMessageChromeSource, /killSwitchButtonShouldRender: getChatRuntimeKillSwitchMobileVisibilityRenderState\(\{\s+conversationState: headerConversationState,\s+\}\)\.shouldRender,/);
   assert.match(screenSource, /useChatMessageRuntimeKillSwitchActionsState,/);
-  assert.match(screenSource, /const \{ handleKillSwitch \} = useChatMessageRuntimeKillSwitchActionsState\(\{\s+platform: chatRuntimeChrome\.platform,\s+getKillSwitchClient: getSessionClient,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+showWebAlert: showChatRuntimeWebAlert,\s+confirmNative: createChatMessageRuntimeKillSwitchNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleKillSwitch \} = useChatMessageRuntimeKillSwitchActionsState\(\{\s+\.\.\.chatRuntimeChrome\.environment,\s+getKillSwitchClient: getSessionClient,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+showWebAlert: showChatRuntimeWebAlert,\s+confirmNative: createChatMessageRuntimeKillSwitchNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.doesNotMatch(chatScreenSource, /platform: chatRuntimeChrome\.platform,/);
   assert.match(screenSource, /createChatMessageRuntimeKillSwitchNativeConfirmPresenter,/);
   assert.match(screenSource, /confirmChatRuntimeWebDialog,/);
   assert.match(screenSource, /showChatRuntimeWebAlert,/);
@@ -1532,7 +1535,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
   assert.match(screenSource, /useChatComposerRuntimeSubmissionChromeState,/);
-  assert.match(screenSource, /const \{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+textEntrySubmissionState: composerTextEntrySubmissionState,\s+\} = useChatComposerRuntimeSubmissionChromeState\(\{\s+input,\s+pendingImages,\s+currentConversationId,\s+queue: messageQueue,\s+send,\s+clearComposerDraft,\s+setDebugInfo,\s+platform: chatRuntimeChrome\.platform,\s+onTextEntryChangeText: setInput,\s+\}\);/);
+  assert.match(screenSource, /const \{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+textEntrySubmissionState: composerTextEntrySubmissionState,\s+\} = useChatComposerRuntimeSubmissionChromeState\(\{\s+input,\s+pendingImages,\s+currentConversationId,\s+queue: messageQueue,\s+send,\s+clearComposerDraft,\s+setDebugInfo,\s+\.\.\.chatRuntimeChrome\.environment,\s+onTextEntryChangeText: setInput,\s+\}\);/);
   assert.doesNotMatch(chatScreenSource, /useChatComposerRuntimeSubmissionActionsState,/);
   assert.doesNotMatch(screenSource, /hasChatComposerRuntimeMessageContent,/);
   assert.doesNotMatch(screenSource, /buildChatComposerRuntimeMessageContent,/);
@@ -4681,7 +4684,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteActionsState,/);
-  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: chatRuntimeChrome\.platform,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\.\.\.chatRuntimeChrome\.environment,\s+confirmWeb: confirmChatRuntimeWebDialog,\s+confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter\(Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(screenSource, /createChatConversationHomePromptDeleteNativeConfirmPresenter,/);
   assert.doesNotMatch(screenSource, /showChatConversationHomePromptDeleteNativeConfirmAlert,/);
   assert.doesNotMatch(screenSource, /globalThis as \{ confirm\?: \(message\?: string\) => boolean \}/);

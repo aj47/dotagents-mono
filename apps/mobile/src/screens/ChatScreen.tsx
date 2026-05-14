@@ -379,7 +379,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
-    platform: chatRuntimeChrome.platform,
+    ...chatRuntimeChrome.environment,
     getKillSwitchClient: getSessionClient,
     confirmWeb: confirmChatRuntimeWebDialog,
     showWebAlert: showChatRuntimeWebAlert,
@@ -706,7 +706,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setPredefinedPrompts,
     beginPromptEditorSave,
     clearPromptEditorSave,
-    platform: chatRuntimeChrome.platform,
+    ...chatRuntimeChrome.environment,
     confirmWeb: confirmChatRuntimeWebDialog,
     confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter(Alert.alert),
     showAlert: Alert.alert,
@@ -1519,7 +1519,7 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
     clearComposerDraft,
     setDebugInfo,
-    platform: chatRuntimeChrome.platform,
+    ...chatRuntimeChrome.environment,
     onTextEntryChangeText: setInput,
   });
 

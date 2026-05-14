@@ -1753,6 +1753,12 @@ export function useChatRuntimeMobileStyleSlots() {
     () => createChatRuntimeMobileChromeEnvironment(theme),
     [theme],
   );
+  const chatRuntimeChromeEnvironmentProps = useMemo(
+    () => ({
+      platform: chatRuntimeChromeEnvironment.platform,
+    }),
+    [chatRuntimeChromeEnvironment],
+  );
   const chatRuntimeSpinnerSource = useMemo(
     () => createChatRuntimeThemeSpinnerSource({
       isDark,
@@ -1866,7 +1872,7 @@ export function useChatRuntimeMobileStyleSlots() {
   );
   const chatRuntimeChrome = useMemo(
     () => ({
-      platform: chatRuntimeChromeEnvironment.platform,
+      environment: chatRuntimeChromeEnvironmentProps,
       header: chatRuntimeHeaderChrome,
       messageRuntime: chatMessageRuntimeChrome,
       surface: chatMessageRuntimeSurfaceChrome,
@@ -1874,7 +1880,7 @@ export function useChatRuntimeMobileStyleSlots() {
     [
       chatMessageRuntimeChrome,
       chatMessageRuntimeSurfaceChrome,
-      chatRuntimeChromeEnvironment,
+      chatRuntimeChromeEnvironmentProps,
       chatRuntimeHeaderChrome,
     ],
   );
