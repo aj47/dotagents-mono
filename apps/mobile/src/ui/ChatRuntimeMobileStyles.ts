@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  type ImageSourcePropType,
   Platform,
   StyleSheet,
 } from 'react-native';
@@ -19,6 +20,7 @@ import {
   createChatRuntimeMobileSafeAreaLayoutState,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
+  createChatRuntimeThemeSpinnerSource,
   resolveChatRuntimeMobileFontFamily,
 } from './ChatMessageChrome';
 import { radius, spacing, type Theme } from './theme';
@@ -26,6 +28,9 @@ import { radius, spacing, type Theme } from './theme';
 type ChatRuntimeMobileStyleSlotsInput = {
   theme: Theme;
   bottomInset: number;
+  isDark: boolean;
+  darkSpinnerSource: ImageSourcePropType;
+  lightSpinnerSource: ImageSourcePropType;
 };
 
 export type ChatRuntimeMobileChromeEnvironment = {
@@ -1747,10 +1752,21 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
 export function useChatRuntimeMobileStyleSlots({
   theme,
   bottomInset,
+  isDark,
+  darkSpinnerSource,
+  lightSpinnerSource,
 }: ChatRuntimeMobileStyleSlotsInput) {
   const chatRuntimeChromeEnvironment = useMemo(
     () => createChatRuntimeMobileChromeEnvironment(theme),
     [theme],
+  );
+  const chatRuntimeSpinnerSource = useMemo(
+    () => createChatRuntimeThemeSpinnerSource({
+      isDark,
+      darkSource: darkSpinnerSource,
+      lightSource: lightSpinnerSource,
+    }),
+    [darkSpinnerSource, isDark, lightSpinnerSource],
   );
   const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
   const chatMessageConversationThreadStyles = useMemo(
@@ -1827,6 +1843,7 @@ export function useChatRuntimeMobileStyleSlots({
 
   return {
     chatRuntimeChromeEnvironment,
+    chatRuntimeSpinnerSource,
     chatMessageConversationThreadStyles,
     chatMessageRuntimeSurfaceStyles,
     chatRuntimeHeaderStyles,

@@ -38,12 +38,13 @@ const packageJson = JSON.parse(
 
 test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.match(chatScreenSource, /import \{ useChatRuntimeMobileStyleSlots \} from '\.\.\/ui\/ChatRuntimeMobileStyles';/);
-  assert.match(chatScreenSource, /useChatRuntimeMobileStyleSlots\(\{\s+theme,\s+bottomInset: insets\.bottom,\s+\}\)/);
+  assert.match(chatScreenSource, /useChatRuntimeMobileStyleSlots\(\{\s+theme,\s+bottomInset: insets\.bottom,\s+isDark,\s+darkSpinnerSource: darkSpinner,\s+lightSpinnerSource: lightSpinner,\s+\}\)/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileStyles\(theme\)/);
   assert.doesNotMatch(chatScreenSource, /function createStyles/);
   assert.doesNotMatch(chatScreenSource, /StyleSheet\.create/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileStyles/);
+  assert.match(chatRuntimeMobileStylesSource, /chatRuntimeSpinnerSource = useMemo\(\s+\(\) => createChatRuntimeThemeSpinnerSource\(\{\s+isDark,\s+darkSource: darkSpinnerSource,\s+lightSource: lightSpinnerSource,\s+\}\),\s+\[darkSpinnerSource, isDark, lightSpinnerSource\],\s+\);/);
   assert.match(chatRuntimeMobileStylesSource, /const styles = useMemo\(\(\) => createChatRuntimeMobileStyles\(theme\), \[theme\]\);/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /return StyleSheet\.create\(\{/);
@@ -174,7 +175,9 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.doesNotMatch(screenSource, /getChatSessionStatusMobileStyleState,/);
   assert.doesNotMatch(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(chatMessageChromeSource, /conversationStatusRenderState: getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors,\s+\}\),/);
-  assert.match(screenSource, /const chatRuntimeSpinnerSource = createChatRuntimeThemeSpinnerSource\(\{\s+isDark,\s+darkSource: darkSpinner,\s+lightSource: lightSpinner,\s+\}\);/);
+  assert.match(chatScreenSource, /chatRuntimeSpinnerSource,/);
+  assert.doesNotMatch(chatScreenSource, /createChatRuntimeThemeSpinnerSource/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeThemeSpinnerSource,/);
   assert.match(screenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{[\s\S]*?spinnerSource: chatRuntimeSpinnerSource,/);
   assert.match(chatMessageChromeSource, /conversationStatusSpinnerSource: spinnerSource,/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeThemeSpinnerSource/);

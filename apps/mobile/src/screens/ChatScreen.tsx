@@ -43,7 +43,6 @@ import {
   useChatComposerRuntimeHandsFreeControlActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
-  createChatRuntimeThemeSpinnerSource,
   useChatRuntimeNavigationHeaderChromeOptions,
   createChatMessageRuntimeNoSessionAvailableDebugState,
   createChatMessageRuntimeStartingRequestDebugState,
@@ -144,6 +143,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const isFocused = useIsFocused();
   const {
     chatRuntimeChromeEnvironment,
+    chatRuntimeSpinnerSource,
     chatMessageConversationThreadStyles,
     chatMessageRuntimeSurfaceStyles,
     chatRuntimeHeaderStyles,
@@ -152,11 +152,9 @@ export default function ChatScreen({ route, navigation }: any) {
   } = useChatRuntimeMobileStyleSlots({
     theme,
     bottomInset: insets.bottom,
-  });
-  const chatRuntimeSpinnerSource = createChatRuntimeThemeSpinnerSource({
     isDark,
-    darkSource: darkSpinner,
-    lightSource: lightSpinner,
+    darkSpinnerSource: darkSpinner,
+    lightSpinnerSource: lightSpinner,
   });
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
