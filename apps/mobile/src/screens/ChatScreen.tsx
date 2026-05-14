@@ -288,7 +288,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const {
     requestDebugText: debugInfo,
     setRequestDebugText: setDebugInfo,
-    clearRequestDebugText,
   } = useChatRuntimeRequestDebugState();
   const {
     lastFailedMessage,
@@ -398,18 +397,6 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     showAlert: Alert.alert,
   });
-
-  const handleNewChat = useCallback(() => {
-    // Reset all UI states unconditionally when creating a new chat
-    // This ensures the new session starts with a clean slate, even if
-    // an old request is still in-flight (its callbacks will be ignored
-    // via the session/request guards)
-    setResponding(false);
-    setConversationState(null);
-    setConnectionState(null);
-    clearRequestDebugText();
-    sessionStore.createNewSession();
-  }, [clearRequestDebugText, sessionStore]);
 
   const { handleRunPromptTask } = useChatConversationHomePromptTaskRunActionsState<Loop, ExtendedSettingsApiClient>({
     taskClient: settingsClient,
