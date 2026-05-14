@@ -197,7 +197,13 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(chatMessageChromeSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);
   assert.match(chatMessageChromeSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
-  assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
+  assert.match(screenSource, /useChatConversationHomePromptEditorState,/);
+  assert.match(screenSource, /openAddPromptEditor: openAddPromptModal/);
+  assert.match(screenSource, /openEditPromptEditor: openEditPromptModal/);
+  assert.match(screenSource, /closePromptEditor: closePromptModal/);
+  assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptEditorState/);
+  assert.match(chatMessageChromeSource, /setPromptEditorVisible\(true\)/);
+  assert.doesNotMatch(screenSource, /setAddPromptModalVisible\(true\)/);
   assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
   assert.match(screenSource, /createChatConversationHomePromptEditorSaveActionState\(\{\s+draft,\s+isEditing: Boolean\(editingPrompt\),\s+isSaving: isSavingPrompt,\s+\}\)/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorSaveActionState,/);
@@ -205,7 +211,8 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(screenSource, /onPromptEditorSave: handleSavePrompt/);
   assert.match(chatMessageChromeSource, /onPress=\{onSave\}/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
-  assert.match(screenSource, /getChatConversationHomePromptSaveSuccessAlertState\(Boolean\(editingPrompt\)\)/);
+  assert.match(screenSource, /const wasEditingPrompt = Boolean\(editingPrompt\);/);
+  assert.match(screenSource, /getChatConversationHomePromptSaveSuccessAlertState\(wasEditingPrompt\)/);
   assert.match(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /getChatConversationHomePromptDeleteFailedAlertState\(error\)/);
   assert.match(screenSource, /getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
@@ -235,7 +242,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
   assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{[\s\S]*?surface: \{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
-  assert.match(screenSource, /promptEditorIsEditing: Boolean\(editingPrompt\)/);
+  assert.match(screenSource, /promptEditorIsEditing,/);
   assert.match(screenSource, /promptEditorStyles: promptEditorModalStyles/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(screenSource, /title: getPromptLibraryEditorTitle\(Boolean\(editingPrompt\)\)/);

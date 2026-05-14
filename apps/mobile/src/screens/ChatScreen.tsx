@@ -26,6 +26,7 @@ import {
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
   useChatConversationHomePromptTaskRunState,
+  useChatConversationHomePromptEditorState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -224,11 +225,22 @@ export default function ChatScreen({ route, navigation }: any) {
   const effectiveRemoteTtsModel = config.ttsProvider === 'edge' ? undefined : remoteTtsModel;
   const effectiveRemoteTtsRate =
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteTtsRate;
-  const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
-  const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
-  const [newPromptName, setNewPromptName] = useState('');
-  const [newPromptContent, setNewPromptContent] = useState('');
-  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+  const {
+    promptEditorVisible: addPromptModalVisible,
+    promptEditorEditingPrompt: editingPrompt,
+    promptEditorIsEditing,
+    promptEditorNameValue: newPromptName,
+    setPromptEditorNameValue: setNewPromptName,
+    promptEditorContentValue: newPromptContent,
+    setPromptEditorContentValue: setNewPromptContent,
+    promptEditorIsSaving: isSavingPrompt,
+    openAddPromptEditor: openAddPromptModal,
+    openEditPromptEditor: openEditPromptModal,
+    closePromptEditor: closePromptModal,
+    dismissPromptEditor,
+    beginPromptEditorSave,
+    clearPromptEditorSave,
+  } = useChatConversationHomePromptEditorState();
   const chatRuntimeConfig = createChatRuntimeMobileConfigState(config);
   const {
     handsFreeMessageDebounceMs,
@@ -443,28 +455,6 @@ export default function ChatScreen({ route, navigation }: any) {
       clearPromptTaskRun();
     }
   }, [beginPromptTaskRun, canRunPromptTask, clearPromptTaskRun, settingsClient]);
-
-  const openAddPromptModal = useCallback(() => {
-    setEditingPrompt(null);
-    setNewPromptName('');
-    setNewPromptContent('');
-    setAddPromptModalVisible(true);
-  }, []);
-
-  const openEditPromptModal = useCallback((prompt: PredefinedPromptSummary) => {
-    setEditingPrompt(prompt);
-    setNewPromptName(prompt.name);
-    setNewPromptContent(prompt.content);
-    setAddPromptModalVisible(true);
-  }, []);
-
-  const closePromptModal = useCallback(() => {
-    if (isSavingPrompt) return;
-    setAddPromptModalVisible(false);
-    setEditingPrompt(null);
-    setNewPromptName('');
-    setNewPromptContent('');
-  }, [isSavingPrompt]);
 
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
     const pressIntent = getChatConversationHomeQuickStartPressIntent(item);
@@ -1151,7 +1141,8 @@ export default function ChatScreen({ route, navigation }: any) {
       isSaving: isSavingPrompt,
     });
     if (!settingsClient || saveActionState.isDisabled) return;
-    setIsSavingPrompt(true);
+    const wasEditingPrompt = Boolean(editingPrompt);
+    beginPromptEditorSave();
     try {
       const now = Date.now();
       const updatedPrompts = editingPrompt
@@ -1163,18 +1154,15 @@ export default function ChatScreen({ route, navigation }: any) {
 
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
       setPredefinedPrompts(sortChatConversationHomePromptsByUpdatedAt(updatedPrompts));
-      setAddPromptModalVisible(false);
-      setEditingPrompt(null);
-      setNewPromptName('');
-      setNewPromptContent('');
-      const successAlert = getChatConversationHomePromptSaveSuccessAlertState(Boolean(editingPrompt));
+      dismissPromptEditor();
+      const successAlert = getChatConversationHomePromptSaveSuccessAlertState(wasEditingPrompt);
       Alert.alert(successAlert.title, successAlert.message);
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       const failedAlert = getChatConversationHomePromptSaveFailedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
-      setIsSavingPrompt(false);
+      clearPromptEditorSave();
     }
   };
 
@@ -1182,7 +1170,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!settingsClient) return;
 
     const deletePrompt = async () => {
-      setIsSavingPrompt(true);
+      beginPromptEditorSave();
       try {
         const updatedPrompts = deleteChatConversationHomePromptFromList(predefinedPrompts, prompt.id);
         await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
@@ -1192,7 +1180,7 @@ export default function ChatScreen({ route, navigation }: any) {
         const failedAlert = getChatConversationHomePromptDeleteFailedAlertState(error);
         Alert.alert(failedAlert.title, failedAlert.message);
       } finally {
-        setIsSavingPrompt(false);
+        clearPromptEditorSave();
       }
     };
 
@@ -1210,7 +1198,7 @@ export default function ChatScreen({ route, navigation }: any) {
       { text: confirmAlert.cancelLabel, style: 'cancel' },
       { text: confirmAlert.deleteLabel, style: 'destructive', onPress: () => { void deletePrompt(); } },
     ]);
-  }, [predefinedPrompts, settingsClient]);
+  }, [beginPromptEditorSave, clearPromptEditorSave, predefinedPrompts, settingsClient]);
 
   const lastLoadedSessionIdRef = useRef<string | null>(null);
   const pendingLazyLoadSessionIdRef = useRef<string | null>(null);
@@ -2579,7 +2567,7 @@ export default function ChatScreen({ route, navigation }: any) {
       agentSelectorVisible,
       onAgentSelectorClose: () => setAgentSelectorVisible(false),
       promptEditorVisible: addPromptModalVisible,
-      promptEditorIsEditing: Boolean(editingPrompt),
+      promptEditorIsEditing,
       promptEditorNameValue: newPromptName,
       onPromptEditorNameChange: setNewPromptName,
       promptEditorContentValue: newPromptContent,

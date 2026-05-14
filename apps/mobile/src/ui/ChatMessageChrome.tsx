@@ -398,6 +398,23 @@ type ChatConversationHomePromptTaskRunState = {
   clearPromptTaskRun: () => void;
 };
 
+type ChatConversationHomePromptEditorState = {
+  promptEditorVisible: boolean;
+  promptEditorEditingPrompt: PredefinedPromptSummary | null;
+  promptEditorIsEditing: boolean;
+  promptEditorNameValue: string;
+  setPromptEditorNameValue: Dispatch<SetStateAction<string>>;
+  promptEditorContentValue: string;
+  setPromptEditorContentValue: Dispatch<SetStateAction<string>>;
+  promptEditorIsSaving: boolean;
+  openAddPromptEditor: () => void;
+  openEditPromptEditor: (prompt: PredefinedPromptSummary) => void;
+  closePromptEditor: () => void;
+  dismissPromptEditor: () => void;
+  beginPromptEditorSave: () => void;
+  clearPromptEditorSave: () => void;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -5602,6 +5619,65 @@ export function useChatConversationHomePromptTaskRunState(): ChatConversationHom
     canRunPromptTask: runningPromptTaskId === null,
     beginPromptTaskRun,
     clearPromptTaskRun,
+  };
+}
+
+export function useChatConversationHomePromptEditorState(): ChatConversationHomePromptEditorState {
+  const [promptEditorVisible, setPromptEditorVisible] = useState(false);
+  const [promptEditorEditingPrompt, setPromptEditorEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
+  const [promptEditorNameValue, setPromptEditorNameValue] = useState('');
+  const [promptEditorContentValue, setPromptEditorContentValue] = useState('');
+  const [promptEditorIsSaving, setPromptEditorIsSaving] = useState(false);
+
+  const dismissPromptEditor = useCallback(() => {
+    setPromptEditorVisible(false);
+    setPromptEditorEditingPrompt(null);
+    setPromptEditorNameValue('');
+    setPromptEditorContentValue('');
+  }, []);
+
+  const openAddPromptEditor = useCallback(() => {
+    setPromptEditorEditingPrompt(null);
+    setPromptEditorNameValue('');
+    setPromptEditorContentValue('');
+    setPromptEditorVisible(true);
+  }, []);
+
+  const openEditPromptEditor = useCallback((prompt: PredefinedPromptSummary) => {
+    setPromptEditorEditingPrompt(prompt);
+    setPromptEditorNameValue(prompt.name);
+    setPromptEditorContentValue(prompt.content);
+    setPromptEditorVisible(true);
+  }, []);
+
+  const closePromptEditor = useCallback(() => {
+    if (promptEditorIsSaving) return;
+    dismissPromptEditor();
+  }, [dismissPromptEditor, promptEditorIsSaving]);
+
+  const beginPromptEditorSave = useCallback(() => {
+    setPromptEditorIsSaving(true);
+  }, []);
+
+  const clearPromptEditorSave = useCallback(() => {
+    setPromptEditorIsSaving(false);
+  }, []);
+
+  return {
+    promptEditorVisible,
+    promptEditorEditingPrompt,
+    promptEditorIsEditing: Boolean(promptEditorEditingPrompt),
+    promptEditorNameValue,
+    setPromptEditorNameValue,
+    promptEditorContentValue,
+    setPromptEditorContentValue,
+    promptEditorIsSaving,
+    openAddPromptEditor,
+    openEditPromptEditor,
+    closePromptEditor,
+    dismissPromptEditor,
+    beginPromptEditorSave,
+    clearPromptEditorSave,
   };
 }
 
