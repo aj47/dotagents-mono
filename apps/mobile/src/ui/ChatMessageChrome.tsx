@@ -2055,6 +2055,15 @@ type ChatMessageConversationRuntimeThreadState =
     threadKey: string | number;
   };
 
+type ChatMessageConversationToolActivityGroupRuntimeThreadStateInput =
+  Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>;
+
+type ChatMessageConversationToolActivityGroupRuntimeThreadState =
+  ChatMessageConversationRuntimeThreadState
+  & {
+    shouldRenderThread: boolean;
+  };
+
 type ChatMessageConversationMessageRuntimeThreadStateInput =
   Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>
   & {
@@ -2284,6 +2293,18 @@ export function createChatMessageConversationRuntimeThreadState({
     groupRenderState,
     onToggleGroup: groupThreadState.onToggleGroup,
     body: isGroupOnlyThread ? null : body,
+  };
+}
+
+export function createChatMessageConversationToolActivityGroupRuntimeThreadState(
+  runtimeThreadInput: ChatMessageConversationToolActivityGroupRuntimeThreadStateInput,
+): ChatMessageConversationToolActivityGroupRuntimeThreadState {
+  return {
+    ...createChatMessageConversationRuntimeThreadState({
+      ...runtimeThreadInput,
+      body: null,
+    }),
+    shouldRenderThread: runtimeThreadInput.groupThreadState.shouldRenderGroupOnlyThread,
   };
 }
 

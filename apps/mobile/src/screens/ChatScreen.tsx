@@ -36,10 +36,10 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationMessageRuntimeThreadState,
   createChatMessageConversationRenderContext,
-  createChatMessageConversationRuntimeThreadState,
   createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
+  createChatMessageConversationToolActivityGroupRuntimeThreadState,
   createChatMessageConversationToolActivityGroupThreadRenderState,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -3734,13 +3734,12 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
               onToggleGroup: toggleGroupExpansion,
             });
-            const groupOnlyThreadState = createChatMessageConversationRuntimeThreadState({
+            const groupOnlyThreadState = createChatMessageConversationToolActivityGroupRuntimeThreadState({
               itemKey: i,
               groupRenderState,
               groupThreadState,
-              body: null,
             });
-            if (groupThreadState.shouldRenderGroupOnlyThread) {
+            if (groupOnlyThreadState.shouldRenderThread) {
               return (
                 <ChatMessageRuntimeThread
                   key={groupOnlyThreadState.threadKey}
