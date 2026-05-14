@@ -3,9 +3,6 @@ import {
   Alert,
 } from 'react-native';
 
-const darkSpinner = require('../../assets/loading-spinner.gif');
-const lightSpinner = require('../../assets/light-spinner.gif');
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useConfigContext,
   saveConfig,
@@ -129,7 +126,6 @@ import type {
 } from '@dotagents/shared/api-types';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
-import { useTheme } from '../ui/ThemeProvider';
 import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
@@ -140,17 +136,9 @@ const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechS
 type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
 
 export default function ChatScreen({ route, navigation }: any) {
-  const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
-  const { chatRuntimeChrome } = useChatRuntimeMobileStyleSlots({
-    theme,
-    bottomInset: insets.bottom,
-    isDark,
-    darkSpinnerSource: darkSpinner,
-    lightSpinnerSource: lightSpinner,
-  });
+  const { chatRuntimeChrome } = useChatRuntimeMobileStyleSlots();
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();

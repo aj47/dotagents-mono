@@ -38,13 +38,21 @@ const packageJson = JSON.parse(
 
 test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.match(chatScreenSource, /import \{ useChatRuntimeMobileStyleSlots \} from '\.\.\/ui\/ChatRuntimeMobileStyles';/);
-  assert.match(chatScreenSource, /useChatRuntimeMobileStyleSlots\(\{\s+theme,\s+bottomInset: insets\.bottom,\s+isDark,\s+darkSpinnerSource: darkSpinner,\s+lightSpinnerSource: lightSpinner,\s+\}\)/);
+  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\);/);
+  assert.doesNotMatch(chatScreenSource, /useSafeAreaInsets/);
+  assert.doesNotMatch(chatScreenSource, /useTheme/);
+  assert.doesNotMatch(chatScreenSource, /darkSpinner|lightSpinner/);
+  assert.match(chatRuntimeMobileStylesSource, /import \{ useSafeAreaInsets \} from 'react-native-safe-area-context';/);
+  assert.match(chatRuntimeMobileStylesSource, /import \{ useTheme \} from '\.\/ThemeProvider';/);
+  assert.match(chatRuntimeMobileStylesSource, /const darkSpinnerSource = require\('\.\.\/\.\.\/assets\/loading-spinner\.gif'\);/);
+  assert.match(chatRuntimeMobileStylesSource, /const lightSpinnerSource = require\('\.\.\/\.\.\/assets\/light-spinner\.gif'\);/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileStyles\(theme\)/);
   assert.doesNotMatch(chatScreenSource, /function createStyles/);
   assert.doesNotMatch(chatScreenSource, /StyleSheet\.create/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileStyles/);
-  assert.match(chatRuntimeMobileStylesSource, /chatRuntimeSpinnerSource = useMemo\(\s+\(\) => createChatRuntimeThemeSpinnerSource\(\{\s+isDark,\s+darkSource: darkSpinnerSource,\s+lightSource: lightSpinnerSource,\s+\}\),\s+\[darkSpinnerSource, isDark, lightSpinnerSource\],\s+\);/);
+  assert.match(chatRuntimeMobileStylesSource, /const insets = useSafeAreaInsets\(\);\s+const \{ theme, isDark \} = useTheme\(\);\s+const bottomInset = insets\.bottom;/);
+  assert.match(chatRuntimeMobileStylesSource, /chatRuntimeSpinnerSource = useMemo\(\s+\(\) => createChatRuntimeThemeSpinnerSource\(\{\s+isDark,\s+darkSource: darkSpinnerSource,\s+lightSource: lightSpinnerSource,\s+\}\),\s+\[isDark\],\s+\);/);
   assert.match(chatRuntimeMobileStylesSource, /const styles = useMemo\(\(\) => createChatRuntimeMobileStyles\(theme\), \[theme\]\);/);
   assert.doesNotMatch(chatScreenSource, /\s+styles,\s+\} = useChatRuntimeMobileStyleSlots/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /return \{[\s\S]*?\s+styles,\s+[\s\S]*?\};/);
@@ -142,7 +150,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileChromeEnvironment\(theme: Theme\): ChatRuntimeMobileChromeEnvironment/);
   assert.match(chatRuntimeMobileStylesSource, /const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment\(theme\);/);
   assert.match(chatRuntimeMobileStylesSource, /const chatChromeStyleState = createChatRuntimeMobileChromeStyleState\(chatRuntimeChromeEnvironment\);/);
-  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\{/);
+  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\);/);
   assert.doesNotMatch(chatScreenSource, /chatRuntimeChromeEnvironment/);
   assert.doesNotMatch(chatScreenSource, /chatRuntimeSpinnerSource/);
   assert.doesNotMatch(chatScreenSource, /chatMessageRuntimeChromeStyles/);
@@ -187,7 +195,7 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.doesNotMatch(screenSource, /getChatSessionStatusMobileStyleState,/);
   assert.doesNotMatch(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(chatMessageChromeSource, /conversationStatusRenderState: getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors,\s+\}\),/);
-  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\{/);
+  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\);/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeThemeSpinnerSource/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeThemeSpinnerSource,/);
   assert.match(chatScreenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{\s+navigation,\s+\.\.\.chatRuntimeChrome\.header,/);
@@ -1093,7 +1101,8 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
-  assert.match(chatScreenSource, /bottomInset: insets\.bottom,/);
+  assert.doesNotMatch(chatScreenSource, /bottomInset: insets\.bottom,/);
+  assert.match(chatRuntimeMobileStylesSource, /const bottomInset = insets\.bottom;/);
   assert.match(chatRuntimeMobileStylesSource, /const mobileSafeAreaLayout = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaLayoutState\(bottomInset\),\s+\[bottomInset\],\s+\);/);
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaStyleSlots,/);
   assert.match(screenSource, /createChatRuntimeSafeAreaMergedStyleSlots,/);
