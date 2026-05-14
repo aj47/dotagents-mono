@@ -2540,7 +2540,8 @@ type ChatComposerRuntimeDockChromePropsInput = {
   onResumeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onResume'];
   onPauseHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onPause'];
   composerControlHasContent: ChatComposerRuntimeControlRenderStateInput['hasContent'];
-  composerControlPresentation: ChatComposerRuntimeControlRenderStateInput['presentation'];
+  composerControlConversationState: ChatComposerRuntimeFollowUpPresentationStateInput['conversationState'];
+  composerControlIsResponding: ChatComposerRuntimeFollowUpPresentationStateInput['isResponding'];
   composerControlPendingImageCount: ChatComposerRuntimeControlRenderStateInput['pendingImageCount'];
   composerControlTtsEnabled: ChatComposerRuntimeControlRenderStateInput['ttsEnabled'];
   composerControlEditBeforeSendEnabled: ChatComposerRuntimeControlRenderStateInput['editBeforeSendEnabled'];
@@ -6268,7 +6269,8 @@ export function createChatComposerRuntimeDockProps({
   onResumeHandsFree,
   onPauseHandsFree,
   composerControlHasContent,
-  composerControlPresentation,
+  composerControlConversationState,
+  composerControlIsResponding,
   composerControlPendingImageCount,
   composerControlTtsEnabled,
   composerControlEditBeforeSendEnabled,
@@ -6298,6 +6300,11 @@ export function createChatComposerRuntimeDockProps({
   micWrapperRef,
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
   const mobileComposerControls = getChatComposerMobileControlState();
+  const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState({
+    conversationState: composerControlConversationState,
+    isResponding: composerControlIsResponding,
+    isQueueEnabled: composerControlMessageQueueEnabled,
+  });
   const controlRenderState = createChatComposerRuntimeControlRenderState({
     hasContent: composerControlHasContent,
     handsFree: textEntryHandsFree,

@@ -30,7 +30,6 @@ import {
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
   updateChatConversationHomePromptList,
-  createChatComposerRuntimeFollowUpPresentationState,
   buildChatComposerRuntimeMessageContent,
   hasChatComposerRuntimeMessageContent,
   mergeChatComposerRuntimeVoiceText,
@@ -2425,15 +2424,6 @@ export default function ChatScreen({ route, navigation }: any) {
   sendRef.current = send;
 
 	const isWebPlatform = Platform.OS === 'web';
-  const composerPresentation = useMemo(
-    () => createChatComposerRuntimeFollowUpPresentationState({
-      conversationState,
-      isResponding: responding,
-      isQueueEnabled: messageQueueEnabled,
-    }),
-    [conversationState, messageQueueEnabled, responding]
-  );
-
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => createChatConversationHomeQuickStartItems({
       prompts: predefinedPrompts,
@@ -2637,7 +2627,8 @@ export default function ChatScreen({ route, navigation }: any) {
       onResumeHandsFree: resumeHandsFreeByUser,
       onPauseHandsFree: pauseHandsFreeByUser,
       composerControlHasContent: composerHasContent,
-      composerControlPresentation: composerPresentation,
+      composerControlConversationState: conversationState,
+      composerControlIsResponding: responding,
       composerControlPendingImageCount: pendingImages.length,
       composerControlTtsEnabled: ttsEnabled,
       composerControlEditBeforeSendEnabled: willCancel,

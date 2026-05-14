@@ -1371,7 +1371,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
-  assert.match(screenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
+  assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
   assert.match(screenSource, /hasChatComposerRuntimeMessageContent,/);
   assert.match(screenSource, /buildChatComposerRuntimeMessageContent,/);
   assert.match(screenSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
@@ -1405,7 +1405,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /mobileComposerQueueRenderState/);
   assert.doesNotMatch(screenSource, /composerSubmitRenderState/);
   assert.doesNotMatch(screenSource, /mobileComposerMicRenderState/);
-  assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlPresentation: composerPresentation,\s+composerControlPendingImageCount: pendingImages\.length,\s+composerControlTtsEnabled: ttsEnabled,\s+composerControlEditBeforeSendEnabled: willCancel,\s+composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+composerControlColors: theme\.colors,/);
+  assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,\s+composerControlPendingImageCount: pendingImages\.length,\s+composerControlTtsEnabled: ttsEnabled,\s+composerControlEditBeforeSendEnabled: willCancel,\s+composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+composerControlColors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState\(\{\s+conversationState: composerControlConversationState,\s+isResponding: composerControlIsResponding,\s+isQueueEnabled: composerControlMessageQueueEnabled,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const controlRenderState = createChatComposerRuntimeControlRenderState\(\{\s+hasContent: composerControlHasContent,\s+handsFree: textEntryHandsFree,\s+presentation: composerControlPresentation,[\s\S]*?colors: composerControlColors,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
