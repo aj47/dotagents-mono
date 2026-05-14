@@ -247,12 +247,13 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /const mobileToolApprovalSurface =/);
   assert.doesNotMatch(screenSource, /const mobileToolApproval(?:HeaderIcon|Spinner|ApproveIcon|DenyIcon|ButtonSpinner)Colors = useMemo/);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.approval\.(connectionRequiredTitle|connectionRequiredMessage|unavailableTitle|unavailableMessage|failedTitle|responseFailedMessage)/);
-  assert.match(screenSource, /const toolApprovalArgumentsDetail = m\.toolApproval\s+\? getToolExecutionDetailArgumentsState\(m\.toolApproval\.arguments\)/);
-  assert.match(screenSource, /const toolApprovalArgumentsPreview = m\.toolApproval\s+\? toolApprovalArgumentsDetail\?\.preview \?\? ''/);
-  assert.match(screenSource, /toolApproval: createChatMessageToolApprovalProps\(\{\s+isApproval: m\.variant === 'approval',\s+renderState: toolApprovalRenderState,\s+toolName: m\.toolApproval\?\.toolName,\s+argumentsPreview: toolApprovalArgumentsPreview,\s+argumentsContent: toolApprovalArgumentsDetail\?\.content \?\? ''/);
+  assert.doesNotMatch(screenSource, /const toolApprovalArgumentsDetail =/);
+  assert.doesNotMatch(screenSource, /const toolApprovalArgumentsPreview =/);
+  assert.match(screenSource, /toolApproval: createChatMessageToolApprovalProps\(\{\s+isApproval: m\.variant === 'approval',\s+renderState: toolApprovalRenderState,\s+toolName: m\.toolApproval\?\.toolName,\s+toolArguments: m\.toolApproval\?\.arguments,/);
   assert.doesNotMatch(screenSource, /toolApproval: m\.variant === 'approval' && m\.toolApproval && toolApprovalRenderState \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
-  assert.match(chatMessageChromeSource, /return isApproval && renderState && toolName\s+\? \{[\s\S]*?renderState,[\s\S]*?toolName,[\s\S]*?argumentsPreview,[\s\S]*?argumentsContent,/);
+  assert.match(chatMessageChromeSource, /const argumentsDetail = getToolExecutionDetailArgumentsState\(toolArguments\);/);
+  assert.match(chatMessageChromeSource, /return isApproval && renderState && toolName\s+\? \{[\s\S]*?renderState,[\s\S]*?toolName,[\s\S]*?argumentsPreview: argumentsDetail\.preview,[\s\S]*?argumentsContent: argumentsDetail\.content,/);
   assert.match(screenSource, /onToggleArguments: \(\) => toggleToolApprovalArguments\(m\.toolApproval!\.approvalId\)/);
   assert.match(screenSource, /onDeny: \(\) => respondToToolApproval\(m\.toolApproval!\.approvalId, false\)/);
   assert.match(screenSource, /onApprove: \(\) => respondToToolApproval\(m\.toolApproval!\.approvalId, true\)/);
@@ -1470,7 +1471,7 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
   assert.doesNotMatch(screenSource, /formatToolExecutionCount,/);
-  assert.match(screenSource, /getToolExecutionDetailArgumentsState,/);
+  assert.match(chatMessageChromeSource, /getToolExecutionDetailArgumentsState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
   assert.match(screenSource, /getToolExecutionCompactMobileStyleRenderState,/);
   assert.match(screenSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);

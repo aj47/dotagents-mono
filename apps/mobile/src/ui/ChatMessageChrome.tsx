@@ -469,11 +469,12 @@ type ChatMessageToolApprovalProps = {
 
 type ChatMessageToolApprovalPropsInput = Omit<
   ChatMessageToolApprovalProps,
-  'renderState' | 'toolName' | 'styles'
+  'renderState' | 'toolName' | 'argumentsPreview' | 'argumentsContent' | 'styles'
 > & {
   isApproval: boolean;
   renderState: ChatMessageToolApprovalProps['renderState'] | null;
   toolName?: string | null;
+  toolArguments?: unknown;
 };
 
 type ChatMessageDelegationCardStyles = {
@@ -1874,18 +1875,19 @@ export function createChatMessageToolApprovalProps({
   isApproval,
   renderState,
   toolName,
-  argumentsPreview,
-  argumentsContent,
+  toolArguments,
   onToggleArguments,
   onDeny,
   onApprove,
 }: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
+  const argumentsDetail = getToolExecutionDetailArgumentsState(toolArguments);
+
   return isApproval && renderState && toolName
     ? {
         renderState,
         toolName,
-        argumentsPreview,
-        argumentsContent,
+        argumentsPreview: argumentsDetail.preview,
+        argumentsContent: argumentsDetail.content,
         onToggleArguments,
         onDeny,
         onApprove,

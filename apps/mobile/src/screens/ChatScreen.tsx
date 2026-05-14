@@ -191,7 +191,6 @@ import {
   getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileStyleRenderState,
-  getToolExecutionDetailArgumentsState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
@@ -3940,12 +3939,6 @@ export default function ChatScreen({ route, navigation }: any) {
                   colors: theme.colors,
                 })
               : null;
-            const toolApprovalArgumentsDetail = m.toolApproval
-              ? getToolExecutionDetailArgumentsState(m.toolApproval.arguments)
-              : null;
-            const toolApprovalArgumentsPreview = m.toolApproval
-              ? toolApprovalArgumentsDetail?.preview ?? ''
-              : '';
             const turnDurationEntry =
               typeof m.timestamp === 'number'
                 ? turnDurations.byUserTimestamp.get(m.timestamp)
@@ -4113,8 +4106,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     isApproval: m.variant === 'approval',
                     renderState: toolApprovalRenderState,
                     toolName: m.toolApproval?.toolName,
-                    argumentsPreview: toolApprovalArgumentsPreview,
-                    argumentsContent: toolApprovalArgumentsDetail?.content ?? '',
+                    toolArguments: m.toolApproval?.arguments,
                     onToggleArguments: () => toggleToolApprovalArguments(m.toolApproval!.approvalId),
                     onDeny: () => respondToToolApproval(m.toolApproval!.approvalId, false),
                     onApprove: () => respondToToolApproval(m.toolApproval!.approvalId, true),
