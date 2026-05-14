@@ -1398,7 +1398,12 @@ type ChatMessageRuntimeViewportChromePropsInput<
     onEditPrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onEditPrompt'];
     onDeletePrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onDeletePrompt'];
     shortcutRenderState: PromptLibraryMobileShortcutRenderState;
-    affordanceRenderState: ChatMessageConversationViewportAffordanceRenderState;
+    visibleMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['visibleMessageCount'];
+    totalMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['totalMessageCount'];
+    hiddenMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['hiddenMessageCount'];
+    messageHistoryLoadIncrement: ChatMessageConversationViewportAffordanceRenderStateInput['messageHistoryLoadIncrement'];
+    latestStepSummary: ChatMessageConversationViewportAffordanceRenderStateInput['latestStepSummary'];
+    colors: ChatMessageConversationViewportAffordanceRenderStateInput['colors'];
     onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
     debugPanelsRenderState: ChatRuntimeDebugPanelsMobileRenderState;
   };
@@ -2689,11 +2694,25 @@ export function createChatMessageRuntimeViewportChromeProps<
   onEditPrompt,
   onDeletePrompt,
   shortcutRenderState,
-  affordanceRenderState,
+  visibleMessageCount,
+  totalMessageCount,
+  hiddenMessageCount,
+  messageHistoryLoadIncrement,
+  latestStepSummary,
+  colors,
   onLoadEarlierMessages,
   debugPanelsRenderState,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
+  const affordanceRenderState = createChatMessageConversationViewportAffordanceRenderState({
+    visibleMessageCount,
+    totalMessageCount,
+    hiddenMessageCount,
+    messageHistoryLoadIncrement,
+    latestStepSummary,
+    colors,
+  });
+
   return {
     ...scrollViewportProps,
     loadingState: {

@@ -35,7 +35,6 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationHistoryWindowState,
-  createChatMessageConversationViewportAffordanceRenderState,
   createChatMessageConversationThreadListRenderState,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
@@ -3414,17 +3413,6 @@ export default function ChatScreen({ route, navigation }: any) {
     messages,
     visibleMessageCount,
   });
-  const conversationViewportAffordanceRenderState = useMemo(
-    () => createChatMessageConversationViewportAffordanceRenderState({
-      visibleMessageCount: visibleMessages.length,
-      totalMessageCount: messages.length,
-      hiddenMessageCount,
-      messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
-      latestStepSummary,
-      colors: theme.colors,
-    }),
-    [hiddenMessageCount, latestStepSummary, messages.length, theme.colors, visibleMessages.length],
-  );
   const conversationThreadStates = createChatMessageConversationThreadListRenderState({
     allMessages: messages,
     messages: visibleMessages,
@@ -3491,7 +3479,12 @@ export default function ChatScreen({ route, navigation }: any) {
     onEditPrompt: openEditPromptModal,
     onDeletePrompt: handleDeletePrompt,
     shortcutRenderState: promptLibraryShortcutRenderState,
-    affordanceRenderState: conversationViewportAffordanceRenderState,
+    visibleMessageCount: visibleMessages.length,
+    totalMessageCount: messages.length,
+    hiddenMessageCount,
+    messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
+    latestStepSummary,
+    colors: theme.colors,
     onLoadEarlierMessages: handleLoadEarlierMessages,
     debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,
   });

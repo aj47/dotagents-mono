@@ -1029,9 +1029,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /contentInsetAdjustmentBehavior=\{contentInsetAdjustmentBehavior\}/);
   assert.match(screenSource, /loadingRenderState: mobileRuntimeLoadingRenderState,\s+loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(screenSource, /homeQuickStartsRenderState: mobileRuntimeHomeQuickStartsRenderState,\s+quickStartItems: promptQuickStarts,[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
-  assert.match(screenSource, /affordanceRenderState: conversationViewportAffordanceRenderState,\s+onLoadEarlierMessages: handleLoadEarlierMessages,/);
+  assert.match(screenSource, /visibleMessageCount: visibleMessages\.length,\s+totalMessageCount: messages\.length,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement,\s+latestStepSummary,\s+colors: theme\.colors,\s+onLoadEarlierMessages: handleLoadEarlierMessages,/);
   assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeViewportChromeProps/);
+  assert.match(chatMessageChromeSource, /const affordanceRenderState = createChatMessageConversationViewportAffordanceRenderState\(\{\s+visibleMessageCount,\s+totalMessageCount,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement,\s+latestStepSummary,\s+colors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /loadingState: \{\s+renderState: loadingRenderState,\s+spinnerSource: loadingSpinnerSource,\s+\}/);
   assert.match(chatMessageChromeSource, /homeQuickStarts: \{\s+shouldRender: homeQuickStartsRenderState\.shouldRender,\s+items: quickStartItems,[\s\S]*?onPress: onQuickStartPress,/);
   assert.match(chatMessageChromeSource, /historyBanner: \{\s+\.\.\.affordanceRenderState\.historyBanner,\s+onLoadEarlier: onLoadEarlierMessages,/);
@@ -2110,7 +2111,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeMobileActivityAccessibilityState,/);
   assert.match(screenSource, /createChatMessageConversationHistoryWindowState,/);
-  assert.match(screenSource, /createChatMessageConversationViewportAffordanceRenderState,/);
+  assert.doesNotMatch(screenSource, /createChatMessageConversationViewportAffordanceRenderState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryBannerMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(screenSource, /content: formatChatRuntimeAssistantFeedbackContent\(thinkingContent, hasCurrentToolActivity\)/);
@@ -2120,13 +2121,14 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /const visibleMessages = messages\.slice\(firstVisibleMessageIndex\);/);
   assert.doesNotMatch(screenSource, /const hiddenMessageCount = firstVisibleMessageIndex;/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationHistoryWindowState<TMessage>\(\{[\s\S]*?const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);[\s\S]*?visibleMessages: messages\.slice\(firstVisibleMessageIndex\),[\s\S]*?hiddenMessageCount: firstVisibleMessageIndex,/);
-  assert.match(screenSource, /const conversationViewportAffordanceRenderState = useMemo\(\s+\(\) => createChatMessageConversationViewportAffordanceRenderState\(\{\s+visibleMessageCount: visibleMessages\.length,\s+totalMessageCount: messages\.length,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement,\s+latestStepSummary,\s+colors: theme\.colors,\s+\}\),\s+\[hiddenMessageCount, latestStepSummary, messages\.length, theme\.colors, visibleMessages\.length\],\s+\);/);
+  assert.doesNotMatch(screenSource, /const conversationViewportAffordanceRenderState = useMemo/);
+  assert.match(screenSource, /visibleMessageCount: visibleMessages\.length,\s+totalMessageCount: messages\.length,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement,\s+latestStepSummary,\s+colors: theme\.colors,/);
   assert.doesNotMatch(screenSource, /const messageHistoryBannerRenderState = useMemo/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationViewportAffordanceRenderState/);
   assert.match(chatMessageChromeSource, /renderState: getChatRuntimeMessageHistoryBannerMobileRenderState\(\{\s+visibleCount: visibleMessageCount,\s+totalCount: totalMessageCount,\s+hiddenCount: hiddenMessageCount,\s+loadIncrement: messageHistoryLoadIncrement,\s+includeScrollHint: true,\s+colors,/);
   assert.match(screenSource, /const handleLoadEarlierMessages = \(\) => \{/);
   assert.match(screenSource, /Math\.min\(messages\.length, current \+ CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement\)/);
-  assert.match(screenSource, /affordanceRenderState: conversationViewportAffordanceRenderState,\s+onLoadEarlierMessages: handleLoadEarlierMessages,/);
+  assert.match(screenSource, /onLoadEarlierMessages: handleLoadEarlierMessages,/);
   assert.match(chatMessageChromeSource, /<ChatMessageHistoryBanner\s+\{\.\.\.historyBanner\}\s+styles=\{styles\.historyBanner\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageHistoryBanner\s+renderState=\{messageHistoryBannerRenderState\}/);
   assert.doesNotMatch(screenSource, /styles=\{conversationViewportStyles\.historyBanner\}/);
@@ -2313,7 +2315,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(screenSource, /setLatestStepSummary\(nextStepSummary\);/);
   assert.doesNotMatch(screenSource, /const latestStepSummaryRenderState = useMemo/);
   assert.match(chatMessageChromeSource, /renderState: getChatRuntimeStepSummaryMobileRenderState\(\{\s+summary: latestStepSummary,\s+colors,/);
-  assert.match(screenSource, /affordanceRenderState: conversationViewportAffordanceRenderState,/);
+  assert.match(screenSource, /latestStepSummary,\s+colors: theme\.colors,\s+onLoadEarlierMessages: handleLoadEarlierMessages,/);
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageStepSummaryCard\s+renderState=\{latestStepSummaryRenderState\}/);
   assert.doesNotMatch(screenSource, /styles=\{conversationViewportStyles\.stepSummary\}/);
