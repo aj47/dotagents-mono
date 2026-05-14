@@ -28,13 +28,12 @@ import {
   createChatConversationHomeQuickStartItems,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorSaveActionState,
-  formatChatConversationHomePromptDeleteConfirmMessage,
-  formatChatConversationHomePromptDeleteWebConfirmMessage,
-  formatChatConversationHomePromptDeleteFailedMessage,
-  formatChatConversationHomePromptSaveFailedMessage,
-  formatChatConversationHomePromptSaveSuccessMessage,
-  formatChatConversationHomePromptTaskRunFailedMessage,
-  formatChatConversationHomePromptTaskStartedMessage,
+  getChatConversationHomePromptDeleteConfirmAlertState,
+  getChatConversationHomePromptDeleteFailedAlertState,
+  getChatConversationHomePromptSaveFailedAlertState,
+  getChatConversationHomePromptSaveSuccessAlertState,
+  getChatConversationHomePromptTaskRunFailedAlertState,
+  getChatConversationHomePromptTaskStartedAlertState,
   createChatComposerRuntimeFollowUpPresentationState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
@@ -72,7 +71,6 @@ import {
   createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
-  getChatConversationHomePromptLibraryCopyState,
   getChatConversationHomeQuickStartPressIntent,
   getChatMessageRuntimeBranchAlertState,
   getChatMessageRuntimeBranchCreatedAlertState,
@@ -209,7 +207,6 @@ const handsFreeCopy = getChatComposerHandsFreeCopyState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
-const promptLibraryCopy = getChatConversationHomePromptLibraryCopyState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -577,9 +574,11 @@ export default function ChatScreen({ route, navigation }: any) {
     setRunningPromptTaskId(task.id);
     try {
       await settingsClient.runLoop(task.id);
-      Alert.alert(promptLibraryCopy.feedback.taskStartedTitle, formatChatConversationHomePromptTaskStartedMessage(task.name));
+      const taskStartedAlert = getChatConversationHomePromptTaskStartedAlertState(task.name);
+      Alert.alert(taskStartedAlert.title, taskStartedAlert.message);
     } catch (error: any) {
-      Alert.alert(promptLibraryCopy.feedback.errorTitle, formatChatConversationHomePromptTaskRunFailedMessage(error));
+      const failedAlert = getChatConversationHomePromptTaskRunFailedAlertState(error);
+      Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
       setRunningPromptTaskId(null);
     }
@@ -1418,10 +1417,12 @@ export default function ChatScreen({ route, navigation }: any) {
       setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert(promptLibraryCopy.feedback.successTitle, formatChatConversationHomePromptSaveSuccessMessage(Boolean(editingPrompt)));
+      const successAlert = getChatConversationHomePromptSaveSuccessAlertState(Boolean(editingPrompt));
+      Alert.alert(successAlert.title, successAlert.message);
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
-      Alert.alert(promptLibraryCopy.feedback.errorTitle, formatChatConversationHomePromptSaveFailedMessage(error));
+      const failedAlert = getChatConversationHomePromptSaveFailedAlertState(error);
+      Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
       setIsSavingPrompt(false);
     }
@@ -1438,7 +1439,8 @@ export default function ChatScreen({ route, navigation }: any) {
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {
         console.error('[ChatScreen] Error deleting prompt:', error);
-        Alert.alert(promptLibraryCopy.feedback.errorTitle, formatChatConversationHomePromptDeleteFailedMessage(error));
+        const failedAlert = getChatConversationHomePromptDeleteFailedAlertState(error);
+        Alert.alert(failedAlert.title, failedAlert.message);
       } finally {
         setIsSavingPrompt(false);
       }
@@ -1446,15 +1448,17 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (Platform.OS === 'web') {
       const confirmFn = (globalThis as { confirm?: (message?: string) => boolean }).confirm;
-      if (confirmFn?.(formatChatConversationHomePromptDeleteWebConfirmMessage(prompt.name))) {
+      const confirmAlert = getChatConversationHomePromptDeleteConfirmAlertState(prompt.name);
+      if (confirmFn?.(confirmAlert.webMessage)) {
         void deletePrompt();
       }
       return;
     }
 
-    Alert.alert(promptLibraryCopy.feedback.deletePromptTitle, formatChatConversationHomePromptDeleteConfirmMessage(prompt.name), [
-      { text: promptLibraryCopy.actions.cancel, style: 'cancel' },
-      { text: promptLibraryCopy.actions.delete, style: 'destructive', onPress: () => { void deletePrompt(); } },
+    const confirmAlert = getChatConversationHomePromptDeleteConfirmAlertState(prompt.name);
+    Alert.alert(confirmAlert.title, confirmAlert.message, [
+      { text: confirmAlert.cancelLabel, style: 'cancel' },
+      { text: confirmAlert.deleteLabel, style: 'destructive', onPress: () => { void deletePrompt(); } },
     ]);
   }, [predefinedPrompts, settingsClient]);
 

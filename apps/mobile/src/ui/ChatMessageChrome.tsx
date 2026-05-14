@@ -290,6 +290,12 @@ export interface ChatMessageRuntimeResolvedAlertState {
   message: string;
 }
 
+export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatMessageRuntimeResolvedAlertState {
+  cancelLabel: string;
+  deleteLabel: string;
+  webMessage: string;
+}
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -621,8 +627,28 @@ export function formatChatConversationHomePromptSaveSuccessMessage(isEditing: bo
   return getPromptLibrarySaveSuccessMessage(isEditing);
 }
 
+export function getChatConversationHomePromptSaveSuccessAlertState(
+  isEditing: boolean,
+): ChatMessageRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState();
+  return {
+    title: copy.feedback.successTitle,
+    message: formatChatConversationHomePromptSaveSuccessMessage(isEditing),
+  };
+}
+
 export function formatChatConversationHomePromptSaveFailedMessage(error: unknown): string {
   return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptSaveFailed);
+}
+
+export function getChatConversationHomePromptSaveFailedAlertState(
+  error: unknown,
+): ChatMessageRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState();
+  return {
+    title: copy.feedback.errorTitle,
+    message: formatChatConversationHomePromptSaveFailedMessage(error),
+  };
 }
 
 export function formatChatConversationHomePromptDeleteWebConfirmMessage(promptName: string): string {
@@ -633,16 +659,59 @@ export function formatChatConversationHomePromptDeleteConfirmMessage(promptName:
   return formatPromptLibraryDeletePromptConfirmMessage(promptName);
 }
 
+export function getChatConversationHomePromptDeleteConfirmAlertState(
+  promptName: string,
+): ChatConversationHomePromptDeleteConfirmAlertState {
+  const copy = getPromptLibraryCopyState();
+  return {
+    title: copy.feedback.deletePromptTitle,
+    message: formatChatConversationHomePromptDeleteConfirmMessage(promptName),
+    cancelLabel: copy.actions.cancel,
+    deleteLabel: copy.actions.delete,
+    webMessage: formatChatConversationHomePromptDeleteWebConfirmMessage(promptName),
+  };
+}
+
 export function formatChatConversationHomePromptDeleteFailedMessage(error: unknown): string {
   return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptDeleteFailed);
+}
+
+export function getChatConversationHomePromptDeleteFailedAlertState(
+  error: unknown,
+): ChatMessageRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState();
+  return {
+    title: copy.feedback.errorTitle,
+    message: formatChatConversationHomePromptDeleteFailedMessage(error),
+  };
 }
 
 export function formatChatConversationHomePromptTaskStartedMessage(taskName: string): string {
   return formatPromptLibraryTaskStartedMessage(taskName);
 }
 
+export function getChatConversationHomePromptTaskStartedAlertState(
+  taskName: string,
+): ChatMessageRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState();
+  return {
+    title: copy.feedback.taskStartedTitle,
+    message: formatChatConversationHomePromptTaskStartedMessage(taskName),
+  };
+}
+
 export function formatChatConversationHomePromptTaskRunFailedMessage(error: unknown): string {
   return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.taskRunFailed);
+}
+
+export function getChatConversationHomePromptTaskRunFailedAlertState(
+  error: unknown,
+): ChatMessageRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState();
+  return {
+    title: copy.feedback.errorTitle,
+    message: formatChatConversationHomePromptTaskRunFailedMessage(error),
+  };
 }
 
 export function getChatConversationHomeQuickStartPressIntent<
