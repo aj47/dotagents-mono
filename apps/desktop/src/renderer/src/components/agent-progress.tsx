@@ -134,6 +134,7 @@ import {
   formatChatRuntimeToolApprovalFailureMessage,
   formatChatRuntimeVerbosityPickerTitle,
   formatChatRuntimeVisibleUpdatesSummary,
+  getChatRuntimeBranchActionAccessibilityLabel,
   getChatRuntimeBranchActionState,
   getChatRuntimeCopyState,
   getChatRuntimeDelegationStatusDesktopClassNames,
@@ -795,6 +796,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     branchMessageIndex,
   })
   const resolvedBranchMessageIndex = messageBranchAction.messageIndex
+  const messageBranchAccessibilityLabel = getChatRuntimeBranchActionAccessibilityLabel(messageBranchAction)
   const messageCopyAction = getChatMessageCopyActionState({
     role: message.role,
     content: effectiveContent,
@@ -1307,7 +1309,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         onClick={handleBranchFromMessage}
         className={desktopChatMessageActionSurface.buttonClassName}
         title={desktopRuntimeCopy.branch.buttonTitle}
-        aria-label={messageBranchAction.accessibilityLabel ?? desktopRuntimeCopy.branch.buttonAccessibilityLabel}
+        aria-label={messageBranchAccessibilityLabel}
       >
         <GitBranch className={desktopChatMessageActionSurface.branchIconClassName} />
       </button>
