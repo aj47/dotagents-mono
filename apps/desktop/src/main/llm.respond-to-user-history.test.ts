@@ -181,7 +181,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-deduped-title",
       "session-actionable-verifier-feedback",
       "session-procedural-context-response",
+      "session-empty-context-search-response",
       "session-procedural-context-tail-response",
+      "session-rejected-plain-text-recovery",
       ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
@@ -883,6 +885,76 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(completedUpdate?.finalContent).toBe("Yes — that will work.")
     expect(completedUpdate?.userResponse).toBeUndefined()
     expect(completedUpdate?.responseEvents).toBeUndefined()
+  })
+
+  it("does not display rejected plain text before verifier-driven tool recovery", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const toolCallLog: any[] = []
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "Done.", toolCalls: [] })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          {
+            name: "execute_command",
+            arguments: {
+              command: "open /Users/ajjoobandi/Desktop/harness-workshop-notes",
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: "Opened `/Users/ajjoobandi/Desktop/harness-workshop-notes` in Finder.",
+        toolCalls: [],
+      })
+    mocks.verifyCompletionWithFetch
+      .mockResolvedValueOnce({
+        isComplete: false,
+        conversationState: "running",
+        reason: "The user asked for an external action, but it was not verifiably delivered.",
+        missingItems: ["Actually open the requested folder in Finder."],
+      })
+      .mockResolvedValueOnce({
+        isComplete: true,
+        conversationState: "complete",
+        confidence: 0.98,
+        missingItems: [],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "open folder in finder",
+      availableTools as any,
+      makeExecuteToolCall("session-rejected-plain-text-recovery", 1, {
+        execute_command: {
+          content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }],
+          isError: false,
+        },
+      }, toolCallLog),
+      5,
+      [],
+      "conv-rejected-plain-text-recovery",
+      "session-rejected-plain-text-recovery",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Opened `/Users/ajjoobandi/Desktop/harness-workshop-notes` in Finder.")
+    expect(toolCallLog.map((call) => call.name)).toContain("execute_command")
+    expect(result.conversationHistory.some((message) =>
+      message.role === "assistant" && message.content === "Done."
+    )).toBe(false)
+    expect(mocks.addMessageToConversation).not.toHaveBeenCalledWith(
+      "conv-rejected-plain-text-recovery",
+      "Done.",
+      "assistant",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    )
   })
 
   it("asks for the missing final answer instead of auto-generating a summary after bare mark_work_complete", async () => {
@@ -1688,6 +1760,76 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       ?.map((message: { content: string }) => message.content)
       .join("\n") ?? ""
     expect(thirdPromptText).toContain("compacted context search already returned matching excerpts")
+  })
+
+  it("does not treat empty context search results as recovered evidence", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const progressUpdate = "Continuing the audit now; I'm searching the compacted history for the hidden token."
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "respond_to_user",
+          arguments: { text: progressUpdate },
+        },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall("session-empty-context-search-response", 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              mode: "search",
+              query: "HIDDEN_AUDIT_TOKEN",
+              matchCount: 0,
+              matches: [],
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ],
+      "conv-empty-context-search-response",
+      "session-empty-context-search-response",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(progressUpdate)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+    const secondPromptText = mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0]
+      ?.map((message: { content: string }) => message.content)
+      .join("\n") ?? ""
+    expect(secondPromptText).not.toContain("returned matching context")
   })
 
   it("does not verify procedural respond_to_user updates after recovered non-search context reads", async () => {

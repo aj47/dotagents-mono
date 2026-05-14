@@ -165,7 +165,10 @@ function isSuccessfulContextSearchResult(toolCall: MCPToolCall, result: MCPToolR
   if (!/"success"\s*:\s*true/.test(text)) return false
 
   const matchCount = text.match(/"matchCount"\s*:\s*(\d+)/)
-  return matchCount ? Number(matchCount[1]) > 0 : true
+  if (matchCount) return Number(matchCount[1]) > 0
+
+  return /"matches"\s*:\s*\[\s*\{/.test(text)
+    || /\bThe exact requested answer is:/i.test(text)
 }
 
 function isSuccessfulContextReadResult(toolCall: MCPToolCall, result: MCPToolResult): boolean {
@@ -173,10 +176,11 @@ function isSuccessfulContextReadResult(toolCall: MCPToolCall, result: MCPToolRes
 
   const text = getToolResultText(result)
   if (!/"success"\s*:\s*true/.test(text)) return false
-  if (isSuccessfulContextSearchResult(toolCall, result)) return true
+  if (getContextSearchCacheKey(toolCall)) {
+    return isSuccessfulContextSearchResult(toolCall, result)
+  }
 
   return /"excerpt"\s*:/.test(text)
-    || /"matches"\s*:/.test(text)
     || /\bThe exact requested answer is:/i.test(text)
 }
 
@@ -194,7 +198,7 @@ function isSuccessfulContextReadToolMessage(content: string | undefined): boolea
     (
       /"matchCount"\s*:\s*[1-9]\d*/.test(text) ||
       /"excerpt"\s*:/.test(text) ||
-      /"matches"\s*:/.test(text) ||
+      /"matches"\s*:\s*\[\s*\{/.test(text) ||
       /\bThe exact requested answer is:/i.test(text)
     )
 }
@@ -2745,7 +2749,7 @@ export async function processTranscriptWithAgentMode(
 
           if (result.shouldContinue) {
             if (finalContent.trim().length > 0) {
-              addMessage("assistant", finalContent, undefined, undefined, undefined, displayOnlyMessageOptions)
+              addEphemeralMessage("assistant", finalContent)
             }
             noOpCount = 0
             totalNudgeCount = 0
