@@ -41,6 +41,7 @@ import {
   createChatMessageConversationDockStyleSlots,
   createChatMessageExpandedContentProps,
   createChatMessageInlineActivityProps,
+  createChatMessageRetryStatusProps,
   createChatMessageToolExecutionStackProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -4136,9 +4137,10 @@ export default function ChatScreen({ route, navigation }: any) {
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageRuntimeThreadStyles}
                 body={{
-                  retryStatus: m.variant === 'retry' && retryStatusRenderState.shouldRender ? {
+                  retryStatus: createChatMessageRetryStatusProps({
+                    isRetry: m.variant === 'retry',
                     renderState: retryStatusRenderState,
-                  } : null,
+                  }),
                   delegationCard: m.variant === 'delegation' && m.delegation && delegationPresentation ? {
                     surface: mobileRuntimeDelegationCard,
                     agentName: m.delegation.agentName,

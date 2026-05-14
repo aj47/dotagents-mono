@@ -417,6 +417,10 @@ type ChatMessageRetryStatusProps = {
   styles: ChatMessageRetryStatusStyles;
 };
 
+type ChatMessageRetryStatusPropsInput = Pick<ChatMessageRetryStatusProps, 'renderState'> & {
+  isRetry: boolean;
+};
+
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -1759,6 +1763,17 @@ export function createChatMessageConversationBodyProps({
       components: actionSet.components,
     },
   };
+}
+
+export function createChatMessageRetryStatusProps({
+  isRetry,
+  renderState,
+}: ChatMessageRetryStatusPropsInput): ChatMessageThreadBodyProps['retryStatus'] {
+  return isRetry && renderState.shouldRender
+    ? {
+        renderState,
+      }
+    : null;
 }
 
 export function createChatMessageInlineActivityProps({

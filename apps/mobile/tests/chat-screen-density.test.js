@@ -367,8 +367,10 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(screenSource, /retryInfo: update\.retryInfo/);
   assert.match(screenSource, /getChatRuntimeRetryStatusMobileRenderState,/);
   assert.match(screenSource, /const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s*retryInfo: m\.retryInfo,\s*colors: theme\.colors,/);
-  assert.match(screenSource, /m\.variant === 'retry' && retryStatusRenderState\.shouldRender/);
-  assert.match(screenSource, /retryStatus: m\.variant === 'retry' && retryStatusRenderState\.shouldRender \? \{\s+renderState: retryStatusRenderState,\s+\} : null,/);
+  assert.match(screenSource, /retryStatus: createChatMessageRetryStatusProps\(\{\s+isRetry: m\.variant === 'retry',\s+renderState: retryStatusRenderState,\s+\}\),/);
+  assert.doesNotMatch(screenSource, /m\.variant === 'retry' && retryStatusRenderState\.shouldRender/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
+  assert.match(chatMessageChromeSource, /return isRetry && renderState\.shouldRender\s+\? \{\s+renderState,\s+\}\s+: null;/);
   assert.match(chatMessageChromeSource, /retryStatus: \{[\s\S]*?card: styles\.retryStatusCard,[\s\S]*?description: styles\.retryStatusDescription,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
   assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);
@@ -2510,6 +2512,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /createChatMessageConversationBodyProps,/);
   assert.match(screenSource, /createChatMessageExpandedContentProps,/);
   assert.match(screenSource, /createChatMessageInlineActivityProps,/);
+  assert.match(screenSource, /createChatMessageRetryStatusProps,/);
   assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
@@ -2528,6 +2531,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
