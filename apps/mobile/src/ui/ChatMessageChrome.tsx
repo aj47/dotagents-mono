@@ -1958,7 +1958,8 @@ type ChatMessageConversationTurnDurationInput = {
 };
 
 type ChatMessageConversationThreadBodyInput = {
-  message: ChatMessageConversationActionSetInput['message']
+  message: ChatMessageConversationRenderContextInput['message']
+    & ChatMessageConversationActionSetInput['message']
     & ChatMessageConversationRetryStatusInput['message']
     & ChatMessageConversationDelegationCardInput['message']
     & ChatMessageConversationToolApprovalInput['message']
@@ -2082,7 +2083,11 @@ type ChatMessageConversationMessageRuntimeThreadStateInput =
 type ChatMessageConversationMessageRuntimeThreadState = ChatMessageConversationRenderableRuntimeThreadState;
 
 type ChatMessageConversationMessageThreadRenderStateInput =
-  ChatMessageConversationThreadBodyInput
+  Omit<ChatMessageConversationThreadBodyInput, 'renderContext'>
+  & Pick<
+    ChatMessageConversationRenderContextInput,
+    'lastConversationContentMessageIndex' | 'expandedMessages' | 'resultOnlyToolLabel'
+  >
   & Pick<
     ChatMessageConversationMessageRuntimeThreadStateInput,
     'itemKey' | 'groupRenderState' | 'groupThreadState'
@@ -2353,16 +2358,31 @@ export function createChatMessageConversationMessageThreadRenderState({
   itemKey,
   groupRenderState,
   groupThreadState,
+  lastConversationContentMessageIndex,
+  expandedMessages,
+  resultOnlyToolLabel,
   ...bodyInput
 }: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageThreadRenderState {
-  const body = createChatMessageConversationThreadBodyInput(bodyInput);
+  const renderContext = createChatMessageConversationRenderContext({
+    message: bodyInput.message,
+    messageIndex: bodyInput.messageIndex,
+    isResponding: bodyInput.isResponding,
+    lastConversationContentMessageIndex,
+    expandedMessages,
+    resultOnlyToolLabel,
+    colors: bodyInput.colors,
+  });
+  const body = createChatMessageConversationThreadBodyInput({
+    ...bodyInput,
+    renderContext,
+  });
 
   return {
     threadState: createChatMessageConversationMessageRuntimeThreadState({
       itemKey,
       groupRenderState,
       groupThreadState,
-      renderContext: bodyInput.renderContext,
+      renderContext,
       body,
     }),
   };

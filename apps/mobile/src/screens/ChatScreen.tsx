@@ -35,7 +35,6 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationMessageThreadRenderState,
-  createChatMessageConversationRenderContext,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationToolActivityGroupThreadRenderState,
@@ -3743,15 +3742,6 @@ export default function ChatScreen({ route, navigation }: any) {
               );
             }
 
-            const messageRenderContext = createChatMessageConversationRenderContext({
-              message: m,
-              messageIndex: i,
-              isResponding: responding,
-              lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
-              expandedMessages,
-              resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
-              colors: theme.colors,
-            });
             const {
               threadState: messageThreadState,
             } = createChatMessageConversationMessageThreadRenderState({
@@ -3760,7 +3750,9 @@ export default function ChatScreen({ route, navigation }: any) {
               groupThreadState,
               message: m,
               messageIndex: i,
-              renderContext: messageRenderContext,
+              lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
+              expandedMessages,
+              resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
               turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,
               conversationId: currentSession?.serverConversationId,
               pendingBranchMessageIndex: branchingMessageIndex,
