@@ -2055,6 +2055,19 @@ type ChatMessageConversationRuntimeThreadState =
     threadKey: string | number;
   };
 
+type ChatMessageConversationMessageRuntimeThreadStateInput =
+  Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>
+  & {
+    renderContext: ChatMessageConversationThreadVisibilityInput['renderContext'];
+    body: ChatMessageThreadBodyPropsInput;
+  };
+
+type ChatMessageConversationMessageRuntimeThreadState =
+  ChatMessageConversationRuntimeThreadState
+  & {
+    shouldRenderThread: boolean;
+  };
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2279,6 +2292,19 @@ export function shouldRenderChatMessageConversationThread({
   body,
 }: ChatMessageConversationThreadVisibilityInput): boolean {
   return renderContext.shouldRenderSurface || !!body.inlineActivity;
+}
+
+export function createChatMessageConversationMessageRuntimeThreadState({
+  renderContext,
+  ...runtimeThreadInput
+}: ChatMessageConversationMessageRuntimeThreadStateInput): ChatMessageConversationMessageRuntimeThreadState {
+  return {
+    ...createChatMessageConversationRuntimeThreadState(runtimeThreadInput),
+    shouldRenderThread: shouldRenderChatMessageConversationThread({
+      renderContext,
+      body: runtimeThreadInput.body,
+    }),
+  };
 }
 
 export function createChatMessageConversationThreadPresentationState({

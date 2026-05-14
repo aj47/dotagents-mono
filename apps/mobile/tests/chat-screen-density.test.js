@@ -1501,8 +1501,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
   assert.match(chatMessageChromeSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
   assert.match(chatMessageChromeSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
-  assert.match(screenSource, /if \(!shouldRenderChatMessageConversationThread\(\{\s+renderContext: messageRenderContext,\s+body: messageThreadBody,\s+\}\)\) \{\s+return null;\s+\}/);
+  assert.match(screenSource, /const messageThreadState = createChatMessageConversationMessageRuntimeThreadState\(\{\s+itemKey: i,\s+groupRenderState,\s+groupThreadState,\s+renderContext: messageRenderContext,\s+body: messageThreadBody,\s+\}\);/);
+  assert.match(screenSource, /if \(!messageThreadState\.shouldRenderThread\) \{\s+return null;\s+\}/);
   assert.match(chatMessageChromeSource, /export function shouldRenderChatMessageConversationThread\(\{[\s\S]*?return renderContext\.shouldRenderSurface \|\| !!body\.inlineActivity;/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationMessageRuntimeThreadState/);
+  assert.match(chatMessageChromeSource, /shouldRenderThread: shouldRenderChatMessageConversationThread\(\{\s+renderContext,\s+body: runtimeThreadInput\.body,\s+\}\),/);
+  assert.doesNotMatch(screenSource, /shouldRenderChatMessageConversationThread/);
   assert.doesNotMatch(screenSource, /!shouldRenderSurface && !messageThreadBody\.inlineActivity/);
   assert.doesNotMatch(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /if \(visibleMessageContent\.trim\(\)\.length === 0 && displayToolCallCount === 0\)/);
@@ -2097,7 +2101,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState\.colors;/);
   assert.match(screenSource, /const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState\.loadButton\.pressedOpacity;/);
   assert.doesNotMatch(screenSource, /const messageInlineActivityProps = createChatMessageInlineActivityProps/);
-  assert.match(screenSource, /shouldRenderChatMessageConversationThread\(\{\s+renderContext: messageRenderContext,\s+body: messageThreadBody,\s+\}\)/);
+  assert.match(screenSource, /createChatMessageConversationMessageRuntimeThreadState\(\{\s+itemKey: i,\s+groupRenderState,\s+groupThreadState,\s+renderContext: messageRenderContext,\s+body: messageThreadBody,\s+\}\)/);
   assert.match(chatMessageChromeSource, /inlineActivity: createChatMessageInlineActivityProps\(\{\s+message,\s+isResponding,\s+spinnerSource,\s+\}\),/);
   assert.doesNotMatch(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
@@ -2424,6 +2428,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /const isGroupOnlyThread = groupThreadState\.shouldRenderGroupOnlyThread;/);
   assert.match(chatMessageChromeSource, /threadKey: isGroupOnlyThread \? groupThreadState\.groupOnlyThreadKey : itemKey,/);
   assert.match(chatMessageChromeSource, /body: isGroupOnlyThread \? null : body,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationMessageRuntimeThreadState/);
+  assert.match(chatMessageChromeSource, /\.\.\.createChatMessageConversationRuntimeThreadState\(runtimeThreadInput\),\s+shouldRenderThread: shouldRenderChatMessageConversationThread\(\{/);
   assert.match(screenSource, /const chatMessageConversationThreadStyles = useMemo\(\s+\(\) => createChatMessageConversationThreadStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.doesNotMatch(screenSource, /const messageThreadSurfaceStyles = useMemo/);
   assert.doesNotMatch(screenSource, /const messageThreadBodyStyles = useMemo/);
@@ -2449,7 +2455,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupBoundary\s+key=\{`group-\$\{groupRenderState!\.groupKey\}`\}/);
   assert.doesNotMatch(screenSource, /const isFirstInExpandedGroup = groupRenderState\?\.shouldRenderExpandedHeader \?\? false;/);
   assert.doesNotMatch(screenSource, /const isLastInExpandedGroup = groupRenderState\?\.shouldRenderExpandedFooter \?\? false;/);
-  assert.match(screenSource, /const messageThreadState = createChatMessageConversationRuntimeThreadState\(\{\s+itemKey: i,\s+groupRenderState,\s+groupThreadState,\s+body: messageThreadBody,\s+\}\);/);
+  assert.match(screenSource, /const messageThreadState = createChatMessageConversationMessageRuntimeThreadState\(\{\s+itemKey: i,\s+groupRenderState,\s+groupThreadState,\s+renderContext: messageRenderContext,\s+body: messageThreadBody,\s+\}\);/);
+  assert.match(screenSource, /if \(!messageThreadState\.shouldRenderThread\) \{\s+return null;\s+\}/);
   assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{messageThreadState\.threadKey\}\s+groupRenderState=\{messageThreadState\.groupRenderState\}\s+onToggleGroup=\{messageThreadState\.onToggleGroup\}\s+styles=\{chatMessageConversationThreadStyles\.runtimeThread\}\s+body=\{messageThreadState\.body\}/);
   assert.doesNotMatch(screenSource, /surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}/);
   assert.match(chatMessageChromeSource, /const resolvedBody = createChatMessageThreadBodyProps\(body\);/);
@@ -2549,7 +2556,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
-  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeThread,[\s\S]*?createChatMessageConversationRuntimeThreadState,[\s\S]*?createChatMessageConversationThreadPresentationState,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?createChatMessageConversationToolActivityGroupThreadRenderState,[\s\S]*?shouldRenderChatMessageConversationThread,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeThread,[\s\S]*?createChatMessageConversationMessageRuntimeThreadState,[\s\S]*?createChatMessageConversationRuntimeThreadState,[\s\S]*?createChatMessageConversationThreadPresentationState,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?createChatMessageConversationToolActivityGroupThreadRenderState,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.doesNotMatch(screenSource, /shouldRenderChatMessageConversationThread,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeThreadStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolActivityGroupThreadSurfaceStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageThreadBodyStyleSlots,/);

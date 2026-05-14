@@ -34,6 +34,7 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
+  createChatMessageConversationMessageRuntimeThreadState,
   createChatMessageConversationRenderContext,
   createChatMessageConversationRuntimeThreadState,
   createChatMessageConversationThreadBodyInput,
@@ -45,7 +46,6 @@ import {
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
-  shouldRenderChatMessageConversationThread,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -3794,19 +3794,16 @@ export default function ChatScreen({ route, navigation }: any) {
               onCopyMessage: handleCopyMessage,
               onToggleMessageExpansion: toggleMessageExpansion,
             });
-            if (!shouldRenderChatMessageConversationThread({
-              renderContext: messageRenderContext,
-              body: messageThreadBody,
-            })) {
-              return null;
-            }
-
-            const messageThreadState = createChatMessageConversationRuntimeThreadState({
+            const messageThreadState = createChatMessageConversationMessageRuntimeThreadState({
               itemKey: i,
               groupRenderState,
               groupThreadState,
+              renderContext: messageRenderContext,
               body: messageThreadBody,
             });
+            if (!messageThreadState.shouldRenderThread) {
+              return null;
+            }
 
             return (
               <ChatMessageRuntimeThread
