@@ -3730,6 +3730,7 @@ type ChatMessageRuntimeBranchActionsStateInput<TBranchClient extends ChatMessage
 
 type ChatMessageRuntimeBranchActionsState = {
   handleBranchFromMessage: (messageIndex: number) => Promise<void>;
+  handleBranchFromMessagePress: (messageIndex: number) => void;
 };
 
 type ChatRuntimeCurrentSessionPinSessionStore = {
@@ -9042,8 +9043,13 @@ export function useChatMessageRuntimeBranchActionsState<
     showAlert,
   ]);
 
+  const handleBranchFromMessagePress = useCallback((messageIndex: number) => {
+    void handleBranchFromMessage(messageIndex);
+  }, [handleBranchFromMessage]);
+
   return {
     handleBranchFromMessage,
+    handleBranchFromMessagePress,
   };
 }
 

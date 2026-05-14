@@ -418,7 +418,7 @@ export default function ChatScreen({ route, navigation }: any) {
     sessionStore,
   });
 
-  const { handleBranchFromMessage } = useChatMessageRuntimeBranchActionsState({
+  const { handleBranchFromMessagePress } = useChatMessageRuntimeBranchActionsState({
     branchClient: settingsClient,
     serverConversationId: currentSession?.serverConversationId,
     sessionStore,
@@ -1625,7 +1625,7 @@ export default function ChatScreen({ route, navigation }: any) {
       onToggleToolCall: toggleToolCallExpansion,
       onCopyToolPayload: handleCopyToolPayload,
       onSpeakMessage: speakMessage,
-      onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
+      onBranchMessage: handleBranchFromMessagePress,
       onCopyMessage: handleCopyMessage,
       onToggleMessageExpansion: toggleMessageExpansion,
     },

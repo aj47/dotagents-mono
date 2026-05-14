@@ -3729,7 +3729,8 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{spec\.renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /icon=\{spec\.renderState\.icon\}/);
   assert.doesNotMatch(screenSource, /messageCopyAction\.label \?\? mobileMessageActionCopy\.copy\.messageLabel/);
-  assert.match(screenSource, /onBranchMessage: \(messageIndex\) => \{ void handleBranchFromMessage\(messageIndex\); \},[\s\S]*?onCopyMessage: handleCopyMessage,[\s\S]*?onToggleMessageExpansion: toggleMessageExpansion,/);
+  assert.match(screenSource, /onBranchMessage: handleBranchFromMessagePress,[\s\S]*?onCopyMessage: handleCopyMessage,[\s\S]*?onToggleMessageExpansion: toggleMessageExpansion,/);
+  assert.doesNotMatch(screenSource, /void handleBranchFromMessage\(messageIndex\)/);
   assert.match(screenSource, /messageCopyButton:\s*\{[\s\S]*?alignSelf:\s*mobileMessageActionButton\.alignSelf,[\s\S]*?width:\s*mobileMessageActionButton\.width,[\s\S]*?backgroundColor:\s*mobileMessageActionButtonColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageActionButton\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageActionButton\.justifyContent,[\s\S]*?flexShrink:\s*mobileMessageActionButton\.flexShrink/);
   assert.match(screenSource, /messageCopyButtonCopied:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageCopiedButtonColors\.backgroundColor/);
   assert.doesNotMatch(screenSource, /messageCopyButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageActionButton\.backgroundColorToken\]/);
@@ -4764,8 +4765,10 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /setPendingBranchMessageIndex\(null\);[\s\S]*?\}, \[sessionId\]\);/);
   assert.doesNotMatch(screenSource, /const \[branchingMessageIndex, setBranchingMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /useChatMessageRuntimeBranchActionsState,/);
-  assert.match(screenSource, /const \{ handleBranchFromMessage \} = useChatMessageRuntimeBranchActionsState\(\{\s+branchClient: settingsClient,\s+serverConversationId: currentSession\?\.serverConversationId,\s+sessionStore,\s+beginBranchMessage,\s+clearBranchMessage,\s+navigateToChat: \(\) => navigation\.navigate\('Chat'\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleBranchFromMessagePress \} = useChatMessageRuntimeBranchActionsState\(\{\s+branchClient: settingsClient,\s+serverConversationId: currentSession\?\.serverConversationId,\s+sessionStore,\s+beginBranchMessage,\s+clearBranchMessage,\s+navigateToChat: \(\) => navigation\.navigate\('Chat'\),\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeBranchActionsState/);
+  assert.match(chatMessageChromeSource, /handleBranchFromMessagePress: \(messageIndex: number\) => void/);
+  assert.match(chatMessageChromeSource, /const handleBranchFromMessagePress = useCallback\(\(messageIndex: number\) => \{\s+void handleBranchFromMessage\(messageIndex\);\s+\}, \[handleBranchFromMessage\]\);/);
   assert.doesNotMatch(screenSource, /settingsClient\.branchConversation\(serverConversationId, \{ messageIndex \}\)/);
   assert.match(chatMessageChromeSource, /branchClient\.branchConversation\(serverConversationId, \{ messageIndex \}\)/);
   assert.doesNotMatch(screenSource, /await sessionStore\.syncWithServer\(settingsClient\)/);
