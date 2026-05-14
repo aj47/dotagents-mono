@@ -515,6 +515,21 @@ type ChatMessageRuntimeSendRefState = {
   syncSendRef: (send: ChatMessageRuntimeSendCallback) => void;
 };
 
+type ChatMessageRuntimeSessionRefStateInput = {
+  initialMessage: string | null;
+};
+
+type ChatMessageRuntimeSessionRefState = {
+  lastLoadedSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  pendingLazyLoadSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  skipNextPersistRef: ChatRuntimeMutableRef<boolean>;
+  initialMessageRef: ChatRuntimeMutableRef<string | null>;
+  initialMessageSentRef: ChatRuntimeMutableRef<boolean>;
+  prevMessagesLengthRef: ChatRuntimeMutableRef<number>;
+  prevSessionIdRef: ChatRuntimeMutableRef<string | null>;
+  convoRef: ChatRuntimeMutableRef<string | undefined>;
+};
+
 type ChatMessageRuntimeResponseHistoryState = {
   respondToUserHistory: AgentUserResponseEvent[];
   playedResponseEventIdsRef: ChatRuntimeMutableRef<Set<string>>;
@@ -6142,6 +6157,30 @@ export function useChatMessageRuntimeSendRef(): ChatMessageRuntimeSendRefState {
   return {
     sendRef,
     syncSendRef,
+  };
+}
+
+export function useChatMessageRuntimeSessionRefState({
+  initialMessage,
+}: ChatMessageRuntimeSessionRefStateInput): ChatMessageRuntimeSessionRefState {
+  const lastLoadedSessionIdRef = useRef<string | null>(null);
+  const pendingLazyLoadSessionIdRef = useRef<string | null>(null);
+  const skipNextPersistRef = useRef(false);
+  const initialMessageRef = useRef<string | null>(initialMessage);
+  const initialMessageSentRef = useRef(false);
+  const prevMessagesLengthRef = useRef(0);
+  const prevSessionIdRef = useRef<string | null>(null);
+  const convoRef = useRef<string | undefined>(undefined);
+
+  return {
+    lastLoadedSessionIdRef,
+    pendingLazyLoadSessionIdRef,
+    skipNextPersistRef,
+    initialMessageRef,
+    initialMessageSentRef,
+    prevMessagesLengthRef,
+    prevSessionIdRef,
+    convoRef,
   };
 }
 

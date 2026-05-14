@@ -3767,6 +3767,22 @@ test('keeps message runtime refs in chat chrome state hooks', () => {
   assert.doesNotMatch(screenSource, /const sendRef = useRef<\(text: string\) => Promise<void>>\(async \(\) => \{\}\);/);
 });
 
+test('keeps session lifecycle refs in chat chrome state hooks', () => {
+  assert.match(screenSource, /useChatMessageRuntimeSessionRefState,/);
+  assert.match(screenSource, /const \{\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+initialMessageRef,\s+initialMessageSentRef,\s+prevMessagesLengthRef,\s+prevSessionIdRef,\s+convoRef,\s+\} = useChatMessageRuntimeSessionRefState\(\{\s+initialMessage: route\?\.params\?\.initialMessage \?\? null,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionRefState/);
+  assert.match(chatMessageChromeSource, /const lastLoadedSessionIdRef = useRef<string \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const initialMessageRef = useRef<string \| null>\(initialMessage\);/);
+  assert.match(chatMessageChromeSource, /const prevMessagesLengthRef = useRef\(0\);/);
+  assert.match(chatMessageChromeSource, /const convoRef = useRef<string \| undefined>\(undefined\);/);
+  assert.doesNotMatch(screenSource, /const lastLoadedSessionIdRef = useRef<string \| null>\(null\);/);
+  assert.doesNotMatch(screenSource, /const initialMessageRef = useRef<string \| null>\(route\?\.params\?\.initialMessage \?\? null\);/);
+  assert.doesNotMatch(screenSource, /const prevMessagesLengthRef = useRef\(0\);/);
+  assert.doesNotMatch(screenSource, /const convoRef = useRef<string \| undefined>\(undefined\);/);
+  assert.doesNotMatch(chatScreenSource, /useRef,/);
+  assert.doesNotMatch(chatScreenSource, /useState,/);
+});
+
 test('routes every desktop TTS provider through the paired remote TTS endpoint', () => {
   assert.match(screenSource, /const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeRemoteSpeechSettingsState,/);

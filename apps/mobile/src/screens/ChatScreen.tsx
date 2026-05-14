@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import {
   Platform,
   Alert,
@@ -72,6 +72,7 @@ import {
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
+  useChatMessageRuntimeSessionRefState,
   useChatMessageRuntimeResponseHistoryState,
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeSpeechTextState,
@@ -605,6 +606,18 @@ export default function ChatScreen({ route, navigation }: any) {
     progressMessagesRef,
   } = useChatMessageRuntimeMessageState<ChatMessage>();
   const { sendRef, syncSendRef } = useChatMessageRuntimeSendRef();
+  const {
+    lastLoadedSessionIdRef,
+    pendingLazyLoadSessionIdRef,
+    skipNextPersistRef,
+    initialMessageRef,
+    initialMessageSentRef,
+    prevMessagesLengthRef,
+    prevSessionIdRef,
+    convoRef,
+  } = useChatMessageRuntimeSessionRefState({
+    initialMessage: route?.params?.initialMessage ?? null,
+  });
   const turnDurations = useChatMessageRuntimeTurnDurations({
     messages,
     isResponding: responding,
@@ -1203,13 +1216,6 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
   }, [beginPromptEditorSave, clearPromptEditorSave, predefinedPrompts, settingsClient]);
 
-  const lastLoadedSessionIdRef = useRef<string | null>(null);
-  const pendingLazyLoadSessionIdRef = useRef<string | null>(null);
-  // Set to true before hydrating local state from a server lazy-load so the
-  // persistence effect doesn't re-save the just-fetched messages (which would
-  // regenerate IDs/timestamps and cause unnecessary updatedAt drift).
-  const skipNextPersistRef = useRef(false);
-
   // Load messages when currentSession changes (fixes #470)
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -1330,8 +1336,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetResponseSpeechPlaybackState, resetThreadExpansionState]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
-  const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
-  const initialMessageSentRef = useRef(false);
 	useEffect(() => {
 		const nextInitial = route?.params?.initialMessage;
 		if (!nextInitial || typeof nextInitial !== 'string') return;
@@ -1353,8 +1357,6 @@ export default function ChatScreen({ route, navigation }: any) {
     return () => clearTimeout(timer);
 	}, [navigation, sessionStore.currentSessionId]);
 
-  const prevMessagesLengthRef = useRef(0);
-  const prevSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
 
@@ -1388,8 +1390,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     prevMessagesLengthRef.current = messages.length;
   }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
-
-  const convoRef = useRef<string | undefined>(undefined);
 
   // Get the current conversation ID for queue operations
   const currentConversationId = sessionStore.currentSessionId || 'default';
