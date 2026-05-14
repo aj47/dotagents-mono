@@ -37,7 +37,6 @@ import {
   createChatMessageActionSet,
   createChatMessageActionStyleSlots,
   createChatMessageDelegationCardProps,
-  createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
   createChatMessageRetryStatusProps,
@@ -3924,7 +3923,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     onApprove: (approvalId) => { void respondToToolApproval(approvalId, true); },
                   }),
                   inlineActivity: messageInlineActivityProps,
-                  conversation: createChatMessageConversationBodyProps({
+                  conversation: {
                     contentState: messageContentRenderState,
                     actionSet: messageActionSet,
                     expanded: {
@@ -3961,7 +3960,7 @@ export default function ChatScreen({ route, navigation }: any) {
                         emptyStateRenderState: toolExecutionDetailEmptyState,
                       },
                     },
-                  }),
+                  },
                 })}
               />
             );

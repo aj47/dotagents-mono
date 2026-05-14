@@ -1768,8 +1768,6 @@ type ChatMessageThreadBodyProps = {
   };
 };
 
-export type ChatMessageThreadBodyPropsInput = Omit<ChatMessageThreadBodyProps, 'styles'>;
-
 export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
 export type ChatMessageConversationBodyPropsInput = {
@@ -1779,6 +1777,12 @@ export type ChatMessageConversationBodyPropsInput = {
   collapsed: ChatMessageCollapsedPreviewPropsInput;
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
 };
+
+export type ChatMessageThreadBodyPropsInput =
+  Omit<ChatMessageThreadBodyProps, 'styles' | 'conversation'>
+  & {
+    conversation: ChatMessageConversationBodyPropsInput;
+  };
 
 type ChatMessageRuntimeThreadStyleSlots = {
   surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
@@ -2025,13 +2029,13 @@ export function createChatMessageThreadBodyProps({
   toolApproval,
   inlineActivity,
   conversation,
-}: ChatMessageThreadBodyPropsInput): ChatMessageThreadBodyPropsInput {
+}: ChatMessageThreadBodyPropsInput): Omit<ChatMessageThreadBodyProps, 'styles'> {
   return {
     retryStatus: retryStatus ?? null,
     delegationCard: delegationCard ?? null,
     toolApproval: toolApproval ?? null,
     inlineActivity: inlineActivity ?? null,
-    conversation,
+    conversation: createChatMessageConversationBodyProps(conversation),
   };
 }
 

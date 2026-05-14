@@ -1507,7 +1507,7 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 
 test('uses shared media sanitization for collapsed mobile message previews', () => {
   assert.match(screenSource, /getChatMessageMobileRenderState,/);
-  assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,/);
+  assert.match(screenSource, /conversation: \{\s+contentState: messageContentRenderState,/);
   assert.match(screenSource, /collapsed: \{\s+renderState: messageRenderState\.collapsedPreview,/);
   assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(collapsed\),/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+renderState=\{collapsed\.renderState\}/);
@@ -2133,7 +2133,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(screenSource, /isLiveStreaming: isLiveStreamingAssistantMessage,/);
   assert.doesNotMatch(screenSource, /shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
   assert.doesNotMatch(screenSource, /const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming: isLiveStreamingAssistantMessage,\s+content: visibleMessageContent,\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,[\s\S]*?expanded: \{[\s\S]*?isStreaming: isLiveStreamingAssistantMessage,[\s\S]*?markdownContent: visibleMessageContent,[\s\S]*?colors: theme\.colors,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
+  assert.match(screenSource, /conversation: \{\s+contentState: messageContentRenderState,[\s\S]*?expanded: \{[\s\S]*?isStreaming: isLiveStreamingAssistantMessage,[\s\S]*?markdownContent: visibleMessageContent,[\s\S]*?colors: theme\.colors,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
+  assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
   assert.match(chatMessageChromeSource, /expanded: createChatMessageExpandedContentProps\(expanded\),/);
   assert.match(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming,\s+content: markdownContent,\s+colors,\s+\}\);/);
@@ -2598,7 +2599,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /type ChatMessageActionSlot,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.match(screenSource, /createChatMessageActionSet,/);
-  assert.match(screenSource, /createChatMessageConversationBodyProps,/);
+  assert.doesNotMatch(screenSource, /createChatMessageConversationBodyProps,/);
   assert.match(screenSource, /createChatMessageDelegationCardProps,/);
   assert.doesNotMatch(screenSource, /createChatMessageExpandedContentProps,/);
   assert.match(screenSource, /createChatMessageInlineActivityProps,/);
@@ -2653,7 +2654,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/<ChatMessageConversationContent/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageContentRow/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 0);
-  assert.match(screenSource, /body=\{createChatMessageThreadBodyProps\(\{[\s\S]*?conversation: createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
+  assert.match(screenSource, /body=\{createChatMessageThreadBodyProps\(\{[\s\S]*?conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
   assert.doesNotMatch(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps/);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow/g) ?? []).length, 2);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 1);
@@ -2667,7 +2668,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((chatMessageChromeSource.match(/components: actionSet\.components/g) ?? []).length, 2);
   assert.match(screenSource, /styles=\{chatMessageRuntimeThreadStyles\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.body\}\s+styles=\{styles\.body\}/);
-  assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,\s+expanded: \{/);
+  assert.match(screenSource, /conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,\s+expanded: \{/);
+  assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
   assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+slots: actionSet\.visibleSlots,\s+components: actionSet\.components,/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
