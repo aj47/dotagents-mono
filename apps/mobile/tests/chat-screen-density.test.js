@@ -3500,7 +3500,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const intendedSpeakingIndexRef = useRef<number \| null>\(null\);/);
   assert.match(screenSource, /useChatMessageRuntimeSpeechActionsState,/);
   assert.match(screenSource, /const \{ speakMessage \} = useChatMessageRuntimeSpeechActionsState\(\{\s+speakingMessageIndex,\s+config,\s+effectiveTtsProvider,\s+effectiveRemoteTtsVoice,\s+effectiveRemoteTtsModel,\s+effectiveRemoteTtsRate,\s+handsFree,\s+handsFreeController,\s+intendedSpeakingIndexRef,\s+setIntendedSpeakingMessage,\s+startSpeakingMessage,\s+clearSpeakingMessage,\s+clearIntendedSpeakingMessage,\s+speakNative: Speech\.speak,\s+stopNativeSpeech: Speech\.stop,\s+speakRemote: speakRemoteTts,\s+stopRemoteSpeech: stopRemoteTts,\s+voiceLog,\s+\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeSpeechCleanupState,/);
+  assert.match(screenSource, /useChatMessageRuntimeSpeechCleanupState\(\{\s+stopNativeSpeech: Speech\.stop,\s+stopRemoteSpeech: stopRemoteTts,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechActionsState/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechCleanupState/);
+  assert.match(chatMessageChromeSource, /return \(\) => \{[\s\S]*?stopNativeSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);/);
   assert.match(chatMessageChromeSource, /setIntendedSpeakingMessage\(messageIndex\);/);
   assert.match(chatMessageChromeSource, /startSpeakingMessage\(messageIndex\);/);
   assert.match(chatMessageChromeSource, /clearSpeakingMessage\(\);/);
@@ -3509,6 +3513,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /void speakRemote\(processedText, \{/);
   assert.doesNotMatch(screenSource, /setIntendedSpeakingMessage\(index\);/);
   assert.doesNotMatch(screenSource, /startSpeakingMessage\(index\);/);
+  assert.doesNotMatch(screenSource, /Speech\.stop\(\);\s+stopRemoteTts\(\);/);
   assert.match(screenSource, /speakingMessageIndex,/);
   assert.match(chatMessageChromeSource, /isSpeaking: speakingMessageIndex === messageIndex,/);
   assert.doesNotMatch(screenSource, /messageSpeechAction\.label \?\? mobileMessageActionCopy\.speech\.readAloudLabel/);

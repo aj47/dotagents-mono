@@ -826,6 +826,11 @@ type ChatMessageRuntimeSpeechActionsState = {
   speakMessage: (messageIndex: number, content: string) => void;
 };
 
+type ChatMessageRuntimeSpeechCleanupStateInput = {
+  stopNativeSpeech: () => void;
+  stopRemoteSpeech: () => void;
+};
+
 type ChatComposerRuntimeEditBeforeSendState = {
   editBeforeSendEnabled: boolean;
   toggleEditBeforeSend: () => void;
@@ -7623,6 +7628,18 @@ export function useChatMessageRuntimeSpeechActionsState({
   return {
     speakMessage,
   };
+}
+
+export function useChatMessageRuntimeSpeechCleanupState({
+  stopNativeSpeech,
+  stopRemoteSpeech,
+}: ChatMessageRuntimeSpeechCleanupStateInput): void {
+  useEffect(() => {
+    return () => {
+      stopNativeSpeech();
+      stopRemoteSpeech();
+    };
+  }, [stopNativeSpeech, stopRemoteSpeech]);
 }
 
 export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntimeEditBeforeSendState {

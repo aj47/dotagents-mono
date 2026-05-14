@@ -67,6 +67,7 @@ import {
   useChatMessageRuntimeAssistantSpeechActionsState,
   useChatMessageRuntimeResponseSpeechQueueActionsState,
   useChatMessageRuntimeSpeechActionsState,
+  useChatMessageRuntimeSpeechCleanupState,
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
@@ -690,13 +691,10 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   });
 
-  // Cleanup: stop speech on unmount (#1078)
-  useEffect(() => {
-    return () => {
-      Speech.stop();
-      stopRemoteTts();
-    };
-  }, []);
+  useChatMessageRuntimeSpeechCleanupState({
+    stopNativeSpeech: Speech.stop,
+    stopRemoteSpeech: stopRemoteTts,
+  });
 
   useEffect(() => {
     if (!settingsClient || !isFocused) {
