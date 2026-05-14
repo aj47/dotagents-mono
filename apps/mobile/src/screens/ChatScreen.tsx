@@ -3828,7 +3828,6 @@ export default function ChatScreen({ route, navigation }: any) {
             return (
               <ChatMessageRuntimeThread
                 key={i}
-                surfaceToneStyleSlot={messageRenderState.toneStyleSlot}
                 groupRenderState={groupRenderState}
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageRuntimeThreadStyles}
