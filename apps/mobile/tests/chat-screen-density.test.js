@@ -860,8 +860,13 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeBackMobileIconState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimePinMobileActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimePinMobileColors,/);
+  assert.match(screenSource, /useChatRuntimeCurrentSessionPinActionsState,/);
+  assert.match(screenSource, /const \{ handleToggleCurrentSessionPinned \} = useChatRuntimeCurrentSessionPinActionsState\(\{\s+sessionStore,\s+\}\);/);
   assert.match(screenSource, /isPinned: isCurrentSessionPinned,/);
   assert.match(chatMessageChromeSource, /const pinButtonRenderState = getChatRuntimePinMobileRenderState\(\{ isPinned, colors \}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeCurrentSessionPinActionsState/);
+  assert.match(chatMessageChromeSource, /void sessionStore\.toggleSessionPinned\(currentSessionId\);/);
+  assert.doesNotMatch(screenSource, /void sessionStore\.toggleSessionPinned\(currentSessionId\);/);
   assert.match(chatMessageChromeSource, /backButtonRenderState: getChatRuntimeBackMobileRenderState\(\{ colors \}\),/);
   assert.match(chatMessageChromeSource, /pinButtonIsActive: pinButtonRenderState\.isPinned,/);
   assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onBackButtonPress: \(\) => navigation\.navigate\('Sessions'\),[\s\S]*?onPinButtonPress: handleToggleCurrentSessionPinned,/);

@@ -76,6 +76,7 @@ import {
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchActionsState,
+  useChatRuntimeCurrentSessionPinActionsState,
   getChatMessageRuntimeLatestStepSummary,
   resolveChatMessageRuntimeConversationStateFromProgress,
   useChatMessageRuntimeBranchProgressState,
@@ -477,11 +478,9 @@ export default function ChatScreen({ route, navigation }: any) {
     runPromptTask: handleRunPromptTask,
   });
 
-  const handleToggleCurrentSessionPinned = useCallback(() => {
-    const currentSessionId = sessionStore.currentSessionId;
-    if (!currentSessionId) return;
-    void sessionStore.toggleSessionPinned(currentSessionId);
-  }, [sessionStore]);
+  const { handleToggleCurrentSessionPinned } = useChatRuntimeCurrentSessionPinActionsState({
+    sessionStore,
+  });
 
   const { handleBranchFromMessage } = useChatMessageRuntimeBranchActionsState({
     branchClient: settingsClient,

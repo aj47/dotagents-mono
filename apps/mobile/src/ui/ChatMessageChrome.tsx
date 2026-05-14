@@ -3409,6 +3409,19 @@ type ChatMessageRuntimeBranchActionsState = {
   handleBranchFromMessage: (messageIndex: number) => Promise<void>;
 };
 
+type ChatRuntimeCurrentSessionPinSessionStore = {
+  currentSessionId: string | null;
+  toggleSessionPinned: (sessionId: string) => unknown | Promise<unknown>;
+};
+
+type ChatRuntimeCurrentSessionPinActionsStateInput = {
+  sessionStore: ChatRuntimeCurrentSessionPinSessionStore;
+};
+
+type ChatRuntimeCurrentSessionPinActionsState = {
+  handleToggleCurrentSessionPinned: () => void;
+};
+
 type ChatMessageRuntimeKillSwitchClient = {
   killSwitch: () => Promise<ChatMessageRuntimeKillSwitchResultLike>;
 };
@@ -7335,6 +7348,20 @@ export function useChatMessageRuntimeBranchActionsState<
 
   return {
     handleBranchFromMessage,
+  };
+}
+
+export function useChatRuntimeCurrentSessionPinActionsState({
+  sessionStore,
+}: ChatRuntimeCurrentSessionPinActionsStateInput): ChatRuntimeCurrentSessionPinActionsState {
+  const handleToggleCurrentSessionPinned = useCallback(() => {
+    const currentSessionId = sessionStore.currentSessionId;
+    if (!currentSessionId) return;
+    void sessionStore.toggleSessionPinned(currentSessionId);
+  }, [sessionStore]);
+
+  return {
+    handleToggleCurrentSessionPinned,
   };
 }
 
