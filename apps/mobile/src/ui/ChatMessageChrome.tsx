@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   getChatDisplayExpansionState,
+  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionLayoutRenderState,
   type ChatDisplayExpansionStateMap,
@@ -32,6 +33,9 @@ import {
   type ChatMessageActionSlot,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageContentRenderState,
+  type ChatMessageCopyMobileRenderState,
+  type ChatMessageExpansionMobileRenderState,
+  type ChatMessageSpeechMobileRenderState,
 } from '@dotagents/shared/message-display-utils';
 import {
   getCompactToolExecutionPreview,
@@ -74,6 +78,7 @@ import {
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
   type ChatRuntimeBackMobileRenderState,
+  type ChatRuntimeBranchMobileRenderState,
   type ChatRuntimeConnectionBannerMobileRenderState,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchMobileRenderState,
@@ -167,18 +172,34 @@ type ChatMessageActionButtonSpec = {
   isActive?: boolean;
 };
 
+type ChatMessageSpeechActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
+  renderState: ChatMessageSpeechMobileRenderState;
+};
+
+type ChatMessageBranchActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
+  renderState: ChatRuntimeBranchMobileRenderState;
+};
+
+type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
+  renderState: ChatMessageCopyMobileRenderState;
+};
+
+type ChatMessageExpansionActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
+  renderState: ChatMessageExpansionMobileRenderState;
+};
+
 type ChatMessageTurnDurationActionSpec = ChatMessageTurnDurationBadgeProps;
 
 type ChatMessageActionComponentsInput = {
   availability: ChatMessageActionAvailabilityRenderState;
   turnDuration: ChatMessageTurnDurationActionSpec;
-  speech: ChatMessageActionButtonSpec;
-  branch: ChatMessageActionButtonSpec;
-  copy: ChatMessageActionButtonSpec;
-  expansion: ChatMessageActionButtonSpec;
+  speech: ChatMessageSpeechActionSpec;
+  branch: ChatMessageBranchActionSpec;
+  copy: ChatMessageCopyActionSpec;
+  expansion: ChatMessageExpansionActionSpec;
 };
 
-type ChatMessageActionSetInput = ChatMessageActionComponentsInput & {
+type ChatMessageActionSetInput = Omit<ChatMessageActionComponentsInput, 'availability'> & {
   contentRenderState: ChatMessageActionLayoutStateInput['renderState'];
 };
 
@@ -382,6 +403,7 @@ type ChatMessageRuntimeOverlaysProps = {
 };
 
 type ChatMessageTurnDurationBadgeRenderState = {
+  shouldRender: boolean;
   accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
   isLive: boolean;
@@ -1847,9 +1869,15 @@ export function createChatMessageActionComponents({
 
 export function createChatMessageActionSet({
   contentRenderState,
-  availability,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
+  const availability = getChatMessageActionAvailabilityRenderState({
+    turnDuration: input.turnDuration.renderState.shouldRender,
+    speech: input.speech.renderState.canSpeak,
+    branch: input.branch.renderState.canBranch,
+    copy: input.copy.renderState.canCopy,
+    expansion: input.expansion.renderState.canToggle,
+  });
   const components = createChatMessageActionComponents({
     availability,
     ...input,

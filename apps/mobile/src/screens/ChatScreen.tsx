@@ -189,7 +189,6 @@ import {
 import {
   getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
-  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageCopyMobileRenderState,
   getChatDisplayExpansionState,
@@ -3910,15 +3909,7 @@ export default function ChatScreen({ route, navigation }: any) {
               isLive: turnDurationEntry?.isLive,
               colors: theme.colors,
             });
-            const messageActionAvailabilityRenderState = getChatMessageActionAvailabilityRenderState({
-              turnDuration: messageTurnDurationRenderState.shouldRender,
-              speech: messageSpeechRenderState.canSpeak,
-              branch: messageBranchRenderState.canBranch,
-              copy: messageCopyRenderState.canCopy,
-              expansion: messageRenderState.expansion.canToggle,
-            });
             const messageActionSet = createChatMessageActionSet({
-              availability: messageActionAvailabilityRenderState,
               contentRenderState: messageContentRenderState,
               turnDuration: {
                 renderState: messageTurnDurationRenderState,
