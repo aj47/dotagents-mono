@@ -3472,15 +3472,18 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /formatChatMessageRuntimeAssistantErrorContent\(errorMessage, partialContent\)/);
   assert.match(screenSource, /const queuedErrorMessage = formatChatMessageRuntimeAlertMessage\(e, getChatMessageRuntimeDebugMessage\('unknownError'\)\)/);
   assert.equal(
-    (screenSource.match(/createChatMessageRuntimeAssistantPlaceholderMessage\(\)/g) || []).length,
+    (screenSource.match(/appendChatMessageRuntimePendingTurnMessages\(m, userMsg\)/g) || []).length,
     2,
   );
+  assert.match(screenSource, /appendChatMessageRuntimePendingTurnMessages,/);
   assert.match(screenSource, /createChatMessageRuntimeAssistantTextMessage\(finalDisplayText\)/);
   assert.match(screenSource, /createChatMessageRuntimeAssistantDebugErrorMessage\(queuedErrorMessage\)/);
+  assert.match(chatMessageChromeSource, /export function appendChatMessageRuntimePendingTurnMessages/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantPlaceholderMessage/);
   assert.match(chatMessageChromeSource, /return createChatMessageRuntimeAssistantTextMessage\(''\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantDebugErrorMessage/);
   assert.match(chatMessageChromeSource, /formatChatMessageRuntimeDebugError\(message\)/);
+  assert.doesNotMatch(screenSource, /\[\.\.\.m, userMsg, createChatMessageRuntimeAssistantPlaceholderMessage\(\)\]/);
   assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: '' \}/);
   assert.doesNotMatch(screenSource, /role: 'assistant' as const/);
   assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: formatChatMessageRuntimeDebugError\(queuedErrorMessage\) \}/);

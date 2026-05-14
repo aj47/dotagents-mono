@@ -47,6 +47,7 @@ import {
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaLayoutState,
   createChatRuntimeMobileSafeAreaStyleSlots,
+  appendChatMessageRuntimePendingTurnMessages,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
@@ -61,7 +62,6 @@ import {
   createChatMessageRuntimeAssistantDebugErrorMessage,
   createChatMessageRuntimeAssistantErrorMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
-  createChatMessageRuntimeAssistantPlaceholderMessage,
   createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeRetryMessage,
   createChatMessageRuntimeToolApprovalRequiredMessage,
@@ -2002,7 +2002,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
     setLatestStepSummary(null);
-    setMessages((m) => [...m, userMsg, createChatMessageRuntimeAssistantPlaceholderMessage()]);
+    setMessages((m) => appendChatMessageRuntimePendingTurnMessages(m, userMsg));
     setResponding(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -2447,7 +2447,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;
     setLatestStepSummary(null);
-    setMessages((m) => [...m, userMsg, createChatMessageRuntimeAssistantPlaceholderMessage()]);
+    setMessages((m) => appendChatMessageRuntimePendingTurnMessages(m, userMsg));
     setResponding(true);
     setConversationState('running');
 	    if (handsFree) {

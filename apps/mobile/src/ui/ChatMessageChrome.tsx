@@ -3270,6 +3270,24 @@ export function createChatMessageRuntimeAssistantPlaceholderMessage(): ChatMessa
   return createChatMessageRuntimeAssistantTextMessage('');
 }
 
+export type ChatMessageRuntimePendingTurnMessage = {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+};
+
+export function appendChatMessageRuntimePendingTurnMessages<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  messages: readonly TMessage[],
+  userMessage: TMessage,
+): TMessage[] {
+  return [
+    ...messages,
+    userMessage,
+    createChatMessageRuntimeAssistantPlaceholderMessage() as TMessage,
+  ];
+}
+
 export function createChatMessageRuntimeAssistantDebugErrorMessage(
   message: string,
 ): ChatMessageRuntimeAssistantTextMessage {
