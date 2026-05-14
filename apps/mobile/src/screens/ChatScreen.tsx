@@ -45,7 +45,7 @@ import {
   createChatMessageRetryStatusProps,
   createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
-  createChatMessageToolExecutionCompactPreviewRow,
+  createChatMessageDelegationToolPreviewRows,
   createChatMessageToolExecutionRows,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -4028,15 +4028,10 @@ export default function ChatScreen({ route, navigation }: any) {
                 })
               : null;
             const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount);
-            const delegationToolPreviewRows = delegationVisibleToolRows.map(({ toolCall, label, result }, toolIndex) =>
-              createChatMessageToolExecutionCompactPreviewRow({
-                key: `${toolCall.name}-${toolIndex}`,
-                toolCall,
-                label,
-                result,
-                colors: theme.colors,
-              }),
-            );
+            const delegationToolPreviewRows = createChatMessageDelegationToolPreviewRows({
+              rows: delegationVisibleToolRows,
+              colors: theme.colors,
+            });
             const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState({
               retryInfo: m.retryInfo,
               colors: theme.colors,

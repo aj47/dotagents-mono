@@ -524,6 +524,11 @@ type ChatMessageToolExecutionCompactPreviewRowInput = {
   colors: Parameters<typeof getToolExecutionCompactMobileRenderState>[0]['colors'];
 };
 
+type ChatMessageDelegationToolPreviewRowsInput = {
+  rows: readonly Pick<ChatMessageDisplayToolEntry, 'toolCall' | 'label' | 'result'>[];
+  colors: ChatMessageToolExecutionCompactPreviewRowInput['colors'];
+};
+
 type ChatMessageDelegationCardProps = {
   surface: ChatRuntimeDelegationCardMobileRenderState['surface'];
   agentName: string;
@@ -1972,6 +1977,21 @@ export function createChatMessageToolExecutionCompactPreviewRow({
       colors,
     }),
   };
+}
+
+export function createChatMessageDelegationToolPreviewRows({
+  rows,
+  colors,
+}: ChatMessageDelegationToolPreviewRowsInput): ChatMessageDelegationToolPreviewRow[] {
+  return rows.map(({ toolCall, label, result }, toolIndex) =>
+    createChatMessageToolExecutionCompactPreviewRow({
+      key: `${toolCall.name}-${toolIndex}`,
+      toolCall,
+      label,
+      result,
+      colors,
+    }),
+  );
 }
 
 export function createChatMessageToolExecutionDetailRow({

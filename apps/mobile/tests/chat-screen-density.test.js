@@ -555,7 +555,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /numberOfLines=\{surface\.toolPreviewLabelNumberOfLines\}/);
   assert.match(screenSource, /const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel\(displayToolCallCount\);/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationToolActivityLabel\(formatToolExecutionCount\('tool_call', displayToolCallCount\)\)/);
-  assert.match(screenSource, /delegationVisibleToolRows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
+  assert.match(screenSource, /const delegationToolPreviewRows = createChatMessageDelegationToolPreviewRows\(\{\s+rows: delegationVisibleToolRows,\s+colors: theme\.colors,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /delegationVisibleToolRows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
+  assert.match(chatMessageChromeSource, /return rows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
   assert.match(chatMessageChromeSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
   assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
   assert.match(chatMessageChromeSource, /renderState: getToolExecutionCompactMobileRenderState\(\{\s+state,\s+preview,\s+colors,/);
@@ -2529,7 +2532,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /createChatMessageInlineActivityProps,/);
   assert.match(screenSource, /createChatMessageRetryStatusProps,/);
   assert.match(screenSource, /createChatMessageToolApprovalProps,/);
-  assert.match(screenSource, /createChatMessageToolExecutionCompactPreviewRow,/);
+  assert.match(screenSource, /createChatMessageDelegationToolPreviewRows,/);
+  assert.doesNotMatch(screenSource, /createChatMessageToolExecutionCompactPreviewRow,/);
   assert.match(screenSource, /createChatMessageToolExecutionRows,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionDetailRow,/);
   assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
@@ -2554,6 +2558,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionCompactPreviewRow/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionDetailRow/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionRows/);
