@@ -2475,7 +2475,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
-  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeThread,[\s\S]*?createChatMessageActionSet,[\s\S]*?createChatMessageRuntimeThreadStyleSlots,[\s\S]*?createChatMessageToolActivityGroupThreadSurfaceStyleSlots,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeThread,[\s\S]*?createChatMessageRuntimeThreadStyleSlots,[\s\S]*?createChatMessageToolActivityGroupThreadSurfaceStyleSlots,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
   assert.doesNotMatch(screenSource, /^\s+ChatMessageToolActivityGroupBoundary,/m);
   assert.doesNotMatch(screenSource, /^\s+ChatMessageToolActivityGroupThreadSurface,/m);
   assert.doesNotMatch(screenSource, /^\s+ChatMessageThreadBody,/m);
@@ -2605,7 +2605,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /getChatMessageSpeechMobileIconState,/);
   assert.doesNotMatch(screenSource, /type ChatMessageActionSlot,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionAvailabilityRenderState,/);
-  assert.match(screenSource, /createChatMessageActionSet,/);
+  assert.doesNotMatch(screenSource, /createChatMessageActionSet,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationBodyProps,/);
   assert.doesNotMatch(screenSource, /createChatMessageDelegationCardProps,/);
   assert.doesNotMatch(screenSource, /createChatMessageExpandedContentProps,/);
@@ -2630,9 +2630,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const can(SpeakVisibleContent|CopyVisibleContent|BranchFromMessage|ToggleVisibleContent) =/);
   assert.match(screenSource, /const mobileMessageContentLayout = mobileMessageStyleState\.contentLayout;/);
   assert.match(screenSource, /messageContentRow:\s*\{[\s\S]*?flexDirection:\s*mobileMessageContentLayout\.row\.flexDirection,[\s\S]*?alignItems:\s*mobileMessageContentLayout\.row\.alignItems/);
-  assert.match(screenSource, /const messageActionSet = createChatMessageActionSet\(\{\s+contentRenderState: messageContentRenderState,\s+turnDuration: \{\s+role: m\.role,\s+durationMs: turnDurationEntry\?\.durationMs,\s+isLive: turnDurationEntry\?\.isLive,\s+colors: theme\.colors,\s+\.\.\.messageActionStyles\.turnDuration,\s+\},\s+speech: \{/);
+  assert.doesNotMatch(screenSource, /const messageActionSet = createChatMessageActionSet/);
+  assert.match(screenSource, /actionSet: \{\s+turnDuration: \{\s+role: m\.role,\s+durationMs: turnDurationEntry\?\.durationMs,\s+isLive: turnDurationEntry\?\.isLive,\s+colors: theme\.colors,\s+\.\.\.messageActionStyles\.turnDuration,\s+\},\s+speech: \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionComponents/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionSet/);
+  assert.match(chatMessageChromeSource, /const actionSet = createChatMessageActionSet\(\{\s+contentRenderState: contentState,\s+\.\.\.actionSetInput,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageDelegationCardProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
@@ -2663,7 +2665,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/<ChatMessageConversationContent/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageContentRow/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 0);
-  assert.match(screenSource, /body=\{\{[\s\S]*?conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
+  assert.match(screenSource, /body=\{\{[\s\S]*?conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: \{\s+turnDuration: \{/);
   assert.match(chatMessageChromeSource, /const resolvedBody = createChatMessageThreadBodyProps\(body\);/);
   assert.doesNotMatch(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps/);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow/g) ?? []).length, 2);
@@ -2678,7 +2680,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((chatMessageChromeSource.match(/components: actionSet\.components/g) ?? []).length, 2);
   assert.match(screenSource, /styles=\{chatMessageRuntimeThreadStyles\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
-  assert.match(screenSource, /conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,\s+expanded: \{/);
+  assert.match(screenSource, /conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: \{\s+turnDuration: \{/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
   assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+slots: actionSet\.visibleSlots,\s+components: actionSet\.components,/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
@@ -2855,7 +2857,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /size=\{messageTurnDurationRenderState\.icon\.size\}/);
   assert.doesNotMatch(screenSource, /color=\{messageTurnDurationRenderState\.icon\.color\}/);
   assert.doesNotMatch(screenSource, /numberOfLines=\{messageTurnDurationRenderState\.badge\.numberOfLines\}/);
-  assert.match(screenSource, /createChatMessageActionSet\(\{[\s\S]*?turnDuration: \{\s+role: m\.role,[\s\S]*?durationMs: turnDurationEntry\?\.durationMs,[\s\S]*?speech: \{\s+role: m\.role,[\s\S]*?branch: \{\s+conversationId: currentSession\?\.serverConversationId,[\s\S]*?copy: \{\s+role: m\.role,/);
+  assert.match(screenSource, /actionSet: \{[\s\S]*?turnDuration: \{\s+role: m\.role,[\s\S]*?durationMs: turnDurationEntry\?\.durationMs,[\s\S]*?speech: \{\s+role: m\.role,[\s\S]*?branch: \{\s+conversationId: currentSession\?\.serverConversationId,[\s\S]*?copy: \{\s+role: m\.role,/);
   assert.match(screenSource, /messageTurnDurationBadge:\s*\{[\s\S]*?alignSelf:\s*mobileMessageTurnDurationBadge\.alignSelf,[\s\S]*?flexDirection:\s*mobileMessageTurnDurationBadge\.flexDirection,[\s\S]*?minHeight:\s*mobileMessageTurnDurationBadge\.minHeight,[\s\S]*?backgroundColor:\s*mobileMessageTurnDurationBadgeColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageTurnDurationBadge\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageTurnDurationBadge\.justifyContent,[\s\S]*?gap:\s*mobileMessageTurnDurationBadge\.gap,[\s\S]*?flexShrink:\s*mobileMessageTurnDurationBadge\.flexShrink/);
   assert.match(screenSource, /messageTurnDurationBadgeLive:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageTurnDurationLiveBadgeColors\.backgroundColor,[\s\S]*?opacity:\s*mobileMessageTurnDurationLiveBadge\.opacity/);
   assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?fontFamily:\s*resolveMobileFontFamily\(mobileMessageTurnDurationBadge\.fontFamilyByPlatform\),[\s\S]*?fontSize:\s*mobileMessageTurnDurationBadge\.fontSize[\s\S]*?color:\s*mobileMessageTurnDurationBadgeColors\.color/);

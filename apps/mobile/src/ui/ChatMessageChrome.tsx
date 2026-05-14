@@ -1771,8 +1771,8 @@ type ChatMessageThreadBodyProps = {
 export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
 export type ChatMessageConversationBodyPropsInput = {
-  contentState: ChatMessageThreadBodyContentProps['contentState'];
-  actionSet: ChatMessageActionSet;
+  contentState: ChatMessageContentRenderState;
+  actionSet: Omit<ChatMessageActionSetInput, 'contentRenderState'>;
   expanded: ChatMessageExpandedContentPropsInput;
   collapsed: ChatMessageCollapsedPreviewPropsInput;
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
@@ -2004,11 +2004,16 @@ export function createChatMessageActionSet({
 
 export function createChatMessageConversationBodyProps({
   contentState,
-  actionSet,
+  actionSet: actionSetInput,
   expanded,
   collapsed,
   toolExecutionStack,
 }: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
+  const actionSet = createChatMessageActionSet({
+    contentRenderState: contentState,
+    ...actionSetInput,
+  });
+
   return {
     content: {
       contentState,

@@ -34,7 +34,6 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatMessageActionSet,
   createChatMessageActionStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
@@ -3830,50 +3829,6 @@ export default function ChatScreen({ route, navigation }: any) {
               typeof m.timestamp === 'number'
                 ? turnDurations.byUserTimestamp.get(m.timestamp)
                 : undefined;
-            const messageActionSet = createChatMessageActionSet({
-              contentRenderState: messageContentRenderState,
-              turnDuration: {
-                role: m.role,
-                durationMs: turnDurationEntry?.durationMs,
-                isLive: turnDurationEntry?.isLive,
-                colors: theme.colors,
-                ...messageActionStyles.turnDuration,
-              },
-              speech: {
-                role: m.role,
-                content: visibleMessageContent,
-                ttsEnabled,
-                isVisible: messageContentRenderState.speech.isVisible,
-                isSpeaking: speakingMessageIndex === i,
-                colors: theme.colors,
-                onPress: () => speakMessage(i, visibleMessageContent),
-                ...messageActionStyles.speech,
-              },
-              branch: {
-                conversationId: currentSession?.serverConversationId,
-                role: m.role,
-                branchMessageIndex: m.branchMessageIndex,
-                fallbackMessageIndex: i,
-                pendingMessageIndex: branchingMessageIndex,
-                colors: theme.colors,
-                onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
-                ...messageActionStyles.branch,
-              },
-              copy: {
-                role: m.role,
-                content: visibleMessageContent,
-                isAssistantComplete: !responding,
-                isCopied: copiedMessageIndex === i,
-                colors: theme.colors,
-                onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
-                ...messageActionStyles.copy,
-              },
-              expansion: {
-                renderState: messageRenderState.expansion,
-                onPress: () => toggleMessageExpansion(i),
-                ...messageActionStyles.expansion,
-              },
-            });
             return (
               <ChatMessageRuntimeThread
                 key={i}
@@ -3921,7 +3876,49 @@ export default function ChatScreen({ route, navigation }: any) {
                   inlineActivity: messageInlineActivityProps,
                   conversation: {
                     contentState: messageContentRenderState,
-                    actionSet: messageActionSet,
+                    actionSet: {
+                      turnDuration: {
+                        role: m.role,
+                        durationMs: turnDurationEntry?.durationMs,
+                        isLive: turnDurationEntry?.isLive,
+                        colors: theme.colors,
+                        ...messageActionStyles.turnDuration,
+                      },
+                      speech: {
+                        role: m.role,
+                        content: visibleMessageContent,
+                        ttsEnabled,
+                        isVisible: messageContentRenderState.speech.isVisible,
+                        isSpeaking: speakingMessageIndex === i,
+                        colors: theme.colors,
+                        onPress: () => speakMessage(i, visibleMessageContent),
+                        ...messageActionStyles.speech,
+                      },
+                      branch: {
+                        conversationId: currentSession?.serverConversationId,
+                        role: m.role,
+                        branchMessageIndex: m.branchMessageIndex,
+                        fallbackMessageIndex: i,
+                        pendingMessageIndex: branchingMessageIndex,
+                        colors: theme.colors,
+                        onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
+                        ...messageActionStyles.branch,
+                      },
+                      copy: {
+                        role: m.role,
+                        content: visibleMessageContent,
+                        isAssistantComplete: !responding,
+                        isCopied: copiedMessageIndex === i,
+                        colors: theme.colors,
+                        onPress: () => { void handleCopyMessage(i, visibleMessageContent); },
+                        ...messageActionStyles.copy,
+                      },
+                      expansion: {
+                        renderState: messageRenderState.expansion,
+                        onPress: () => toggleMessageExpansion(i),
+                        ...messageActionStyles.expansion,
+                      },
+                    },
                     expanded: {
                       isStreaming: isLiveStreamingAssistantMessage,
                       markdownContent: visibleMessageContent,
