@@ -21,9 +21,11 @@ import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
 import {
+  getConversationHydrationQueryKey,
   getLoadedConversationHistoryStartIndex,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
+  mergeTrackedActiveSessionProgress,
 } from "@renderer/lib/session-progress-hydration"
 
 const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
@@ -132,32 +134,55 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   onVoiceContinue,
 }: ActiveSessionTileProps) {
   const storeProgress = useAgentSessionProgress(sessionId)
-  const baseProgress = storeProgress ?? fallbackProgress
+  const baseProgress = useMemo(
+    () => storeProgress && fallbackProgress
+      ? mergeTrackedActiveSessionProgress(fallbackProgress, storeProgress)
+      : storeProgress ?? fallbackProgress,
+    [fallbackProgress, storeProgress],
+  )
   const conversationIdForHydration = baseProgress?.conversationId ?? null
   const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
   const queryClient = useQueryClient()
   const baseConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
   const needsHydrationFromConversation =
     !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
+  const hydrationQueryKey = conversationIdForHydration
+    ? getConversationHydrationQueryKey(conversationIdForHydration)
+    : null
+  const hydrationConversationQuery = useQuery<LoadedConversation | null>({
+    queryKey: hydrationQueryKey ?? ["conversation", "__missing__", "hydrate"],
+    queryFn: async () => null,
+    enabled: false,
+  })
+  const cachedHydrationConversation = hydrationConversationQuery.data ?? undefined
   // Hydration is sticky per conversationId: once we've loaded the full saved
   // conversation, keep using the hydrate cache slot so a follow-up that yields
   // a short runtime window doesn't drop the displayed history back to thinking-only.
   const [hasHydratedConversationId, setHasHydratedConversationId] = useState<string | null>(
-    needsHydrationFromConversation ? conversationIdForHydration : null,
+    needsHydrationFromConversation || cachedHydrationConversation ? conversationIdForHydration : null,
   )
   useEffect(() => {
-    if (needsHydrationFromConversation && hasHydratedConversationId !== conversationIdForHydration) {
+    if (
+      conversationIdForHydration &&
+      (needsHydrationFromConversation || cachedHydrationConversation) &&
+      hasHydratedConversationId !== conversationIdForHydration
+    ) {
       setHasHydratedConversationId(conversationIdForHydration)
     }
-  }, [needsHydrationFromConversation, conversationIdForHydration, hasHydratedConversationId])
+  }, [
+    cachedHydrationConversation,
+    needsHydrationFromConversation,
+    conversationIdForHydration,
+    hasHydratedConversationId,
+  ])
   const shouldHydrateFromConversation =
     needsHydrationFromConversation ||
-    (!!conversationIdForHydration && hasHydratedConversationId === conversationIdForHydration)
-  const savedConversationQueryKey = [
-    "conversation",
-    conversationIdForHydration,
-    shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
-  ] as const
+    (!!conversationIdForHydration && hasHydratedConversationId === conversationIdForHydration) ||
+    !!cachedHydrationConversation
+  const savedConversationQueryKey =
+    shouldHydrateFromConversation && hydrationQueryKey
+      ? hydrationQueryKey
+      : ["conversation", conversationIdForHydration, activeHistoryMessageLimit] as const
   const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(savedConversationQueryKey)
   const progressForExpandedHistoryDecision = useMemo(
     () => baseProgress && cachedSavedConversation
@@ -427,6 +452,7 @@ export function Component() {
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
   const location = useLocation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const layoutContext = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const {
     onOpenSavedConversationsDialog,
@@ -531,15 +557,7 @@ export function Component() {
 
       const existing = mergedEntries.get(sessionId)
       const mergedProgress = existing
-        ? {
-            ...existing.progress,
-            ...progress,
-            conversationId: progress.conversationId ?? existing.progress.conversationId,
-            conversationTitle: progress.conversationTitle ?? existing.progress.conversationTitle,
-            currentIteration: progress.currentIteration ?? existing.progress.currentIteration,
-            maxIterations: progress.maxIterations ?? existing.progress.maxIterations,
-            isSnoozed: progress.isSnoozed ?? existing.progress.isSnoozed,
-          }
+        ? mergeTrackedActiveSessionProgress(existing.progress, progress)
         : progress
 
       mergedEntries.set(sessionId, {
@@ -594,20 +612,6 @@ export function Component() {
   ])
 
   const pendingResumeSessionId = pendingResumeConversationId ? `pending-${pendingResumeConversationId}` : null
-  const hasLiveSessionForPendingResume = pendingResumeConversationId
-    ? activeSessionEntries.some(
-        ({ sessionId, conversationId, progress }) =>
-          sessionId !== pendingResumeSessionId &&
-          conversationId === pendingResumeConversationId &&
-          !progress.isComplete,
-      )
-    : false
-
-  useEffect(() => {
-    if (hasLiveSessionForPendingResume) {
-      setPendingResumeConversationId(null)
-    }
-  }, [hasLiveSessionForPendingResume])
 
   // Sync session order when new sessions appear
   useEffect(() => {
@@ -699,6 +703,14 @@ export function Component() {
     pendingResumeConversationQuery.isSuccess &&
     pendingResumeConversationQuery.data === null
 
+  useEffect(() => {
+    if (!pendingResumeConversationId || !pendingResumeConversationQuery.data) return
+    queryClient.setQueryData(
+      getConversationHydrationQueryKey(pendingResumeConversationId),
+      pendingResumeConversationQuery.data,
+    )
+  }, [pendingResumeConversationId, pendingResumeConversationQuery.data, queryClient])
+
   // If loading a pending conversation fails (deleted/missing), clear the pending
   // state so we do not keep showing a stuck loading tile.
   useEffect(() => {
@@ -787,7 +799,17 @@ export function Component() {
   }
 
   const handlePendingContinuationStarted = useCallback(() => {
+    if (pendingResumeConversationId && pendingResumeConversationQuery.data) {
+      queryClient.setQueryData(
+        getConversationHydrationQueryKey(pendingResumeConversationId),
+        pendingResumeConversationQuery.data,
+      )
+    }
     setPendingContinuationStartedAt((existing) => existing ?? Date.now())
+  }, [pendingResumeConversationId, pendingResumeConversationQuery.data, queryClient])
+
+  const handlePendingContinuationFailed = useCallback(() => {
+    setPendingContinuationStartedAt(null)
   }, [])
 
   // Auto-dismiss the temporary resume tile when a real session starts for the same conversationId.
@@ -810,6 +832,13 @@ export function Component() {
     )
 
     if (realEntry) {
+      if (!pendingResumeConversationQuery.data) return
+
+      queryClient.setQueryData(
+        getConversationHydrationQueryKey(pendingResumeConversationId),
+        pendingResumeConversationQuery.data,
+      )
+
       // A real session has started for this conversation, dismiss the pending tile
       // Transfer focus even for completed/error sessions so the user sees the
       // resulting success or failure instead of dropping back to the empty state
@@ -824,6 +853,8 @@ export function Component() {
     pendingResumeConversationId,
     pendingContinuationStartedAt,
     pendingResumeSessionId,
+    pendingResumeConversationQuery.data,
+    queryClient,
     setExpandedSessionId,
     setFocusedSessionId,
   ])
@@ -1011,7 +1042,9 @@ export function Component() {
                 isFocused={focusedSessionId === pendingResumeSessionId}
                 onFocus={() => {}}
                 onDismiss={handleDismissPendingResume}
+                onFollowUpSubmitStarted={handlePendingContinuationStarted}
                 onFollowUpSent={handlePendingContinuationStarted}
+                onFollowUpSubmitFailed={handlePendingContinuationFailed}
                 isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
                 onLoadEarlierConversationHistory={handleLoadEarlierPendingHistory}
                 isLoadingEarlierConversationHistory={pendingResumeConversationQuery.isFetching}
