@@ -1566,6 +1566,11 @@ type ChatMessageThreadBodyContentProps =
     collapsed: Omit<ChatMessageConversationContentProps['collapsed'], 'style' | 'pressedStyle' | 'textStyle'>;
   };
 
+type ChatMessageExpandedContentPropsInput = Pick<
+  ChatMessageThreadBodyContentProps['expanded'],
+  'streamingRenderState' | 'markdownContent' | 'assetBaseUrl' | 'assetAuthToken' | 'spinnerSource'
+>;
+
 type ChatMessageThreadBodyProps = {
   styles: ChatMessageThreadBodyStyleSlots;
   retryStatus?: Omit<ChatMessageRetryStatusProps, 'styles'> | null;
@@ -1748,6 +1753,22 @@ export function createChatMessageConversationBodyProps({
       slots: actionSet.visibleSlots,
       components: actionSet.components,
     },
+  };
+}
+
+export function createChatMessageExpandedContentProps({
+  streamingRenderState,
+  markdownContent,
+  assetBaseUrl,
+  assetAuthToken,
+  spinnerSource,
+}: ChatMessageExpandedContentPropsInput): ChatMessageThreadBodyContentProps['expanded'] {
+  return {
+    streamingRenderState,
+    markdownContent,
+    assetBaseUrl,
+    assetAuthToken,
+    spinnerSource,
   };
 }
 

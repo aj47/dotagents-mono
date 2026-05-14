@@ -39,6 +39,7 @@ import {
   createChatMessageCollapsedPreviewProps,
   createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
+  createChatMessageExpandedContentProps,
   createChatMessageToolExecutionStackProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -4191,13 +4192,13 @@ export default function ChatScreen({ route, navigation }: any) {
                   conversation: createChatMessageConversationBodyProps({
                     contentState: messageContentRenderState,
                     actionSet: messageActionSet,
-                    expanded: {
+                    expanded: createChatMessageExpandedContentProps({
                       streamingRenderState: streamingContentRenderState,
                       markdownContent: visibleMessageContent,
                       assetBaseUrl: config.baseUrl,
                       assetAuthToken: config.apiKey,
                       spinnerSource: isDark ? darkSpinner : lightSpinner,
-                    },
+                    }),
                     collapsed: createChatMessageCollapsedPreviewProps({
                       renderState: messageRenderState.collapsedPreview,
                       actionState: messageRenderState.collapsedPreviewAction,
