@@ -18,15 +18,16 @@ const chatMessageChromeSource = fs.readFileSync(
 );
 
 test('shows desktop library items directly in the new-chat prompt launchers', () => {
-  assert.match(screenSource, /const promptQuickStarts = useMemo/);
+  assert.doesNotMatch(screenSource, /const promptQuickStarts = useMemo/);
   assert.doesNotMatch(screenSource, /buildPromptLibraryShortcutItems,/);
-  assert.match(screenSource, /createChatConversationHomeQuickStartItems,/);
-  assert.match(screenSource, /\(\) => createChatConversationHomeQuickStartItems\(\{/);
+  assert.doesNotMatch(screenSource, /createChatConversationHomeQuickStartItems,/);
+  assert.match(chatMessageChromeSource, /createChatConversationHomeQuickStartItems\(\{/);
   assert.match(chatMessageChromeSource, /buildPromptLibraryShortcutItems,/);
-  assert.match(screenSource, /prompts: predefinedPrompts,/);
-  assert.match(screenSource, /skills: availableSkills,/);
-  assert.match(screenSource, /tasks: availableTasks,/);
-  assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\),/);
+  assert.match(screenSource, /quickStartPrompts: predefinedPrompts,/);
+  assert.match(screenSource, /quickStartSkills: availableSkills,/);
+  assert.match(screenSource, /quickStartTasks: availableTasks,/);
+  assert.match(screenSource, /quickStartCanAddPrompt: Boolean\(settingsClient\),/);
+  assert.match(chatMessageChromeSource, /prompts: quickStartPrompts,\s+skills: quickStartSkills,\s+tasks: quickStartTasks,\s+canAddPrompt: quickStartCanAddPrompt,/);
   assert.doesNotMatch(screenSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle,/);
   assert.doesNotMatch(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription,/);
   assert.doesNotMatch(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback,/);
@@ -191,7 +192,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
 });
 
 test('can create a new predefined prompt from mobile and save it to desktop settings', () => {
-  assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\)/);
+  assert.match(screenSource, /quickStartCanAddPrompt: Boolean\(settingsClient\)/);
   assert.doesNotMatch(screenSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);
   assert.doesNotMatch(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(chatMessageChromeSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);

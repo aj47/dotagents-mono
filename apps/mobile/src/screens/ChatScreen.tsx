@@ -18,7 +18,6 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
-  createChatConversationHomeQuickStartItems,
   createChatConversationHomePromptEditorSaveActionState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
@@ -2414,16 +2413,6 @@ export default function ChatScreen({ route, navigation }: any) {
   sendRef.current = send;
 
 	const isWebPlatform = Platform.OS === 'web';
-  const promptQuickStarts = useMemo<QuickStartShortcut[]>(
-    () => createChatConversationHomeQuickStartItems({
-      prompts: predefinedPrompts,
-      skills: availableSkills,
-      tasks: availableTasks,
-      canAddPrompt: Boolean(settingsClient),
-    }),
-    [availableSkills, availableTasks, predefinedPrompts, settingsClient]
-  );
-
   const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
@@ -2728,7 +2717,10 @@ export default function ChatScreen({ route, navigation }: any) {
       viewportContentIsLoadingMessages: sessionStore.isLoadingMessages,
       viewportContentMessageCount: messages.length,
       loadingSpinnerSource: isDark ? darkSpinner : lightSpinner,
-      quickStartItems: promptQuickStarts,
+      quickStartPrompts: predefinedPrompts,
+      quickStartSkills: availableSkills,
+      quickStartTasks: availableTasks,
+      quickStartCanAddPrompt: Boolean(settingsClient),
       isLoadingQuickStartPrompts,
       runningPromptTaskId,
       onQuickStartPress: handleQuickStartPress,

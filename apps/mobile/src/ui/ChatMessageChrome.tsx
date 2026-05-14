@@ -1869,7 +1869,7 @@ type ChatMessageRuntimeViewportChromeProps<
 
 type ChatMessageRuntimeViewportChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > =
   Omit<
     ChatMessageRuntimeViewportChromeProps<TPrompt, TTask>,
@@ -1885,7 +1885,26 @@ type ChatMessageRuntimeViewportChromePropsInput<
     viewportContentIsLoadingMessages: ChatMessageRuntimeViewportContentRenderStateInput['isLoadingMessages'];
     viewportContentMessageCount: ChatMessageRuntimeViewportContentRenderStateInput['messageCount'];
     loadingSpinnerSource: ImageSourcePropType;
-    quickStartItems: readonly ChatConversationHomeQuickStartItem<TPrompt, TTask>[];
+    quickStartPrompts: ChatConversationHomeQuickStartItemsInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['prompts'];
+    quickStartSkills: ChatConversationHomeQuickStartItemsInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['skills'];
+    quickStartTasks: ChatConversationHomeQuickStartItemsInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['tasks'];
+    quickStartCanAddPrompt: ChatConversationHomeQuickStartItemsInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['canAddPrompt'];
     isLoadingQuickStartPrompts: boolean;
     runningPromptTaskId?: string | null;
     onQuickStartPress: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onPress'];
@@ -2056,7 +2075,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
 
 type ChatMessageRuntimeChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = {
   composerChrome: ChatComposerRuntimeDockChromeInput;
   composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome'>;
@@ -4416,12 +4435,15 @@ export function getChatMessageRuntimeToolApprovalFailedAlertState(
 
 export function createChatMessageRuntimeViewportChromeProps<
   TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
 >({
   viewportContentIsLoadingMessages,
   viewportContentMessageCount,
   loadingSpinnerSource,
-  quickStartItems,
+  quickStartPrompts,
+  quickStartSkills,
+  quickStartTasks,
+  quickStartCanAddPrompt,
   isLoadingQuickStartPrompts,
   runningPromptTaskId,
   onQuickStartPress,
@@ -4453,6 +4475,12 @@ export function createChatMessageRuntimeViewportChromeProps<
   });
   const shortcutRenderState = getPromptLibraryMobileShortcutRenderState(colors);
   const viewportRenderState = getChatRuntimeViewportMobileRenderState({ colors });
+  const quickStartItems = createChatConversationHomeQuickStartItems({
+    prompts: quickStartPrompts,
+    skills: quickStartSkills,
+    tasks: quickStartTasks,
+    canAddPrompt: quickStartCanAddPrompt,
+  });
   const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState({
     requestDebugText,
     voiceDebugEnabled,
@@ -4652,7 +4680,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
 
 export function createChatMessageRuntimeChromeProps<
   TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
 >({
   composerChrome,
   composer,

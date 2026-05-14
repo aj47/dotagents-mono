@@ -1161,7 +1161,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /keyboardShouldPersistTaps=\{keyboardShouldPersistTaps\}/);
   assert.match(chatMessageChromeSource, /contentInsetAdjustmentBehavior=\{contentInsetAdjustmentBehavior\}/);
   assert.match(screenSource, /viewportContentIsLoadingMessages: sessionStore\.isLoadingMessages,\s+viewportContentMessageCount: messages\.length,\s+loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
-  assert.match(screenSource, /quickStartItems: promptQuickStarts,[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
+  assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,\s+quickStartCanAddPrompt: Boolean\(settingsClient\),[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
+  assert.match(chatMessageChromeSource, /const quickStartItems = createChatConversationHomeQuickStartItems\(\{\s+prompts: quickStartPrompts,\s+skills: quickStartSkills,\s+tasks: quickStartTasks,\s+canAddPrompt: quickStartCanAddPrompt,/);
   assert.match(screenSource, /viewport: \{[\s\S]*?messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement,\s+latestStepSummary,\s+colors: theme\.colors,\s+onLoadEarlierMessages: handleLoadEarlierMessages,/);
   assert.match(chatMessageChromeSource, /visibleMessageCount: conversationThreadListState\.visibleMessageCount,\s+totalMessageCount: conversationThreadListState\.totalMessageCount,\s+hiddenMessageCount: conversationThreadListState\.hiddenMessageCount,/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
@@ -3757,7 +3758,7 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
 });
 
 test('replaces the empty mobile chat home state with quick-start launchers', () => {
-  assert.match(screenSource, /quickStartItems: promptQuickStarts,[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
+  assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,\s+quickStartCanAddPrompt: Boolean\(settingsClient\),[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
   assert.match(screenSource, /runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /runningTaskId: runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.homeQuickStarts\}\s+styles=\{styles\.homeQuickStarts\}/);
@@ -3926,9 +3927,10 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(chatMessageChromeSource, /sortPredefinedPromptsByUpdatedAt\(prompts\)/);
   assert.match(chatMessageChromeSource, /export function sortChatConversationHomePromptsByUpdatedAt/);
   assert.doesNotMatch(screenSource, /sortPredefinedPromptsByUpdatedAt/);
-  assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{\s+prompts: predefinedPrompts,/);
+  assert.match(screenSource, /quickStartPrompts: predefinedPrompts,/);
+  assert.match(chatMessageChromeSource, /createChatConversationHomeQuickStartItems\(\{\s+prompts: quickStartPrompts,/);
   assert.match(chatMessageChromeSource, /buildPromptLibraryShortcutItems\(\{/);
-  assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\),/);
+  assert.match(screenSource, /quickStartCanAddPrompt: Boolean\(settingsClient\),/);
   assert.doesNotMatch(screenSource, /isSlashCommandPrompt\(prompt\)/);
   assert.doesNotMatch(screenSource, /const isSlashCommandPrompt =/);
 });
@@ -3944,7 +3946,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /createPredefinedPromptRecord\(draft, now\)/);
   assert.match(chatMessageChromeSource, /export function createChatConversationHomePromptRecord/);
   assert.doesNotMatch(screenSource, /createPredefinedPromptRecord/);
-  assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{[\s\S]*?prompts: predefinedPrompts,[\s\S]*?skills: availableSkills,[\s\S]*?tasks: availableTasks,/);
+  assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,/);
   assert.doesNotMatch(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
   assert.match(chatMessageChromeSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
   assert.doesNotMatch(screenSource, /getPromptLibraryPromptContent\(prompt\)/);
@@ -4205,8 +4207,9 @@ test('lets mobile branch linked desktop conversations from individual messages',
 test('loads predefined prompts, skills, and tasks directly into mobile quick-start launchers', () => {
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);
-  assert.match(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
-  assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{\s+prompts: predefinedPrompts,\s+skills: availableSkills,\s+tasks: availableTasks,/);
+  assert.doesNotMatch(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
+  assert.doesNotMatch(screenSource, /createChatConversationHomeQuickStartItems\(\{/);
+  assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,/);
   assert.match(chatMessageChromeSource, /export function createChatConversationHomeQuickStartItems/);
   assert.doesNotMatch(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
   assert.doesNotMatch(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
