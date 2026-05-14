@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -2893,6 +2893,18 @@ type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatMessageRunt
   loadEarlierMessages: () => void;
 };
 
+type ChatMessageRuntimeScrollControllerInput = {
+  messages: readonly unknown[];
+  sessionId?: string | null;
+  visibleMessageCount: number;
+  bottomResumeThresholdPx: number;
+  topLoadThresholdPx: number;
+  dragEndDebounceMs: number;
+  onLoadEarlierMessages: () => void;
+  autoScrollDelayMs?: number;
+  sessionResetScrollDelayMs?: number;
+};
+
 type ChatMessageConversationRuntimeThreadListRenderStateInput =
   Omit<
     ChatMessageConversationThreadListRenderStateInput,
@@ -3364,6 +3376,122 @@ export function useChatMessageRuntimeHistoryWindowState({
     ...historyWindow,
     visibleMessageCount,
     loadEarlierMessages,
+  };
+}
+
+export function useChatMessageRuntimeScrollController({
+  messages,
+  sessionId,
+  visibleMessageCount,
+  bottomResumeThresholdPx,
+  topLoadThresholdPx,
+  dragEndDebounceMs,
+  onLoadEarlierMessages,
+  autoScrollDelayMs = 50,
+  sessionResetScrollDelayMs = 100,
+}: ChatMessageRuntimeScrollControllerInput) {
+  const scrollRef = useRef<ChatMessageScrollViewportRef>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const isUserDraggingRef = useRef(false);
+  const dragEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = shouldAutoScroll;
+    if (!shouldAutoScroll && scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+  }, [shouldAutoScroll]);
+
+  const onScrollBeginDrag = useCallback(() => {
+    if (dragEndTimeoutRef.current) {
+      clearTimeout(dragEndTimeoutRef.current);
+      dragEndTimeoutRef.current = null;
+    }
+    isUserDraggingRef.current = true;
+  }, []);
+
+  const onScrollEndDrag = useCallback(() => {
+    if (dragEndTimeoutRef.current) {
+      clearTimeout(dragEndTimeoutRef.current);
+    }
+    dragEndTimeoutRef.current = setTimeout(() => {
+      isUserDraggingRef.current = false;
+      dragEndTimeoutRef.current = null;
+    }, dragEndDebounceMs);
+  }, [dragEndDebounceMs]);
+
+  const onScroll = useCallback((event: ChatMessageScrollEvent) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isAtBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - bottomResumeThresholdPx;
+    const isNearTop = contentOffset.y <= topLoadThresholdPx;
+
+    if (isAtBottom && !shouldAutoScroll) {
+      setShouldAutoScroll(true);
+    } else if (!isAtBottom && shouldAutoScroll && isUserDraggingRef.current) {
+      setShouldAutoScroll(false);
+    }
+    if (isNearTop && visibleMessageCount < messages.length) {
+      onLoadEarlierMessages();
+    }
+  }, [
+    bottomResumeThresholdPx,
+    messages.length,
+    onLoadEarlierMessages,
+    shouldAutoScroll,
+    topLoadThresholdPx,
+    visibleMessageCount,
+  ]);
+
+  useEffect(() => {
+    if (shouldAutoScroll && scrollRef.current) {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (shouldAutoScrollRef.current && scrollRef.current) {
+          scrollRef.current.scrollToEnd({ animated: true });
+        }
+      }, autoScrollDelayMs);
+    }
+  }, [autoScrollDelayMs, messages, shouldAutoScroll]);
+
+  useEffect(() => {
+    setShouldAutoScroll(true);
+    const timeoutId = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: false });
+    }, sessionResetScrollDelayMs);
+    return () => clearTimeout(timeoutId);
+  }, [sessionId, sessionResetScrollDelayMs]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      if (dragEndTimeoutRef.current) {
+        clearTimeout(dragEndTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    setShouldAutoScroll(true);
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  return {
+    scrollRef,
+    shouldAutoScroll,
+    onScroll,
+    onScrollBeginDrag,
+    onScrollEndDrag,
+    scrollToBottom,
   };
 }
 
