@@ -5125,6 +5125,13 @@ type ChatMessageRuntimeProgressResponseStateInput = {
   createFallbackResponseEvent: ChatMessageRuntimeProgressResponseEventFactory;
 };
 
+type ChatMessageRuntimeStreamingTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+> = {
+  streamingText: string;
+  updateMessages: (messages: readonly TMessage[]) => TMessage[];
+};
+
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
@@ -5170,6 +5177,19 @@ export function createChatMessageRuntimeStreamingText(
     return nextToken;
   }
   return currentText + nextToken;
+}
+
+export function createChatMessageRuntimeStreamingTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  currentText: string,
+  nextToken: string,
+): ChatMessageRuntimeStreamingTurnState<TMessage> {
+  const streamingText = createChatMessageRuntimeStreamingText(currentText, nextToken);
+  return {
+    streamingText,
+    updateMessages: (messages) => updateLastChatMessageRuntimeConversationContent(messages, streamingText),
+  };
 }
 
 export function createChatMessageRuntimeFinalResponseTextState({

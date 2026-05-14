@@ -2786,6 +2786,14 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /return !!lastMessage && isChatMessageConversationContent\(lastMessage\)/);
   assert.equal(
     (screenSource.match(/updateLastChatMessageRuntimeConversationContent\(m, streamingText\)/g) || []).length,
+    0,
+  );
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimeStreamingTurnState<ChatMessage>\(streamingText, tok\)/g) || []).length,
+    2,
+  );
+  assert.equal(
+    (screenSource.match(/setMessages\(streamingTurnState\.updateMessages\)/g) || []).length,
     2,
   );
   assert.equal(
@@ -2797,6 +2805,9 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
     2,
   );
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeConversationContent/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeStreamingTurnState/);
+  assert.match(chatMessageChromeSource, /const streamingText = createChatMessageRuntimeStreamingText\(currentText, nextToken\)/);
+  assert.match(chatMessageChromeSource, /updateMessages: \(messages\) => updateLastChatMessageRuntimeConversationContent\(messages, streamingText\)/);
   assert.match(chatMessageChromeSource, /copy\[i\] = \{ \.\.\.copy\[i\], content \} as TMessage/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);

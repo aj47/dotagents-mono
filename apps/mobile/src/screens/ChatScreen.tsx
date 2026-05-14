@@ -56,7 +56,7 @@ import {
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeUserTextMessage,
-  createChatMessageRuntimeStreamingText,
+  createChatMessageRuntimeStreamingTurnState,
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
@@ -941,9 +941,10 @@ export default function ChatScreen({ route, navigation }: any) {
           console.log('[ChatScreen] Request superseded within same session, skipping onToken update');
           return;
         }
-        streamingText = createChatMessageRuntimeStreamingText(streamingText, tok);
+        const streamingTurnState = createChatMessageRuntimeStreamingTurnState<ChatMessage>(streamingText, tok);
+        streamingText = streamingTurnState.streamingText;
 
-        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
+        setMessages(streamingTurnState.updateMessages);
       };
 
       const modelMessages = createChatMessageRuntimeModelMessages([...currentMessages, userMsg]);
@@ -1311,8 +1312,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const onToken = (tok: string) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
-        streamingText = createChatMessageRuntimeStreamingText(streamingText, tok);
-        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
+        const streamingTurnState = createChatMessageRuntimeStreamingTurnState<ChatMessage>(streamingText, tok);
+        streamingText = streamingTurnState.streamingText;
+        setMessages(streamingTurnState.updateMessages);
       };
 
       const modelMessages = createChatMessageRuntimeModelMessages([...currentMessages, userMsg]);
