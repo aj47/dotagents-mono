@@ -2302,6 +2302,22 @@ type ChatMessageConversationHistoryWindowState<TMessage> = {
   hiddenMessageCount: number;
 };
 
+type ChatMessageConversationRuntimeThreadListRenderStateInput =
+  Omit<
+    ChatMessageConversationThreadListRenderStateInput,
+    'allMessages' | 'messages' | 'firstMessageIndex'
+  >
+  & ChatMessageConversationHistoryWindowStateInput<
+    ChatMessageConversationThreadListRenderStateInput['messages'][number]
+  >;
+
+type ChatMessageConversationRuntimeThreadListRenderState = {
+  threadStates: ChatMessageConversationRenderableRuntimeThreadState[];
+  visibleMessageCount: number;
+  totalMessageCount: number;
+  hiddenMessageCount: number;
+};
+
 type ChatMessageConversationRuntimeThreadListProps = {
   threadStates: readonly ChatMessageConversationRenderableRuntimeThreadState[];
   styles: ChatMessageRuntimeThreadStyleSlots;
@@ -2905,6 +2921,33 @@ export function createChatMessageConversationThreadListRenderState({
       isCopied: copiedMessageIndex === messageIndex,
     }).threadState;
   });
+}
+
+export function createChatMessageConversationRuntimeThreadListRenderState({
+  messages,
+  visibleMessageCount,
+  ...threadListInput
+}: ChatMessageConversationRuntimeThreadListRenderStateInput): ChatMessageConversationRuntimeThreadListRenderState {
+  const {
+    firstVisibleMessageIndex,
+    visibleMessages,
+    hiddenMessageCount,
+  } = createChatMessageConversationHistoryWindowState({
+    messages,
+    visibleMessageCount,
+  });
+
+  return {
+    threadStates: createChatMessageConversationThreadListRenderState({
+      ...threadListInput,
+      allMessages: messages,
+      messages: visibleMessages,
+      firstMessageIndex: firstVisibleMessageIndex,
+    }),
+    visibleMessageCount: visibleMessages.length,
+    totalMessageCount: messages.length,
+    hiddenMessageCount,
+  };
 }
 
 export function createChatMessageConversationThreadPresentationState({

@@ -34,8 +34,7 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatMessageConversationHistoryWindowState,
-  createChatMessageConversationThreadListRenderState,
+  createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -3406,17 +3405,13 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const {
-    firstVisibleMessageIndex,
-    visibleMessages,
+    threadStates: conversationThreadStates,
+    visibleMessageCount: conversationThreadVisibleMessageCount,
+    totalMessageCount: conversationThreadTotalMessageCount,
     hiddenMessageCount,
-  } = createChatMessageConversationHistoryWindowState({
+  } = createChatMessageConversationRuntimeThreadListRenderState({
     messages,
     visibleMessageCount,
-  });
-  const conversationThreadStates = createChatMessageConversationThreadListRenderState({
-    allMessages: messages,
-    messages: visibleMessages,
-    firstMessageIndex: firstVisibleMessageIndex,
     groupByIndex: toolActivityGroups.groupByIndex,
     groupState: expandedGroups,
     inheritedState: expandedMessages,
@@ -3479,8 +3474,8 @@ export default function ChatScreen({ route, navigation }: any) {
     onEditPrompt: openEditPromptModal,
     onDeletePrompt: handleDeletePrompt,
     shortcutRenderState: promptLibraryShortcutRenderState,
-    visibleMessageCount: visibleMessages.length,
-    totalMessageCount: messages.length,
+    visibleMessageCount: conversationThreadVisibleMessageCount,
+    totalMessageCount: conversationThreadTotalMessageCount,
     hiddenMessageCount,
     messageHistoryLoadIncrement: CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement,
     latestStepSummary,
