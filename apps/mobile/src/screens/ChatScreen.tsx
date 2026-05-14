@@ -58,7 +58,6 @@ import {
   createChatMessageRuntimeProgressTurnState,
   createChatMessageRuntimeAssistantErrorTurnState,
   createChatMessageRuntimeAssistantDebugErrorTurnState,
-  createChatMessageRuntimePendingTurnStatusState,
   createChatMessageRuntimeCompletedConversationState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
@@ -815,13 +814,12 @@ export default function ChatScreen({ route, navigation }: any) {
       currentMessages,
       messageCountBeforeTurn,
     } = pendingTurnState;
-    const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState();
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
-    setLatestStepSummary(pendingTurnStatusState.latestStepSummary);
+    setLatestStepSummary(pendingTurnState.latestStepSummary);
     setMessages(pendingTurnState.updateMessages);
-    setResponding(pendingTurnStatusState.responding);
-    setConversationState(pendingTurnStatusState.conversationState);
+    setResponding(pendingTurnState.responding);
+    setConversationState(pendingTurnState.conversationState);
 	    if (handsFree) {
 	      handsFreeController.onRequestStarted();
 	    }
@@ -1242,11 +1240,10 @@ export default function ChatScreen({ route, navigation }: any) {
       currentMessages,
       messageCountBeforeTurn,
     } = pendingTurnState;
-    const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState();
-    setLatestStepSummary(pendingTurnStatusState.latestStepSummary);
+    setLatestStepSummary(pendingTurnState.latestStepSummary);
     setMessages(pendingTurnState.updateMessages);
-    setResponding(pendingTurnStatusState.responding);
-    setConversationState(pendingTurnStatusState.conversationState);
+    setResponding(pendingTurnState.responding);
+    setConversationState(pendingTurnState.conversationState);
 	    if (handsFree) {
 	      handsFreeController.onRequestStarted();
 	    }

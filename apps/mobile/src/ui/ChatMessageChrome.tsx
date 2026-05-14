@@ -4703,6 +4703,9 @@ export type ChatMessageRuntimePendingTurnState<TMessage> = {
   userMessage: TMessage;
   currentMessages: readonly TMessage[];
   messageCountBeforeTurn: number;
+  latestStepSummary: null;
+  responding: boolean;
+  conversationState: AgentConversationState;
   updateMessages: (messages: readonly TMessage[]) => TMessage[];
 };
 
@@ -4713,10 +4716,14 @@ export function createChatMessageRuntimePendingTurnState<
   content: string,
 ): ChatMessageRuntimePendingTurnState<TMessage> {
   const userMessage = createChatMessageRuntimeUserTextMessage(content) as TMessage;
+  const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState();
   return {
     userMessage,
     currentMessages,
     messageCountBeforeTurn: currentMessages.length,
+    latestStepSummary: pendingTurnStatusState.latestStepSummary,
+    responding: pendingTurnStatusState.responding,
+    conversationState: pendingTurnStatusState.conversationState,
     updateMessages: (messages) => appendChatMessageRuntimePendingTurnMessages(messages, userMessage),
   };
 }

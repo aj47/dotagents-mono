@@ -4070,10 +4070,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
     (screenSource.match(/setMessages\(pendingTurnState\.updateMessages\)/g) || []).length,
     2,
   );
-  assert.equal(
-    (screenSource.match(/createChatMessageRuntimePendingTurnStatusState\(\)/g) || []).length,
-    2,
-  );
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState,/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState\(\)/);
   assert.equal(
     (screenSource.match(/createChatMessageRuntimeCompletedConversationState\(latestConversationState\)/g) || []).length,
     2,
@@ -4087,6 +4085,10 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserTextMessage/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimePendingTurnState/);
   assert.match(chatMessageChromeSource, /const userMessage = createChatMessageRuntimeUserTextMessage\(content\) as TMessage/);
+  assert.match(chatMessageChromeSource, /const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState\(\);/);
+  assert.match(chatMessageChromeSource, /latestStepSummary: pendingTurnStatusState\.latestStepSummary/);
+  assert.match(chatMessageChromeSource, /responding: pendingTurnStatusState\.responding/);
+  assert.match(chatMessageChromeSource, /conversationState: pendingTurnStatusState\.conversationState/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimePendingTurnStatusState/);
   assert.match(chatMessageChromeSource, /conversationState: 'running' as AgentConversationState/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedConversationState/);
