@@ -45,6 +45,7 @@ import {
   getChatMessageCopyLabel,
   getChatMessageCopyActionAccessibilityLabel,
   getChatMessageCopyActionState,
+  getChatMessageCopyActionTitle,
   getChatMessageCopyMobileIconState,
   getChatMessageCopyMobileRenderState,
   getChatMessageEffectiveCollapseState,
@@ -59,6 +60,7 @@ import {
   getChatDisplayGroupedExpansionState,
   getChatMessageExpansionActionAccessibilityLabel,
   getChatMessageExpansionActionState,
+  getChatMessageExpansionActionTitle,
   getChatMessageExpansionLabel,
   getChatMessageExpansionMobileIconState,
   getChatMessageExpansionMobileRenderState,
@@ -540,6 +542,8 @@ describe('chat message display presentation', () => {
     })
     expect(getChatMessageCopyActionAccessibilityLabel({ label: CHAT_MESSAGE_ACTION_PRESENTATION.copy.promptLabel })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.copy.promptLabel)
     expect(getChatMessageCopyActionAccessibilityLabel({ label: null })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.copy.messageLabel)
+    expect(getChatMessageCopyActionTitle({ label: CHAT_MESSAGE_ACTION_PRESENTATION.copy.responseLabel })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.copy.responseLabel)
+    expect(getChatMessageCopyActionTitle({ label: null })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.copy.messageLabel)
     expect(shouldShowChatMessageCopyAction({ role: 'user', content: 'Prompt' })).toBe(true)
     expect(shouldShowChatMessageCopyAction({ role: 'assistant', content: 'Response', isAssistantComplete: true })).toBe(true)
     expect(shouldShowChatMessageCopyAction({ role: 'assistant', content: 'Response', isAssistantComplete: false })).toBe(false)
@@ -609,6 +613,10 @@ describe('chat message display presentation', () => {
       accessibilityLabel: null,
       label: null,
     })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.expansion.messageName)
+    expect(getChatMessageExpansionActionTitle({
+      label: CHAT_MESSAGE_ACTION_PRESENTATION.expansion.showMoreLabel,
+    })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.expansion.showMoreLabel)
+    expect(getChatMessageExpansionActionTitle({ label: null })).toBe(CHAT_MESSAGE_ACTION_PRESENTATION.expansion.messageName)
     const expansion = { messageA: true, messageB: false }
     expect(hasChatDisplayExpansionState(expansion, 'messageA')).toBe(true)
     expect(hasChatDisplayExpansionState(expansion, 'missing')).toBe(false)

@@ -945,6 +945,12 @@ export function getChatMessageCopyActionAccessibilityLabel(
   return input.label ?? CHAT_MESSAGE_ACTION_PRESENTATION.copy.messageLabel
 }
 
+export function getChatMessageCopyActionTitle(
+  input: Pick<ChatMessageCopyActionState, "label">,
+): string {
+  return input.label ?? CHAT_MESSAGE_ACTION_PRESENTATION.copy.messageLabel
+}
+
 export function getChatMessageCopyMobileIconState(isCopied = false) {
   return {
     name: isCopied
@@ -1285,6 +1291,12 @@ export function getChatMessageExpansionActionAccessibilityLabel(
     input.label ??
     CHAT_MESSAGE_ACTION_PRESENTATION.expansion.messageName
   )
+}
+
+export function getChatMessageExpansionActionTitle(
+  input: Pick<ChatMessageExpansionActionState, "label">,
+): string {
+  return input.label ?? CHAT_MESSAGE_ACTION_PRESENTATION.expansion.messageName
 }
 
 export function getChatMessageExpansionMobileIconState(isExpanded = false) {
