@@ -1233,6 +1233,11 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(screenSource, /runtimeSurface\.connectionBanner/);
   assert.match(screenSource, /retryButtonText:\s*\{[\s\S]*?color:\s*connectionBannerSurfaceColors\.retryButton\.color/);
   assert.match(screenSource, /retryButtonText:\s*\{[\s\S]*?fontWeight:\s*connectionBannerSurface\.retryButton\.fontWeight/);
+  assert.match(screenSource, /formatChatMessageRuntimeConnectionStatus\(state\)/);
+  assert.match(chatMessageChromeSource, /formatConnectionStatus,/);
+  assert.match(chatMessageChromeSource, /export function formatChatMessageRuntimeConnectionStatus\(state: RecoveryState\): string \{\s+return formatConnectionStatus\(state\);\s+\}/);
+  assert.doesNotMatch(screenSource, /formatConnectionStatus,/);
+  assert.doesNotMatch(screenSource, /formatConnectionStatus\(state\)/);
   assert.doesNotMatch(screenSource, /formatConnectionStatus\(connectionState\)/);
   assert.doesNotMatch(screenSource, /connectionState && connectionState\.status === 'reconnecting'/);
   assert.doesNotMatch(screenSource, /getChatRuntimeConnectionBannerMobileColors,/);

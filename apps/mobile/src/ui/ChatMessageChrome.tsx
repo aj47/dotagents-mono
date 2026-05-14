@@ -125,6 +125,10 @@ import {
   type ToolActivityGroupMobileRenderStateInput,
 } from '@dotagents/shared/tool-activity-grouping';
 import {
+  formatConnectionStatus,
+  type RecoveryState,
+} from '@dotagents/shared/connection-recovery';
+import {
   getChatComposerEditBeforeSendMobileRenderState,
   getChatComposerImageAttachmentMobileRenderState,
   getChatComposerMicMobileRenderState,
@@ -3091,6 +3095,10 @@ export function formatChatMessageRuntimeConnectionErrorMessage(
   ...args: Parameters<typeof formatChatRuntimeConnectionErrorMessage>
 ): ReturnType<typeof formatChatRuntimeConnectionErrorMessage> {
   return formatChatRuntimeConnectionErrorMessage(...args);
+}
+
+export function formatChatMessageRuntimeConnectionStatus(state: RecoveryState): string {
+  return formatConnectionStatus(state);
 }
 
 export function formatChatMessageRuntimeAssistantErrorContent(

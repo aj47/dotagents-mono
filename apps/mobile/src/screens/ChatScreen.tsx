@@ -53,6 +53,7 @@ import {
   formatChatMessageRuntimeAssistantErrorContent,
   formatChatMessageRuntimeAssistantFeedbackContent,
   formatChatMessageRuntimeConnectionErrorMessage,
+  formatChatMessageRuntimeConnectionStatus,
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   formatChatMessageRuntimeToolApprovalRequiredContent,
@@ -96,7 +97,7 @@ import type { AgentProgressUpdate, AgentStepSummary } from '@dotagents/shared/ag
 import type { ChatMessage } from '../lib/openaiClient';
 import type { Settings } from '@dotagents/shared/api-types';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
-import { formatConnectionStatus, type RecoveryState } from '@dotagents/shared/connection-recovery';
+import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
@@ -477,7 +478,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // Only update UI if this is still the current session (using ref for latest value)
         if (currentSessionIdRef.current === currentSessionId) {
           setConnectionState(state);
-          console.log('[ChatScreen] Connection status:', formatConnectionStatus(state));
+          console.log('[ChatScreen] Connection status:', formatChatMessageRuntimeConnectionStatus(state));
         }
       }
     );
