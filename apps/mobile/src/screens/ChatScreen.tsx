@@ -59,6 +59,8 @@ import {
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
+  createChatMessageRuntimePendingTurnStatusState,
+  createChatMessageRuntimeCompletedConversationState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -818,12 +820,13 @@ export default function ChatScreen({ route, navigation }: any) {
       currentMessages,
       messageCountBeforeTurn,
     } = pendingTurnState;
+    const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState();
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
-    setLatestStepSummary(null);
+    setLatestStepSummary(pendingTurnStatusState.latestStepSummary);
     setMessages(pendingTurnState.updateMessages);
-    setResponding(true);
-    setConversationState('running');
+    setResponding(pendingTurnStatusState.responding);
+    setConversationState(pendingTurnStatusState.conversationState);
 	    if (handsFree) {
 	      handsFreeController.onRequestStarted();
 	    }
@@ -975,7 +978,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
       const sessionChanged = currentSessionIdRef.current !== requestSessionId;
 	      if (!sessionChanged) {
-	        setConversationState(latestConversationState === 'running' ? 'complete' : latestConversationState);
+	        setConversationState(createChatMessageRuntimeCompletedConversationState(latestConversationState));
 	      }
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
@@ -1248,10 +1251,11 @@ export default function ChatScreen({ route, navigation }: any) {
       currentMessages,
       messageCountBeforeTurn,
     } = pendingTurnState;
-    setLatestStepSummary(null);
+    const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState();
+    setLatestStepSummary(pendingTurnStatusState.latestStepSummary);
     setMessages(pendingTurnState.updateMessages);
-    setResponding(true);
-    setConversationState('running');
+    setResponding(pendingTurnStatusState.responding);
+    setConversationState(pendingTurnStatusState.conversationState);
 	    if (handsFree) {
 	      handsFreeController.onRequestStarted();
 	    }
@@ -1365,7 +1369,7 @@ export default function ChatScreen({ route, navigation }: any) {
         );
         return;
       }
-      setConversationState(latestConversationState === 'running' ? 'complete' : latestConversationState);
+      setConversationState(createChatMessageRuntimeCompletedConversationState(latestConversationState));
 
       if (response.conversationId) {
         await sessionStore.setServerConversationId(response.conversationId);

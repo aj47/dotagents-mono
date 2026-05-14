@@ -5293,6 +5293,20 @@ export function createChatMessageRuntimeProgressTurnState<
   };
 }
 
+export function createChatMessageRuntimePendingTurnStatusState() {
+  return {
+    latestStepSummary: null,
+    responding: true,
+    conversationState: 'running' as AgentConversationState,
+  };
+}
+
+export function createChatMessageRuntimeCompletedConversationState(
+  conversationState: AgentConversationState,
+): AgentConversationState {
+  return conversationState === 'running' ? 'complete' : conversationState;
+}
+
 export function createChatMessageRuntimeSessionDisplayMessages<
   TMessage extends ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult>,
   TToolCall = unknown,

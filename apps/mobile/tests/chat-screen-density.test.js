@@ -4052,11 +4052,27 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
     (screenSource.match(/setMessages\(pendingTurnState\.updateMessages\)/g) || []).length,
     2,
   );
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimePendingTurnStatusState\(\)/g) || []).length,
+    2,
+  );
+  assert.equal(
+    (screenSource.match(/createChatMessageRuntimeCompletedConversationState\(latestConversationState\)/g) || []).length,
+    2,
+  );
+  assert.doesNotMatch(screenSource, /setLatestStepSummary\(null\)/);
+  assert.doesNotMatch(screenSource, /setResponding\(true\)/);
+  assert.doesNotMatch(screenSource, /setConversationState\('running'\)/);
+  assert.doesNotMatch(screenSource, /latestConversationState === 'running' \? 'complete' : latestConversationState/);
   assert.doesNotMatch(screenSource, /\{ role: 'user', content: text \}/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserTextMessage\(text\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserTextMessage/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimePendingTurnState/);
   assert.match(chatMessageChromeSource, /const userMessage = createChatMessageRuntimeUserTextMessage\(content\) as TMessage/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimePendingTurnStatusState/);
+  assert.match(chatMessageChromeSource, /conversationState: 'running' as AgentConversationState/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedConversationState/);
+  assert.match(chatMessageChromeSource, /return conversationState === 'running' \? 'complete' : conversationState/);
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeAssistantErrorMessage/);
   assert.match(chatMessageChromeSource, /const errorMessageState = createChatMessageRuntimeAssistantErrorMessage\(errorMessage, partialContent\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantErrorMessage/);
