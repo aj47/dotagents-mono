@@ -52,7 +52,7 @@ import {
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatRuntimeMobileConfigState,
-  createChatMessageRuntimeFinalHistoryTurnMessages,
+  createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeUserTextMessage,
@@ -1002,16 +1002,17 @@ export default function ChatScreen({ route, navigation }: any) {
         resolvedConversationId = response.conversationId;
       }
 
-      if (response.conversationHistory && response.conversationHistory.length > 0) {
-        console.log('[ChatScreen] Processing final conversationHistory:', response.conversationHistory.length, 'messages');
-        console.log('[ChatScreen] ConversationHistory roles:', response.conversationHistory.map(m => m.role).join(', '));
+      const finalConversationHistory = response.conversationHistory ?? [];
+      const finalTurnState = createChatMessageRuntimeFinalResponseTurnState<ChatMessage>({
+        conversationHistory: finalConversationHistory,
+        finalDisplayText,
+        userResponseText,
+      });
+      if (finalTurnState.kind === 'history') {
+        console.log('[ChatScreen] Processing final conversationHistory:', finalConversationHistory.length, 'messages');
+        console.log('[ChatScreen] ConversationHistory roles:', finalConversationHistory.map(m => m.role).join(', '));
 
-        const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>(
-          response.conversationHistory,
-          {
-            userResponse: userResponseText,
-          },
-        );
+        const { finalTurnMessages } = finalTurnState;
 	        console.log('[ChatScreen] finalTurnMessages count:', finalTurnMessages.length);
 	        console.log('[ChatScreen] finalTurnMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
@@ -1052,7 +1053,7 @@ export default function ChatScreen({ route, navigation }: any) {
             return result;
           });
         }
-	      } else if (finalDisplayText) {
+	      } else if (finalTurnState.kind === 'text') {
         console.log('[ChatScreen] FALLBACK: No conversationHistory, using finalText only. response.conversationHistory:', response.conversationHistory);
         if (sessionChanged && requestSessionId) {
           // Only persist to background session if this is still the latest request for that session
@@ -1063,7 +1064,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	              currentMessages,
 	              messageCountBeforeTurn,
 	              userMsg,
-	              finalDisplayText,
+	              finalTurnState.finalDisplayText,
 	            );
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
@@ -1074,7 +1075,7 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         } else {
           // Normal case: update UI state
-          setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalDisplayText));
+          setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalTurnState.finalDisplayText));
         }
       } else {
         console.log('[ChatScreen] WARNING: No conversationHistory and no finalText!');
@@ -1358,22 +1359,24 @@ export default function ChatScreen({ route, navigation }: any) {
         resolvedConversationId = response.conversationId;
       }
 
-      if (response.conversationHistory && response.conversationHistory.length > 0) {
-        const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>(
-          response.conversationHistory,
-          {
-            mergeToolResults: false,
-            userResponse: userResponseText,
-          },
-        );
+      const finalTurnState = createChatMessageRuntimeFinalResponseTurnState<ChatMessage>({
+        conversationHistory: response.conversationHistory,
+        finalDisplayText,
+        historyOptions: {
+          mergeToolResults: false,
+        },
+        userResponseText,
+      });
+      if (finalTurnState.kind === 'history') {
+        const { finalTurnMessages } = finalTurnState;
 
         setMessages((m) => replaceChatMessageRuntimeFinalTurnMessages(
           m,
           messageCountBeforeTurn,
           finalTurnMessages,
         ));
-      } else if (finalDisplayText) {
-        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalDisplayText));
+      } else if (finalTurnState.kind === 'text') {
+        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalTurnState.finalDisplayText));
       }
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText

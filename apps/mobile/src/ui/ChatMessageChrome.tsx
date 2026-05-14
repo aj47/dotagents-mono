@@ -5049,6 +5049,26 @@ export type ChatMessageRuntimeFinalHistoryTurnMessagesOptions =
     userResponse?: string;
   };
 
+export type ChatMessageRuntimeFinalResponseTurnState<TMessage> =
+  | {
+      kind: 'history';
+      finalTurnMessages: TMessage[];
+    }
+  | {
+      kind: 'text';
+      finalDisplayText: string;
+    }
+  | {
+      kind: 'empty';
+    };
+
+type ChatMessageRuntimeFinalResponseTurnStateInput<TToolCall, TToolResult> = {
+  conversationHistory?: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[] | null;
+  finalDisplayText?: string | null;
+  historyOptions?: Omit<ChatMessageRuntimeFinalHistoryTurnMessagesOptions, 'userResponse'>;
+  userResponseText?: string;
+};
+
 export type ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult> = {
   id?: string;
   role: 'user' | 'assistant' | 'tool';
@@ -5729,6 +5749,48 @@ export function createChatMessageRuntimeFinalHistoryTurnMessages<
   ) as unknown as TMessage[];
 
   return createChatMessageRuntimeUserResponseMessages(messages, userResponse);
+}
+
+export function createChatMessageRuntimeFinalResponseTurnState<
+  TMessage extends ChatDisplayMessageLike,
+  TToolCall = unknown,
+  TToolResult = unknown,
+>({
+  conversationHistory,
+  finalDisplayText,
+  historyOptions,
+  userResponseText,
+}: ChatMessageRuntimeFinalResponseTurnStateInput<
+  TToolCall,
+  TToolResult
+>): ChatMessageRuntimeFinalResponseTurnState<TMessage> {
+  if (conversationHistory && conversationHistory.length > 0) {
+    return {
+      kind: 'history',
+      finalTurnMessages: createChatMessageRuntimeFinalHistoryTurnMessages<
+        TMessage,
+        TToolCall,
+        TToolResult
+      >(
+        conversationHistory,
+        {
+          ...historyOptions,
+          userResponse: userResponseText,
+        },
+      ),
+    };
+  }
+
+  if (finalDisplayText) {
+    return {
+      kind: 'text',
+      finalDisplayText,
+    };
+  }
+
+  return {
+    kind: 'empty',
+  };
 }
 
 export function mergeChatMessageRuntimeFinalTurnMessagesWithProgress<
