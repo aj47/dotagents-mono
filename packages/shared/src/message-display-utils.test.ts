@@ -40,9 +40,11 @@ import {
   getChatMessageActionMobileButtonKindForSlot,
   getChatMessageActionMobileButtonColors,
   getChatMessageActionMobileButtonRenderState,
+  getChatMessageActionMobileButtonRenderStatesBySlot,
   getChatMessageActionMobileButtonState,
   getChatMessageActionMobileButtonStateForSlot,
   getChatMessageActionMobileButtonStatesBySlot,
+  getChatMessageActionMobileActiveButtonRenderStatesBySlot,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileRowState,
   getChatMessageActionMobileStyleRenderState,
@@ -922,59 +924,44 @@ describe('chat message display presentation', () => {
       button: getChatMessageActionMobileButtonState('speechActive'),
       colors: getChatMessageActionMobileButtonColors('speechActive', actionButtonRenderStateColors),
     })
+    const actionButtonRenderStatesByKind = {
+      standard: getChatMessageActionMobileButtonRenderState({
+        colors: actionButtonRenderStateColors,
+      }),
+      branch: getChatMessageActionMobileButtonRenderState({
+        kind: 'branch',
+        colors: actionButtonRenderStateColors,
+      }),
+      copied: getChatMessageActionMobileButtonRenderState({
+        kind: 'copied',
+        colors: actionButtonRenderStateColors,
+      }),
+      speech: getChatMessageActionMobileButtonRenderState({
+        kind: 'speech',
+        colors: actionButtonRenderStateColors,
+      }),
+      speechActive: getChatMessageActionMobileButtonRenderState({
+        kind: 'speechActive',
+        colors: actionButtonRenderStateColors,
+      }),
+    }
+    expect(getChatMessageActionMobileButtonRenderStatesBySlot(actionButtonRenderStatesByKind)).toEqual({
+      speech: actionButtonRenderStatesByKind.speech,
+      branch: actionButtonRenderStatesByKind.branch,
+      copy: actionButtonRenderStatesByKind.standard,
+      expansion: actionButtonRenderStatesByKind.standard,
+    })
+    expect(getChatMessageActionMobileActiveButtonRenderStatesBySlot(actionButtonRenderStatesByKind)).toEqual({
+      copy: actionButtonRenderStatesByKind.copied,
+      speech: actionButtonRenderStatesByKind.speechActive,
+    })
     expect(getChatMessageActionMobileStyleRenderState({
       colors: actionButtonRenderStateColors,
     })).toEqual({
       row: getChatMessageActionMobileRowState(),
-      buttons: {
-        standard: getChatMessageActionMobileButtonRenderState({
-          colors: actionButtonRenderStateColors,
-        }),
-        branch: getChatMessageActionMobileButtonRenderState({
-          kind: 'branch',
-          colors: actionButtonRenderStateColors,
-        }),
-        copied: getChatMessageActionMobileButtonRenderState({
-          kind: 'copied',
-          colors: actionButtonRenderStateColors,
-        }),
-        speech: getChatMessageActionMobileButtonRenderState({
-          kind: 'speech',
-          colors: actionButtonRenderStateColors,
-        }),
-        speechActive: getChatMessageActionMobileButtonRenderState({
-          kind: 'speechActive',
-          colors: actionButtonRenderStateColors,
-        }),
-      },
-      slotButtons: {
-        speech: getChatMessageActionMobileButtonRenderState({
-          kind: getChatMessageActionMobileButtonKindForSlot('speech'),
-          colors: actionButtonRenderStateColors,
-        }),
-        branch: getChatMessageActionMobileButtonRenderState({
-          kind: getChatMessageActionMobileButtonKindForSlot('branch'),
-          colors: actionButtonRenderStateColors,
-        }),
-        copy: getChatMessageActionMobileButtonRenderState({
-          kind: getChatMessageActionMobileButtonKindForSlot('copy'),
-          colors: actionButtonRenderStateColors,
-        }),
-        expansion: getChatMessageActionMobileButtonRenderState({
-          kind: getChatMessageActionMobileButtonKindForSlot('expansion'),
-          colors: actionButtonRenderStateColors,
-        }),
-      },
-      activeSlotButtons: {
-        copy: getChatMessageActionMobileButtonRenderState({
-          kind: getChatMessageActionMobileActiveButtonKindForSlot('copy'),
-          colors: actionButtonRenderStateColors,
-        }),
-        speech: getChatMessageActionMobileButtonRenderState({
-          kind: getChatMessageActionMobileActiveButtonKindForSlot('speech'),
-          colors: actionButtonRenderStateColors,
-        }),
-      },
+      buttons: actionButtonRenderStatesByKind,
+      slotButtons: getChatMessageActionMobileButtonRenderStatesBySlot(actionButtonRenderStatesByKind),
+      activeSlotButtons: getChatMessageActionMobileActiveButtonRenderStatesBySlot(actionButtonRenderStatesByKind),
     })
     expect(getChatMessageActionMobileIconColors(getChatMessageCopyMobileIconState(true), {
       mutedForeground: '#737373',
