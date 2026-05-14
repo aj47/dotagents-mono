@@ -2033,6 +2033,15 @@ type ChatMessageConversationToolActivityGroupThreadState = {
   onToggleGroup?: ChatMessageRuntimeThreadProps['onToggleGroup'];
 };
 
+type ChatMessageConversationToolActivityGroupThreadRenderStateInput =
+  ChatMessageConversationToolActivityGroupRenderStateInput
+  & Pick<ChatMessageConversationToolActivityGroupThreadStateInput, 'itemKey' | 'onToggleGroup'>;
+
+type ChatMessageConversationToolActivityGroupThreadRenderState = {
+  groupRenderState: ToolActivityGroupMobileRenderState | null;
+  groupThreadState: ChatMessageConversationToolActivityGroupThreadState;
+};
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2211,6 +2220,28 @@ export function createChatMessageConversationToolActivityGroupThreadState({
     shouldRenderGroupOnlyThread: !!groupRenderState
       && (groupRenderState.shouldSkipCollapsedItem || groupRenderState.shouldRenderCollapsedHeader),
     onToggleGroup: group ? () => onToggleGroup(group) : undefined,
+  };
+}
+
+export function createChatMessageConversationToolActivityGroupThreadRenderState({
+  group,
+  itemKey,
+  onToggleGroup,
+  ...renderStateInput
+}: ChatMessageConversationToolActivityGroupThreadRenderStateInput): ChatMessageConversationToolActivityGroupThreadRenderState {
+  const groupRenderState = createChatMessageConversationToolActivityGroupRenderState({
+    group,
+    ...renderStateInput,
+  });
+
+  return {
+    groupRenderState,
+    groupThreadState: createChatMessageConversationToolActivityGroupThreadState({
+      group,
+      groupRenderState,
+      itemKey,
+      onToggleGroup,
+    }),
   };
 }
 
