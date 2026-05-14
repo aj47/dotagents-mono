@@ -35,6 +35,10 @@ import {
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
+  createChatConversationHomePromptRecord,
+  deleteChatConversationHomePromptFromList,
+  sortChatConversationHomePromptsByUpdatedAt,
+  updateChatConversationHomePromptList,
   createChatComposerRuntimeFollowUpPresentationState,
   buildChatComposerRuntimeMessageContent,
   hasChatComposerRuntimeMessageContent,
@@ -153,12 +157,6 @@ import type {
   PredefinedPromptSummary,
   Skill,
 } from '@dotagents/shared/api-types';
-import {
-  createPredefinedPromptRecord,
-  deletePredefinedPromptFromList,
-  sortPredefinedPromptsByUpdatedAt,
-  updatePredefinedPromptList,
-} from '@dotagents/shared/predefined-prompts';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
@@ -1303,7 +1301,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
-          const nextPrompts = sortPredefinedPromptsByUpdatedAt(settings.predefinedPrompts || []);
+          const nextPrompts = sortChatConversationHomePromptsByUpdatedAt(settings.predefinedPrompts || []);
           const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
           setPredefinedPrompts(nextPrompts);
           setRemoteTtsProvider(remoteSpeechSettings.provider);
@@ -1339,14 +1337,14 @@ export default function ChatScreen({ route, navigation }: any) {
     try {
       const now = Date.now();
       const updatedPrompts = editingPrompt
-        ? updatePredefinedPromptList(predefinedPrompts, editingPrompt.id, draft, now)
+        ? updateChatConversationHomePromptList(predefinedPrompts, editingPrompt.id, draft, now)
         : [
-          createPredefinedPromptRecord(draft, now),
+          createChatConversationHomePromptRecord(draft, now),
           ...predefinedPrompts,
         ];
 
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
-      setPredefinedPrompts(sortPredefinedPromptsByUpdatedAt(updatedPrompts));
+      setPredefinedPrompts(sortChatConversationHomePromptsByUpdatedAt(updatedPrompts));
       setAddPromptModalVisible(false);
       setEditingPrompt(null);
       setNewPromptName('');
@@ -1368,7 +1366,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const deletePrompt = async () => {
       setIsSavingPrompt(true);
       try {
-        const updatedPrompts = deletePredefinedPromptFromList(predefinedPrompts, prompt.id);
+        const updatedPrompts = deleteChatConversationHomePromptFromList(predefinedPrompts, prompt.id);
         await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {

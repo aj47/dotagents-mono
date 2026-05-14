@@ -129,6 +129,8 @@ import {
 } from '@dotagents/shared/text-to-speech-settings';
 import {
   buildPromptLibraryShortcutItems,
+  createPredefinedPromptRecord,
+  deletePredefinedPromptFromList,
   formatPromptLibraryDeletePromptConfirmMessage,
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
@@ -145,6 +147,9 @@ import {
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
+  sortPredefinedPromptsByUpdatedAt,
+  updatePredefinedPromptList,
+  type PredefinedPromptDraft,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibrarySkillLike,
@@ -800,6 +805,35 @@ export function getChatConversationHomeQuickStartPressIntent<
   item: ChatConversationHomeQuickStartItem<TPrompt, TTask>,
 ): PromptLibraryShortcutPressIntent<TTask> {
   return getPromptLibraryShortcutPressIntent(item);
+}
+
+export function sortChatConversationHomePromptsByUpdatedAt(
+  prompts: readonly PredefinedPromptSummary[],
+): PredefinedPromptSummary[] {
+  return sortPredefinedPromptsByUpdatedAt(prompts);
+}
+
+export function createChatConversationHomePromptRecord(
+  draft: PredefinedPromptDraft,
+  now: number = Date.now(),
+): PredefinedPromptSummary {
+  return createPredefinedPromptRecord(draft, now);
+}
+
+export function updateChatConversationHomePromptList(
+  prompts: readonly PredefinedPromptSummary[],
+  promptId: string,
+  draft: PredefinedPromptDraft,
+  now: number = Date.now(),
+): PredefinedPromptSummary[] {
+  return updatePredefinedPromptList(prompts, promptId, draft, now);
+}
+
+export function deleteChatConversationHomePromptFromList(
+  prompts: readonly PredefinedPromptSummary[],
+  promptId: string,
+): PredefinedPromptSummary[] {
+  return deletePredefinedPromptFromList(prompts, promptId);
 }
 
 type ChatConversationHomeQuickStartItemsInput<

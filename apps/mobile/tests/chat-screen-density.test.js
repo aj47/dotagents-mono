@@ -3884,7 +3884,10 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
 test('loads saved prompts from the settings API for the mobile quick-start launcher', () => {
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
-  assert.match(screenSource, /sortPredefinedPromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
+  assert.match(screenSource, /sortChatConversationHomePromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
+  assert.match(chatMessageChromeSource, /sortPredefinedPromptsByUpdatedAt\(prompts\)/);
+  assert.match(chatMessageChromeSource, /export function sortChatConversationHomePromptsByUpdatedAt/);
+  assert.doesNotMatch(screenSource, /sortPredefinedPromptsByUpdatedAt/);
   assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{\s+prompts: predefinedPrompts,/);
   assert.match(chatMessageChromeSource, /buildPromptLibraryShortcutItems\(\{/);
   assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\),/);
@@ -3899,7 +3902,10 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /onDeletePrompt: handleDeletePrompt/);
   assert.match(chatMessageChromeSource, /onEditPrompt\(item\.prompt!\)/);
   assert.match(chatMessageChromeSource, /onDeletePrompt\(item\.prompt!\)/);
-  assert.match(screenSource, /createPredefinedPromptRecord\(draft, now\)/);
+  assert.match(screenSource, /createChatConversationHomePromptRecord\(draft, now\)/);
+  assert.match(chatMessageChromeSource, /createPredefinedPromptRecord\(draft, now\)/);
+  assert.match(chatMessageChromeSource, /export function createChatConversationHomePromptRecord/);
+  assert.doesNotMatch(screenSource, /createPredefinedPromptRecord/);
   assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{[\s\S]*?prompts: predefinedPrompts,[\s\S]*?skills: availableSkills,[\s\S]*?tasks: availableTasks,/);
   assert.doesNotMatch(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
   assert.match(chatMessageChromeSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
@@ -3955,8 +3961,14 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /promptLibraryCopy\.feedback\.(successTitle|errorTitle|taskStartedTitle|deletePromptTitle)/);
   assert.doesNotMatch(screenSource, /promptLibraryCopy\.actions\.(cancel|delete)/);
   assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
-  assert.match(screenSource, /updatePredefinedPromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
-  assert.match(screenSource, /deletePredefinedPromptFromList\(predefinedPrompts, prompt\.id\)/);
+  assert.match(screenSource, /updateChatConversationHomePromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
+  assert.match(screenSource, /deleteChatConversationHomePromptFromList\(predefinedPrompts, prompt\.id\)/);
+  assert.match(chatMessageChromeSource, /updatePredefinedPromptList\(prompts, promptId, draft, now\)/);
+  assert.match(chatMessageChromeSource, /deletePredefinedPromptFromList\(prompts, promptId\)/);
+  assert.match(chatMessageChromeSource, /export function updateChatConversationHomePromptList/);
+  assert.match(chatMessageChromeSource, /export function deleteChatConversationHomePromptFromList/);
+  assert.doesNotMatch(screenSource, /updatePredefinedPromptList/);
+  assert.doesNotMatch(screenSource, /deletePredefinedPromptFromList/);
   assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
   assert.doesNotMatch(screenSource, /<ChatConversationHomePromptEditorModal/);
   assert.doesNotMatch(screenSource, /<Modal/);
