@@ -27,6 +27,7 @@ import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorSaveActionState,
+  createChatComposerRuntimeFollowUpPresentationState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -103,7 +104,6 @@ import {
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeAlertMessage,
-  getFollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
@@ -2915,13 +2915,14 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [isWebPlatform, theme.colors],
   );
-	const composerPresentation = useMemo(
-	  () => getFollowUpInputPresentation({
-	    conversationState: conversationState ?? (responding ? 'running' : 'complete'),
-	    isQueueEnabled: messageQueueEnabled,
-	  }),
-	  [conversationState, messageQueueEnabled, responding]
-	);
+  const composerPresentation = useMemo(
+    () => createChatComposerRuntimeFollowUpPresentationState({
+      conversationState,
+      isResponding: responding,
+      isQueueEnabled: messageQueueEnabled,
+    }),
+    [conversationState, messageQueueEnabled, responding]
+  );
 
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => buildPromptLibraryShortcutItems({
@@ -3211,7 +3212,6 @@ export default function ChatScreen({ route, navigation }: any) {
     textEntryWillCancel: willCancel,
     textEntryLiveTranscript: liveTranscript,
     textEntryWakePhrase: handsFreeWakePhrase,
-    textEntryPlaceholderFallback: composerPresentation.placeholder || composerPresentation.submitTitle,
     onQueueActionPress: queueComposerInput,
     onSubmitActionPress: sendComposerInput,
     onMicPressIn: handlePushToTalkPressIn,

@@ -25,7 +25,9 @@ test('exposes the chat composer send control as an accessible button', () => {
 });
 
 test('uses shared session presentation for mobile composer copy and disabled state', () => {
-  assert.match(screenSource, /getFollowUpInputPresentation/);
+  assert.doesNotMatch(screenSource, /getFollowUpInputPresentation/);
+  assert.match(screenSource, /createChatComposerRuntimeFollowUpPresentationState/);
+  assert.match(chatMessageChromeSource, /getFollowUpInputPresentation/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileControlState/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileControlState/);
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState/);
@@ -81,8 +83,9 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(screenSource, /fontWeight:\s*sttPreviewSurface\.labelFontWeight/);
   assert.match(screenSource, /visuallyHiddenComposerHint:\s*\{[\s\S]*?position:\s*composerSurface\.visuallyHiddenComposerHint\.position,[\s\S]*?left:\s*composerSurface\.visuallyHiddenComposerHint\.left,[\s\S]*?width:\s*composerSurface\.visuallyHiddenComposerHint\.width,[\s\S]*?height:\s*composerSurface\.visuallyHiddenComposerHint\.height,/);
   assert.doesNotMatch(screenSource, /visuallyHiddenComposerHint:\s*\{\s*position:\s*'absolute',\s*left:\s*-10000,\s*width:\s*1,\s*height:\s*1,/);
-  assert.match(screenSource, /conversationState: conversationState \?\? \(responding \? 'running' : 'complete'\)/);
-  assert.match(screenSource, /composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
+  assert.match(screenSource, /createChatComposerRuntimeFollowUpPresentationState\(\{[\s\S]*?conversationState,[\s\S]*?isResponding: responding,[\s\S]*?isQueueEnabled: messageQueueEnabled,[\s\S]*?\}\)/);
+  assert.doesNotMatch(screenSource, /composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
+  assert.match(chatMessageChromeSource, /textEntryPlaceholderFallback\s+\?\? \(composerControlPresentation\.placeholder \|\| composerControlPresentation\.submitTitle\)/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileActionAvailabilityRenderState\(\{\s+hasContent,\s+handsFree,\s+presentation,\s+\}\)/);
   assert.match(chatMessageChromeSource, /getChatComposerSubmitMobileRenderState\(\{\s+presentation,\s+isHandsFree: handsFree,\s+isDisabled: actionAvailability\.submitAction\.isDisabled,\s+colors,\s+\}\)/);
   assert.doesNotMatch(screenSource, /const isComposerSubmitDisabled =/);

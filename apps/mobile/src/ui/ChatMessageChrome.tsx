@@ -159,6 +159,7 @@ import {
   getChatRuntimeKillSwitchMobileVisibilityRenderState,
   getChatRuntimePinMobileRenderState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
+  getFollowUpInputPresentation,
   getSessionStatusMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
@@ -184,6 +185,7 @@ import {
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
+  type FollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
   getToolExecutionCallDisplayState,
@@ -2147,10 +2149,7 @@ type ChatComposerRuntimeControlRenderStateColors =
 type ChatComposerRuntimeControlRenderStateInput = {
   hasContent?: boolean;
   handsFree?: boolean;
-  presentation: NonNullable<
-    NonNullable<Parameters<typeof getChatComposerMobileActionAvailabilityRenderState>[0]>['presentation']
-  >
-    & Parameters<typeof getChatComposerSubmitMobileRenderState>[0]['presentation'];
+  presentation: FollowUpInputPresentation;
   pendingImageCount?: number | null;
   ttsEnabled?: boolean;
   editBeforeSendEnabled?: boolean;
@@ -2158,6 +2157,12 @@ type ChatComposerRuntimeControlRenderStateInput = {
   listening?: boolean;
   messageQueueEnabled?: boolean;
   colors: ChatComposerRuntimeControlRenderStateColors;
+};
+
+type ChatComposerRuntimeFollowUpPresentationStateInput = {
+  conversationState?: AgentConversationState | null;
+  isResponding?: boolean;
+  isQueueEnabled?: boolean;
 };
 
 type ChatComposerRuntimeControlRenderState = {
@@ -2210,7 +2215,7 @@ type ChatComposerRuntimeDockChromePropsInput = {
   textEntryWillCancel: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['willCancel'];
   textEntryLiveTranscript: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['liveTranscript'];
   textEntryWakePhrase: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['wakePhrase'];
-  textEntryPlaceholderFallback: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['fallback'];
+  textEntryPlaceholderFallback?: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['fallback'];
   onQueueActionPress: ChatComposerLabeledActionButtonProps['onPress'];
   onSubmitActionPress: ChatComposerLabeledActionButtonProps['onPress'];
   onMicPressIn: ChatComposerMicButtonProps['onPressIn'];
@@ -4594,6 +4599,17 @@ export function createChatComposerRuntimeDockChromeProps({
   };
 }
 
+export function createChatComposerRuntimeFollowUpPresentationState({
+  conversationState,
+  isResponding = false,
+  isQueueEnabled = false,
+}: ChatComposerRuntimeFollowUpPresentationStateInput): FollowUpInputPresentation {
+  return getFollowUpInputPresentation({
+    conversationState: conversationState ?? (isResponding ? 'running' : 'complete'),
+    isQueueEnabled,
+  });
+}
+
 export function createChatComposerRuntimeControlRenderState({
   hasContent = false,
   handsFree = false,
@@ -4738,12 +4754,15 @@ export function createChatComposerRuntimeDockProps({
     listening: textEntryListening,
     isWeb: textEntryIsWebPlatform,
   });
+  const resolvedTextEntryPlaceholderFallback =
+    textEntryPlaceholderFallback
+      ?? (composerControlPresentation.placeholder || composerControlPresentation.submitTitle);
   const textEntryPlaceholder = getHandsFreeComposerPlaceholder({
     handsFree: textEntryHandsFree,
     phase: handsFreeStatusPhase,
     wakePhrase: textEntryWakePhrase,
     listening: textEntryListening,
-    fallback: textEntryPlaceholderFallback,
+    fallback: resolvedTextEntryPlaceholderFallback,
   });
   const textEntryVoiceStatusLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
     listening: textEntryListening,
