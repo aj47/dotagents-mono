@@ -1960,6 +1960,11 @@ type ChatMessageRuntimeThreadStyleSlots = {
   body: ChatMessageThreadBodyStyleSlots;
 };
 
+type ChatMessageConversationThreadStyleSlots = {
+  runtimeThread: ChatMessageRuntimeThreadStyleSlots;
+  actionSet: ChatMessageActionStyleSlots;
+};
+
 type ChatMessageRuntimeThreadProps = Omit<
   ChatMessageToolActivityGroupThreadSurfaceProps,
   'children' | 'styles' | 'surfaceToneStyle'
@@ -3384,6 +3389,21 @@ export function createChatMessageRuntimeThreadStyleSlots({
   return {
     surface: threadSurfaceStyles,
     body: threadBodyStyles,
+  };
+}
+
+export function createChatMessageConversationThreadStyleSlots(
+  styles: ChatMessageChromeStyleSource,
+): ChatMessageConversationThreadStyleSlots {
+  const threadSurfaceStyles = createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles);
+  const threadBodyStyles = createChatMessageThreadBodyStyleSlots(styles);
+
+  return {
+    runtimeThread: createChatMessageRuntimeThreadStyleSlots({
+      threadSurfaceStyles,
+      threadBodyStyles,
+    }),
+    actionSet: createChatMessageActionStyleSlots(styles),
   };
 }
 

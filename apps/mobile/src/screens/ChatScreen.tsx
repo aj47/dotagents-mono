@@ -34,18 +34,15 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatMessageActionStyleSlots,
   createChatMessageConversationRenderContext,
   createChatMessageConversationThreadBodyInput,
+  createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
-  createChatMessageRuntimeThreadStyleSlots,
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
-  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
-  createChatMessageThreadBodyStyleSlots,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -329,12 +326,8 @@ export default function ChatScreen({ route, navigation }: any) {
     [theme.colors],
   );
   const mobileRuntimeDelegationCard = mobileRuntimeDelegationCardRenderState.surface;
-  const messageThreadBodyStyles = useMemo(
-    () => createChatMessageThreadBodyStyleSlots(styles),
-    [styles],
-  );
-  const messageActionStyles = useMemo(
-    () => createChatMessageActionStyleSlots(styles),
+  const chatMessageConversationThreadStyles = useMemo(
+    () => createChatMessageConversationThreadStyleSlots(styles),
     [styles],
   );
   const chatRuntimeHeaderStyles = useMemo(
@@ -348,17 +341,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const conversationDockStyles = useMemo(
     () => createChatMessageConversationDockStyleSlots(styles),
     [styles],
-  );
-  const messageThreadSurfaceStyles = useMemo(
-    () => createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles),
-    [styles],
-  );
-  const chatMessageRuntimeThreadStyles = useMemo(
-    () => createChatMessageRuntimeThreadStyleSlots({
-      threadSurfaceStyles: messageThreadSurfaceStyles,
-      threadBodyStyles: messageThreadBodyStyles,
-    }),
-    [messageThreadSurfaceStyles, messageThreadBodyStyles],
   );
   const conversationViewportStyles = useMemo(
     () => createChatMessageConversationViewportStyleSlots(styles),
@@ -3771,7 +3753,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   groupRenderState={groupRenderState}
                   onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                   body={null}
-                  styles={chatMessageRuntimeThreadStyles}
+                  styles={chatMessageConversationThreadStyles.runtimeThread}
                 />
               );
             }
@@ -3813,7 +3795,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 key={i}
                 groupRenderState={groupRenderState}
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
-                styles={chatMessageRuntimeThreadStyles}
+                styles={chatMessageConversationThreadStyles.runtimeThread}
                 body={createChatMessageConversationThreadBodyInput({
                   message: m,
                   messageIndex: i,
@@ -3832,7 +3814,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   isCopied: copiedMessageIndex === i,
                   ttsEnabled,
                   colors: theme.colors,
-                  actionStyles: messageActionStyles,
+                  actionStyles: chatMessageConversationThreadStyles.actionSet,
                   assetBaseUrl: config.baseUrl,
                   assetAuthToken: config.apiKey,
                   spinnerSource: isDark ? darkSpinner : lightSpinner,
