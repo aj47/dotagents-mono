@@ -85,9 +85,8 @@ import {
   getChatMessageRuntimeToolApprovalFailedAlertState,
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
   getChatMessageCopyFailureAlertState,
-  getChatMessageToolExecutionCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
-  getChatMessageCopyFeedbackState,
+  getChatMessageCopyFeedbackResetDelayMs,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -196,8 +195,7 @@ const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
-const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
-const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
+const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
@@ -629,9 +627,9 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       copiedMessageTimeoutRef.current = setTimeout(() => {
         setCopiedMessageIndex((current) => (current === messageIndex ? null : current));
-      }, messageCopyFeedbackState.feedbackResetDelayMs);
+      }, messageCopyFeedbackResetDelayMs);
     } catch (error) {
-      const failedAlert = getChatMessageCopyFailureAlertState(error, messageCopyFeedbackState);
+      const failedAlert = getChatMessageCopyFailureAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     }
   }, []);
@@ -643,7 +641,7 @@ export default function ChatScreen({ route, navigation }: any) {
     try {
       await Clipboard.setStringAsync(copyContent);
     } catch (error) {
-      const failedAlert = getChatMessageToolExecutionCopyFailureResolvedAlertState(error, toolExecutionDetailCopyFailureAlert);
+      const failedAlert = getChatMessageToolExecutionCopyFailureResolvedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     }
   }, []);

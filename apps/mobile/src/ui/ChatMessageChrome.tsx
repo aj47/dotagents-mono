@@ -4143,6 +4143,10 @@ export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState 
   };
 }
 
+export function getChatMessageCopyFeedbackResetDelayMs(): number {
+  return getChatMessageCopyFeedbackState().feedbackResetDelayMs;
+}
+
 export function getChatMessageCopyFailureAlertState(
   error: unknown,
   feedbackState: ChatMessageCopyFeedbackState = getChatMessageCopyFeedbackState(),

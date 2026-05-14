@@ -1824,10 +1824,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState\(\);/);
   assert.match(chatMessageChromeSource, /toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState\(\),/);
   assert.doesNotMatch(screenSource, /const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState\(\);/);
-  assert.match(
-    screenSource,
-    /const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState\(\);/,
-  );
+  assert.doesNotMatch(screenSource, /const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatMessageToolExecutionCopyFailureAlertState,/);
   assert.match(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureAlertState/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToolIcon = getToolExecutionCompactMobileToolIconState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactStatusSpinner = getToolExecutionCompactMobilePendingSpinnerState\(\);/);
@@ -2210,7 +2208,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailCopy\.errorDetailsLabel\}:<\/Text>/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.copyGlyph/);
-  assert.match(screenSource, /getChatMessageToolExecutionCopyFailureResolvedAlertState\(error, toolExecutionDetailCopyFailureAlert\)/);
+  assert.match(screenSource, /getChatMessageToolExecutionCopyFailureResolvedAlertState\(error\)/);
   assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureResolvedAlertState/);
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alertState\.fallbackMessage\)/);
@@ -2983,7 +2981,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /const chatMessageConversationThreadStyles = useMemo\(\s+\(\) => createChatMessageConversationThreadStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.doesNotMatch(screenSource, /presentationColors:/);
   assert.match(chatMessageChromeSource, /presentation: ChatMessageConversationThreadPresentationState;/);
-  assert.match(screenSource, /const messageCopyFeedbackState = getChatMessageCopyFeedbackState\(\);/);
+  assert.doesNotMatch(screenSource, /const messageCopyFeedbackState = getChatMessageCopyFeedbackState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatMessageCopyFeedbackState,/);
+  assert.match(screenSource, /const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs\(\);/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageCopyFeedbackResetDelayMs\(\): number \{\s+return getChatMessageCopyFeedbackState\(\)\.feedbackResetDelayMs;\s+\}/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFeedbackState\(\): ChatMessageCopyFeedbackState \{\s+const copyState = getChatMessageActionCopyState\(\)\.copy;/);
   assert.doesNotMatch(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
   assert.doesNotMatch(screenSource, /const messageSpeechRenderState = getChatMessageSpeechMobileRenderState\(\{/);
@@ -3186,11 +3187,12 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.match(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
   assert.match(screenSource, /Clipboard\.setStringAsync\(copyContent\)/);
-  assert.match(screenSource, /getChatMessageCopyFailureAlertState\(error, messageCopyFeedbackState\)/);
+  assert.match(screenSource, /getChatMessageCopyFailureAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFailureAlertState/);
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, feedbackState\.failedMessage\)/);
   assert.doesNotMatch(screenSource, /messageCopyFeedbackState\.failed(Title|Message)/);
-  assert.match(screenSource, /messageCopyFeedbackState\.feedbackResetDelayMs/);
+  assert.doesNotMatch(screenSource, /messageCopyFeedbackState\.feedbackResetDelayMs/);
+  assert.match(screenSource, /messageCopyFeedbackResetDelayMs/);
   assert.doesNotMatch(screenSource, /const messageCopyRenderState = getChatMessageCopyMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /renderState: getChatMessageCopyMobileRenderState\(\{\s+role: copy\.role,\s+content: copy\.content,\s+isAssistantComplete: copy\.isAssistantComplete,\s+isCopied: copy\.isCopied,\s+colors: copy\.colors,\s+\}\),/);
   assert.match(screenSource, /copiedMessageIndex,/);
