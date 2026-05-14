@@ -95,6 +95,7 @@ import {
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeToolApprovalResponseState,
   useChatMessageRuntimeToolApprovalActionsState,
+  useChatMessageRuntimeQueuePanelState,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
@@ -1361,10 +1362,6 @@ export default function ChatScreen({ route, navigation }: any) {
   // Get the current conversation ID for queue operations
   const currentConversationId = sessionStore.currentSessionId || 'default';
 
-  // Get queued messages for the current conversation
-  const queuedMessages = messageQueue.getQueue(currentConversationId);
-  const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
-  const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
 
@@ -2028,59 +2025,27 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   };
 
-  const handleProcessNextQueuedMessage = useCallback(() => {
-    if (responding) return;
-    if (messageQueue.isQueuePaused(currentConversationId)) return;
-
-    const nextMessage = messageQueue.peek(currentConversationId);
-    if (!nextMessage) return;
-
-    if (handsFree && handsFreeController.state.phase === 'paused') return;
-
-    console.log('[ChatScreen] Processing queue while idle, next message:', nextMessage.id);
-    setTimeout(() => {
-      if (messageQueue.isQueuePaused(currentConversationId)) {
-        return;
-      }
-      if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
-        return;
-      }
-      messageQueue.markProcessing(currentConversationId, nextMessage.id);
-      processQueuedMessage(nextMessage);
-    }, 100);
-  }, [currentConversationId, handsFree, handsFreeController.state.phase, messageQueue, processQueuedMessage, responding]);
-
-  const handlePauseMessageQueue = useCallback(() => {
-    messageQueue.pauseQueue(currentConversationId);
-  }, [currentConversationId, messageQueue]);
-
-  const handleResumeMessageQueue = useCallback(() => {
-    messageQueue.resumeQueue(currentConversationId);
-    if (!responding) {
-      setTimeout(() => {
-        handleProcessNextQueuedMessage();
-      }, 0);
-    }
-  }, [currentConversationId, handleProcessNextQueuedMessage, messageQueue, responding]);
-
-  const handleRemoveQueuedMessage = useCallback((messageId: string) => {
-    messageQueue.removeFromQueue(currentConversationId, messageId);
-  }, [currentConversationId, messageQueue]);
-
-  const handleUpdateQueuedMessage = useCallback((messageId: string, text: string) => {
-    messageQueue.updateText(currentConversationId, messageId, text);
-  }, [currentConversationId, messageQueue]);
-
-  const handleRetryQueuedMessage = useCallback((messageId: string) => {
-    messageQueue.resetToPending(currentConversationId, messageId);
-    if (!responding) {
-      handleProcessNextQueuedMessage();
-    }
-  }, [currentConversationId, handleProcessNextQueuedMessage, messageQueue, responding]);
-
-  const handleClearQueuedMessages = useCallback(() => {
-    messageQueue.clearQueue(currentConversationId);
-  }, [currentConversationId, messageQueue]);
+  const {
+    queuedMessages,
+    isMessageQueuePaused,
+    nextQueuedMessage,
+    handleProcessNextQueuedMessage,
+    handlePauseMessageQueue,
+    handleResumeMessageQueue,
+    handleRemoveQueuedMessage,
+    handleUpdateQueuedMessage,
+    handleRetryQueuedMessage,
+    handleClearQueuedMessages,
+  } = useChatMessageRuntimeQueuePanelState({
+    currentConversationId,
+    queue: messageQueue,
+    responding,
+    handsFree,
+    handsFreePhase: handsFreeController.state.phase,
+    handsFreeRef,
+    handsFreePhaseRef,
+    processQueuedMessage,
+  });
 
   // Keep sendRef in sync with the latest send() implementation for speech callbacks.
   // IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.

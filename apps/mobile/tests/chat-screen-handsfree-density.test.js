@@ -65,7 +65,9 @@ test('lets handsfree users queue a drafted message without sending immediately',
 });
 
 test('derives send-next availability from strict FIFO queue semantics', () => {
-  assert.match(screenSource, /const nextQueuedMessage = !responding && !isMessageQueuePaused \? messageQueue\.peek\(currentConversationId\) : null;/);
+  assert.match(screenSource, /useChatMessageRuntimeQueuePanelState,/);
+  assert.doesNotMatch(screenSource, /const nextQueuedMessage = !responding && !isMessageQueuePaused \? messageQueue\.peek\(currentConversationId\) : null;/);
+  assert.match(chatMessageChromeSource, /const nextQueuedMessage = !responding && !isMessageQueuePaused \? queue\.peek\(currentConversationId\) : null;/);
   assert.match(screenSource, /canProcessNextQueuedMessage: !!nextQueuedMessage/);
   assert.match(chatMessageChromeSource, /canProcessNext: canProcessNextQueuedMessage/);
 });

@@ -3192,6 +3192,50 @@ type ChatMessageRuntimeToolApprovalActionsState = {
   respondToToolApproval: (approvalId: string, approved: boolean) => Promise<void>;
 };
 
+type ChatMessageRuntimeQueueMessage = {
+  id: string;
+};
+
+type ChatMessageRuntimeQueueController<TQueuedMessage extends ChatMessageRuntimeQueueMessage> = {
+  getQueue: (conversationId: string) => TQueuedMessage[];
+  isQueuePaused: (conversationId: string) => boolean;
+  peek: (conversationId: string) => TQueuedMessage | null;
+  markProcessing: (conversationId: string, messageId: string) => boolean;
+  pauseQueue: (conversationId: string) => void;
+  resumeQueue: (conversationId: string) => void;
+  removeFromQueue: (conversationId: string, messageId: string) => boolean;
+  updateText: (conversationId: string, messageId: string, text: string) => boolean;
+  resetToPending: (conversationId: string, messageId: string) => boolean;
+  clearQueue: (conversationId: string) => void;
+};
+
+type ChatMessageRuntimeQueuePanelStateInput<
+  TQueuedMessage extends ChatMessageRuntimeQueueMessage,
+> = {
+  currentConversationId: string;
+  queue: ChatMessageRuntimeQueueController<TQueuedMessage>;
+  responding: boolean;
+  handsFree: boolean;
+  handsFreePhase: HandsFreePhase;
+  handsFreeRef: ChatRuntimeMutableRef<boolean>;
+  handsFreePhaseRef: ChatRuntimeMutableRef<HandsFreePhase>;
+  processQueuedMessage: (queuedMessage: TQueuedMessage) => void | Promise<void>;
+  processDelayMs?: number;
+};
+
+type ChatMessageRuntimeQueuePanelState<TQueuedMessage extends ChatMessageRuntimeQueueMessage> = {
+  queuedMessages: TQueuedMessage[];
+  isMessageQueuePaused: boolean;
+  nextQueuedMessage: TQueuedMessage | null;
+  handleProcessNextQueuedMessage: () => void;
+  handlePauseMessageQueue: () => void;
+  handleResumeMessageQueue: () => void;
+  handleRemoveQueuedMessage: (messageId: string) => void;
+  handleUpdateQueuedMessage: (messageId: string, text: string) => void;
+  handleRetryQueuedMessage: (messageId: string) => void;
+  handleClearQueuedMessages: () => void;
+};
+
 type ChatMessageRuntimeScrollControllerInput = {
   messages: readonly unknown[];
   sessionId?: string | null;
@@ -6696,6 +6740,101 @@ export function useChatMessageRuntimeToolApprovalActionsState<
 
   return {
     respondToToolApproval,
+  };
+}
+
+export function useChatMessageRuntimeQueuePanelState<
+  TQueuedMessage extends ChatMessageRuntimeQueueMessage,
+>({
+  currentConversationId,
+  queue,
+  responding,
+  handsFree,
+  handsFreePhase,
+  handsFreeRef,
+  handsFreePhaseRef,
+  processQueuedMessage,
+  processDelayMs = 100,
+}: ChatMessageRuntimeQueuePanelStateInput<TQueuedMessage>): ChatMessageRuntimeQueuePanelState<TQueuedMessage> {
+  const queuedMessages = queue.getQueue(currentConversationId);
+  const isMessageQueuePaused = queue.isQueuePaused(currentConversationId);
+  const nextQueuedMessage = !responding && !isMessageQueuePaused ? queue.peek(currentConversationId) : null;
+
+  const handleProcessNextQueuedMessage = useCallback(() => {
+    if (responding) return;
+    if (queue.isQueuePaused(currentConversationId)) return;
+
+    const nextMessage = queue.peek(currentConversationId);
+    if (!nextMessage) return;
+
+    if (handsFree && handsFreePhase === 'paused') return;
+
+    console.log('[ChatMessageRuntime] Processing queue while idle, next message:', nextMessage.id);
+    setTimeout(() => {
+      if (queue.isQueuePaused(currentConversationId)) {
+        return;
+      }
+      if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+        return;
+      }
+      queue.markProcessing(currentConversationId, nextMessage.id);
+      void processQueuedMessage(nextMessage);
+    }, processDelayMs);
+  }, [
+    currentConversationId,
+    handsFree,
+    handsFreePhase,
+    handsFreePhaseRef,
+    handsFreeRef,
+    processDelayMs,
+    processQueuedMessage,
+    queue,
+    responding,
+  ]);
+
+  const handlePauseMessageQueue = useCallback(() => {
+    queue.pauseQueue(currentConversationId);
+  }, [currentConversationId, queue]);
+
+  const handleResumeMessageQueue = useCallback(() => {
+    queue.resumeQueue(currentConversationId);
+    if (!responding) {
+      setTimeout(() => {
+        handleProcessNextQueuedMessage();
+      }, 0);
+    }
+  }, [currentConversationId, handleProcessNextQueuedMessage, queue, responding]);
+
+  const handleRemoveQueuedMessage = useCallback((messageId: string) => {
+    queue.removeFromQueue(currentConversationId, messageId);
+  }, [currentConversationId, queue]);
+
+  const handleUpdateQueuedMessage = useCallback((messageId: string, text: string) => {
+    queue.updateText(currentConversationId, messageId, text);
+  }, [currentConversationId, queue]);
+
+  const handleRetryQueuedMessage = useCallback((messageId: string) => {
+    queue.resetToPending(currentConversationId, messageId);
+    if (!responding) {
+      handleProcessNextQueuedMessage();
+    }
+  }, [currentConversationId, handleProcessNextQueuedMessage, queue, responding]);
+
+  const handleClearQueuedMessages = useCallback(() => {
+    queue.clearQueue(currentConversationId);
+  }, [currentConversationId, queue]);
+
+  return {
+    queuedMessages,
+    isMessageQueuePaused,
+    nextQueuedMessage,
+    handleProcessNextQueuedMessage,
+    handlePauseMessageQueue,
+    handleResumeMessageQueue,
+    handleRemoveQueuedMessage,
+    handleUpdateQueuedMessage,
+    handleRetryQueuedMessage,
+    handleClearQueuedMessages,
   };
 }
 
