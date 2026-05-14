@@ -2072,11 +2072,16 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeMobileActivityAccessibilityState,/);
+  assert.match(screenSource, /createChatMessageConversationHistoryWindowState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryBannerMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(screenSource, /content: formatChatRuntimeAssistantFeedbackContent\(thinkingContent, hasCurrentToolActivity\)/);
   assert.match(screenSource, /content: formatChatRuntimeActivityContent\(activeStep\)/);
-  assert.match(screenSource, /const hiddenMessageCount = firstVisibleMessageIndex;/);
+  assert.match(screenSource, /const \{\s+firstVisibleMessageIndex,\s+visibleMessages,\s+hiddenMessageCount,\s+\} = createChatMessageConversationHistoryWindowState\(\{\s+messages,\s+visibleMessageCount,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);/);
+  assert.doesNotMatch(screenSource, /const visibleMessages = messages\.slice\(firstVisibleMessageIndex\);/);
+  assert.doesNotMatch(screenSource, /const hiddenMessageCount = firstVisibleMessageIndex;/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationHistoryWindowState<TMessage>\(\{[\s\S]*?const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);[\s\S]*?visibleMessages: messages\.slice\(firstVisibleMessageIndex\),[\s\S]*?hiddenMessageCount: firstVisibleMessageIndex,/);
   assert.match(screenSource, /const messageHistoryBannerRenderState = useMemo\(\s+\(\) => getChatRuntimeMessageHistoryBannerMobileRenderState\(\{\s+visibleCount: visibleMessages\.length,\s+totalCount: messages\.length,\s+hiddenCount: hiddenMessageCount,\s+loadIncrement: CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement,\s+includeScrollHint: true,\s+colors: theme\.colors,\s+\}\),\s+\[hiddenMessageCount, messages\.length, theme\.colors, visibleMessages\.length\],\s+\);/);
   assert.match(screenSource, /const handleLoadEarlierMessages = \(\) => \{/);
   assert.match(screenSource, /Math\.min\(messages\.length, current \+ CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement\)/);

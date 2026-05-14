@@ -2121,6 +2121,17 @@ type ChatMessageConversationThreadListRenderStateInput =
     copiedMessageIndex: number | null;
   };
 
+type ChatMessageConversationHistoryWindowStateInput<TMessage> = {
+  messages: readonly TMessage[];
+  visibleMessageCount: number;
+};
+
+type ChatMessageConversationHistoryWindowState<TMessage> = {
+  firstVisibleMessageIndex: number;
+  visibleMessages: readonly TMessage[];
+  hiddenMessageCount: number;
+};
+
 type ChatMessageConversationRuntimeThreadListProps = {
   threadStates: readonly ChatMessageConversationRenderableRuntimeThreadState[];
   styles: ChatMessageRuntimeThreadStyleSlots;
@@ -2458,6 +2469,19 @@ export function createChatMessageConversationItemThreadRenderState({
     groupThreadState,
     ...messageThreadInput,
   });
+}
+
+export function createChatMessageConversationHistoryWindowState<TMessage>({
+  messages,
+  visibleMessageCount,
+}: ChatMessageConversationHistoryWindowStateInput<TMessage>): ChatMessageConversationHistoryWindowState<TMessage> {
+  const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
+
+  return {
+    firstVisibleMessageIndex,
+    visibleMessages: messages.slice(firstVisibleMessageIndex),
+    hiddenMessageCount: firstVisibleMessageIndex,
+  };
 }
 
 export function createChatMessageConversationThreadListRenderState({

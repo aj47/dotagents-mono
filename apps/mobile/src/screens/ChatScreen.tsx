@@ -34,6 +34,7 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
+  createChatMessageConversationHistoryWindowState,
   createChatMessageConversationThreadListRenderState,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
@@ -3398,9 +3399,14 @@ export default function ChatScreen({ route, navigation }: any) {
     [connectionState, lastFailedMessage, responding, theme.colors],
   );
 
-  const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
-  const visibleMessages = messages.slice(firstVisibleMessageIndex);
-  const hiddenMessageCount = firstVisibleMessageIndex;
+  const {
+    firstVisibleMessageIndex,
+    visibleMessages,
+    hiddenMessageCount,
+  } = createChatMessageConversationHistoryWindowState({
+    messages,
+    visibleMessageCount,
+  });
   const messageHistoryBannerRenderState = useMemo(
     () => getChatRuntimeMessageHistoryBannerMobileRenderState({
       visibleCount: visibleMessages.length,
