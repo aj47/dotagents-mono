@@ -261,6 +261,9 @@ test('pauses queued-message auto-processing while handsfree is paused', () => {
   assert.doesNotMatch(screenSource, /setHandsFreePhaseRefValue\(handsFreeController\.state\.phase\);/);
   assert.doesNotMatch(screenSource, /const handsFreePhaseRef = useRef<HandsFreePhase>\('sleeping'\);/);
   assert.doesNotMatch(screenSource, /handsFreePhaseRef\.current = handsFreeController\.state\.phase;/);
-  assert.match(screenSource, /messageQueueEnabled &&\s*!messageQueue\.isQueuePaused\(currentConversationId\) &&\s*\(!handsFree \|\| handsFreePhaseRef\.current !== 'paused'\)/);
-  assert.match(screenSource, /if \(handsFreeRef\.current && handsFreePhaseRef\.current === 'paused'\) \{\s*return;\s*\}[\s\S]*?messageQueue\.markProcessing\(currentConversationId, nextMessage\.id\);/);
+  assert.match(screenSource, /scheduleChatMessageRuntimeNextQueuedMessage,/);
+  assert.match(screenSource, /scheduleChatMessageRuntimeNextQueuedMessage\(\{\s+currentConversationId,\s+queue: messageQueue,\s+canProcessQueue: messageQueueEnabled,/);
+  assert.match(chatMessageChromeSource, /export function scheduleChatMessageRuntimeNextQueuedMessage/);
+  assert.match(chatMessageChromeSource, /if \(handsFree && \(handsFreePhase \?\? handsFreePhaseRef\.current\) === 'paused'\) return;/);
+  assert.match(chatMessageChromeSource, /if \(handsFreeRef\.current && handsFreePhaseRef\.current === 'paused'\) \{\s+return;\s+\}[\s\S]*?queue\.markProcessing\(currentConversationId, nextMessage\.id\);/);
 });

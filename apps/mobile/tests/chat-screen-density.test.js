@@ -2947,7 +2947,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /const handlePauseMessageQueue = useCallback\(\(\) => \{[\s\S]*?queue\.pauseQueue\(currentConversationId\);/);
   assert.match(chatMessageChromeSource, /const handleResumeMessageQueue = useCallback\(\(\) => \{[\s\S]*?queue\.resumeQueue\(currentConversationId\);/);
   assert.match(chatMessageChromeSource, /const handleRetryQueuedMessage = useCallback\(\(messageId: string\) => \{[\s\S]*?queue\.resetToPending\(currentConversationId, messageId\);[\s\S]*?handleProcessNextQueuedMessage\(\);/);
-  assert.match(screenSource, /messageQueueEnabled &&[\s\S]*?!messageQueue\.isQueuePaused\(currentConversationId\)/);
+  assert.match(screenSource, /scheduleChatMessageRuntimeNextQueuedMessage\(\{\s+currentConversationId,\s+queue: messageQueue,\s+canProcessQueue: messageQueueEnabled,/);
+  assert.match(chatMessageChromeSource, /if \(!canProcessQueue\) return;[\s\S]*?if \(queue\.isQueuePaused\(currentConversationId\)\) return;/);
   assert.match(screenSource, /queuePanelEnabled: messageQueueEnabled,\s+queuePanelConversationId: currentConversationId,\s+queuedMessages,/);
   assert.match(chatMessageChromeSource, /const queuePanelDockRenderState = getMessageQueuePanelMobileDockRenderState\(\{\s+isQueueEnabled: queuePanelEnabled,\s+messageCount: queuedMessages\.length,\s+\}\);/);
   assert.match(chatMessageChromeSource, /queuePanel: \{\s+shouldRender: queuePanelDockRenderState\.shouldRender,\s+panel: \{\s+conversationId: queuePanelConversationId,\s+messages: queuedMessages,/);

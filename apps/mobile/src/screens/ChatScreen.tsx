@@ -91,6 +91,7 @@ import {
   useChatMessageRuntimeToolApprovalResponseState,
   useChatMessageRuntimeToolApprovalActionsState,
   useChatMessageRuntimeQueuePanelState,
+  scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
@@ -1178,28 +1179,16 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         }, 5000);
 
-        // Process next queued message if any
-        if (
-          messageQueueEnabled &&
-          !messageQueue.isQueuePaused(currentConversationId) &&
-          (!handsFree || handsFreePhaseRef.current !== 'paused')
-        ) {
-          const nextMessage = messageQueue.peek(currentConversationId);
-          if (nextMessage) {
-            console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
-            // Use setTimeout to avoid recursive call stack issues
-            setTimeout(() => {
-              if (messageQueue.isQueuePaused(currentConversationId)) {
-                return;
-              }
-              if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
-                return;
-              }
-              messageQueue.markProcessing(currentConversationId, nextMessage.id);
-              processQueuedMessage(nextMessage);
-            }, 100);
-          }
-        }
+        scheduleChatMessageRuntimeNextQueuedMessage({
+          currentConversationId,
+          queue: messageQueue,
+          canProcessQueue: messageQueueEnabled,
+          handsFree,
+          handsFreeRef,
+          handsFreePhaseRef,
+          processQueuedMessage,
+          logMessage: '[ChatScreen] Processing next queued message:',
+        });
       } else {
         console.log('[ChatScreen] Skipping finally state resets:', {
           thisRequestId,
@@ -1420,25 +1409,15 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         }, 5000);
 
-        // Process next queued message if any
-        const nextMessage = messageQueue.peek(currentConversationId);
-        if (
-          nextMessage &&
-          !messageQueue.isQueuePaused(currentConversationId) &&
-          (!handsFree || handsFreePhaseRef.current !== 'paused')
-        ) {
-          console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
-          setTimeout(() => {
-            if (messageQueue.isQueuePaused(currentConversationId)) {
-              return;
-            }
-            if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
-              return;
-            }
-            messageQueue.markProcessing(currentConversationId, nextMessage.id);
-            processQueuedMessage(nextMessage);
-          }, 100);
-        }
+        scheduleChatMessageRuntimeNextQueuedMessage({
+          currentConversationId,
+          queue: messageQueue,
+          handsFree,
+          handsFreeRef,
+          handsFreePhaseRef,
+          processQueuedMessage,
+          logMessage: '[ChatScreen] Processing next queued message:',
+        });
       }
     }
   };

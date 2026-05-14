@@ -3787,6 +3787,22 @@ type ChatMessageRuntimeQueuePanelStateInput<
   processDelayMs?: number;
 };
 
+type ChatMessageRuntimeNextQueuedMessageSchedulerInput<
+  TQueuedMessage extends ChatMessageRuntimeQueueMessage,
+> = {
+  currentConversationId: string;
+  queue: Pick<ChatMessageRuntimeQueueController<TQueuedMessage>, 'isQueuePaused' | 'peek' | 'markProcessing'>;
+  canProcessQueue?: boolean;
+  handsFree: boolean;
+  handsFreePhase?: HandsFreePhase;
+  handsFreeRef: ChatRuntimeMutableRef<boolean>;
+  handsFreePhaseRef: ChatRuntimeMutableRef<HandsFreePhase>;
+  processQueuedMessage: (queuedMessage: TQueuedMessage) => void | Promise<void>;
+  processDelayMs?: number;
+  log?: (message?: unknown, ...optionalParams: unknown[]) => void;
+  logMessage?: string;
+};
+
 type ChatMessageRuntimeQueuePanelState<TQueuedMessage extends ChatMessageRuntimeQueueMessage> = {
   queuedMessages: TQueuedMessage[];
   isMessageQueuePaused: boolean;
@@ -8603,6 +8619,42 @@ export function useChatMessageRuntimeToolApprovalActionsState<
   };
 }
 
+export function scheduleChatMessageRuntimeNextQueuedMessage<
+  TQueuedMessage extends ChatMessageRuntimeQueueMessage,
+>({
+  currentConversationId,
+  queue,
+  canProcessQueue = true,
+  handsFree,
+  handsFreePhase,
+  handsFreeRef,
+  handsFreePhaseRef,
+  processQueuedMessage,
+  processDelayMs = 100,
+  log = console.log,
+  logMessage = '[ChatMessageRuntime] Processing next queued message:',
+}: ChatMessageRuntimeNextQueuedMessageSchedulerInput<TQueuedMessage>): void {
+  if (!canProcessQueue) return;
+  if (queue.isQueuePaused(currentConversationId)) return;
+
+  const nextMessage = queue.peek(currentConversationId);
+  if (!nextMessage) return;
+
+  if (handsFree && (handsFreePhase ?? handsFreePhaseRef.current) === 'paused') return;
+
+  log(logMessage, nextMessage.id);
+  setTimeout(() => {
+    if (queue.isQueuePaused(currentConversationId)) {
+      return;
+    }
+    if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+      return;
+    }
+    queue.markProcessing(currentConversationId, nextMessage.id);
+    void processQueuedMessage(nextMessage);
+  }, processDelayMs);
+}
+
 export function useChatMessageRuntimeQueuePanelState<
   TQueuedMessage extends ChatMessageRuntimeQueueMessage,
 >({
@@ -8621,25 +8673,18 @@ export function useChatMessageRuntimeQueuePanelState<
   const nextQueuedMessage = !responding && !isMessageQueuePaused ? queue.peek(currentConversationId) : null;
 
   const handleProcessNextQueuedMessage = useCallback(() => {
-    if (responding) return;
-    if (queue.isQueuePaused(currentConversationId)) return;
-
-    const nextMessage = queue.peek(currentConversationId);
-    if (!nextMessage) return;
-
-    if (handsFree && handsFreePhase === 'paused') return;
-
-    console.log('[ChatMessageRuntime] Processing queue while idle, next message:', nextMessage.id);
-    setTimeout(() => {
-      if (queue.isQueuePaused(currentConversationId)) {
-        return;
-      }
-      if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
-        return;
-      }
-      queue.markProcessing(currentConversationId, nextMessage.id);
-      void processQueuedMessage(nextMessage);
-    }, processDelayMs);
+    scheduleChatMessageRuntimeNextQueuedMessage({
+      currentConversationId,
+      queue,
+      canProcessQueue: !responding,
+      handsFree,
+      handsFreePhase,
+      handsFreeRef,
+      handsFreePhaseRef,
+      processQueuedMessage,
+      processDelayMs,
+      logMessage: '[ChatMessageRuntime] Processing queue while idle, next message:',
+    });
   }, [
     currentConversationId,
     handsFree,
