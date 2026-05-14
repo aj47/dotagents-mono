@@ -79,6 +79,7 @@ import {
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeRemoteSpeechSettingsState,
+  createChatMessageRuntimeEffectiveRemoteSpeechSettingsState,
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   useChatMessageRuntimeRemoteSpeechSettingsState,
   useChatMessageRuntimeThreadExpansionState,
@@ -114,7 +115,6 @@ import type {
   ChatComposerImageAttachmentAlertInput,
   ChatConversationHomeQuickStartItem,
   ChatComposerRuntimeImageAttachment,
-  ChatMessageRuntimeRemoteSpeechProvider,
 } from '../ui/ChatMessageChrome';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
@@ -226,17 +226,20 @@ export default function ChatScreen({ route, navigation }: any) {
     clearCopiedMessageFeedback,
     showCopiedMessageFeedback,
   } = useChatMessageCopyFeedbackState();
-  // Effective TTS provider/voice/rate — local mobile config takes precedence over
-  // any value pulled from the connected desktop's settings.
-  const effectiveTtsProvider: ChatMessageRuntimeRemoteSpeechProvider =
-    config.ttsProvider === 'edge' ? 'edge' : remoteTtsProvider;
-  const effectiveRemoteTtsVoice =
-    config.ttsProvider === 'edge' && config.edgeTtsVoice
-      ? config.edgeTtsVoice
-      : remoteTtsVoice;
-  const effectiveRemoteTtsModel = config.ttsProvider === 'edge' ? undefined : remoteTtsModel;
-  const effectiveRemoteTtsRate =
-    config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteTtsRate;
+  const {
+    provider: effectiveTtsProvider,
+    voice: effectiveRemoteTtsVoice,
+    model: effectiveRemoteTtsModel,
+    rate: effectiveRemoteTtsRate,
+  } = createChatMessageRuntimeEffectiveRemoteSpeechSettingsState({
+    config,
+    remoteSettings: {
+      provider: remoteTtsProvider,
+      voice: remoteTtsVoice,
+      model: remoteTtsModel,
+      rate: remoteTtsRate,
+    },
+  });
   const {
     promptEditorVisible: addPromptModalVisible,
     promptEditorEditingPrompt: editingPrompt,

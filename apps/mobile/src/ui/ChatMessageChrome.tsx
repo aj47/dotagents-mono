@@ -394,6 +394,11 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   applyRemoteSpeechSettings: (settings: ChatMessageRuntimeRemoteSpeechSettingsState) => void;
 };
 
+type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = {
+  config: Pick<MobileAppConfig, 'ttsProvider' | 'edgeTtsVoice' | 'ttsRate'>;
+  remoteSettings: ChatMessageRuntimeRemoteSpeechSettingsState;
+};
+
 export interface ChatRuntimeMobileConfigState {
   handsFreeMessageDebounceMs: number;
   handsFreeWakePhrase: string;
@@ -4425,6 +4430,22 @@ export function createChatMessageRuntimeRemoteSpeechSettingsState(
     voice: ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue),
     model: getTextToSpeechModelValue(settings),
     rate: getTextToSpeechPlaybackRate(settings),
+  };
+}
+
+export function createChatMessageRuntimeEffectiveRemoteSpeechSettingsState({
+  config,
+  remoteSettings,
+}: ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput): ChatMessageRuntimeRemoteSpeechSettingsState {
+  const isLocalEdgeTts = config.ttsProvider === 'edge';
+
+  return {
+    provider: isLocalEdgeTts ? 'edge' : remoteSettings.provider,
+    voice: isLocalEdgeTts && config.edgeTtsVoice
+      ? config.edgeTtsVoice
+      : remoteSettings.voice,
+    model: isLocalEdgeTts ? undefined : remoteSettings.model,
+    rate: isLocalEdgeTts ? config.ttsRate ?? 1.0 : remoteSettings.rate,
   };
 }
 

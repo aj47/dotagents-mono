@@ -3769,6 +3769,7 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeRemoteSpeechProvider/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRemoteSpeechSettingsState/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeEffectiveRemoteSpeechSettingsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeRemoteSpeechSettingsState/);
   assert.match(chatMessageChromeSource, /const \[remoteTtsProvider, setRemoteTtsProvider\] =\s+useState<ChatMessageRuntimeRemoteSpeechProvider>\(initialSettings\.provider\);/);
   assert.match(chatMessageChromeSource, /const \[remoteTtsVoice, setRemoteTtsVoice\] = useState<string \| undefined>\(initialSettings\.voice\);/);
@@ -3786,10 +3787,16 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(chatMessageChromeSource, /getTextToSpeechVoiceValue\(settings\)/);
   assert.match(chatMessageChromeSource, /getTextToSpeechModelValue\(settings\)/);
   assert.match(chatMessageChromeSource, /getTextToSpeechPlaybackRate\(settings\)/);
+  assert.match(chatMessageChromeSource, /const isLocalEdgeTts = config\.ttsProvider === 'edge';/);
+  assert.match(chatMessageChromeSource, /provider: isLocalEdgeTts \? 'edge' : remoteSettings\.provider/);
+  assert.match(chatMessageChromeSource, /model: isLocalEdgeTts \? undefined : remoteSettings\.model/);
+  assert.match(screenSource, /const \{\s+provider: effectiveTtsProvider,\s+voice: effectiveRemoteTtsVoice,\s+model: effectiveRemoteTtsModel,\s+rate: effectiveRemoteTtsRate,\s+\} = createChatMessageRuntimeEffectiveRemoteSpeechSettingsState\(\{\s+config,\s+remoteSettings: \{\s+provider: remoteTtsProvider,\s+voice: remoteTtsVoice,\s+model: remoteTtsModel,\s+rate: remoteTtsRate,\s+\},\s+\}\);/);
   assert.doesNotMatch(screenSource, /type RemoteDesktopTtsProvider/);
   assert.doesNotMatch(screenSource, /getTextToSpeechVoiceValue\(settings\)/);
   assert.doesNotMatch(screenSource, /getTextToSpeechModelValue\(settings\)/);
   assert.doesNotMatch(screenSource, /getTextToSpeechPlaybackRate\(settings\)/);
+  assert.doesNotMatch(screenSource, /config\.ttsProvider === 'edge' \? 'edge' : remoteTtsProvider/);
+  assert.doesNotMatch(screenSource, /config\.ttsProvider === 'edge' \? undefined : remoteTtsModel/);
   assert.match(screenSource, /effectiveTtsProvider !== 'native' && config\.baseUrl && config\.apiKey/);
   assert.match(screenSource, /providerId: effectiveTtsProvider/);
   assert.match(screenSource, /model: effectiveRemoteTtsModel/);
