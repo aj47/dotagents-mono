@@ -1103,6 +1103,7 @@ type ChatRuntimeConnectionRetryActionStateInput<
 
 type ChatRuntimeConnectionRetryActionState = {
   handleRetryLastFailedMessage: () => Promise<void>;
+  handleRetryLastFailedMessagePress: () => void;
 };
 
 type ChatMessageActionIcon = {
@@ -8948,8 +8949,13 @@ export function useChatRuntimeConnectionRetryActionState<
     setMessages,
   ]);
 
+  const handleRetryLastFailedMessagePress = useCallback(() => {
+    void handleRetryLastFailedMessage();
+  }, [handleRetryLastFailedMessage]);
+
   return {
     handleRetryLastFailedMessage,
+    handleRetryLastFailedMessagePress,
   };
 }
 

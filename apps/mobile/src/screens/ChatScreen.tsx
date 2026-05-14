@@ -1510,7 +1510,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo,
   });
 
-  const { handleRetryLastFailedMessage } = useChatRuntimeConnectionRetryActionState<ChatMessage>({
+  const { handleRetryLastFailedMessagePress } = useChatRuntimeConnectionRetryActionState<ChatMessage>({
     lastFailedMessage,
     clearLastFailedMessage,
     getSessionClient,
@@ -1601,9 +1601,7 @@ export default function ChatScreen({ route, navigation }: any) {
       lastFailedMessage,
       isResponding: responding,
       colors: theme.colors,
-      onConnectionBannerRetry: () => {
-        void handleRetryLastFailedMessage();
-      },
+      onConnectionBannerRetry: handleRetryLastFailedMessagePress,
     },
     threadList: {
       messages,

@@ -1338,10 +1338,13 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(screenSource, /connectionManager\.subscribeToConnectionStatus/);
   assert.doesNotMatch(screenSource, /connectionManager\.isConnectionActive/);
   assert.match(screenSource, /useChatRuntimeConnectionRetryActionState,/);
-  assert.match(screenSource, /const \{ handleRetryLastFailedMessage \} = useChatRuntimeConnectionRetryActionState<ChatMessage>\(\{\s+lastFailedMessage,\s+clearLastFailedMessage,\s+getSessionClient,\s+sessionStore,\s+setMessages,\s+send,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleRetryLastFailedMessagePress \} = useChatRuntimeConnectionRetryActionState<ChatMessage>\(\{\s+lastFailedMessage,\s+clearLastFailedMessage,\s+getSessionClient,\s+sessionStore,\s+setMessages,\s+send,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryActionState/);
+  assert.match(chatMessageChromeSource, /handleRetryLastFailedMessagePress: \(\) => void/);
+  assert.match(chatMessageChromeSource, /const handleRetryLastFailedMessagePress = useCallback\(\(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\}, \[handleRetryLastFailedMessage\]\);/);
   assert.match(chatMessageChromeSource, /const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\);/);
-  assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+colors: theme\.colors,\s+onConnectionBannerRetry: \(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\},/);
+  assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+colors: theme\.colors,\s+onConnectionBannerRetry: handleRetryLastFailedMessagePress,/);
+  assert.doesNotMatch(screenSource, /void handleRetryLastFailedMessage\(\)/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: onConnectionBannerRetry,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageConnectionBanner\s+\{\.\.\.connectionBanner\}\s+styles=\{styles\.connectionBanner\}/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+banner: styles\.connectionBanner,\s+reconnecting: styles\.connectionBannerReconnecting,\s+failed: styles\.connectionBannerFailed,\s+content: styles\.connectionBannerContent,/);
