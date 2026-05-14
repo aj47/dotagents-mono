@@ -19,7 +19,7 @@ const chatMessageChromeSource = fs.readFileSync(
 
 test('exposes the chat composer send control as an accessible button', () => {
   assert.doesNotMatch(screenSource, /<ChatComposerRuntimeDock/);
-  assert.match(screenSource, /composer: chatComposerRuntimeDock,/);
+  assert.match(chatMessageChromeSource, /composer: chatComposerRuntimeDock,/);
   assert.doesNotMatch(screenSource, /submitActionRenderState:/);
   assert.match(chatMessageChromeSource, /renderState: controlRenderState\.submitAction/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
@@ -166,7 +166,7 @@ test('keeps the chat composer send control at a mobile-friendly minimum touch ta
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?alignItems:\s*composerSurface\.submitButton\.alignItems,[\s\S]*?justifyContent:\s*composerSurface\.submitButton\.justifyContent,/);
   assert.match(screenSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*composerSurface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*composerSurface\.submitButton\.minWidth,/);
-  assert.match(screenSource, /chrome: chatComposerRuntimeDockChrome,/);
+  assert.match(chatMessageChromeSource, /chrome: chatComposerRuntimeDockChrome,/);
   assert.match(chatMessageChromeSource, /\.\.\.chrome\.submitAction/);
   assert.match(chatMessageChromeSource, /\.\.\.chrome\.queueAction/);
   assert.match(chatMessageChromeSource, /activeOpacity: composerSurface\.submitButton\.pressedOpacity/);
@@ -182,7 +182,7 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(screenSource, /alignItems:\s*composerSurface\.accessoryButton\.alignItems/);
   assert.match(screenSource, /justifyContent:\s*composerSurface\.accessoryButton\.justifyContent/);
   assert.match(screenSource, /ttsToggleOn:\s*\{[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.accessoryButton\.activeBackgroundColor,[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.accessoryButton\.activeBorderColor/);
-  assert.match(screenSource, /chrome: chatComposerRuntimeDockChrome,/);
+  assert.match(chatMessageChromeSource, /chrome: chatComposerRuntimeDockChrome,/);
   assert.match(chatMessageChromeSource, /\.\.\.chrome\.textEntry/);
   assert.match(chatMessageChromeSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);
   assert.match(screenSource, /\n    input:\s*\{[\s\S]*?borderWidth:\s*composerTextInputSurface\.borderWidth,[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.input\.borderColor,[\s\S]*?borderRadius:\s*radius\[composerTextInputSurface\.borderRadius\],[\s\S]*?paddingHorizontal:\s*spacing\[composerTextInputSurface\.paddingHorizontal\],[\s\S]*?paddingVertical:\s*composerTextInputPlatform\.paddingVertical,[\s\S]*?backgroundColor:\s*mobileComposerSurfaceColors\.input\.backgroundColor,[\s\S]*?color:\s*mobileComposerTextColors\.input\.color,[\s\S]*?fontSize:\s*composerTextInputSurface\.fontSize/);
@@ -205,7 +205,7 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(chatMessageChromeSource, /textToSpeech: getChatComposerTextToSpeechMobileRenderState/);
   assert.match(chatMessageChromeSource, /editBeforeSend: getChatComposerEditBeforeSendMobileRenderState/);
   assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState/);
-  assert.match(screenSource, /chrome: chatComposerRuntimeDockChrome,/);
+  assert.match(chatMessageChromeSource, /chrome: chatComposerRuntimeDockChrome,/);
   assert.match(chatMessageChromeSource, /activeOpacity: composerSurface\.accessoryButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /renderState: controlRenderState\.textToSpeech/);
   assert.match(chatMessageChromeSource, /renderState: controlRenderState\.editBeforeSend/);

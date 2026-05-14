@@ -2052,6 +2052,17 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
 };
 
+type ChatMessageRuntimeChromePropsInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> = {
+  composerChrome: ChatComposerRuntimeDockChromeInput;
+  composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome'>;
+  dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer'>;
+  viewport: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>;
+  surface: Omit<ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>, 'dock' | 'viewport'>;
+};
+
 type ChatRuntimeMobileSafeAreaLayout = ReturnType<typeof getChatRuntimeMobileSafeAreaLayoutState>;
 
 type ChatRuntimeMobileSafeAreaStyleSlots = {
@@ -4618,6 +4629,34 @@ export function createChatMessageRuntimeSurfaceChromeProps<
       styles: threadStyles,
     },
   };
+}
+
+export function createChatMessageRuntimeChromeProps<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>({
+  composerChrome,
+  composer,
+  dock,
+  viewport,
+  surface,
+}: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
+  const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps(composerChrome);
+  const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
+    chrome: chatComposerRuntimeDockChrome,
+    ...composer,
+  });
+  const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps(viewport);
+  const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps({
+    ...dock,
+    composer: chatComposerRuntimeDock,
+  });
+
+  return createChatMessageRuntimeSurfaceChromeProps({
+    ...surface,
+    dock: chatMessageRuntimeDock,
+    viewport: chatMessageRuntimeViewport,
+  });
 }
 
 export function createChatMessageConversationThreadListRenderState({
