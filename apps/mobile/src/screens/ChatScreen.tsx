@@ -285,13 +285,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const isFocused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
-  const mobileRuntimeViewportRenderState = useMemo(
-    () => getChatRuntimeViewportMobileRenderState({
-      colors: theme.colors,
-    }),
-    [theme.colors],
-  );
-  const mobileRuntimeViewport = mobileRuntimeViewportRenderState.surface;
   const chatMessageConversationThreadStyles = useMemo(
     () => createChatMessageConversationThreadStyleSlots(styles),
     [styles],
@@ -3324,8 +3317,6 @@ export default function ChatScreen({ route, navigation }: any) {
   };
   const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps({
     scrollRef: scrollViewRef,
-    keyboardShouldPersistTaps: mobileRuntimeViewport.keyboardShouldPersistTaps,
-    contentInsetAdjustmentBehavior: mobileRuntimeViewport.contentInsetAdjustmentBehavior,
     onScroll: handleScroll,
     onScrollBeginDrag: handleScrollBeginDrag,
     onScrollEndDrag: handleScrollEndDrag,

@@ -115,6 +115,7 @@ import {
   getChatRuntimeStepSummaryMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
+  getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAgentSelectorMobileRenderState,
   getChatRuntimeBackMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
@@ -1460,7 +1461,13 @@ type ChatMessageRuntimeViewportChromePropsInput<
 > =
   Omit<
     ChatMessageRuntimeViewportChromeProps<TPrompt, TTask>,
-    'loadingState' | 'homeQuickStarts' | 'historyBanner' | 'stepSummary' | 'debugPanels'
+    | 'loadingState'
+    | 'homeQuickStarts'
+    | 'historyBanner'
+    | 'stepSummary'
+    | 'debugPanels'
+    | 'keyboardShouldPersistTaps'
+    | 'contentInsetAdjustmentBehavior'
   >
   & {
     loadingRenderState: ChatRuntimeLoadingStateMobileRenderState;
@@ -1479,7 +1486,8 @@ type ChatMessageRuntimeViewportChromePropsInput<
     latestStepSummary: ChatMessageConversationViewportAffordanceRenderStateInput['latestStepSummary'];
     colors:
       & ChatMessageConversationViewportAffordanceRenderStateInput['colors']
-      & Parameters<typeof getPromptLibraryMobileShortcutRenderState>[0];
+      & Parameters<typeof getPromptLibraryMobileShortcutRenderState>[0]
+      & Parameters<typeof getChatRuntimeViewportMobileRenderState>[0]['colors'];
     onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
     debugPanelsRenderState: ChatRuntimeDebugPanelsMobileRenderState;
   };
@@ -2862,9 +2870,12 @@ export function createChatMessageRuntimeViewportChromeProps<
     colors,
   });
   const shortcutRenderState = getPromptLibraryMobileShortcutRenderState(colors);
+  const viewportRenderState = getChatRuntimeViewportMobileRenderState({ colors });
 
   return {
     ...scrollViewportProps,
+    keyboardShouldPersistTaps: viewportRenderState.surface.keyboardShouldPersistTaps,
+    contentInsetAdjustmentBehavior: viewportRenderState.surface.contentInsetAdjustmentBehavior,
     loadingState: {
       renderState: loadingRenderState,
       spinnerSource: loadingSpinnerSource,

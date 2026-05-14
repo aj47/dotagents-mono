@@ -973,8 +973,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /getChatRuntimeLoadingStateMobileState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileColors,/);
   assert.match(screenSource, /const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior\(Platform\.OS\);/);
-  assert.match(screenSource, /const mobileRuntimeViewportRenderState = useMemo\(\s+\(\) => getChatRuntimeViewportMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\),\s+\[theme\.colors\],\s+\);/);
-  assert.match(screenSource, /const mobileRuntimeViewport = mobileRuntimeViewportRenderState\.surface;/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeViewportRenderState = useMemo/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeViewport = mobileRuntimeViewportRenderState\.surface;/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState\.loadingState;/);
   assert.match(screenSource, /const viewportStyleState = getChatRuntimeViewportMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /const viewportSurface = viewportStyleState\.surface;/);
@@ -1031,8 +1031,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /contentContainerStyle=\{\[\s*conversationViewportStyles\.scrollViewport\.contentContainerStyle,\s*mobileSafeAreaStyles\.chatScrollContent,\s*\]\}/);
   assert.doesNotMatch(screenSource, /contentContainerStyle=\{\[\s*styles\.chatScrollContent,\s*mobileSafeAreaStyles\.chatScrollContent,\s*\]\}/);
   assert.match(chatMessageChromeSource, /scrollViewportContentContainerStyle: \[\s+conversationViewportStyles\.scrollViewport\.contentContainerStyle,\s+safeAreaStyles\.chatScrollContent,\s+\]/);
-  assert.match(screenSource, /keyboardShouldPersistTaps: mobileRuntimeViewport\.keyboardShouldPersistTaps/);
-  assert.match(screenSource, /contentInsetAdjustmentBehavior: mobileRuntimeViewport\.contentInsetAdjustmentBehavior/);
+  assert.doesNotMatch(screenSource, /keyboardShouldPersistTaps: mobileRuntimeViewport\.keyboardShouldPersistTaps/);
+  assert.doesNotMatch(screenSource, /contentInsetAdjustmentBehavior: mobileRuntimeViewport\.contentInsetAdjustmentBehavior/);
+  assert.match(chatMessageChromeSource, /const viewportRenderState = getChatRuntimeViewportMobileRenderState\(\{ colors \}\);/);
+  assert.match(chatMessageChromeSource, /keyboardShouldPersistTaps: viewportRenderState\.surface\.keyboardShouldPersistTaps/);
+  assert.match(chatMessageChromeSource, /contentInsetAdjustmentBehavior: viewportRenderState\.surface\.contentInsetAdjustmentBehavior/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewport/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollViewport \{\.\.\.scrollViewportProps\}>[\s\S]*?<ChatMessageConversationViewportContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewport/);
