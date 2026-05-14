@@ -1078,36 +1078,22 @@ export default function ChatScreen({ route, navigation }: any) {
 
   useLayoutEffect(() => {
     navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
-      agentSelector: {
-        renderState: mobileHeaderAgentSelectorRenderState,
-        onPress: () => setAgentSelectorVisible(true),
-        labelNumberOfLines: mobileHeaderSurface.agentSelectorText.numberOfLines,
-      },
-      backButton: {
-        renderState: mobileHeaderBackRenderState,
-        onPress: () => navigation.navigate('Sessions'),
-      },
-      pinButton: {
-        renderState: headerPinMobileRenderState,
-        onPress: handleToggleCurrentSessionPinned,
-        isActive: headerPinMobileRenderState.isPinned,
-      },
-      conversationStatus: {
-        renderState: headerConversationStatus,
-        spinnerSource: isDark ? darkSpinner : lightSpinner,
-      },
-      turnDuration: {
-        renderState: headerTotalTurnDurationRenderState,
-      },
-      killSwitchButton: {
-        shouldRender: mobileHeaderKillSwitchVisibilityRenderState.shouldRender,
-        renderState: mobileHeaderKillSwitchRenderState,
-        onPress: handleKillSwitch,
-      },
-      handsFreeButton: {
-        renderState: headerHandsFreeMobileRenderState,
-        onPress: toggleHandsFree,
-      },
+      agentSelectorRenderState: mobileHeaderAgentSelectorRenderState,
+      onAgentSelectorPress: () => setAgentSelectorVisible(true),
+      agentSelectorLabelNumberOfLines: mobileHeaderSurface.agentSelectorText.numberOfLines,
+      backButtonRenderState: mobileHeaderBackRenderState,
+      onBackButtonPress: () => navigation.navigate('Sessions'),
+      pinButtonRenderState: headerPinMobileRenderState,
+      onPinButtonPress: handleToggleCurrentSessionPinned,
+      pinButtonIsActive: headerPinMobileRenderState.isPinned,
+      conversationStatusRenderState: headerConversationStatus,
+      conversationStatusSpinnerSource: isDark ? darkSpinner : lightSpinner,
+      turnDurationRenderState: headerTotalTurnDurationRenderState,
+      killSwitchButtonShouldRender: mobileHeaderKillSwitchVisibilityRenderState.shouldRender,
+      killSwitchButtonRenderState: mobileHeaderKillSwitchRenderState,
+      onKillSwitchButtonPress: handleKillSwitch,
+      handsFreeButtonRenderState: headerHandsFreeMobileRenderState,
+      onHandsFreeButtonPress: toggleHandsFree,
       styles: chatRuntimeHeaderStyles,
     }));
   }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, headerConversationStatus, headerHandsFreeMobileRenderState, headerPinMobileRenderState, headerTotalTurnDurationRenderState, mobileHeaderAgentSelectorRenderState, mobileHeaderBackRenderState, mobileHeaderKillSwitchRenderState, mobileHeaderKillSwitchVisibilityRenderState.shouldRender, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);

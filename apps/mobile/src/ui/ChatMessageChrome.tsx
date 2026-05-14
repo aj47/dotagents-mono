@@ -407,25 +407,22 @@ type ChatRuntimeHeaderStyleSlots = {
 };
 
 type ChatRuntimeNavigationHeaderOptionsInput = {
-  agentSelector: Pick<
-    ChatRuntimeHeaderAgentSelectorProps,
-    'renderState' | 'onPress' | 'labelNumberOfLines'
-  >;
-  backButton: Pick<ChatRuntimeHeaderIconButtonProps, 'renderState' | 'onPress'>;
-  pinButton: Pick<
-    ChatRuntimeHeaderIconButtonProps,
-    'renderState' | 'onPress' | 'isActive'
-  >;
-  conversationStatus: Pick<
-    ChatRuntimeHeaderConversationStatusProps,
-    'renderState' | 'spinnerSource'
-  >;
-  turnDuration: Pick<ChatRuntimeHeaderTurnDurationProps, 'renderState'>;
-  killSwitchButton: Pick<
-    ChatRuntimeHeaderIconButtonProps,
-    'shouldRender' | 'renderState' | 'onPress'
-  >;
-  handsFreeButton: Pick<ChatRuntimeHeaderIconButtonProps, 'renderState' | 'onPress'>;
+  agentSelectorRenderState: ChatRuntimeHeaderAgentSelectorProps['renderState'];
+  onAgentSelectorPress: ChatRuntimeHeaderAgentSelectorProps['onPress'];
+  agentSelectorLabelNumberOfLines: ChatRuntimeHeaderAgentSelectorProps['labelNumberOfLines'];
+  backButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
+  onBackButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
+  pinButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
+  onPinButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
+  pinButtonIsActive: ChatRuntimeHeaderIconButtonProps['isActive'];
+  conversationStatusRenderState: ChatRuntimeHeaderConversationStatusProps['renderState'];
+  conversationStatusSpinnerSource: ChatRuntimeHeaderConversationStatusProps['spinnerSource'];
+  turnDurationRenderState: ChatRuntimeHeaderTurnDurationProps['renderState'];
+  killSwitchButtonShouldRender: ChatRuntimeHeaderIconButtonProps['shouldRender'];
+  killSwitchButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
+  onKillSwitchButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
+  handsFreeButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
+  onHandsFreeButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
   styles: ChatRuntimeHeaderStyleSlots;
 };
 
@@ -3900,15 +3897,55 @@ export function createChatRuntimeHeaderStyleSlots(
 }
 
 export function createChatRuntimeNavigationHeaderOptions({
-  agentSelector,
-  backButton,
-  pinButton,
-  conversationStatus,
-  turnDuration,
-  killSwitchButton,
-  handsFreeButton,
+  agentSelectorRenderState,
+  onAgentSelectorPress,
+  agentSelectorLabelNumberOfLines,
+  backButtonRenderState,
+  onBackButtonPress,
+  pinButtonRenderState,
+  onPinButtonPress,
+  pinButtonIsActive,
+  conversationStatusRenderState,
+  conversationStatusSpinnerSource,
+  turnDurationRenderState,
+  killSwitchButtonShouldRender,
+  killSwitchButtonRenderState,
+  onKillSwitchButtonPress,
+  handsFreeButtonRenderState,
+  onHandsFreeButtonPress,
   styles,
 }: ChatRuntimeNavigationHeaderOptionsInput): ChatRuntimeNavigationHeaderOptions {
+  const agentSelector = {
+    renderState: agentSelectorRenderState,
+    onPress: onAgentSelectorPress,
+    labelNumberOfLines: agentSelectorLabelNumberOfLines,
+  };
+  const backButton = {
+    renderState: backButtonRenderState,
+    onPress: onBackButtonPress,
+  };
+  const pinButton = {
+    renderState: pinButtonRenderState,
+    onPress: onPinButtonPress,
+    isActive: pinButtonIsActive,
+  };
+  const conversationStatus = {
+    renderState: conversationStatusRenderState,
+    spinnerSource: conversationStatusSpinnerSource,
+  };
+  const turnDuration = {
+    renderState: turnDurationRenderState,
+  };
+  const killSwitchButton = {
+    shouldRender: killSwitchButtonShouldRender,
+    renderState: killSwitchButtonRenderState,
+    onPress: onKillSwitchButtonPress,
+  };
+  const handsFreeButton = {
+    renderState: handsFreeButtonRenderState,
+    onPress: onHandsFreeButtonPress,
+  };
+
   return {
     headerTitle: () => (
       <ChatRuntimeHeaderAgentSelector
