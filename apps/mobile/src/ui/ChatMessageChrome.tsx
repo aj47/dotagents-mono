@@ -28,6 +28,7 @@ import {
   getChatMessageActionMobileButtonState,
   getChatMessageActionLayoutRenderState,
   getChatMessageCopyMobileRenderState,
+  getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageActionAvailabilityRenderState,
@@ -236,6 +237,12 @@ type ChatMessageActionSetInput = Omit<
   branch: ChatMessageBranchActionSpecInput;
   copy: ChatMessageCopyActionSpecInput;
 };
+
+type ChatMessageRenderStateInput =
+  Omit<Parameters<typeof getChatMessageMobileRenderState>[0], 'hasErrors'>
+  & {
+    toolEntries: readonly Pick<ChatMessageDisplayToolEntry, 'result'>[];
+  };
 
 export type ChatMessageActionSet = {
   components: Record<ChatMessageActionSlot, ReactNode>;
@@ -1878,6 +1885,20 @@ function renderChatMessageActionButton(
       icon={spec.renderState.icon}
     />
   );
+}
+
+export function createChatMessageRenderState({
+  toolEntries,
+  ...input
+}: ChatMessageRenderStateInput) {
+  const { hasErrors } = getToolExecutionSummaryDisplayState(
+    toolEntries.map(entry => entry.result),
+  );
+
+  return getChatMessageMobileRenderState({
+    ...input,
+    hasErrors,
+  });
 }
 
 export function createChatMessageActionComponents({

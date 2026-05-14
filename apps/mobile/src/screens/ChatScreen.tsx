@@ -35,6 +35,7 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionStyleSlots,
+  createChatMessageRenderState,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
   createChatMessageRuntimeDockStyleSlots,
@@ -170,7 +171,6 @@ import {
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
-  getToolExecutionSummaryDisplayState,
 } from '@dotagents/shared/tool-execution-display';
 import {
   getChatMessageActionCopyState,
@@ -3798,14 +3798,11 @@ export default function ChatScreen({ route, navigation }: any) {
               content: visibleMessageContent,
               displayToolCallCount,
             });
-            const {
-              hasErrors,
-            } = getToolExecutionSummaryDisplayState(renderedToolEntries.map(entry => entry.result));
-            const messageRenderState = getChatMessageMobileRenderState({
+            const messageRenderState = createChatMessageRenderState({
               role: m.role,
               isComplete: !responding,
               isLast: i === lastAssistantContentMessageIndex,
-              hasErrors,
+              toolEntries: renderedToolEntries,
               content: visibleMessageContent,
               isExpanded,
               shouldCollapse: effectiveShouldCollapse,
