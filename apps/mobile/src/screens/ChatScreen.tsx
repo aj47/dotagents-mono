@@ -130,7 +130,6 @@ import {
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
-  getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeKillSwitchMobileVisibilityRenderState,
@@ -3890,13 +3889,14 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const messageToneStyle = messageThreadSurfaceStyles.getToneStyle(messageRenderState.toneStyleSlot);
-            const messageInlineActivityRenderState = getChatRuntimeInlineActivityMobileRenderState({
+            const messageInlineActivityProps = createChatMessageInlineActivityProps({
               message: m,
               isResponding: responding,
+              spinnerSource: isDark ? darkSpinner : lightSpinner,
             });
             // Skip empty messages unless they are the current shared inline activity row.
             // Also skip messages that only have toolResults but no toolCalls (raw result blobs).
-            if (!messageDisplayState.shouldRenderSurface && !messageInlineActivityRenderState.shouldRender) {
+            if (!messageDisplayState.shouldRenderSurface && !messageInlineActivityProps) {
               return null;
             }
 
@@ -3996,10 +3996,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     onDeny: (approvalId) => { void respondToToolApproval(approvalId, false); },
                     onApprove: (approvalId) => { void respondToToolApproval(approvalId, true); },
                   }),
-                  inlineActivity: createChatMessageInlineActivityProps({
-                    renderState: messageInlineActivityRenderState,
-                    spinnerSource: isDark ? darkSpinner : lightSpinner,
-                  }),
+                  inlineActivity: messageInlineActivityProps,
                   conversation: createChatMessageConversationBodyProps({
                     contentState: messageContentRenderState,
                     actionSet: messageActionSet,

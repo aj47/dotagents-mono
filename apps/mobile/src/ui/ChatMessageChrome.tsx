@@ -67,6 +67,7 @@ import {
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
+  getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
@@ -85,6 +86,7 @@ import {
   type ChatRuntimeDelegationCardMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeInlineActivityMobileRenderState,
+  type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
@@ -1500,10 +1502,10 @@ type ChatMessageInlineActivityProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
-type ChatMessageInlineActivityPropsInput = Pick<
-  ChatMessageInlineActivityProps,
-  'renderState' | 'spinnerSource'
->;
+type ChatMessageInlineActivityPropsInput = Pick<ChatMessageInlineActivityProps, 'spinnerSource'> & {
+  message?: ChatRuntimeInlineActivityMobileMessageLike | null;
+  isResponding: boolean;
+};
 
 type ChatMessageContentRowProps = {
   children: ReactNode;
@@ -2047,9 +2049,15 @@ export function createChatMessageToolApprovalProps({
 }
 
 export function createChatMessageInlineActivityProps({
-  renderState,
+  message,
+  isResponding,
   spinnerSource,
 }: ChatMessageInlineActivityPropsInput): ChatMessageThreadBodyProps['inlineActivity'] {
+  const renderState = getChatRuntimeInlineActivityMobileRenderState({
+    message,
+    isResponding,
+  });
+
   return renderState.shouldRender
     ? {
         renderState,

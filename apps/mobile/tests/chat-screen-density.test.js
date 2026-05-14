@@ -1467,7 +1467,7 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
   assert.match(screenSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
   assert.match(screenSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
-  assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityRenderState\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityProps\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /if \(visibleMessageContent\.trim\(\)\.length === 0 && displayToolCallCount === 0\)/);
   assert.doesNotMatch(screenSource, /isCompletionControlTool,/);
@@ -1988,7 +1988,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);
   assert.match(screenSource, /getChatRuntimeLoadingStateMobileRenderState,/);
-  assert.match(screenSource, /getChatRuntimeInlineActivityMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeMobileActivityAccessibilityState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryBannerMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
@@ -2022,11 +2023,12 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /const messageHistoryBannerSurface = messageHistoryBannerStyleState\.surface;/);
   assert.match(screenSource, /const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState\.colors;/);
   assert.match(screenSource, /const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState\.loadButton\.pressedOpacity;/);
-  assert.match(screenSource, /const messageInlineActivityRenderState = getChatRuntimeInlineActivityMobileRenderState\(\{\s+message: m,\s+isResponding: responding,\s+\}\);/);
-  assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityRenderState\.shouldRender\) \{/);
-  assert.match(screenSource, /inlineActivity: createChatMessageInlineActivityProps\(\{\s+renderState: messageInlineActivityRenderState,\s+spinnerSource: isDark \? darkSpinner : lightSpinner,\s+\}\),/);
+  assert.match(screenSource, /const messageInlineActivityProps = createChatMessageInlineActivityProps\(\{\s+message: m,\s+isResponding: responding,\s+spinnerSource: isDark \? darkSpinner : lightSpinner,\s+\}\);/);
+  assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityProps\) \{/);
+  assert.match(screenSource, /inlineActivity: messageInlineActivityProps,/);
   assert.doesNotMatch(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
+  assert.match(chatMessageChromeSource, /const renderState = getChatRuntimeInlineActivityMobileRenderState\(\{\s+message,\s+isResponding,\s+\}\);/);
   assert.match(chatMessageChromeSource, /return renderState\.shouldRender\s+\? \{\s+renderState,\s+spinnerSource,\s+\}\s+: null;/);
   assert.doesNotMatch(screenSource, /inlineActivity: m\.role === 'assistant'/);
   assert.doesNotMatch(screenSource, /style: styles\.inlineActivityIndicator/);
