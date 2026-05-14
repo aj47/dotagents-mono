@@ -65,6 +65,9 @@ import {
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
   applyChatMessageRuntimeProgressTurnStatusState,
+  hasChatMessageRuntimeRequestSessionChanged,
+  isChatMessageRuntimeLatestSessionRequest,
+  isChatMessageRuntimeActiveRequest,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -868,13 +871,20 @@ export default function ChatScreen({ route, navigation }: any) {
       const onProgress = (update: AgentProgressUpdate) => {
         // Guard: skip update if session has changed since request started
         // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
-        if (currentSessionIdRef.current !== requestSessionId) {
+        if (hasChatMessageRuntimeRequestSessionChanged({
+          currentSessionId: currentSessionIdRef.current,
+          requestSessionId,
+        })) {
           console.log('[ChatScreen] Session changed, skipping onProgress update');
           return;
         }
         // Guard: skip update if this request is no longer the latest one for this session
         // Uses per-session tracking to prevent cross-session sends from incorrectly superseding (PR review fix #13)
-        if (requestSessionId && connectionManager.getLatestRequestId(requestSessionId) !== thisRequestId) {
+        if (!isChatMessageRuntimeLatestSessionRequest({
+          requestSessionId,
+          requestId: thisRequestId,
+          latestRequestId: requestSessionId ? connectionManager.getLatestRequestId(requestSessionId) : undefined,
+        })) {
           console.log('[ChatScreen] Request superseded within same session, skipping onProgress update');
           return;
         }
@@ -922,13 +932,20 @@ export default function ChatScreen({ route, navigation }: any) {
       const onToken = (tok: string) => {
         // Guard: skip update if session has changed since request started
         // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
-        if (currentSessionIdRef.current !== requestSessionId) {
+        if (hasChatMessageRuntimeRequestSessionChanged({
+          currentSessionId: currentSessionIdRef.current,
+          requestSessionId,
+        })) {
           console.log('[ChatScreen] Session changed, skipping onToken update');
           return;
         }
         // Guard: skip update if this request is no longer the latest one for this session
         // Uses per-session tracking to prevent cross-session sends from incorrectly superseding (PR review fix #13)
-        if (requestSessionId && connectionManager.getLatestRequestId(requestSessionId) !== thisRequestId) {
+        if (!isChatMessageRuntimeLatestSessionRequest({
+          requestSessionId,
+          requestId: thisRequestId,
+          latestRequestId: requestSessionId ? connectionManager.getLatestRequestId(requestSessionId) : undefined,
+        })) {
           console.log('[ChatScreen] Request superseded within same session, skipping onToken update');
           return;
         }
@@ -961,7 +978,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // Guard: skip UI updates if session has changed, BUT still persist to the original session
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
-      const sessionChanged = currentSessionIdRef.current !== requestSessionId;
+      const sessionChanged = hasChatMessageRuntimeRequestSessionChanged({
+        currentSessionId: currentSessionIdRef.current,
+        requestSessionId,
+      });
       if (!sessionChanged) {
         applyChatMessageRuntimeCompletedTurnStatusState(completedConversationState, {
           setConversationState,
@@ -977,9 +997,11 @@ export default function ChatScreen({ route, navigation }: any) {
       // This prevents older, superseded requests from clobbering messages when multiple sends occur within the same session
       // Uses per-session tracking to prevent cross-session sends from incorrectly superseding (PR review fix #13)
       // Note: This guard only applies when session hasn't changed - if session changed, we still want to persist
-      const isLatestForSession = requestSessionId
-        ? connectionManager.getLatestRequestId(requestSessionId) === thisRequestId
-        : true;
+      const isLatestForSession = isChatMessageRuntimeLatestSessionRequest({
+        requestSessionId,
+        requestId: thisRequestId,
+        latestRequestId: requestSessionId ? connectionManager.getLatestRequestId(requestSessionId) : undefined,
+      });
       if (!sessionChanged && !isLatestForSession) {
         console.log('[ChatScreen] Request superseded within same session, skipping final message updates', {
           thisRequestId,
@@ -1098,14 +1120,20 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // Guard: skip error message if session has changed since request started
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
-      if (currentSessionIdRef.current !== requestSessionId) {
+      if (hasChatMessageRuntimeRequestSessionChanged({
+        currentSessionId: currentSessionIdRef.current,
+        requestSessionId,
+      })) {
         console.log('[ChatScreen] Session changed during request, skipping error message');
         return;
       }
 
       // Guard: skip error handling if this request is no longer the active one
       // This prevents a superseded request from surfacing a retry banner for an older send
-      if (activeRequestIdRef.current !== thisRequestId) {
+      if (!isChatMessageRuntimeActiveRequest({
+        requestId: thisRequestId,
+        activeRequestId: activeRequestIdRef.current,
+      })) {
         console.log('[ChatScreen] Request superseded, skipping error handling', {
           thisRequestId,
           activeRequestId: activeRequestIdRef.current
@@ -1151,10 +1179,15 @@ export default function ChatScreen({ route, navigation }: any) {
       // 1. This request is still the latest one for its session (per-session tracking, PR review fix #13)
       // 2. We're still on the same session (prevents background completions from affecting other sessions)
       // This addresses PR review comments #10 and #13
-      const isLatestForThisSession = requestSessionId
-        ? connectionManager.getLatestRequestId(requestSessionId) === thisRequestId
-        : true;
-      const isCurrentSession = currentSessionIdRef.current === requestSessionId;
+      const isLatestForThisSession = isChatMessageRuntimeLatestSessionRequest({
+        requestSessionId,
+        requestId: thisRequestId,
+        latestRequestId: requestSessionId ? connectionManager.getLatestRequestId(requestSessionId) : undefined,
+      });
+      const isCurrentSession = !hasChatMessageRuntimeRequestSessionChanged({
+        currentSessionId: currentSessionIdRef.current,
+        requestSessionId,
+      });
 
       if (isLatestForThisSession && isCurrentSession) {
         applyChatMessageRuntimeSettledTurnStatusState({
@@ -1167,10 +1200,15 @@ export default function ChatScreen({ route, navigation }: any) {
         const capturedRequestId = thisRequestId;
         const capturedSessionId = requestSessionId;
         setTimeout(() => {
-          const stillLatest = capturedSessionId
-            ? connectionManager.getLatestRequestId(capturedSessionId) === capturedRequestId
-            : true;
-          if (stillLatest && currentSessionIdRef.current === capturedSessionId) {
+          const stillLatest = isChatMessageRuntimeLatestSessionRequest({
+            requestSessionId: capturedSessionId,
+            requestId: capturedRequestId,
+            latestRequestId: capturedSessionId ? connectionManager.getLatestRequestId(capturedSessionId) : undefined,
+          });
+          if (stillLatest && !hasChatMessageRuntimeRequestSessionChanged({
+            currentSessionId: currentSessionIdRef.current,
+            requestSessionId: capturedSessionId,
+          })) {
             clearDebugInfo();
           }
         }, 5000);
@@ -1267,11 +1305,17 @@ export default function ChatScreen({ route, navigation }: any) {
       // Track userResponse from progress updates for TTS
       let lastUserResponse: string | undefined;
 	      let lastResponseEvents: AgentUserResponseEvent[] = [];
-	      let midTurnLegacyResponseText: string | undefined;
+      let midTurnLegacyResponseText: string | undefined;
 
       const onProgress = (update: AgentProgressUpdate) => {
-        if (sessionStore.currentSessionId !== requestSessionId) return;
-        if (activeRequestIdRef.current !== thisRequestId) return;
+        if (hasChatMessageRuntimeRequestSessionChanged({
+          currentSessionId: sessionStore.currentSessionId,
+          requestSessionId,
+        })) return;
+        if (!isChatMessageRuntimeActiveRequest({
+          requestId: thisRequestId,
+          activeRequestId: activeRequestIdRef.current,
+        })) return;
         const progressTurnState = createChatMessageRuntimeProgressTurnState<ChatMessage>(update);
         latestConversationState = progressTurnState.conversationState;
         applyChatMessageRuntimeProgressTurnStatusState(progressTurnState, {
@@ -1312,8 +1356,14 @@ export default function ChatScreen({ route, navigation }: any) {
       };
 
       const onToken = (tok: string) => {
-        if (sessionStore.currentSessionId !== requestSessionId) return;
-        if (activeRequestIdRef.current !== thisRequestId) return;
+        if (hasChatMessageRuntimeRequestSessionChanged({
+          currentSessionId: sessionStore.currentSessionId,
+          requestSessionId,
+        })) return;
+        if (!isChatMessageRuntimeActiveRequest({
+          requestId: thisRequestId,
+          activeRequestId: activeRequestIdRef.current,
+        })) return;
         const streamingTurnState = createChatMessageRuntimeStreamingTurnState<ChatMessage>(streamingText, tok);
         streamingText = streamingTurnState.streamingText;
         setMessages(streamingTurnState.updateMessages);
@@ -1340,7 +1390,10 @@ export default function ChatScreen({ route, navigation }: any) {
       });
 
       // Early exit guards - finalize queue status before returning to prevent stuck 'processing' items
-      if (sessionStore.currentSessionId !== requestSessionId) {
+      if (hasChatMessageRuntimeRequestSessionChanged({
+        currentSessionId: sessionStore.currentSessionId,
+        requestSessionId,
+      })) {
         // Session changed - mark as failed so user can retry in correct session
         const sessionChangedQueueFailureState = createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState();
         messageQueue.markFailed(
@@ -1350,7 +1403,10 @@ export default function ChatScreen({ route, navigation }: any) {
         );
         return;
       }
-      if (activeRequestIdRef.current !== thisRequestId) {
+      if (!isChatMessageRuntimeActiveRequest({
+        requestId: thisRequestId,
+        activeRequestId: activeRequestIdRef.current,
+      })) {
         // Request superseded - mark as failed so user can retry
         const requestSupersededQueueFailureState = createChatMessageRuntimeRequestSupersededQueueFailureState();
         messageQueue.markFailed(
@@ -1415,13 +1471,19 @@ export default function ChatScreen({ route, navigation }: any) {
         sessionStore.markPendingServerConversation(requestSessionId, false);
       }
 
-      if (activeRequestIdRef.current === thisRequestId) {
+      if (isChatMessageRuntimeActiveRequest({
+        requestId: thisRequestId,
+        activeRequestId: activeRequestIdRef.current,
+      })) {
         applyChatMessageRuntimeSettledTurnStatusState({
           setResponding,
           setConnectionState,
         });
         setTimeout(() => {
-          if (activeRequestIdRef.current === thisRequestId) {
+          if (isChatMessageRuntimeActiveRequest({
+            requestId: thisRequestId,
+            activeRequestId: activeRequestIdRef.current,
+          })) {
             clearDebugInfo();
           }
         }, 5000);
