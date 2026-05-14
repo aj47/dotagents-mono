@@ -36,6 +36,7 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionStyleSlots,
   createChatMessageConversationActionSetInput,
+  createChatMessageConversationContentInput,
   createChatMessageConversationRenderContext,
   createChatMessageConversationToolExecutionStackInput,
   createChatMessageConversationDockStyleSlots,
@@ -3874,17 +3875,16 @@ export default function ChatScreen({ route, navigation }: any) {
                       onCopyMessage: handleCopyMessage,
                       onToggleMessageExpansion: toggleMessageExpansion,
                     }),
-                    expanded: {
+                    ...createChatMessageConversationContentInput({
+                      messageIndex: i,
+                      visibleMessageContent,
                       isStreaming: isLiveStreamingAssistantMessage,
-                      markdownContent: visibleMessageContent,
                       colors: theme.colors,
                       assetBaseUrl: config.baseUrl,
                       assetAuthToken: config.apiKey,
                       spinnerSource: isDark ? darkSpinner : lightSpinner,
-                    },
-                    collapsed: {
-                      onToggle: () => toggleMessageExpansion(i),
-                    },
+                      onToggleMessageExpansion: toggleMessageExpansion,
+                    }),
                     toolExecutionStack: createChatMessageConversationToolExecutionStackInput({
                       message: m,
                       messageIndex: i,
