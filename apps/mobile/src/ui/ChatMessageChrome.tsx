@@ -1532,9 +1532,21 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
   dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
   viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
-  threadList: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['threadList'];
-  agentSelector: ChatMessageRuntimeOverlaysProps['agentSelector'];
-  promptEditor: ChatMessageRuntimeOverlaysProps['promptEditor'];
+  threadStates: ChatMessageConversationRuntimeThreadListProps['threadStates'];
+  threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
+  agentSelectorVisible: ChatMessageRuntimeOverlaysProps['agentSelector']['visible'];
+  onAgentSelectorClose: ChatMessageRuntimeOverlaysProps['agentSelector']['onClose'];
+  promptEditorVisible: ChatConversationHomePromptEditorModalProps['visible'];
+  promptEditorRenderState: ChatConversationHomePromptEditorModalProps['renderState'];
+  promptEditorIsEditing: ChatConversationHomePromptEditorModalProps['isEditing'];
+  promptEditorNameValue: ChatConversationHomePromptEditorModalProps['nameValue'];
+  onPromptEditorNameChange: ChatConversationHomePromptEditorModalProps['onNameChange'];
+  promptEditorContentValue: ChatConversationHomePromptEditorModalProps['contentValue'];
+  onPromptEditorContentChange: ChatConversationHomePromptEditorModalProps['onContentChange'];
+  promptEditorIsSaving: ChatConversationHomePromptEditorModalProps['isSaving'];
+  onPromptEditorClose: ChatConversationHomePromptEditorModalProps['onClose'];
+  onPromptEditorSave: ChatConversationHomePromptEditorModalProps['onSave'];
+  promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
 };
 
 type ChatRuntimeMobileSafeAreaLayout = {
@@ -2796,9 +2808,21 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   keyboardVerticalOffset,
   dock,
   viewport,
-  threadList,
-  agentSelector,
-  promptEditor,
+  threadStates,
+  threadStyles,
+  agentSelectorVisible,
+  onAgentSelectorClose,
+  promptEditorVisible,
+  promptEditorRenderState,
+  promptEditorIsEditing,
+  promptEditorNameValue,
+  onPromptEditorNameChange,
+  promptEditorContentValue,
+  onPromptEditorContentChange,
+  promptEditorIsSaving,
+  onPromptEditorClose,
+  onPromptEditorSave,
+  promptEditorStyles,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
   return {
     frame: {
@@ -2807,11 +2831,29 @@ export function createChatMessageRuntimeSurfaceChromeProps<
     },
     dock,
     overlays: {
-      agentSelector,
-      promptEditor,
+      agentSelector: {
+        visible: agentSelectorVisible,
+        onClose: onAgentSelectorClose,
+      },
+      promptEditor: {
+        visible: promptEditorVisible,
+        renderState: promptEditorRenderState,
+        isEditing: promptEditorIsEditing,
+        nameValue: promptEditorNameValue,
+        onNameChange: onPromptEditorNameChange,
+        contentValue: promptEditorContentValue,
+        onContentChange: onPromptEditorContentChange,
+        isSaving: promptEditorIsSaving,
+        onClose: onPromptEditorClose,
+        onSave: onPromptEditorSave,
+        styles: promptEditorStyles,
+      },
     },
     viewport,
-    threadList,
+    threadList: {
+      threadStates,
+      styles: threadStyles,
+    },
   };
 }
 
