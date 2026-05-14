@@ -52,6 +52,7 @@ import {
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
+  type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageContentRenderState,
   type ChatMessageCopyMobileRenderState,
@@ -1379,8 +1380,10 @@ export type ChatMessageRuntimeToolCallExpansionState = ChatDisplayExpansionState
 export type ChatMessageRuntimeToolApprovalExpansionState = ChatDisplayExpansionStateMap<string>;
 export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpansionStateMap<string>;
 
+type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;
+
 export type ChatMessageActionSet = {
-  components: Record<ChatMessageActionSlot, ReactNode>;
+  components: ChatMessageActionComponentMap;
   visibleSlots: ChatMessageActionSlot[];
   shouldRenderActionSlots: boolean;
   shouldRenderStandaloneActions: boolean;
@@ -1935,7 +1938,7 @@ type ChatMessageTurnDurationBadgeProps = {
 type ChatMessageActionSlotListProps = {
   shouldRender?: boolean;
   slots: readonly ChatMessageActionSlot[];
-  components: Record<ChatMessageActionSlot, ReactNode>;
+  components: ChatMessageActionComponentMap;
   rowStyle?: StyleProp<ViewStyle>;
 };
 
@@ -3348,7 +3351,7 @@ type ChatMessageContentRowProps = {
   children: ReactNode;
   shouldRenderActionSlots: boolean;
   slots: readonly ChatMessageActionSlot[];
-  components: Record<ChatMessageActionSlot, ReactNode>;
+  components: ChatMessageActionComponentMap;
   rowStyle: StyleProp<ViewStyle>;
   bodyStyle?: StyleProp<ViewStyle>;
 };
@@ -3422,7 +3425,7 @@ type ChatMessageConversationContentProps = {
   rowStyle: StyleProp<ViewStyle>;
   shouldRenderActionSlots: boolean;
   slots: readonly ChatMessageActionSlot[];
-  components: Record<ChatMessageActionSlot, ReactNode>;
+  components: ChatMessageActionComponentMap;
   expanded: ChatMessageExpandedContentProps & {
     bodyStyle: StyleProp<ViewStyle>;
   };
@@ -7439,7 +7442,7 @@ export function createChatMessageActionComponents({
   branch,
   copy,
   expansion,
-}: ChatMessageActionComponentsInput): Record<ChatMessageActionSlot, ReactNode> {
+}: ChatMessageActionComponentsInput): ChatMessageActionComponentMap {
   return createChatMessageActionSlotRenderMap<ReactNode>(availability, {
     turnDuration: () => (
       <ChatMessageTurnDurationBadge

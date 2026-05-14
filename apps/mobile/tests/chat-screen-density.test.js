@@ -3632,6 +3632,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /toolApproval: createChatMessageToolApprovalProps\(toolApproval\),/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(availability, \{/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;/);
+  assert.match(chatMessageChromeSource, /components: ChatMessageActionComponentMap;/);
+  assert.doesNotMatch(chatMessageChromeSource, /components: Record<ChatMessageActionSlot, ReactNode>;/);
   assert.match(chatMessageChromeSource, /turnDuration: \(\) => \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
   assert.match(chatMessageChromeSource, /speech: \(\) => renderChatMessageActionButton\(speech\),/);
   assert.match(chatMessageChromeSource, /const components = createChatMessageActionComponents\(\{\s+availability,\s+\.\.\.actionInput,\s+\}\);/);
