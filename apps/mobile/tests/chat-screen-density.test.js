@@ -3792,6 +3792,12 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: formatChatMessageRuntimeDebugError\(queuedErrorMessage\) \}/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeDebugPanelsRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeDebugPanelsRenderState = useMemo/);
+  assert.match(screenSource, /useChatRuntimeRequestDebugState,/);
+  assert.match(screenSource, /const \{\s+requestDebugText: debugInfo,\s+setRequestDebugText: setDebugInfo,\s+clearRequestDebugText,\s+\} = useChatRuntimeRequestDebugState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestDebugState/);
+  assert.match(chatMessageChromeSource, /const \[requestDebugText, setRequestDebugText\] = useState\(''\);/);
+  assert.doesNotMatch(screenSource, /const \[debugInfo, setDebugInfo\] = useState<string>\(''\);/);
+  assert.match(screenSource, /clearRequestDebugText\(\);/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(chatMessageChromeSource, /const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState\(\{\s+requestDebugText,\s+voiceDebugEnabled,\s+voiceEvents,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState\(\{[\s\S]*?return getChatRuntimeDebugPanelsMobileRenderState\(\{[\s\S]*?voiceEntryCount: resolvedVoiceEvents\.length,[\s\S]*?voiceRows: \[/);

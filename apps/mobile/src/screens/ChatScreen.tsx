@@ -29,6 +29,7 @@ import {
   useChatConversationHomePromptEditorState,
   useChatRuntimeAgentSelectorOverlayState,
   useChatComposerRuntimeEditBeforeSendState,
+  useChatRuntimeRequestDebugState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -305,6 +306,11 @@ export default function ChatScreen({ route, navigation }: any) {
     editBeforeSendEnabled: willCancel,
     toggleEditBeforeSend,
   } = useChatComposerRuntimeEditBeforeSendState();
+  const {
+    requestDebugText: debugInfo,
+    setRequestDebugText: setDebugInfo,
+    clearRequestDebugText,
+  } = useChatRuntimeRequestDebugState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -436,9 +442,9 @@ export default function ChatScreen({ route, navigation }: any) {
     setResponding(false);
     setConversationState(null);
     setConnectionState(null);
-    setDebugInfo('');
+    clearRequestDebugText();
     sessionStore.createNewSession();
-  }, [sessionStore]);
+  }, [clearRequestDebugText, sessionStore]);
 
   const handleInsertQuickStartPrompt = useCallback((content: string) => {
     const trimmed = content.trim();
@@ -637,7 +643,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<ChatComposerTextEntryRef>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const {
     expandedMessages,
     expandedToolCalls,

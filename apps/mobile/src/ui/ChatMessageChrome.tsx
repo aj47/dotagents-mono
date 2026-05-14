@@ -426,6 +426,12 @@ type ChatComposerRuntimeEditBeforeSendState = {
   toggleEditBeforeSend: () => void;
 };
 
+type ChatRuntimeRequestDebugState = {
+  requestDebugText: string;
+  setRequestDebugText: Dispatch<SetStateAction<string>>;
+  clearRequestDebugText: () => void;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -5720,6 +5726,20 @@ export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntime
   return {
     editBeforeSendEnabled,
     toggleEditBeforeSend,
+  };
+}
+
+export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState {
+  const [requestDebugText, setRequestDebugText] = useState('');
+
+  const clearRequestDebugText = useCallback(() => {
+    setRequestDebugText('');
+  }, []);
+
+  return {
+    requestDebugText,
+    setRequestDebugText,
+    clearRequestDebugText,
   };
 }
 
