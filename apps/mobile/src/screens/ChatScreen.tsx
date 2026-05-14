@@ -85,7 +85,7 @@ import {
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
   getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
-  getChatMessageCopyFeedbackResetDelayMs,
+  useChatMessageCopyFeedbackState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
@@ -138,7 +138,6 @@ const MAX_PENDING_IMAGES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes;
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
-const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs();
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
 
 type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
@@ -189,8 +188,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsRate, setRemoteTtsRate] = useState(DEFAULT_REMOTE_SPEECH_SETTINGS.rate);
   const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
   const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
-  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
-  const copiedMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    copiedMessageIndex,
+    clearCopiedMessageFeedback,
+    showCopiedMessageFeedback,
+  } = useChatMessageCopyFeedbackState();
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
   // any value pulled from the connected desktop's settings.
   const effectiveTtsProvider: ChatMessageRuntimeRemoteSpeechProvider =
@@ -219,13 +221,6 @@ export default function ChatScreen({ route, navigation }: any) {
   } = chatRuntimeConfig;
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
-  useEffect(() => {
-    return () => {
-      if (copiedMessageTimeoutRef.current) {
-        clearTimeout(copiedMessageTimeoutRef.current);
-      }
-    };
-  }, []);
   const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
   // Track ttsEnabled in a ref so speech callbacks resolved before a mute-toggle
   // (e.g. in-flight send() progress callbacks) still see the latest setting and
@@ -476,18 +471,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
     try {
       await Clipboard.setStringAsync(copyContent);
-      setCopiedMessageIndex(messageIndex);
-      if (copiedMessageTimeoutRef.current) {
-        clearTimeout(copiedMessageTimeoutRef.current);
-      }
-      copiedMessageTimeoutRef.current = setTimeout(() => {
-        setCopiedMessageIndex((current) => (current === messageIndex ? null : current));
-      }, messageCopyFeedbackResetDelayMs);
+      showCopiedMessageFeedback(messageIndex);
     } catch (error) {
       const failedAlert = getChatMessageCopyFailureAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     }
-  }, []);
+  }, [showCopiedMessageFeedback]);
 
   const handleCopyToolPayload = useCallback(async (content: string) => {
     const copyContent = content.trim();
@@ -1230,7 +1219,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const isSessionSwitch = lastLoadedSessionIdRef.current !== currentSessionId;
     if (isSessionSwitch) {
       resetThreadExpansionState();
-      setCopiedMessageIndex(null);
+      clearCopiedMessageFeedback();
       setLatestStepSummary(null);
       // Clear respond_to_user history for the new session
 	      replaceResponseHistory([]);
@@ -1335,7 +1324,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages([]);
 	      replaceResponseHistory([]);
     }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory, resetThreadExpansionState]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory, resetThreadExpansionState]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);

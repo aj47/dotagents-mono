@@ -5559,6 +5559,45 @@ export function getChatMessageCopyFeedbackResetDelayMs(): number {
   return getChatMessageCopyFeedbackState().feedbackResetDelayMs;
 }
 
+export function useChatMessageCopyFeedbackState(
+  feedbackResetDelayMs: number = getChatMessageCopyFeedbackResetDelayMs(),
+) {
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const copiedMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedMessageTimeoutRef.current) {
+        clearTimeout(copiedMessageTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const clearCopiedMessageFeedback = useCallback(() => {
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+      copiedMessageTimeoutRef.current = null;
+    }
+    setCopiedMessageIndex(null);
+  }, []);
+
+  const showCopiedMessageFeedback = useCallback((messageIndex: number) => {
+    setCopiedMessageIndex(messageIndex);
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+    }
+    copiedMessageTimeoutRef.current = setTimeout(() => {
+      setCopiedMessageIndex((current) => (current === messageIndex ? null : current));
+    }, feedbackResetDelayMs);
+  }, [feedbackResetDelayMs]);
+
+  return {
+    copiedMessageIndex,
+    clearCopiedMessageFeedback,
+    showCopiedMessageFeedback,
+  };
+}
+
 export function getChatMessageCopyFailureAlertState(
   error: unknown,
   feedbackState: ChatMessageCopyFeedbackState = getChatMessageCopyFeedbackState(),

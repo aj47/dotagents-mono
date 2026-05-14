@@ -3267,8 +3267,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /presentation: ChatMessageConversationThreadPresentationState;/);
   assert.doesNotMatch(screenSource, /const messageCopyFeedbackState = getChatMessageCopyFeedbackState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyFeedbackState,/);
-  assert.match(screenSource, /const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs\(\);/);
+  assert.doesNotMatch(screenSource, /const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs\(\);/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFeedbackResetDelayMs\(\): number \{\s+return getChatMessageCopyFeedbackState\(\)\.feedbackResetDelayMs;\s+\}/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageCopyFeedbackState/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFeedbackState\(\): ChatMessageCopyFeedbackState \{\s+const copyState = getChatMessageActionCopyState\(\)\.copy;/);
   assert.doesNotMatch(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
   assert.doesNotMatch(screenSource, /const messageSpeechRenderState = getChatMessageSpeechMobileRenderState\(\{/);
@@ -3468,15 +3469,20 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.match(chatMessageChromeSource, /getChatMessageCopyMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyActionState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyMobileIconState,/);
-  assert.match(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.doesNotMatch(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(screenSource, /const \{\s+copiedMessageIndex,\s+clearCopiedMessageFeedback,\s+showCopiedMessageFeedback,\s+\} = useChatMessageCopyFeedbackState\(\);/);
+  assert.match(chatMessageChromeSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
   assert.match(screenSource, /Clipboard\.setStringAsync\(copyContent\)/);
+  assert.match(screenSource, /showCopiedMessageFeedback\(messageIndex\);/);
+  assert.match(screenSource, /clearCopiedMessageFeedback\(\);/);
   assert.match(screenSource, /getChatMessageCopyFailureAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageCopyFailureAlertState/);
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, feedbackState\.failedMessage\)/);
   assert.doesNotMatch(screenSource, /messageCopyFeedbackState\.failed(Title|Message)/);
   assert.doesNotMatch(screenSource, /messageCopyFeedbackState\.feedbackResetDelayMs/);
-  assert.match(screenSource, /messageCopyFeedbackResetDelayMs/);
+  assert.doesNotMatch(screenSource, /messageCopyFeedbackResetDelayMs/);
+  assert.match(chatMessageChromeSource, /feedbackResetDelayMs: number = getChatMessageCopyFeedbackResetDelayMs\(\)/);
   assert.doesNotMatch(screenSource, /const messageCopyRenderState = getChatMessageCopyMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /renderState: getChatMessageCopyMobileRenderState\(\{\s+role: copy\.role,\s+content: copy\.content,\s+isAssistantComplete: copy\.isAssistantComplete,\s+isCopied: copy\.isCopied,\s+colors: copy\.colors,\s+\}\),/);
   assert.match(screenSource, /copiedMessageIndex,/);
@@ -3497,6 +3503,7 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.doesNotMatch(screenSource, /CHAT_MESSAGE_ACTION_PRESENTATION\.copy\.copiedGlyph/);
   assert.doesNotMatch(screenSource, /m\.role === 'user' \|\| \(m\.role === 'assistant' && !responding\)/);
   assert.doesNotMatch(screenSource, /setCopiedMessageIndex\(\(current\) => \(current === messageIndex \? null : current\)\);\s*\}, 2000\)/);
+  assert.match(chatMessageChromeSource, /setCopiedMessageIndex\(\(current\) => \(current === messageIndex \? null : current\)\);/);
 });
 
 test('shows shared per-turn duration badges on mobile user messages', () => {
