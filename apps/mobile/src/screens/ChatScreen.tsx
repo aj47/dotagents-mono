@@ -46,6 +46,7 @@ import {
   createChatMessageRuntimeDockChromeProps,
   createChatMessageRuntimeDebugPanelsRenderState,
   createChatMessageRuntimeSurfaceChromeProps,
+  createChatMessageRuntimeThreadChromeStyleState,
   createChatMessageRuntimeViewportChromeProps,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
@@ -103,9 +104,7 @@ import {
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileSafeAreaLayoutState,
-  getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
-  getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
@@ -123,15 +122,12 @@ import {
 } from '@dotagents/shared/text-to-speech-settings';
 import {
   getToolActivityGroupExpansionInheritanceItems,
-  getToolActivityGroupMobileSurfaceRenderState,
   getToolActivityGroupStateKey,
   groupToolActivity,
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
 import {
-  getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailCopyFailureAlertState,
-  getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
 } from '@dotagents/shared/tool-execution-display';
 import {
@@ -3472,31 +3468,23 @@ function createStyles(theme: Theme, screenHeight: number) {
   });
   const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
   const sessionStatusSurface = sessionStatusStyleState.surface;
-  const compactToolExecutionStyleState = getToolExecutionCompactMobileStyleRenderState({
+  const threadChromeStyleState = createChatMessageRuntimeThreadChromeStyleState({
     colors: theme.colors,
   });
+  const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
   const compactToolExecution = compactToolExecutionStyleState.surface;
-  const toolExecutionDetailStyleState = getToolExecutionDetailMobileStyleRenderState({
-    colors: theme.colors,
-  });
+  const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;
   const detailedToolExecution = toolExecutionDetailStyleState.surface;
   const viewportSurfaceColors = viewportStyleState.colors;
-  const toolActivityGroupStyleState = getToolActivityGroupMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
+  const toolActivityGroupStyleState = threadChromeStyleState.toolActivityGroup;
   const toolActivityGroupSurface = toolActivityGroupStyleState.surface;
   const toolActivityGroupSurfaceColors = toolActivityGroupStyleState.colors;
   const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
   const handsFreeSurfaceColors = handsFreeStyleState.colors;
-  const toolApprovalStyleState = getChatRuntimeToolApprovalMobileRenderState({
-    toolName: '',
-    colors: theme.colors,
-  });
+  const toolApprovalStyleState = threadChromeStyleState.toolApproval;
   const toolApprovalSurface = toolApprovalStyleState.surface;
   const toolApprovalSurfaceColors = toolApprovalStyleState.colors;
-  const mobileMessageThreadStyleState = getChatRuntimeMessageThreadMobileStyleRenderState({
-    colors: theme.colors,
-  });
+  const mobileMessageThreadStyleState = threadChromeStyleState.messageThread;
   const mobileMessageStyleState = mobileMessageThreadStyleState.message;
   const mobileMessageSurface = mobileMessageStyleState.surface;
   const mobileMessageContentLayout = mobileMessageStyleState.contentLayout;

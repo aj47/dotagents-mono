@@ -99,6 +99,7 @@ import { getMessageQueuePanelMobileDockRenderState } from '@dotagents/shared/mes
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupMobileRenderState,
+  getToolActivityGroupMobileSurfaceRenderState,
   type ToolActivityGroup,
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
@@ -131,6 +132,7 @@ import {
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
+  getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
@@ -177,6 +179,7 @@ import {
 } from '@dotagents/shared/session-presentation';
 import {
   getToolExecutionCallDisplayState,
+  getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
   getToolExecutionDetailMobileCollapseControlRenderState,
@@ -1448,6 +1451,23 @@ type ChatMessageRuntimeDebugPanelsRenderStateInput = {
   requestDebugText?: string | null;
   voiceDebugEnabled?: boolean;
   voiceEvents?: readonly VoiceDebugEntry[] | null;
+};
+
+type ChatMessageRuntimeThreadChromeStyleStateInput = {
+  colors:
+    & Parameters<typeof getToolExecutionCompactMobileStyleRenderState>[0]['colors']
+    & Parameters<typeof getToolExecutionDetailMobileStyleRenderState>[0]['colors']
+    & Parameters<typeof getToolActivityGroupMobileSurfaceRenderState>[0]['colors']
+    & Parameters<typeof getChatRuntimeToolApprovalMobileRenderState>[0]['colors']
+    & Parameters<typeof getChatRuntimeMessageThreadMobileStyleRenderState>[0]['colors'];
+};
+
+export type ChatMessageRuntimeThreadChromeStyleState = {
+  compactToolExecution: ReturnType<typeof getToolExecutionCompactMobileStyleRenderState>;
+  toolExecutionDetail: ReturnType<typeof getToolExecutionDetailMobileStyleRenderState>;
+  toolActivityGroup: ReturnType<typeof getToolActivityGroupMobileSurfaceRenderState>;
+  toolApproval: ReturnType<typeof getChatRuntimeToolApprovalMobileRenderState>;
+  messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>;
 };
 
 type ChatMessageConversationViewportStyleSlots = {
@@ -3185,6 +3205,29 @@ export function createChatMessageConversationThreadPresentationState({
       colors,
     }),
     toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState(),
+  };
+}
+
+export function createChatMessageRuntimeThreadChromeStyleState({
+  colors,
+}: ChatMessageRuntimeThreadChromeStyleStateInput): ChatMessageRuntimeThreadChromeStyleState {
+  return {
+    compactToolExecution: getToolExecutionCompactMobileStyleRenderState({
+      colors,
+    }),
+    toolExecutionDetail: getToolExecutionDetailMobileStyleRenderState({
+      colors,
+    }),
+    toolActivityGroup: getToolActivityGroupMobileSurfaceRenderState({
+      colors,
+    }),
+    toolApproval: getChatRuntimeToolApprovalMobileRenderState({
+      toolName: '',
+      colors,
+    }),
+    messageThread: getChatRuntimeMessageThreadMobileStyleRenderState({
+      colors,
+    }),
   };
 }
 
