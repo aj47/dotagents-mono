@@ -73,6 +73,8 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeSpeechTextState,
+  createChatMessageRuntimeRemoteSpeechSettingsState,
+  getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   createChatMessageRuntimeToolActivityGroups,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
   applyChatMessageRuntimeAutoExpansionState,
@@ -120,6 +122,7 @@ import type {
   ChatComposerTextEntryRef,
   ChatComposerImageAttachmentAlertInput,
   ChatConversationHomeQuickStartItem,
+  ChatMessageRuntimeRemoteSpeechProvider,
   ChatMessageScrollEvent,
   ChatMessageScrollViewportRef,
   ChatMessageRuntimeToolActivityGroup,
@@ -130,7 +133,6 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import type { AgentProgressUpdate, AgentStepSummary } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
-import type { Settings } from '@dotagents/shared/api-types';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
@@ -138,14 +140,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { mergeVoiceText } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import {
-  DEFAULT_EDGE_TTS_VOICE,
-} from '@dotagents/shared/providers';
-import {
-  getTextToSpeechModelValue,
-  getTextToSpeechPlaybackRate,
-  getTextToSpeechVoiceValue,
-} from '@dotagents/shared/text-to-speech-settings';
 import {
   sanitizeMessagesForModel,
 } from '@dotagents/shared/message-display-utils';
@@ -193,6 +187,7 @@ const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYT
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs();
+const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -204,8 +199,6 @@ const getMessageLogMeta = (content: string) => ({
   length: content.length,
   inlineImageCount: extractDataImageMarkdownReferences(content).length,
 });
-
-type RemoteDesktopTtsProvider = 'native' | NonNullable<Settings['ttsProviderId']>;
 
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -309,17 +302,18 @@ export default function ChatScreen({ route, navigation }: any) {
   const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
-  const [remoteTtsProvider, setRemoteTtsProvider] = useState<RemoteDesktopTtsProvider>('native');
-  const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(DEFAULT_EDGE_TTS_VOICE);
-  const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>();
-  const [remoteTtsRate, setRemoteTtsRate] = useState(1.0);
+  const [remoteTtsProvider, setRemoteTtsProvider] =
+    useState<ChatMessageRuntimeRemoteSpeechProvider>(DEFAULT_REMOTE_SPEECH_SETTINGS.provider);
+  const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.voice);
+  const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.model);
+  const [remoteTtsRate, setRemoteTtsRate] = useState(DEFAULT_REMOTE_SPEECH_SETTINGS.rate);
   const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
   const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const copiedMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
   // any value pulled from the connected desktop's settings.
-  const effectiveTtsProvider: RemoteDesktopTtsProvider =
+  const effectiveTtsProvider: ChatMessageRuntimeRemoteSpeechProvider =
     config.ttsProvider === 'edge' ? 'edge' : remoteTtsProvider;
   const effectiveRemoteTtsVoice =
     config.ttsProvider === 'edge' && config.edgeTtsVoice
@@ -1325,12 +1319,12 @@ export default function ChatScreen({ route, navigation }: any) {
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
           const nextPrompts = sortPredefinedPromptsByUpdatedAt(settings.predefinedPrompts || []);
-          const ttsVoiceValue = getTextToSpeechVoiceValue(settings);
+          const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
           setPredefinedPrompts(nextPrompts);
-          setRemoteTtsProvider(settings.ttsProviderId || 'native');
-          setRemoteTtsVoice(ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue));
-          setRemoteTtsModel(getTextToSpeechModelValue(settings));
-          setRemoteTtsRate(getTextToSpeechPlaybackRate(settings));
+          setRemoteTtsProvider(remoteSpeechSettings.provider);
+          setRemoteTtsVoice(remoteSpeechSettings.voice);
+          setRemoteTtsModel(remoteSpeechSettings.model);
+          setRemoteTtsRate(remoteSpeechSettings.rate);
         } else {
           setPredefinedPrompts([]);
         }

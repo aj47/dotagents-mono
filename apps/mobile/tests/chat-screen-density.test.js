@@ -3557,11 +3557,23 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
 });
 
 test('routes every desktop TTS provider through the paired remote TTS endpoint', () => {
-  assert.match(screenSource, /type RemoteDesktopTtsProvider = 'native' \| NonNullable<Settings\['ttsProviderId'\]>/);
-  assert.match(screenSource, /setRemoteTtsProvider\(settings\.ttsProviderId \|\| 'native'\)/);
-  assert.match(screenSource, /getTextToSpeechVoiceValue\(settings\)/);
-  assert.match(screenSource, /getTextToSpeechModelValue\(settings\)/);
-  assert.match(screenSource, /getTextToSpeechPlaybackRate\(settings\)/);
+  assert.match(screenSource, /ChatMessageRuntimeRemoteSpeechProvider,/);
+  assert.match(screenSource, /const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState\(\);/);
+  assert.match(screenSource, /const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState\(settings\);/);
+  assert.match(screenSource, /setRemoteTtsProvider\(remoteSpeechSettings\.provider\)/);
+  assert.match(screenSource, /setRemoteTtsVoice\(remoteSpeechSettings\.voice\)/);
+  assert.match(screenSource, /setRemoteTtsModel\(remoteSpeechSettings\.model\)/);
+  assert.match(screenSource, /setRemoteTtsRate\(remoteSpeechSettings\.rate\)/);
+  assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeRemoteSpeechProvider/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRemoteSpeechSettingsState/);
+  assert.match(chatMessageChromeSource, /getTextToSpeechVoiceValue\(settings\)/);
+  assert.match(chatMessageChromeSource, /getTextToSpeechModelValue\(settings\)/);
+  assert.match(chatMessageChromeSource, /getTextToSpeechPlaybackRate\(settings\)/);
+  assert.doesNotMatch(screenSource, /type RemoteDesktopTtsProvider/);
+  assert.doesNotMatch(screenSource, /getTextToSpeechVoiceValue\(settings\)/);
+  assert.doesNotMatch(screenSource, /getTextToSpeechModelValue\(settings\)/);
+  assert.doesNotMatch(screenSource, /getTextToSpeechPlaybackRate\(settings\)/);
   assert.match(screenSource, /effectiveTtsProvider !== 'native' && config\.baseUrl && config\.apiKey/);
   assert.match(screenSource, /providerId: effectiveTtsProvider/);
   assert.match(screenSource, /model: effectiveRemoteTtsModel/);

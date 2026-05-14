@@ -108,6 +108,12 @@ import {
   computeTurnDurations,
   type TurnDurationMessage,
 } from '@dotagents/shared/turn-duration';
+import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
+import {
+  getTextToSpeechModelValue,
+  getTextToSpeechPlaybackRate,
+  getTextToSpeechVoiceValue,
+} from '@dotagents/shared/text-to-speech-settings';
 import {
   buildPromptLibraryShortcutItems,
   formatPromptLibraryDeletePromptConfirmMessage,
@@ -138,7 +144,7 @@ import {
   getMessageQueuePanelMobileDockRenderState,
   getMessageQueuePanelMobileWrapperRenderState,
 } from '@dotagents/shared/message-queue-utils';
-import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
+import type { PredefinedPromptSummary, Settings } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupExpansionInheritanceItems,
   getToolActivityGroupMobileRenderState,
@@ -319,6 +325,17 @@ export interface ChatMessageRuntimeResolvedAlertState {
 export interface ChatMessageRuntimeSpeechTextState {
   processedText: string;
   autoTextKey: string;
+}
+
+export type ChatMessageRuntimeRemoteSpeechProvider =
+  | 'native'
+  | NonNullable<Settings['ttsProviderId']>;
+
+export interface ChatMessageRuntimeRemoteSpeechSettingsState {
+  provider: ChatMessageRuntimeRemoteSpeechProvider;
+  voice: string | undefined;
+  model: string | undefined;
+  rate: number;
 }
 
 export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatMessageRuntimeResolvedAlertState {
@@ -3818,6 +3835,28 @@ export function createChatMessageRuntimeSpeechTextState(
   return {
     processedText,
     autoTextKey: normalizeAutoTtsTextKey(processedText),
+  };
+}
+
+export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState(): ChatMessageRuntimeRemoteSpeechSettingsState {
+  return {
+    provider: 'native',
+    voice: DEFAULT_EDGE_TTS_VOICE,
+    model: undefined,
+    rate: 1.0,
+  };
+}
+
+export function createChatMessageRuntimeRemoteSpeechSettingsState(
+  settings: Settings,
+): ChatMessageRuntimeRemoteSpeechSettingsState {
+  const ttsVoiceValue = getTextToSpeechVoiceValue(settings);
+
+  return {
+    provider: settings.ttsProviderId || 'native',
+    voice: ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue),
+    model: getTextToSpeechModelValue(settings),
+    rate: getTextToSpeechPlaybackRate(settings),
   };
 }
 
