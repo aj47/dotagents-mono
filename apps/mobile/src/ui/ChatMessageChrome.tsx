@@ -601,13 +601,13 @@ type ChatMessageDelegationCardPropsInput = Omit<
   delegation?: ACPDelegationProgress | null;
   toolEntries: readonly ChatMessageDisplayToolEntry[];
   displayToolCallCount: number;
-  includeAllConversationPreview: boolean;
-  includeAllToolPreview: boolean;
+  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>;
+  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>;
   toolPreviewShouldRender: boolean;
   roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots;
   colors: ChatMessageDelegationCardColors;
-  onShowAllConversationPreview?: (event: GestureResponderEvent) => void;
-  onShowAllToolPreview?: (event: GestureResponderEvent) => void;
+  onShowAllConversationPreview?: (runId: string) => void;
+  onShowAllToolPreview?: (runId: string) => void;
 };
 
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
@@ -1929,8 +1929,8 @@ export function createChatMessageDelegationCardProps({
   delegation,
   toolEntries,
   displayToolCallCount,
-  includeAllConversationPreview,
-  includeAllToolPreview,
+  expandedDelegationConversationPreviews,
+  expandedDelegationToolPreviews,
   toolPreviewShouldRender,
   roleStyles,
   colors,
@@ -1939,6 +1939,14 @@ export function createChatMessageDelegationCardProps({
 }: ChatMessageDelegationCardPropsInput): ChatMessageThreadBodyProps['delegationCard'] {
   if (!isDelegation || !delegation) return null;
 
+  const isConversationPreviewExpanded = getChatDisplayExpansionState(
+    expandedDelegationConversationPreviews,
+    delegation.runId,
+  );
+  const isToolPreviewExpanded = getChatDisplayExpansionState(
+    expandedDelegationToolPreviews,
+    delegation.runId,
+  );
   const cardState = getAgentDelegationCardState(
     delegation,
     toolEntries,
@@ -1946,9 +1954,9 @@ export function createChatMessageDelegationCardProps({
       maxSubtitleLength: surface.subtitleMaxLength,
       conversationPreviewMaxRows: surface.conversationPreviewMaxRows,
       conversationPreviewMaxLength: surface.conversationPreviewMaxLength,
-      includeAllConversationPreview,
+      includeAllConversationPreview: isConversationPreviewExpanded,
       toolPreviewMaxRows: surface.toolPreviewMaxRows,
-      includeAllToolPreview,
+      includeAllToolPreview: isToolPreviewExpanded,
     },
   );
   const { presentation } = cardState;
@@ -1982,7 +1990,9 @@ export function createChatMessageDelegationCardProps({
       roleStyles,
       hiddenCount: hiddenConversationCount,
       moreAction: getChatRuntimeDelegationConversationPreviewMoreActionState(hiddenConversationCount),
-      onShowAll: onShowAllConversationPreview,
+      onShowAll: onShowAllConversationPreview
+        ? () => onShowAllConversationPreview(delegation.runId)
+        : undefined,
     },
     toolPreview: {
       shouldRender: toolPreviewShouldRender,
@@ -1993,7 +2003,9 @@ export function createChatMessageDelegationCardProps({
       }),
       hiddenCount: hiddenToolCount,
       moreAction: getChatRuntimeDelegationToolPreviewMoreActionState(hiddenToolCount),
-      onShowAll: onShowAllToolPreview,
+      onShowAll: onShowAllToolPreview
+        ? () => onShowAllToolPreview(delegation.runId)
+        : undefined,
     },
   };
 }

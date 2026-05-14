@@ -3951,12 +3951,6 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.expansion,
               },
             });
-            const isDelegationConversationPreviewExpanded = m.delegation
-              ? getChatDisplayExpansionState(expandedDelegationConversationPreviews, m.delegation.runId)
-              : false;
-            const isDelegationToolPreviewExpanded = m.delegation
-              ? getChatDisplayExpansionState(expandedDelegationToolPreviews, m.delegation.runId)
-              : false;
             return (
               <ChatMessageRuntimeThread
                 key={i}
@@ -3976,19 +3970,19 @@ export default function ChatScreen({ route, navigation }: any) {
                     delegation: m.delegation,
                     toolEntries: renderedToolEntries,
                     displayToolCallCount,
-                    includeAllConversationPreview: isDelegationConversationPreviewExpanded,
-                    includeAllToolPreview: isDelegationToolPreviewExpanded,
+                    expandedDelegationConversationPreviews,
+                    expandedDelegationToolPreviews,
                     toolPreviewShouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
                     roleStyles: delegationConversationPreviewRoleStyles,
                     colors: theme.colors,
-                    onShowAllConversationPreview: () => {
+                    onShowAllConversationPreview: (runId) => {
                       setExpandedDelegationConversationPreviews((current) =>
-                        setChatDisplayExpansionState(current, m.delegation!.runId, true),
+                        setChatDisplayExpansionState(current, runId, true),
                       );
                     },
-                    onShowAllToolPreview: () => {
+                    onShowAllToolPreview: (runId) => {
                       setExpandedDelegationToolPreviews((current) =>
-                        setChatDisplayExpansionState(current, m.delegation!.runId, true),
+                        setChatDisplayExpansionState(current, runId, true),
                       );
                     },
                   }),
