@@ -13,7 +13,6 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
@@ -22,7 +21,6 @@ import {
 } from '@dotagents/shared/agent-user-response-store';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
-import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 
 export interface ResponseHistoryEntry {
   id?: string;
@@ -30,10 +28,34 @@ export interface ResponseHistoryEntry {
   timestamp: number;
 }
 
+type ResponseHistoryTtsProvider = 'native' | 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
+
+type ResponseHistoryNativeSpeechOptions = {
+  language?: string;
+  rate?: number;
+  pitch?: number;
+  voice?: string;
+  onDone?: () => void;
+  onStopped?: () => void;
+  onError?: () => void;
+};
+
+type ResponseHistoryRemoteSpeechOptions = {
+  baseUrl: string;
+  apiKey: string;
+  providerId?: ResponseHistoryTtsProvider;
+  voice?: string;
+  model?: string;
+  rate?: number;
+  onDone?: () => void;
+  onStopped?: () => void;
+  onError?: () => void;
+};
+
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
   colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
-  ttsProvider?: 'native' | 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
+  ttsProvider?: ResponseHistoryTtsProvider;
   edgeTtsVoice?: string;
   remoteTtsVoice?: string;
   remoteTtsModel?: string;
@@ -42,6 +64,10 @@ interface ResponseHistoryPanelProps {
   ttsVoiceId?: string;
   remoteBaseUrl?: string;
   remoteApiKey?: string;
+  speakNative: (text: string, options: ResponseHistoryNativeSpeechOptions) => void;
+  stopNativeSpeech: () => void;
+  speakRemote: (text: string, options: ResponseHistoryRemoteSpeechOptions) => unknown | Promise<unknown>;
+  stopRemoteSpeech: () => void;
 }
 
 /**
@@ -94,6 +120,10 @@ export function ResponseHistoryPanel({
   ttsVoiceId,
   remoteBaseUrl,
   remoteApiKey,
+  speakNative,
+  stopNativeSpeech,
+  speakRemote,
+  stopRemoteSpeech,
 }: ResponseHistoryPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
@@ -130,19 +160,19 @@ export function ResponseHistoryPanel({
     return () => {
       isMountedRef.current = false;
       nextSpeechRequestId();
-      Speech.stop();
-      stopRemoteTts();
+      stopNativeSpeech();
+      stopRemoteSpeech();
     };
-  }, [nextSpeechRequestId]);
+  }, [nextSpeechRequestId, stopNativeSpeech, stopRemoteSpeech]);
 
   useEffect(() => {
     if (isCollapsed && speakingIndex !== null) {
       nextSpeechRequestId();
-      Speech.stop();
-      stopRemoteTts();
+      stopNativeSpeech();
+      stopRemoteSpeech();
       safeSetSpeakingIndex(null);
     }
-  }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId]);
+  }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId, stopNativeSpeech, stopRemoteSpeech]);
 
   useEffect(() => {
     prevCountRef.current = responses.length;
@@ -156,16 +186,16 @@ export function ResponseHistoryPanel({
     // If already speaking this message, stop it
     if (speakingIndex === index) {
       nextSpeechRequestId();
-      Speech.stop();
-      stopRemoteTts();
+      stopNativeSpeech();
+      stopRemoteSpeech();
       safeSetSpeakingIndex(null);
       return;
     }
 
     // Stop any current speech
     const requestId = nextSpeechRequestId();
-    Speech.stop();
-    stopRemoteTts();
+    stopNativeSpeech();
+    stopRemoteSpeech();
 
     const processedText = preprocessTextForTTS(text);
     if (!processedText) {
@@ -184,7 +214,7 @@ export function ResponseHistoryPanel({
       // Remote desktop TTS routes through the paired desktop's /v1/tts/speak
       // endpoint. Fall back to native Speech when no pairing is available.
       if (remoteBaseUrl && remoteApiKey) {
-        void speakRemoteTts(processedText, {
+        void speakRemote(processedText, {
           baseUrl: remoteBaseUrl,
           apiKey: remoteApiKey,
           providerId: ttsProvider,
@@ -200,7 +230,7 @@ export function ResponseHistoryPanel({
       // Fall through to native Speech below when paired desktop is unavailable.
     }
 
-    const speechOptions: Speech.SpeechOptions = {
+    const speechOptions: ResponseHistoryNativeSpeechOptions = {
       language: 'en-US',
       rate: ttsRate,
       pitch: ttsPitch,
@@ -211,7 +241,7 @@ export function ResponseHistoryPanel({
     if (ttsVoiceId) {
       speechOptions.voice = ttsVoiceId;
     }
-    Speech.speak(processedText, speechOptions);
+    speakNative(processedText, speechOptions);
   };
 
   const styles = StyleSheet.create({

@@ -6819,6 +6819,10 @@ export function createChatMessageRuntimeDockChromeProps({
       ttsVoiceId: responseHistoryTtsVoiceId,
       remoteBaseUrl: responseHistoryRemoteBaseUrl,
       remoteApiKey: responseHistoryRemoteApiKey,
+      speakNative: Speech.speak,
+      stopNativeSpeech: Speech.stop,
+      speakRemote: speakRemoteTts,
+      stopRemoteSpeech: stopRemoteTts,
     },
     scrollToBottomButton: {
       renderState: scrollToBottomRenderState,

@@ -11,6 +11,10 @@ const source = fs.readFileSync(
 test('mobile response history panel uses shared copy and accessibility labels', () => {
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
+  assert.match(source, /speakNative: \(text: string, options: ResponseHistoryNativeSpeechOptions\) => void;/);
+  assert.match(source, /stopNativeSpeech: \(\) => void;/);
+  assert.match(source, /speakRemote: \(text: string, options: ResponseHistoryRemoteSpeechOptions\) => unknown \| Promise<unknown>;/);
+  assert.match(source, /stopRemoteSpeech: \(\) => void;/);
   assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
   assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
@@ -50,6 +54,11 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /accessibilityRole="button"/);
   assert.doesNotMatch(source, />Agent Responses<\/Text>/);
   assert.doesNotMatch(source, /AGENT_RESPONSE_HISTORY_PRESENTATION/);
+  assert.doesNotMatch(source, /import \* as Speech from 'expo-speech';/);
+  assert.doesNotMatch(source, /speakRemoteTts|stopRemoteTts/);
+  assert.match(source, /stopNativeSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);/);
+  assert.match(source, /void speakRemote\(processedText, \{/);
+  assert.match(source, /speakNative\(processedText, speechOptions\);/);
 });
 
 test('mobile response history panel reads compact sizing from shared surface tokens', () => {
