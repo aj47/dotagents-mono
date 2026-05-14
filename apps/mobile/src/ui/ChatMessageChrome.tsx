@@ -129,11 +129,17 @@ import {
   getChatComposerTextToSpeechMobileRenderState,
   getChatComposerVoiceOverlayLabel,
   formatChatRuntimeActivityContent,
+  formatChatRuntimeAssistantErrorContent,
   formatChatRuntimeAssistantFeedbackContent,
+  formatChatRuntimeConnectionErrorMessage,
+  formatChatRuntimeDebugError,
   formatChatRuntimeDelegationAccessibilityLabel,
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
+  formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
+  formatChatRuntimeWebConfirmMessage,
+  getChatRuntimeAlertMessage,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
@@ -163,6 +169,7 @@ import {
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugPanelsMobileRenderState,
+  getChatRuntimeDebugState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
@@ -2993,6 +3000,46 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
 
 export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
   return getChatRuntimeMessageHistoryWindowMobileState();
+}
+
+export function getChatMessageRuntimeDebugState(): ReturnType<typeof getChatRuntimeDebugState> {
+  return getChatRuntimeDebugState();
+}
+
+export function formatChatMessageRuntimeAlertMessage(
+  ...args: Parameters<typeof getChatRuntimeAlertMessage>
+): ReturnType<typeof getChatRuntimeAlertMessage> {
+  return getChatRuntimeAlertMessage(...args);
+}
+
+export function formatChatMessageRuntimeDebugError(
+  ...args: Parameters<typeof formatChatRuntimeDebugError>
+): ReturnType<typeof formatChatRuntimeDebugError> {
+  return formatChatRuntimeDebugError(...args);
+}
+
+export function formatChatMessageRuntimeStartingRequestDebugMessage(
+  ...args: Parameters<typeof formatChatRuntimeStartingRequestDebugMessage>
+): ReturnType<typeof formatChatRuntimeStartingRequestDebugMessage> {
+  return formatChatRuntimeStartingRequestDebugMessage(...args);
+}
+
+export function formatChatMessageRuntimeConnectionErrorMessage(
+  ...args: Parameters<typeof formatChatRuntimeConnectionErrorMessage>
+): ReturnType<typeof formatChatRuntimeConnectionErrorMessage> {
+  return formatChatRuntimeConnectionErrorMessage(...args);
+}
+
+export function formatChatMessageRuntimeAssistantErrorContent(
+  ...args: Parameters<typeof formatChatRuntimeAssistantErrorContent>
+): ReturnType<typeof formatChatRuntimeAssistantErrorContent> {
+  return formatChatRuntimeAssistantErrorContent(...args);
+}
+
+export function formatChatMessageRuntimeWebConfirmMessage(
+  ...args: Parameters<typeof formatChatRuntimeWebConfirmMessage>
+): ReturnType<typeof formatChatRuntimeWebConfirmMessage> {
+  return formatChatRuntimeWebConfirmMessage(...args);
 }
 
 export function formatChatMessageRuntimeAssistantFeedbackContent(

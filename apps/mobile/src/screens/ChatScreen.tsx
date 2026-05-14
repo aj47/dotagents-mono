@@ -41,8 +41,14 @@ import {
   createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
   formatChatMessageRuntimeActivityContent,
+  formatChatMessageRuntimeAlertMessage,
+  formatChatMessageRuntimeAssistantErrorContent,
   formatChatMessageRuntimeAssistantFeedbackContent,
+  formatChatMessageRuntimeConnectionErrorMessage,
+  formatChatMessageRuntimeDebugError,
+  formatChatMessageRuntimeStartingRequestDebugMessage,
   formatChatMessageRuntimeToolApprovalRequiredContent,
+  formatChatMessageRuntimeWebConfirmMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -56,6 +62,7 @@ import {
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
   getChatMessageRuntimeBranchAlertState,
+  getChatMessageRuntimeDebugState,
   getChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchAlertState,
   getChatMessageRuntimeLatestStepSummary,
@@ -97,15 +104,6 @@ import {
   normalizeAutoTtsTextKey,
 } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import {
-  formatChatRuntimeAssistantErrorContent,
-  formatChatRuntimeConnectionErrorMessage,
-  formatChatRuntimeDebugError,
-  formatChatRuntimeStartingRequestDebugMessage,
-  formatChatRuntimeWebConfirmMessage,
-  getChatRuntimeDebugState,
-  getChatRuntimeAlertMessage,
-} from '@dotagents/shared/session-presentation';
 import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
   resolveAgentProgressConversationState,
@@ -192,7 +190,7 @@ const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYT
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState();
-const mobileRuntimeDebug = getChatRuntimeDebugState();
+const mobileRuntimeDebug = getChatMessageRuntimeDebugState();
 const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
@@ -499,7 +497,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
-        formatChatRuntimeWebConfirmMessage(
+        formatChatMessageRuntimeWebConfirmMessage(
           mobileRuntimeKillSwitchAlerts.confirmation.title,
           mobileRuntimeKillSwitchAlerts.confirmation.message,
         )
@@ -517,7 +515,7 @@ export default function ChatScreen({ route, navigation }: any) {
         } catch (e: any) {
           console.error('[ChatScreen] Kill switch error:', e);
           window.alert(
-            `${mobileRuntimeKillSwitchAlerts.connectionFailed.title}: ${getChatRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage)}`,
+            `${mobileRuntimeKillSwitchAlerts.connectionFailed.title}: ${formatChatMessageRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage)}`,
           );
         }
       }
@@ -550,7 +548,7 @@ export default function ChatScreen({ route, navigation }: any) {
               console.error('[ChatScreen] Kill switch error:', e);
               Alert.alert(
                 mobileRuntimeKillSwitchAlerts.connectionFailed.title,
-                getChatRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage),
+                formatChatMessageRuntimeAlertMessage(e, mobileRuntimeKillSwitchAlerts.connectionFailed.fallbackMessage),
               );
             }
           },
@@ -652,7 +650,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } catch (error) {
       Alert.alert(
         messageCopyFeedbackState.failedTitle,
-        getChatRuntimeAlertMessage(error, messageCopyFeedbackState.failedMessage),
+        formatChatMessageRuntimeAlertMessage(error, messageCopyFeedbackState.failedMessage),
       );
     }
   }, []);
@@ -666,7 +664,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } catch (error) {
       Alert.alert(
         toolExecutionDetailCopyFailureAlert.title,
-        getChatRuntimeAlertMessage(error, toolExecutionDetailCopyFailureAlert.fallbackMessage),
+        formatChatMessageRuntimeAlertMessage(error, toolExecutionDetailCopyFailureAlert.fallbackMessage),
       );
     }
   }, []);
@@ -699,7 +697,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } catch (error: any) {
       Alert.alert(
         mobileRuntimeBranchAlerts.failed.title,
-        getChatRuntimeAlertMessage(error, mobileRuntimeBranchAlerts.failed.fallbackMessage),
+        formatChatMessageRuntimeAlertMessage(error, mobileRuntimeBranchAlerts.failed.fallbackMessage),
       );
     } finally {
       setBranchingMessageIndex(null);
@@ -786,7 +784,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } catch (error: any) {
       Alert.alert(
         mobileRuntimeToolApprovalAlerts.failed.title,
-        getChatRuntimeAlertMessage(error, mobileRuntimeToolApprovalAlerts.failed.fallbackMessage),
+        formatChatMessageRuntimeAlertMessage(error, mobileRuntimeToolApprovalAlerts.failed.fallbackMessage),
       );
     } finally {
       setPendingToolApprovalResponseId(null);
@@ -2074,11 +2072,11 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo(formatChatRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
+      setDebugInfo(formatChatMessageRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
       return;
     }
 
-    setDebugInfo(formatChatRuntimeStartingRequestDebugMessage(config.baseUrl));
+    setDebugInfo(formatChatMessageRuntimeStartingRequestDebugMessage(config.baseUrl));
     // Clear any previous failed message when starting a new send
     setLastFailedMessage(null);
 
@@ -2467,7 +2465,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setConversationState('blocked');
 
       const recoveryState = connectionState;
-      const errorMessage = formatChatRuntimeConnectionErrorMessage(e.message, recoveryState);
+      const errorMessage = formatChatMessageRuntimeConnectionErrorMessage(e.message, recoveryState);
 
       // Save the failed message for retry
       setLastFailedMessage(text);
@@ -2475,12 +2473,12 @@ export default function ChatScreen({ route, navigation }: any) {
       // Check if there's partial content we can show
       const partialContent = client.getPartialContent();
 
-      setDebugInfo(formatChatRuntimeDebugError(errorMessage));
+      setDebugInfo(formatChatMessageRuntimeDebugError(errorMessage));
       // Update the in-flight assistant message instead of appending a new one
       // This avoids duplicating the assistant loading placeholder and ensures
       // the retry pop logic removes the correct items
       setMessages((m) => {
-        const errorContent = formatChatRuntimeAssistantErrorContent(errorMessage, partialContent);
+        const errorContent = formatChatMessageRuntimeAssistantErrorContent(errorMessage, partialContent);
         // Find and update the last assistant message instead of appending
         const copy = [...m];
         for (let i = copy.length - 1; i >= 0; i--) {
@@ -2590,7 +2588,7 @@ export default function ChatScreen({ route, navigation }: any) {
         queuedMsg.id,
         mobileRuntimeDebug.noSessionAvailable,
       );
-      setDebugInfo(formatChatRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
+      setDebugInfo(formatChatMessageRuntimeDebugError(mobileRuntimeDebug.noSessionAvailable));
       return;
     }
 
@@ -2794,10 +2792,10 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
     } catch (e: any) {
       console.error('[ChatScreen] Queued message error:', e);
-      const queuedErrorMessage = getChatRuntimeAlertMessage(e, mobileRuntimeDebug.unknownError);
+      const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, mobileRuntimeDebug.unknownError);
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
       setConversationState('blocked');
-      setMessages((m) => [...m, { role: 'assistant', content: formatChatRuntimeDebugError(queuedErrorMessage) }]);
+      setMessages((m) => [...m, { role: 'assistant', content: formatChatMessageRuntimeDebugError(queuedErrorMessage) }]);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }

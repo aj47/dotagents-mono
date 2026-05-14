@@ -264,7 +264,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalAlertState/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.connectionRequired\.title,\s*mobileRuntimeToolApprovalAlerts\.connectionRequired\.message,\s*\)/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.unavailable\.title,\s*mobileRuntimeToolApprovalAlerts\.unavailable\.message,\s*\)/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.failed\.title,\s*getChatRuntimeAlertMessage\(error, mobileRuntimeToolApprovalAlerts\.failed\.fallbackMessage\),\s*\)/);
+  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeToolApprovalAlerts\.failed\.title,\s*formatChatMessageRuntimeAlertMessage\(error, mobileRuntimeToolApprovalAlerts\.failed\.fallbackMessage\),\s*\)/);
   assert.match(screenSource, /const toggleToolApprovalArguments = useCallback\(\(approvalId: string\) => \{/);
   assert.doesNotMatch(screenSource, /const toolApprovalId = m\.toolApproval\?\.approvalId \?\? '';/);
   assert.doesNotMatch(screenSource, /const isToolApprovalExpanded = toolApprovalId/);
@@ -837,16 +837,18 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
     /const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState\(\);/,
   );
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchAlertState/);
-  assert.match(screenSource, /formatChatRuntimeWebConfirmMessage\(\s*mobileRuntimeKillSwitchAlerts\.confirmation\.title,\s*mobileRuntimeKillSwitchAlerts\.confirmation\.message,/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeWebConfirmMessage,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeWebConfirmMessage,/);
+  assert.match(screenSource, /formatChatMessageRuntimeWebConfirmMessage\(\s*mobileRuntimeKillSwitchAlerts\.confirmation\.title,\s*mobileRuntimeKillSwitchAlerts\.confirmation\.message,/);
   assert.match(screenSource, /window\.alert\(result\.message \|\| mobileRuntimeKillSwitchAlerts\.success\.fallbackMessage\)/);
   assert.match(screenSource, /`\$\{mobileRuntimeKillSwitchAlerts\.failed\.title\}: \$\{result\.error \|\| mobileRuntimeKillSwitchAlerts\.failed\.fallbackMessage\}`/);
-  assert.match(screenSource, /`\$\{mobileRuntimeKillSwitchAlerts\.connectionFailed\.title\}: \$\{getChatRuntimeAlertMessage\(e, mobileRuntimeKillSwitchAlerts\.connectionFailed\.fallbackMessage\)\}`/);
+  assert.match(screenSource, /`\$\{mobileRuntimeKillSwitchAlerts\.connectionFailed\.title\}: \$\{formatChatMessageRuntimeAlertMessage\(e, mobileRuntimeKillSwitchAlerts\.connectionFailed\.fallbackMessage\)\}`/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeKillSwitchAlerts\.confirmation\.title,\s*mobileRuntimeKillSwitchAlerts\.confirmation\.message,/);
   assert.match(screenSource, /\{ text: mobileRuntimeKillSwitchAlerts\.confirmation\.cancelLabel, style: 'cancel' \}/);
   assert.match(screenSource, /text: mobileRuntimeKillSwitchAlerts\.confirmation\.confirmLabel,/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeKillSwitchAlerts\.success\.title,\s*result\.message \|\| mobileRuntimeKillSwitchAlerts\.success\.fallbackMessage,/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeKillSwitchAlerts\.failed\.title,\s*result\.error \|\| mobileRuntimeKillSwitchAlerts\.failed\.fallbackMessage,/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeKillSwitchAlerts\.connectionFailed\.title,\s*getChatRuntimeAlertMessage\(e, mobileRuntimeKillSwitchAlerts\.connectionFailed\.fallbackMessage\),/);
+  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeKillSwitchAlerts\.connectionFailed\.title,\s*formatChatMessageRuntimeAlertMessage\(e, mobileRuntimeKillSwitchAlerts\.connectionFailed\.fallbackMessage\),/);
   assert.match(chatMessageChromeSource, /killSwitchIconContainerStyle: styles\.headerKillSwitchIconContainer,/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderIconButton\s+\{\.\.\.killSwitchButton\}\s+style=\{styles\.iconButtons\.actionStyle\}\s+iconContainerStyle=\{styles\.iconButtons\.killSwitchIconContainerStyle\}/);
   assert.match(chatMessageChromeSource, /handsFreeButtonRenderState: getChatRuntimeHandsFreeMobileRenderState\(\{\s+isEnabled: handsFree,\s+colors,\s+\}\),/);
@@ -3332,12 +3334,22 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
 });
 
 test('uses shared runtime presentation for mobile request and queue debug copy', () => {
-  assert.match(screenSource, /formatChatRuntimeDebugError,/);
-  assert.match(screenSource, /formatChatRuntimeStartingRequestDebugMessage,/);
+  assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/session-presentation'/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeDebugError,/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeStartingRequestDebugMessage,/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeConnectionErrorMessage,/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeAssistantErrorContent,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeAlertMessage,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeDebugError,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeStartingRequestDebugMessage,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeConnectionErrorMessage,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeAssistantErrorContent,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
-  assert.match(screenSource, /getChatRuntimeDebugState,/);
-  assert.match(screenSource, /const mobileRuntimeDebug = getChatRuntimeDebugState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeDebugState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeDebugState,/);
+  assert.match(screenSource, /const mobileRuntimeDebug = getChatMessageRuntimeDebugState\(\);/);
   assert.match(screenSource, /mobileRuntimeDebug\.noSessionAvailable/);
   assert.match(screenSource, /mobileRuntimeDebug\.requestSent/);
   assert.match(screenSource, /mobileRuntimeDebug\.completed/);
@@ -3345,9 +3357,11 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /mobileRuntimeDebug\.sessionChangedDuringProcessing/);
   assert.match(screenSource, /mobileRuntimeDebug\.requestSuperseded/);
   assert.match(screenSource, /mobileRuntimeDebug\.unknownError/);
-  assert.match(screenSource, /setDebugInfo\(formatChatRuntimeDebugError\(errorMessage\)\)/);
-  assert.match(screenSource, /formatChatRuntimeStartingRequestDebugMessage\(config\.baseUrl\)/);
-  assert.match(screenSource, /const queuedErrorMessage = getChatRuntimeAlertMessage\(e, mobileRuntimeDebug\.unknownError\)/);
+  assert.match(screenSource, /setDebugInfo\(formatChatMessageRuntimeDebugError\(errorMessage\)\)/);
+  assert.match(screenSource, /formatChatMessageRuntimeStartingRequestDebugMessage\(config\.baseUrl\)/);
+  assert.match(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
+  assert.match(screenSource, /formatChatMessageRuntimeAssistantErrorContent\(errorMessage, partialContent\)/);
+  assert.match(screenSource, /const queuedErrorMessage = formatChatMessageRuntimeAlertMessage\(e, mobileRuntimeDebug\.unknownError\)/);
   assert.match(screenSource, /const mobileRuntimeDebugPanelsRenderState = useMemo\(\s+\(\) => createChatMessageRuntimeDebugPanelsRenderState\(\{\s+requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState\(\{[\s\S]*?return getChatRuntimeDebugPanelsMobileRenderState\(\{[\s\S]*?voiceEntryCount: resolvedVoiceEvents\.length,[\s\S]*?voiceRows: \[/);
   assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
@@ -3728,7 +3742,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchAlertState/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.unavailable\.title,\s*mobileRuntimeBranchAlerts\.unavailable\.message,\s*\)/);
   assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.created\.title,\s*mobileRuntimeBranchAlerts\.created\.message,\s*\)/);
-  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.failed\.title,\s*getChatRuntimeAlertMessage\(error, mobileRuntimeBranchAlerts\.failed\.fallbackMessage\),\s*\)/);
+  assert.match(screenSource, /Alert\.alert\(\s*mobileRuntimeBranchAlerts\.failed\.title,\s*formatChatMessageRuntimeAlertMessage\(error, mobileRuntimeBranchAlerts\.failed\.fallbackMessage\),\s*\)/);
   assert.match(clientSource, /branchMessageIndex\?: number;/);
   assert.match(screenSource, /branchMessageIndex: historyMsg\.branchMessageIndex/);
   assert.doesNotMatch(screenSource, /const messageBranchRenderState = getChatRuntimeBranchMobileRenderState\(\{/);
