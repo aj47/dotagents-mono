@@ -36,11 +36,8 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionSet,
   createChatMessageActionStyleSlots,
-  createChatMessageDelegationCardProps,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
-  createChatMessageRetryStatusProps,
-  createChatMessageToolApprovalProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -3886,12 +3883,12 @@ export default function ChatScreen({ route, navigation }: any) {
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageRuntimeThreadStyles}
                 body={createChatMessageThreadBodyProps({
-                  retryStatus: createChatMessageRetryStatusProps({
+                  retryStatus: {
                     isRetry: m.variant === 'retry',
                     retryInfo: m.retryInfo,
                     colors: theme.colors,
-                  }),
-                  delegationCard: createChatMessageDelegationCardProps({
+                  },
+                  delegationCard: {
                     isDelegation: m.variant === 'delegation',
                     surface: mobileRuntimeDelegationCard,
                     delegation: m.delegation,
@@ -3911,8 +3908,8 @@ export default function ChatScreen({ route, navigation }: any) {
                         setChatDisplayExpansionState(current, runId, true),
                       );
                     },
-                  }),
-                  toolApproval: createChatMessageToolApprovalProps({
+                  },
+                  toolApproval: {
                     isApproval: m.variant === 'approval',
                     toolApproval: m.toolApproval,
                     expandedToolApprovals,
@@ -3921,7 +3918,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     onToggleArguments: toggleToolApprovalArguments,
                     onDeny: (approvalId) => { void respondToToolApproval(approvalId, false); },
                     onApprove: (approvalId) => { void respondToToolApproval(approvalId, true); },
-                  }),
+                  },
                   inlineActivity: messageInlineActivityProps,
                   conversation: {
                     contentState: messageContentRenderState,

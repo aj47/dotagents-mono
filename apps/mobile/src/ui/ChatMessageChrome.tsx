@@ -1779,8 +1779,11 @@ export type ChatMessageConversationBodyPropsInput = {
 };
 
 export type ChatMessageThreadBodyPropsInput =
-  Omit<ChatMessageThreadBodyProps, 'styles' | 'conversation'>
+  Pick<ChatMessageThreadBodyProps, 'inlineActivity'>
   & {
+    retryStatus: ChatMessageRetryStatusPropsInput;
+    delegationCard: ChatMessageDelegationCardPropsInput;
+    toolApproval: ChatMessageToolApprovalPropsInput;
     conversation: ChatMessageConversationBodyPropsInput;
   };
 
@@ -2031,9 +2034,9 @@ export function createChatMessageThreadBodyProps({
   conversation,
 }: ChatMessageThreadBodyPropsInput): Omit<ChatMessageThreadBodyProps, 'styles'> {
   return {
-    retryStatus: retryStatus ?? null,
-    delegationCard: delegationCard ?? null,
-    toolApproval: toolApproval ?? null,
+    retryStatus: createChatMessageRetryStatusProps(retryStatus),
+    delegationCard: createChatMessageDelegationCardProps(delegationCard),
+    toolApproval: createChatMessageToolApprovalProps(toolApproval),
     inlineActivity: inlineActivity ?? null,
     conversation: createChatMessageConversationBodyProps(conversation),
   };

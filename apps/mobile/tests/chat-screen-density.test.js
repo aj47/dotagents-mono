@@ -255,7 +255,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.approval\.(connectionRequiredTitle|connectionRequiredMessage|unavailableTitle|unavailableMessage|failedTitle|responseFailedMessage)/);
   assert.doesNotMatch(screenSource, /const toolApprovalArgumentsDetail =/);
   assert.doesNotMatch(screenSource, /const toolApprovalArgumentsPreview =/);
-  assert.match(screenSource, /toolApproval: createChatMessageToolApprovalProps\(\{\s+isApproval: m\.variant === 'approval',\s+toolApproval: m\.toolApproval,\s+expandedToolApprovals,\s+pendingApprovalResponseId: pendingToolApprovalResponseId,\s+colors: theme\.colors,/);
+  assert.doesNotMatch(screenSource, /toolApproval: createChatMessageToolApprovalProps/);
+  assert.match(screenSource, /toolApproval: \{\s+isApproval: m\.variant === 'approval',\s+toolApproval: m\.toolApproval,\s+expandedToolApprovals,\s+pendingApprovalResponseId: pendingToolApprovalResponseId,\s+colors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /toolApproval: createChatMessageToolApprovalProps\(toolApproval\),/);
   assert.doesNotMatch(screenSource, /toolApproval: m\.variant === 'approval' && m\.toolApproval && toolApprovalRenderState \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
   assert.match(chatMessageChromeSource, /const argumentsDetail = getToolExecutionDetailArgumentsState\(toolApproval\.arguments\);/);
@@ -382,7 +384,9 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.doesNotMatch(screenSource, /const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s*retryInfo: m\.retryInfo,\s*colors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeRetryStatusMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type AgentRetryInfo,/);
-  assert.match(screenSource, /retryStatus: createChatMessageRetryStatusProps\(\{\s+isRetry: m\.variant === 'retry',\s+retryInfo: m\.retryInfo,\s+colors: theme\.colors,\s+\}\),/);
+  assert.doesNotMatch(screenSource, /retryStatus: createChatMessageRetryStatusProps/);
+  assert.match(screenSource, /retryStatus: \{\s+isRetry: m\.variant === 'retry',\s+retryInfo: m\.retryInfo,\s+colors: theme\.colors,\s+\},/);
+  assert.match(chatMessageChromeSource, /retryStatus: createChatMessageRetryStatusProps\(retryStatus\),/);
   assert.doesNotMatch(screenSource, /m\.variant === 'retry' && retryStatusRenderState\.shouldRender/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /if \(!isRetry\) return null;/);
@@ -494,7 +498,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /getChatRuntimeDelegationStatusMobileRenderState\(\{\s+status: delegation\.status,\s+colors,/);
   assert.doesNotMatch(screenSource, /const delegationAccessibilityLabel = m\.delegation && delegationPresentation\s+\? formatChatRuntimeDelegationAccessibilityLabel\(/);
   assert.match(chatMessageChromeSource, /accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel\(\{/);
-  assert.match(screenSource, /delegationCard: createChatMessageDelegationCardProps\(\{\s+isDelegation: m\.variant === 'delegation',\s+surface: mobileRuntimeDelegationCard,\s+delegation: m\.delegation,\s+toolEntries: renderedToolEntries,/);
+  assert.doesNotMatch(screenSource, /delegationCard: createChatMessageDelegationCardProps/);
+  assert.match(screenSource, /delegationCard: \{\s+isDelegation: m\.variant === 'delegation',\s+surface: mobileRuntimeDelegationCard,\s+delegation: m\.delegation,\s+toolEntries: renderedToolEntries,/);
+  assert.match(chatMessageChromeSource, /delegationCard: createChatMessageDelegationCardProps\(delegationCard\),/);
   assert.match(screenSource, /displayToolCallCount,/);
   assert.doesNotMatch(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
   assert.doesNotMatch(chatMessageChromeSource, /toolPreviewShouldRender/);
@@ -2600,11 +2606,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.match(screenSource, /createChatMessageActionSet,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationBodyProps,/);
-  assert.match(screenSource, /createChatMessageDelegationCardProps,/);
+  assert.doesNotMatch(screenSource, /createChatMessageDelegationCardProps,/);
   assert.doesNotMatch(screenSource, /createChatMessageExpandedContentProps,/);
   assert.match(screenSource, /createChatMessageInlineActivityProps,/);
-  assert.match(screenSource, /createChatMessageRetryStatusProps,/);
-  assert.match(screenSource, /createChatMessageToolApprovalProps,/);
+  assert.doesNotMatch(screenSource, /createChatMessageRetryStatusProps,/);
+  assert.doesNotMatch(screenSource, /createChatMessageToolApprovalProps,/);
   assert.doesNotMatch(screenSource, /createChatMessageDelegationToolPreviewRows,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionCompactPreviewRow,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionRows,/);
@@ -2639,7 +2645,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
-  assert.match(chatMessageChromeSource, /retryStatus: retryStatus \?\? null/);
+  assert.match(chatMessageChromeSource, /retryStatus: createChatMessageRetryStatusProps\(retryStatus\),/);
+  assert.match(chatMessageChromeSource, /delegationCard: createChatMessageDelegationCardProps\(delegationCard\),/);
+  assert.match(chatMessageChromeSource, /toolApproval: createChatMessageToolApprovalProps\(toolApproval\),/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /turnDuration: availability\.turnDuration\.canRender \? \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
   assert.match(chatMessageChromeSource, /speech: renderChatMessageActionButton\(speech, availability\.speech\.canRender\),/);
