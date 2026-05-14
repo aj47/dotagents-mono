@@ -1623,8 +1623,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
   assert.match(chatMessageChromeSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
   assert.match(chatMessageChromeSource, /shouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
-  assert.match(screenSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(\{\s+displayToolCallCount,\s+colors: theme\.colors,\s+isExpanded,\s+rows: \{\s+entries: renderedToolEntries,\s+stableMessageKey: m\.id \?\? String\(i\),\s+expandedToolCalls,\s+previewNumberOfLines: toolExecutionDetailStyleState\.payloadPreview\.numberOfLines,\s+pendingResultRenderState: toolExecutionDetailPendingResultState,\s+onToggleToolCall: toggleToolCallExpansion,\s+onCopyPayload: \(content\) => \{ void handleCopyToolPayload\(content\); \},\s+\},\s+compact: \{\s+onToggle: \(\) => toggleMessageExpansion\(i\),/);
+  assert.doesNotMatch(screenSource, /toolExecutionStack: createChatMessageToolExecutionStackProps/);
+  assert.match(screenSource, /toolExecutionStack: \{\s+displayToolCallCount,\s+colors: theme\.colors,\s+isExpanded,\s+rows: \{\s+entries: renderedToolEntries,\s+stableMessageKey: m\.id \?\? String\(i\),\s+expandedToolCalls,\s+previewNumberOfLines: toolExecutionDetailStyleState\.payloadPreview\.numberOfLines,\s+pendingResultRenderState: toolExecutionDetailPendingResultState,\s+onToggleToolCall: toggleToolCallExpansion,\s+onCopyPayload: \(content\) => \{ void handleCopyToolPayload\(content\); \},\s+\},\s+compact: \{\s+onToggle: \(\) => toggleMessageExpansion\(i\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
+  assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /const visibility = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const compactRenderState = getToolExecutionDetailMobileExpandControlRenderState\(\);/);
   assert.match(chatMessageChromeSource, /shouldRender: visibility\.toolExecutionStack\.shouldRender,[\s\S]*?emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,/);
@@ -2606,7 +2608,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionCompactPreviewRow,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionRows,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionDetailRow,/);
-  assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
+  assert.doesNotMatch(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.match(screenSource, /createChatMessageThreadBodyProps,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
@@ -2667,6 +2669,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.body\}\s+styles=\{styles\.body\}/);
   assert.match(screenSource, /createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,\s+expanded: \{/);
   assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+slots: actionSet\.visibleSlots,\s+components: actionSet\.components,/);
+  assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+slots=\{slots\}\s+components=\{components\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+slots=\{slots\}\s+components=\{components\}/);

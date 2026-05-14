@@ -1777,7 +1777,7 @@ export type ChatMessageConversationBodyPropsInput = {
   actionSet: ChatMessageActionSet;
   expanded: ChatMessageExpandedContentPropsInput;
   collapsed: ChatMessageCollapsedPreviewPropsInput;
-  toolExecutionStack: ChatMessageConversationBodyProps['toolExecutionStack'];
+  toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
 };
 
 type ChatMessageRuntimeThreadStyleSlots = {
@@ -2010,7 +2010,7 @@ export function createChatMessageConversationBodyProps({
       expanded: createChatMessageExpandedContentProps(expanded),
       collapsed: createChatMessageCollapsedPreviewProps(collapsed),
     },
-    toolExecutionStack,
+    toolExecutionStack: createChatMessageToolExecutionStackProps(toolExecutionStack),
     standaloneActions: {
       shouldRender: actionSet.shouldRenderStandaloneActions,
       slots: actionSet.visibleSlots,

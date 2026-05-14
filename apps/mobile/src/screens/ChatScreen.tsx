@@ -42,7 +42,6 @@ import {
   createChatMessageInlineActivityProps,
   createChatMessageRetryStatusProps,
   createChatMessageToolApprovalProps,
-  createChatMessageToolExecutionStackProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -3941,7 +3940,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       actionState: messageRenderState.collapsedPreviewAction,
                       onToggle: () => toggleMessageExpansion(i),
                     },
-                    toolExecutionStack: createChatMessageToolExecutionStackProps({
+                    toolExecutionStack: {
                       displayToolCallCount,
                       colors: theme.colors,
                       isExpanded,
@@ -3961,7 +3960,7 @@ export default function ChatScreen({ route, navigation }: any) {
                         onToggle: () => toggleMessageExpansion(i),
                         emptyStateRenderState: toolExecutionDetailEmptyState,
                       },
-                    }),
+                    },
                   }),
                 })}
               />
