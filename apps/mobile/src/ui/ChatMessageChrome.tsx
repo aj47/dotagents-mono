@@ -782,6 +782,27 @@ type ChatRuntimeHandsFreeMutableState = {
   setHandsFreePhaseRefValue: (phase: HandsFreePhase) => void;
 };
 
+type ChatRuntimeHandsFreeToggleController = {
+  reset: () => void;
+};
+
+type ChatRuntimeHandsFreeToggleActionsStateInput<TConfig extends object> = {
+  config: TConfig;
+  setConfig: (config: TConfig) => void;
+  saveConfig: (config: TConfig) => unknown | Promise<unknown>;
+  handsFreeController: ChatRuntimeHandsFreeToggleController;
+  handsFreeRef: ChatRuntimeMutableRef<boolean>;
+  setHandsFreeRefValue: (value: boolean) => void;
+  stopRecognitionOnly: () => void | Promise<void>;
+  stopSpeech: () => void;
+  stopRemoteSpeech: () => void;
+  setDebugInfo: (message: string) => void;
+};
+
+type ChatRuntimeHandsFreeToggleActionsState = {
+  toggleHandsFree: () => Promise<void>;
+};
+
 type ChatRuntimeConnectionRetryState = {
   lastFailedMessage: string | null;
   setLastFailedMessage: Dispatch<SetStateAction<string | null>>;
@@ -7257,6 +7278,51 @@ export function useChatRuntimeHandsFreeMutableState({
     ttsEnabledRef,
     setHandsFreeRefValue,
     setHandsFreePhaseRefValue,
+  };
+}
+
+export function useChatRuntimeHandsFreeToggleActionsState<TConfig extends object>({
+  config,
+  setConfig,
+  saveConfig,
+  handsFreeController,
+  handsFreeRef,
+  setHandsFreeRefValue,
+  stopRecognitionOnly,
+  stopSpeech,
+  stopRemoteSpeech,
+  setDebugInfo,
+}: ChatRuntimeHandsFreeToggleActionsStateInput<TConfig>): ChatRuntimeHandsFreeToggleActionsState {
+  const toggleHandsFree = useCallback(async () => {
+    const next = !handsFreeRef.current;
+    setHandsFreeRefValue(next);
+    const nextConfig = { ...config, handsFree: next };
+    setConfig(nextConfig);
+    try { await saveConfig(nextConfig); } catch {}
+    if (!next) {
+      handsFreeController.reset();
+      void stopRecognitionOnly();
+      stopSpeech();
+      stopRemoteSpeech();
+      setDebugInfo(getChatComposerHandsFreeDebugMessage('disabled'));
+    } else {
+      setDebugInfo(getChatComposerHandsFreeDebugMessage('enabled'));
+    }
+  }, [
+    config,
+    handsFreeController,
+    handsFreeRef,
+    saveConfig,
+    setConfig,
+    setDebugInfo,
+    setHandsFreeRefValue,
+    stopRecognitionOnly,
+    stopRemoteSpeech,
+    stopSpeech,
+  ]);
+
+  return {
+    toggleHandsFree,
   };
 }
 

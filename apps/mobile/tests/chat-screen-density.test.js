@@ -968,6 +968,9 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /killSwitchIconContainerStyle: styles\.headerKillSwitchIconContainer,/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderIconButton\s+\{\.\.\.killSwitchButton\}\s+style=\{styles\.iconButtons\.actionStyle\}\s+iconContainerStyle=\{styles\.iconButtons\.killSwitchIconContainerStyle\}/);
   assert.match(chatMessageChromeSource, /handsFreeButtonRenderState: getChatRuntimeHandsFreeMobileRenderState\(\{\s+isEnabled: handsFree,\s+colors,\s+\}\),/);
+  assert.match(screenSource, /useChatRuntimeHandsFreeToggleActionsState,/);
+  assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleActionsState\(\{/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleActionsState/);
   assert.match(screenSource, /onHandsFreeButtonPress: toggleHandsFree,/);
   assert.match(chatMessageChromeSource, /handsFreeIconContainerStyle: styles\.headerHandsFreeIconContainer,/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderIconButton\s+\{\.\.\.handsFreeButton\}\s+style=\{styles\.iconButtons\.actionStyle\}\s+iconContainerStyle=\{styles\.iconButtons\.handsFreeIconContainerStyle\}/);

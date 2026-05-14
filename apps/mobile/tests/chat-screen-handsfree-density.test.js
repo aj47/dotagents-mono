@@ -101,8 +101,13 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 });
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
-  assert.match(screenSource, /const next = !handsFreeRef\.current;\s*setHandsFreeRefValue\(next\);/);
-  assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?getChatComposerHandsFreeDebugMessage\('disabled'\)/);
+  assert.match(screenSource, /useChatRuntimeHandsFreeToggleActionsState,/);
+  assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleActionsState\(\{\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+setHandsFreeRefValue,\s+stopRecognitionOnly,\s+stopSpeech: Speech\.stop,\s+stopRemoteSpeech: stopRemoteTts,\s+setDebugInfo,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleActionsState/);
+  assert.match(chatMessageChromeSource, /const next = !handsFreeRef\.current;\s+setHandsFreeRefValue\(next\);/);
+  assert.match(chatMessageChromeSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\(\);[\s\S]*?stopSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);[\s\S]*?getChatComposerHandsFreeDebugMessage\('disabled'\)/);
+  assert.doesNotMatch(screenSource, /const next = !handsFreeRef\.current;\s*setHandsFreeRefValue\(next\);/);
+  assert.doesNotMatch(screenSource, /handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);/);
 });
 
 test('falls back to normal direct-send handling for stale handsfree finalizations after toggle-off', () => {
@@ -196,7 +201,9 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(chatMessageChromeSource, /export function mergeChatComposerRuntimeVoiceText/);
   assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('transcriptAdded'\)/);
   assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('permissionDenied'\)/);
-  assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);
+  assert.doesNotMatch(screenSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);
+  assert.match(chatMessageChromeSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);
+  assert.match(chatMessageChromeSource, /getChatComposerHandsFreeDebugMessage\('disabled'\)/);
   assert.doesNotMatch(screenSource, /getChatComposerHandsFreeDebugMessage\('awake'\)/);
   assert.doesNotMatch(screenSource, /getChatComposerHandsFreeDebugMessage\('resumed'\)/);
   assert.doesNotMatch(screenSource, /getChatComposerHandsFreeDebugMessage\('paused'\)/);

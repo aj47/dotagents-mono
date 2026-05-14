@@ -31,6 +31,7 @@ import {
   useChatRuntimeConnectionRetryActionState,
   useChatRuntimeForegroundState,
   useChatRuntimeHandsFreeMutableState,
+  useChatRuntimeHandsFreeToggleActionsState,
   useChatComposerRuntimeDraftState,
   useChatComposerRuntimeTextEntrySubmissionState,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -626,22 +627,18 @@ export default function ChatScreen({ route, navigation }: any) {
 			log: voiceLog,
 		  });
 
-  const toggleHandsFree = useCallback(async () => {
-    const next = !handsFreeRef.current;
-    setHandsFreeRefValue(next);
-    const nextCfg = { ...config, handsFree: next } as any;
-    setConfig(nextCfg);
-    try { await saveConfig(nextCfg); } catch {}
-    if (!next) {
-      handsFreeController.reset();
-      void stopRecognitionOnly?.();
-      Speech.stop();
-      stopRemoteTts();
-      setDebugInfo(getChatComposerHandsFreeDebugMessage('disabled'));
-    } else {
-      setDebugInfo(getChatComposerHandsFreeDebugMessage('enabled'));
-    }
-  }, [config, handsFreeController, setConfig, setHandsFreeRefValue, stopRecognitionOnly]);
+  const { toggleHandsFree } = useChatRuntimeHandsFreeToggleActionsState({
+    config,
+    setConfig,
+    saveConfig,
+    handsFreeController,
+    handsFreeRef,
+    setHandsFreeRefValue,
+    stopRecognitionOnly,
+    stopSpeech: Speech.stop,
+    stopRemoteSpeech: stopRemoteTts,
+    setDebugInfo,
+  });
 
   const handleBackToSessions = useCallback(() => {
     navigation.navigate('Sessions');
