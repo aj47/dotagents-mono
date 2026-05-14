@@ -3394,6 +3394,18 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /<ChatMessageActionIconButton[\s\S]*?accessibilityRole=\{spec\.renderState\.accessibilityRole\}[\s\S]*?icon=\{spec\.renderState\.icon\}/);
   assert.match(screenSource, /onSpeakMessage: speakMessage,/);
   assert.match(chatMessageChromeSource, /onPress: \(\) => onSpeakMessage\(messageIndex, visibleMessageContent\)/);
+  assert.match(screenSource, /useChatMessageRuntimeSpeechPlaybackState,/);
+  assert.match(screenSource, /const \{\s+speakingMessageIndex,\s+intendedSpeakingIndexRef,\s+setIntendedSpeakingMessage,\s+startSpeakingMessage,\s+clearSpeakingMessage,\s+clearIntendedSpeakingMessage,\s+\} = useChatMessageRuntimeSpeechPlaybackState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechPlaybackState/);
+  assert.match(chatMessageChromeSource, /const \[speakingMessageIndex, setSpeakingMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const intendedSpeakingIndexRef = useRef<number \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const startSpeakingMessage = useCallback\(\(messageIndex: number\) => \{[\s\S]*?intendedSpeakingIndexRef\.current = messageIndex;[\s\S]*?setSpeakingMessageIndex\(messageIndex\);/);
+  assert.doesNotMatch(screenSource, /const \[speakingMessageIndex, setSpeakingMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.doesNotMatch(screenSource, /const intendedSpeakingIndexRef = useRef<number \| null>\(null\);/);
+  assert.match(screenSource, /setIntendedSpeakingMessage\(index\);/);
+  assert.match(screenSource, /startSpeakingMessage\(index\);/);
+  assert.match(screenSource, /clearSpeakingMessage\(\);/);
+  assert.match(screenSource, /clearIntendedSpeakingMessage\(\);/);
   assert.match(screenSource, /speakingMessageIndex,/);
   assert.match(chatMessageChromeSource, /isSpeaking: speakingMessageIndex === messageIndex,/);
   assert.doesNotMatch(screenSource, /messageSpeechAction\.label \?\? mobileMessageActionCopy\.speech\.readAloudLabel/);

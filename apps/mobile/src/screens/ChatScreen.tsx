@@ -69,6 +69,7 @@ import {
   sortChatMessageRuntimeResponseEvents,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeResponseHistoryState,
+  useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
@@ -280,11 +281,11 @@ export default function ChatScreen({ route, navigation }: any) {
     // as a "mute" control, so it must silence both native and remote (Edge)
     // playback and clear the auto-speech queue/state so nothing resumes.
     if (!next) {
-      intendedSpeakingIndexRef.current = null;
+      clearIntendedSpeakingMessage();
       Speech.stop();
       stopRemoteTts();
       clearQueuedResponseSpeech();
-      setSpeakingMessageIndex(null);
+      clearSpeakingMessage();
       // Only transition the hands-free controller when it was actually speaking;
       // calling onSpeechFinished mid-`processing` would prematurely return to
       // listening while a request is still in-flight.
@@ -346,6 +347,14 @@ export default function ChatScreen({ route, navigation }: any) {
     clearQueuedResponseSpeech,
     resetResponseSpeechPlaybackState,
   } = useChatMessageRuntimeResponseHistoryState();
+  const {
+    speakingMessageIndex,
+    intendedSpeakingIndexRef,
+    setIntendedSpeakingMessage,
+    startSpeakingMessage,
+    clearSpeakingMessage,
+    clearIntendedSpeakingMessage,
+  } = useChatMessageRuntimeSpeechPlaybackState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -990,31 +999,25 @@ export default function ChatScreen({ route, navigation }: any) {
     processAutoSpeechQueue();
   }, [config.ttsEnabled, processAutoSpeechQueue]);
 
-  // Per-message TTS: track which message index is currently being spoken (#1078)
-  const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
-  // Ref to track the intended speaking index, preventing race conditions
-  // when Speech.stop()'s onStopped fires after a new Speech.speak() starts
-  const intendedSpeakingIndexRef = useRef<number | null>(null);
-
   const speakMessage = useCallback((index: number, content: string) => {
     if (speakingMessageIndex === index) {
       // Toggle off - stop speaking
-      intendedSpeakingIndexRef.current = null;
+      clearIntendedSpeakingMessage();
       Speech.stop();
 	      if (handsFree) {
 	        handsFreeController.onSpeechFinished();
 	        voiceLog('tts-stopped', 'Assistant speech stopped from message playback.');
 	      }
-      setSpeakingMessageIndex(null);
+      clearSpeakingMessage();
       return;
     }
     // Stop any current speech first
-    intendedSpeakingIndexRef.current = index;
+    setIntendedSpeakingMessage(index);
     Speech.stop();
     stopRemoteTts();
     const speechText = createChatMessageRuntimeSpeechTextState(content);
     if (!speechText) {
-      intendedSpeakingIndexRef.current = null;
+      clearIntendedSpeakingMessage();
       return;
     }
     const processedText = speechText.processedText;
@@ -1022,7 +1025,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      handsFreeController.onSpeechStarted();
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
-    setSpeakingMessageIndex(index);
+    startSpeakingMessage(index);
     if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
       // Remote desktop TTS routes through the paired desktop's /v1/tts/speak.
       void speakRemoteTts(processedText, {
@@ -1033,20 +1036,20 @@ export default function ChatScreen({ route, navigation }: any) {
         model: effectiveRemoteTtsModel,
         rate: effectiveRemoteTtsRate,
         onDone: () => {
-          intendedSpeakingIndexRef.current = null;
+          clearIntendedSpeakingMessage();
           if (handsFree) {
             handsFreeController.onSpeechFinished();
             voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
           }
-          setSpeakingMessageIndex(null);
+          clearSpeakingMessage();
         },
         onError: () => {
-          intendedSpeakingIndexRef.current = null;
+          clearIntendedSpeakingMessage();
           if (handsFree) {
             handsFreeController.onSpeechFinished();
             voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
           }
-          setSpeakingMessageIndex(null);
+          clearSpeakingMessage();
         },
         onStopped: () => {
           if (intendedSpeakingIndexRef.current === null) {
@@ -1054,7 +1057,7 @@ export default function ChatScreen({ route, navigation }: any) {
               handsFreeController.onSpeechFinished();
               voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
             }
-            setSpeakingMessageIndex(null);
+            clearSpeakingMessage();
           }
         },
       });
@@ -1066,20 +1069,20 @@ export default function ChatScreen({ route, navigation }: any) {
       rate: config.ttsRate ?? 1.0,
       pitch: config.ttsPitch ?? 1.0,
       onDone: () => {
-        intendedSpeakingIndexRef.current = null;
+        clearIntendedSpeakingMessage();
 	        if (handsFree) {
 	          handsFreeController.onSpeechFinished();
 	          voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
 	        }
-        setSpeakingMessageIndex(null);
+        clearSpeakingMessage();
       },
       onError: () => {
-        intendedSpeakingIndexRef.current = null;
+        clearIntendedSpeakingMessage();
 	        if (handsFree) {
 	          handsFreeController.onSpeechFinished();
 	          voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
 	        }
-        setSpeakingMessageIndex(null);
+        clearSpeakingMessage();
       },
       onStopped: () => {
         // Only clear if this callback is for the current intended message,
@@ -1089,7 +1092,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	            handsFreeController.onSpeechFinished();
 	            voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
 	          }
-          setSpeakingMessageIndex(null);
+          clearSpeakingMessage();
         }
       },
     };
@@ -1104,12 +1107,17 @@ export default function ChatScreen({ route, navigation }: any) {
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
+    clearIntendedSpeakingMessage,
+    clearSpeakingMessage,
 		effectiveRemoteTtsModel,
 		effectiveRemoteTtsRate,
 		effectiveRemoteTtsVoice,
 		effectiveTtsProvider,
 		handsFree,
 		handsFreeController,
+    intendedSpeakingIndexRef,
+    setIntendedSpeakingMessage,
+    startSpeakingMessage,
 		voiceLog,
 	  ]);
 

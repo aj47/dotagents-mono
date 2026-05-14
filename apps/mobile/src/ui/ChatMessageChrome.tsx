@@ -480,6 +480,16 @@ type ChatMessageRuntimeResponseHistoryState = {
   resetResponseSpeechPlaybackState: (playedEventIds?: Iterable<string>) => void;
 };
 
+type ChatMessageRuntimeSpeechPlaybackState = {
+  speakingMessageIndex: number | null;
+  setSpeakingMessageIndex: Dispatch<SetStateAction<number | null>>;
+  intendedSpeakingIndexRef: ChatRuntimeMutableRef<number | null>;
+  setIntendedSpeakingMessage: (messageIndex: number) => void;
+  startSpeakingMessage: (messageIndex: number) => void;
+  clearSpeakingMessage: () => void;
+  clearIntendedSpeakingMessage: () => void;
+};
+
 type ChatComposerRuntimeEditBeforeSendState = {
   editBeforeSendEnabled: boolean;
   toggleEditBeforeSend: () => void;
@@ -5921,6 +5931,38 @@ export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeR
     recentAutoSpeechByTextRef,
     clearQueuedResponseSpeech,
     resetResponseSpeechPlaybackState,
+  };
+}
+
+export function useChatMessageRuntimeSpeechPlaybackState(): ChatMessageRuntimeSpeechPlaybackState {
+  const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
+  const intendedSpeakingIndexRef = useRef<number | null>(null);
+
+  const clearSpeakingMessage = useCallback(() => {
+    setSpeakingMessageIndex(null);
+  }, []);
+
+  const clearIntendedSpeakingMessage = useCallback(() => {
+    intendedSpeakingIndexRef.current = null;
+  }, []);
+
+  const setIntendedSpeakingMessage = useCallback((messageIndex: number) => {
+    intendedSpeakingIndexRef.current = messageIndex;
+  }, []);
+
+  const startSpeakingMessage = useCallback((messageIndex: number) => {
+    intendedSpeakingIndexRef.current = messageIndex;
+    setSpeakingMessageIndex(messageIndex);
+  }, []);
+
+  return {
+    speakingMessageIndex,
+    setSpeakingMessageIndex,
+    intendedSpeakingIndexRef,
+    setIntendedSpeakingMessage,
+    startSpeakingMessage,
+    clearSpeakingMessage,
+    clearIntendedSpeakingMessage,
   };
 }
 
