@@ -45,7 +45,6 @@ import {
   createChatMessageRetryStatusProps,
   createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
-  createChatMessageDelegationToolPreviewRows,
   createChatMessageToolExecutionRows,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -102,9 +101,6 @@ import {
   formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeConnectionErrorMessage,
   formatChatRuntimeDebugError,
-  formatChatRuntimeDelegationAccessibilityLabel,
-  formatChatRuntimeDelegationMessageCount,
-  formatChatRuntimeDelegationToolCallActivityLabel,
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
@@ -126,13 +122,10 @@ import {
   getChatRuntimeBranchMobileRenderState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
-  getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDebugState,
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationCardMobileRenderState,
-  getChatRuntimeDelegationToolPreviewMoreActionState,
-  getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
@@ -164,7 +157,6 @@ import {
 } from '@dotagents/shared/session-presentation';
 import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
-  getAgentDelegationCardState,
   resolveAgentProgressConversationState,
 } from '@dotagents/shared/agent-progress';
 import {
@@ -3974,64 +3966,12 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.expansion,
               },
             });
-            const delegationStatusRenderState = m.delegation
-              ? getChatRuntimeDelegationStatusMobileRenderState({
-                  status: m.delegation.status,
-                  colors: theme.colors,
-                })
-              : null;
             const isDelegationConversationPreviewExpanded = m.delegation
               ? getChatDisplayExpansionState(expandedDelegationConversationPreviews, m.delegation.runId)
               : false;
             const isDelegationToolPreviewExpanded = m.delegation
               ? getChatDisplayExpansionState(expandedDelegationToolPreviews, m.delegation.runId)
               : false;
-            const delegationCardState = m.delegation
-              ? getAgentDelegationCardState(
-                  m.delegation,
-                  renderedToolEntries,
-                  {
-                    maxSubtitleLength: mobileRuntimeDelegationCard.subtitleMaxLength,
-                    conversationPreviewMaxRows: mobileRuntimeDelegationCard.conversationPreviewMaxRows,
-                    conversationPreviewMaxLength: mobileRuntimeDelegationCard.conversationPreviewMaxLength,
-                    includeAllConversationPreview: isDelegationConversationPreviewExpanded,
-                    toolPreviewMaxRows: mobileRuntimeDelegationCard.toolPreviewMaxRows,
-                    includeAllToolPreview: isDelegationToolPreviewExpanded,
-                  },
-                )
-              : null;
-            const delegationPresentation = delegationCardState?.presentation ?? null;
-            const delegationMessageCount = delegationPresentation?.messageCount ?? 0;
-            const delegationConversationPreviewState = delegationCardState?.conversationPreview ?? null;
-            const delegationConversationPreviewRows = delegationConversationPreviewState?.rows ?? [];
-            const delegationHiddenConversationCount = delegationConversationPreviewState?.hiddenCount ?? 0;
-            const delegationToolPreviewState = delegationCardState?.toolPreview ?? { rows: [], hiddenCount: 0 };
-            const delegationVisibleToolRows = delegationToolPreviewState.rows;
-            const delegationHiddenToolCount = delegationToolPreviewState.hiddenCount;
-            const delegationConversationPreviewMoreAction = getChatRuntimeDelegationConversationPreviewMoreActionState(
-              delegationHiddenConversationCount,
-            );
-            const delegationToolPreviewMoreAction = getChatRuntimeDelegationToolPreviewMoreActionState(
-              delegationHiddenToolCount,
-            );
-            const delegationMessageCountLabel = delegationMessageCount > 0
-              ? formatChatRuntimeDelegationMessageCount(delegationMessageCount)
-              : null;
-            const delegationAccessibilityLabel = m.delegation && delegationPresentation
-              ? formatChatRuntimeDelegationAccessibilityLabel({
-                  agentName: m.delegation.agentName,
-                  statusLabel: delegationPresentation.statusLabel,
-                  subtitle: delegationPresentation.subtitle,
-                  sourceLabel: delegationPresentation.sourceLabel,
-                  trackingLabel: delegationPresentation.trackingLabel,
-                  messageCount: delegationMessageCount,
-                })
-              : null;
-            const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount);
-            const delegationToolPreviewRows = createChatMessageDelegationToolPreviewRows({
-              rows: delegationVisibleToolRows,
-              colors: theme.colors,
-            });
             const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState({
               retryInfo: m.retryInfo,
               colors: theme.colors,
@@ -4052,33 +3992,23 @@ export default function ChatScreen({ route, navigation }: any) {
                   delegationCard: createChatMessageDelegationCardProps({
                     isDelegation: m.variant === 'delegation',
                     surface: mobileRuntimeDelegationCard,
-                    agentName: m.delegation?.agentName,
-                    presentation: delegationPresentation,
-                    accessibilityLabel: delegationAccessibilityLabel,
-                    messageCountLabel: delegationMessageCountLabel,
-                    statusStyles: delegationStatusRenderState?.styles ?? null,
-                    conversationPreview: {
-                      rows: delegationConversationPreviewRows,
-                      roleStyles: delegationConversationPreviewRoleStyles,
-                      hiddenCount: delegationHiddenConversationCount,
-                      moreAction: delegationConversationPreviewMoreAction,
-                      onShowAll: () => {
-                        setExpandedDelegationConversationPreviews((current) =>
-                          setChatDisplayExpansionState(current, m.delegation!.runId, true),
-                        );
-                      },
+                    delegation: m.delegation,
+                    toolEntries: renderedToolEntries,
+                    displayToolCallCount,
+                    includeAllConversationPreview: isDelegationConversationPreviewExpanded,
+                    includeAllToolPreview: isDelegationToolPreviewExpanded,
+                    toolPreviewShouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
+                    roleStyles: delegationConversationPreviewRoleStyles,
+                    colors: theme.colors,
+                    onShowAllConversationPreview: () => {
+                      setExpandedDelegationConversationPreviews((current) =>
+                        setChatDisplayExpansionState(current, m.delegation!.runId, true),
+                      );
                     },
-                    toolPreview: {
-                      shouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
-                      label: delegationToolPreviewLabel,
-                      rows: delegationToolPreviewRows,
-                      hiddenCount: delegationHiddenToolCount,
-                      moreAction: delegationToolPreviewMoreAction,
-                      onShowAll: () => {
-                        setExpandedDelegationToolPreviews((current) =>
-                          setChatDisplayExpansionState(current, m.delegation!.runId, true),
-                        );
-                      },
+                    onShowAllToolPreview: () => {
+                      setExpandedDelegationToolPreviews((current) =>
+                        setChatDisplayExpansionState(current, m.delegation!.runId, true),
+                      );
                     },
                   }),
                   toolApproval: createChatMessageToolApprovalProps({

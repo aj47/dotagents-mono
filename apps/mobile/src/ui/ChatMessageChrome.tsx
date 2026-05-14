@@ -37,9 +37,11 @@ import {
   getCompactToolExecutionPreview,
   type ChatMessageDisplayToolEntry,
 } from '@dotagents/shared/chat-utils';
-import type {
-  AgentDelegationConversationPreviewRow,
-  AgentDelegationPresentation,
+import {
+  getAgentDelegationCardState,
+  type ACPDelegationProgress,
+  type AgentDelegationConversationPreviewRow,
+  type AgentDelegationPresentation,
 } from '@dotagents/shared/agent-progress';
 import type { ChatImageAttachmentMobileRenderState } from '@dotagents/shared/conversation-media-assets';
 import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
@@ -57,26 +59,32 @@ import {
 } from '@dotagents/shared/predefined-prompts';
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import type { ToolActivityGroupMobileRenderState } from '@dotagents/shared/tool-activity-grouping';
-import type {
-  ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
-  ChatRuntimeDelegationMorePreviewActionState,
-  ChatRuntimeAgentSelectorMobileRenderState,
-  ChatRuntimeBackMobileRenderState,
-  ChatRuntimeConnectionBannerMobileRenderState,
-  ChatRuntimeHandsFreeMobileRenderState,
-  ChatRuntimeKillSwitchMobileRenderState,
-  ChatRuntimeMessageHistoryBannerMobileRenderState,
-  ChatRuntimePinMobileRenderState,
-  ChatRuntimeScrollToBottomMobileRenderState,
-  ChatRuntimeStepSummaryMobileRenderState,
-  ChatRuntimeToolApprovalMobileRenderState,
-  ChatRuntimeTurnDurationHeaderMobileRenderState,
-  ChatRuntimeDelegationCardMobileRenderState,
-  ChatRuntimeDebugPanelsMobileRenderState,
-  ChatRuntimeInlineActivityMobileRenderState,
-  ChatRuntimeLoadingStateMobileRenderState,
-  ChatSessionStatusMobileRenderState,
-  ChatSessionStatusMobileStyleState,
+import {
+  formatChatRuntimeDelegationAccessibilityLabel,
+  formatChatRuntimeDelegationMessageCount,
+  formatChatRuntimeDelegationToolCallActivityLabel,
+  getChatRuntimeDelegationConversationPreviewMoreActionState,
+  getChatRuntimeDelegationStatusMobileRenderState,
+  getChatRuntimeDelegationToolPreviewMoreActionState,
+  type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
+  type ChatRuntimeDelegationMorePreviewActionState,
+  type ChatRuntimeAgentSelectorMobileRenderState,
+  type ChatRuntimeBackMobileRenderState,
+  type ChatRuntimeConnectionBannerMobileRenderState,
+  type ChatRuntimeHandsFreeMobileRenderState,
+  type ChatRuntimeKillSwitchMobileRenderState,
+  type ChatRuntimeMessageHistoryBannerMobileRenderState,
+  type ChatRuntimePinMobileRenderState,
+  type ChatRuntimeScrollToBottomMobileRenderState,
+  type ChatRuntimeStepSummaryMobileRenderState,
+  type ChatRuntimeToolApprovalMobileRenderState,
+  type ChatRuntimeTurnDurationHeaderMobileRenderState,
+  type ChatRuntimeDelegationCardMobileRenderState,
+  type ChatRuntimeDebugPanelsMobileRenderState,
+  type ChatRuntimeInlineActivityMobileRenderState,
+  type ChatRuntimeLoadingStateMobileRenderState,
+  type ChatSessionStatusMobileRenderState,
+  type ChatSessionStatusMobileStyleState,
 } from '@dotagents/shared/session-presentation';
 import {
   getToolExecutionCallDisplayState,
@@ -529,6 +537,10 @@ type ChatMessageDelegationToolPreviewRowsInput = {
   colors: ChatMessageToolExecutionCompactPreviewRowInput['colors'];
 };
 
+type ChatMessageDelegationCardColors =
+  ChatMessageToolExecutionCompactPreviewRowInput['colors']
+  & Parameters<typeof getChatRuntimeDelegationStatusMobileRenderState>[0]['colors'];
+
 type ChatMessageDelegationCardProps = {
   surface: ChatRuntimeDelegationCardMobileRenderState['surface'];
   agentName: string;
@@ -556,12 +568,26 @@ type ChatMessageDelegationCardProps = {
 
 type ChatMessageDelegationCardPropsInput = Omit<
   ChatMessageDelegationCardProps,
-  'agentName' | 'presentation' | 'accessibilityLabel' | 'styles'
+  | 'agentName'
+  | 'presentation'
+  | 'accessibilityLabel'
+  | 'messageCountLabel'
+  | 'statusStyles'
+  | 'conversationPreview'
+  | 'toolPreview'
+  | 'styles'
 > & {
   isDelegation: boolean;
-  agentName?: string | null;
-  presentation?: AgentDelegationPresentation | null;
-  accessibilityLabel?: string | null;
+  delegation?: ACPDelegationProgress | null;
+  toolEntries: readonly ChatMessageDisplayToolEntry[];
+  displayToolCallCount: number;
+  includeAllConversationPreview: boolean;
+  includeAllToolPreview: boolean;
+  toolPreviewShouldRender: boolean;
+  roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots;
+  colors: ChatMessageDelegationCardColors;
+  onShowAllConversationPreview?: (event: GestureResponderEvent) => void;
+  onShowAllToolPreview?: (event: GestureResponderEvent) => void;
 };
 
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
@@ -1872,26 +1898,76 @@ export function createChatMessageRetryStatusProps({
 export function createChatMessageDelegationCardProps({
   isDelegation,
   surface,
-  agentName,
-  presentation,
-  accessibilityLabel,
-  messageCountLabel,
-  statusStyles,
-  conversationPreview,
-  toolPreview,
+  delegation,
+  toolEntries,
+  displayToolCallCount,
+  includeAllConversationPreview,
+  includeAllToolPreview,
+  toolPreviewShouldRender,
+  roleStyles,
+  colors,
+  onShowAllConversationPreview,
+  onShowAllToolPreview,
 }: ChatMessageDelegationCardPropsInput): ChatMessageThreadBodyProps['delegationCard'] {
-  return isDelegation && presentation
-    ? {
-        surface,
-        agentName: agentName ?? '',
-        presentation,
-        accessibilityLabel: accessibilityLabel ?? '',
-        messageCountLabel,
-        statusStyles,
-        conversationPreview,
-        toolPreview,
-      }
-    : null;
+  if (!isDelegation || !delegation) return null;
+
+  const cardState = getAgentDelegationCardState(
+    delegation,
+    toolEntries,
+    {
+      maxSubtitleLength: surface.subtitleMaxLength,
+      conversationPreviewMaxRows: surface.conversationPreviewMaxRows,
+      conversationPreviewMaxLength: surface.conversationPreviewMaxLength,
+      includeAllConversationPreview,
+      toolPreviewMaxRows: surface.toolPreviewMaxRows,
+      includeAllToolPreview,
+    },
+  );
+  const { presentation } = cardState;
+  const messageCount = presentation.messageCount ?? 0;
+  const conversationPreviewState = cardState.conversationPreview;
+  const hiddenConversationCount = conversationPreviewState.hiddenCount;
+  const toolPreviewState = cardState.toolPreview;
+  const hiddenToolCount = toolPreviewState.hiddenCount;
+
+  return {
+    surface,
+    agentName: delegation.agentName,
+    presentation,
+    accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel({
+      agentName: delegation.agentName,
+      statusLabel: presentation.statusLabel,
+      subtitle: presentation.subtitle,
+      sourceLabel: presentation.sourceLabel,
+      trackingLabel: presentation.trackingLabel,
+      messageCount,
+    }),
+    messageCountLabel: messageCount > 0
+      ? formatChatRuntimeDelegationMessageCount(messageCount)
+      : null,
+    statusStyles: getChatRuntimeDelegationStatusMobileRenderState({
+      status: delegation.status,
+      colors,
+    }).styles,
+    conversationPreview: {
+      rows: conversationPreviewState.rows,
+      roleStyles,
+      hiddenCount: hiddenConversationCount,
+      moreAction: getChatRuntimeDelegationConversationPreviewMoreActionState(hiddenConversationCount),
+      onShowAll: onShowAllConversationPreview,
+    },
+    toolPreview: {
+      shouldRender: toolPreviewShouldRender,
+      label: formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount),
+      rows: createChatMessageDelegationToolPreviewRows({
+        rows: toolPreviewState.rows,
+        colors,
+      }),
+      hiddenCount: hiddenToolCount,
+      moreAction: getChatRuntimeDelegationToolPreviewMoreActionState(hiddenToolCount),
+      onShowAll: onShowAllToolPreview,
+    },
+  };
 }
 
 export function createChatMessageToolApprovalProps({
