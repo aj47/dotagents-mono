@@ -2359,7 +2359,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupBoundary\s+key=\{`group-\$\{groupRenderState!\.groupKey\}`\}/);
   assert.doesNotMatch(screenSource, /const isFirstInExpandedGroup = groupRenderState\?\.shouldRenderExpandedHeader \?\? false;/);
   assert.doesNotMatch(screenSource, /const isLastInExpandedGroup = groupRenderState\?\.shouldRenderExpandedFooter \?\? false;/);
-  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyle=\{messageToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{group \? \(\) => toggleGroupExpansion\(group\) : undefined\}\s+styles=\{chatMessageRuntimeThreadStyles\}\s+body=\{createChatMessageThreadBodyProps\(\{/);
+  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{group \? \(\) => toggleGroupExpansion\(group\) : undefined\}\s+styles=\{chatMessageRuntimeThreadStyles\}\s+body=\{createChatMessageThreadBodyProps\(\{/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupThreadSurface\s+key=\{i\}/);
   assert.doesNotMatch(screenSource, /surfaceStyle=\{styles\.msg\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupToggle\s+renderState=\{groupRenderState!\}/);
@@ -2854,11 +2854,12 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(screenSource, /isLast: i === lastAssistantContentMessageIndex,/);
   assert.match(screenSource, /hasErrors,\s+content: visibleMessageContent,\s+isExpanded,\s+shouldCollapse: effectiveShouldCollapse,\s+isToolOnly: messageDisplayState\.isToolOnly,\s+isLiveStreaming: isLiveStreamingAssistantMessage,\s+colors: theme\.colors,/);
   assert.match(screenSource, /const messageContentRenderState = messageRenderState\.content;/);
-  assert.match(screenSource, /const messageToneStyle = messageThreadSurfaceStyles\.getToneStyle\(messageRenderState\.toneStyleSlot\);/);
+  assert.doesNotMatch(screenSource, /const messageToneStyle = messageThreadSurfaceStyles\.getToneStyle\(messageRenderState\.toneStyleSlot\);/);
+  assert.match(chatMessageChromeSource, /const surfaceToneStyle = surfaceToneStyleSlot\s+\? styles\.surface\.getToneStyle\(surfaceToneStyleSlot\)\s+: undefined;/);
   assert.doesNotMatch(screenSource, /styles\[messageRenderState\.toneStyleSlot\]/);
   assert.doesNotMatch(screenSource, /messageTone === 'assistant_final'[\s\S]*?styles\.assistantFinal/);
   assert.doesNotMatch(screenSource, /messageTone === 'tool'[\s\S]*?styles\.tool/);
-  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyle=\{messageToneStyle\}[\s\S]*?styles=\{chatMessageRuntimeThreadStyles\}/);
+  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}[\s\S]*?styles=\{chatMessageRuntimeThreadStyles\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageSurface\s+style=\{surfaceStyle\}\s+toneStyle=\{surfaceToneStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadSurface\s+surfaceStyle=\{styles\.surfaceStyle\}\s+surfaceToneStyle=\{surfaceToneStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupThreadSurface\s+surfaceToneStyle=\{surfaceToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{onToggleGroup\}\s+styles=\{styles\.surface\}/);

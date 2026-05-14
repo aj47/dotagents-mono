@@ -3837,7 +3837,6 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const messageContentRenderState = messageRenderState.content;
-            const messageToneStyle = messageThreadSurfaceStyles.getToneStyle(messageRenderState.toneStyleSlot);
             const messageInlineActivityProps = createChatMessageInlineActivityProps({
               message: m,
               isResponding: responding,
@@ -3900,7 +3899,7 @@ export default function ChatScreen({ route, navigation }: any) {
             return (
               <ChatMessageRuntimeThread
                 key={i}
-                surfaceToneStyle={messageToneStyle}
+                surfaceToneStyleSlot={messageRenderState.toneStyleSlot}
                 groupRenderState={groupRenderState}
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageRuntimeThreadStyles}
