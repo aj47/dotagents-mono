@@ -520,6 +520,34 @@ type ChatComposerRuntimeTextEntrySubmissionState = {
   onKeyPress: NonNullable<ChatComposerTextEntryProps['onKeyPress']>;
 };
 
+type ChatComposerRuntimeHandsFreeController = {
+  state: {
+    phase: HandsFreePhase;
+  };
+  wakeByUser: () => void;
+  sleepByUser: () => void;
+  resumeByUser: () => void;
+  pauseByUser: () => void;
+};
+
+type ChatComposerRuntimeHandsFreeControlActionsStateInput = {
+  handsFreeController: ChatComposerRuntimeHandsFreeController;
+  listening: boolean;
+  wakePhrase: string;
+  startRecording: () => void | Promise<void>;
+  stopRecognitionOnly: () => void | Promise<void>;
+  stopSpeech: () => void;
+  setDebugInfo: (message: string) => void;
+};
+
+type ChatComposerRuntimeHandsFreeControlActionsState = {
+  wakeHandsFreeByUser: () => void;
+  sleepHandsFreeByUser: () => void;
+  resumeHandsFreeByUser: () => void;
+  pauseHandsFreeByUser: () => void;
+  handleHandsFreePrimaryControl: () => void;
+};
+
 type ChatRuntimeMutableRef<T> = {
   current: T;
 };
@@ -6356,6 +6384,72 @@ export function useChatComposerRuntimeTextEntrySubmissionState({
   return {
     onChangeText: handleTextEntryChangeText,
     onKeyPress: handleTextEntryKeyPress,
+  };
+}
+
+export function useChatComposerRuntimeHandsFreeControlActionsState({
+  handsFreeController,
+  listening,
+  wakePhrase,
+  startRecording,
+  stopRecognitionOnly,
+  stopSpeech,
+  setDebugInfo,
+}: ChatComposerRuntimeHandsFreeControlActionsStateInput): ChatComposerRuntimeHandsFreeControlActionsState {
+  const {
+    pauseByUser,
+    resumeByUser,
+    sleepByUser,
+    state,
+    wakeByUser,
+  } = handsFreeController;
+
+  const wakeHandsFreeByUser = useCallback(() => {
+    wakeByUser();
+    if (!listening) {
+      void startRecording();
+    }
+    setDebugInfo(getChatComposerHandsFreeDebugMessage('awake'));
+  }, [listening, setDebugInfo, startRecording, wakeByUser]);
+
+  const sleepHandsFreeByUser = useCallback(() => {
+    sleepByUser();
+    setDebugInfo(formatChatComposerHandsFreeSleepingDebugMessage(wakePhrase));
+  }, [setDebugInfo, sleepByUser, wakePhrase]);
+
+  const resumeHandsFreeByUser = useCallback(() => {
+    resumeByUser();
+    if (!listening) {
+      void startRecording();
+    }
+    setDebugInfo(getChatComposerHandsFreeDebugMessage('resumed'));
+  }, [listening, resumeByUser, setDebugInfo, startRecording]);
+
+  const pauseHandsFreeByUser = useCallback(() => {
+    pauseByUser();
+    stopSpeech();
+    void stopRecognitionOnly();
+    setDebugInfo(getChatComposerHandsFreeDebugMessage('paused'));
+  }, [pauseByUser, setDebugInfo, stopRecognitionOnly, stopSpeech]);
+
+  const handleHandsFreePrimaryControl = useCallback(() => {
+    if (state.phase === 'sleeping') {
+      wakeHandsFreeByUser();
+      return;
+    }
+    if (state.phase === 'paused') {
+      resumeHandsFreeByUser();
+      return;
+    }
+    pauseHandsFreeByUser();
+  }, [pauseHandsFreeByUser, resumeHandsFreeByUser, state.phase, wakeHandsFreeByUser]);
+
+  return {
+    wakeHandsFreeByUser,
+    sleepHandsFreeByUser,
+    resumeHandsFreeByUser,
+    pauseHandsFreeByUser,
+    handleHandsFreePrimaryControl,
   };
 }
 

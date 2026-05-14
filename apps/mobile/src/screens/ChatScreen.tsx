@@ -42,10 +42,10 @@ import {
   buildChatComposerRuntimeMessageContent,
   hasChatComposerRuntimeMessageContent,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
-  formatChatComposerHandsFreeSleepingDebugMessage,
   getChatComposerHandsFreeDebugMessage,
   getChatComposerRuntimeQueueDebugMessage,
   useChatComposerRuntimeImageAttachmentPickerState,
+  useChatComposerRuntimeHandsFreeControlActionsState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
   createChatRuntimeNavigationHeaderOptions,
@@ -2075,45 +2075,21 @@ export default function ChatScreen({ route, navigation }: any) {
     onSubmit: sendComposerInput,
   });
 
-		const wakeHandsFreeByUser = useCallback(() => {
-			handsFreeController.wakeByUser();
-			if (!listening) {
-				void startRecording();
-			}
-			setDebugInfo(getChatComposerHandsFreeDebugMessage('awake'));
-		}, [handsFreeController.wakeByUser, listening, startRecording]);
-
-		const sleepHandsFreeByUser = useCallback(() => {
-			handsFreeController.sleepByUser();
-			setDebugInfo(formatChatComposerHandsFreeSleepingDebugMessage(handsFreeWakePhrase));
-		}, [handsFreeController.sleepByUser, handsFreeWakePhrase]);
-
-		const resumeHandsFreeByUser = useCallback(() => {
-			handsFreeController.resumeByUser();
-			if (!listening) {
-				void startRecording();
-			}
-			setDebugInfo(getChatComposerHandsFreeDebugMessage('resumed'));
-		}, [handsFreeController.resumeByUser, listening, startRecording]);
-
-		const pauseHandsFreeByUser = useCallback(() => {
-			handsFreeController.pauseByUser();
-			Speech.stop();
-			void stopRecognitionOnly();
-			setDebugInfo(getChatComposerHandsFreeDebugMessage('paused'));
-		}, [handsFreeController.pauseByUser, stopRecognitionOnly]);
-
-		const handleHandsFreePrimaryControl = useCallback(() => {
-			if (handsFreeController.state.phase === 'sleeping') {
-				wakeHandsFreeByUser();
-				return;
-			}
-			if (handsFreeController.state.phase === 'paused') {
-				resumeHandsFreeByUser();
-				return;
-			}
-			pauseHandsFreeByUser();
-		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
+  const {
+    wakeHandsFreeByUser,
+    sleepHandsFreeByUser,
+    resumeHandsFreeByUser,
+    pauseHandsFreeByUser,
+    handleHandsFreePrimaryControl,
+  } = useChatComposerRuntimeHandsFreeControlActionsState({
+    handsFreeController,
+    listening,
+    wakePhrase: handsFreeWakePhrase,
+    startRecording,
+    stopRecognitionOnly,
+    stopSpeech: Speech.stop,
+    setDebugInfo,
+  });
 
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
     composerChrome: {
