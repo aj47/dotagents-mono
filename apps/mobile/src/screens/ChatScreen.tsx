@@ -60,8 +60,8 @@ import {
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeFinalHistoryTurnMessages,
   createChatMessageRuntimeRecoveredHistoryMessages,
-  createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeCompletedTurnMessages,
+  createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -2145,11 +2145,11 @@ export default function ChatScreen({ route, navigation }: any) {
           // This prevents an older request from overwriting newer history (PR review fix #14)
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting fallback response to background session:', requestSessionId);
-	            const finalMessages = createChatMessageRuntimeCompletedTurnMessages(
+	            const finalMessages = createChatMessageRuntimeCompletedTextTurnMessages(
 	              currentMessages,
 	              messageCountBeforeTurn,
 	              userMsg,
-	              [createChatMessageRuntimeAssistantTextMessage(finalDisplayText)],
+	              finalDisplayText,
 	            );
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {

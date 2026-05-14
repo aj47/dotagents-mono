@@ -3447,6 +3447,22 @@ export function createChatMessageRuntimeCompletedTurnMessages<TMessage>(
   return [...messagesBeforeTurn, userMessage, ...turnMessages];
 }
 
+export function createChatMessageRuntimeCompletedTextTurnMessages<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  userMessage: TMessage,
+  content: string,
+): TMessage[] {
+  return createChatMessageRuntimeCompletedTurnMessages(
+    messages,
+    messageCountBeforeTurn,
+    userMessage,
+    [createChatMessageRuntimeAssistantTextMessage(content) as TMessage],
+  );
+}
+
 export function createChatMessageRuntimeUserResponseMessages<
   TMessage extends ChatDisplayMessageLike,
 >(
