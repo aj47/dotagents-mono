@@ -1917,7 +1917,7 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /return applyUserResponseToChatMessages\(messages, userResponse\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeFinalHistoryTurnMessages/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeFinalResponseTurnState/);
-  assert.match(chatMessageChromeSource, /finalTurnMessages: createChatMessageRuntimeFinalHistoryTurnMessages</);
+  assert.match(chatMessageChromeSource, /const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages</);
   assert.match(chatMessageChromeSource, /return createChatMessageRuntimeUserResponseMessages\(messages, userResponse\)/);
   assert.doesNotMatch(screenSource, /applyUserResponseToChatMessages,/);
   assert.doesNotMatch(screenSource, /const messageRenderContext = createChatMessageConversationRenderContext\(\{/);
@@ -1982,10 +1982,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /replaceChatMessageRuntimeFinalTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+\)/);
   assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);
   assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+finalTurnMessages,\s+\)/);
-  assert.match(screenSource, /createChatMessageRuntimeCompletedTurnMessages,/);
-  assert.match(screenSource, /createChatMessageRuntimeCompletedTurnMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+finalTurnMessages,\s+\)/);
-  assert.match(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages,/);
-  assert.match(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+finalTurnState\.finalDisplayText,\s+\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedTurnMessages,/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages,/);
+  assert.equal(
+    (screenSource.match(/finalTurnState\.createCompletedMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+\)/g) || []).length,
+    2,
+  );
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedTurnMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+\[createChatMessageRuntimeAssistantTextMessage\(finalDisplayText\)\],\s+\)/);
   assert.match(chatMessageChromeSource, /export function findChatMessageRuntimeLastUserMessageIndex/);
   assert.match(chatMessageChromeSource, /export function hasChatMessageRuntimeMessagesAfter/);
@@ -1997,6 +1999,8 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /replaceChatMessageRuntimeTurnMessages\(\s+messages,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedTurnMessages/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedTextTurnMessages/);
+  assert.match(chatMessageChromeSource, /createCompletedMessages: \(\s+messages,\s+messageCountBeforeTurn,\s+userMessage,\s+\) => createChatMessageRuntimeCompletedTurnMessages\(/);
+  assert.match(chatMessageChromeSource, /createCompletedMessages: \(\s+messages,\s+messageCountBeforeTurn,\s+userMessage,\s+\) => createChatMessageRuntimeCompletedTextTurnMessages\(/);
   assert.match(chatMessageChromeSource, /\[createChatMessageRuntimeAssistantTextMessage\(content\) as TMessage\]/);
   assert.match(chatMessageChromeSource, /const messagesBeforeTurn = messages\.slice\(0, messageCountBeforeTurn\)/);
   assert.doesNotMatch(screenSource, /for \(let i = 0; i < (?:update|response)\.conversationHistory\.length; i\+\+\) \{\s+if \((?:update|response)\.conversationHistory\[i\]\.role === 'user'\)/);
@@ -4092,7 +4096,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /setMessages\(\(m\) => removeChatMessageRuntimePendingTurnMessages\(m\)\)/);
   assert.match(chatMessageChromeSource, /setMessages\(\(messages\) => removeChatMessageRuntimePendingTurnMessages\(messages\)\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantTextMessage\(finalDisplayText\)/);
-  assert.match(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+finalTurnState\.finalDisplayText,\s+\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages\(/);
+  assert.match(screenSource, /finalTurnState\.createCompletedMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+\)/);
   assert.match(screenSource, /appendChatMessageRuntimeAssistantDebugErrorMessage\(m, queuedErrorMessage\)/);
   assert.match(chatMessageChromeSource, /export function appendChatMessageRuntimeAssistantDebugErrorMessage/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeAssistantDebugErrorMessage\(message\) as TMessage/);

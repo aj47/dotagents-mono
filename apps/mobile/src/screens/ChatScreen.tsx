@@ -52,8 +52,6 @@ import {
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatRuntimeMobileConfigState,
   createChatMessageRuntimeFinalResponseTurnState,
-  createChatMessageRuntimeCompletedTurnMessages,
-  createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimeStreamingTurnState,
   createChatMessageRuntimeFinalResponseTextState,
@@ -1022,8 +1020,8 @@ export default function ChatScreen({ route, navigation }: any) {
         console.log('[ChatScreen] ConversationHistory roles:', finalConversationHistory.map(m => m.role).join(', '));
 
         const { finalTurnMessages } = finalTurnState;
-	        console.log('[ChatScreen] finalTurnMessages count:', finalTurnMessages.length);
-	        console.log('[ChatScreen] finalTurnMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
+        console.log('[ChatScreen] finalTurnMessages count:', finalTurnMessages.length);
+        console.log('[ChatScreen] finalTurnMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
 
         if (sessionChanged && requestSessionId) {
@@ -1032,12 +1030,11 @@ export default function ChatScreen({ route, navigation }: any) {
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting completed response to background session:', requestSessionId);
             // Build the final messages array: messages before this turn + user message + new assistant messages
-	            const finalMessages = createChatMessageRuntimeCompletedTurnMessages(
-	              currentMessages,
-	              messageCountBeforeTurn,
-	              userMsg,
-	              finalTurnMessages,
-	            );
+            const finalMessages = finalTurnState.createCompletedMessages(
+              currentMessages,
+              messageCountBeforeTurn,
+              userMsg,
+            );
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping background persistence - request superseded within session:', {
@@ -1062,19 +1059,18 @@ export default function ChatScreen({ route, navigation }: any) {
             return result;
           });
         }
-	      } else if (finalTurnState.kind === 'text') {
+      } else if (finalTurnState.kind === 'text') {
         console.log('[ChatScreen] FALLBACK: No conversationHistory, using finalText only. response.conversationHistory:', response.conversationHistory);
         if (sessionChanged && requestSessionId) {
           // Only persist to background session if this is still the latest request for that session
           // This prevents an older request from overwriting newer history (PR review fix #14)
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting fallback response to background session:', requestSessionId);
-	            const finalMessages = createChatMessageRuntimeCompletedTextTurnMessages(
-	              currentMessages,
-	              messageCountBeforeTurn,
-	              userMsg,
-	              finalTurnState.finalDisplayText,
-	            );
+            const finalMessages = finalTurnState.createCompletedMessages(
+              currentMessages,
+              messageCountBeforeTurn,
+              userMsg,
+            );
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping fallback background persistence - request superseded within session:', {

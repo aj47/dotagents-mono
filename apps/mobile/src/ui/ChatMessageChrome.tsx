@@ -5072,16 +5072,28 @@ export type ChatMessageRuntimeFinalHistoryTurnMessagesOptions =
   };
 
 export type ChatMessageRuntimeFinalResponseTurnState<
-  TMessage extends ChatDisplayMessageLike & ChatMessageRuntimeConversationContentUpdateMessage,
+  TMessage extends ChatDisplayMessageLike &
+    ChatMessageRuntimeConversationContentUpdateMessage &
+    ChatMessageRuntimePendingTurnMessage,
 > =
   | {
       kind: 'history';
       finalTurnMessages: TMessage[];
+      createCompletedMessages: (
+        messages: readonly TMessage[],
+        messageCountBeforeTurn: number,
+        userMessage: TMessage,
+      ) => TMessage[];
     }
   | {
       kind: 'text';
       finalDisplayText: string;
       updateMessages: (messages: readonly TMessage[]) => TMessage[];
+      createCompletedMessages: (
+        messages: readonly TMessage[],
+        messageCountBeforeTurn: number,
+        userMessage: TMessage,
+      ) => TMessage[];
     }
   | {
       kind: 'empty';
@@ -5811,7 +5823,9 @@ export function createChatMessageRuntimeFinalHistoryTurnMessages<
 }
 
 export function createChatMessageRuntimeFinalResponseTurnState<
-  TMessage extends ChatDisplayMessageLike & ChatMessageRuntimeConversationContentUpdateMessage,
+  TMessage extends ChatDisplayMessageLike &
+    ChatMessageRuntimeConversationContentUpdateMessage &
+    ChatMessageRuntimePendingTurnMessage,
   TToolCall = unknown,
   TToolResult = unknown,
 >({
@@ -5824,18 +5838,30 @@ export function createChatMessageRuntimeFinalResponseTurnState<
   TToolResult
 >): ChatMessageRuntimeFinalResponseTurnState<TMessage> {
   if (conversationHistory && conversationHistory.length > 0) {
+    const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<
+      TMessage,
+      TToolCall,
+      TToolResult
+    >(
+      conversationHistory,
+      {
+        ...historyOptions,
+        userResponse: userResponseText,
+      },
+    );
+
     return {
       kind: 'history',
-      finalTurnMessages: createChatMessageRuntimeFinalHistoryTurnMessages<
-        TMessage,
-        TToolCall,
-        TToolResult
-      >(
-        conversationHistory,
-        {
-          ...historyOptions,
-          userResponse: userResponseText,
-        },
+      finalTurnMessages,
+      createCompletedMessages: (
+        messages,
+        messageCountBeforeTurn,
+        userMessage,
+      ) => createChatMessageRuntimeCompletedTurnMessages(
+        messages,
+        messageCountBeforeTurn,
+        userMessage,
+        finalTurnMessages,
       ),
     };
   }
@@ -5845,6 +5871,16 @@ export function createChatMessageRuntimeFinalResponseTurnState<
       kind: 'text',
       finalDisplayText,
       updateMessages: (messages) => updateLastChatMessageRuntimeConversationContent(messages, finalDisplayText),
+      createCompletedMessages: (
+        messages,
+        messageCountBeforeTurn,
+        userMessage,
+      ) => createChatMessageRuntimeCompletedTextTurnMessages(
+        messages,
+        messageCountBeforeTurn,
+        userMessage,
+        finalDisplayText,
+      ),
     };
   }
 
