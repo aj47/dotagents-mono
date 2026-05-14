@@ -47,7 +47,7 @@ import {
   createChatRuntimeNavigationHeaderRenderState,
   formatChatMessageRuntimeAlertMessage,
   formatChatMessageRuntimeConnectionErrorMessage,
-  formatChatMessageRuntimeDebugError,
+  createChatMessageRuntimeNoSessionAvailableDebugState,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatRuntimeMobileConfigState,
   createChatMessageRuntimeFinalResponseTurnState,
@@ -795,7 +795,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo(formatChatMessageRuntimeDebugError(getChatMessageRuntimeDebugMessage('noSessionAvailable')));
+      setDebugInfo(createChatMessageRuntimeNoSessionAvailableDebugState().debugInfo);
       return;
     }
 
@@ -1220,12 +1220,13 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for processing queued message');
+      const noSessionState = createChatMessageRuntimeNoSessionAvailableDebugState();
       messageQueue.markFailed(
         currentConversationId,
         queuedMsg.id,
-        getChatMessageRuntimeDebugMessage('noSessionAvailable'),
+        noSessionState.message,
       );
-      setDebugInfo(formatChatMessageRuntimeDebugError(getChatMessageRuntimeDebugMessage('noSessionAvailable')));
+      setDebugInfo(noSessionState.debugInfo);
       return;
     }
 

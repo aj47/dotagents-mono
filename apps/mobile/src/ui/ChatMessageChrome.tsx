@@ -4608,6 +4608,14 @@ export function formatChatMessageRuntimeDebugError(
   return formatChatRuntimeDebugError(...args);
 }
 
+export function createChatMessageRuntimeNoSessionAvailableDebugState() {
+  const message = getChatMessageRuntimeDebugMessage('noSessionAvailable');
+  return {
+    message,
+    debugInfo: formatChatMessageRuntimeDebugError(message),
+  };
+}
+
 export function formatChatMessageRuntimeStartingRequestDebugMessage(
   ...args: Parameters<typeof formatChatRuntimeStartingRequestDebugMessage>
 ): ReturnType<typeof formatChatRuntimeStartingRequestDebugMessage> {

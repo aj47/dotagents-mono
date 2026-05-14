@@ -4046,7 +4046,14 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeDebugState,/);
   assert.match(screenSource, /getChatMessageRuntimeDebugMessage,/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeDebugMessage/);
-  assert.match(screenSource, /getChatMessageRuntimeDebugMessage\('noSessionAvailable'\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeDebugMessage\('noSessionAvailable'\)/);
+  assert.match(screenSource, /createChatMessageRuntimeNoSessionAvailableDebugState,/);
+  assert.match(screenSource, /setDebugInfo\(createChatMessageRuntimeNoSessionAvailableDebugState\(\)\.debugInfo\)/);
+  assert.match(screenSource, /const noSessionState = createChatMessageRuntimeNoSessionAvailableDebugState\(\);/);
+  assert.match(screenSource, /messageQueue\.markFailed\(\s+currentConversationId,\s+queuedMsg\.id,\s+noSessionState\.message,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeNoSessionAvailableDebugState\(\)/);
+  assert.match(chatMessageChromeSource, /const message = getChatMessageRuntimeDebugMessage\('noSessionAvailable'\);/);
+  assert.match(chatMessageChromeSource, /debugInfo: formatChatMessageRuntimeDebugError\(message\)/);
   assert.match(screenSource, /getChatMessageRuntimeDebugMessage\('requestSent'\)/);
   assert.match(screenSource, /getChatMessageRuntimeDebugMessage\('completed'\)/);
   assert.match(screenSource, /getChatMessageRuntimeDebugMessage\('processingQueuedMessage'\)/);
