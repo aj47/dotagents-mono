@@ -1806,9 +1806,15 @@ export function useChatRuntimeMobileStyleSlots({
       colors: chatRuntimeChromeEnvironment.colors,
       platform: chatRuntimeChromeEnvironment.platform,
       spinnerSource: chatRuntimeSpinnerSource,
+      headerStyles: chatRuntimeHeaderStyles,
       messageRuntimeStyles: chatMessageRuntimeChromeStyles,
     }),
-    [chatMessageRuntimeChromeStyles, chatRuntimeChromeEnvironment, chatRuntimeSpinnerSource],
+    [
+      chatMessageRuntimeChromeStyles,
+      chatRuntimeChromeEnvironment,
+      chatRuntimeHeaderStyles,
+      chatRuntimeSpinnerSource,
+    ],
   );
   const mobileSafeAreaLayout = useMemo(
     () => createChatRuntimeMobileSafeAreaLayoutState(bottomInset),
@@ -1861,6 +1867,5 @@ export function useChatRuntimeMobileStyleSlots({
   return {
     chatRuntimeChrome,
     chatMessageRuntimeSurfaceStyles,
-    chatRuntimeHeaderStyles,
   };
 }

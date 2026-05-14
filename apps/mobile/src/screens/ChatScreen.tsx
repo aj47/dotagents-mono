@@ -147,7 +147,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const {
     chatRuntimeChrome,
     chatMessageRuntimeSurfaceStyles,
-    chatRuntimeHeaderStyles,
   } = useChatRuntimeMobileStyleSlots({
     theme,
     bottomInset: insets.bottom,
@@ -644,7 +643,7 @@ export default function ChatScreen({ route, navigation }: any) {
     onPinButtonPress: handleToggleCurrentSessionPinned,
     onKillSwitchButtonPress: handleKillSwitch,
     onHandsFreeButtonPress: toggleHandsFree,
-    styles: chatRuntimeHeaderStyles,
+    styles: chatRuntimeChrome.headerStyles,
   });
 
   const { speakAssistantResponse } = useChatMessageRuntimeAssistantSpeechActionsState({

@@ -48,6 +48,8 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.match(chatRuntimeMobileStylesSource, /const styles = useMemo\(\(\) => createChatRuntimeMobileStyles\(theme\), \[theme\]\);/);
   assert.doesNotMatch(chatScreenSource, /\s+styles,\s+\} = useChatRuntimeMobileStyleSlots/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /return \{[\s\S]*?\s+styles,\s+[\s\S]*?\};/);
+  assert.match(chatRuntimeMobileStylesSource, /headerStyles: chatRuntimeHeaderStyles,/);
+  assert.doesNotMatch(chatScreenSource, /chatRuntimeHeaderStyles/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /return StyleSheet\.create\(\{/);
 });
@@ -87,6 +89,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(screenSource, /createChatRuntimeNavigationHeaderOptions,/);
   assert.doesNotMatch(screenSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(chatScreenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{\s+navigation,\s+colors: chatRuntimeChrome\.colors,\s+spinnerSource: chatRuntimeChrome\.spinnerSource,/);
+  assert.match(chatScreenSource, /styles: chatRuntimeChrome\.headerStyles,/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderRenderState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderOptions/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderChromeOptions/);
