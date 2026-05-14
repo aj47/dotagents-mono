@@ -22,11 +22,15 @@ import {
   getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
-import { useTheme } from './ThemeProvider';
+
+type MessageQueuePanelColors =
+  Parameters<typeof getMessageQueuePanelMobileRenderState>[0]['colors']
+  & Parameters<typeof getQueuedMessageItemMobileRenderState>[0]['colors'];
 
 interface MessageQueuePanelProps {
   conversationId: string;
   messages: QueuedMessage[];
+  colors: MessageQueuePanelColors;
   onRemove: (messageId: string) => void;
   onUpdate: (messageId: string, text: string) => void;
   onRetry: (messageId: string) => void;
@@ -41,20 +45,20 @@ interface MessageQueuePanelProps {
 
 interface QueuedMessageItemProps {
   message: QueuedMessage;
+  colors: MessageQueuePanelColors;
   onRemove: () => void;
   onUpdate: (text: string) => void;
   onRetry: () => void;
 }
 
-function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
-  const { theme } = useTheme();
+function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
   const queuedMessageRenderState = getQueuedMessageItemMobileRenderState({
     message,
     isExpanded,
-    colors: theme.colors,
+    colors,
   });
   const messagePresentation = queuedMessageRenderState.presentation;
   const {
@@ -377,6 +381,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
 export function MessageQueuePanel({
   conversationId,
   messages,
+  colors,
   onRemove,
   onUpdate,
   onRetry,
@@ -388,11 +393,10 @@ export function MessageQueuePanel({
   onPause,
   onResume,
 }: MessageQueuePanelProps) {
-  const { theme } = useTheme();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
   const queuePanelRenderState = getMessageQueuePanelMobileRenderState({
     messages,
-    colors: theme.colors,
+    colors,
     isPaused,
     isListCollapsed,
     canProcessNext,
@@ -693,6 +697,7 @@ export function MessageQueuePanel({
                 {item.shouldRenderSeparator && <View style={styles.separator} />}
                 <QueuedMessageItem
                   message={msg}
+                  colors={colors}
                   onRemove={() => onRemove(msg.id)}
                   onUpdate={(text) => onUpdate(msg.id, text)}
                   onRetry={() => onRetry(msg.id)}

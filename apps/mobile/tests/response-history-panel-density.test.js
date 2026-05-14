@@ -10,7 +10,8 @@ const source = fs.readFileSync(
 
 test('mobile response history panel uses shared copy and accessibility labels', () => {
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
-  assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors: theme\.colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
+  assert.match(source, /colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
+  assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
   assert.match(source, /const responseHistoryPanelState = responseHistoryRenderState\.panel;/);
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
   assert.match(source, /const responseHistoryIcons = responseHistoryRenderState\.icons;/);
@@ -38,6 +39,8 @@ test('mobile response history panel uses shared copy and accessibility labels', 
   assert.doesNotMatch(source, /accessibilityLabel=\{isSpeaking \? 'Stop speaking' : 'Speak this response'\}/);
   assert.doesNotMatch(source, /name="chatbubbles-outline"/);
   assert.doesNotMatch(source, /name=\{isCollapsed \? responseHistoryIcons\.expandName : responseHistoryIcons\.collapseName\}/);
+  assert.doesNotMatch(source, /useTheme\(\)/);
+  assert.doesNotMatch(source, /colors: theme\.colors/);
   assert.doesNotMatch(source, /getAgentResponseHistoryPanelState\(responses/);
   assert.doesNotMatch(source, /getAgentResponseHistoryMobileIconState\(\)/);
   assert.doesNotMatch(source, /'chevron-down'/);

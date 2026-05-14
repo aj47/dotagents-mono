@@ -38,9 +38,10 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
 
 test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny side icon rail', () => {
   assert.match(source, /getQueuedMessageItemMobileRenderState/);
+  assert.match(source, /colors: MessageQueuePanelColors;/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceState/);
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
-  assert.match(source, /const queuedMessageRenderState = getQueuedMessageItemMobileRenderState\(\{[\s\S]*?message,[\s\S]*?isExpanded,[\s\S]*?colors: theme\.colors,/);
+  assert.match(source, /const queuedMessageRenderState = getQueuedMessageItemMobileRenderState\(\{[\s\S]*?message,[\s\S]*?isExpanded,[\s\S]*?colors,[\s\S]*?\}\);/);
   assert.match(source, /const actionSurface = queuedMessageRenderState\.surface\.actions;/);
   assert.match(source, /actions:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.flexDirection,[\s\S]*?flexWrap:\s*actionSurface\.flexWrap,[\s\S]*?alignItems:\s*actionSurface\.alignItems,[\s\S]*?gap:\s*actionSurface\.gap,[\s\S]*?marginTop:\s*actionSurface\.marginTop,/);
   assert.match(source, /actionButton:\s*\{[\s\S]*?alignSelf:\s*actionSurface\.buttonAlignSelf,[\s\S]*?minHeight:\s*actionSurface\.buttonMinHeight,[\s\S]*?paddingHorizontal:\s*actionSurface\.buttonPaddingHorizontal,[\s\S]*?paddingVertical:\s*actionSurface\.buttonPaddingVertical,[\s\S]*?borderRadius:\s*actionSurface\.buttonBorderRadius,[\s\S]*?justifyContent:\s*actionSurface\.buttonJustifyContent,/);
@@ -67,7 +68,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /onPause\?: \(\) => void;/);
   assert.match(source, /onResume\?: \(\) => void;/);
   assert.match(source, /getMessageQueuePanelMobileRenderState/);
-  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors: theme\.colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
+  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
   assert.match(source, /const queuePanelState = queuePanelRenderState\.panel;/);
   assert.match(source, /const panelStatusColors = panelColors\.status\[queuePanelState\.statusKey\];/);
   assert.match(source, /\{queuePanelState\.compactLabel\}/);
@@ -145,7 +146,10 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
 test('mobile queue panel reads compact panel sizing from shared surface tokens', () => {
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceColors/);
-  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?colors: theme\.colors,/);
+  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?colors,/);
+  assert.match(source, /<QueuedMessageItem[\s\S]*?message=\{msg\}[\s\S]*?colors=\{colors\}/);
+  assert.doesNotMatch(source, /useTheme\(\)/);
+  assert.doesNotMatch(source, /colors: theme\.colors/);
   assert.match(source, /const queuePanelColors = queuePanelRenderState\.colors;/);
   assert.match(source, /const itemSurface = queuedMessageRenderState\.surface\.item;/);
   assert.match(source, /const editSurface = queuedMessageRenderState\.surface\.edit;/);

@@ -3066,7 +3066,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /if \(!canProcessQueue\) return;[\s\S]*?if \(queue\.isQueuePaused\(currentConversationId\)\) return;/);
   assert.match(screenSource, /queuePanelEnabled: messageQueueEnabled,\s+queuePanelConversationId: currentConversationId,\s+queuedMessages,/);
   assert.match(chatMessageChromeSource, /const queuePanelDockRenderState = getMessageQueuePanelMobileDockRenderState\(\{\s+isQueueEnabled: queuePanelEnabled,\s+messageCount: queuedMessages\.length,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /queuePanel: \{\s+shouldRender: queuePanelDockRenderState\.shouldRender,\s+panel: \{\s+conversationId: queuePanelConversationId,\s+messages: queuedMessages,/);
+  assert.match(chatMessageChromeSource, /responseHistoryPanel: \{\s+responses: responseHistoryResponses,\s+colors,/);
+  assert.match(chatMessageChromeSource, /queuePanel: \{\s+shouldRender: queuePanelDockRenderState\.shouldRender,\s+panel: \{\s+conversationId: queuePanelConversationId,\s+messages: queuedMessages,\s+colors,/);
   assert.doesNotMatch(screenSource, /shouldRender: messageQueueEnabled && queuedMessages\.length > 0/);
   assert.match(chatMessageChromeSource, /<ChatMessageQueuePanelDock\s+\{\.\.\.queuePanel\}\s+style=\{styles\.queuePanelStyle\}/);
   assert.match(chatMessageChromeSource, /queuePanelStyle: styles\.messageQueuePanelWrapper,/);

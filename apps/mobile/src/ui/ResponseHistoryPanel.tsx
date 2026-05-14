@@ -20,7 +20,6 @@ import {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
 } from '@dotagents/shared/agent-user-response-store';
-import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
@@ -33,6 +32,7 @@ export interface ResponseHistoryEntry {
 
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
+  colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
   ttsProvider?: 'native' | 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
   edgeTtsVoice?: string;
   remoteTtsVoice?: string;
@@ -84,6 +84,7 @@ function AnimatedResponseItem({
 
 export function ResponseHistoryPanel({
   responses,
+  colors,
   ttsProvider = 'native',
   edgeTtsVoice = DEFAULT_EDGE_TTS_VOICE,
   remoteTtsVoice,
@@ -94,7 +95,6 @@ export function ResponseHistoryPanel({
   remoteBaseUrl,
   remoteApiKey,
 }: ResponseHistoryPanelProps) {
-  const { theme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const isMountedRef = useRef(true);
@@ -103,7 +103,7 @@ export function ResponseHistoryPanel({
   const shouldAnimateNewest = responses.length > prevCountRef.current;
   const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState({
     responses,
-    colors: theme.colors,
+    colors,
     isCollapsed,
     animateNewest: shouldAnimateNewest,
     speakingIndex,

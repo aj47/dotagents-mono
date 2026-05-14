@@ -2867,7 +2867,9 @@ type ChatMessageRuntimeDockChromePropsInput = {
   isResponding: ChatRuntimeConnectionBannerMobileRenderStateInput['isResponding'];
   colors:
     & ChatRuntimeScrollToBottomMobileRenderStateInput['colors']
-    & ChatRuntimeConnectionBannerMobileRenderStateInput['colors'];
+    & ChatRuntimeConnectionBannerMobileRenderStateInput['colors']
+    & ChatMessageResponseHistoryPanelDockProps['colors']
+    & ChatMessageQueuePanelDockProps['panel']['colors'];
   onConnectionBannerRetry?: ChatMessageConnectionBannerProps['onRetry'];
   composer: ChatMessageRuntimeDockChromeProps['composer'];
 };
@@ -6648,6 +6650,7 @@ export function createChatMessageRuntimeDockChromeProps({
   return {
     responseHistoryPanel: {
       responses: responseHistoryResponses,
+      colors,
       ttsProvider: responseHistoryTtsProvider,
       remoteTtsVoice: responseHistoryRemoteTtsVoice,
       remoteTtsModel: responseHistoryRemoteTtsModel,
@@ -6672,6 +6675,7 @@ export function createChatMessageRuntimeDockChromeProps({
       panel: {
         conversationId: queuePanelConversationId,
         messages: queuedMessages,
+        colors,
         onRemove: onRemoveQueuedMessage,
         onUpdate: onUpdateQueuedMessage,
         onRetry: onRetryQueuedMessage,
