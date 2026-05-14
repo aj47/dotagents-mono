@@ -60,7 +60,6 @@ import {
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   formatChatMessageRuntimeToolApprovalRequiredContent,
-  formatChatMessageRuntimeWebConfirmMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -82,6 +81,7 @@ import {
   getChatMessageRuntimeDebugState,
   getChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchAlertState,
+  getChatMessageRuntimeKillSwitchConfirmationAlertState,
   getChatMessageRuntimeKillSwitchConnectionFailedAlertState,
   getChatMessageRuntimeKillSwitchResultAlertState,
   getChatMessageRuntimeLatestStepSummary,
@@ -508,12 +508,8 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        formatChatMessageRuntimeWebConfirmMessage(
-          mobileRuntimeKillSwitchAlerts.confirmation.title,
-          mobileRuntimeKillSwitchAlerts.confirmation.message,
-        )
-      );
+      const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState(mobileRuntimeKillSwitchAlerts);
+      const confirmed = window.confirm(confirmationAlert.webMessage);
       if (confirmed) {
         try {
           const result = await client.killSwitch();
@@ -528,13 +524,14 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
+    const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState(mobileRuntimeKillSwitchAlerts);
     Alert.alert(
-      mobileRuntimeKillSwitchAlerts.confirmation.title,
-      mobileRuntimeKillSwitchAlerts.confirmation.message,
+      confirmationAlert.title,
+      confirmationAlert.message,
       [
-        { text: mobileRuntimeKillSwitchAlerts.confirmation.cancelLabel, style: 'cancel' },
+        { text: confirmationAlert.cancelLabel, style: 'cancel' },
         {
-          text: mobileRuntimeKillSwitchAlerts.confirmation.confirmLabel,
+          text: confirmationAlert.confirmLabel,
           style: 'destructive',
           onPress: async () => {
             try {

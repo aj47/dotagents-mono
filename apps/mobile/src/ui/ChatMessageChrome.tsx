@@ -277,6 +277,14 @@ export interface ChatMessageRuntimeKillSwitchResolvedAlertState {
   webMessage: string;
 }
 
+export interface ChatMessageRuntimeKillSwitchConfirmationAlertState {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  webMessage: string;
+}
+
 export interface ChatMessageRuntimeResolvedAlertState {
   title: string;
   message: string;
@@ -3169,6 +3177,21 @@ export function getChatMessageRuntimeKillSwitchAlertState(): ReturnType<
   typeof getChatRuntimeKillSwitchMobileAlertState
 > {
   return getChatRuntimeKillSwitchMobileAlertState();
+}
+
+export function getChatMessageRuntimeKillSwitchConfirmationAlertState(
+  alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
+): ChatMessageRuntimeKillSwitchConfirmationAlertState {
+  return {
+    title: alerts.confirmation.title,
+    message: alerts.confirmation.message,
+    confirmLabel: alerts.confirmation.confirmLabel,
+    cancelLabel: alerts.confirmation.cancelLabel,
+    webMessage: formatChatRuntimeWebConfirmMessage(
+      alerts.confirmation.title,
+      alerts.confirmation.message,
+    ),
+  };
 }
 
 export function getChatMessageRuntimeKillSwitchResultAlertState(
