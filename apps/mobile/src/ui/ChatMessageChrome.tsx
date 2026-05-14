@@ -61,7 +61,9 @@ import {
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
+  getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
+  type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMobileRenderState,
 } from '@dotagents/shared/conversation-media-assets';
 import {
@@ -246,6 +248,7 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
+export type ChatComposerImageAttachmentAlertInput = ChatImageAttachmentMobileAlertInput;
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
 
@@ -3000,6 +3003,12 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
 
 export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
   return getChatRuntimeMessageHistoryWindowMobileState();
+}
+
+export function getChatComposerImageAttachmentAlertState(
+  input: ChatComposerImageAttachmentAlertInput,
+): ReturnType<typeof getChatImageAttachmentMobileAlertState> {
+  return getChatImageAttachmentMobileAlertState(input);
 }
 
 export function getChatMessageRuntimeDebugState(): ReturnType<typeof getChatRuntimeDebugState> {

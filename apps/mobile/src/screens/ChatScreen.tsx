@@ -33,6 +33,7 @@ import {
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
+  getChatComposerImageAttachmentAlertState,
   getChatComposerRuntimeQueueDebugMessage,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaLayoutState,
@@ -73,6 +74,7 @@ import {
 import type {
   ChatComposerTextEntryKeyPressEvent,
   ChatComposerTextEntryRef,
+  ChatComposerImageAttachmentAlertInput,
   ChatConversationHomeQuickStartItem,
   ChatMessageScrollEvent,
   ChatMessageScrollViewportRef,
@@ -137,12 +139,10 @@ import {
   extractDataImageMarkdownReferences,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
-  getChatImageAttachmentMobileAlertState,
   inferImageMimeTypeFromSource,
   MAX_CHAT_IMAGE_ATTACHMENTS,
   MAX_CHAT_IMAGE_FILE_BYTES,
   MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
-  type ChatImageAttachmentMobileAlertInput,
 } from '@dotagents/shared/conversation-media-assets';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
@@ -308,8 +308,8 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
   );
-  const showImageAttachmentAlert = useCallback((input: ChatImageAttachmentMobileAlertInput) => {
-    const alertState = getChatImageAttachmentMobileAlertState(input);
+  const showImageAttachmentAlert = useCallback((input: ChatComposerImageAttachmentAlertInput) => {
+    const alertState = getChatComposerImageAttachmentAlertState(input);
     Alert.alert(alertState.title, alertState.message);
   }, []);
   const { config, setConfig } = useConfigContext();

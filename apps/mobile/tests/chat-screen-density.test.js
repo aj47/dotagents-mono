@@ -1541,9 +1541,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
 
 test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState,/);
-  assert.match(screenSource, /getChatImageAttachmentMobileAlertState,/);
+  assert.doesNotMatch(screenSource, /getChatImageAttachmentMobileAlertState,/);
+  assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileAlertState,/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
-  assert.match(screenSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatImageAttachmentMobileAlertInput\) => \{\s+const alertState = getChatImageAttachmentMobileAlertState\(input\);\s+Alert\.alert\(alertState\.title, alertState\.message\);\s+\}, \[\]\);/);
+  assert.match(screenSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatComposerImageAttachmentAlertInput\) => \{\s+const alertState = getChatComposerImageAttachmentAlertState\(input\);\s+Alert\.alert\(alertState\.title, alertState\.message\);\s+\}, \[\]\);/);
+  assert.match(chatMessageChromeSource, /export function getChatComposerImageAttachmentAlertState/);
   assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
