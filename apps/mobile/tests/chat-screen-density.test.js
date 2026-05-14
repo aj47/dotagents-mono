@@ -3635,8 +3635,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /expansion: \{\s+\.\.\.expansion,\s+renderState: messageRenderState\.expansion,\s+\},/);
   assert.match(chatMessageChromeSource, /getChatMessageActionLayoutRenderState,/);
   assert.match(chatMessageChromeSource, /const layout = getChatMessageActionLayoutRenderState\(\{\s+availability,\s+renderState: contentRenderState,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /shouldRenderActionSlots: layout\.shouldRenderActionSlots,/);
+  assert.match(chatMessageChromeSource, /shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,/);
+  assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+shouldRender=\{shouldRenderActionSlots\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageActionSlotList\(\{\s+shouldRender = true,/);
   assert.match(chatMessageChromeSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const layout = getChatMessageActionLayoutState/);
+  assert.doesNotMatch(chatMessageChromeSource, /slots\.length > 0/);
   assert.doesNotMatch(screenSource, /const messageActionLayout = getChatMessageActionLayoutState/);
   assert.equal((screenSource.match(/<ChatMessageThreadBody/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageConversationContent/g) ?? []).length, 0);
@@ -3664,11 +3669,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
   assert.match(chatMessageChromeSource, /conversation: \{\s+messageRenderState,\s+actionSet: createChatMessageConversationActionSetInput\(\{/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
-  assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+slots: actionSet\.visibleSlots,\s+components: actionSet\.components,/);
+  assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,\s+slots: actionSet\.visibleSlots,\s+components: actionSet\.components,/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+slots=\{slots\}\s+components=\{components\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+slots=\{slots\}\s+components=\{components\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+slots=\{slots\}\s+components=\{components\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+slots=\{slots\}\s+components=\{components\}/);
   assert.equal((screenSource.match(/visibleMessageActionSlots\.map\(\(actionSlot\) => \(/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<Fragment key=\{actionSlot\}>/g) ?? []).length, 0);
   assert.equal((screenSource.match(/\{messageActionSet\.components\[actionSlot\]\}/g) ?? []).length, 0);

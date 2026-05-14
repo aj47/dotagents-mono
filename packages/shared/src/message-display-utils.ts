@@ -370,6 +370,7 @@ export type ChatMessageActionAvailabilityRenderState = Readonly<Record<
 
 export interface ChatMessageActionLayoutState {
   visibleSlots: ChatMessageActionSlot[]
+  shouldRenderActionSlots: boolean
   shouldRenderStandaloneRow: boolean
 }
 
@@ -765,9 +766,11 @@ export function getChatMessageActionLayoutState(
   input: ChatMessageActionLayoutStateInput,
 ): ChatMessageActionLayoutState {
   const visibleSlots = getChatMessageVisibleActionSlots(input.availability)
+  const shouldRenderActionSlots = visibleSlots.length > 0
 
   return {
     visibleSlots,
+    shouldRenderActionSlots,
     shouldRenderStandaloneRow: shouldRenderChatMessageStandaloneActionRow({
       renderState: input.renderState,
       visibleActionCount: visibleSlots.length,

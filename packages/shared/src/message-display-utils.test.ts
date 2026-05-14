@@ -410,6 +410,7 @@ describe('chat message display presentation', () => {
       }),
     })).toEqual({
       visibleSlots: ['turnDuration', 'branch', 'copy'],
+      shouldRenderActionSlots: true,
       shouldRenderStandaloneRow: true,
     })
     expect(getChatMessageActionLayoutState({
@@ -427,6 +428,25 @@ describe('chat message display presentation', () => {
       }),
     })).toEqual({
       visibleSlots: ['turnDuration', 'branch', 'copy'],
+      shouldRenderActionSlots: true,
+      shouldRenderStandaloneRow: false,
+    })
+    expect(getChatMessageActionLayoutState({
+      availability: {
+        turnDuration: false,
+        speech: false,
+        branch: false,
+        copy: false,
+        expansion: false,
+      },
+      renderState: getChatMessageContentRenderState({
+        content: 'Visible text',
+        isExpanded: true,
+        shouldCollapse: false,
+      }),
+    })).toEqual({
+      visibleSlots: [],
+      shouldRenderActionSlots: false,
       shouldRenderStandaloneRow: false,
     })
     expect(getChatMessageActionAvailabilityRenderState({
@@ -467,6 +487,7 @@ describe('chat message display presentation', () => {
       }),
     })).toEqual({
       visibleSlots: ['turnDuration', 'branch', 'copy'],
+      shouldRenderActionSlots: true,
       shouldRenderStandaloneRow: true,
     })
   })

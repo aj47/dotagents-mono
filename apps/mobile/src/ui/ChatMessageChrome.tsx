@@ -1380,6 +1380,7 @@ export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpan
 export type ChatMessageActionSet = {
   components: Record<ChatMessageActionSlot, ReactNode>;
   visibleSlots: ChatMessageActionSlot[];
+  shouldRenderActionSlots: boolean;
   shouldRenderStandaloneActions: boolean;
 };
 
@@ -1930,6 +1931,7 @@ type ChatMessageTurnDurationBadgeProps = {
 };
 
 type ChatMessageActionSlotListProps = {
+  shouldRender?: boolean;
   slots: readonly ChatMessageActionSlot[];
   components: Record<ChatMessageActionSlot, ReactNode>;
   rowStyle?: StyleProp<ViewStyle>;
@@ -3342,6 +3344,7 @@ type ChatMessageInlineActivityPropsInput = Pick<ChatMessageInlineActivityProps, 
 
 type ChatMessageContentRowProps = {
   children: ReactNode;
+  shouldRenderActionSlots: boolean;
   slots: readonly ChatMessageActionSlot[];
   components: Record<ChatMessageActionSlot, ReactNode>;
   rowStyle: StyleProp<ViewStyle>;
@@ -3415,6 +3418,7 @@ type ChatMessageCollapsedPreviewPropsInput = Pick<
 type ChatMessageConversationContentProps = {
   contentState: ChatMessageConversationContentState;
   rowStyle: StyleProp<ViewStyle>;
+  shouldRenderActionSlots: boolean;
   slots: readonly ChatMessageActionSlot[];
   components: Record<ChatMessageActionSlot, ReactNode>;
   expanded: ChatMessageExpandedContentProps & {
@@ -7555,6 +7559,7 @@ export function createChatMessageActionSet({
   return {
     components,
     visibleSlots: layout.visibleSlots,
+    shouldRenderActionSlots: layout.shouldRenderActionSlots,
     shouldRenderStandaloneActions: layout.shouldRenderStandaloneRow,
   };
 }
@@ -10123,6 +10128,7 @@ export function createChatMessageConversationBodyProps({
   return {
     content: {
       contentState,
+      shouldRenderActionSlots: actionSet.shouldRenderActionSlots,
       slots: actionSet.visibleSlots,
       components: actionSet.components,
       expanded: createChatMessageExpandedContentProps(expanded),
@@ -14896,6 +14902,7 @@ export function ChatMessageCollapsedPreview({
 export function ChatMessageConversationContent({
   contentState,
   rowStyle,
+  shouldRenderActionSlots,
   slots,
   components,
   expanded,
@@ -14906,6 +14913,7 @@ export function ChatMessageConversationContent({
       <ChatMessageContentRow
         rowStyle={rowStyle}
         bodyStyle={expanded.bodyStyle}
+        shouldRenderActionSlots={shouldRenderActionSlots}
         slots={slots}
         components={components}
       >
@@ -14925,6 +14933,7 @@ export function ChatMessageConversationContent({
     return (
       <ChatMessageContentRow
         rowStyle={rowStyle}
+        shouldRenderActionSlots={shouldRenderActionSlots}
         slots={slots}
         components={components}
       >
@@ -14945,6 +14954,7 @@ export function ChatMessageConversationContent({
 
 export function ChatMessageContentRow({
   children,
+  shouldRenderActionSlots,
   slots,
   components,
   rowStyle,
@@ -14958,6 +14968,7 @@ export function ChatMessageContentRow({
         </View>
       ) : children}
       <ChatMessageActionSlotList
+        shouldRender={shouldRenderActionSlots}
         slots={slots}
         components={components}
       />
@@ -14983,10 +14994,13 @@ export function ChatMessageStandaloneActions({
 }
 
 export function ChatMessageActionSlotList({
+  shouldRender = true,
   slots,
   components,
   rowStyle,
 }: ChatMessageActionSlotListProps) {
+  if (!shouldRender) return null;
+
   const content = slots.map((actionSlot) => (
     <Fragment key={actionSlot}>
       {components[actionSlot]}
