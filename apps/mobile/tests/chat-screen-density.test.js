@@ -1197,8 +1197,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
   assert.match(screenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+styles=\{chatMessageRuntimeSurfaceStyles\}/);
-  assert.match(screenSource, /styles: \{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,\s+threadStyles: chatMessageConversationThreadStyles\.runtimeThread,\s+promptEditorStyles: promptEditorModalStyles,\s+\},/);
-  assert.doesNotMatch(screenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
+  assert.match(screenSource, /const chatMessageRuntimeChromeStyles = useMemo\(\s+\(\) => \(\{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,\s+threadStyles: chatMessageConversationThreadStyles\.runtimeThread,\s+promptEditorStyles: promptEditorModalStyles,\s+\}\),\s+\[chatMessageConversationThreadStyles, promptEditorModalStyles\],\s+\);/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /styles: \{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,/);
+  assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.match(chatMessageChromeSource, /threadStates: conversationThreadListState\.threadStates,\s+threadStyles: styles\.threadStyles,/);
   assert.match(screenSource, /styles=\{chatMessageRuntimeSurfaceStyles\}/);
   assert.doesNotMatch(screenSource, /styles=\{\{\s+frame: conversationViewportStyles\.frame/);
@@ -2100,8 +2102,8 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationMessageRuntimeThreadState/);
   assert.match(chatMessageChromeSource, /shouldRenderThread: shouldRenderChatMessageConversationThread\(\{\s+renderContext,\s+body: runtimeThreadInput\.body,\s+\}\),/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationRuntimeThread\(\{[\s\S]*?if \(!threadState\.shouldRenderThread\) return null;/);
-  assert.match(screenSource, /styles: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
-  assert.doesNotMatch(screenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.doesNotMatch(screenSource, /<ChatMessageConversationRuntimeThreadList/);
   assert.doesNotMatch(screenSource, /shouldRenderChatMessageConversationThread/);
   assert.doesNotMatch(screenSource, /if \(!messageThreadState\.shouldRenderThread\)/);
@@ -3241,8 +3243,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /const isFirstInExpandedGroup = groupRenderState\?\.shouldRenderExpandedHeader \?\? false;/);
   assert.doesNotMatch(screenSource, /const isLastInExpandedGroup = groupRenderState\?\.shouldRenderExpandedFooter \?\? false;/);
   assert.match(screenSource, /threadList: \{\s+messages,\s+visibleMessageCount,\s+groupByIndex: toolActivityGroups\.groupByIndex,\s+groupState: expandedGroups,\s+inheritedState: expandedMessages,\s+onToggleGroup: toggleGroupExpansion,/);
-  assert.match(screenSource, /styles: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
-  assert.doesNotMatch(screenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.doesNotMatch(screenSource, /groupRenderState=\{messageThreadState\.groupRenderState\}/);
   assert.doesNotMatch(screenSource, /body=\{messageThreadState\.body\}/);
   assert.doesNotMatch(screenSource, /surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}/);
@@ -3602,8 +3604,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/components: messageActionSet\.components/g) ?? []).length, 0);
   assert.equal((chatMessageChromeSource.match(/slots: actionSet\.visibleSlots/g) ?? []).length, 2);
   assert.equal((chatMessageChromeSource.match(/components: actionSet\.components/g) ?? []).length, 2);
-  assert.match(screenSource, /styles: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
-  assert.doesNotMatch(screenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
   assert.match(chatMessageChromeSource, /conversation: \{\s+messageRenderState,\s+actionSet: createChatMessageConversationActionSetInput\(\{/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
@@ -3883,8 +3885,8 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.doesNotMatch(screenSource, /styles\[messageRenderState\.toneStyleSlot\]/);
   assert.doesNotMatch(screenSource, /messageTone === 'assistant_final'[\s\S]*?styles\.assistantFinal/);
   assert.doesNotMatch(screenSource, /messageTone === 'tool'[\s\S]*?styles\.tool/);
-  assert.match(screenSource, /styles: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
-  assert.doesNotMatch(screenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.match(chatMessageChromeSource, /threadStates: conversationThreadListState\.threadStates,\s+threadStyles: styles\.threadStyles,/);
   assert.match(chatMessageChromeSource, /<ChatMessageSurface\s+style=\{surfaceStyle\}\s+toneStyle=\{surfaceToneStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadSurface\s+surfaceStyle=\{styles\.surfaceStyle\}\s+surfaceToneStyle=\{surfaceToneStyle\}/);
@@ -4755,8 +4757,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /theme\.colors\[(sourceIcon|promptLibraryAddShortcutIcon|promptLibraryEditActionIcon|promptLibraryDeleteActionIcon|promptLibraryEditorCloseIcon)\.colorToken\]/);
   assert.match(screenSource, /createChatConversationHomePromptEditorModalStyleSlots,/);
   assert.match(screenSource, /const promptEditorModalStyles = useMemo\(\s+\(\) => createChatConversationHomePromptEditorModalStyleSlots\(styles\),\s+\[styles\],\s+\);/);
-  assert.match(screenSource, /styles: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
-  assert.doesNotMatch(screenSource, /surface: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /surface: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
   assert.match(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalStyleSlots/);
   assert.match(chatMessageChromeSource, /keyboardAvoidingView: styles\.modalKeyboardAvoidingView,/);
   assert.match(chatMessageChromeSource, /overlay: styles\.modalOverlay,\s+content: styles\.modalContent,\s+header: styles\.modalHeader,/);
@@ -4893,8 +4895,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{spec\.renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityState=\{spec\.renderState\.accessibilityState\}/);
   assert.match(chatMessageChromeSource, /disabled=\{spec\.renderState\.isDisabled\}/);
-  assert.match(screenSource, /styles: \{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,/);
-  assert.doesNotMatch(screenSource, /threadList: \{[\s\S]*?actionStyles: chatMessageConversationThreadStyles\.actionSet,/);
+  assert.match(chatScreenSource, /styles: chatMessageRuntimeChromeStyles,/);
+  assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?actionStyles: chatMessageConversationThreadStyles\.actionSet,/);
   assert.match(chatMessageChromeSource, /actionStyles: styles\.actionStyles,/);
   assert.match(chatMessageChromeSource, /\.\.\.styles\.branch,/);
   assert.doesNotMatch(screenSource, /disabledStyle: styles\.messageBranchButtonDisabled,/);

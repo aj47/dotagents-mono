@@ -147,10 +147,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const {
     chatRuntimeChromeEnvironment,
     chatRuntimeSpinnerSource,
-    chatMessageConversationThreadStyles,
     chatMessageRuntimeSurfaceStyles,
+    chatMessageRuntimeChromeStyles,
     chatRuntimeHeaderStyles,
-    promptEditorModalStyles,
     styles,
   } = useChatRuntimeMobileStyleSlots({
     theme,
@@ -1574,11 +1573,7 @@ export default function ChatScreen({ route, navigation }: any) {
     colors: chatRuntimeChromeEnvironment.colors,
     platform: chatRuntimeChromeEnvironment.platform,
     spinnerSource: chatRuntimeSpinnerSource,
-    styles: {
-      actionStyles: chatMessageConversationThreadStyles.actionSet,
-      threadStyles: chatMessageConversationThreadStyles.runtimeThread,
-      promptEditorStyles: promptEditorModalStyles,
-    },
+    styles: chatMessageRuntimeChromeStyles,
     composer: {
       speechPreviewText: sttPreview,
       pendingImages,

@@ -1793,6 +1793,14 @@ export function useChatRuntimeMobileStyleSlots({
     () => createChatConversationHomePromptEditorModalStyleSlots(styles),
     [styles],
   );
+  const chatMessageRuntimeChromeStyles = useMemo(
+    () => ({
+      actionStyles: chatMessageConversationThreadStyles.actionSet,
+      threadStyles: chatMessageConversationThreadStyles.runtimeThread,
+      promptEditorStyles: promptEditorModalStyles,
+    }),
+    [chatMessageConversationThreadStyles, promptEditorModalStyles],
+  );
   const mobileSafeAreaLayout = useMemo(
     () => createChatRuntimeMobileSafeAreaLayoutState(bottomInset),
     [bottomInset],
@@ -1844,10 +1852,9 @@ export function useChatRuntimeMobileStyleSlots({
   return {
     chatRuntimeChromeEnvironment,
     chatRuntimeSpinnerSource,
-    chatMessageConversationThreadStyles,
     chatMessageRuntimeSurfaceStyles,
+    chatMessageRuntimeChromeStyles,
     chatRuntimeHeaderStyles,
-    promptEditorModalStyles,
     styles,
   };
 }
