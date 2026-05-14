@@ -94,6 +94,7 @@ import {
   createMinimumTouchTargetStyle,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
+import type { TurnDurationMessage } from '@dotagents/shared/turn-duration';
 import {
   buildPromptLibraryShortcutItems,
   formatPromptLibraryDeletePromptConfirmMessage,
@@ -3656,6 +3657,14 @@ export type ChatMessageRuntimeResponseHistorySourceMessage = {
   toolCalls?: Array<{ name: string; arguments: unknown }>;
 };
 
+export type ChatMessageRuntimeTurnDurationSourceMessage = {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  timestamp?: number;
+  toolCalls?: unknown[];
+  toolResults?: unknown[];
+};
+
 type ChatMessageRuntimeSessionDisplayMessagesOptions = {
   includeId?: boolean;
 };
@@ -3722,6 +3731,27 @@ export function createChatMessageRuntimeResponseHistoryEvents(
   messages: ChatMessageRuntimeResponseHistorySourceMessage[],
 ): AgentUserResponseEvent[] {
   return extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
+}
+
+export function createChatMessageRuntimeTurnDurationMessages(
+  messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[],
+): TurnDurationMessage[] {
+  return messages.reduce<TurnDurationMessage[]>((entries, message) => {
+    if (typeof message.timestamp !== 'number' || !Number.isFinite(message.timestamp)) {
+      return entries;
+    }
+
+    entries.push({
+      role: message.role,
+      timestamp: message.timestamp,
+      isThinking:
+        message.role === 'assistant' &&
+        (!message.content || message.content.length === 0) &&
+        !message.toolCalls?.length &&
+        !message.toolResults?.length,
+    });
+    return entries;
+  }, []);
 }
 
 export function mergeChatMessageRuntimeToolResultsIntoLastMessage<

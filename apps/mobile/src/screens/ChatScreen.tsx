@@ -66,6 +66,7 @@ import {
   createChatMessageRuntimeUserTextMessage,
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeResponseHistoryEvents,
+  createChatMessageRuntimeTurnDurationMessages,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -155,7 +156,6 @@ import {
 } from '@dotagents/shared/message-display-utils';
 import {
   computeTurnDurations,
-  type TurnDurationMessage,
 } from '@dotagents/shared/turn-duration';
 import {
   buildChatImageAttachmentMessage,
@@ -681,23 +681,8 @@ export default function ChatScreen({ route, navigation }: any) {
     const id = setInterval(() => setTurnNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [hasLiveAgentTurn]);
-  const turnDurationMessages = useMemo<TurnDurationMessage[]>(
-    () => messages.reduce<TurnDurationMessage[]>((entries, message) => {
-      if (typeof message.timestamp !== 'number' || !Number.isFinite(message.timestamp)) {
-        return entries;
-      }
-
-      entries.push({
-        role: message.role,
-        timestamp: message.timestamp,
-        isThinking:
-          message.role === 'assistant' &&
-          (!message.content || message.content.length === 0) &&
-          !message.toolCalls?.length &&
-          !message.toolResults?.length,
-      });
-      return entries;
-    }, []),
+  const turnDurationMessages = useMemo(
+    () => createChatMessageRuntimeTurnDurationMessages(messages),
     [messages],
   );
   const turnDurations = useMemo(
