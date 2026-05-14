@@ -63,7 +63,14 @@ import {
   getChatImageAttachmentMobileRenderState,
   type ChatImageAttachmentMobileRenderState,
 } from '@dotagents/shared/conversation-media-assets';
-import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
+import {
+  getHandsFreeComposerPlaceholder,
+  type HandsFreeComposerControlState,
+} from '@dotagents/shared/hands-free-controller';
+import {
+  createChatComposerAccessibilityHint,
+  createVoiceInputLiveRegionAnnouncement,
+} from '@dotagents/shared/accessibility-utils';
 import {
   getPromptLibraryEditorDismissActionState,
   getPromptLibraryEditorMobileRenderState,
@@ -2119,9 +2126,13 @@ type ChatComposerRuntimeDockChromePropsInput = {
   onTextEntryChangeText: ChatComposerTextEntryProps['onChangeText'];
   onTextEntryKeyPress: ChatComposerTextEntryProps['onKeyPress'];
   textEntryAccessibilityLabel: ChatComposerTextEntryProps['accessibilityLabel'];
-  textEntryAccessibilityHint: ChatComposerTextEntryProps['accessibilityHint'];
-  textEntryPlaceholder: ChatComposerTextEntryProps['placeholder'];
-  textEntryVoiceStatusLiveRegionAnnouncement: ChatComposerTextEntryProps['voiceStatusLiveRegionAnnouncement'];
+  textEntryHandsFree: Parameters<typeof createChatComposerAccessibilityHint>[0]['handsFree'];
+  textEntryListening: Parameters<typeof createChatComposerAccessibilityHint>[0]['listening'];
+  textEntryIsWebPlatform: NonNullable<Parameters<typeof createChatComposerAccessibilityHint>[0]['isWeb']>;
+  textEntryWillCancel: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['willCancel'];
+  textEntryLiveTranscript: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['liveTranscript'];
+  textEntryWakePhrase: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['wakePhrase'];
+  textEntryPlaceholderFallback: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['fallback'];
   queueActionShouldRender: ChatComposerLabeledActionButtonProps['shouldRender'];
   queueActionRenderState: ChatComposerLabeledActionButtonProps['renderState'];
   onQueueActionPress: ChatComposerLabeledActionButtonProps['onPress'];
@@ -4468,9 +4479,13 @@ export function createChatComposerRuntimeDockProps({
   onTextEntryChangeText,
   onTextEntryKeyPress,
   textEntryAccessibilityLabel,
-  textEntryAccessibilityHint,
-  textEntryPlaceholder,
-  textEntryVoiceStatusLiveRegionAnnouncement,
+  textEntryHandsFree,
+  textEntryListening,
+  textEntryIsWebPlatform,
+  textEntryWillCancel,
+  textEntryLiveTranscript,
+  textEntryWakePhrase,
+  textEntryPlaceholderFallback,
   queueActionShouldRender,
   queueActionRenderState,
   onQueueActionPress,
@@ -4486,6 +4501,25 @@ export function createChatComposerRuntimeDockProps({
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
   const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
     colors: pendingImagesColors,
+  });
+  const textEntryAccessibilityHint = createChatComposerAccessibilityHint({
+    handsFree: textEntryHandsFree,
+    listening: textEntryListening,
+    isWeb: textEntryIsWebPlatform,
+  });
+  const textEntryPlaceholder = getHandsFreeComposerPlaceholder({
+    handsFree: textEntryHandsFree,
+    phase: handsFreeStatusPhase,
+    wakePhrase: textEntryWakePhrase,
+    listening: textEntryListening,
+    fallback: textEntryPlaceholderFallback,
+  });
+  const textEntryVoiceStatusLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
+    listening: textEntryListening,
+    handsFree: textEntryHandsFree,
+    willCancel: textEntryWillCancel,
+    liveTranscript: textEntryLiveTranscript,
+    sttPreview: speechPreviewText ?? undefined,
   });
 
   return {

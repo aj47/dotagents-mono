@@ -201,9 +201,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { resolveMobileFontFamily } from '../ui/mobileTypography';
 import {
-  createChatComposerAccessibilityHint,
   createMinimumTouchTargetStyle,
-  createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
 import { formatVoiceDebugEntry } from '@dotagents/shared/voice-debug-log';
 import {
@@ -211,7 +209,6 @@ import {
   formatHandsFreeRecognizerErrorDebugMessage,
   getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
-  getHandsFreeComposerPlaceholder,
   getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
@@ -2997,18 +2994,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }),
     [isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility, mobileHandsFreeSurface],
   );
-	const composerAccessibilityHint = createChatComposerAccessibilityHint({
-	  handsFree,
-	  listening,
-	  isWeb: isWebPlatform,
-	});
-	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
-	  listening,
-	  handsFree,
-	  willCancel,
-	  liveTranscript,
-		  sttPreview,
-		});
 	const composerPresentation = useMemo(
 	  () => getFollowUpInputPresentation({
 	    conversationState: conversationState ?? (responding ? 'running' : 'complete'),
@@ -3250,14 +3235,6 @@ export default function ChatScreen({ route, navigation }: any) {
 		handsFreeWakePhrase,
 	]);
 
-	const composerPlaceholder = getHandsFreeComposerPlaceholder({
-		handsFree,
-		phase: handsFreeController.state.phase,
-		wakePhrase: handsFreeWakePhrase,
-		listening,
-		fallback: composerPresentation.placeholder || composerPresentation.submitTitle,
-	});
-
   const {
     threadStates: conversationThreadStates,
     visibleMessageCount: conversationThreadVisibleMessageCount,
@@ -3362,9 +3339,13 @@ export default function ChatScreen({ route, navigation }: any) {
     onTextEntryChangeText: handleInputChange,
     onTextEntryKeyPress: handleInputKeyPress,
     textEntryAccessibilityLabel: mobileComposerControls.field.accessibilityLabel,
-    textEntryAccessibilityHint: composerAccessibilityHint,
-    textEntryPlaceholder: composerPlaceholder,
-    textEntryVoiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement,
+    textEntryHandsFree: handsFree,
+    textEntryListening: listening,
+    textEntryIsWebPlatform: isWebPlatform,
+    textEntryWillCancel: willCancel,
+    textEntryLiveTranscript: liveTranscript,
+    textEntryWakePhrase: handsFreeWakePhrase,
+    textEntryPlaceholderFallback: composerPresentation.placeholder || composerPresentation.submitTitle,
     queueActionShouldRender: mobileComposerVisibilityRenderState.queueAction.shouldRender,
     queueActionRenderState: mobileComposerQueueRenderState,
     onQueueActionPress: queueComposerInput,
