@@ -2448,10 +2448,7 @@ type ChatMessageConversationRuntimeThreadListRenderStateInput =
   >
   & ChatMessageConversationHistoryWindowStateInput<
     ChatMessageConversationThreadListRenderStateInput['messages'][number]
-  >
-  & {
-    presentationColors: ChatMessageConversationThreadPresentationStateInput['colors'];
-  };
+  >;
 
 type ChatMessageConversationRuntimeThreadListRenderState = {
   threadStates: ChatMessageConversationRenderableRuntimeThreadState[];
@@ -3142,7 +3139,6 @@ export function createChatMessageConversationThreadListRenderState({
 export function createChatMessageConversationRuntimeThreadListRenderState({
   messages,
   visibleMessageCount,
-  presentationColors,
   ...threadListInput
 }: ChatMessageConversationRuntimeThreadListRenderStateInput): ChatMessageConversationRuntimeThreadListRenderState {
   const {
@@ -3154,7 +3150,7 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
     visibleMessageCount,
   });
   const presentation = createChatMessageConversationThreadPresentationState({
-    colors: presentationColors,
+    colors: threadListInput.colors,
   });
 
   return {

@@ -3146,7 +3146,6 @@ export default function ChatScreen({ route, navigation }: any) {
     ttsEnabled,
     colors: theme.colors,
     actionStyles: chatMessageConversationThreadStyles.actionSet,
-    presentationColors: theme.colors,
     assetBaseUrl: config.baseUrl,
     assetAuthToken: config.apiKey,
     spinnerSource: isDark ? darkSpinner : lightSpinner,
