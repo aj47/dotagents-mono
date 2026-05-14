@@ -37,6 +37,7 @@ import {
   createChatMessageActionStyleSlots,
   createChatMessageConversationActionSetInput,
   createChatMessageConversationContentInput,
+  createChatMessageConversationToolApprovalInput,
   createChatMessageConversationRenderContext,
   createChatMessageConversationToolExecutionStackInput,
   createChatMessageConversationDockStyleSlots,
@@ -3844,16 +3845,14 @@ export default function ChatScreen({ route, navigation }: any) {
                       );
                     },
                   },
-                  toolApproval: {
-                    isApproval: m.variant === 'approval',
-                    toolApproval: m.toolApproval,
+                  toolApproval: createChatMessageConversationToolApprovalInput({
+                    message: m,
                     expandedToolApprovals,
                     pendingApprovalResponseId: pendingToolApprovalResponseId,
                     colors: theme.colors,
                     onToggleArguments: toggleToolApprovalArguments,
-                    onDeny: (approvalId) => { void respondToToolApproval(approvalId, false); },
-                    onApprove: (approvalId) => { void respondToToolApproval(approvalId, true); },
-                  },
+                    onRespondToToolApproval: respondToToolApproval,
+                  }),
                   inlineActivity: messageInlineActivityProps,
                   conversation: {
                     messageRenderState,

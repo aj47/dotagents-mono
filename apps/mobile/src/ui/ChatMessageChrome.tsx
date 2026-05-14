@@ -612,6 +612,18 @@ type ChatMessageToolApprovalPropsInput = Omit<
   onApprove: (approvalId: string) => void;
 };
 
+type ChatMessageConversationToolApprovalInput = {
+  message: {
+    variant?: string;
+    toolApproval?: ChatMessageToolApprovalPropsInput['toolApproval'];
+  };
+  expandedToolApprovals: ChatMessageToolApprovalPropsInput['expandedToolApprovals'];
+  pendingApprovalResponseId?: ChatMessageToolApprovalPropsInput['pendingApprovalResponseId'];
+  colors: ChatMessageToolApprovalPropsInput['colors'];
+  onToggleArguments: ChatMessageToolApprovalPropsInput['onToggleArguments'];
+  onRespondToToolApproval: (approvalId: string, approved: boolean) => void | Promise<void>;
+};
+
 type ChatMessageDelegationCardStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -2100,6 +2112,26 @@ export function createChatMessageConversationContentInput({
     collapsed: {
       onToggle: () => onToggleMessageExpansion(messageIndex),
     },
+  };
+}
+
+export function createChatMessageConversationToolApprovalInput({
+  message,
+  expandedToolApprovals,
+  pendingApprovalResponseId,
+  colors,
+  onToggleArguments,
+  onRespondToToolApproval,
+}: ChatMessageConversationToolApprovalInput): ChatMessageToolApprovalPropsInput {
+  return {
+    isApproval: message.variant === 'approval',
+    toolApproval: message.toolApproval,
+    expandedToolApprovals,
+    pendingApprovalResponseId,
+    colors,
+    onToggleArguments,
+    onDeny: (approvalId) => { void onRespondToToolApproval(approvalId, false); },
+    onApprove: (approvalId) => { void onRespondToToolApproval(approvalId, true); },
   };
 }
 
