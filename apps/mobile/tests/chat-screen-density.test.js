@@ -3785,8 +3785,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
 
 test('keeps the copy action inline with desktop-style message controls', () => {
   assert.equal(packageJson.dependencies['expo-clipboard'], '~8.0.8');
-  assert.match(screenSource, /import \* as Clipboard from 'expo-clipboard';/);
-  assert.match(screenSource, /useChatMessageRuntimeClipboardActionsState,/);
+  assert.doesNotMatch(chatScreenSource, /import \* as Clipboard from 'expo-clipboard';/);
+  assert.match(chatMessageChromeSource, /import \* as Clipboard from 'expo-clipboard';/);
+  assert.match(screenSource, /useChatMessageRuntimeClipboardChromeActionsState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatMessageCopyMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyActionState,/);
@@ -3794,8 +3795,10 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.doesNotMatch(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /const \{\s+copiedMessageIndex,\s+clearCopiedMessageFeedback,\s+showCopiedMessageFeedback,\s+\} = useChatMessageCopyFeedbackState\(\);/);
   assert.match(chatMessageChromeSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
-  assert.match(screenSource, /const \{\s+handleCopyMessage,\s+handleCopyToolPayload,\s+\} = useChatMessageRuntimeClipboardActionsState\(\{\s+copyText: Clipboard\.setStringAsync,\s+showAlert: Alert\.alert,\s+showCopiedMessageFeedback,\s+\}\);/);
+  assert.match(screenSource, /const \{\s+handleCopyMessage,\s+handleCopyToolPayload,\s+\} = useChatMessageRuntimeClipboardChromeActionsState\(\{\s+showAlert: Alert\.alert,\s+showCopiedMessageFeedback,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeClipboardActionsState/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeClipboardChromeActionsState/);
+  assert.match(chatMessageChromeSource, /copyText: Clipboard\.setStringAsync,/);
   assert.match(chatMessageChromeSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);
   assert.match(chatMessageChromeSource, /await copyText\(copyContent\);[\s\S]*?showCopiedMessageFeedback\(messageIndex\);/);
   assert.match(screenSource, /clearCopiedMessageFeedback,/);

@@ -100,7 +100,7 @@ import {
   useChatMessageRuntimeQueuePanelState,
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
-  useChatMessageRuntimeClipboardActionsState,
+  useChatMessageRuntimeClipboardChromeActionsState,
   createChatConversationHomePromptDeleteNativeConfirmPresenter,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -114,7 +114,6 @@ import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import * as Speech from 'expo-speech';
-import * as Clipboard from 'expo-clipboard';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type {
@@ -198,8 +197,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const {
     handleCopyMessage,
     handleCopyToolPayload,
-  } = useChatMessageRuntimeClipboardActionsState({
-    copyText: Clipboard.setStringAsync,
+  } = useChatMessageRuntimeClipboardChromeActionsState({
     showAlert: Alert.alert,
     showCopiedMessageFeedback,
   });

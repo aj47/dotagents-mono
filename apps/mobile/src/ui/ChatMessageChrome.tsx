@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   getChatDisplayExpansionState,
@@ -1270,6 +1271,11 @@ type ChatMessageRuntimeClipboardActionsStateInput = {
   showAlert: (title: string, message: string) => void;
   showCopiedMessageFeedback: (messageIndex: number) => void;
 };
+
+type ChatMessageRuntimeClipboardChromeActionsStateInput = Omit<
+  ChatMessageRuntimeClipboardActionsStateInput,
+  'copyText'
+>;
 
 type ChatMessageRuntimeClipboardActionsState = {
   handleCopyMessage: (messageIndex: number, content: string) => Promise<void>;
@@ -9682,6 +9688,15 @@ export function useChatMessageRuntimeClipboardActionsState({
     handleCopyMessage,
     handleCopyToolPayload,
   };
+}
+
+export function useChatMessageRuntimeClipboardChromeActionsState(
+  input: ChatMessageRuntimeClipboardChromeActionsStateInput,
+): ChatMessageRuntimeClipboardActionsState {
+  return useChatMessageRuntimeClipboardActionsState({
+    ...input,
+    copyText: Clipboard.setStringAsync,
+  });
 }
 
 export function createChatMessageConversationBodyProps({
