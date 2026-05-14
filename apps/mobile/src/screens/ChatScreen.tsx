@@ -3420,6 +3420,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
   const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps({
     platform: Platform.OS,
+    colors: theme.colors,
     keyboardVerticalOffset: headerHeight,
     dock: chatMessageRuntimeDock,
     viewport: chatMessageRuntimeViewport,
@@ -3428,10 +3429,6 @@ export default function ChatScreen({ route, navigation }: any) {
     agentSelectorVisible,
     onAgentSelectorClose: () => setAgentSelectorVisible(false),
     promptEditorVisible: addPromptModalVisible,
-    promptEditorRenderStateInput: {
-      colors: theme.colors,
-      platform: Platform.OS,
-    },
     promptEditorIsEditing: Boolean(editingPrompt),
     promptEditorNameValue: newPromptName,
     onPromptEditorNameChange: setNewPromptName,

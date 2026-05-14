@@ -1621,6 +1621,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   TTask extends PromptLibraryTaskLike & { id: string },
 > = {
   platform: Parameters<typeof getChatRuntimeViewportMobileKeyboardAvoidingBehavior>[0];
+  colors: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0]['colors'];
   keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
   dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
   viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
@@ -1629,7 +1630,6 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   agentSelectorVisible: ChatMessageRuntimeOverlaysProps['agentSelector']['visible'];
   onAgentSelectorClose: ChatMessageRuntimeOverlaysProps['agentSelector']['onClose'];
   promptEditorVisible: ChatConversationHomePromptEditorModalProps['visible'];
-  promptEditorRenderStateInput: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0];
   promptEditorIsEditing: ChatConversationHomePromptEditorModalProps['isEditing'];
   promptEditorNameValue: ChatConversationHomePromptEditorModalProps['nameValue'];
   onPromptEditorNameChange: ChatConversationHomePromptEditorModalProps['onNameChange'];
@@ -3001,6 +3001,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   TTask extends PromptLibraryTaskLike & { id: string },
 >({
   platform,
+  colors,
   keyboardVerticalOffset,
   dock,
   viewport,
@@ -3009,7 +3010,6 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   agentSelectorVisible,
   onAgentSelectorClose,
   promptEditorVisible,
-  promptEditorRenderStateInput,
   promptEditorIsEditing,
   promptEditorNameValue,
   onPromptEditorNameChange,
@@ -3020,7 +3020,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   onPromptEditorSave,
   promptEditorStyles,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
-  const promptEditorRenderState = getPromptLibraryEditorMobileRenderState(promptEditorRenderStateInput);
+  const promptEditorRenderState = getPromptLibraryEditorMobileRenderState({ colors, platform });
   const keyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(platform);
 
   return {

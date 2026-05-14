@@ -982,7 +982,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /const viewportSurfaceColors = viewportStyleState\.colors;/);
   assert.match(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{\s+platform: Platform\.OS,\s+keyboardVerticalOffset: headerHeight,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{\s+platform: Platform\.OS,\s+colors: theme\.colors,\s+keyboardVerticalOffset: headerHeight,/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
   assert.match(screenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+styles=\{chatMessageRuntimeSurfaceStyles\}/);
@@ -3471,8 +3471,9 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorChrome:/);
-  assert.match(screenSource, /promptEditorRenderStateInput: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}/);
-  assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(promptEditorRenderStateInput\);/);
+  assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /transparent=\{surface\.modal\.transparent\}/);

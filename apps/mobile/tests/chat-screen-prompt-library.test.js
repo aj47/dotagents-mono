@@ -189,8 +189,9 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /newPrompt(Name|Content)\.trim\(\)/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
-  assert.match(screenSource, /promptEditorRenderStateInput: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}/);
-  assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(promptEditorRenderStateInput\);/);
+  assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
   assert.match(screenSource, /promptEditorIsEditing: Boolean\(editingPrompt\)/);
   assert.match(screenSource, /promptEditorStyles: promptEditorModalStyles/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
