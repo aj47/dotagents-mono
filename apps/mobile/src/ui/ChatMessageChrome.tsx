@@ -64,6 +64,7 @@ import {
   type ChatImageAttachmentMobileRenderState,
 } from '@dotagents/shared/conversation-media-assets';
 import {
+  getHandsFreeComposerControlState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
@@ -100,6 +101,7 @@ import {
   getChatComposerImageAttachmentMobileRenderState,
   getChatComposerMicMobileRenderState,
   getChatComposerMobileActionAvailabilityRenderState,
+  getChatComposerMobileControlState,
   getChatComposerMobileSurfaceState,
   getChatComposerMobileVisibilityRenderState,
   getChatComposerQueueMobileRenderState,
@@ -2102,7 +2104,6 @@ type ChatComposerRuntimeControlRenderState = {
 
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
-  speechPreviewLabel: ChatComposerSpeechPreviewProps['label'];
   speechPreviewText: ChatComposerSpeechPreviewProps['text'];
   pendingImages: ChatComposerPendingImagesRailProps['images'];
   pendingImagesColors: Parameters<typeof getChatImageAttachmentMobileRenderState>[0]['colors'];
@@ -2115,7 +2116,6 @@ type ChatComposerRuntimeDockChromePropsInput = {
   handsFreeStatusSleepPhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]['sleepPhrase'];
   handsFreeStatusLastError: Parameters<typeof getHandsFreeStatusSubtitle>[0]['lastError'];
   handsFreeStatusForegroundOnly: Parameters<typeof getHandsFreeStatusSubtitle>[0]['foregroundOnly'];
-  handsFreeControlState: ChatComposerRuntimeHandsFreeControlsProps['controlState'];
   onWakeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onWake'];
   onSleepHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onSleep'];
   onResumeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onResume'];
@@ -2131,7 +2131,6 @@ type ChatComposerRuntimeDockChromePropsInput = {
   textEntryValue: ChatComposerTextEntryProps['value'];
   onTextEntryChangeText: ChatComposerTextEntryProps['onChangeText'];
   onTextEntryKeyPress: ChatComposerTextEntryProps['onKeyPress'];
-  textEntryAccessibilityLabel: ChatComposerTextEntryProps['accessibilityLabel'];
   textEntryHandsFree: Parameters<typeof createChatComposerAccessibilityHint>[0]['handsFree'];
   textEntryListening: Parameters<typeof createChatComposerAccessibilityHint>[0]['listening'];
   textEntryIsWebPlatform: NonNullable<Parameters<typeof createChatComposerAccessibilityHint>[0]['isWeb']>;
@@ -4464,7 +4463,6 @@ export function createChatComposerRuntimeControlRenderState({
 
 export function createChatComposerRuntimeDockProps({
   chrome,
-  speechPreviewLabel,
   speechPreviewText,
   pendingImages,
   pendingImagesColors,
@@ -4477,7 +4475,6 @@ export function createChatComposerRuntimeDockProps({
   handsFreeStatusSleepPhrase,
   handsFreeStatusLastError,
   handsFreeStatusForegroundOnly,
-  handsFreeControlState,
   onWakeHandsFree,
   onSleepHandsFree,
   onResumeHandsFree,
@@ -4493,7 +4490,6 @@ export function createChatComposerRuntimeDockProps({
   textEntryValue,
   onTextEntryChangeText,
   onTextEntryKeyPress,
-  textEntryAccessibilityLabel,
   textEntryHandsFree,
   textEntryListening,
   textEntryIsWebPlatform,
@@ -4514,9 +4510,11 @@ export function createChatComposerRuntimeDockProps({
   onMicPress,
   micWrapperRef,
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
+  const mobileComposerControls = getChatComposerMobileControlState();
   const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
     colors: pendingImagesColors,
   });
+  const handsFreeControlState = getHandsFreeComposerControlState(handsFreeStatusPhase);
   const handsFreeStatusSubtitle = handsFreeStatusEnabled
     ? getHandsFreeStatusSubtitle({
         phase: handsFreeStatusPhase,
@@ -4548,7 +4546,7 @@ export function createChatComposerRuntimeDockProps({
 
   return {
     speechPreview: {
-      label: speechPreviewLabel,
+      label: mobileComposerControls.sttPreview.label,
       text: speechPreviewText,
     },
     pendingImagesRail: {
@@ -4591,7 +4589,7 @@ export function createChatComposerRuntimeDockProps({
       value: textEntryValue,
       onChangeText: onTextEntryChangeText,
       onKeyPress: onTextEntryKeyPress,
-      accessibilityLabel: textEntryAccessibilityLabel,
+      accessibilityLabel: mobileComposerControls.field.accessibilityLabel,
       accessibilityHint: textEntryAccessibilityHint,
       placeholder: textEntryPlaceholder,
       voiceStatusLiveRegionAnnouncement: textEntryVoiceStatusLiveRegionAnnouncement,

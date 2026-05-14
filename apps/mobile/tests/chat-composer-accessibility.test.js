@@ -25,14 +25,15 @@ test('exposes the chat composer send control as an accessible button', () => {
 
 test('uses shared session presentation for mobile composer copy and disabled state', () => {
   assert.match(screenSource, /getFollowUpInputPresentation/);
-  assert.match(screenSource, /getChatComposerMobileControlState/);
+  assert.doesNotMatch(screenSource, /getChatComposerMobileControlState/);
+  assert.match(chatMessageChromeSource, /getChatComposerMobileControlState/);
   assert.match(screenSource, /createChatComposerRuntimeControlRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileActionAvailabilityRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerQueueMobileRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerSubmitMobileRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerTextToSpeechMobileRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerEditBeforeSendMobileRenderState/);
-  assert.match(screenSource, /const mobileComposerControls = useMemo\(\s+\(\) => getChatComposerMobileControlState\(\),\s+\[\],\s+\);/);
+  assert.match(chatMessageChromeSource, /const mobileComposerControls = getChatComposerMobileControlState\(\);/);
   assert.match(screenSource, /const \{[\s\S]*?queueAction: mobileComposerQueueRenderState,[\s\S]*?submitAction: composerSubmitRenderState,[\s\S]*?\} = useMemo\(/);
   assert.match(screenSource, /createChatComposerRuntimeControlRenderState\(\{\s+hasContent: composerHasContent,\s+handsFree,\s+presentation: composerPresentation,[\s\S]*?colors: theme\.colors,\s+\}\)/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
@@ -83,8 +84,9 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
   assert.doesNotMatch(screenSource, /composerSubmitAction/);
   assert.match(screenSource, /queueActionRenderState: mobileComposerQueueRenderState,/);
-  assert.match(screenSource, /mobileComposerControls\.field\.accessibilityLabel/);
-  assert.match(screenSource, /textEntryAccessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
+  assert.doesNotMatch(screenSource, /mobileComposerControls\.field\.accessibilityLabel/);
+  assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
   assert.match(screenSource, /webAccessibility: mobileComposerWebAccessibility/);
   assert.match(chatMessageChromeSource, /inputDescriptionNativeId: webAccessibility\.inputDescriptionNativeId/);
   assert.match(chatMessageChromeSource, /voiceStatusLiveRegionNativeId: webAccessibility\.voiceStatusLiveRegionNativeId/);
@@ -109,7 +111,8 @@ test('exposes the handsfree queue control as an accessible button', () => {
 });
 
 test('uses shared mobile composer control accessibility state', () => {
-  assert.match(screenSource, /speechPreviewLabel: mobileComposerControls\.sttPreview\.label/);
+  assert.match(screenSource, /speechPreviewText: sttPreview/);
+  assert.match(chatMessageChromeSource, /label: mobileComposerControls\.sttPreview\.label/);
   assert.match(screenSource, /imageAttachmentRenderState: mobileComposerImageAttachmentRenderState/);
   assert.match(screenSource, /textToSpeechRenderState: mobileComposerTextToSpeechRenderState/);
   assert.match(screenSource, /editBeforeSendRenderState: mobileComposerEditBeforeSendRenderState/);
@@ -117,7 +120,8 @@ test('uses shared mobile composer control accessibility state', () => {
   assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
   assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
   assert.match(chatMessageChromeSource, /aria-checked=\{renderState\.ariaChecked\}/);
-  assert.match(screenSource, /textEntryAccessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
+  assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ checked: (ttsEnabled|willCancel) \}\}/);
   assert.doesNotMatch(screenSource, /aria-checked=\{(ttsEnabled|willCancel)\}/);
 });

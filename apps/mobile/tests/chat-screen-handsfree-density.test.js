@@ -82,8 +82,9 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
 
 test('keeps wake/sleep controls inline and wires a dedicated pause/resume control button', () => {
   assert.match(screenSource, /const wakeHandsFreeByUser = useCallback\(\(\) => \{[\s\S]*?handsFreeController\.wakeByUser\(\);[\s\S]*?void startRecording\(\);/);
-  assert.match(screenSource, /const handsFreeControlState = getHandsFreeComposerControlState\(handsFreeController\.state\.phase\);/);
-  assert.match(screenSource, /handsFreeControlsVisible: mobileComposerVisibilityRenderState\.handsFreeControls\.isVisible,[\s\S]*?handsFreeStatusPhase: handsFreeController\.state\.phase,[\s\S]*?handsFreeStatusForegroundOnly: handsFreeForegroundOnly,[\s\S]*?handsFreeControlState,[\s\S]*?onWakeHandsFree: wakeHandsFreeByUser,[\s\S]*?onSleepHandsFree: sleepHandsFreeByUser,[\s\S]*?onResumeHandsFree: resumeHandsFreeByUser,[\s\S]*?onPauseHandsFree: pauseHandsFreeByUser,/);
+  assert.doesNotMatch(screenSource, /const handsFreeControlState = getHandsFreeComposerControlState\(handsFreeController\.state\.phase\);/);
+  assert.match(chatMessageChromeSource, /const handsFreeControlState = getHandsFreeComposerControlState\(handsFreeStatusPhase\);/);
+  assert.match(screenSource, /handsFreeControlsVisible: mobileComposerVisibilityRenderState\.handsFreeControls\.isVisible,[\s\S]*?handsFreeStatusPhase: handsFreeController\.state\.phase,[\s\S]*?handsFreeStatusForegroundOnly: handsFreeForegroundOnly,[\s\S]*?onWakeHandsFree: wakeHandsFreeByUser,[\s\S]*?onSleepHandsFree: sleepHandsFreeByUser,[\s\S]*?onResumeHandsFree: resumeHandsFreeByUser,[\s\S]*?onPauseHandsFree: pauseHandsFreeByUser,/);
   assert.match(chatMessageChromeSource, /handsFreeControls: \{[\s\S]*?isVisible: handsFreeControlsVisible,[\s\S]*?status: \{[\s\S]*?phase: handsFreeStatusPhase,[\s\S]*?label: handsFreeStatusLabel,[\s\S]*?subtitle: handsFreeStatusSubtitle,[\s\S]*?\},[\s\S]*?controlState: handsFreeControlState,[\s\S]*?onWake: onWakeHandsFree,[\s\S]*?onSleep: onSleepHandsFree,[\s\S]*?onResume: onResumeHandsFree,[\s\S]*?onPause: onPauseHandsFree,[\s\S]*?\.\.\.chrome\.handsFreeControls,/);
   assert.match(chatMessageChromeSource, /const primaryOnPress = controlState\.primary\.action === 'wake'\s+\? onWake\s+: onSleep;/);
   assert.match(chatMessageChromeSource, /const secondaryOnPress = controlState\.secondary\.action === 'resume'\s+\? onResume\s+: onPause;/);
@@ -131,7 +132,8 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(screenSource, /formatHandsFreeRecognizerErrorDebugMessage/);
   assert.match(screenSource, /handsFreeCopy\.debug\.transcriptAdded/);
   assert.match(screenSource, /handsFreeCopy\.debug\.permissionDenied/);
-  assert.match(screenSource, /getHandsFreeComposerControlState/);
+  assert.doesNotMatch(screenSource, /getHandsFreeComposerControlState/);
+  assert.match(chatMessageChromeSource, /getHandsFreeComposerControlState/);
   assert.doesNotMatch(screenSource, /getHandsFreeStatusSubtitle/);
   assert.match(chatMessageChromeSource, /getHandsFreeStatusSubtitle/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerPlaceholder/);

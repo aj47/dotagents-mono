@@ -93,7 +93,6 @@ import {
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
-  getChatComposerMobileControlState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
   getChatRuntimeBranchMobileAlertState,
@@ -207,7 +206,6 @@ import { formatVoiceDebugEntry } from '@dotagents/shared/voice-debug-log';
 import {
   formatHandsFreeSleepingDebugMessage,
   formatHandsFreeRecognizerErrorDebugMessage,
-  getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
 } from '@dotagents/shared/hands-free-controller';
@@ -899,11 +897,6 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const [willCancel, setWillCancel] = useState(false);
-  const mobileComposerControls = useMemo(
-    () => getChatComposerMobileControlState(),
-    [],
-  );
-
 	  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
 	  useEffect(() => {
 		if (!handsFreeDebugEnabled) {
@@ -3208,8 +3201,6 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
-		const handsFreeControlState = getHandsFreeComposerControlState(handsFreeController.state.phase);
-
   const {
     threadStates: conversationThreadStates,
     visibleMessageCount: conversationThreadVisibleMessageCount,
@@ -3288,7 +3279,6 @@ export default function ChatScreen({ route, navigation }: any) {
   });
   const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
     chrome: chatComposerRuntimeDockChrome,
-    speechPreviewLabel: mobileComposerControls.sttPreview.label,
     speechPreviewText: sttPreview,
     pendingImages,
     pendingImagesColors: theme.colors,
@@ -3301,7 +3291,6 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeStatusSleepPhrase: handsFreeSleepPhrase,
     handsFreeStatusLastError: handsFreeController.state.lastError,
     handsFreeStatusForegroundOnly: handsFreeForegroundOnly,
-    handsFreeControlState,
     onWakeHandsFree: wakeHandsFreeByUser,
     onSleepHandsFree: sleepHandsFreeByUser,
     onResumeHandsFree: resumeHandsFreeByUser,
@@ -3317,7 +3306,6 @@ export default function ChatScreen({ route, navigation }: any) {
     textEntryValue: input,
     onTextEntryChangeText: handleInputChange,
     onTextEntryKeyPress: handleInputKeyPress,
-    textEntryAccessibilityLabel: mobileComposerControls.field.accessibilityLabel,
     textEntryHandsFree: handsFree,
     textEntryListening: listening,
     textEntryIsWebPlatform: isWebPlatform,
