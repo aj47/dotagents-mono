@@ -36,6 +36,7 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationRenderContext,
   createChatMessageConversationThreadBodyInput,
+  createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationToolActivityGroupRenderState,
   createChatMessageConversationToolActivityGroupThreadState,
@@ -111,7 +112,6 @@ import {
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
-  getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDebugState,
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationCardMobileRenderState,
@@ -165,8 +165,6 @@ import {
 import {
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailCopyFailureAlertState,
-  getToolExecutionDetailMobileEmptyStateRenderState,
-  getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
 } from '@dotagents/shared/tool-execution-display';
@@ -268,7 +266,6 @@ const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobi
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
-const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState();
 const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
 const mobileMessageActionCopy = getChatMessageActionCopyState();
@@ -320,16 +317,15 @@ export default function ChatScreen({ route, navigation }: any) {
     [theme.colors],
   );
   const mobileRuntimeViewport = mobileRuntimeViewportRenderState.surface;
-  const mobileRuntimeDelegationCardRenderState = useMemo(
-    () => getChatRuntimeDelegationCardMobileRenderState({
-      colors: theme.colors,
-    }),
-    [theme.colors],
-  );
-  const mobileRuntimeDelegationCard = mobileRuntimeDelegationCardRenderState.surface;
   const chatMessageConversationThreadStyles = useMemo(
     () => createChatMessageConversationThreadStyleSlots(styles),
     [styles],
+  );
+  const chatMessageConversationThreadPresentation = useMemo(
+    () => createChatMessageConversationThreadPresentationState({
+      colors: theme.colors,
+    }),
+    [theme.colors],
   );
   const chatRuntimeHeaderStyles = useMemo(
     () => createChatRuntimeHeaderStyleSlots(styles),
@@ -397,18 +393,6 @@ export default function ChatScreen({ route, navigation }: any) {
       viewportStyles: chatMessageRuntimeViewportStyles,
     }),
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
-  );
-  const delegationConversationPreviewRoleStyles = useMemo(
-    () => getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(theme.colors),
-    [theme.colors],
-  );
-  const toolExecutionDetailPendingResultState = useMemo(
-    () => getToolExecutionDetailMobilePendingResultRenderState({ colors: theme.colors }),
-    [theme.colors],
-  );
-  const toolExecutionDetailStyleState = useMemo(
-    () => getToolExecutionDetailMobileStyleRenderState({ colors: theme.colors }),
-    [theme.colors],
   );
   const promptLibraryEditorRenderState = useMemo(
     () => getPromptLibraryEditorMobileRenderState({
@@ -3805,10 +3789,9 @@ export default function ChatScreen({ route, navigation }: any) {
               assetBaseUrl: config.baseUrl,
               assetAuthToken: config.apiKey,
               spinnerSource: isDark ? darkSpinner : lightSpinner,
-              delegationSurface: mobileRuntimeDelegationCard,
+              presentation: chatMessageConversationThreadPresentation,
               expandedDelegationConversationPreviews,
               expandedDelegationToolPreviews,
-              delegationRoleStyles: delegationConversationPreviewRoleStyles,
               setExpandedDelegationConversationPreviews,
               setExpandedDelegationToolPreviews,
               expandedToolApprovals,
@@ -3816,9 +3799,6 @@ export default function ChatScreen({ route, navigation }: any) {
               onToggleToolApprovalArguments: toggleToolApprovalArguments,
               onRespondToToolApproval: respondToToolApproval,
               expandedToolCalls,
-              toolPayloadPreviewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-              pendingToolResultRenderState: toolExecutionDetailPendingResultState,
-              toolExecutionEmptyStateRenderState: toolExecutionDetailEmptyState,
               onToggleToolCall: toggleToolCallExpansion,
               onCopyToolPayload: handleCopyToolPayload,
               onSpeakMessage: speakMessage,

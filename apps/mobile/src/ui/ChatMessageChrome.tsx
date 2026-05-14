@@ -81,6 +81,8 @@ import {
   formatChatRuntimeDelegationAccessibilityLabel,
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
+  getChatRuntimeDelegationCardMobileRenderState,
+  getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
@@ -118,9 +120,12 @@ import {
   getToolExecutionDetailArgumentsState,
   getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
+  getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobileHeaderRenderState,
+  getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
+  getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailResultState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionSummaryDisplayState,
@@ -1918,6 +1923,21 @@ type ChatMessageConversationThreadVisibilityInput = {
   body: Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>;
 };
 
+type ChatMessageConversationThreadPresentationStateInput = {
+  colors: Parameters<typeof getChatRuntimeDelegationCardMobileRenderState>[0]['colors']
+    & Parameters<typeof getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots>[0]
+    & Parameters<typeof getToolExecutionDetailMobileStyleRenderState>[0]['colors']
+    & Parameters<typeof getToolExecutionDetailMobilePendingResultRenderState>[0]['colors'];
+};
+
+type ChatMessageConversationThreadPresentationState = {
+  delegationSurface: ChatMessageConversationDelegationCardInput['surface'];
+  delegationRoleStyles: ChatMessageConversationDelegationCardInput['roleStyles'];
+  toolPayloadPreviewNumberOfLines: ChatMessageConversationToolExecutionStackInput['previewNumberOfLines'];
+  pendingToolResultRenderState: ChatMessageConversationToolExecutionStackInput['pendingResultRenderState'];
+  toolExecutionEmptyStateRenderState: ChatMessageConversationToolExecutionStackInput['emptyStateRenderState'];
+};
+
 type ChatMessageConversationThreadBodyInput = {
   message: ChatMessageConversationActionSetInput['message']
     & ChatMessageConversationRetryStatusInput['message']
@@ -1949,10 +1969,9 @@ type ChatMessageConversationThreadBodyInput = {
   assetBaseUrl?: ChatMessageConversationContentInput['assetBaseUrl'];
   assetAuthToken?: ChatMessageConversationContentInput['assetAuthToken'];
   spinnerSource: ChatMessageConversationContentInput['spinnerSource'];
-  delegationSurface: ChatMessageConversationDelegationCardInput['surface'];
+  presentation: ChatMessageConversationThreadPresentationState;
   expandedDelegationConversationPreviews: ChatMessageConversationDelegationCardInput['expandedDelegationConversationPreviews'];
   expandedDelegationToolPreviews: ChatMessageConversationDelegationCardInput['expandedDelegationToolPreviews'];
-  delegationRoleStyles: ChatMessageConversationDelegationCardInput['roleStyles'];
   setExpandedDelegationConversationPreviews: ChatMessageConversationDelegationCardInput['setExpandedDelegationConversationPreviews'];
   setExpandedDelegationToolPreviews: ChatMessageConversationDelegationCardInput['setExpandedDelegationToolPreviews'];
   expandedToolApprovals: ChatMessageConversationToolApprovalInput['expandedToolApprovals'];
@@ -1960,9 +1979,6 @@ type ChatMessageConversationThreadBodyInput = {
   onToggleToolApprovalArguments: ChatMessageConversationToolApprovalInput['onToggleArguments'];
   onRespondToToolApproval: ChatMessageConversationToolApprovalInput['onRespondToToolApproval'];
   expandedToolCalls: ChatMessageConversationToolExecutionStackInput['expandedToolCalls'];
-  toolPayloadPreviewNumberOfLines: ChatMessageConversationToolExecutionStackInput['previewNumberOfLines'];
-  pendingToolResultRenderState: ChatMessageConversationToolExecutionStackInput['pendingResultRenderState'];
-  toolExecutionEmptyStateRenderState: ChatMessageConversationToolExecutionStackInput['emptyStateRenderState'];
   onToggleToolCall: ChatMessageConversationToolExecutionStackInput['onToggleToolCall'];
   onCopyToolPayload: ChatMessageConversationToolExecutionStackInput['onCopyPayload'];
   onSpeakMessage: ChatMessageConversationActionSetInput['onSpeakMessage'];
@@ -2190,6 +2206,27 @@ export function shouldRenderChatMessageConversationThread({
   return shouldRenderSurface || !!body.inlineActivity;
 }
 
+export function createChatMessageConversationThreadPresentationState({
+  colors,
+}: ChatMessageConversationThreadPresentationStateInput): ChatMessageConversationThreadPresentationState {
+  const delegationCardRenderState = getChatRuntimeDelegationCardMobileRenderState({
+    colors,
+  });
+  const toolExecutionDetailStyleState = getToolExecutionDetailMobileStyleRenderState({
+    colors,
+  });
+
+  return {
+    delegationSurface: delegationCardRenderState.surface,
+    delegationRoleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(colors),
+    toolPayloadPreviewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+    pendingToolResultRenderState: getToolExecutionDetailMobilePendingResultRenderState({
+      colors,
+    }),
+    toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState(),
+  };
+}
+
 export function createChatMessageConversationActionSetInput({
   message,
   messageIndex,
@@ -2363,10 +2400,9 @@ export function createChatMessageConversationThreadBodyInput({
   assetBaseUrl,
   assetAuthToken,
   spinnerSource,
-  delegationSurface,
+  presentation,
   expandedDelegationConversationPreviews,
   expandedDelegationToolPreviews,
-  delegationRoleStyles,
   setExpandedDelegationConversationPreviews,
   setExpandedDelegationToolPreviews,
   expandedToolApprovals,
@@ -2374,9 +2410,6 @@ export function createChatMessageConversationThreadBodyInput({
   onToggleToolApprovalArguments,
   onRespondToToolApproval,
   expandedToolCalls,
-  toolPayloadPreviewNumberOfLines,
-  pendingToolResultRenderState,
-  toolExecutionEmptyStateRenderState,
   onToggleToolCall,
   onCopyToolPayload,
   onSpeakMessage,
@@ -2391,12 +2424,12 @@ export function createChatMessageConversationThreadBodyInput({
     }),
     delegationCard: createChatMessageConversationDelegationCardInput({
       message,
-      surface: delegationSurface,
+      surface: presentation.delegationSurface,
       toolEntries: renderedToolEntries,
       displayToolCallCount,
       expandedDelegationConversationPreviews,
       expandedDelegationToolPreviews,
-      roleStyles: delegationRoleStyles,
+      roleStyles: presentation.delegationRoleStyles,
       colors,
       setExpandedDelegationConversationPreviews,
       setExpandedDelegationToolPreviews,
@@ -2451,9 +2484,9 @@ export function createChatMessageConversationThreadBodyInput({
         renderedToolEntries,
         isExpanded,
         expandedToolCalls,
-        previewNumberOfLines: toolPayloadPreviewNumberOfLines,
-        pendingResultRenderState: pendingToolResultRenderState,
-        emptyStateRenderState: toolExecutionEmptyStateRenderState,
+        previewNumberOfLines: presentation.toolPayloadPreviewNumberOfLines,
+        pendingResultRenderState: presentation.pendingToolResultRenderState,
+        emptyStateRenderState: presentation.toolExecutionEmptyStateRenderState,
         colors,
         onToggleToolCall,
         onCopyPayload: onCopyToolPayload,
