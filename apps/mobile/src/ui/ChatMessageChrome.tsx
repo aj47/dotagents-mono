@@ -130,6 +130,7 @@ import {
   DEFAULT_MOBILE_APP_CONFIG,
   type MobileAppConfig,
 } from '@dotagents/shared/mobile-app-config';
+import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
   getTextToSpeechModelValue,
@@ -512,6 +513,19 @@ type ChatRuntimeForegroundState = {
   appState: AppStateStatus;
   isAppActive: boolean;
   handsFreeRuntimeActive: boolean;
+};
+
+type ChatRuntimeHandsFreeMutableStateInput = {
+  handsFree: boolean;
+  ttsEnabled: boolean;
+};
+
+type ChatRuntimeHandsFreeMutableState = {
+  handsFreeRef: ChatRuntimeMutableRef<boolean>;
+  handsFreePhaseRef: ChatRuntimeMutableRef<HandsFreePhase>;
+  ttsEnabledRef: ChatRuntimeMutableRef<boolean>;
+  setHandsFreeRefValue: (value: boolean) => void;
+  setHandsFreePhaseRefValue: (phase: HandsFreePhase) => void;
 };
 
 type ChatRuntimeConnectionRetryState = {
@@ -6026,6 +6040,39 @@ export function useChatRuntimeForegroundState({
     appState,
     isAppActive,
     handsFreeRuntimeActive: handsFree && isFocused && isAppActive,
+  };
+}
+
+export function useChatRuntimeHandsFreeMutableState({
+  handsFree,
+  ttsEnabled,
+}: ChatRuntimeHandsFreeMutableStateInput): ChatRuntimeHandsFreeMutableState {
+  const handsFreeRef = useRef<boolean>(handsFree);
+  const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
+  const ttsEnabledRef = useRef<boolean>(ttsEnabled);
+
+  useEffect(() => {
+    handsFreeRef.current = handsFree;
+  }, [handsFree]);
+
+  useEffect(() => {
+    ttsEnabledRef.current = ttsEnabled;
+  }, [ttsEnabled]);
+
+  const setHandsFreeRefValue = useCallback((value: boolean) => {
+    handsFreeRef.current = value;
+  }, []);
+
+  const setHandsFreePhaseRefValue = useCallback((phase: HandsFreePhase) => {
+    handsFreePhaseRef.current = phase;
+  }, []);
+
+  return {
+    handsFreeRef,
+    handsFreePhaseRef,
+    ttsEnabledRef,
+    setHandsFreeRefValue,
+    setHandsFreePhaseRefValue,
   };
 }
 

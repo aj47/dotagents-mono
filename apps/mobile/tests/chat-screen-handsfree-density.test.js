@@ -97,7 +97,7 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 });
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
-  assert.match(screenSource, /const next = !handsFreeRef\.current;\s*handsFreeRef\.current = next;/);
+  assert.match(screenSource, /const next = !handsFreeRef\.current;\s*setHandsFreeRefValue\(next\);/);
   assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?getChatComposerHandsFreeDebugMessage\('disabled'\)/);
 });
 
@@ -214,8 +214,15 @@ test('uses shared handsfree composer presentation helpers instead of local phase
 });
 
 test('pauses queued-message auto-processing while handsfree is paused', () => {
-  assert.match(screenSource, /const handsFreePhaseRef = useRef<HandsFreePhase>\('sleeping'\);/);
-  assert.match(screenSource, /handsFreePhaseRef\.current = handsFreeController\.state\.phase;/);
+  assert.match(screenSource, /useChatRuntimeHandsFreeMutableState,/);
+  assert.match(screenSource, /const \{\s+handsFreeRef,\s+handsFreePhaseRef,\s+ttsEnabledRef,\s+setHandsFreeRefValue,\s+setHandsFreePhaseRefValue,\s+\} = useChatRuntimeHandsFreeMutableState\(\{\s+handsFree,\s+ttsEnabled: ttsEnabledSetting,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeMutableState/);
+  assert.match(chatMessageChromeSource, /const handsFreeRef = useRef<boolean>\(handsFree\);/);
+  assert.match(chatMessageChromeSource, /const handsFreePhaseRef = useRef<HandsFreePhase>\('sleeping'\);/);
+  assert.match(chatMessageChromeSource, /const ttsEnabledRef = useRef<boolean>\(ttsEnabled\);/);
+  assert.match(screenSource, /setHandsFreePhaseRefValue\(handsFreeController\.state\.phase\);/);
+  assert.doesNotMatch(screenSource, /const handsFreePhaseRef = useRef<HandsFreePhase>\('sleeping'\);/);
+  assert.doesNotMatch(screenSource, /handsFreePhaseRef\.current = handsFreeController\.state\.phase;/);
   assert.match(screenSource, /messageQueueEnabled &&\s*!messageQueue\.isQueuePaused\(currentConversationId\) &&\s*\(!handsFree \|\| handsFreePhaseRef\.current !== 'paused'\)/);
   assert.match(screenSource, /if \(handsFreeRef\.current && handsFreePhaseRef\.current === 'paused'\) \{\s*return;\s*\}[\s\S]*?messageQueue\.markProcessing\(currentConversationId, nextMessage\.id\);/);
 });

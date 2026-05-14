@@ -31,6 +31,7 @@ import {
   useChatRuntimeRequestDebugState,
   useChatRuntimeConnectionRetryState,
   useChatRuntimeForegroundState,
+  useChatRuntimeHandsFreeMutableState,
   useChatComposerRuntimeDraftState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
@@ -124,7 +125,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
-import type { HandsFreePhase } from '@dotagents/shared/types';
 import type {
   Loop,
   PredefinedPromptSummary,
@@ -260,14 +260,16 @@ export default function ChatScreen({ route, navigation }: any) {
     messageQueueEnabled,
     ttsEnabled: ttsEnabledSetting,
   } = chatRuntimeConfig;
-  const handsFreeRef = useRef<boolean>(handsFree);
-  useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
-  const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
-  // Track ttsEnabled in a ref so speech callbacks resolved before a mute-toggle
-  // (e.g. in-flight send() progress callbacks) still see the latest setting and
-  // bail before queueing or playing audio.
-  const ttsEnabledRef = useRef<boolean>(ttsEnabledSetting);
-  useEffect(() => { ttsEnabledRef.current = ttsEnabledSetting; }, [ttsEnabledSetting]);
+  const {
+    handsFreeRef,
+    handsFreePhaseRef,
+    ttsEnabledRef,
+    setHandsFreeRefValue,
+    setHandsFreePhaseRefValue,
+  } = useChatRuntimeHandsFreeMutableState({
+    handsFree,
+    ttsEnabled: ttsEnabledSetting,
+  });
   const { handsFreeRuntimeActive } = useChatRuntimeForegroundState({
     handsFree,
     isFocused,
@@ -702,16 +704,16 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 	  }, [clearVoiceDebug, handsFreeDebugEnabled]);
 
-	  const handsFreeController = useHandsFreeController({
-		enabled: handsFree,
-		runtimeActive: handsFreeRuntimeActive,
-		wakePhrase: handsFreeWakePhrase,
-		sleepPhrase: handsFreeSleepPhrase,
-		log: voiceLog,
-	  });
+  const handsFreeController = useHandsFreeController({
+    enabled: handsFree,
+    runtimeActive: handsFreeRuntimeActive,
+    wakePhrase: handsFreeWakePhrase,
+    sleepPhrase: handsFreeSleepPhrase,
+    log: voiceLog,
+  });
   useEffect(() => {
-    handsFreePhaseRef.current = handsFreeController.state.phase;
-  }, [handsFreeController.state.phase]);
+    setHandsFreePhaseRefValue(handsFreeController.state.phase);
+  }, [handsFreeController.state.phase, setHandsFreePhaseRefValue]);
 
 	  const {
 		listening,
@@ -762,7 +764,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const toggleHandsFree = useCallback(async () => {
     const next = !handsFreeRef.current;
-    handsFreeRef.current = next;
+    setHandsFreeRefValue(next);
     const nextCfg = { ...config, handsFree: next } as any;
     setConfig(nextCfg);
     try { await saveConfig(nextCfg); } catch {}
@@ -775,7 +777,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } else {
       setDebugInfo(getChatComposerHandsFreeDebugMessage('enabled'));
     }
-  }, [config, handsFreeController, setConfig, stopRecognitionOnly]);
+  }, [config, handsFreeController, setConfig, setHandsFreeRefValue, stopRecognitionOnly]);
 
   useLayoutEffect(() => {
     navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
