@@ -175,6 +175,7 @@ import {
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
+  getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeTurnDurationMobileIconState,
   getChatRuntimeTurnDurationTitle,
@@ -2619,6 +2620,39 @@ describe("session presentation semantics", () => {
         color: "#d97706",
       },
     })
+    const messageThreadStyleColors = {
+      ...messageTurnDurationColors,
+      info: "#0ea5e9",
+      border: "#cbd5e1",
+      muted: "#f1f5f9",
+      foreground: "#0f172a",
+    }
+    const messageThreadStyle = getChatRuntimeMessageThreadMobileStyleRenderState({
+      colors: messageThreadStyleColors,
+    })
+    expect(messageThreadStyle.message.surface.paddingHorizontal).toBe("sm")
+    expect(messageThreadStyle.message.colors.tones.assistant_final.backgroundColor).toBe("rgba(22, 163, 74, 0.08)")
+    expect(messageThreadStyle.action.row).toMatchObject({
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    })
+    expect(messageThreadStyle.action.buttons.branch.colors.color).toBe("#2563eb")
+    expect(messageThreadStyle.turnDuration.standard).toMatchObject({
+      shouldRender: true,
+      isLive: false,
+      accessibilityRole: "text",
+    })
+    expect(messageThreadStyle.turnDuration.standard.colors).toEqual(
+      getChatMessageActionMobileTurnDurationBadgeColors({}, messageThreadStyleColors),
+    )
+    expect(messageThreadStyle.turnDuration.live).toMatchObject({
+      shouldRender: true,
+      isLive: true,
+      accessibilityRole: "text",
+    })
+    expect(messageThreadStyle.turnDuration.live.colors).toEqual(
+      getChatMessageActionMobileTurnDurationBadgeColors({ isLive: true }, messageThreadStyleColors),
+    )
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")

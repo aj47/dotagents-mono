@@ -9,12 +9,15 @@ import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
   getChatMessageActionMobileIconColors,
+  getChatMessageActionMobileStyleRenderState,
   getChatMessageActionMobileTurnDurationBadgeColors,
   getChatMessageActionMobileTurnDurationBadgeState,
+  getChatMessageMobileRenderState,
   hasChatMessageDisplayContent,
   shouldShowChatMessageTurnDurationBadge,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
+  type ChatMessageMobileRenderColorPalette,
 } from "./message-display-utils"
 import {
   createButtonAccessibilityLabel,
@@ -234,6 +237,19 @@ export interface ChatRuntimeTurnDurationMessageMobileRenderState {
     name: ChatRuntimeTurnDurationMobileIconState["name"]
     size: ChatRuntimeTurnDurationMobileIconState["size"]
     color: string
+  }
+}
+
+export interface ChatRuntimeMessageThreadMobileStyleRenderStateInput {
+  colors: ChatMessageMobileRenderColorPalette
+}
+
+export interface ChatRuntimeMessageThreadMobileStyleRenderState {
+  message: ReturnType<typeof getChatMessageMobileRenderState>
+  action: ReturnType<typeof getChatMessageActionMobileStyleRenderState>
+  turnDuration: {
+    standard: ChatRuntimeTurnDurationMessageMobileRenderState
+    live: ChatRuntimeTurnDurationMessageMobileRenderState
   }
 }
 
@@ -4715,6 +4731,32 @@ export function getChatRuntimeTurnDurationMessageMobileRenderState({
       name: icon.name,
       size: icon.size,
       color: iconColors.color,
+    },
+  }
+}
+
+export function getChatRuntimeMessageThreadMobileStyleRenderState({
+  colors,
+}: ChatRuntimeMessageThreadMobileStyleRenderStateInput): ChatRuntimeMessageThreadMobileStyleRenderState {
+  return {
+    message: getChatMessageMobileRenderState({
+      colors,
+    }),
+    action: getChatMessageActionMobileStyleRenderState({
+      colors,
+    }),
+    turnDuration: {
+      standard: getChatRuntimeTurnDurationMessageMobileRenderState({
+        role: "user",
+        durationMs: 1,
+        colors,
+      }),
+      live: getChatRuntimeTurnDurationMessageMobileRenderState({
+        role: "user",
+        durationMs: 1,
+        isLive: true,
+        colors,
+      }),
     },
   }
 }

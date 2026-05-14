@@ -111,8 +111,8 @@ import {
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
+  getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
-  getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
@@ -145,8 +145,6 @@ import {
 } from '@dotagents/shared/tool-execution-display';
 import {
   applyChatDisplayGroupedExpansionInheritance,
-  getChatMessageActionMobileStyleRenderState,
-  getChatMessageMobileRenderState,
   isChatMessageConversationContent,
   sanitizeMessagesForModel,
   toggleChatDisplayExpansionState,
@@ -3519,9 +3517,10 @@ function createStyles(theme: Theme, screenHeight: number) {
   });
   const toolApprovalSurface = toolApprovalStyleState.surface;
   const toolApprovalSurfaceColors = toolApprovalStyleState.colors;
-  const mobileMessageStyleState = getChatMessageMobileRenderState({
+  const mobileMessageThreadStyleState = getChatRuntimeMessageThreadMobileStyleRenderState({
     colors: theme.colors,
   });
+  const mobileMessageStyleState = mobileMessageThreadStyleState.message;
   const mobileMessageSurface = mobileMessageStyleState.surface;
   const mobileMessageContentLayout = mobileMessageStyleState.contentLayout;
   const mobileMessageCollapsedPreview = mobileMessageStyleState.collapsedPreview;
@@ -3547,9 +3546,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState.badge;
   const headerTurnDurationColors = headerTurnDurationStyleState.colors;
   const headerTurnDurationLiveColors = headerTurnDurationLiveStyleState.colors;
-  const mobileMessageActionStyleState = getChatMessageActionMobileStyleRenderState({
-    colors: theme.colors,
-  });
+  const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
   const mobileMessageActionRow = mobileMessageActionStyleState.row;
   const mobileMessageActionButton = mobileMessageActionStyleState.buttons.standard.button;
   const mobileMessageBranchButton = mobileMessageActionStyleState.buttons.branch.button;
@@ -3559,17 +3556,8 @@ function createStyles(theme: Theme, screenHeight: number) {
   const mobileMessageCopiedButtonColors = mobileMessageActionStyleState.buttons.copied.colors;
   const mobileMessageSpeechButtonColors = mobileMessageActionStyleState.buttons.speech.colors;
   const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState.buttons.speechActive.colors;
-  const mobileMessageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
-    role: 'user',
-    durationMs: 1,
-    colors: theme.colors,
-  });
-  const mobileMessageTurnDurationLiveRenderState = getChatRuntimeTurnDurationMessageMobileRenderState({
-    role: 'user',
-    durationMs: 1,
-    isLive: true,
-    colors: theme.colors,
-  });
+  const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState.turnDuration.standard;
+  const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState.turnDuration.live;
   const mobileMessageTurnDurationBadge = mobileMessageTurnDurationRenderState.badge;
   const mobileMessageTurnDurationLiveBadge = mobileMessageTurnDurationLiveRenderState.badge;
   const mobileMessageTurnDurationBadgeColors = mobileMessageTurnDurationRenderState.colors;

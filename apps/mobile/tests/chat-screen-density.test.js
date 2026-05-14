@@ -19,6 +19,10 @@ const messageQueuePanelSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MessageQueuePanel.tsx'),
   'utf8'
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
 const clientSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'lib', 'openaiClient.ts'),
   'utf8'
@@ -168,7 +172,7 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeState,/);
   assert.match(screenSource, /getChatRuntimeTurnDurationHeaderMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeTurnDurationHeaderMobileRenderState,/);
-  assert.match(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileHeaderTurnDurationBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileHeaderTurnDurationLiveBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\{\s+isLive: true,\s+\}\);/);
   assert.match(screenSource, /turnDurationMs: turnDurations\.totalMs,\s+turnDurationIsLive: turnDurations\.hasLive,/);
@@ -1660,7 +1664,8 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 });
 
 test('uses shared media sanitization for collapsed mobile message previews', () => {
-  assert.match(screenSource, /getChatMessageMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.match(screenSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
   assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,/);
   assert.doesNotMatch(screenSource, /renderState: messageRenderState\.collapsedPreview,/);
   assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(\{\s+renderState: messageRenderState\.collapsedPreview,\s+actionState: messageRenderState\.collapsedPreviewAction,\s+\.\.\.collapsed,\s+\}\),/);
@@ -2831,16 +2836,21 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /getChatMessageActionCopyState,/);
   assert.match(chatMessageChromeSource, /getChatMessageActionCopyState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionLayoutState,/);
-  assert.match(screenSource, /getChatMessageActionMobileStyleRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatMessageActionMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatMessageActionMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonColors,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileRowState,/);
-  assert.match(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.match(screenSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeMessageThreadMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatMessageCopyMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageExpansionMobileRenderState,/);
-  assert.match(screenSource, /getChatMessageMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatMessageMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.match(sessionPresentationSource, /message: getChatMessageMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /getChatMessageSpeechMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatMessageSpeechMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageCopyActionAccessibilityLabel,/);
@@ -2973,10 +2983,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState\('speechActive'\);/);
   assert.doesNotMatch(screenSource, /const mobileMessageActionStyleState = useMemo\(\s+\(\) => getChatMessageActionMobileStyleRenderState\(\{ colors: theme\.colors \}\),\s+\[theme\.colors\],\s+\);/);
   assert.match(chatMessageChromeSource, /getChatMessageActionMobileButtonState,/);
-  assert.match(screenSource, /getChatMessageActionMobileStyleRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatMessageActionMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /action: getChatMessageActionMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonColors,/);
-  assert.match(screenSource, /const mobileMessageActionStyleState = getChatMessageActionMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const mobileMessageActionStyleState = mobileMessageThreadStyleState\.action;/);
   assert.match(screenSource, /const mobileMessageActionRow = mobileMessageActionStyleState\.row;/);
   assert.match(screenSource, /const mobileMessageActionButton = mobileMessageActionStyleState\.buttons\.standard\.button;/);
   assert.match(screenSource, /const mobileMessageBranchButton = mobileMessageActionStyleState\.buttons\.branch\.button;/);
@@ -3101,7 +3112,9 @@ test('keeps the copy action inline with desktop-style message controls', () => {
 
 test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(screenSource, /computeTurnDurations,/);
-  assert.match(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.match(screenSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
   assert.match(screenSource, /type TurnDurationMessage,/);
   assert.match(screenSource, /const hasLiveAgentTurn =\s+responding \|\|\s+conversationState === 'running' \|\|\s+conversationState === 'needs_input';/);
   assert.match(screenSource, /const \[turnNow, setTurnNow\] = useState\(\(\) => Date\.now\(\)\);/);
@@ -3115,8 +3128,10 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /return typeof message\.timestamp === 'number'\s+\? byUserTimestamp\.get\(message\.timestamp\)\s+: undefined;/);
   assert.doesNotMatch(screenSource, /const messageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /renderState: getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: turnDuration\.role,\s+durationMs: turnDuration\.durationMs,\s+isLive: turnDuration\.isLive,\s+colors: turnDuration\.colors,\s+\}\),/);
-  assert.match(screenSource, /const mobileMessageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: 'user',\s+durationMs: 1,\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(screenSource, /const mobileMessageTurnDurationLiveRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: 'user',\s+durationMs: 1,\s+isLive: true,\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(sessionPresentationSource, /standard: getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: "user",\s+durationMs: 1,\s+colors,\s+\}\),/);
+  assert.match(sessionPresentationSource, /live: getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: "user",\s+durationMs: 1,\s+isLive: true,\s+colors,\s+\}\),/);
+  assert.match(screenSource, /const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState\.turnDuration\.standard;/);
+  assert.match(screenSource, /const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState\.turnDuration\.live;/);
   assert.match(screenSource, /const mobileMessageTurnDurationBadge = mobileMessageTurnDurationRenderState\.badge;/);
   assert.match(screenSource, /const mobileMessageTurnDurationLiveBadge = mobileMessageTurnDurationLiveRenderState\.badge;/);
   assert.match(screenSource, /const mobileMessageTurnDurationBadgeColors = mobileMessageTurnDurationRenderState\.colors;/);
@@ -3151,7 +3166,9 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
 });
 
 test('uses shared desktop chat message presentation tones for mobile message cards', () => {
-  assert.match(screenSource, /getChatMessageMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatMessageMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.match(sessionPresentationSource, /message: getChatMessageMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /findLastChatMessageConversationContentIndex,/);
   assert.match(chatMessageChromeSource, /findLastChatMessageConversationContentIndex,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationRenderContext\(\{/);
@@ -3171,7 +3188,8 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupThreadSurface\s+surfaceToneStyle=\{surfaceToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{onToggleGroup\}\s+styles=\{styles\.surface\}/);
   assert.match(chatMessageChromeSource, /<View style=\{\[style, toneStyle\]\}>/);
   assert.doesNotMatch(screenSource, /styles\.msg,[\s\S]*?messageToneStyle/);
-  assert.match(screenSource, /const mobileMessageStyleState = getChatMessageMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const mobileMessageThreadStyleState = getChatRuntimeMessageThreadMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const mobileMessageStyleState = mobileMessageThreadStyleState\.message;/);
   assert.match(screenSource, /const mobileMessageSurface = mobileMessageStyleState\.surface;/);
   assert.match(screenSource, /const mobileMessageContentLayout = mobileMessageStyleState\.contentLayout;/);
   assert.match(screenSource, /const mobileMessageCollapsedPreview = mobileMessageStyleState\.collapsedPreview;/);
