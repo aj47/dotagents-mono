@@ -26,6 +26,7 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
+  createChatComposerRuntimeControlRenderState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -94,17 +95,9 @@ import {
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
-  getChatComposerEditBeforeSendMobileRenderState,
-  getChatComposerImageAttachmentMobileRenderState,
-  getChatComposerMicMobileRenderState,
-  getChatComposerMobileActionAvailabilityRenderState,
   getChatComposerMobileControlState,
-  getChatComposerMobileVisibilityRenderState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
-  getChatComposerQueueMobileRenderState,
-  getChatComposerSubmitMobileRenderState,
-  getChatComposerTextToSpeechMobileRenderState,
   getChatComposerVoiceOverlayLabel,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeConnectionBannerMobileRenderState,
@@ -3089,50 +3082,44 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
-  const mobileComposerActionAvailabilityRenderState = useMemo(
-    () => getChatComposerMobileActionAvailabilityRenderState({
+  const micButtonLabel = getHandsFreeMicButtonLabel({
+    handsFree,
+    phase: handsFreeController.state.phase,
+    listening,
+  });
+  const {
+    visibility: mobileComposerVisibilityRenderState,
+    imageAttachment: mobileComposerImageAttachmentRenderState,
+    textToSpeech: mobileComposerTextToSpeechRenderState,
+    editBeforeSend: mobileComposerEditBeforeSendRenderState,
+    queueAction: mobileComposerQueueRenderState,
+    submitAction: composerSubmitRenderState,
+    micButton: mobileComposerMicRenderState,
+  } = useMemo(
+    () => createChatComposerRuntimeControlRenderState({
       hasContent: composerHasContent,
       handsFree,
       presentation: composerPresentation,
-    }),
-    [composerHasContent, composerPresentation, handsFree],
-  );
-  const mobileComposerQueueRenderState = useMemo(
-    () => getChatComposerQueueMobileRenderState({
-      isDisabled: mobileComposerActionAvailabilityRenderState.queueAction.isDisabled,
+      pendingImageCount: pendingImages.length,
+      ttsEnabled,
+      editBeforeSendEnabled: willCancel,
+      micLabel: micButtonLabel,
+      listening,
+      messageQueueEnabled,
       colors: theme.colors,
     }),
-    [mobileComposerActionAvailabilityRenderState.queueAction.isDisabled, theme.colors],
-  );
-  const composerSubmitRenderState = useMemo(
-    () => getChatComposerSubmitMobileRenderState({
-      presentation: composerPresentation,
-      isHandsFree: handsFree,
-      isDisabled: mobileComposerActionAvailabilityRenderState.submitAction.isDisabled,
-      colors: theme.colors,
-    }),
-    [composerPresentation, handsFree, mobileComposerActionAvailabilityRenderState.submitAction.isDisabled, theme.colors],
-  );
-  const mobileComposerImageAttachmentRenderState = useMemo(
-    () => getChatComposerImageAttachmentMobileRenderState({
-      hasImages: pendingImages.length > 0,
-      colors: theme.colors,
-    }),
-    [pendingImages.length, theme.colors],
-  );
-  const mobileComposerTextToSpeechRenderState = useMemo(
-    () => getChatComposerTextToSpeechMobileRenderState({
-      isEnabled: ttsEnabled,
-      colors: theme.colors,
-    }),
-    [ttsEnabled, theme.colors],
-  );
-  const mobileComposerEditBeforeSendRenderState = useMemo(
-    () => getChatComposerEditBeforeSendMobileRenderState({
-      isEnabled: willCancel,
-      colors: theme.colors,
-    }),
-    [willCancel, theme.colors],
+    [
+      composerHasContent,
+      composerPresentation,
+      handsFree,
+      listening,
+      messageQueueEnabled,
+      micButtonLabel,
+      pendingImages.length,
+      theme.colors,
+      ttsEnabled,
+      willCancel,
+    ],
   );
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildChatImageAttachmentMessage(input, pendingImages);
@@ -3322,29 +3309,6 @@ export default function ChatScreen({ route, navigation }: any) {
 		fallback: composerPresentation.placeholder || composerPresentation.submitTitle,
 	});
 
-	const micButtonLabel = getHandsFreeMicButtonLabel({
-		handsFree,
-		phase: handsFreeController.state.phase,
-		listening,
-	});
-  const mobileComposerMicRenderState = useMemo(
-    () => getChatComposerMicMobileRenderState({
-      label: micButtonLabel,
-      handsFree,
-      listening,
-      willCancel,
-      colors: theme.colors,
-    }),
-    [handsFree, listening, micButtonLabel, theme.colors, willCancel],
-  );
-  const mobileComposerVisibilityRenderState = useMemo(
-    () => getChatComposerMobileVisibilityRenderState({
-      handsFree,
-      listening,
-      messageQueueEnabled,
-    }),
-    [handsFree, listening, messageQueueEnabled],
-  );
 	const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({ handsFree, willCancel });
   const connectionBannerRenderState = useMemo(
     () => getChatRuntimeConnectionBannerMobileRenderState({
