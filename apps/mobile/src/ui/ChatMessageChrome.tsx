@@ -86,6 +86,7 @@ import {
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
+  getPromptLibraryMobileSurfaceRenderState,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileShortcutRenderState,
@@ -2050,6 +2051,22 @@ type ChatComposerStyleSlots = {
 };
 
 type ChatComposerRuntimeDockStyleSlots = ChatComposerStyleSlots;
+
+type ChatComposerRuntimeChromeStyleStateInput = {
+  colors:
+    & Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['colors']
+    & Parameters<typeof getChatImageAttachmentMobileRenderState>[0]['colors']
+    & Parameters<typeof getPromptLibraryMobileSurfaceRenderState>[0]['colors']
+    & Parameters<typeof getHandsFreeComposerMobileSurfaceRenderState>[0]['colors'];
+  platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
+};
+
+export type ChatComposerRuntimeChromeStyleState = {
+  composer: ReturnType<typeof getChatComposerMobileSurfaceRenderState>;
+  imageAttachment: ReturnType<typeof getChatImageAttachmentMobileRenderState>;
+  promptLibrary: ReturnType<typeof getPromptLibraryMobileSurfaceRenderState>;
+  handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>;
+};
 
 type ChatComposerRuntimeDockProps = {
   speechPreview: Omit<ChatComposerSpeechPreviewProps, 'styles'>;
@@ -4439,6 +4456,27 @@ export function createChatComposerRuntimeDockStyleSlots({
     ...chatComposerStyles,
     inputDock: safeAreaStyles.inputDock,
   } as ChatComposerRuntimeDockStyleSlots;
+}
+
+export function createChatComposerRuntimeChromeStyleState({
+  colors,
+  platform,
+}: ChatComposerRuntimeChromeStyleStateInput): ChatComposerRuntimeChromeStyleState {
+  return {
+    composer: getChatComposerMobileSurfaceRenderState({
+      colors,
+      platform,
+    }),
+    imageAttachment: getChatImageAttachmentMobileRenderState({
+      colors,
+    }),
+    promptLibrary: getPromptLibraryMobileSurfaceRenderState({
+      colors,
+    }),
+    handsFree: getHandsFreeComposerMobileSurfaceRenderState({
+      colors,
+    }),
+  };
 }
 
 export function createChatComposerRuntimeDockChromeProps({

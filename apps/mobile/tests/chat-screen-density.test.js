@@ -1258,7 +1258,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /getChatComposerMobileControlState,/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileVisibilityRenderState,/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileVisibilityRenderState,/);
-  assert.match(screenSource, /getChatComposerMobileSurfaceRenderState,/);
+  assert.match(screenSource, /createChatComposerRuntimeChromeStyleState,/);
+  assert.match(chatMessageChromeSource, /getChatComposerMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceColors,/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileTextColors,/);
@@ -1438,7 +1439,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /<TextInput[\s\S]{0,500}accessibilityLabel=\{mobileComposerControls\.field\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /nativeID=\{mobileComposerWebAccessibility\.inputDescriptionNativeId\}/);
   assert.match(screenSource, /\n    input:\s*\{[\s\S]*?borderWidth:\s*composerTextInputSurface\.borderWidth,[\s\S]*?borderColor:\s*mobileComposerSurfaceColors\.input\.borderColor,[\s\S]*?paddingVertical:\s*composerTextInputPlatform\.paddingVertical,[\s\S]*?flex:\s*composerTextInputSurface\.flex,[\s\S]*?maxHeight:\s*composerTextInputSurface\.maxHeight/);
-  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
+  assert.match(screenSource, /const composerChromeStyleState = createChatComposerRuntimeChromeStyleState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
+  assert.match(screenSource, /const composerStyleState = composerChromeStyleState\.composer;/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
   assert.match(screenSource, /const composerTextInputPlatform = composerStyleState\.input;/);
@@ -1507,11 +1509,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
 });
 
 test('uses shared mobile icon chrome for pending image removal', () => {
-  assert.match(screenSource, /getChatImageAttachmentMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState,/);
   assert.match(screenSource, /getChatImageAttachmentMobileAlertState,/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
   assert.match(screenSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatImageAttachmentMobileAlertInput\) => \{\s+const alertState = getChatImageAttachmentMobileAlertState\(input\);\s+Alert\.alert\(alertState\.title, alertState\.message\);\s+\}, \[\]\);/);
-  assert.match(screenSource, /const imageAttachmentStyleState = getChatImageAttachmentMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
   assert.match(screenSource, /showImageAttachmentAlert\(\{\s+reason: 'limitReached',\s+maxImages: MAX_PENDING_IMAGES,\s+\}\);/);
@@ -3348,7 +3350,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /items\.map\(\(item\) => \{/);
   assert.match(chatMessageChromeSource, /onPress=\{\(\) => onPress\(item\)\}/);
   assert.doesNotMatch(screenSource, /promptQuickStarts\.map\(\(item\) => \{/);
-  assert.match(screenSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
@@ -3422,7 +3424,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
   assert.match(chatMessageChromeSource, /\{shortcutEmptyRenderState\.label\}/);
-  assert.match(screenSource, /const promptLibraryStyleState = getPromptLibraryMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const promptLibraryStyleState = composerChromeStyleState\.promptLibrary;/);
   assert.match(screenSource, /const promptLibrarySurface = promptLibraryStyleState\.surface;/);
   assert.match(screenSource, /const promptLibrarySurfaceColors = promptLibraryStyleState\.colors;/);
   assert.match(screenSource, /spacing\[promptLibrarySurface\.quickStartCard\.padding\]/);

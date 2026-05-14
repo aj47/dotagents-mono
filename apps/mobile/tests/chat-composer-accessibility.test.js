@@ -142,10 +142,12 @@ test('uses shared mobile composer control accessibility state', () => {
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
-  assert.match(screenSource, /getChatComposerMobileSurfaceRenderState,/);
+  assert.match(screenSource, /createChatComposerRuntimeChromeStyleState,/);
+  assert.match(chatMessageChromeSource, /getChatComposerMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.match(chatMessageChromeSource, /const composerSurface = composerSurfaceRenderState\.surface;/);
-  assert.match(screenSource, /const composerStyleState = getChatComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
+  assert.match(screenSource, /const composerChromeStyleState = createChatComposerRuntimeChromeStyleState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\);/);
+  assert.match(screenSource, /const composerStyleState = composerChromeStyleState\.composer;/);
   assert.match(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
   assert.match(screenSource, /const composerTextInputPlatform = composerStyleState\.input;/);
@@ -213,10 +215,10 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
 });
 
 test('uses shared pending image attachment presentation in the mobile composer', () => {
-  assert.match(screenSource, /getChatImageAttachmentMobileRenderState/);
+  assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState/);
   assert.match(screenSource, /buildChatImageAttachmentMessage/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
-  assert.match(screenSource, /const imageAttachmentStyleState = getChatImageAttachmentMobileRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
   assert.match(screenSource, /pendingImagesColors: theme\.colors/);

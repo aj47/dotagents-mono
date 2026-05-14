@@ -49,7 +49,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
-  assert.match(screenSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
@@ -157,7 +157,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(chatMessageChromeSource, /Extract<\s*PromptLibraryShortcutSource,/);
   assert.doesNotMatch(chatMessageChromeSource, /source: ChatConversationHomeQuickStartSource;/);
   assert.doesNotMatch(screenSource, /PROMPT_LIBRARY_PRESENTATION/);
-  assert.match(screenSource, /const promptLibraryStyleState = getPromptLibraryMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const promptLibraryStyleState = composerChromeStyleState\.promptLibrary;/);
   assert.match(screenSource, /const promptLibrarySurface = promptLibraryStyleState\.surface;/);
   assert.match(screenSource, /const promptLibrarySurfaceColors = promptLibraryStyleState\.colors;/);
   assert.doesNotMatch(screenSource, /theme\.colors\[(sourceIcon|promptLibraryAddShortcutIcon|promptLibraryEditActionIcon|promptLibraryDeleteActionIcon)\.colorToken\]/);
@@ -224,7 +224,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /style=\{styles\.keyboardAvoidingView\}/);
   assert.match(screenSource, /promptEditorModalSurface\.keyboardAvoidingView\.flex/);
   assert.match(screenSource, /promptEditorModalSurface\.overlay\.flex/);
-  assert.match(screenSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
   assert.match(screenSource, /const promptLibrarySurfaceColors = promptLibraryStyleState\.colors;/);
   assert.match(screenSource, /backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.overlay\.backgroundColor/);
   assert.match(chatMessageChromeSource, /placeholderTextColor=\{colors\.input\.placeholderColor\}/);

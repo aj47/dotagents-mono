@@ -27,7 +27,7 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
   assert.match(screenSource, /handsFreeController\.statusLabel/);
   assert.doesNotMatch(screenSource, /const handsFreeStatusSubtitle = useMemo/);
   assert.match(screenSource, /getHandsFreeComposerCopyState,/);
-  assert.match(screenSource, /getHandsFreeComposerMobileSurfaceRenderState,/);
+  assert.match(screenSource, /createChatComposerRuntimeChromeStyleState,/);
   assert.match(chatMessageChromeSource, /getHandsFreeComposerMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceColors,/);
@@ -36,7 +36,7 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
   assert.match(chatMessageChromeSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface;/);
-  assert.match(screenSource, /const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const handsFreeStyleState = composerChromeStyleState\.handsFree;/);
   assert.match(screenSource, /const handsFreeSurface = handsFreeStyleState\.surface;/);
   assert.match(screenSource, /const handsFreeSurfaceColors = handsFreeStyleState\.colors;/);
   assert.match(screenSource, /spacing\[handsFreeSurface\.statusRow\.paddingHorizontal\]/);

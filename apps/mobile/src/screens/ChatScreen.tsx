@@ -26,6 +26,7 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
+  createChatComposerRuntimeChromeStyleState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -95,7 +96,6 @@ import {
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
   getChatComposerMicMobileWebPressStyleState,
-  getChatComposerMobileSurfaceRenderState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDebugState,
@@ -146,7 +146,6 @@ import {
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
   getChatImageAttachmentMobileAlertState,
-  getChatImageAttachmentMobileRenderState,
   inferImageMimeTypeFromSource,
   MAX_CHAT_IMAGE_ATTACHMENTS,
   MAX_CHAT_IMAGE_FILE_BYTES,
@@ -171,7 +170,6 @@ import {
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
-  getPromptLibraryMobileSurfaceRenderState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
@@ -189,7 +187,6 @@ import {
   formatHandsFreeSleepingDebugMessage,
   formatHandsFreeRecognizerErrorDebugMessage,
   getHandsFreeComposerCopyState,
-  getHandsFreeComposerMobileSurfaceRenderState,
 } from '@dotagents/shared/hands-free-controller';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
@@ -3434,10 +3431,11 @@ function createStyles(theme: Theme, screenHeight: number) {
   const messageHistoryBannerSurface = messageHistoryBannerStyleState.surface;
   const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState.colors;
   const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;
-  const composerStyleState = getChatComposerMobileSurfaceRenderState({
+  const composerChromeStyleState = createChatComposerRuntimeChromeStyleState({
     colors: theme.colors,
     platform: Platform.OS,
   });
+  const composerStyleState = composerChromeStyleState.composer;
   const composerSurface = composerStyleState.surface;
   const composerTextInputSurface = composerSurface.input;
   const composerTextInputPlatform = composerStyleState.input;
@@ -3446,21 +3444,15 @@ function createStyles(theme: Theme, screenHeight: number) {
   const inputAreaSurface = composerSurface.inputArea;
   const sttPreviewSurface = composerSurface.sttPreview;
   const voiceOverlaySurface = composerSurface.voiceOverlay;
-  const imageAttachmentStyleState = getChatImageAttachmentMobileRenderState({
-    colors: theme.colors,
-  });
+  const imageAttachmentStyleState = composerChromeStyleState.imageAttachment;
   const imageAttachmentSurface = imageAttachmentStyleState.surface;
-  const promptLibraryStyleState = getPromptLibraryMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
+  const promptLibraryStyleState = composerChromeStyleState.promptLibrary;
   const promptLibrarySurface = promptLibraryStyleState.surface;
   const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
   const messageQueuePanelWrapperState = getMessageQueuePanelMobileWrapperRenderState();
   const messageQueuePanelWrapper = messageQueuePanelWrapperState.wrapper;
-  const handsFreeStyleState = getHandsFreeComposerMobileSurfaceRenderState({
-    colors: theme.colors,
-  });
+  const handsFreeStyleState = composerChromeStyleState.handsFree;
   const handsFreeSurface = handsFreeStyleState.surface;
   const headerActionButton = createMinimumTouchTargetStyle();
   const headerEdgeActionButton = createMinimumTouchTargetStyle({
