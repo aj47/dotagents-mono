@@ -647,6 +647,25 @@ type ChatComposerRuntimeHandsFreeControlActionsState = {
   handleHandsFreePrimaryControl: () => void;
 };
 
+type ChatComposerRuntimeHandsFreeRecognizerLifecycleController = {
+  state: {
+    phase: HandsFreePhase;
+  };
+  shouldKeepRecognizerActive: boolean;
+  resetError: () => void;
+};
+
+type ChatComposerRuntimeHandsFreeRecognizerLifecycleStateInput = {
+  handsFree: boolean;
+  handsFreeRuntimeActive: boolean;
+  listening: boolean;
+  handsFreeController: ChatComposerRuntimeHandsFreeRecognizerLifecycleController;
+  startRecording: () => void | Promise<void>;
+  stopRecognitionOnly: () => void | Promise<void>;
+  setHandsFreePhaseRefValue: (phase: HandsFreePhase) => void;
+  errorResetDelayMs?: number;
+};
+
 type ChatRuntimeMutableRef<T> = {
   current: T;
 };
@@ -7082,6 +7101,61 @@ export function useChatComposerRuntimeHandsFreeControlActionsState({
     pauseHandsFreeByUser,
     handleHandsFreePrimaryControl,
   };
+}
+
+export function useChatComposerRuntimeHandsFreeRecognizerLifecycleState({
+  handsFree,
+  handsFreeRuntimeActive,
+  listening,
+  handsFreeController,
+  startRecording,
+  stopRecognitionOnly,
+  setHandsFreePhaseRefValue,
+  errorResetDelayMs = 2500,
+}: ChatComposerRuntimeHandsFreeRecognizerLifecycleStateInput): void {
+  useEffect(() => {
+    setHandsFreePhaseRefValue(handsFreeController.state.phase);
+  }, [handsFreeController.state.phase, setHandsFreePhaseRefValue]);
+
+  useEffect(() => {
+    if (!handsFree) {
+      return;
+    }
+    if (!handsFreeRuntimeActive && listening) {
+      void stopRecognitionOnly();
+    }
+  }, [handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
+
+  useEffect(() => {
+    if (!handsFree) {
+      return;
+    }
+
+    if (handsFreeController.state.phase === 'error') {
+      const timer = setTimeout(() => {
+        handsFreeController.resetError();
+      }, errorResetDelayMs);
+      return () => clearTimeout(timer);
+    }
+
+    if (handsFreeController.shouldKeepRecognizerActive && !listening) {
+      void startRecording();
+      return;
+    }
+
+    if (!handsFreeController.shouldKeepRecognizerActive && listening) {
+      void stopRecognitionOnly();
+    }
+  }, [
+    errorResetDelayMs,
+    handsFree,
+    handsFreeController.resetError,
+    handsFreeController.shouldKeepRecognizerActive,
+    handsFreeController.state.phase,
+    listening,
+    startRecording,
+    stopRecognitionOnly,
+  ]);
 }
 
 export function useChatMessageRuntimeMessageState<TMessage>(): ChatMessageRuntimeMessageState<TMessage> {

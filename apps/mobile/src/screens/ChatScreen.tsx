@@ -41,6 +41,7 @@ import {
   useChatComposerRuntimeImageAttachmentPickerState,
   useChatComposerRuntimeSubmissionActionsState,
   useChatComposerRuntimeHandsFreeControlActionsState,
+  useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
   useChatRuntimeNavigationHeaderOptions,
@@ -557,56 +558,63 @@ export default function ChatScreen({ route, navigation }: any) {
     stopRemoteSpeech: stopRemoteTts,
     voiceLog,
   });
-  useEffect(() => {
-    setHandsFreePhaseRefValue(handsFreeController.state.phase);
-  }, [handsFreeController.state.phase, setHandsFreePhaseRefValue]);
 
-	  const {
-		listening,
-		liveTranscript,
-		sttPreview,
-		micButtonRef,
-		startRecording,
-		stopRecognitionOnly,
-		handlePushToTalkPressIn,
-		handlePushToTalkPressOut,
-		  } = useSpeechRecognizer({
-			handsFree,
-				handsFreeDebounceMs: handsFreeMessageDebounceMs,
-			willCancel,
-		audioInputDeviceId: config.audioInputDeviceId,
-		onVoiceFinalized: ({ text, mode }) => {
-			const finalText = text.trim();
-			if (!finalText) return;
+  const {
+    listening,
+    liveTranscript,
+    sttPreview,
+    micButtonRef,
+    startRecording,
+    stopRecognitionOnly,
+    handlePushToTalkPressIn,
+    handlePushToTalkPressOut,
+  } = useSpeechRecognizer({
+    handsFree,
+    handsFreeDebounceMs: handsFreeMessageDebounceMs,
+    willCancel,
+    audioInputDeviceId: config.audioInputDeviceId,
+    onVoiceFinalized: ({ text, mode }) => {
+      const finalText = text.trim();
+      if (!finalText) return;
 
-			if (mode === 'edit') {
-				mergeVoiceTextIntoComposer(finalText);
-				setDebugInfo(getChatComposerHandsFreeDebugMessage('transcriptAdded'));
-				setTimeout(focusComposerInput, 0);
-				return;
-			}
+      if (mode === 'edit') {
+        mergeVoiceTextIntoComposer(finalText);
+        setDebugInfo(getChatComposerHandsFreeDebugMessage('transcriptAdded'));
+        setTimeout(focusComposerInput, 0);
+        return;
+      }
 
-				if (mode === 'handsfree') {
-					if (handsFreeRef.current) {
-						const action = handsFreeController.handleFinalTranscript(finalText);
-						if (action.type === 'send') {
-							void sendRef.current(action.text);
-						}
-						return;
-					}
-				}
+      if (mode === 'handsfree') {
+        if (handsFreeRef.current) {
+          const action = handsFreeController.handleFinalTranscript(finalText);
+          if (action.type === 'send') {
+            void sendRef.current(action.text);
+          }
+          return;
+        }
+      }
 
-			void sendRef.current(finalText);
-		},
-		onRecognizerError: (message) => {
-			handsFreeController.onRecognizerError(message);
-			setDebugInfo(formatChatComposerHandsFreeRecognizerErrorDebugMessage(message));
-		},
-		onPermissionDenied: () => {
-			setDebugInfo(getChatComposerHandsFreeDebugMessage('permissionDenied'));
-		},
-			log: voiceLog,
-		  });
+      void sendRef.current(finalText);
+    },
+    onRecognizerError: (message) => {
+      handsFreeController.onRecognizerError(message);
+      setDebugInfo(formatChatComposerHandsFreeRecognizerErrorDebugMessage(message));
+    },
+    onPermissionDenied: () => {
+      setDebugInfo(getChatComposerHandsFreeDebugMessage('permissionDenied'));
+    },
+    log: voiceLog,
+  });
+
+  useChatComposerRuntimeHandsFreeRecognizerLifecycleState({
+    handsFree,
+    handsFreeRuntimeActive,
+    listening,
+    handsFreeController,
+    startRecording,
+    stopRecognitionOnly,
+    setHandsFreePhaseRefValue,
+  });
 
   const { toggleHandsFree } = useChatRuntimeHandsFreeToggleActionsState({
     config,
@@ -636,45 +644,6 @@ export default function ChatScreen({ route, navigation }: any) {
     onHandsFreeButtonPress: toggleHandsFree,
     styles: chatRuntimeHeaderStyles,
   });
-
-	  useEffect(() => {
-		if (!handsFree) {
-			return;
-		}
-		if (!handsFreeRuntimeActive && listening) {
-			void stopRecognitionOnly();
-		}
-	  }, [handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
-
-	  useEffect(() => {
-		if (!handsFree) {
-			return;
-		}
-
-		if (handsFreeController.state.phase === 'error') {
-			const timer = setTimeout(() => {
-				handsFreeController.resetError();
-			}, 2500);
-			return () => clearTimeout(timer);
-		}
-
-		if (handsFreeController.shouldKeepRecognizerActive && !listening) {
-			void startRecording();
-			return;
-		}
-
-		if (!handsFreeController.shouldKeepRecognizerActive && listening) {
-			void stopRecognitionOnly();
-		}
-	  }, [
-		handsFree,
-		handsFreeController.resetError,
-		handsFreeController.shouldKeepRecognizerActive,
-		handsFreeController.state.phase,
-		listening,
-		startRecording,
-		stopRecognitionOnly,
-	  ]);
 
   const { speakAssistantResponse } = useChatMessageRuntimeAssistantSpeechActionsState({
     ttsEnabledRef,
