@@ -58,7 +58,6 @@ import {
   createChatMessageRuntimeProgressTurnState,
   createChatMessageRuntimeAssistantErrorTurnState,
   createChatMessageRuntimeAssistantDebugErrorTurnState,
-  createChatMessageRuntimeCompletedConversationState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -956,9 +955,11 @@ export default function ChatScreen({ route, navigation }: any) {
         ttsText,
         userResponseText,
         alreadySpokenMidTurn,
+        completedConversationState,
       } = createChatMessageRuntimeFinalResponseTextState({
         responseContent: response.content,
         streamingText,
+        conversationState: latestConversationState,
         finalResponseEvent,
         lastUserResponse,
         midTurnLegacyResponseText,
@@ -969,9 +970,9 @@ export default function ChatScreen({ route, navigation }: any) {
       // Guard: skip UI updates if session has changed, BUT still persist to the original session
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
       const sessionChanged = currentSessionIdRef.current !== requestSessionId;
-	      if (!sessionChanged) {
-	        setConversationState(createChatMessageRuntimeCompletedConversationState(latestConversationState));
-	      }
+      if (!sessionChanged) {
+        setConversationState(completedConversationState);
+      }
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
@@ -1328,9 +1329,11 @@ export default function ChatScreen({ route, navigation }: any) {
         ttsText,
         userResponseText,
         alreadySpokenMidTurn,
+        completedConversationState,
       } = createChatMessageRuntimeFinalResponseTextState({
         responseContent: response.content,
         streamingText,
+        conversationState: latestConversationState,
         finalResponseEvent,
         lastUserResponse,
         midTurnLegacyResponseText,
@@ -1356,7 +1359,7 @@ export default function ChatScreen({ route, navigation }: any) {
         );
         return;
       }
-      setConversationState(createChatMessageRuntimeCompletedConversationState(latestConversationState));
+      setConversationState(completedConversationState);
 
       if (response.conversationId) {
         await sessionStore.setServerConversationId(response.conversationId);

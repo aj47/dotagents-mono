@@ -5184,6 +5184,7 @@ type ChatMessageRuntimeSessionDisplayMessagesOptions = {
 type ChatMessageRuntimeFinalResponseTextStateInput = {
   responseContent?: string | null;
   streamingText: string;
+  conversationState: AgentConversationState;
   finalResponseEvent?: Pick<AgentUserResponseEvent, 'id' | 'text'> | null;
   lastUserResponse?: string;
   midTurnLegacyResponseText?: string;
@@ -5273,6 +5274,7 @@ export function createChatMessageRuntimeStreamingTurnState<
 export function createChatMessageRuntimeFinalResponseTextState({
   responseContent,
   streamingText,
+  conversationState,
   finalResponseEvent,
   lastUserResponse,
   midTurnLegacyResponseText,
@@ -5292,6 +5294,7 @@ export function createChatMessageRuntimeFinalResponseTextState({
     ttsText,
     userResponseText,
     alreadySpokenMidTurn,
+    completedConversationState: createChatMessageRuntimeCompletedConversationState(conversationState),
   };
 }
 

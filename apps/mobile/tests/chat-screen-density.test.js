@@ -1910,8 +1910,13 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /createChatMessageRuntimeFinalResponseTurnState<ChatMessage>\(\{\s+conversationHistory: finalConversationHistory,\s+finalDisplayText,\s+userResponseText,\s+\}\)/);
   assert.match(screenSource, /createChatMessageRuntimeFinalResponseTurnState<ChatMessage>\(\{\s+conversationHistory: response\.conversationHistory,\s+finalDisplayText,\s+historyOptions: \{\s+mergeToolResults: false,\s+\},\s+userResponseText,\s+\}\)/);
   assert.match(screenSource, /createChatMessageRuntimeFinalResponseTextState,/);
+  assert.equal(
+    (screenSource.match(/conversationState: latestConversationState/g) || []).length,
+    2,
+  );
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeFinalResponseTextState/);
   assert.match(chatMessageChromeSource, /const userResponseText = finalResponseEvent\?\.text \|\| lastUserResponse;/);
+  assert.match(chatMessageChromeSource, /completedConversationState: createChatMessageRuntimeCompletedConversationState\(conversationState\)/);
   assert.match(chatMessageChromeSource, /applyUserResponseToChatMessages,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserResponseMessages/);
   assert.match(chatMessageChromeSource, /return applyUserResponseToChatMessages\(messages, userResponse\)/);
@@ -4072,8 +4077,10 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   );
   assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState\(\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedConversationState,/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedConversationState\(latestConversationState\)/);
   assert.equal(
-    (screenSource.match(/createChatMessageRuntimeCompletedConversationState\(latestConversationState\)/g) || []).length,
+    (screenSource.match(/setConversationState\(completedConversationState\)/g) || []).length,
     2,
   );
   assert.doesNotMatch(screenSource, /setLatestStepSummary\(null\)/);
