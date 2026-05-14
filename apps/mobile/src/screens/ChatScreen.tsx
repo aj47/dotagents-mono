@@ -37,6 +37,7 @@ import {
   createChatMessageActionStyleSlots,
   createChatMessageConversationActionSetInput,
   createChatMessageConversationRenderContext,
+  createChatMessageConversationToolExecutionStackInput,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
   createChatMessageRuntimeDockStyleSlots,
@@ -3884,27 +3885,21 @@ export default function ChatScreen({ route, navigation }: any) {
                     collapsed: {
                       onToggle: () => toggleMessageExpansion(i),
                     },
-                    toolExecutionStack: {
+                    toolExecutionStack: createChatMessageConversationToolExecutionStackInput({
+                      message: m,
+                      messageIndex: i,
                       displayToolCallCount,
-                      colors: theme.colors,
+                      renderedToolEntries,
                       isExpanded,
-                      rows: {
-                        entries: renderedToolEntries,
-                        stableMessageKey: m.id ?? String(i),
-                        expandedToolCalls,
-                        previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-                        pendingResultRenderState: toolExecutionDetailPendingResultState,
-                        onToggleToolCall: toggleToolCallExpansion,
-                        onCopyPayload: (content) => { void handleCopyToolPayload(content); },
-                      },
-                      compact: {
-                        onToggle: () => toggleMessageExpansion(i),
-                      },
-                      expanded: {
-                        onToggle: () => toggleMessageExpansion(i),
-                        emptyStateRenderState: toolExecutionDetailEmptyState,
-                      },
-                    },
+                      expandedToolCalls,
+                      previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+                      pendingResultRenderState: toolExecutionDetailPendingResultState,
+                      emptyStateRenderState: toolExecutionDetailEmptyState,
+                      colors: theme.colors,
+                      onToggleToolCall: toggleToolCallExpansion,
+                      onCopyPayload: handleCopyToolPayload,
+                      onToggleMessageExpansion: toggleMessageExpansion,
+                    }),
                   },
                 }}
               />

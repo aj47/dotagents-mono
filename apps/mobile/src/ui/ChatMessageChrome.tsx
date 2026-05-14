@@ -882,6 +882,24 @@ type ChatMessageToolExecutionStackPropsInput = {
   };
 };
 
+type ChatMessageConversationToolExecutionStackInput = {
+  message: {
+    id?: string | null;
+  };
+  messageIndex: number;
+  displayToolCallCount: number;
+  renderedToolEntries: readonly ChatMessageDisplayToolEntry[];
+  isExpanded: ChatMessageToolExecutionStackPropsInput['isExpanded'];
+  expandedToolCalls: ChatDisplayExpansionStateMap<string>;
+  previewNumberOfLines: ChatMessageToolExecutionRowsInput['previewNumberOfLines'];
+  pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
+  emptyStateRenderState: ToolExecutionDetailMobileEmptyStateRenderState;
+  colors: ChatMessageToolExecutionStackPropsInput['colors'];
+  onToggleToolCall: ChatMessageToolExecutionRowsInput['onToggleToolCall'];
+  onCopyPayload: (content: string) => void | Promise<void>;
+  onToggleMessageExpansion: (messageIndex: number) => void;
+};
+
 type ChatMessageToolExecutionCopyButtonStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -2584,6 +2602,44 @@ export function createChatMessageToolExecutionRows({
         onCopyPayload,
       });
     }),
+  };
+}
+
+export function createChatMessageConversationToolExecutionStackInput({
+  message,
+  messageIndex,
+  displayToolCallCount,
+  renderedToolEntries,
+  isExpanded,
+  expandedToolCalls,
+  previewNumberOfLines,
+  pendingResultRenderState,
+  emptyStateRenderState,
+  colors,
+  onToggleToolCall,
+  onCopyPayload,
+  onToggleMessageExpansion,
+}: ChatMessageConversationToolExecutionStackInput): ChatMessageToolExecutionStackPropsInput {
+  return {
+    displayToolCallCount,
+    colors,
+    isExpanded,
+    rows: {
+      entries: renderedToolEntries,
+      stableMessageKey: message.id ?? String(messageIndex),
+      expandedToolCalls,
+      previewNumberOfLines,
+      pendingResultRenderState,
+      onToggleToolCall,
+      onCopyPayload: (content) => { void onCopyPayload(content); },
+    },
+    compact: {
+      onToggle: () => onToggleMessageExpansion(messageIndex),
+    },
+    expanded: {
+      onToggle: () => onToggleMessageExpansion(messageIndex),
+      emptyStateRenderState,
+    },
   };
 }
 
