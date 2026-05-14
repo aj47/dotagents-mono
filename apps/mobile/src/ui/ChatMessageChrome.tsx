@@ -456,6 +456,15 @@ type ChatMessageToolApprovalProps = {
   styles: ChatMessageToolApprovalStyles;
 };
 
+type ChatMessageToolApprovalPropsInput = Omit<
+  ChatMessageToolApprovalProps,
+  'renderState' | 'toolName' | 'styles'
+> & {
+  isApproval: boolean;
+  renderState: ChatMessageToolApprovalProps['renderState'] | null;
+  toolName?: string | null;
+};
+
 type ChatMessageDelegationCardStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -1772,6 +1781,29 @@ export function createChatMessageRetryStatusProps({
   return isRetry && renderState.shouldRender
     ? {
         renderState,
+      }
+    : null;
+}
+
+export function createChatMessageToolApprovalProps({
+  isApproval,
+  renderState,
+  toolName,
+  argumentsPreview,
+  argumentsContent,
+  onToggleArguments,
+  onDeny,
+  onApprove,
+}: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
+  return isApproval && renderState && toolName
+    ? {
+        renderState,
+        toolName,
+        argumentsPreview,
+        argumentsContent,
+        onToggleArguments,
+        onDeny,
+        onApprove,
       }
     : null;
 }

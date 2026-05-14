@@ -249,7 +249,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.approval\.(connectionRequiredTitle|connectionRequiredMessage|unavailableTitle|unavailableMessage|failedTitle|responseFailedMessage)/);
   assert.match(screenSource, /const toolApprovalArgumentsDetail = m\.toolApproval\s+\? getToolExecutionDetailArgumentsState\(m\.toolApproval\.arguments\)/);
   assert.match(screenSource, /const toolApprovalArgumentsPreview = m\.toolApproval\s+\? toolApprovalArgumentsDetail\?\.preview \?\? ''/);
-  assert.match(screenSource, /toolApproval: m\.variant === 'approval' && m\.toolApproval && toolApprovalRenderState \? \{[\s\S]*?renderState: toolApprovalRenderState,[\s\S]*?toolName: m\.toolApproval\.toolName,[\s\S]*?argumentsPreview: toolApprovalArgumentsPreview,[\s\S]*?argumentsContent: toolApprovalArgumentsDetail\?\.content \?\? ''/);
+  assert.match(screenSource, /toolApproval: createChatMessageToolApprovalProps\(\{\s+isApproval: m\.variant === 'approval',\s+renderState: toolApprovalRenderState,\s+toolName: m\.toolApproval\?\.toolName,\s+argumentsPreview: toolApprovalArgumentsPreview,\s+argumentsContent: toolApprovalArgumentsDetail\?\.content \?\? ''/);
+  assert.doesNotMatch(screenSource, /toolApproval: m\.variant === 'approval' && m\.toolApproval && toolApprovalRenderState \? \{/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
+  assert.match(chatMessageChromeSource, /return isApproval && renderState && toolName\s+\? \{[\s\S]*?renderState,[\s\S]*?toolName,[\s\S]*?argumentsPreview,[\s\S]*?argumentsContent,/);
   assert.match(screenSource, /onToggleArguments: \(\) => toggleToolApprovalArguments\(m\.toolApproval!\.approvalId\)/);
   assert.match(screenSource, /onDeny: \(\) => respondToToolApproval\(m\.toolApproval!\.approvalId, false\)/);
   assert.match(screenSource, /onApprove: \(\) => respondToToolApproval\(m\.toolApproval!\.approvalId, true\)/);
@@ -2513,6 +2516,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /createChatMessageExpandedContentProps,/);
   assert.match(screenSource, /createChatMessageInlineActivityProps,/);
   assert.match(screenSource, /createChatMessageRetryStatusProps,/);
+  assert.match(screenSource, /createChatMessageToolApprovalProps,/);
   assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
@@ -2532,6 +2536,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);

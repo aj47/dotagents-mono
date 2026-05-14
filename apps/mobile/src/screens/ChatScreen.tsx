@@ -42,6 +42,7 @@ import {
   createChatMessageExpandedContentProps,
   createChatMessageInlineActivityProps,
   createChatMessageRetryStatusProps,
+  createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -4179,15 +4180,16 @@ export default function ChatScreen({ route, navigation }: any) {
                       },
                     },
                   } : null,
-                  toolApproval: m.variant === 'approval' && m.toolApproval && toolApprovalRenderState ? {
+                  toolApproval: createChatMessageToolApprovalProps({
+                    isApproval: m.variant === 'approval',
                     renderState: toolApprovalRenderState,
-                    toolName: m.toolApproval.toolName,
+                    toolName: m.toolApproval?.toolName,
                     argumentsPreview: toolApprovalArgumentsPreview,
                     argumentsContent: toolApprovalArgumentsDetail?.content ?? '',
                     onToggleArguments: () => toggleToolApprovalArguments(m.toolApproval!.approvalId),
                     onDeny: () => respondToToolApproval(m.toolApproval!.approvalId, false),
                     onApprove: () => respondToToolApproval(m.toolApproval!.approvalId, true),
-                  } : null,
+                  }),
                   inlineActivity: createChatMessageInlineActivityProps({
                     renderState: messageInlineActivityRenderState,
                     spinnerSource: isDark ? darkSpinner : lightSpinner,
