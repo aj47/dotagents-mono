@@ -1488,9 +1488,9 @@ type ChatMessageRuntimeSurfaceProps<
   frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' | 'keyboardVerticalOffset'>;
   dock: Omit<ChatMessageRuntimeDockProps, 'styles'>;
   overlays: ChatMessageRuntimeOverlaysProps;
+  threadList: ChatMessageConversationRuntimeThreadListProps;
   viewport: Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' | 'styles'>;
   styles: ChatMessageRuntimeSurfaceStyleSlots;
-  children: ReactNode;
 };
 
 type ChatMessageRuntimeSurfaceChromeProps<
@@ -1506,6 +1506,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
   dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
   viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
+  threadList: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['threadList'];
   agentSelector: ChatMessageRuntimeOverlaysProps['agentSelector'];
   promptEditor: ChatMessageRuntimeOverlaysProps['promptEditor'];
 };
@@ -2662,6 +2663,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   keyboardVerticalOffset,
   dock,
   viewport,
+  threadList,
   agentSelector,
   promptEditor,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
@@ -2676,6 +2678,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
       promptEditor,
     },
     viewport,
+    threadList,
   };
 }
 
@@ -6347,10 +6350,10 @@ export function ChatMessageRuntimeSurface<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
 >({
-  children,
   frame,
   dock,
   overlays,
+  threadList,
   viewport,
   styles,
 }: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>) {
@@ -6376,7 +6379,7 @@ export function ChatMessageRuntimeSurface<
         {...viewport}
         styles={styles.viewport}
       >
-        {children}
+        <ChatMessageConversationRuntimeThreadList {...threadList} />
       </ChatMessageRuntimeViewport>
     </ChatMessageConversationFrame>
   );

@@ -24,7 +24,6 @@ import {
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
-  ChatMessageConversationRuntimeThreadList,
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatComposerRuntimeDockChromeProps,
@@ -3621,6 +3620,10 @@ export default function ChatScreen({ route, navigation }: any) {
     keyboardVerticalOffset: headerHeight,
     dock: chatMessageRuntimeDock,
     viewport: chatMessageRuntimeViewport,
+    threadList: {
+      threadStates: conversationThreadStates,
+      styles: chatMessageConversationThreadStyles.runtimeThread,
+    },
     agentSelector: {
       visible: agentSelectorVisible,
       onClose: () => setAgentSelectorVisible(false),
@@ -3741,12 +3744,7 @@ export default function ChatScreen({ route, navigation }: any) {
     <ChatMessageRuntimeSurface
       {...chatMessageRuntimeSurface}
       styles={chatMessageRuntimeSurfaceStyles}
-    >
-          <ChatMessageConversationRuntimeThreadList
-            threadStates={conversationThreadStates}
-            styles={chatMessageConversationThreadStyles.runtimeThread}
-          />
-    </ChatMessageRuntimeSurface>
+    />
   );
 }
 
