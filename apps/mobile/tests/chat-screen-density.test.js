@@ -1697,14 +1697,18 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /hasVisibleChatMessageContent,/);
   assert.match(chatMessageChromeSource, /hasVisibleChatMessageContent,/);
   assert.match(screenSource, /applyChatMessageAutoExpansionState,/);
-  assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages,/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeProgressMessages/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
-  assert.match(screenSource, /createChatMessageRuntimeUserResponseMessages\(newMessages, finalResponseEvent\?\.text \|\| lastUserResponse\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages\(newMessages, finalResponseEvent\?\.text \|\| lastUserResponse\)/);
+  assert.match(screenSource, /createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>\(\s+response\.conversationHistory,\s+\{\s+userResponse: finalResponseEvent\?\.text \|\| lastUserResponse,\s+\},\s+\)/);
+  assert.match(screenSource, /createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+userResponse: finalResponseEvent\?\.text \|\| lastUserResponse,\s+\},\s+\)/);
   assert.match(chatMessageChromeSource, /applyUserResponseToChatMessages,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserResponseMessages/);
   assert.match(chatMessageChromeSource, /return applyUserResponseToChatMessages\(messages, userResponse\)/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeFinalHistoryTurnMessages/);
+  assert.match(chatMessageChromeSource, /return createChatMessageRuntimeUserResponseMessages\(messages, userResponse\)/);
   assert.doesNotMatch(screenSource, /applyUserResponseToChatMessages,/);
   assert.doesNotMatch(screenSource, /const messageRenderContext = createChatMessageConversationRenderContext\(\{/);
   assert.doesNotMatch(screenSource, /const \{\s+visibleMessageContent,\s+renderedToolEntries,\s+displayToolCallCount,\s+isExpanded,\s+isLiveStreamingAssistantMessage,\s+messageRenderState,\s+shouldRenderSurface,\s+\} = createChatMessageConversationRenderContext/);
@@ -1717,11 +1721,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(update\.conversationHistory, \{\s+startIndex: currentTurnStartIndex \+ 1,\s+\}\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(update\.conversationHistory, \{\s+startIndex: currentTurnStartIndex \+ 1,\s+\}\)/);
-  assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
-  assert.match(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+skipUserMessages: true,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+historyMessages,\s+\{\s+\.\.\.displayOptions,\s+skipUserMessages,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.doesNotMatch(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(update\.conversationHistory\)/);
   assert.match(chatMessageChromeSource, /findChatMessageRuntimeLastUserMessageIndex\(update\.conversationHistory\)/);
-  assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(response\.conversationHistory\)/);
+  assert.doesNotMatch(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(response\.conversationHistory\)/);
   assert.match(screenSource, /findChatMessageRuntimeLastUserMessageIndex\(serverMessages, -1\)/);
   assert.doesNotMatch(screenSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
   assert.match(chatMessageChromeSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
@@ -2325,15 +2330,18 @@ test('derives tool execution card status from displayed non-meta tool entries', 
 });
 
 test('keeps Codex thinking blocks display-only on mobile', () => {
-  assert.match(screenSource, /preserveChatMessageRuntimeDisplayContentFromProgress,/);
+  assert.doesNotMatch(screenSource, /preserveChatMessageRuntimeDisplayContentFromProgress,/);
+  assert.match(screenSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress,/);
   assert.doesNotMatch(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /const preserveDisplayContentFromProgress = \(/);
   assert.doesNotMatch(screenSource, /displayContent: historyMsg\.displayContent/);
   assert.match(chatMessageChromeSource, /displayContent: historyMessage\.displayContent/);
-  assert.match(screenSource, /preserveChatMessageRuntimeDisplayContentFromProgress\(finalTurnMessages, progressMsgs\)/);
+  assert.match(screenSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress\(\s+finalTurnMessages,\s+progressMsgs,\s+\)/);
   assert.match(chatMessageChromeSource, /preserveChatMessageDisplayContentFromProgress,/);
   assert.match(chatMessageChromeSource, /export function preserveChatMessageRuntimeDisplayContentFromProgress/);
+  assert.match(chatMessageChromeSource, /export function mergeChatMessageRuntimeFinalTurnMessagesWithProgress/);
   assert.match(chatMessageChromeSource, /return preserveChatMessageDisplayContentFromProgress\(finalMessages, progressMessages\)/);
+  assert.match(chatMessageChromeSource, /preserveChatMessageRuntimeDisplayContentFromProgress\(finalTurnMessages, progressMessages\)/);
   assert.doesNotMatch(screenSource, /preserveChatMessageDisplayContentFromProgress,/);
 });
 

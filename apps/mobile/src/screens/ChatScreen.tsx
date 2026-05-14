@@ -58,11 +58,11 @@ import {
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
+  createChatMessageRuntimeFinalHistoryTurnMessages,
   createChatMessageRuntimeHistoryDisplayMessages,
   createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeProgressMessages,
-  createChatMessageRuntimeUserResponseMessages,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -92,9 +92,9 @@ import {
   getChatMessageCopyFeedbackResetDelayMs,
   findChatMessageRuntimeLastUserMessageIndex,
   hasChatMessageRuntimeAssistantContentAfter,
+  mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
-  preserveChatMessageRuntimeDisplayContentFromProgress,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -2089,19 +2089,14 @@ export default function ChatScreen({ route, navigation }: any) {
         console.log('[ChatScreen] Processing final conversationHistory:', response.conversationHistory.length, 'messages');
         console.log('[ChatScreen] ConversationHistory roles:', response.conversationHistory.map(m => m.role).join(', '));
 
-        const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(response.conversationHistory);
-        console.log('[ChatScreen] currentTurnStartIndex:', currentTurnStartIndex);
-
-        const newMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
+        const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>(
           response.conversationHistory,
           {
-            skipUserMessages: true,
-            startIndex: currentTurnStartIndex,
+            userResponse: finalResponseEvent?.text || lastUserResponse,
           },
         );
-		        const finalTurnMessages = createChatMessageRuntimeUserResponseMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
-	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
-	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
+	        console.log('[ChatScreen] finalTurnMessages count:', finalTurnMessages.length);
+	        console.log('[ChatScreen] finalTurnMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
 
         if (sessionChanged && requestSessionId) {
@@ -2130,26 +2125,10 @@ export default function ChatScreen({ route, navigation }: any) {
           const progressMsgs = progressMessagesRef.current;
           setMessages((m) => {
             console.log('[ChatScreen] Current messages before update:', m.length);
-            // If progress had more messages than conversationHistory, keep progress messages
-            // and only update/append the final message from history
-            let mergedMessages: ChatMessage[];
-            if (progressMsgs.length > 0 && finalTurnMessages.length === 0) {
-              // Edge case: server returned empty history but we have progress messages
-              // Keep progress messages to prevent intermediate messages from disappearing (#1083)
-              console.log('[ChatScreen] Merging: newMessages empty, keeping progress messages');
-              mergedMessages = [...progressMsgs];
-            } else if (progressMsgs.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
-              console.log('[ChatScreen] Merging: progress had more messages, preserving intermediate');
-              mergedMessages = [...progressMsgs];
-              // Replace/update the last message with the final one from history
-              mergedMessages[mergedMessages.length - 1] = preserveChatMessageRuntimeDisplayContentFromProgress(
-                [finalTurnMessages[finalTurnMessages.length - 1]],
-                [mergedMessages[mergedMessages.length - 1]],
-              )[0];
-            } else {
-              // History is authoritative when it has >= messages
-              mergedMessages = preserveChatMessageRuntimeDisplayContentFromProgress(finalTurnMessages, progressMsgs);
-            }
+            const mergedMessages = mergeChatMessageRuntimeFinalTurnMessagesWithProgress(
+              finalTurnMessages,
+              progressMsgs,
+            );
             const result = replaceChatMessageRuntimeTurnMessages(
               m,
               messageCountBeforeTurn,
@@ -2475,17 +2454,13 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (response.conversationHistory && response.conversationHistory.length > 0) {
-        const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(response.conversationHistory);
-
-        const newMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
+        const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>(
           response.conversationHistory,
           {
             mergeToolResults: false,
-            skipUserMessages: true,
-            startIndex: currentTurnStartIndex,
+            userResponse: finalResponseEvent?.text || lastUserResponse,
           },
         );
-	        const finalTurnMessages = createChatMessageRuntimeUserResponseMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
         setMessages((m) => replaceChatMessageRuntimeTurnMessages(
           m,

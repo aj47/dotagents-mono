@@ -3596,12 +3596,17 @@ type ChatMessageRuntimeHistoryDisplayMessageOptions = {
   includeId?: boolean;
 };
 
-type ChatMessageRuntimeHistoryDisplayMessagesOptions = ChatMessageRuntimeHistoryDisplayMessageOptions & {
+export type ChatMessageRuntimeHistoryDisplayMessagesOptions = ChatMessageRuntimeHistoryDisplayMessageOptions & {
   includeToolMessages?: boolean;
   mergeToolResults?: boolean;
   skipUserMessages?: boolean;
   startIndex?: number;
 };
+
+export type ChatMessageRuntimeFinalHistoryTurnMessagesOptions =
+  ChatMessageRuntimeHistoryDisplayMessagesOptions & {
+    userResponse?: string;
+  };
 
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
@@ -3722,6 +3727,56 @@ export function createChatMessageRuntimeHistoryDisplayMessages<TToolCall, TToolR
     messages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMessage, { includeId }));
   }
   return messages;
+}
+
+export function createChatMessageRuntimeFinalHistoryTurnMessages<
+  TMessage extends ChatDisplayMessageLike,
+  TToolCall = unknown,
+  TToolResult = unknown,
+>(
+  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
+  options: ChatMessageRuntimeFinalHistoryTurnMessagesOptions = {},
+): TMessage[] {
+  const {
+    userResponse,
+    skipUserMessages = true,
+    startIndex,
+    ...displayOptions
+  } = options;
+  const currentTurnStartIndex =
+    startIndex ?? findChatMessageRuntimeLastUserMessageIndex(historyMessages);
+  const messages = createChatMessageRuntimeHistoryDisplayMessages(
+    historyMessages,
+    {
+      ...displayOptions,
+      skipUserMessages,
+      startIndex: currentTurnStartIndex,
+    },
+  ) as unknown as TMessage[];
+
+  return createChatMessageRuntimeUserResponseMessages(messages, userResponse);
+}
+
+export function mergeChatMessageRuntimeFinalTurnMessagesWithProgress<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  finalTurnMessages: readonly TMessage[],
+  progressMessages: readonly ChatDisplayMessageLike[],
+): TMessage[] {
+  if (progressMessages.length > 0 && finalTurnMessages.length === 0) {
+    return [...progressMessages] as unknown as TMessage[];
+  }
+
+  if (progressMessages.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
+    const mergedMessages = [...progressMessages] as unknown as TMessage[];
+    mergedMessages[mergedMessages.length - 1] = preserveChatMessageRuntimeDisplayContentFromProgress(
+      [finalTurnMessages[finalTurnMessages.length - 1]],
+      [mergedMessages[mergedMessages.length - 1]],
+    )[0];
+    return mergedMessages;
+  }
+
+  return preserveChatMessageRuntimeDisplayContentFromProgress(finalTurnMessages, progressMessages);
 }
 
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
