@@ -71,7 +71,7 @@ import {
   useChatMessageRuntimeRemoteSpeechSettingsState,
   useChatMessageRuntimeThreadExpansionState,
   createChatMessageRuntimeChromeProps,
-  getChatConversationHomeQuickStartPressIntent,
+  useChatConversationHomeQuickStartActionsState,
   getChatMessageRuntimeDebugMessage,
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
@@ -462,17 +462,6 @@ export default function ChatScreen({ route, navigation }: any) {
     sessionStore.createNewSession();
   }, [clearRequestDebugText, sessionStore]);
 
-  const handleInsertQuickStartPrompt = useCallback((content: string) => {
-    const trimmed = content.trim();
-    if (!trimmed) return;
-
-    setInput((currentValue) => {
-      const existing = currentValue.trim();
-      return existing.length > 0 ? `${existing}\n\n${trimmed}` : trimmed;
-    });
-    focusComposerInput();
-  }, [focusComposerInput]);
-
   const { handleRunPromptTask } = useChatConversationHomePromptTaskRunActionsState<Loop, ExtendedSettingsApiClient>({
     taskClient: settingsClient,
     canRunPromptTask,
@@ -481,18 +470,12 @@ export default function ChatScreen({ route, navigation }: any) {
     showAlert: Alert.alert,
   });
 
-  const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
-    const pressIntent = getChatConversationHomeQuickStartPressIntent(item);
-    if (pressIntent.kind === 'add-prompt') {
-      openAddPromptModal();
-      return;
-    }
-    if (pressIntent.kind === 'run-task') {
-      void handleRunPromptTask(pressIntent.task);
-      return;
-    }
-    handleInsertQuickStartPrompt(pressIntent.content);
-  }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
+  const { handleQuickStartPress } = useChatConversationHomeQuickStartActionsState<PredefinedPromptSummary, Loop>({
+    setComposerInput: setInput,
+    focusComposerInput,
+    openAddPrompt: openAddPromptModal,
+    runPromptTask: handleRunPromptTask,
+  });
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;

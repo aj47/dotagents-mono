@@ -1140,6 +1140,22 @@ export type ChatConversationHomeQuickStartItem<
   TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
 > = PromptLibraryShortcutItem<TPrompt, TTask>;
 
+type ChatConversationHomeQuickStartActionsStateInput<
+  TTask extends PromptLibraryTaskLike & { id: string },
+> = {
+  setComposerInput: Dispatch<SetStateAction<string>>;
+  focusComposerInput: () => void;
+  openAddPrompt: () => void;
+  runPromptTask: (task: TTask) => void | Promise<void>;
+};
+
+type ChatConversationHomeQuickStartActionsState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> = {
+  handleQuickStartPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
+};
+
 export function getChatConversationHomePromptLibraryCopyState(): ReturnType<typeof getPromptLibraryCopyState> {
   return getPromptLibraryCopyState();
 }
@@ -1242,6 +1258,46 @@ export function getChatConversationHomeQuickStartPressIntent<
   item: ChatConversationHomeQuickStartItem<TPrompt, TTask>,
 ): PromptLibraryShortcutPressIntent<TTask> {
   return getPromptLibraryShortcutPressIntent(item);
+}
+
+export function useChatConversationHomeQuickStartActionsState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>({
+  setComposerInput,
+  focusComposerInput,
+  openAddPrompt,
+  runPromptTask,
+}: ChatConversationHomeQuickStartActionsStateInput<TTask>): ChatConversationHomeQuickStartActionsState<TPrompt, TTask> {
+  const handleQuickStartPress = useCallback((item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => {
+    const pressIntent = getChatConversationHomeQuickStartPressIntent(item);
+    if (pressIntent.kind === 'add-prompt') {
+      openAddPrompt();
+      return;
+    }
+    if (pressIntent.kind === 'run-task') {
+      void runPromptTask(pressIntent.task);
+      return;
+    }
+
+    const trimmed = pressIntent.content.trim();
+    if (!trimmed) return;
+
+    setComposerInput((currentValue) => {
+      const existing = currentValue.trim();
+      return existing.length > 0 ? `${existing}\n\n${trimmed}` : trimmed;
+    });
+    focusComposerInput();
+  }, [
+    focusComposerInput,
+    openAddPrompt,
+    runPromptTask,
+    setComposerInput,
+  ]);
+
+  return {
+    handleQuickStartPress,
+  };
 }
 
 export function sortChatConversationHomePromptsByUpdatedAt(
