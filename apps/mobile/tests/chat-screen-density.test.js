@@ -379,11 +379,15 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(screenSource, /variant: 'retry'/);
   assert.match(screenSource, /retryInfo: update\.retryInfo/);
   assert.match(screenSource, /getChatRuntimeRetryStatusMobileRenderState,/);
-  assert.match(screenSource, /const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s*retryInfo: m\.retryInfo,\s*colors: theme\.colors,/);
-  assert.match(screenSource, /retryStatus: createChatMessageRetryStatusProps\(\{\s+isRetry: m\.variant === 'retry',\s+renderState: retryStatusRenderState,\s+\}\),/);
+  assert.doesNotMatch(screenSource, /const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s*retryInfo: m\.retryInfo,\s*colors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeRetryStatusMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /type AgentRetryInfo,/);
+  assert.match(screenSource, /retryStatus: createChatMessageRetryStatusProps\(\{\s+isRetry: m\.variant === 'retry',\s+retryInfo: m\.retryInfo,\s+colors: theme\.colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /m\.variant === 'retry' && retryStatusRenderState\.shouldRender/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
-  assert.match(chatMessageChromeSource, /return isRetry && renderState\.shouldRender\s+\? \{\s+renderState,\s+\}\s+: null;/);
+  assert.match(chatMessageChromeSource, /if \(!isRetry\) return null;/);
+  assert.match(chatMessageChromeSource, /const renderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s+retryInfo,\s+colors,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /return renderState\.shouldRender\s+\? \{\s+renderState,\s+\}\s+: null;/);
   assert.match(chatMessageChromeSource, /retryStatus: \{[\s\S]*?card: styles\.retryStatusCard,[\s\S]*?description: styles\.retryStatusDescription,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
   assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);

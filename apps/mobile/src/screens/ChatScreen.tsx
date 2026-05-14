@@ -3957,11 +3957,6 @@ export default function ChatScreen({ route, navigation }: any) {
             const isDelegationToolPreviewExpanded = m.delegation
               ? getChatDisplayExpansionState(expandedDelegationToolPreviews, m.delegation.runId)
               : false;
-            const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState({
-              retryInfo: m.retryInfo,
-              colors: theme.colors,
-            });
-
             return (
               <ChatMessageRuntimeThread
                 key={i}
@@ -3972,7 +3967,8 @@ export default function ChatScreen({ route, navigation }: any) {
                 body={createChatMessageThreadBodyProps({
                   retryStatus: createChatMessageRetryStatusProps({
                     isRetry: m.variant === 'retry',
-                    renderState: retryStatusRenderState,
+                    retryInfo: m.retryInfo,
+                    colors: theme.colors,
                   }),
                   delegationCard: createChatMessageDelegationCardProps({
                     isDelegation: m.variant === 'delegation',

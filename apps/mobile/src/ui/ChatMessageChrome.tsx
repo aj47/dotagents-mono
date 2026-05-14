@@ -40,6 +40,7 @@ import {
 import {
   getAgentDelegationCardState,
   type ACPDelegationProgress,
+  type AgentRetryInfo,
   type AgentDelegationConversationPreviewRow,
   type AgentDelegationPresentation,
 } from '@dotagents/shared/agent-progress';
@@ -66,6 +67,7 @@ import {
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
+  getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
@@ -439,8 +441,10 @@ type ChatMessageRetryStatusProps = {
   styles: ChatMessageRetryStatusStyles;
 };
 
-type ChatMessageRetryStatusPropsInput = Pick<ChatMessageRetryStatusProps, 'renderState'> & {
+type ChatMessageRetryStatusPropsInput = {
   isRetry: boolean;
+  retryInfo?: AgentRetryInfo | null;
+  colors: Parameters<typeof getChatRuntimeRetryStatusMobileRenderState>[0]['colors'];
 };
 
 type ChatMessageToolApprovalStyles = {
@@ -1902,9 +1906,17 @@ export function createChatMessageThreadBodyProps({
 
 export function createChatMessageRetryStatusProps({
   isRetry,
-  renderState,
+  retryInfo,
+  colors,
 }: ChatMessageRetryStatusPropsInput): ChatMessageThreadBodyProps['retryStatus'] {
-  return isRetry && renderState.shouldRender
+  if (!isRetry) return null;
+
+  const renderState = getChatRuntimeRetryStatusMobileRenderState({
+    retryInfo,
+    colors,
+  });
+
+  return renderState.shouldRender
     ? {
         renderState,
       }
