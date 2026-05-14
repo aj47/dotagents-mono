@@ -1833,12 +1833,14 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileAlertState,/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(chatMessageChromeSource, /from '@dotagents\/shared\/conversation-media-assets'/);
-  assert.match(screenSource, /createChatComposerRuntimeImagePickerLaunchOptions,/);
-  assert.match(screenSource, /useChatComposerRuntimeImageAttachmentPickerState,/);
-  assert.match(screenSource, /const pickComposerImages = useCallback\(\s+\(selectionLimit: number\) => ImagePicker\.launchImageLibraryAsync\(\s+createChatComposerRuntimeImagePickerLaunchOptions\(\{\s+mediaTypes: ImagePicker\.MediaTypeOptions\.Images,\s+selectionLimit,\s+\}\)\s+\),\s+\[\]\s+\);/);
-  assert.match(screenSource, /const \{ handlePickImages \} = useChatComposerRuntimeImageAttachmentPickerState\(\{\s+pendingImages,\s+setPendingImages,\s+pickImages: pickComposerImages,\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.doesNotMatch(chatScreenSource, /import \* as ImagePicker from 'expo-image-picker';/);
+  assert.doesNotMatch(screenSource, /createChatComposerRuntimeImagePickerLaunchOptions,/);
+  assert.match(screenSource, /useChatComposerRuntimeImageLibraryPickerState,/);
+  assert.match(screenSource, /const \{ handlePickImages \} = useChatComposerRuntimeImageLibraryPickerState\(\{\s+pendingImages,\s+setPendingImages,\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeImagePickerLaunchOptions/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeImageLibraryPickerState/);
+  assert.match(chatMessageChromeSource, /ImagePicker\.launchImageLibraryAsync\(\s+createChatComposerRuntimeImagePickerLaunchOptions\(\{\s+mediaTypes: ImagePicker\.MediaTypeOptions\.Images,\s+selectionLimit,/);
   assert.match(chatMessageChromeSource, /allowsMultipleSelection: true,\s+selectionLimit,\s+quality: 0\.8,\s+base64: true,/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeImageAttachmentPickerState/);
   assert.match(chatMessageChromeSource, /CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS\.maxImages/);

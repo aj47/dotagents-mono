@@ -24,6 +24,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   getChatDisplayExpansionState,
@@ -600,6 +601,11 @@ type ChatComposerRuntimeImageAttachmentPickerStateInput = {
   showAlert: (title: string, message: string) => void;
   now?: () => number;
 };
+
+type ChatComposerRuntimeImageLibraryPickerStateInput = Omit<
+  ChatComposerRuntimeImageAttachmentPickerStateInput,
+  'pickImages'
+>;
 
 type ChatComposerRuntimeImageAttachmentPickerState = {
   handlePickImages: () => Promise<void>;
@@ -4757,6 +4763,25 @@ export function useChatComposerRuntimeImageAttachmentPickerState({
   return {
     handlePickImages,
   };
+}
+
+export function useChatComposerRuntimeImageLibraryPickerState(
+  input: ChatComposerRuntimeImageLibraryPickerStateInput,
+): ChatComposerRuntimeImageAttachmentPickerState {
+  const pickComposerImages = useCallback(
+    (selectionLimit: number) => ImagePicker.launchImageLibraryAsync(
+      createChatComposerRuntimeImagePickerLaunchOptions({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        selectionLimit,
+      })
+    ),
+    []
+  );
+
+  return useChatComposerRuntimeImageAttachmentPickerState({
+    ...input,
+    pickImages: pickComposerImages,
+  });
 }
 
 export function getChatComposerHandsFreeCopyState(): ReturnType<typeof getHandsFreeComposerCopyState> {

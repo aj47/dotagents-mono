@@ -34,8 +34,7 @@ import {
   createChatComposerHandsFreeTranscriptAddedDebugState,
   createChatComposerHandsFreePermissionDeniedDebugState,
   createChatComposerHandsFreeRecognizerErrorDebugState,
-  createChatComposerRuntimeImagePickerLaunchOptions,
-  useChatComposerRuntimeImageAttachmentPickerState,
+  useChatComposerRuntimeImageLibraryPickerState,
   useChatComposerRuntimeSubmissionChromeState,
   useChatComposerRuntimeHandsFreeControlActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
@@ -115,7 +114,6 @@ import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import * as Speech from 'expo-speech';
-import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
@@ -305,19 +303,9 @@ export default function ChatScreen({ route, navigation }: any) {
     mergeVoiceTextIntoComposer,
     removePendingImage,
   } = useChatComposerRuntimeDraftState();
-  const pickComposerImages = useCallback(
-    (selectionLimit: number) => ImagePicker.launchImageLibraryAsync(
-      createChatComposerRuntimeImagePickerLaunchOptions({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        selectionLimit,
-      })
-    ),
-    []
-  );
-  const { handlePickImages } = useChatComposerRuntimeImageAttachmentPickerState({
+  const { handlePickImages } = useChatComposerRuntimeImageLibraryPickerState({
     pendingImages,
     setPendingImages,
-    pickImages: pickComposerImages,
     showAlert: Alert.alert,
   });
   const {
