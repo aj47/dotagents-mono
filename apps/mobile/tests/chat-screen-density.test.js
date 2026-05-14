@@ -3,10 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const screenSource = fs.readFileSync(
+const chatScreenSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
   'utf8'
 );
+const chatRuntimeMobileStylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
+  'utf8'
+);
+const screenSource = `${chatScreenSource}\n${chatRuntimeMobileStylesSource}`;
 const mobileTypographySource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'mobileTypography.ts'),
   'utf8'
@@ -30,6 +35,16 @@ const clientSource = fs.readFileSync(
 const packageJson = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
 );
+
+test('keeps mobile chat runtime stylesheet in the ui layer', () => {
+  assert.match(chatScreenSource, /createChatRuntimeMobileStyles\(theme\)/);
+  assert.doesNotMatch(chatScreenSource, /function createStyles/);
+  assert.doesNotMatch(chatScreenSource, /StyleSheet\.create/);
+  assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileChromeStyleState,/);
+  assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileStyles/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleState,/);
+  assert.match(chatRuntimeMobileStylesSource, /return StyleSheet\.create\(\{/);
+});
 
 test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.doesNotMatch(screenSource, /from '\.\.\/ui\/mobileTypography'/);
@@ -3061,7 +3076,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import type \{[\s\S]*?ChatComposerTextEntryKeyPressEvent,[\s\S]*?ChatComposerTextEntryRef,[\s\S]*?ChatMessageScrollEvent,[\s\S]*?ChatMessageScrollViewportRef,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
   assert.match(screenSource, /useRef<ChatComposerTextEntryRef>\(null\)/);
   assert.match(screenSource, /\(e: ChatComposerTextEntryKeyPressEvent\) => \{/);
-  assert.doesNotMatch(screenSource, /import \{[\s\S]*?\b(TextInput|ScrollView|NativeScrollEvent|NativeSyntheticEvent|TextInputKeyPressEventData)\b[\s\S]*?\} from 'react-native';/);
+  assert.doesNotMatch(chatScreenSource, /import \{[\s\S]*?\b(TextInput|ScrollView|NativeScrollEvent|NativeSyntheticEvent|TextInputKeyPressEventData)\b[\s\S]*?\} from 'react-native';/);
   assert.match(chatMessageChromeSource, /export function ChatComposerVoiceOverlay/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModal/);
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderActionsRow/);

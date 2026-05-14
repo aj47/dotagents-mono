@@ -3,10 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const screenSource = fs.readFileSync(
+const chatScreenSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
   'utf8'
 );
+const chatRuntimeMobileStylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
+  'utf8'
+);
+const screenSource = `${chatScreenSource}\n${chatRuntimeMobileStylesSource}`;
 const chatMessageChromeSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
   'utf8'
