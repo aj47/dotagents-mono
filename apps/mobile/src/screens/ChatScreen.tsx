@@ -56,7 +56,7 @@ import {
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatMessageConversationRuntimeThreadListRenderState,
-  createChatMessageRuntimeHistoryDisplayMessage,
+  createChatMessageRuntimeHistoryDisplayMessages,
   createChatMessageRuntimeActivityMessage,
   createChatMessageRuntimeAssistantDebugErrorMessage,
   createChatMessageRuntimeAssistantErrorMessage,
@@ -93,8 +93,6 @@ import {
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   isLastChatMessageRuntimeConversationContent,
-  mergeChatMessageRuntimeToolResultsIntoLastMessage,
-  shouldSkipChatMessageRuntimeSyntheticToolSummary,
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -1798,27 +1796,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const hasAssistantMessages = currentTurnStartIndex + 1 < update.conversationHistory.length;
       if (hasAssistantMessages) {
         messages.length = 0;
-
-        for (let i = currentTurnStartIndex + 1; i < update.conversationHistory.length; i++) {
-          const historyMsg = update.conversationHistory[i];
-
-          // Merge tool results into the preceding assistant message to avoid duplication
-          // The server sends: assistant (with toolCalls) -> tool (with toolResults)
-          // We want to display them as a single message with both toolCalls and toolResults
-          if (mergeChatMessageRuntimeToolResultsIntoLastMessage(messages, historyMsg)) {
-            continue;
-          }
-
-          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
-          // carry no toolResults/toolCalls — the underlying failures are
-          // already visible inside the tool call stack via toolResults on the
-          // preceding tool message.
-          if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMsg)) {
-            continue;
-          }
-
-          messages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMsg));
-        }
+        messages.push(...createChatMessageRuntimeHistoryDisplayMessages(update.conversationHistory, {
+          startIndex: currentTurnStartIndex + 1,
+        }));
       }
     }
 
@@ -2215,28 +2195,13 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         console.log('[ChatScreen] currentTurnStartIndex:', currentTurnStartIndex);
 
-        const newMessages: ChatMessage[] = [];
-        for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
-          const historyMsg = response.conversationHistory[i];
-          if (historyMsg.role === 'user') continue;
-
-          // Merge tool results into the preceding assistant message to avoid duplication
-          // The server sends: assistant (with toolCalls) -> tool (with toolResults)
-          // We want to display them as a single message with both toolCalls and toolResults
-          if (mergeChatMessageRuntimeToolResultsIntoLastMessage(newMessages, historyMsg)) {
-            continue;
-          }
-
-          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
-          // carry no toolResults/toolCalls — the underlying failures are
-          // already visible inside the tool call stack via toolResults on the
-          // preceding tool message.
-          if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMsg)) {
-            continue;
-          }
-
-          newMessages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMsg));
-        }
+        const newMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
+          response.conversationHistory,
+          {
+            skipUserMessages: true,
+            startIndex: currentTurnStartIndex,
+          },
+        );
 		        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
 	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
@@ -2609,19 +2574,14 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         }
 
-        const newMessages: ChatMessage[] = [];
-        for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
-          const historyMsg = response.conversationHistory[i];
-          if (historyMsg.role === 'user') continue;
-          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
-          // carry no toolResults/toolCalls — the underlying failures are
-          // already visible inside the tool call stack via toolResults on the
-          // preceding tool message.
-          if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMsg)) {
-            continue;
-          }
-          newMessages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMsg));
-        }
+        const newMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
+          response.conversationHistory,
+          {
+            mergeToolResults: false,
+            skipUserMessages: true,
+            startIndex: currentTurnStartIndex,
+          },
+        );
 	        const finalTurnMessages = applyUserResponseToChatMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
         setMessages((m) => {
@@ -3164,16 +3124,13 @@ export default function ChatScreen({ route, navigation }: any) {
 
             await sessionStore.setServerConversationId(recoveryConversationId);
 
-            const recoveredMessages: ChatMessage[] = [];
-            for (const msg of serverMessages) {
-              if (mergeChatMessageRuntimeToolResultsIntoLastMessage(recoveredMessages, msg)) {
-                continue;
-              }
-
-              if (msg.role === 'user' || msg.role === 'assistant') {
-                recoveredMessages.push(createChatMessageRuntimeHistoryDisplayMessage(msg, { includeId: true }));
-              }
-            }
+            const recoveredMessages: ChatMessage[] = createChatMessageRuntimeHistoryDisplayMessages(
+              serverMessages,
+              {
+                includeId: true,
+                includeToolMessages: false,
+              },
+            );
 
             setMessages(recoveredMessages);
             await sessionStore.setMessages(recoveredMessages);

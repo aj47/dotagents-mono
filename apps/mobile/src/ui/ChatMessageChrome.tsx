@@ -3403,6 +3403,13 @@ type ChatMessageRuntimeHistoryDisplayMessageOptions = {
   includeId?: boolean;
 };
 
+type ChatMessageRuntimeHistoryDisplayMessagesOptions = ChatMessageRuntimeHistoryDisplayMessageOptions & {
+  includeToolMessages?: boolean;
+  mergeToolResults?: boolean;
+  skipUserMessages?: boolean;
+  startIndex?: number;
+};
+
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
@@ -3456,6 +3463,39 @@ export function createChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolRe
     toolResults: historyMessage.toolResults,
     branchMessageIndex: historyMessage.branchMessageIndex,
   };
+}
+
+export function createChatMessageRuntimeHistoryDisplayMessages<TToolCall, TToolResult>(
+  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
+  {
+    includeId = false,
+    includeToolMessages = true,
+    mergeToolResults = true,
+    skipUserMessages = false,
+    startIndex = 0,
+  }: ChatMessageRuntimeHistoryDisplayMessagesOptions = {},
+): ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>[] {
+  const messages: ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>[] = [];
+  for (let i = startIndex; i < historyMessages.length; i++) {
+    const historyMessage = historyMessages[i];
+    if (skipUserMessages && historyMessage.role === 'user') {
+      continue;
+    }
+    if (
+      mergeToolResults &&
+      mergeChatMessageRuntimeToolResultsIntoLastMessage(messages, historyMessage)
+    ) {
+      continue;
+    }
+    if (historyMessage.role === 'tool' && !includeToolMessages) {
+      continue;
+    }
+    if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMessage)) {
+      continue;
+    }
+    messages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMessage, { includeId }));
+  }
+  return messages;
 }
 
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
