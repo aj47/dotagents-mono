@@ -5071,7 +5071,9 @@ export type ChatMessageRuntimeFinalHistoryTurnMessagesOptions =
     userResponse?: string;
   };
 
-export type ChatMessageRuntimeFinalResponseTurnState<TMessage> =
+export type ChatMessageRuntimeFinalResponseTurnState<
+  TMessage extends ChatDisplayMessageLike & ChatMessageRuntimeConversationContentUpdateMessage,
+> =
   | {
       kind: 'history';
       finalTurnMessages: TMessage[];
@@ -5079,6 +5081,7 @@ export type ChatMessageRuntimeFinalResponseTurnState<TMessage> =
   | {
       kind: 'text';
       finalDisplayText: string;
+      updateMessages: (messages: readonly TMessage[]) => TMessage[];
     }
   | {
       kind: 'empty';
@@ -5808,7 +5811,7 @@ export function createChatMessageRuntimeFinalHistoryTurnMessages<
 }
 
 export function createChatMessageRuntimeFinalResponseTurnState<
-  TMessage extends ChatDisplayMessageLike,
+  TMessage extends ChatDisplayMessageLike & ChatMessageRuntimeConversationContentUpdateMessage,
   TToolCall = unknown,
   TToolResult = unknown,
 >({
@@ -5841,6 +5844,7 @@ export function createChatMessageRuntimeFinalResponseTurnState<
     return {
       kind: 'text',
       finalDisplayText,
+      updateMessages: (messages) => updateLastChatMessageRuntimeConversationContent(messages, finalDisplayText),
     };
   }
 

@@ -1084,7 +1084,7 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         } else {
           // Normal case: update UI state
-          setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalTurnState.finalDisplayText));
+          setMessages(finalTurnState.updateMessages);
         }
       } else {
         console.log('[ChatScreen] WARNING: No conversationHistory and no finalText!');
@@ -1393,7 +1393,7 @@ export default function ChatScreen({ route, navigation }: any) {
           finalTurnMessages,
         ));
       } else if (finalTurnState.kind === 'text') {
-        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalTurnState.finalDisplayText));
+        setMessages(finalTurnState.updateMessages);
       }
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText

@@ -2802,9 +2802,14 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   );
   assert.equal(
     (screenSource.match(/updateLastChatMessageRuntimeConversationContent\(m, finalTurnState\.finalDisplayText\)/g) || []).length,
+    0,
+  );
+  assert.equal(
+    (screenSource.match(/setMessages\(finalTurnState\.updateMessages\)/g) || []).length,
     2,
   );
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeConversationContent/);
+  assert.match(chatMessageChromeSource, /updateMessages: \(messages\) => updateLastChatMessageRuntimeConversationContent\(messages, finalDisplayText\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeStreamingTurnState/);
   assert.match(chatMessageChromeSource, /const streamingText = createChatMessageRuntimeStreamingText\(currentText, nextToken\)/);
   assert.match(chatMessageChromeSource, /updateMessages: \(messages\) => updateLastChatMessageRuntimeConversationContent\(messages, streamingText\)/);
