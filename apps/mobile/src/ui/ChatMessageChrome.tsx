@@ -66,12 +66,17 @@ import {
 } from '@dotagents/shared/conversation-media-assets';
 import {
   getHandsFreeComposerControlState,
+  getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
   type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
+import {
+  formatVoiceDebugEntry,
+  type VoiceDebugEntry,
+} from '@dotagents/shared/voice-debug-log';
 import {
   createChatComposerAccessibilityHint,
   createVoiceInputLiveRegionAnnouncement,
@@ -137,6 +142,7 @@ import {
   getChatRuntimeAgentSelectorMobileRenderState,
   getChatRuntimeBackMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
+  getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeKillSwitchMobileRenderState,
@@ -1436,6 +1442,12 @@ type ChatMessageDebugPanelProps = {
 type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState & {
   panelStyle: StyleProp<ViewStyle>;
   textStyle: StyleProp<TextStyle>;
+};
+
+type ChatMessageRuntimeDebugPanelsRenderStateInput = {
+  requestDebugText?: string | null;
+  voiceDebugEnabled?: boolean;
+  voiceEvents?: readonly VoiceDebugEntry[] | null;
 };
 
 type ChatMessageConversationViewportStyleSlots = {
@@ -2842,6 +2854,28 @@ export function createChatMessageRuntimeViewportContentRenderState({
       messageCount,
     }),
   };
+}
+
+export function createChatMessageRuntimeDebugPanelsRenderState({
+  requestDebugText,
+  voiceDebugEnabled = false,
+  voiceEvents = [],
+}: ChatMessageRuntimeDebugPanelsRenderStateInput): ChatRuntimeDebugPanelsMobileRenderState {
+  const handsFreeCopy = getHandsFreeComposerCopyState();
+  const resolvedVoiceEvents = voiceEvents ? Array.from(voiceEvents) : [];
+
+  return getChatRuntimeDebugPanelsMobileRenderState({
+    requestDebugText,
+    voiceDebugEnabled,
+    voiceEntryCount: resolvedVoiceEvents.length,
+    voiceRows: [
+      { key: 'voice-debug-title', text: handsFreeCopy.debug.voiceDebugTitle },
+      ...resolvedVoiceEvents.slice(0, 6).map((entry) => ({
+        key: entry.id,
+        text: formatVoiceDebugEntry(entry),
+      })),
+    ],
+  });
 }
 
 export function createChatMessageRuntimeViewportChromeProps<

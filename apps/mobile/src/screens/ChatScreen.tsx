@@ -44,6 +44,7 @@ import {
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageRuntimeDockChromeProps,
+  createChatMessageRuntimeDebugPanelsRenderState,
   createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportContentRenderState,
   createChatMessageRuntimeViewportChromeProps,
@@ -98,7 +99,6 @@ import {
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeDebugState,
-  getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -201,7 +201,6 @@ import { resolveMobileFontFamily } from '../ui/mobileTypography';
 import {
   createMinimumTouchTargetStyle,
 } from '@dotagents/shared/accessibility-utils';
-import { formatVoiceDebugEntry } from '@dotagents/shared/voice-debug-log';
 import {
   formatHandsFreeSleepingDebugMessage,
   formatHandsFreeRecognizerErrorDebugMessage,
@@ -1967,19 +1966,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
   const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
   const mobileRuntimeDebugPanelsRenderState = useMemo(
-    () => getChatRuntimeDebugPanelsMobileRenderState({
+    () => createChatMessageRuntimeDebugPanelsRenderState({
       requestDebugText: debugInfo,
       voiceDebugEnabled: handsFreeDebugEnabled,
-      voiceEntryCount: voiceEvents.length,
-      voiceRows: [
-        { key: 'voice-debug-title', text: handsFreeCopy.debug.voiceDebugTitle },
-        ...voiceEvents.slice(0, 6).map((entry) => ({
-          key: entry.id,
-          text: formatVoiceDebugEntry(entry),
-        })),
-      ],
+      voiceEvents,
     }),
-    [debugInfo, handsFreeCopy.debug.voiceDebugTitle, handsFreeDebugEnabled, voiceEvents],
+    [debugInfo, handsFreeDebugEnabled, voiceEvents],
   );
 
   const handlePickImages = useCallback(async () => {

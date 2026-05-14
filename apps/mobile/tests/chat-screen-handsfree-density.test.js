@@ -79,11 +79,14 @@ test('falls back to normal direct-send handling for stale handsfree finalization
 });
 
 test('surfaces recent voice debug events in chat when internal diagnostics are enabled', () => {
-  assert.match(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
   assert.match(screenSource, /voiceDebugEnabled: handsFreeDebugEnabled/);
-  assert.match(screenSource, /voiceEntryCount: voiceEvents\.length/);
-  assert.match(screenSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
-  assert.match(screenSource, /formatVoiceDebugEntry\(entry\)/);
+  assert.match(screenSource, /voiceEvents,/);
+  assert.doesNotMatch(screenSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
+  assert.match(chatMessageChromeSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
+  assert.doesNotMatch(screenSource, /formatVoiceDebugEntry\(entry\)/);
+  assert.match(chatMessageChromeSource, /formatVoiceDebugEntry\(entry\)/);
   assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
   assert.doesNotMatch(screenSource, />Voice debug<\/Text>/);
 });
