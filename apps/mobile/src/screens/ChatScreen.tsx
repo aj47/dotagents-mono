@@ -63,6 +63,7 @@ import {
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
   useChatMessageRuntimeResponseHistoryState,
+  useChatMessageRuntimeSpeechActionsState,
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeLogMeta,
@@ -809,127 +810,26 @@ export default function ChatScreen({ route, navigation }: any) {
     processAutoSpeechQueue();
   }, [config.ttsEnabled, processAutoSpeechQueue]);
 
-  const speakMessage = useCallback((index: number, content: string) => {
-    if (speakingMessageIndex === index) {
-      // Toggle off - stop speaking
-      clearIntendedSpeakingMessage();
-      Speech.stop();
-	      if (handsFree) {
-	        handsFreeController.onSpeechFinished();
-	        voiceLog('tts-stopped', 'Assistant speech stopped from message playback.');
-	      }
-      clearSpeakingMessage();
-      return;
-    }
-    // Stop any current speech first
-    setIntendedSpeakingMessage(index);
-    Speech.stop();
-    stopRemoteTts();
-    const speechText = createChatMessageRuntimeSpeechTextState(content);
-    if (!speechText) {
-      clearIntendedSpeakingMessage();
-      return;
-    }
-    const processedText = speechText.processedText;
-	    if (handsFree) {
-	      handsFreeController.onSpeechStarted();
-	      voiceLog('tts-started', 'Assistant speech started from message playback.');
-	    }
-    startSpeakingMessage(index);
-    if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
-      // Remote desktop TTS routes through the paired desktop's /v1/tts/speak.
-      void speakRemoteTts(processedText, {
-        baseUrl: config.baseUrl,
-        apiKey: config.apiKey,
-        providerId: effectiveTtsProvider,
-        voice: effectiveRemoteTtsVoice,
-        model: effectiveRemoteTtsModel,
-        rate: effectiveRemoteTtsRate,
-        onDone: () => {
-          clearIntendedSpeakingMessage();
-          if (handsFree) {
-            handsFreeController.onSpeechFinished();
-            voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
-          }
-          clearSpeakingMessage();
-        },
-        onError: () => {
-          clearIntendedSpeakingMessage();
-          if (handsFree) {
-            handsFreeController.onSpeechFinished();
-            voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
-          }
-          clearSpeakingMessage();
-        },
-        onStopped: () => {
-          if (intendedSpeakingIndexRef.current === null) {
-            if (handsFree) {
-              handsFreeController.onSpeechFinished();
-              voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
-            }
-            clearSpeakingMessage();
-          }
-        },
-      });
-      return;
-    }
-
-    const speechOptions: Speech.SpeechOptions = {
-      language: 'en-US',
-      rate: config.ttsRate ?? 1.0,
-      pitch: config.ttsPitch ?? 1.0,
-      onDone: () => {
-        clearIntendedSpeakingMessage();
-	        if (handsFree) {
-	          handsFreeController.onSpeechFinished();
-	          voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
-	        }
-        clearSpeakingMessage();
-      },
-      onError: () => {
-        clearIntendedSpeakingMessage();
-	        if (handsFree) {
-	          handsFreeController.onSpeechFinished();
-	          voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
-	        }
-        clearSpeakingMessage();
-      },
-      onStopped: () => {
-        // Only clear if this callback is for the current intended message,
-        // not a stale callback from a previously stopped utterance
-        if (intendedSpeakingIndexRef.current === null) {
-	          if (handsFree) {
-	            handsFreeController.onSpeechFinished();
-	            voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
-	          }
-          clearSpeakingMessage();
-        }
-      },
-    };
-    if (config.ttsVoiceId) {
-      speechOptions.voice = config.ttsVoiceId;
-    }
-    Speech.speak(processedText, speechOptions);
-	  }, [
-		speakingMessageIndex,
-		config.apiKey,
-		config.baseUrl,
-		config.ttsRate,
-		config.ttsPitch,
-		config.ttsVoiceId,
-    clearIntendedSpeakingMessage,
-    clearSpeakingMessage,
-		effectiveRemoteTtsModel,
-		effectiveRemoteTtsRate,
-		effectiveRemoteTtsVoice,
-		effectiveTtsProvider,
-		handsFree,
-		handsFreeController,
+  const { speakMessage } = useChatMessageRuntimeSpeechActionsState({
+    speakingMessageIndex,
+    config,
+    effectiveTtsProvider,
+    effectiveRemoteTtsVoice,
+    effectiveRemoteTtsModel,
+    effectiveRemoteTtsRate,
+    handsFree,
+    handsFreeController,
     intendedSpeakingIndexRef,
     setIntendedSpeakingMessage,
     startSpeakingMessage,
-		voiceLog,
-	  ]);
+    clearSpeakingMessage,
+    clearIntendedSpeakingMessage,
+    speakNative: Speech.speak,
+    stopNativeSpeech: Speech.stop,
+    speakRemote: speakRemoteTts,
+    stopRemoteSpeech: stopRemoteTts,
+    voiceLog,
+  });
 
   // Cleanup: stop speech on unmount (#1078)
   useEffect(() => {

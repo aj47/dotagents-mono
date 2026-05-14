@@ -707,6 +707,66 @@ type ChatMessageRuntimeSpeechPlaybackState = {
   clearIntendedSpeakingMessage: () => void;
 };
 
+type ChatMessageRuntimeSpeechActionConfig = {
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  ttsRate?: number | null;
+  ttsPitch?: number | null;
+  ttsVoiceId?: string | null;
+};
+
+type ChatMessageRuntimeSpeechActionsController = {
+  onSpeechStarted: () => void;
+  onSpeechFinished: () => void;
+};
+
+type ChatMessageRuntimeNativeSpeechOptions = {
+  language?: string;
+  rate?: number;
+  pitch?: number;
+  voice?: string;
+  onDone?: () => void;
+  onError?: () => void;
+  onStopped?: () => void;
+};
+
+type ChatMessageRuntimeRemoteSpeechOptions = {
+  baseUrl: string;
+  apiKey: string;
+  providerId?: string;
+  voice?: string;
+  model?: string;
+  rate?: number;
+  onDone?: () => void;
+  onError?: () => void;
+  onStopped?: () => void;
+};
+
+type ChatMessageRuntimeSpeechActionsStateInput = {
+  speakingMessageIndex: number | null;
+  config: ChatMessageRuntimeSpeechActionConfig;
+  effectiveTtsProvider: string;
+  effectiveRemoteTtsVoice?: string | null;
+  effectiveRemoteTtsModel?: string | null;
+  effectiveRemoteTtsRate?: number | null;
+  handsFree: boolean;
+  handsFreeController: ChatMessageRuntimeSpeechActionsController;
+  intendedSpeakingIndexRef: ChatRuntimeMutableRef<number | null>;
+  setIntendedSpeakingMessage: (messageIndex: number) => void;
+  startSpeakingMessage: (messageIndex: number) => void;
+  clearSpeakingMessage: () => void;
+  clearIntendedSpeakingMessage: () => void;
+  speakNative: (text: string, options: ChatMessageRuntimeNativeSpeechOptions) => void;
+  stopNativeSpeech: () => void;
+  speakRemote: (text: string, options: ChatMessageRuntimeRemoteSpeechOptions) => unknown | Promise<unknown>;
+  stopRemoteSpeech: () => void;
+  voiceLog: VoiceDebugLog;
+};
+
+type ChatMessageRuntimeSpeechActionsState = {
+  speakMessage: (messageIndex: number, content: string) => void;
+};
+
 type ChatComposerRuntimeEditBeforeSendState = {
   editBeforeSendEnabled: boolean;
   toggleEditBeforeSend: () => void;
@@ -7141,6 +7201,129 @@ export function useChatMessageRuntimeSpeechPlaybackState(): ChatMessageRuntimeSp
     startSpeakingMessage,
     clearSpeakingMessage,
     clearIntendedSpeakingMessage,
+  };
+}
+
+export function useChatMessageRuntimeSpeechActionsState({
+  speakingMessageIndex,
+  config,
+  effectiveTtsProvider,
+  effectiveRemoteTtsVoice,
+  effectiveRemoteTtsModel,
+  effectiveRemoteTtsRate,
+  handsFree,
+  handsFreeController,
+  intendedSpeakingIndexRef,
+  setIntendedSpeakingMessage,
+  startSpeakingMessage,
+  clearSpeakingMessage,
+  clearIntendedSpeakingMessage,
+  speakNative,
+  stopNativeSpeech,
+  speakRemote,
+  stopRemoteSpeech,
+  voiceLog,
+}: ChatMessageRuntimeSpeechActionsStateInput): ChatMessageRuntimeSpeechActionsState {
+  const finishHandsFreeSpeech = useCallback((message: string) => {
+    if (!handsFree) return;
+    handsFreeController.onSpeechFinished();
+    voiceLog('tts-stopped', message);
+  }, [handsFree, handsFreeController, voiceLog]);
+
+  const clearFinishedSpeechMessage = useCallback((message: string) => {
+    clearIntendedSpeakingMessage();
+    finishHandsFreeSpeech(message);
+    clearSpeakingMessage();
+  }, [clearIntendedSpeakingMessage, clearSpeakingMessage, finishHandsFreeSpeech]);
+
+  const clearStoppedSpeechMessage = useCallback(() => {
+    if (intendedSpeakingIndexRef.current !== null) return;
+    finishHandsFreeSpeech('Assistant speech stopped during message playback.');
+    clearSpeakingMessage();
+  }, [clearSpeakingMessage, finishHandsFreeSpeech, intendedSpeakingIndexRef]);
+
+  const speakMessage = useCallback((messageIndex: number, content: string) => {
+    if (speakingMessageIndex === messageIndex) {
+      clearIntendedSpeakingMessage();
+      stopNativeSpeech();
+      finishHandsFreeSpeech('Assistant speech stopped from message playback.');
+      clearSpeakingMessage();
+      return;
+    }
+
+    setIntendedSpeakingMessage(messageIndex);
+    stopNativeSpeech();
+    stopRemoteSpeech();
+
+    const speechText = createChatMessageRuntimeSpeechTextState(content);
+    if (!speechText) {
+      clearIntendedSpeakingMessage();
+      return;
+    }
+
+    if (handsFree) {
+      handsFreeController.onSpeechStarted();
+      voiceLog('tts-started', 'Assistant speech started from message playback.');
+    }
+
+    startSpeakingMessage(messageIndex);
+    const processedText = speechText.processedText;
+    if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
+      void speakRemote(processedText, {
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        providerId: effectiveTtsProvider,
+        voice: effectiveRemoteTtsVoice ?? undefined,
+        model: effectiveRemoteTtsModel ?? undefined,
+        rate: effectiveRemoteTtsRate ?? undefined,
+        onDone: () => clearFinishedSpeechMessage('Assistant speech finished from message playback.'),
+        onError: () => clearFinishedSpeechMessage('Assistant speech errored during message playback.'),
+        onStopped: clearStoppedSpeechMessage,
+      });
+      return;
+    }
+
+    const speechOptions: ChatMessageRuntimeNativeSpeechOptions = {
+      language: 'en-US',
+      rate: config.ttsRate ?? 1.0,
+      pitch: config.ttsPitch ?? 1.0,
+      onDone: () => clearFinishedSpeechMessage('Assistant speech finished from message playback.'),
+      onError: () => clearFinishedSpeechMessage('Assistant speech errored during message playback.'),
+      onStopped: clearStoppedSpeechMessage,
+    };
+    if (config.ttsVoiceId) {
+      speechOptions.voice = config.ttsVoiceId;
+    }
+    speakNative(processedText, speechOptions);
+  }, [
+    clearFinishedSpeechMessage,
+    clearIntendedSpeakingMessage,
+    clearSpeakingMessage,
+    clearStoppedSpeechMessage,
+    config.apiKey,
+    config.baseUrl,
+    config.ttsPitch,
+    config.ttsRate,
+    config.ttsVoiceId,
+    effectiveRemoteTtsModel,
+    effectiveRemoteTtsRate,
+    effectiveRemoteTtsVoice,
+    effectiveTtsProvider,
+    finishHandsFreeSpeech,
+    handsFree,
+    handsFreeController,
+    setIntendedSpeakingMessage,
+    speakNative,
+    speakRemote,
+    speakingMessageIndex,
+    startSpeakingMessage,
+    stopNativeSpeech,
+    stopRemoteSpeech,
+    voiceLog,
+  ]);
+
+  return {
+    speakMessage,
   };
 }
 
