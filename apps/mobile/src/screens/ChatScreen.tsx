@@ -3900,21 +3900,6 @@ export default function ChatScreen({ route, navigation }: any) {
               return null;
             }
 
-            const toolApprovalId = m.toolApproval?.approvalId ?? '';
-            const isToolApprovalExpanded = toolApprovalId
-              ? getChatDisplayExpansionState(expandedToolApprovals, toolApprovalId)
-              : false;
-            const isToolApprovalResponding = toolApprovalId
-              ? pendingToolApprovalResponseId === toolApprovalId
-              : false;
-            const toolApprovalRenderState = m.toolApproval
-              ? getChatRuntimeToolApprovalMobileRenderState({
-                  toolName: m.toolApproval.toolName,
-                  isArgumentsExpanded: isToolApprovalExpanded,
-                  isResponding: isToolApprovalResponding,
-                  colors: theme.colors,
-                })
-              : null;
             const turnDurationEntry =
               typeof m.timestamp === 'number'
                 ? turnDurations.byUserTimestamp.get(m.timestamp)
@@ -4013,12 +3998,13 @@ export default function ChatScreen({ route, navigation }: any) {
                   }),
                   toolApproval: createChatMessageToolApprovalProps({
                     isApproval: m.variant === 'approval',
-                    renderState: toolApprovalRenderState,
-                    toolName: m.toolApproval?.toolName,
-                    toolArguments: m.toolApproval?.arguments,
-                    onToggleArguments: () => toggleToolApprovalArguments(m.toolApproval!.approvalId),
-                    onDeny: () => respondToToolApproval(m.toolApproval!.approvalId, false),
-                    onApprove: () => respondToToolApproval(m.toolApproval!.approvalId, true),
+                    toolApproval: m.toolApproval,
+                    expandedToolApprovals,
+                    pendingApprovalResponseId: pendingToolApprovalResponseId,
+                    colors: theme.colors,
+                    onToggleArguments: toggleToolApprovalArguments,
+                    onDeny: (approvalId) => { void respondToToolApproval(approvalId, false); },
+                    onApprove: (approvalId) => { void respondToToolApproval(approvalId, true); },
                   }),
                   inlineActivity: createChatMessageInlineActivityProps({
                     renderState: messageInlineActivityRenderState,

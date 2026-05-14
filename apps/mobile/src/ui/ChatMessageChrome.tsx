@@ -66,6 +66,7 @@ import {
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
+  getChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
@@ -479,12 +480,27 @@ type ChatMessageToolApprovalProps = {
 
 type ChatMessageToolApprovalPropsInput = Omit<
   ChatMessageToolApprovalProps,
-  'renderState' | 'toolName' | 'argumentsPreview' | 'argumentsContent' | 'styles'
+  | 'renderState'
+  | 'toolName'
+  | 'argumentsPreview'
+  | 'argumentsContent'
+  | 'onToggleArguments'
+  | 'onDeny'
+  | 'onApprove'
+  | 'styles'
 > & {
   isApproval: boolean;
-  renderState: ChatMessageToolApprovalProps['renderState'] | null;
-  toolName?: string | null;
-  toolArguments?: unknown;
+  toolApproval?: {
+    approvalId: string;
+    toolName: string;
+    arguments?: unknown;
+  } | null;
+  expandedToolApprovals: ChatDisplayExpansionStateMap<string>;
+  pendingApprovalResponseId?: string | null;
+  colors: Parameters<typeof getChatRuntimeToolApprovalMobileRenderState>[0]['colors'];
+  onToggleArguments: (approvalId: string) => void;
+  onDeny: (approvalId: string) => void;
+  onApprove: (approvalId: string) => void;
 };
 
 type ChatMessageDelegationCardStyles = {
@@ -1972,26 +1988,38 @@ export function createChatMessageDelegationCardProps({
 
 export function createChatMessageToolApprovalProps({
   isApproval,
-  renderState,
-  toolName,
-  toolArguments,
+  toolApproval,
+  expandedToolApprovals,
+  pendingApprovalResponseId,
+  colors,
   onToggleArguments,
   onDeny,
   onApprove,
 }: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
-  const argumentsDetail = getToolExecutionDetailArgumentsState(toolArguments);
+  if (!isApproval || !toolApproval) return null;
 
-  return isApproval && renderState && toolName
-    ? {
-        renderState,
-        toolName,
-        argumentsPreview: argumentsDetail.preview,
-        argumentsContent: argumentsDetail.content,
-        onToggleArguments,
-        onDeny,
-        onApprove,
-      }
-    : null;
+  const isArgumentsExpanded = getChatDisplayExpansionState(
+    expandedToolApprovals,
+    toolApproval.approvalId,
+  );
+  const isResponding = pendingApprovalResponseId === toolApproval.approvalId;
+  const argumentsDetail = getToolExecutionDetailArgumentsState(toolApproval.arguments);
+  const renderState = getChatRuntimeToolApprovalMobileRenderState({
+    toolName: toolApproval.toolName,
+    isArgumentsExpanded,
+    isResponding,
+    colors,
+  });
+
+  return {
+    renderState,
+    toolName: toolApproval.toolName,
+    argumentsPreview: argumentsDetail.preview,
+    argumentsContent: argumentsDetail.content,
+    onToggleArguments: () => onToggleArguments(toolApproval.approvalId),
+    onDeny: () => onDeny(toolApproval.approvalId),
+    onApprove: () => onApprove(toolApproval.approvalId),
+  };
 }
 
 export function createChatMessageInlineActivityProps({
