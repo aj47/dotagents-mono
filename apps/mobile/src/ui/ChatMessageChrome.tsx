@@ -5079,6 +5079,11 @@ export type ChatMessageRuntimeFinalResponseTurnState<
   | {
       kind: 'history';
       finalTurnMessages: TMessage[];
+      updateMessages: (
+        messages: readonly TMessage[],
+        messageCountBeforeTurn: number,
+        progressMessages?: readonly TMessage[],
+      ) => TMessage[];
       createCompletedMessages: (
         messages: readonly TMessage[],
         messageCountBeforeTurn: number,
@@ -5853,6 +5858,16 @@ export function createChatMessageRuntimeFinalResponseTurnState<
     return {
       kind: 'history',
       finalTurnMessages,
+      updateMessages: (
+        messages,
+        messageCountBeforeTurn,
+        progressMessages,
+      ) => replaceChatMessageRuntimeFinalTurnMessages(
+        messages,
+        messageCountBeforeTurn,
+        finalTurnMessages,
+        progressMessages,
+      ),
       createCompletedMessages: (
         messages,
         messageCountBeforeTurn,

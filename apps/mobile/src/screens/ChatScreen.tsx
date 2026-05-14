@@ -93,10 +93,8 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
-  replaceChatMessageRuntimeFinalTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
-  updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatConversationHomeQuickStartItem,
@@ -1049,10 +1047,9 @@ export default function ChatScreen({ route, navigation }: any) {
           const progressMsgs = progressMessagesRef.current;
           setMessages((m) => {
             console.log('[ChatScreen] Current messages before update:', m.length);
-            const result = replaceChatMessageRuntimeFinalTurnMessages(
+            const result = finalTurnState.updateMessages(
               m,
               messageCountBeforeTurn,
-              finalTurnMessages,
               progressMsgs,
             );
             console.log('[ChatScreen] Final messages count:', result.length);
@@ -1381,12 +1378,9 @@ export default function ChatScreen({ route, navigation }: any) {
         userResponseText,
       });
       if (finalTurnState.kind === 'history') {
-        const { finalTurnMessages } = finalTurnState;
-
-        setMessages((m) => replaceChatMessageRuntimeFinalTurnMessages(
+        setMessages((m) => finalTurnState.updateMessages(
           m,
           messageCountBeforeTurn,
-          finalTurnMessages,
         ));
       } else if (finalTurnState.kind === 'text') {
         setMessages(finalTurnState.updateMessages);
