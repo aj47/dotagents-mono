@@ -43,6 +43,7 @@ import {
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
+  shouldRenderChatMessageConversationThread,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -3818,9 +3819,10 @@ export default function ChatScreen({ route, navigation }: any) {
               onCopyMessage: handleCopyMessage,
               onToggleMessageExpansion: toggleMessageExpansion,
             });
-            // Skip empty messages unless they are the current shared inline activity row.
-            // Also skip messages that only have toolResults but no toolCalls (raw result blobs).
-            if (!shouldRenderSurface && !messageThreadBody.inlineActivity) {
+            if (!shouldRenderChatMessageConversationThread({
+              shouldRenderSurface,
+              body: messageThreadBody,
+            })) {
               return null;
             }
 

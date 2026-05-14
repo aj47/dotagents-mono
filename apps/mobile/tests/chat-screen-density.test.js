@@ -1493,7 +1493,9 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
   assert.match(chatMessageChromeSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
   assert.match(chatMessageChromeSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
-  assert.match(screenSource, /if \(!shouldRenderSurface && !messageThreadBody\.inlineActivity\) \{\s+return null;\s+\}/);
+  assert.match(screenSource, /if \(!shouldRenderChatMessageConversationThread\(\{\s+shouldRenderSurface,\s+body: messageThreadBody,\s+\}\)\) \{\s+return null;\s+\}/);
+  assert.match(chatMessageChromeSource, /export function shouldRenderChatMessageConversationThread\(\{[\s\S]*?return shouldRenderSurface \|\| !!body\.inlineActivity;/);
+  assert.doesNotMatch(screenSource, /!shouldRenderSurface && !messageThreadBody\.inlineActivity/);
   assert.doesNotMatch(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /if \(visibleMessageContent\.trim\(\)\.length === 0 && displayToolCallCount === 0\)/);
   assert.doesNotMatch(screenSource, /isCompletionControlTool,/);
@@ -2081,7 +2083,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState\.colors;/);
   assert.match(screenSource, /const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState\.loadButton\.pressedOpacity;/);
   assert.doesNotMatch(screenSource, /const messageInlineActivityProps = createChatMessageInlineActivityProps/);
-  assert.match(screenSource, /if \(!shouldRenderSurface && !messageThreadBody\.inlineActivity\) \{/);
+  assert.match(screenSource, /shouldRenderChatMessageConversationThread\(\{\s+shouldRenderSurface,\s+body: messageThreadBody,\s+\}\)/);
   assert.match(chatMessageChromeSource, /inlineActivity: createChatMessageInlineActivityProps\(\{\s+message,\s+isResponding,\s+spinnerSource,\s+\}\),/);
   assert.doesNotMatch(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
@@ -2514,7 +2516,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
-  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeThread,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?createChatMessageConversationToolActivityGroupRenderState,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeThread,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?createChatMessageConversationToolActivityGroupRenderState,[\s\S]*?shouldRenderChatMessageConversationThread,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeThreadStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolActivityGroupThreadSurfaceStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageThreadBodyStyleSlots,/);

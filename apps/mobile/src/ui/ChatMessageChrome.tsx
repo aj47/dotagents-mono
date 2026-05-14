@@ -1913,6 +1913,11 @@ export type ChatMessageThreadBodyPropsInput =
     conversation: ChatMessageConversationBodyPropsInput;
   };
 
+type ChatMessageConversationThreadVisibilityInput = {
+  shouldRenderSurface: boolean;
+  body: Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>;
+};
+
 type ChatMessageConversationThreadBodyInput = {
   message: ChatMessageConversationActionSetInput['message']
     & ChatMessageConversationRetryStatusInput['message']
@@ -2147,6 +2152,13 @@ export function createChatMessageConversationToolActivityGroupRenderState({
         colors,
       })
     : null;
+}
+
+export function shouldRenderChatMessageConversationThread({
+  shouldRenderSurface,
+  body,
+}: ChatMessageConversationThreadVisibilityInput): boolean {
+  return shouldRenderSurface || !!body.inlineActivity;
 }
 
 export function createChatMessageConversationActionSetInput({
