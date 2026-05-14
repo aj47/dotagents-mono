@@ -234,7 +234,12 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(screenSource, /settingsClient\.respondToToolApproval\(approvalId, approved\)/);
   assert.match(screenSource, /variant: 'approval'/);
   assert.match(screenSource, /toolApproval: update\.pendingToolApproval/);
-  assert.match(screenSource, /formatChatRuntimeToolApprovalRequiredContent\(update\.pendingToolApproval\.toolName\)/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeToolApprovalRequiredContent,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeToolApprovalRequiredContent,/);
+  assert.match(
+    screenSource,
+    /formatChatMessageRuntimeToolApprovalRequiredContent\(update\.pendingToolApproval\.toolName\)/,
+  );
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);
@@ -2230,8 +2235,10 @@ test('keeps Codex thinking blocks display-only on mobile', () => {
 });
 
 test('uses shared runtime activity copy for mobile loading and thinking states', () => {
-  assert.match(screenSource, /formatChatRuntimeActivityContent,/);
-  assert.match(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeActivityContent,/);
+  assert.doesNotMatch(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeActivityContent,/);
+  assert.match(chatMessageChromeSource, /formatChatRuntimeAssistantFeedbackContent,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeViewportContentRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeLoadingStateMobileRenderState,/);
@@ -2244,8 +2251,11 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(screenSource, /getChatMessageRuntimeHistoryWindowState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
-  assert.match(screenSource, /content: formatChatRuntimeAssistantFeedbackContent\(thinkingContent, hasCurrentToolActivity\)/);
-  assert.match(screenSource, /content: formatChatRuntimeActivityContent\(activeStep\)/);
+  assert.match(
+    screenSource,
+    /content: formatChatMessageRuntimeAssistantFeedbackContent\(thinkingContent, hasCurrentToolActivity\)/,
+  );
+  assert.match(screenSource, /content: formatChatMessageRuntimeActivityContent\(activeStep\)/);
   assert.match(screenSource, /const \{\s+threadStates: conversationThreadStates,\s+visibleMessageCount: conversationThreadVisibleMessageCount,\s+totalMessageCount: conversationThreadTotalMessageCount,\s+hiddenMessageCount,\s+\} = createChatMessageConversationRuntimeThreadListRenderState\(\{\s+messages,\s+visibleMessageCount,/);
   assert.doesNotMatch(screenSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);/);
   assert.doesNotMatch(screenSource, /const visibleMessages = messages\.slice\(firstVisibleMessageIndex\);/);
@@ -2440,9 +2450,11 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
 test('surfaces desktop step summaries as compact mobile runtime chrome without persisting them as messages', () => {
   assert.match(screenSource, /AgentStepSummary/);
   assert.match(screenSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
-  assert.match(screenSource, /getChatRuntimeLatestStepSummary,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeLatestStepSummary,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
-  assert.match(screenSource, /const nextStepSummary = getChatRuntimeLatestStepSummary\(update\);/);
+  assert.match(screenSource, /const nextStepSummary = getChatMessageRuntimeLatestStepSummary\(update\);/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeLatestStepSummary/);
   assert.match(screenSource, /setLatestStepSummary\(nextStepSummary\);/);
   assert.doesNotMatch(screenSource, /const latestStepSummaryRenderState = useMemo/);
   assert.match(chatMessageChromeSource, /renderState: getChatRuntimeStepSummaryMobileRenderState\(\{\s+summary: latestStepSummary,\s+colors,/);

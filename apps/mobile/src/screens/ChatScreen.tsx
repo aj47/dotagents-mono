@@ -40,6 +40,9 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
+  formatChatMessageRuntimeActivityContent,
+  formatChatMessageRuntimeAssistantFeedbackContent,
+  formatChatMessageRuntimeToolApprovalRequiredContent,
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -55,6 +58,7 @@ import {
   getChatMessageRuntimeBranchAlertState,
   getChatMessageRuntimeHistoryWindowState,
   getChatMessageRuntimeKillSwitchAlertState,
+  getChatMessageRuntimeLatestStepSummary,
   getChatMessageRuntimeToolApprovalAlertState,
   getChatMessageToolExecutionCopyFailureAlertState,
   getChatMessageCopyFeedbackState,
@@ -94,16 +98,12 @@ import {
 } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
-  formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantErrorContent,
-  formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeConnectionErrorMessage,
   formatChatRuntimeDebugError,
   formatChatRuntimeStartingRequestDebugMessage,
-  formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
   getChatRuntimeDebugState,
-  getChatRuntimeLatestStepSummary,
   getChatRuntimeAlertMessage,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -1799,7 +1799,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (hasCurrentAssistantFeedback) {
         messages.push({
           role: 'assistant',
-          content: formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasCurrentToolActivity),
+          content: formatChatMessageRuntimeAssistantFeedbackContent(thinkingContent, hasCurrentToolActivity),
           toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
         });
@@ -1810,7 +1810,7 @@ export default function ChatScreen({ route, navigation }: any) {
       ) {
         messages.push({
           role: 'assistant',
-          content: formatChatRuntimeActivityContent(activeStep),
+          content: formatChatMessageRuntimeActivityContent(activeStep),
         });
       }
     }
@@ -1900,7 +1900,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (update.pendingToolApproval) {
       messages.push({
         role: 'assistant',
-        content: formatChatRuntimeToolApprovalRequiredContent(update.pendingToolApproval.toolName),
+        content: formatChatMessageRuntimeToolApprovalRequiredContent(update.pendingToolApproval.toolName),
         variant: 'approval',
         toolApproval: update.pendingToolApproval,
       });
@@ -2182,7 +2182,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		            speakAssistantResponse(responseText, 'mid-turn progress');
 	          }
 	        }
-        const nextStepSummary = getChatRuntimeLatestStepSummary(update);
+        const nextStepSummary = getChatMessageRuntimeLatestStepSummary(update);
         if (nextStepSummary) {
           setLatestStepSummary(nextStepSummary);
         }
@@ -2655,7 +2655,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		            speakAssistantResponse(responseText, 'queued mid-turn progress');
 	          }
 	        }
-        const nextStepSummary = getChatRuntimeLatestStepSummary(update);
+        const nextStepSummary = getChatMessageRuntimeLatestStepSummary(update);
         if (nextStepSummary) {
           setLatestStepSummary(nextStepSummary);
         }

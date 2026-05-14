@@ -128,9 +128,12 @@ import {
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileRenderState,
   getChatComposerVoiceOverlayLabel,
+  formatChatRuntimeActivityContent,
+  formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeDelegationAccessibilityLabel,
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
+  formatChatRuntimeToolApprovalRequiredContent,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
@@ -142,6 +145,7 @@ import {
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
+  getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -173,6 +177,7 @@ import {
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
+  type ChatRuntimeActivityStepLike,
   type ChatRuntimeBackMobileRenderState,
   type ChatRuntimeBranchMobileRenderState,
   type ChatRuntimeConnectionBannerMobileRenderState,
@@ -183,6 +188,7 @@ import {
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderStateInput,
+  type ChatRuntimeStepSummaryLike,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
@@ -2987,6 +2993,29 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
 
 export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
   return getChatRuntimeMessageHistoryWindowMobileState();
+}
+
+export function formatChatMessageRuntimeAssistantFeedbackContent(
+  thinkingContent: string | null | undefined,
+  hasToolActivity: boolean,
+): string {
+  return formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity);
+}
+
+export function formatChatMessageRuntimeActivityContent(
+  step?: ChatRuntimeActivityStepLike | null,
+): string {
+  return formatChatRuntimeActivityContent(step);
+}
+
+export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
+  return formatChatRuntimeToolApprovalRequiredContent(toolName);
+}
+
+export function getChatMessageRuntimeLatestStepSummary<T extends ChatRuntimeStepSummaryLike>(
+  input: { latestSummary?: T | null; stepSummaries?: T[] | null },
+): T | null {
+  return getChatRuntimeLatestStepSummary(input);
 }
 
 export function getChatMessageRuntimeKillSwitchAlertState(): ReturnType<
