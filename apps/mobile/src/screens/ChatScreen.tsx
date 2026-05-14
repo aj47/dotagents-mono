@@ -37,6 +37,7 @@ import {
   createChatMessageConversationRenderContext,
   createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadStyleSlots,
+  createChatMessageConversationToolActivityGroupRenderState,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -154,7 +155,6 @@ import {
 } from '@dotagents/shared/text-to-speech-settings';
 import {
   getToolActivityGroupExpansionInheritanceItems,
-  getToolActivityGroupMobileRenderState,
   getToolActivityGroupMobileSurfaceRenderState,
   getToolActivityGroupStateKey,
   groupToolActivity,
@@ -3736,15 +3736,13 @@ export default function ChatScreen({ route, navigation }: any) {
             const i = firstVisibleMessageIndex + visibleIndex;
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
-            const groupRenderState = group
-              ? getToolActivityGroupMobileRenderState({
-                group,
-                itemIndex: i,
-                groupState: expandedGroups,
-                inheritedState: expandedMessages,
-                colors: theme.colors,
-              })
-              : null;
+            const groupRenderState = createChatMessageConversationToolActivityGroupRenderState({
+              group,
+              itemIndex: i,
+              groupState: expandedGroups,
+              inheritedState: expandedMessages,
+              colors: theme.colors,
+            });
             if (groupRenderState?.shouldSkipCollapsedItem || groupRenderState?.shouldRenderCollapsedHeader) {
               return (
                 <ChatMessageRuntimeThread

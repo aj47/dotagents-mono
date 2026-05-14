@@ -71,7 +71,12 @@ import {
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
-import type { ToolActivityGroupMobileRenderState } from '@dotagents/shared/tool-activity-grouping';
+import {
+  getToolActivityGroupMobileRenderState,
+  type ToolActivityGroup,
+  type ToolActivityGroupMobileRenderState,
+  type ToolActivityGroupMobileRenderStateInput,
+} from '@dotagents/shared/tool-activity-grouping';
 import {
   formatChatRuntimeDelegationAccessibilityLabel,
   formatChatRuntimeDelegationMessageCount,
@@ -263,6 +268,12 @@ type ChatMessageConversationRenderContextInput = {
   resultOnlyToolLabel: string;
   colors: Parameters<typeof getChatMessageMobileRenderState>[0]['colors'];
 };
+
+type ChatMessageConversationToolActivityGroupRenderStateInput =
+  Omit<ToolActivityGroupMobileRenderStateInput, 'group'>
+  & {
+    group?: ToolActivityGroup | null;
+  };
 
 export type ChatMessageActionSet = {
   components: Record<ChatMessageActionSlot, ReactNode>;
@@ -2112,6 +2123,30 @@ export function createChatMessageConversationRenderContext({
     messageRenderState,
     shouldRenderSurface: messageDisplayState.shouldRenderSurface,
   };
+}
+
+export function createChatMessageConversationToolActivityGroupRenderState({
+  group,
+  itemIndex,
+  groupState,
+  inheritedState,
+  groupKey,
+  inheritedKey,
+  defaultExpanded,
+  colors,
+}: ChatMessageConversationToolActivityGroupRenderStateInput): ToolActivityGroupMobileRenderState | null {
+  return group
+    ? getToolActivityGroupMobileRenderState({
+        group,
+        itemIndex,
+        groupState,
+        inheritedState,
+        groupKey,
+        inheritedKey,
+        defaultExpanded,
+        colors,
+      })
+    : null;
 }
 
 export function createChatMessageConversationActionSetInput({
