@@ -25,6 +25,7 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
+  CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   createChatConversationHomeQuickStartItems,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorSaveActionState,
@@ -47,6 +48,9 @@ import {
   getChatComposerImageAttachmentAlertState,
   getChatComposerHandsFreeDebugMessage,
   getChatComposerRuntimeQueueDebugMessage,
+  getChatComposerRuntimeImageDataUrlBytes,
+  getChatComposerRuntimeBase64ImageBytes,
+  inferChatComposerRuntimeImageMimeType,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaLayoutState,
   createChatRuntimeMobileSafeAreaStyleSlots,
@@ -74,6 +78,7 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeSpeechTextState,
+  createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeRemoteSpeechSettingsState,
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   createChatMessageRuntimeToolActivityGroups,
@@ -143,15 +148,6 @@ import type { AgentConversationState } from '@dotagents/shared/conversation-stat
 import {
   sanitizeMessagesForModel,
 } from '@dotagents/shared/message-display-utils';
-import {
-  extractDataImageMarkdownReferences,
-  getDataImageBytesFromUrl,
-  getDecodedBase64ByteLength,
-  inferImageMimeTypeFromSource,
-  MAX_CHAT_IMAGE_ATTACHMENTS,
-  MAX_CHAT_IMAGE_FILE_BYTES,
-  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
-} from '@dotagents/shared/conversation-media-assets';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import type {
@@ -181,24 +177,15 @@ interface PendingImageAttachment {
   dataUrl: string;
 }
 
-const MAX_PENDING_IMAGES = MAX_CHAT_IMAGE_ATTACHMENTS;
-const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
-const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
+const MAX_PENDING_IMAGES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages;
+const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes;
+const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes;
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const messageCopyFeedbackResetDelayMs = getChatMessageCopyFeedbackResetDelayMs();
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
 
-const getApproxDataUrlBytes = (dataUrl: string) => {
-  return getDataImageBytesFromUrl(dataUrl) ?? 0;
-};
-
 type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
-
-const getMessageLogMeta = (content: string) => ({
-  length: content.length,
-  inlineImageCount: extractDataImageMarkdownReferences(content).length,
-});
 
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -1691,7 +1678,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     const existingEmbeddedBytes = pendingImages.reduce(
-      (sum, image) => sum + getApproxDataUrlBytes(image.dataUrl),
+      (sum, image) => sum + getChatComposerRuntimeImageDataUrlBytes(image.dataUrl),
       0
     );
     if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
@@ -1729,7 +1716,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
 
-        const inferredBytes = getDecodedBase64ByteLength(asset.base64);
+        const inferredBytes = getChatComposerRuntimeBase64ImageBytes(asset.base64);
         const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
           ? asset.fileSize
           : inferredBytes;
@@ -1738,14 +1725,14 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
 
-        const mimeType = inferImageMimeTypeFromSource(asset);
+        const mimeType = inferChatComposerRuntimeImageMimeType(asset);
         if (!mimeType) {
           unknownMimeNames.push(displayName);
           return;
         }
 
         const dataUrl = `data:${mimeType};base64,${asset.base64}`;
-        const embeddedBytes = getApproxDataUrlBytes(dataUrl) || inferredBytes;
+        const embeddedBytes = getChatComposerRuntimeImageDataUrlBytes(dataUrl) || inferredBytes;
         if (runningEmbeddedBytes + embeddedBytes > MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
           budgetExceededNames.push(displayName);
           return;
@@ -1811,7 +1798,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     // If message queue is enabled and we're already responding, queue the message
     if (messageQueueEnabled && responding) {
-      console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(text));
+      console.log('[ChatScreen] Agent busy, queuing message:', createChatMessageRuntimeLogMeta(text));
       messageQueue.enqueue(currentConversationId, text, currentConversationId);
       setInput('');
       if (options?.fromComposer) {
@@ -1820,7 +1807,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    console.log('[ChatScreen] Sending message:', getMessageLogMeta(text));
+    console.log('[ChatScreen] Sending message:', createChatMessageRuntimeLogMeta(text));
 
     // Get client from connection manager (preserves connections across session switches)
     const client = getSessionClient();
@@ -2251,7 +2238,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    console.log('[ChatScreen] Processing queued message:', queuedMsg.id, getMessageLogMeta(text));
+    console.log('[ChatScreen] Processing queued message:', queuedMsg.id, createChatMessageRuntimeLogMeta(text));
 
     // Get client from connection manager (preserves connections across session switches)
     const client = getSessionClient();

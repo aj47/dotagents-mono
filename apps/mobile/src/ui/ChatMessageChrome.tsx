@@ -76,11 +76,19 @@ import {
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
   buildChatImageAttachmentMessage,
+  extractDataImageMarkdownReferences,
+  getDataImageBytesFromUrl,
+  getDecodedBase64ByteLength,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
+  inferImageMimeTypeFromSource,
+  MAX_CHAT_IMAGE_ATTACHMENTS,
+  MAX_CHAT_IMAGE_FILE_BYTES,
+  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
   type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
+  type ImageMimeTypeSource,
 } from '@dotagents/shared/conversation-media-assets';
 import {
   formatHandsFreeRecognizerErrorDebugMessage,
@@ -300,6 +308,12 @@ export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
 
+export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS = {
+  maxImages: MAX_CHAT_IMAGE_ATTACHMENTS,
+  maxFileBytes: MAX_CHAT_IMAGE_FILE_BYTES,
+  maxTotalEmbeddedBytes: MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+} as const;
+
 export interface ChatMessageRuntimeKillSwitchResultLike {
   success: boolean;
   message?: string | null;
@@ -328,6 +342,11 @@ export interface ChatMessageRuntimeResolvedAlertState {
 export interface ChatMessageRuntimeSpeechTextState {
   processedText: string;
   autoTextKey: string;
+}
+
+export interface ChatMessageRuntimeLogMeta {
+  length: number;
+  inlineImageCount: number;
 }
 
 export type ChatMessageRuntimeRemoteSpeechProvider =
@@ -3841,6 +3860,13 @@ export function createChatMessageRuntimeSpeechTextState(
   };
 }
 
+export function createChatMessageRuntimeLogMeta(content: string): ChatMessageRuntimeLogMeta {
+  return {
+    length: content.length,
+    inlineImageCount: extractDataImageMarkdownReferences(content).length,
+  };
+}
+
 export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState(): ChatMessageRuntimeRemoteSpeechSettingsState {
   return {
     provider: 'native',
@@ -5990,6 +6016,20 @@ export function mergeChatComposerRuntimeVoiceText(
   finalizedText?: string | null,
 ): string {
   return mergeVoiceText(currentText, finalizedText);
+}
+
+export function getChatComposerRuntimeImageDataUrlBytes(dataUrl: string): number {
+  return getDataImageBytesFromUrl(dataUrl) ?? 0;
+}
+
+export function getChatComposerRuntimeBase64ImageBytes(rawBase64: string): number {
+  return getDecodedBase64ByteLength(rawBase64);
+}
+
+export function inferChatComposerRuntimeImageMimeType(
+  source: ImageMimeTypeSource,
+): string | null {
+  return inferImageMimeTypeFromSource(source);
 }
 
 export function buildChatComposerRuntimeMessageContent(
