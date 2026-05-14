@@ -46,6 +46,7 @@ import {
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageRuntimeDockChromeProps,
   createChatMessageRuntimeSurfaceChromeProps,
+  createChatMessageRuntimeViewportContentRenderState,
   createChatMessageRuntimeViewportChromeProps,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -105,10 +106,8 @@ import {
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeHeaderMobileStyleRenderState,
-  getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -806,15 +805,11 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const mobileRuntimeLoadingRenderState = useMemo(
-    () => getChatRuntimeLoadingStateMobileRenderState({
-      isLoadingMessages: sessionStore.isLoadingMessages,
-      messageCount: messages.length,
-    }),
-    [messages.length, sessionStore.isLoadingMessages],
-  );
-  const mobileRuntimeHomeQuickStartsRenderState = useMemo(
-    () => getChatRuntimeHomeQuickStartsMobileRenderState({
+  const {
+    loading: mobileRuntimeLoadingRenderState,
+    homeQuickStarts: mobileRuntimeHomeQuickStartsRenderState,
+  } = useMemo(
+    () => createChatMessageRuntimeViewportContentRenderState({
       isLoadingMessages: sessionStore.isLoadingMessages,
       messageCount: messages.length,
     }),

@@ -99,6 +99,8 @@ import {
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeBranchMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
+  getChatRuntimeLoadingStateMobileRenderState,
+  getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
@@ -1362,6 +1364,16 @@ type ChatMessageConversationViewportAffordanceRenderStateInput = {
 type ChatMessageConversationViewportAffordanceRenderState = {
   historyBanner: Pick<ChatMessageHistoryBannerProps, 'renderState'>;
   stepSummary: Pick<ChatMessageStepSummaryCardProps, 'renderState'>;
+};
+
+type ChatMessageRuntimeViewportContentRenderStateInput = {
+  isLoadingMessages: boolean;
+  messageCount: number;
+};
+
+type ChatMessageRuntimeViewportContentRenderState = {
+  loading: ChatRuntimeLoadingStateMobileRenderState;
+  homeQuickStarts: ChatRuntimeHomeQuickStartsMobileRenderState;
 };
 
 type ChatMessageScrollToBottomButtonProps = {
@@ -2783,6 +2795,22 @@ export function createChatMessageConversationViewportAffordanceRenderState({
         colors,
       }),
     },
+  };
+}
+
+export function createChatMessageRuntimeViewportContentRenderState({
+  isLoadingMessages,
+  messageCount,
+}: ChatMessageRuntimeViewportContentRenderStateInput): ChatMessageRuntimeViewportContentRenderState {
+  return {
+    loading: getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages,
+      messageCount,
+    }),
+    homeQuickStarts: getChatRuntimeHomeQuickStartsMobileRenderState({
+      isLoadingMessages,
+      messageCount,
+    }),
   };
 }
 

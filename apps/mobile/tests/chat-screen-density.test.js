@@ -967,6 +967,7 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
 test('uses shared runtime presentation for the mobile chat viewport and loading state', () => {
   assert.match(screenSource, /getChatRuntimeViewportMobileRenderState,/);
   assert.match(screenSource, /getChatRuntimeViewportMobileKeyboardAvoidingBehavior,/);
+  assert.match(screenSource, /createChatMessageRuntimeViewportContentRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeLoadingStateMobileState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileColors,/);
@@ -1083,8 +1084,12 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /\{responseHistoryPanel\}[\s\S]*?\{scrollToBottomButton\}[\s\S]*?\{voiceOverlay\}[\s\S]*?\{queuePanel\}[\s\S]*?\{connectionBanner\}[\s\S]*?\{composer\}/);
   assert.match(chatMessageChromeSource, /chatScrollContent:\s*\{\s+paddingBottom: layout\.chatScrollContent\.paddingBottom,\s+\}/);
   assert.doesNotMatch(screenSource, /chatScrollContent:\s*\{\s*paddingBottom:\s*mobileSafeAreaLayout\.chatScrollContent\.paddingBottom,\s*\}/);
-  assert.match(screenSource, /const mobileRuntimeLoadingRenderState = useMemo\(\s+\(\) => getChatRuntimeLoadingStateMobileRenderState\(\{\s+isLoadingMessages: sessionStore\.isLoadingMessages,\s+messageCount: messages\.length,\s+\}\),\s+\[messages\.length, sessionStore\.isLoadingMessages\],\s+\);/);
-  assert.match(screenSource, /const mobileRuntimeHomeQuickStartsRenderState = useMemo\(\s+\(\) => getChatRuntimeHomeQuickStartsMobileRenderState\(\{\s+isLoadingMessages: sessionStore\.isLoadingMessages,\s+messageCount: messages\.length,\s+\}\),\s+\[messages\.length, sessionStore\.isLoadingMessages\],\s+\);/);
+  assert.match(screenSource, /const \{\s+loading: mobileRuntimeLoadingRenderState,\s+homeQuickStarts: mobileRuntimeHomeQuickStartsRenderState,\s+\} = useMemo\(\s+\(\) => createChatMessageRuntimeViewportContentRenderState\(\{\s+isLoadingMessages: sessionStore\.isLoadingMessages,\s+messageCount: messages\.length,\s+\}\),\s+\[messages\.length, sessionStore\.isLoadingMessages\],\s+\);/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeLoadingStateMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeHomeQuickStartsMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeViewportContentRenderState/);
+  assert.match(chatMessageChromeSource, /loading: getChatRuntimeLoadingStateMobileRenderState\(\{\s+isLoadingMessages,\s+messageCount,\s+\}\)/);
+  assert.match(chatMessageChromeSource, /homeQuickStarts: getChatRuntimeHomeQuickStartsMobileRenderState\(\{\s+isLoadingMessages,\s+messageCount,\s+\}\)/);
   assert.match(screenSource, /loadingRenderState: mobileRuntimeLoadingRenderState,\s+loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.doesNotMatch(screenSource, /<ChatMessageLoadingState\s+shouldRender=\{sessionStore\.isLoadingMessages && messages\.length === 0\}/);
   assert.doesNotMatch(screenSource, /style=\{conversationViewportStyles\.loadingState\.style\}\s+spinnerStyle=\{conversationViewportStyles\.loadingState\.spinnerStyle\}/);
@@ -2130,7 +2135,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /formatChatRuntimeActivityContent,/);
   assert.match(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);
-  assert.match(screenSource, /getChatRuntimeLoadingStateMobileRenderState,/);
+  assert.match(screenSource, /createChatMessageRuntimeViewportContentRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeLoadingStateMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeMobileActivityAccessibilityState,/);
