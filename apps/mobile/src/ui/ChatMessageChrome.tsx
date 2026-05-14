@@ -35,6 +35,7 @@ import {
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
   isChatMessageLiveStreamingConversationContent,
+  sanitizeMessagesForModel,
   setChatDisplayExpansionState,
   toggleChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
@@ -47,6 +48,7 @@ import {
   type ChatMessageCopyMobileRenderState,
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageSpeechMobileRenderState,
+  type MessageContentForModelLike,
 } from '@dotagents/shared/message-display-utils';
 import {
   applyUserResponseToChatMessages,
@@ -3865,6 +3867,12 @@ export function createChatMessageRuntimeLogMeta(content: string): ChatMessageRun
     length: content.length,
     inlineImageCount: extractDataImageMarkdownReferences(content).length,
   };
+}
+
+export function createChatMessageRuntimeModelMessages<TMessage extends MessageContentForModelLike>(
+  messages: TMessage[],
+): TMessage[] {
+  return sanitizeMessagesForModel(messages);
 }
 
 export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState(): ChatMessageRuntimeRemoteSpeechSettingsState {

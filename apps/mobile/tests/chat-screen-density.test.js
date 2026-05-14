@@ -1894,6 +1894,11 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 test('uses shared media sanitization for collapsed mobile message previews', () => {
   assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
+  assert.match(screenSource, /createChatMessageRuntimeModelMessages\(\[\.\.\.currentMessages, userMsg\]\)/);
+  assert.match(chatMessageChromeSource, /sanitizeMessagesForModel/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeModelMessages/);
+  assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-display-utils'/);
+  assert.doesNotMatch(screenSource, /sanitizeMessagesForModel/);
   assert.match(screenSource, /createChatMessageConversationRuntimeThreadListRenderState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,/);
   assert.doesNotMatch(screenSource, /renderState: messageRenderState\.collapsedPreview,/);
   assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(\{\s+renderState: messageRenderState\.collapsedPreview,\s+actionState: messageRenderState\.collapsedPreviewAction,\s+\.\.\.collapsed,\s+\}\),/);

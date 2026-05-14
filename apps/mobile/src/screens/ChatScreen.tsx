@@ -79,6 +79,7 @@ import {
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeLogMeta,
+  createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeRemoteSpeechSettingsState,
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   createChatMessageRuntimeToolActivityGroups,
@@ -145,9 +146,6 @@ import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import {
-  sanitizeMessagesForModel,
-} from '@dotagents/shared/message-display-utils';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import type {
@@ -1963,7 +1961,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
       };
 
-      const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
+      const modelMessages = createChatMessageRuntimeModelMessages([...currentMessages, userMsg]);
 	      const response = await client.chat(modelMessages, onToken, onProgress, serverConversationId);
       const finalText = response.content || streamingText;
 		      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
@@ -2343,7 +2341,7 @@ export default function ChatScreen({ route, navigation }: any) {
         setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
       };
 
-      const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
+      const modelMessages = createChatMessageRuntimeModelMessages([...currentMessages, userMsg]);
       const response = await client.chat(modelMessages, onToken, onProgress, startingServerConversationId);
       const finalText = response.content || streamingText;
 	      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
