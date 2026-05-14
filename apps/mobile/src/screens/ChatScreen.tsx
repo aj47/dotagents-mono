@@ -34,10 +34,9 @@ import {
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatMessageConversationMessageThreadRenderState,
+  createChatMessageConversationItemThreadRenderState,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
-  createChatMessageConversationToolActivityGroupThreadRenderState,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -3717,37 +3716,16 @@ export default function ChatScreen({ route, navigation }: any) {
     >
           {visibleMessages.map((m, visibleIndex) => {
             const i = firstVisibleMessageIndex + visibleIndex;
-            // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             const {
-              groupRenderState,
-              groupThreadState,
-              groupOnlyThreadState,
-            } = createChatMessageConversationToolActivityGroupThreadRenderState({
+              threadState,
+            } = createChatMessageConversationItemThreadRenderState({
               group,
               itemIndex: i,
               itemKey: i,
               groupState: expandedGroups,
               inheritedState: expandedMessages,
-              colors: theme.colors,
               onToggleGroup: toggleGroupExpansion,
-            });
-            if (groupOnlyThreadState.shouldRenderThread) {
-              return (
-                <ChatMessageConversationRuntimeThread
-                  key={groupOnlyThreadState.threadKey}
-                  threadState={groupOnlyThreadState}
-                  styles={chatMessageConversationThreadStyles.runtimeThread}
-                />
-              );
-            }
-
-            const {
-              threadState: messageThreadState,
-            } = createChatMessageConversationMessageThreadRenderState({
-              itemKey: i,
-              groupRenderState,
-              groupThreadState,
               message: m,
               messageIndex: i,
               lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
@@ -3785,8 +3763,8 @@ export default function ChatScreen({ route, navigation }: any) {
 
             return (
               <ChatMessageConversationRuntimeThread
-                key={messageThreadState.threadKey}
-                threadState={messageThreadState}
+                key={threadState.threadKey}
+                threadState={threadState}
                 styles={chatMessageConversationThreadStyles.runtimeThread}
               />
             );

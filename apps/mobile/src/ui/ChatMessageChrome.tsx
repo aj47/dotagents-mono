@@ -2097,6 +2097,17 @@ type ChatMessageConversationMessageThreadRenderState = {
   threadState: ChatMessageConversationMessageRuntimeThreadState;
 };
 
+type ChatMessageConversationItemThreadRenderStateInput =
+  ChatMessageConversationToolActivityGroupThreadRenderStateInput
+  & Omit<
+    ChatMessageConversationMessageThreadRenderStateInput,
+    'itemKey' | 'groupRenderState' | 'groupThreadState'
+  >;
+
+type ChatMessageConversationItemThreadRenderState = {
+  threadState: ChatMessageConversationRenderableRuntimeThreadState;
+};
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2386,6 +2397,49 @@ export function createChatMessageConversationMessageThreadRenderState({
       body,
     }),
   };
+}
+
+export function createChatMessageConversationItemThreadRenderState({
+  group,
+  itemIndex,
+  itemKey,
+  groupState,
+  inheritedState,
+  groupKey,
+  inheritedKey,
+  defaultExpanded,
+  onToggleGroup,
+  ...messageThreadInput
+}: ChatMessageConversationItemThreadRenderStateInput): ChatMessageConversationItemThreadRenderState {
+  const {
+    groupRenderState,
+    groupThreadState,
+    groupOnlyThreadState,
+  } = createChatMessageConversationToolActivityGroupThreadRenderState({
+    group,
+    itemIndex,
+    itemKey,
+    groupState,
+    inheritedState,
+    groupKey,
+    inheritedKey,
+    defaultExpanded,
+    colors: messageThreadInput.colors,
+    onToggleGroup,
+  });
+
+  if (groupOnlyThreadState.shouldRenderThread) {
+    return {
+      threadState: groupOnlyThreadState,
+    };
+  }
+
+  return createChatMessageConversationMessageThreadRenderState({
+    itemKey,
+    groupRenderState,
+    groupThreadState,
+    ...messageThreadInput,
+  });
 }
 
 export function createChatMessageConversationThreadPresentationState({
