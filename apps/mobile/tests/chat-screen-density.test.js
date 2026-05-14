@@ -2377,7 +2377,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupBoundary\s+key=\{`group-\$\{groupRenderState!\.groupKey\}`\}/);
   assert.doesNotMatch(screenSource, /const isFirstInExpandedGroup = groupRenderState\?\.shouldRenderExpandedHeader \?\? false;/);
   assert.doesNotMatch(screenSource, /const isLastInExpandedGroup = groupRenderState\?\.shouldRenderExpandedFooter \?\? false;/);
-  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{group \? \(\) => toggleGroupExpansion\(group\) : undefined\}\s+styles=\{chatMessageRuntimeThreadStyles\}\s+body=\{createChatMessageThreadBodyProps\(\{/);
+  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{group \? \(\) => toggleGroupExpansion\(group\) : undefined\}\s+styles=\{chatMessageRuntimeThreadStyles\}\s+body=\{\{/);
+  assert.match(chatMessageChromeSource, /const resolvedBody = createChatMessageThreadBodyProps\(body\);/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupThreadSurface\s+key=\{i\}/);
   assert.doesNotMatch(screenSource, /surfaceStyle=\{styles\.msg\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupToggle\s+renderState=\{groupRenderState!\}/);
@@ -2394,7 +2395,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeThread/);
   assert.match(chatMessageChromeSource, /if \(groupRenderState\?\.shouldSkipCollapsedItem\) return null;/);
   assert.match(chatMessageChromeSource, /if \(groupRenderState\?\.shouldRenderCollapsedHeader\) \{[\s\S]*?<ChatMessageToolActivityGroupBoundary\s+renderState=\{groupRenderState\}\s+kind="collapsed"[\s\S]*?styles=\{styles\.surface\.boundary\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupThreadSurface\s+surfaceToneStyle=\{surfaceToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{onToggleGroup\}\s+styles=\{styles\.surface\}[\s\S]*?<ChatMessageThreadBody\s+\{\.\.\.body\}\s+styles=\{styles\.body\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupThreadSurface\s+surfaceToneStyle=\{surfaceToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{onToggleGroup\}\s+styles=\{styles\.surface\}[\s\S]*?<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
   assert.match(chatMessageChromeSource, /leadingActivity=\{groupRenderState\?\.shouldRenderExpandedHeader \? \([\s\S]*?<ChatMessageToolActivityGroupBoundary\s+renderState=\{groupRenderState\}\s+kind="expanded"/);
   assert.match(chatMessageChromeSource, /trailingActivity=\{groupRenderState\?\.shouldRenderExpandedFooter \? \([\s\S]*?<ChatMessageToolActivityGroupBoundary\s+renderState=\{groupRenderState\}\s+kind="footer"/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupBoundary/);
@@ -2617,7 +2618,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionDetailRow,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
-  assert.match(screenSource, /createChatMessageThreadBodyProps,/);
+  assert.doesNotMatch(screenSource, /createChatMessageThreadBodyProps,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const mobileMessageActionCopy = getChatMessageActionCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
@@ -2662,7 +2663,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/<ChatMessageConversationContent/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageContentRow/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 0);
-  assert.match(screenSource, /body=\{createChatMessageThreadBodyProps\(\{[\s\S]*?conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
+  assert.match(screenSource, /body=\{\{[\s\S]*?conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
+  assert.match(chatMessageChromeSource, /const resolvedBody = createChatMessageThreadBodyProps\(body\);/);
   assert.doesNotMatch(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps/);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow/g) ?? []).length, 2);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 1);
@@ -2675,7 +2677,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((chatMessageChromeSource.match(/slots: actionSet\.visibleSlots/g) ?? []).length, 2);
   assert.equal((chatMessageChromeSource.match(/components: actionSet\.components/g) ?? []).length, 2);
   assert.match(screenSource, /styles=\{chatMessageRuntimeThreadStyles\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.body\}\s+styles=\{styles\.body\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
   assert.match(screenSource, /conversation: \{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,\s+expanded: \{/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
   assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+slots: actionSet\.visibleSlots,\s+components: actionSet\.components,/);

@@ -1797,7 +1797,7 @@ type ChatMessageRuntimeThreadProps = Omit<
   'children' | 'styles' | 'surfaceToneStyle'
 > & {
   surfaceToneStyleSlot?: string | null;
-  body?: Omit<ChatMessageThreadBodyProps, 'styles'> | null;
+  body?: ChatMessageThreadBodyPropsInput | null;
   styles: ChatMessageRuntimeThreadStyleSlots;
 };
 
@@ -3664,6 +3664,7 @@ export function ChatMessageRuntimeThread({
 
   if (!body) return null;
 
+  const resolvedBody = createChatMessageThreadBodyProps(body);
   const surfaceToneStyle = surfaceToneStyleSlot
     ? styles.surface.getToneStyle(surfaceToneStyleSlot)
     : undefined;
@@ -3676,7 +3677,7 @@ export function ChatMessageRuntimeThread({
       styles={styles.surface}
     >
       <ChatMessageThreadBody
-        {...body}
+        {...resolvedBody}
         styles={styles.body}
       />
     </ChatMessageToolActivityGroupThreadSurface>
