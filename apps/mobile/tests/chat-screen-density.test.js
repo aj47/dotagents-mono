@@ -284,7 +284,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalSpinnerMobileColors,/);
   assert.doesNotMatch(screenSource, /\? mobileRuntimeCopy\.approval\.processingTitle\s*: mobileRuntimeCopy\.approval\.title/);
-  assert.match(screenSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<Record<string, boolean>>\(\{\}\);/);
+  assert.doesNotMatch(screenSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<Record<string, boolean>>\(\{\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeThreadExpansionState,/);
+  assert.match(chatMessageChromeSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<ChatMessageRuntimeToolApprovalExpansionState>\(\{\}\);/);
   assert.match(
     chatMessageChromeSource,
     /export function getChatMessageRuntimeToolApprovalAlertState/,
@@ -302,8 +304,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalFailedAlertState/);
   assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
   assert.doesNotMatch(screenSource, /mobileRuntimeToolApprovalAlerts\.(connectionRequired|unavailable|failed)\.(title|message|fallbackMessage)/);
-  assert.match(screenSource, /const toggleToolApprovalArguments = useCallback\(\(approvalId: string\) => \{/);
-  assert.match(screenSource, /toggleChatMessageRuntimeToolApprovalExpansionState\(prev, approvalId\)/);
+  assert.doesNotMatch(screenSource, /const toggleToolApprovalArguments = useCallback\(\(approvalId: string\) => \{/);
+  assert.doesNotMatch(screenSource, /toggleChatMessageRuntimeToolApprovalExpansionState\(prev, approvalId\)/);
+  assert.match(chatMessageChromeSource, /const toggleToolApprovalArguments = useCallback\(\(approvalId: string\) => \{/);
+  assert.match(chatMessageChromeSource, /toggleChatMessageRuntimeToolApprovalExpansionState\(prev, approvalId\)/);
   assert.doesNotMatch(screenSource, /toggleChatDisplayExpansionState\(prev, approvalId\)/);
   assert.match(chatMessageChromeSource, /export function toggleChatMessageRuntimeToolApprovalExpansionState/);
   assert.doesNotMatch(screenSource, /const toolApprovalId = m\.toolApproval\?\.approvalId \?\? '';/);
@@ -604,10 +608,14 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /messageCountLabel: delegationMessageCountLabel/);
   assert.doesNotMatch(screenSource, /statusStyles: delegationStatusRenderState\?\.styles \?\? null/);
   assert.doesNotMatch(screenSource, /delegationCard: m\.variant === 'delegation' && m\.delegation && delegationPresentation \? \{/);
-  assert.match(screenSource, /const \[expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
-  assert.match(screenSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
-  assert.match(screenSource, /setExpandedDelegationConversationPreviews\(\{\}\);/);
-  assert.match(screenSource, /setExpandedDelegationToolPreviews\(\{\}\);/);
+  assert.doesNotMatch(screenSource, /const \[expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
+  assert.doesNotMatch(screenSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
+  assert.doesNotMatch(screenSource, /setExpandedDelegationConversationPreviews\(\{\}\);/);
+  assert.doesNotMatch(screenSource, /setExpandedDelegationToolPreviews\(\{\}\);/);
+  assert.match(chatMessageChromeSource, /const \[expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews\] =\s+useState<ChatDisplayExpansionStateMap<string>>\(\{\}\);/);
+  assert.match(chatMessageChromeSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] =\s+useState<ChatDisplayExpansionStateMap<string>>\(\{\}\);/);
+  assert.match(chatMessageChromeSource, /setExpandedDelegationConversationPreviews\(\{\}\);/);
+  assert.match(chatMessageChromeSource, /setExpandedDelegationToolPreviews\(\{\}\);/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationCard/);
   assert.match(chatMessageChromeSource, /export function createChatMessageDelegationCardProps/);
   assert.match(chatMessageChromeSource, /if \(!isDelegation \|\| !delegation\) return null;/);
@@ -1767,9 +1775,11 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /hasVisibleChatMessageContent,/);
   assert.match(chatMessageChromeSource, /hasVisibleChatMessageContent,/);
   assert.doesNotMatch(screenSource, /applyChatMessageAutoExpansionState,/);
-  assert.match(screenSource, /applyChatMessageRuntimeAutoExpansionState,/);
-  assert.match(screenSource, /setExpandedMessages\(prev => applyChatMessageRuntimeAutoExpansionState\(prev, messages, \{/);
-  assert.match(screenSource, /toggleChatMessageRuntimeMessageExpansionState\(prev, index\)/);
+  assert.doesNotMatch(screenSource, /applyChatMessageRuntimeAutoExpansionState,/);
+  assert.doesNotMatch(screenSource, /setExpandedMessages\(prev => applyChatMessageRuntimeAutoExpansionState\(prev, messages, \{/);
+  assert.doesNotMatch(screenSource, /toggleChatMessageRuntimeMessageExpansionState\(prev, index\)/);
+  assert.match(chatMessageChromeSource, /setExpandedMessages\(\(prev\) => applyChatMessageRuntimeAutoExpansionState\(prev, messages, \{/);
+  assert.match(chatMessageChromeSource, /toggleChatMessageRuntimeMessageExpansionState\(prev, index\)/);
   assert.doesNotMatch(screenSource, /toggleChatDisplayExpansionState,/);
   assert.match(chatMessageChromeSource, /applyChatMessageAutoExpansionState,/);
   assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeAutoExpansionState/);
@@ -2266,7 +2276,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionRows = createChatMessageToolExecutionRows/);
   assert.doesNotMatch(screenSource, /const toolExecutionDetailRows = renderedToolEntries\.map/);
   assert.doesNotMatch(screenSource, /const isToolCallFullyExpanded = getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\);/);
-  assert.match(screenSource, /toggleChatMessageRuntimeToolCallExpansionState\(prev, messageId, toolCallIndex\)/);
+  assert.doesNotMatch(screenSource, /toggleChatMessageRuntimeToolCallExpansionState\(prev, messageId, toolCallIndex\)/);
+  assert.match(chatMessageChromeSource, /toggleChatMessageRuntimeToolCallExpansionState\(prev, messageId, toolCallIndex\)/);
   assert.doesNotMatch(screenSource, /toggleChatDisplayExpansionState\(prev, key\)/);
   assert.match(chatMessageChromeSource, /export function toggleChatMessageRuntimeToolCallExpansionState/);
   assert.match(chatMessageChromeSource, /`\$\{messageId\}-\$\{toolCallIndex\}`/);
@@ -2865,9 +2876,9 @@ test('colors compact tool call labels by result status', () => {
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
   assert.doesNotMatch(screenSource, /getToolActivityGroupExpansionInheritanceItems,/);
-  assert.match(screenSource, /createChatMessageRuntimeToolActivityGroups,/);
-  assert.match(screenSource, /applyChatMessageRuntimeToolActivityGroupExpansionInheritance,/);
-  assert.match(screenSource, /toggleChatMessageRuntimeToolActivityGroupExpansionState,/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolActivityGroups,/);
+  assert.doesNotMatch(screenSource, /applyChatMessageRuntimeToolActivityGroupExpansionInheritance,/);
+  assert.doesNotMatch(screenSource, /toggleChatMessageRuntimeToolActivityGroupExpansionState,/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupMobileRenderState,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageConversationRuntimeThreadListRenderState,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationRuntimeThreadListRenderState/);
@@ -2888,11 +2899,14 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /getToolActivityGroupMobileToggleIconColors,/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupMobileToggleIconState,/);
   assert.doesNotMatch(screenSource, /applyChatDisplayGroupedExpansionInheritance,/);
-  assert.match(screenSource, /setExpandedGroups\(prev => applyChatMessageRuntimeToolActivityGroupExpansionInheritance\(\{/);
-  assert.match(screenSource, /inheritedState: expandedMessages,/);
-  assert.match(screenSource, /groups: toolActivityGroups\.groups,/);
-  assert.match(screenSource, /toggleChatMessageRuntimeToolActivityGroupExpansionState\(prev, group\)/);
-  assert.match(screenSource, /const toolActivityGroups = useMemo\(\(\) => createChatMessageRuntimeToolActivityGroups\(messages\), \[messages\]\);/);
+  assert.doesNotMatch(screenSource, /setExpandedGroups\(prev => applyChatMessageRuntimeToolActivityGroupExpansionInheritance\(\{/);
+  assert.match(chatMessageChromeSource, /setExpandedGroups\(\(prev\) => applyChatMessageRuntimeToolActivityGroupExpansionInheritance\(\{/);
+  assert.match(chatMessageChromeSource, /inheritedState: expandedMessages,/);
+  assert.match(chatMessageChromeSource, /groups: toolActivityGroups\.groups,/);
+  assert.doesNotMatch(screenSource, /toggleChatMessageRuntimeToolActivityGroupExpansionState\(prev, group\)/);
+  assert.match(chatMessageChromeSource, /toggleChatMessageRuntimeToolActivityGroupExpansionState\(prev, group\)/);
+  assert.doesNotMatch(screenSource, /const toolActivityGroups = useMemo\(\(\) => createChatMessageRuntimeToolActivityGroups\(messages\), \[messages\]\);/);
+  assert.match(chatMessageChromeSource, /const toolActivityGroups = useMemo\(\s+\(\) => createChatMessageRuntimeToolActivityGroups\(messages\),\s+\[messages\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolActivityGroups/);
   assert.match(chatMessageChromeSource, /return groupToolActivity\(messages\);/);
   assert.match(chatMessageChromeSource, /export function toggleChatMessageRuntimeToolActivityGroupExpansionState/);

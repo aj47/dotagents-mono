@@ -4298,6 +4298,94 @@ export function applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
   }) as ChatMessageRuntimeToolActivityGroupExpansionState;
 }
 
+type ChatMessageRuntimeThreadExpansionMessage =
+  & ChatDisplayMessageLike
+  & Parameters<typeof createChatMessageRuntimeToolActivityGroups>[0][number];
+
+type ChatMessageRuntimeThreadExpansionStateInput<TMessage extends ChatMessageRuntimeThreadExpansionMessage> = {
+  messages: TMessage[];
+  isResponding: boolean;
+};
+
+export function useChatMessageRuntimeThreadExpansionState<TMessage extends ChatMessageRuntimeThreadExpansionMessage>({
+  messages,
+  isResponding,
+}: ChatMessageRuntimeThreadExpansionStateInput<TMessage>) {
+  const [expandedMessages, setExpandedMessages] = useState<ChatMessageRuntimeMessageExpansionState>({});
+  const [expandedToolCalls, setExpandedToolCalls] = useState<ChatMessageRuntimeToolCallExpansionState>({});
+  const [expandedGroups, setExpandedGroups] = useState<ChatMessageRuntimeToolActivityGroupExpansionState>({});
+  const [expandedToolApprovals, setExpandedToolApprovals] = useState<ChatMessageRuntimeToolApprovalExpansionState>({});
+  const [expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews] =
+    useState<ChatDisplayExpansionStateMap<string>>({});
+  const [expandedDelegationToolPreviews, setExpandedDelegationToolPreviews] =
+    useState<ChatDisplayExpansionStateMap<string>>({});
+
+  const resetThreadExpansionState = useCallback(() => {
+    setExpandedMessages({});
+    setExpandedToolCalls({});
+    setExpandedGroups({});
+    setExpandedToolApprovals({});
+    setExpandedDelegationConversationPreviews({});
+    setExpandedDelegationToolPreviews({});
+  }, []);
+
+  const toggleMessageExpansion = useCallback((index: number) => {
+    setExpandedMessages((prev) => toggleChatMessageRuntimeMessageExpansionState(prev, index));
+  }, []);
+
+  const toggleToolCallExpansion = useCallback((messageId: string, toolCallIndex: number) => {
+    setExpandedToolCalls((prev) =>
+      toggleChatMessageRuntimeToolCallExpansionState(prev, messageId, toolCallIndex),
+    );
+  }, []);
+
+  const toolActivityGroups = useMemo(
+    () => createChatMessageRuntimeToolActivityGroups(messages),
+    [messages],
+  );
+
+  const toggleGroupExpansion = useCallback((group: ChatMessageRuntimeToolActivityGroup) => {
+    setExpandedGroups((prev) => toggleChatMessageRuntimeToolActivityGroupExpansionState(prev, group));
+  }, []);
+
+  useEffect(() => {
+    setExpandedGroups((prev) => applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
+      groupState: prev,
+      inheritedState: expandedMessages,
+      groups: toolActivityGroups.groups,
+    }));
+  }, [expandedMessages, toolActivityGroups.groups]);
+
+  const toggleToolApprovalArguments = useCallback((approvalId: string) => {
+    setExpandedToolApprovals((prev) =>
+      toggleChatMessageRuntimeToolApprovalExpansionState(prev, approvalId),
+    );
+  }, []);
+
+  useEffect(() => {
+    setExpandedMessages((prev) => applyChatMessageRuntimeAutoExpansionState(prev, messages, {
+      isResponding,
+    }));
+  }, [isResponding, messages]);
+
+  return {
+    expandedMessages,
+    expandedToolCalls,
+    expandedGroups,
+    expandedToolApprovals,
+    expandedDelegationConversationPreviews,
+    expandedDelegationToolPreviews,
+    setExpandedDelegationConversationPreviews,
+    setExpandedDelegationToolPreviews,
+    toolActivityGroups,
+    toggleMessageExpansion,
+    toggleToolCallExpansion,
+    toggleGroupExpansion,
+    toggleToolApprovalArguments,
+    resetThreadExpansionState,
+  };
+}
+
 export function mergeChatMessageRuntimeToolResultsIntoLastMessage<
   TMessage extends ChatMessageRuntimeToolResultMergeMessage<TToolCall, TToolResult>,
   TToolCall,

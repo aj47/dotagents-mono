@@ -66,13 +66,7 @@ import {
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeRemoteSpeechSettingsState,
   getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
-  createChatMessageRuntimeToolActivityGroups,
-  applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
-  applyChatMessageRuntimeAutoExpansionState,
-  toggleChatMessageRuntimeMessageExpansionState,
-  toggleChatMessageRuntimeToolCallExpansionState,
-  toggleChatMessageRuntimeToolApprovalExpansionState,
-  toggleChatMessageRuntimeToolActivityGroupExpansionState,
+  useChatMessageRuntimeThreadExpansionState,
   createChatMessageRuntimeChromeProps,
   getChatConversationHomeQuickStartPressIntent,
   getChatMessageRuntimeBranchCreatedAlertState,
@@ -105,7 +99,6 @@ import type {
   ChatComposerImageAttachmentAlertInput,
   ChatConversationHomeQuickStartItem,
   ChatMessageRuntimeRemoteSpeechProvider,
-  ChatMessageRuntimeToolActivityGroup,
 } from '../ui/ChatMessageChrome';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
@@ -636,16 +629,25 @@ export default function ChatScreen({ route, navigation }: any) {
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<ChatComposerTextEntryRef>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
-  // Track which individual tool calls are fully expanded to show all input/output details
-  // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
-  const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
-  // Track which tool-activity groups are expanded (keyed by startIndex so the
-  // state survives when new tool/skill messages append to the same group)
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const [expandedToolApprovals, setExpandedToolApprovals] = useState<Record<string, boolean>>({});
-  const [expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews] = useState<Record<string, boolean>>({});
-  const [expandedDelegationToolPreviews, setExpandedDelegationToolPreviews] = useState<Record<string, boolean>>({});
+  const {
+    expandedMessages,
+    expandedToolCalls,
+    expandedGroups,
+    expandedToolApprovals,
+    expandedDelegationConversationPreviews,
+    expandedDelegationToolPreviews,
+    setExpandedDelegationConversationPreviews,
+    setExpandedDelegationToolPreviews,
+    toolActivityGroups,
+    toggleMessageExpansion,
+    toggleToolCallExpansion,
+    toggleGroupExpansion,
+    toggleToolApprovalArguments,
+    resetThreadExpansionState,
+  } = useChatMessageRuntimeThreadExpansionState({
+    messages,
+    isResponding: responding,
+  });
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const [willCancel, setWillCancel] = useState(false);
@@ -1227,14 +1229,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     const isSessionSwitch = lastLoadedSessionIdRef.current !== currentSessionId;
     if (isSessionSwitch) {
-      // Reset expandedMessages and expandedToolCalls on session switch to ensure consistent
-      // "final response expanded" behavior per chat and prevent stale UI state from leaking.
-      setExpandedMessages({});
-      setExpandedToolCalls({});
-      setExpandedGroups({});
-      setExpandedToolApprovals({});
-      setExpandedDelegationConversationPreviews({});
-      setExpandedDelegationToolPreviews({});
+      resetThreadExpansionState();
       setCopiedMessageIndex(null);
       setLatestStepSummary(null);
       // Clear respond_to_user history for the new session
@@ -1340,7 +1335,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages([]);
 	      replaceResponseHistory([]);
     }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory, resetThreadExpansionState]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -1401,47 +1396,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     prevMessagesLengthRef.current = messages.length;
   }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
-
-  const toggleMessageExpansion = useCallback((index: number) => {
-    setExpandedMessages(prev => toggleChatMessageRuntimeMessageExpansionState(prev, index));
-  }, []);
-
-  // Toggle expansion of individual tool call details (input params and results)
-  const toggleToolCallExpansion = useCallback((messageId: string, toolCallIndex: number) => {
-    setExpandedToolCalls(prev => toggleChatMessageRuntimeToolCallExpansionState(prev, messageId, toolCallIndex));
-  }, []);
-
-  // Compute tool-activity groups for consecutive connected tool-call messages
-  const toolActivityGroups = useMemo(() => createChatMessageRuntimeToolActivityGroups(messages), [messages]);
-
-  // Toggle expansion of a tool-activity group using a stable key for the run.
-  const toggleGroupExpansion = useCallback((group: ChatMessageRuntimeToolActivityGroup) => {
-    setExpandedGroups(prev => toggleChatMessageRuntimeToolActivityGroupExpansionState(prev, group));
-  }, []);
-
-  useEffect(() => {
-    setExpandedGroups(prev => applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
-      groupState: prev,
-      inheritedState: expandedMessages,
-      groups: toolActivityGroups.groups,
-    }));
-  }, [expandedMessages, toolActivityGroups.groups]);
-
-  const toggleToolApprovalArguments = useCallback((approvalId: string) => {
-    setExpandedToolApprovals(prev => toggleChatMessageRuntimeToolApprovalExpansionState(prev, approvalId));
-  }, []);
-
-  // Auto-expand logic matching desktop behavior (#32, #33):
-  // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
-  // - Messages with tool metadata and visible user-facing content can still expand normally
-  // - Only the final assistant message auto-expands, and only when not streaming (agent complete)
-  // - Tool-only messages stay collapsed during streaming to avoid showing raw payload text
-  // - Users can still manually expand any collapsed message
-  useEffect(() => {
-    setExpandedMessages(prev => applyChatMessageRuntimeAutoExpansionState(prev, messages, {
-      isResponding: responding,
-    }));
-  }, [messages, responding]);
 
   const convoRef = useRef<string | undefined>(undefined);
 
