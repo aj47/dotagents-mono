@@ -73,6 +73,7 @@ import {
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
+  getChatRuntimeBranchMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
@@ -190,6 +191,13 @@ type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'
   renderState: ChatMessageCopyMobileRenderState;
 };
 
+type ChatMessageBranchActionSpecInput =
+  Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive' | 'onPress'>
+  & Parameters<typeof getChatRuntimeBranchMobileRenderState>[0]
+  & {
+    onBranchMessage?: (messageIndex: number) => void;
+  };
+
 type ChatMessageSpeechActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
   & Parameters<typeof getChatMessageSpeechMobileRenderState>[0];
@@ -219,11 +227,12 @@ type ChatMessageActionComponentsInput = {
 
 type ChatMessageActionSetInput = Omit<
   ChatMessageActionComponentsInput,
-  'availability' | 'turnDuration' | 'speech' | 'copy'
+  'availability' | 'turnDuration' | 'speech' | 'branch' | 'copy'
 > & {
   contentRenderState: ChatMessageActionLayoutStateInput['renderState'];
   turnDuration: ChatMessageTurnDurationActionSpecInput;
   speech: ChatMessageSpeechActionSpecInput;
+  branch: ChatMessageBranchActionSpecInput;
   copy: ChatMessageCopyActionSpecInput;
 };
 
@@ -1896,6 +1905,7 @@ export function createChatMessageActionSet({
   contentRenderState,
   turnDuration,
   speech,
+  branch,
   copy,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
@@ -1920,6 +1930,33 @@ export function createChatMessageActionSet({
     }),
     isActive: speech.isSpeaking,
   };
+  const {
+    onBranchMessage,
+    conversationId,
+    role: branchRole,
+    branchMessageIndex,
+    fallbackMessageIndex,
+    pendingMessageIndex,
+    colors: branchColors,
+    ...branchStyleProps
+  } = branch;
+  const branchRenderState = getChatRuntimeBranchMobileRenderState({
+    conversationId,
+    role: branchRole,
+    branchMessageIndex,
+    fallbackMessageIndex,
+    pendingMessageIndex,
+    colors: branchColors,
+  });
+  const branchAction: ChatMessageBranchActionSpec = {
+    ...branchStyleProps,
+    renderState: branchRenderState,
+    onPress: () => {
+      if (branchRenderState.messageIndex != null) {
+        onBranchMessage?.(branchRenderState.messageIndex);
+      }
+    },
+  };
   const copyAction: ChatMessageCopyActionSpec = {
     ...copy,
     renderState: getChatMessageCopyMobileRenderState({
@@ -1935,6 +1972,7 @@ export function createChatMessageActionSet({
     ...input,
     turnDuration: turnDurationAction,
     speech: speechAction,
+    branch: branchAction,
     copy: copyAction,
   };
   const availability = getChatMessageActionAvailabilityRenderState({

@@ -119,7 +119,6 @@ import {
   getChatRuntimeAgentSelectorMobileRenderState,
   getChatRuntimeBackMobileRenderState,
   getChatRuntimeBranchMobileAlertState,
-  getChatRuntimeBranchMobileRenderState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
@@ -3798,15 +3797,6 @@ export default function ChatScreen({ route, navigation }: any) {
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = getChatDisplayExpansionState(expandedMessages, i);
-            const messageBranchRenderState = getChatRuntimeBranchMobileRenderState({
-              conversationId: currentSession?.serverConversationId,
-              role: m.role,
-              branchMessageIndex: m.branchMessageIndex,
-              fallbackMessageIndex: i,
-              pendingMessageIndex: branchingMessageIndex,
-              colors: theme.colors,
-            });
-            const messageBranchIndex = messageBranchRenderState.messageIndex;
 
             const renderedToolEntries = messageDisplayState.visibleToolEntries;
             const displayToolCallCount = messageDisplayState.displayToolCallCount;
@@ -3883,12 +3873,13 @@ export default function ChatScreen({ route, navigation }: any) {
                 ...messageActionStyles.speech,
               },
               branch: {
-                renderState: messageBranchRenderState,
-                onPress: () => {
-                  if (messageBranchIndex != null) {
-                    void handleBranchFromMessage(messageBranchIndex);
-                  }
-                },
+                conversationId: currentSession?.serverConversationId,
+                role: m.role,
+                branchMessageIndex: m.branchMessageIndex,
+                fallbackMessageIndex: i,
+                pendingMessageIndex: branchingMessageIndex,
+                colors: theme.colors,
+                onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
                 ...messageActionStyles.branch,
               },
               copy: {
