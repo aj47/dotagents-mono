@@ -59,6 +59,9 @@ import {
   createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimePendingTurnState,
   applyChatMessageRuntimePendingTurnStatusState,
+  applyChatMessageRuntimeCompletedTurnStatusState,
+  applyChatMessageRuntimeBlockedTurnStatusState,
+  applyChatMessageRuntimeSettledTurnStatusState,
   createChatMessageRuntimeStreamingTurnState,
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
@@ -967,7 +970,9 @@ export default function ChatScreen({ route, navigation }: any) {
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
       const sessionChanged = currentSessionIdRef.current !== requestSessionId;
       if (!sessionChanged) {
-        setConversationState(completedConversationState);
+        applyChatMessageRuntimeCompletedTurnStatusState(completedConversationState, {
+          setConversationState,
+        });
       }
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
@@ -1114,7 +1119,9 @@ export default function ChatScreen({ route, navigation }: any) {
         });
         return;
       }
-      setConversationState('blocked');
+      applyChatMessageRuntimeBlockedTurnStatusState({
+        setConversationState,
+      });
 
       // Save the failed message for retry
       setLastFailedMessage(text);
@@ -1157,8 +1164,10 @@ export default function ChatScreen({ route, navigation }: any) {
       const isCurrentSession = currentSessionIdRef.current === requestSessionId;
 
       if (isLatestForThisSession && isCurrentSession) {
-        setResponding(false);
-        setConnectionState(null);
+        applyChatMessageRuntimeSettledTurnStatusState({
+          setResponding,
+          setConnectionState,
+        });
         // Guard the setTimeout callback: only clear debugInfo if this request
         // is still the latest one when the timeout fires. This prevents an
         // old request's delayed clear from wiping debug info for a newer request.
@@ -1358,7 +1367,9 @@ export default function ChatScreen({ route, navigation }: any) {
         );
         return;
       }
-      setConversationState(completedConversationState);
+      applyChatMessageRuntimeCompletedTurnStatusState(completedConversationState, {
+        setConversationState,
+      });
 
       if (response.conversationId) {
         await sessionStore.setServerConversationId(response.conversationId);
@@ -1399,7 +1410,9 @@ export default function ChatScreen({ route, navigation }: any) {
       console.error('[ChatScreen] Queued message error:', e);
       const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>(e);
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorState.message);
-      setConversationState('blocked');
+      applyChatMessageRuntimeBlockedTurnStatusState({
+        setConversationState,
+      });
       setMessages(queuedErrorState.turnState.updateMessages);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
@@ -1410,8 +1423,10 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (activeRequestIdRef.current === thisRequestId) {
-        setResponding(false);
-        setConnectionState(null);
+        applyChatMessageRuntimeSettledTurnStatusState({
+          setResponding,
+          setConnectionState,
+        });
         setTimeout(() => {
           if (activeRequestIdRef.current === thisRequestId) {
             clearDebugInfo();

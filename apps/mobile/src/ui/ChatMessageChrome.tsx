@@ -952,6 +952,16 @@ type ChatRuntimeProgressTurnStatusSetters = Pick<
   'setLatestStepSummary' | 'setConversationState'
 >;
 
+type ChatRuntimeConversationTurnStatusSetters = Pick<
+  ChatRuntimeStatusState,
+  'setConversationState'
+>;
+
+type ChatRuntimeSettledTurnStatusSetters = Pick<
+  ChatRuntimeStatusState,
+  'setResponding' | 'setConnectionState'
+>;
+
 type ChatRuntimeRequestDebugState = {
   requestDebugText: string;
   setRequestDebugText: Dispatch<SetStateAction<string>>;
@@ -5546,6 +5556,26 @@ export function applyChatMessageRuntimePendingTurnStatusState(
   statusSetters.setLatestStepSummary(pendingTurnState.latestStepSummary);
   statusSetters.setResponding(pendingTurnState.responding);
   statusSetters.setConversationState(pendingTurnState.conversationState);
+}
+
+export function applyChatMessageRuntimeCompletedTurnStatusState(
+  completedConversationState: AgentConversationState,
+  statusSetters: ChatRuntimeConversationTurnStatusSetters,
+): void {
+  statusSetters.setConversationState(completedConversationState);
+}
+
+export function applyChatMessageRuntimeBlockedTurnStatusState(
+  statusSetters: ChatRuntimeConversationTurnStatusSetters,
+): void {
+  statusSetters.setConversationState('blocked');
+}
+
+export function applyChatMessageRuntimeSettledTurnStatusState(
+  statusSetters: ChatRuntimeSettledTurnStatusSetters,
+): void {
+  statusSetters.setResponding(false);
+  statusSetters.setConnectionState(null);
 }
 
 export function createChatMessageRuntimeCompletedConversationState(

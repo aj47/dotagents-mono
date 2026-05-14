@@ -4139,10 +4139,25 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /createChatMessageRuntimePendingTurnStatusState\(\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedConversationState,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeCompletedConversationState\(latestConversationState\)/);
+  assert.match(screenSource, /applyChatMessageRuntimeCompletedTurnStatusState,/);
   assert.equal(
-    (screenSource.match(/setConversationState\(completedConversationState\)/g) || []).length,
+    (screenSource.match(/applyChatMessageRuntimeCompletedTurnStatusState\(completedConversationState, \{\s+setConversationState,\s+\}\);/g) || []).length,
     2,
   );
+  assert.match(screenSource, /applyChatMessageRuntimeBlockedTurnStatusState,/);
+  assert.equal(
+    (screenSource.match(/applyChatMessageRuntimeBlockedTurnStatusState\(\{\s+setConversationState,\s+\}\);/g) || []).length,
+    2,
+  );
+  assert.match(screenSource, /applyChatMessageRuntimeSettledTurnStatusState,/);
+  assert.equal(
+    (screenSource.match(/applyChatMessageRuntimeSettledTurnStatusState\(\{\s+setResponding,\s+setConnectionState,\s+\}\);/g) || []).length,
+    2,
+  );
+  assert.doesNotMatch(screenSource, /setConversationState\(completedConversationState\)/);
+  assert.doesNotMatch(screenSource, /setConversationState\('blocked'\)/);
+  assert.doesNotMatch(screenSource, /setResponding\(false\)/);
+  assert.doesNotMatch(screenSource, /setConnectionState\(null\)/);
   assert.doesNotMatch(screenSource, /setLatestStepSummary\(null\)/);
   assert.doesNotMatch(screenSource, /setResponding\(true\)/);
   assert.doesNotMatch(screenSource, /setConversationState\('running'\)/);
@@ -4162,6 +4177,13 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /statusSetters\.setResponding\(pendingTurnState\.responding\)/);
   assert.match(chatMessageChromeSource, /statusSetters\.setConversationState\(pendingTurnState\.conversationState\)/);
   assert.match(chatMessageChromeSource, /conversationState: 'running' as AgentConversationState/);
+  assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeCompletedTurnStatusState/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setConversationState\(completedConversationState\)/);
+  assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeBlockedTurnStatusState/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setConversationState\('blocked'\)/);
+  assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeSettledTurnStatusState/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setResponding\(false\)/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setConnectionState\(null\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeCompletedConversationState/);
   assert.match(chatMessageChromeSource, /return conversationState === 'running' \? 'complete' : conversationState/);
   assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeAssistantErrorMessage/);
