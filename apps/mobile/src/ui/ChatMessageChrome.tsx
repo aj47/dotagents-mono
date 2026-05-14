@@ -440,6 +440,13 @@ type ChatConversationHomePromptEditorSaveActionsStateInput<
   showAlert: (title: string, message: string) => void;
 };
 
+type ChatConversationHomePromptEditorSaveChromeActionsStateInput<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+> = Omit<
+  ChatConversationHomePromptEditorSaveActionsStateInput<TPromptEditorClient>,
+  'showAlert'
+>;
+
 type ChatConversationHomePromptEditorSaveActionsState = {
   handleSavePrompt: () => Promise<void>;
 };
@@ -464,6 +471,13 @@ type ChatConversationHomePromptEditorDeleteActionsStateInput<
   confirmNative: (input: ChatConversationHomePromptEditorDeleteNativeConfirmInput) => void;
   showAlert: (title: string, message: string) => void;
 };
+
+type ChatConversationHomePromptEditorDeleteChromeActionsStateInput<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+> = Omit<
+  ChatConversationHomePromptEditorDeleteActionsStateInput<TPromptEditorClient>,
+  'confirmWeb' | 'confirmNative' | 'showAlert'
+>;
 
 type ChatConversationHomePromptEditorDeleteActionsState = {
   handleDeletePrompt: (prompt: PredefinedPromptSummary) => void;
@@ -501,6 +515,13 @@ type ChatConversationHomePromptTaskRunActionsStateInput<
   clearPromptTaskRun: () => void;
   showAlert: (title: string, message: string) => void;
 };
+
+type ChatConversationHomePromptTaskRunChromeActionsStateInput<
+  TTaskRunClient extends ChatConversationHomePromptTaskRunClient,
+> = Omit<
+  ChatConversationHomePromptTaskRunActionsStateInput<TTaskRunClient>,
+  'showAlert'
+>;
 
 type ChatConversationHomePromptTaskRunActionsState<
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -3873,6 +3894,11 @@ type ChatMessageRuntimeBranchActionsStateInput<TBranchClient extends ChatMessage
   showAlert: (title: string, message: string) => void;
 };
 
+type ChatMessageRuntimeBranchChromeActionsStateInput<TBranchClient extends ChatMessageRuntimeBranchClient> = Omit<
+  ChatMessageRuntimeBranchActionsStateInput<TBranchClient>,
+  'showAlert'
+>;
+
 type ChatMessageRuntimeBranchActionsState = {
   handleBranchFromMessage: (messageIndex: number) => Promise<void>;
   handleBranchFromMessagePress: (messageIndex: number) => void;
@@ -3937,6 +3963,13 @@ type ChatMessageRuntimeKillSwitchActionsStateInput<
   showAlert: (title: string, message: string) => void;
 };
 
+type ChatMessageRuntimeKillSwitchChromeActionsStateInput<
+  TKillSwitchClient extends ChatMessageRuntimeKillSwitchClient,
+> = Omit<
+  ChatMessageRuntimeKillSwitchActionsStateInput<TKillSwitchClient>,
+  'confirmWeb' | 'showWebAlert' | 'confirmNative' | 'showAlert'
+>;
+
 type ChatMessageRuntimeKillSwitchActionsState = {
   handleKillSwitch: () => Promise<void>;
 };
@@ -3984,6 +4017,10 @@ type ChatMessageRuntimeToolApprovalActionsStateInput<
   setMessages: Dispatch<SetStateAction<TMessage[]>>;
   showAlert: (title: string, message: string) => void;
 };
+
+type ChatMessageRuntimeToolApprovalChromeActionsStateInput<
+  TMessage extends ChatMessageRuntimeToolApprovalStateMessageLike,
+> = Omit<ChatMessageRuntimeToolApprovalActionsStateInput<TMessage>, 'showAlert'>;
 
 type ChatMessageRuntimeToolApprovalActionsState = {
   respondToToolApproval: (approvalId: string, approved: boolean) => Promise<void>;
@@ -7554,6 +7591,17 @@ export function useChatConversationHomePromptEditorSaveActionsState<
   };
 }
 
+export function useChatConversationHomePromptEditorSaveChromeActionsState<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+>(
+  input: ChatConversationHomePromptEditorSaveChromeActionsStateInput<TPromptEditorClient>,
+): ChatConversationHomePromptEditorSaveActionsState {
+  return useChatConversationHomePromptEditorSaveActionsState({
+    ...input,
+    showAlert: Alert.alert,
+  });
+}
+
 export function useChatConversationHomePromptEditorDeleteActionsState<
   TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
 >({
@@ -7619,6 +7667,19 @@ export function useChatConversationHomePromptEditorDeleteActionsState<
   };
 }
 
+export function useChatConversationHomePromptEditorDeleteChromeActionsState<
+  TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
+>(
+  input: ChatConversationHomePromptEditorDeleteChromeActionsStateInput<TPromptEditorClient>,
+): ChatConversationHomePromptEditorDeleteActionsState {
+  return useChatConversationHomePromptEditorDeleteActionsState({
+    ...input,
+    confirmWeb: confirmChatRuntimeWebDialog,
+    confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter(Alert.alert),
+    showAlert: Alert.alert,
+  });
+}
+
 export function useChatConversationHomePromptTaskRunState(): ChatConversationHomePromptTaskRunState {
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
 
@@ -7672,6 +7733,18 @@ export function useChatConversationHomePromptTaskRunActionsState<
   return {
     handleRunPromptTask,
   };
+}
+
+export function useChatConversationHomePromptTaskRunChromeActionsState<
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+  TTaskRunClient extends ChatConversationHomePromptTaskRunClient,
+>(
+  input: ChatConversationHomePromptTaskRunChromeActionsStateInput<TTaskRunClient>,
+): ChatConversationHomePromptTaskRunActionsState<TTask> {
+  return useChatConversationHomePromptTaskRunActionsState<TTask, TTaskRunClient>({
+    ...input,
+    showAlert: Alert.alert,
+  });
 }
 
 export function useChatConversationHomeQuickStartCatalogState(): ChatConversationHomeQuickStartCatalogState {
@@ -9379,6 +9452,17 @@ export function useChatMessageRuntimeBranchActionsState<
   };
 }
 
+export function useChatMessageRuntimeBranchChromeActionsState<
+  TBranchClient extends ChatMessageRuntimeBranchClient,
+>(
+  input: ChatMessageRuntimeBranchChromeActionsStateInput<TBranchClient>,
+): ChatMessageRuntimeBranchActionsState {
+  return useChatMessageRuntimeBranchActionsState({
+    ...input,
+    showAlert: Alert.alert,
+  });
+}
+
 export function useChatRuntimeCurrentSessionPinActionsState({
   sessionStore,
 }: ChatRuntimeCurrentSessionPinActionsStateInput): ChatRuntimeCurrentSessionPinActionsState {
@@ -9486,6 +9570,20 @@ export function useChatMessageRuntimeKillSwitchActionsState<
   };
 }
 
+export function useChatMessageRuntimeKillSwitchChromeActionsState<
+  TKillSwitchClient extends ChatMessageRuntimeKillSwitchClient,
+>(
+  input: ChatMessageRuntimeKillSwitchChromeActionsStateInput<TKillSwitchClient>,
+): ChatMessageRuntimeKillSwitchActionsState {
+  return useChatMessageRuntimeKillSwitchActionsState({
+    ...input,
+    confirmWeb: confirmChatRuntimeWebDialog,
+    showWebAlert: showChatRuntimeWebAlert,
+    confirmNative: createChatMessageRuntimeKillSwitchNativeConfirmPresenter(Alert.alert),
+    showAlert: Alert.alert,
+  });
+}
+
 export function useChatMessageRuntimeToolApprovalResponseState({
   sessionId,
 }: ChatMessageRuntimeToolApprovalResponseStateInput = {}): ChatMessageRuntimeToolApprovalResponseState {
@@ -9551,6 +9649,17 @@ export function useChatMessageRuntimeToolApprovalActionsState<
   return {
     respondToToolApproval,
   };
+}
+
+export function useChatMessageRuntimeToolApprovalChromeActionsState<
+  TMessage extends ChatMessageRuntimeToolApprovalStateMessageLike,
+>(
+  input: ChatMessageRuntimeToolApprovalChromeActionsStateInput<TMessage>,
+): ChatMessageRuntimeToolApprovalActionsState {
+  return useChatMessageRuntimeToolApprovalActionsState({
+    ...input,
+    showAlert: Alert.alert,
+  });
 }
 
 export function scheduleChatMessageRuntimeNextQueuedMessage<

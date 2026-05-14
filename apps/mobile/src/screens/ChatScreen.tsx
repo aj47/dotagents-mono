@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import {
-  Alert,
-} from 'react-native';
-
-import {
   useConfigContext,
   saveConfig,
 } from '../store/config';
@@ -11,9 +7,9 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeChromeSurface,
-  useChatConversationHomePromptEditorDeleteActionsState,
-  useChatConversationHomePromptEditorSaveActionsState,
-  useChatConversationHomePromptTaskRunActionsState,
+  useChatConversationHomePromptEditorDeleteChromeActionsState,
+  useChatConversationHomePromptEditorSaveChromeActionsState,
+  useChatConversationHomePromptTaskRunChromeActionsState,
   useChatConversationHomePromptTaskRunState,
   useChatConversationHomeQuickStartCatalogState,
   useChatConversationHomeQuickStartCatalogLoadState,
@@ -86,22 +82,18 @@ import {
   useChatConversationHomeQuickStartActionsState,
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
-  useChatMessageRuntimeKillSwitchActionsState,
-  createChatMessageRuntimeKillSwitchNativeConfirmPresenter,
-  confirmChatRuntimeWebDialog,
-  showChatRuntimeWebAlert,
+  useChatMessageRuntimeKillSwitchChromeActionsState,
   useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeNavigateToChatActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
   useChatMessageRuntimeBranchProgressState,
-  useChatMessageRuntimeBranchActionsState,
+  useChatMessageRuntimeBranchChromeActionsState,
   useChatMessageRuntimeToolApprovalResponseState,
-  useChatMessageRuntimeToolApprovalActionsState,
+  useChatMessageRuntimeToolApprovalChromeActionsState,
   useChatMessageRuntimeQueuePanelState,
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardChromeActionsState,
-  createChatConversationHomePromptDeleteNativeConfirmPresenter,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatConversationHomeQuickStartItem,
@@ -360,21 +352,16 @@ export default function ChatScreen({ route, navigation }: any) {
     logConnectionStatus,
   });
 
-  const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
+  const { handleKillSwitch } = useChatMessageRuntimeKillSwitchChromeActionsState({
     ...chatRuntimeChrome.environment,
     getKillSwitchClient: getSessionClient,
-    confirmWeb: confirmChatRuntimeWebDialog,
-    showWebAlert: showChatRuntimeWebAlert,
-    confirmNative: createChatMessageRuntimeKillSwitchNativeConfirmPresenter(Alert.alert),
-    showAlert: Alert.alert,
   });
 
-  const { handleRunPromptTask } = useChatConversationHomePromptTaskRunActionsState<Loop, ExtendedSettingsApiClient>({
+  const { handleRunPromptTask } = useChatConversationHomePromptTaskRunChromeActionsState<Loop, ExtendedSettingsApiClient>({
     taskClient: settingsClient,
     canRunPromptTask,
     beginPromptTaskRun,
     clearPromptTaskRun,
-    showAlert: Alert.alert,
   });
 
   const { handleQuickStartPress } = useChatConversationHomeQuickStartActionsState<PredefinedPromptSummary, Loop>({
@@ -391,14 +378,13 @@ export default function ChatScreen({ route, navigation }: any) {
     navigation,
   });
 
-  const { handleBranchFromMessagePress } = useChatMessageRuntimeBranchActionsState({
+  const { handleBranchFromMessagePress } = useChatMessageRuntimeBranchChromeActionsState({
     branchClient: settingsClient,
     serverConversationId: currentSession?.serverConversationId,
     sessionStore,
     beginBranchMessage,
     clearBranchMessage,
     navigateToChat,
-    showAlert: Alert.alert,
   });
 
   const {
@@ -425,12 +411,11 @@ export default function ChatScreen({ route, navigation }: any) {
     isResponding: responding,
     conversationState,
   });
-  const { respondToToolApproval } = useChatMessageRuntimeToolApprovalActionsState<ChatMessage>({
+  const { respondToToolApproval } = useChatMessageRuntimeToolApprovalChromeActionsState<ChatMessage>({
     approvalClient: settingsClient,
     beginToolApprovalResponse,
     clearToolApprovalResponse,
     setMessages,
-    showAlert: Alert.alert,
   });
   const {
     visibleMessageCount,
@@ -662,7 +647,7 @@ export default function ChatScreen({ route, navigation }: any) {
     applyRemoteSpeechSettings,
   });
 
-  const { handleSavePrompt } = useChatConversationHomePromptEditorSaveActionsState<ExtendedSettingsApiClient>({
+  const { handleSavePrompt } = useChatConversationHomePromptEditorSaveChromeActionsState<ExtendedSettingsApiClient>({
     promptClient: settingsClient,
     predefinedPrompts,
     editingPrompt,
@@ -673,19 +658,15 @@ export default function ChatScreen({ route, navigation }: any) {
     beginPromptEditorSave,
     clearPromptEditorSave,
     dismissPromptEditor,
-    showAlert: Alert.alert,
   });
 
-  const { handleDeletePrompt } = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>({
+  const { handleDeletePrompt } = useChatConversationHomePromptEditorDeleteChromeActionsState<ExtendedSettingsApiClient>({
     promptClient: settingsClient,
     predefinedPrompts,
     setPredefinedPrompts,
     beginPromptEditorSave,
     clearPromptEditorSave,
     ...chatRuntimeChrome.environment,
-    confirmWeb: confirmChatRuntimeWebDialog,
-    confirmNative: createChatConversationHomePromptDeleteNativeConfirmPresenter(Alert.alert),
-    showAlert: Alert.alert,
   });
 
   useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>({
