@@ -258,15 +258,16 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /\? mobileRuntimeCopy\.approval\.processingTitle\s*: mobileRuntimeCopy\.approval\.title/);
   assert.match(screenSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<Record<string, boolean>>\(\{\}\);/);
   assert.match(
-    screenSource,
-    /const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState\(\);/,
+    chatMessageChromeSource,
+    /export function getChatMessageRuntimeToolApprovalAlertState/,
   );
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalAlertState/);
-  assert.match(screenSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(mobileRuntimeToolApprovalAlerts\)/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalAlertState,/);
+  assert.match(screenSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(\)/);
   assert.match(screenSource, /Alert\.alert\(connectionRequiredAlert\.title, connectionRequiredAlert\.message\)/);
-  assert.match(screenSource, /getChatMessageRuntimeToolApprovalUnavailableAlertState\(mobileRuntimeToolApprovalAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeToolApprovalUnavailableAlertState\(\)/);
   assert.match(screenSource, /Alert\.alert\(unavailableAlert\.title, unavailableAlert\.message\)/);
-  assert.match(screenSource, /getChatMessageRuntimeToolApprovalFailedAlertState\(error, mobileRuntimeToolApprovalAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeToolApprovalFailedAlertState\(error\)/);
   assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalUnavailableAlertState/);
@@ -841,18 +842,19 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileIconState,/);
   assert.match(
-    screenSource,
-    /const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState\(\);/,
+    chatMessageChromeSource,
+    /export function getChatMessageRuntimeKillSwitchAlertState/,
   );
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchAlertState/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchAlertState,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeWebConfirmMessage,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeWebConfirmMessage,/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeWebConfirmMessage,/);
-  assert.match(screenSource, /getChatMessageRuntimeKillSwitchConfirmationAlertState\(mobileRuntimeKillSwitchAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeKillSwitchConfirmationAlertState\(\)/);
   assert.match(screenSource, /window\.confirm\(confirmationAlert\.webMessage\)/);
-  assert.match(screenSource, /getChatMessageRuntimeKillSwitchResultAlertState\(result, mobileRuntimeKillSwitchAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeKillSwitchResultAlertState\(result\)/);
   assert.match(screenSource, /window\.alert\(resultAlert\.webMessage\)/);
-  assert.match(screenSource, /getChatMessageRuntimeKillSwitchConnectionFailedAlertState\(e, mobileRuntimeKillSwitchAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeKillSwitchConnectionFailedAlertState\(e\)/);
   assert.match(screenSource, /window\.alert\(failedAlert\.webMessage\)/);
   assert.match(screenSource, /Alert\.alert\(\s*confirmationAlert\.title,\s*confirmationAlert\.message,/);
   assert.match(screenSource, /\{ text: confirmationAlert\.cancelLabel, style: 'cancel' \}/);
@@ -3805,15 +3807,16 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /getChatRuntimeBranchMobileAlertState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeBranchMobileIconState,/);
   assert.match(
-    screenSource,
-    /const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState\(\);/,
+    chatMessageChromeSource,
+    /export function getChatMessageRuntimeBranchAlertState/,
   );
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchAlertState/);
-  assert.match(screenSource, /getChatMessageRuntimeBranchUnavailableAlertState\(mobileRuntimeBranchAlerts\)/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState\(\);/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchAlertState,/);
+  assert.match(screenSource, /getChatMessageRuntimeBranchUnavailableAlertState\(\)/);
   assert.match(screenSource, /Alert\.alert\(unavailableAlert\.title, unavailableAlert\.message\)/);
-  assert.match(screenSource, /getChatMessageRuntimeBranchCreatedAlertState\(mobileRuntimeBranchAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeBranchCreatedAlertState\(\)/);
   assert.match(screenSource, /Alert\.alert\(createdAlert\.title, createdAlert\.message\)/);
-  assert.match(screenSource, /getChatMessageRuntimeBranchFailedAlertState\(error, mobileRuntimeBranchAlerts\)/);
+  assert.match(screenSource, /getChatMessageRuntimeBranchFailedAlertState\(error\)/);
   assert.match(screenSource, /Alert\.alert\(failedAlert\.title, failedAlert\.message\)/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchUnavailableAlertState/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchCreatedAlertState/);

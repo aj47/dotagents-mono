@@ -72,18 +72,15 @@ import {
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
   getChatConversationHomeQuickStartPressIntent,
-  getChatMessageRuntimeBranchAlertState,
   getChatMessageRuntimeBranchCreatedAlertState,
   getChatMessageRuntimeBranchFailedAlertState,
   getChatMessageRuntimeBranchUnavailableAlertState,
   getChatMessageRuntimeDebugMessage,
   getChatMessageRuntimeHistoryWindowState,
-  getChatMessageRuntimeKillSwitchAlertState,
   getChatMessageRuntimeKillSwitchConfirmationAlertState,
   getChatMessageRuntimeKillSwitchConnectionFailedAlertState,
   getChatMessageRuntimeKillSwitchResultAlertState,
   getChatMessageRuntimeLatestStepSummary,
-  getChatMessageRuntimeToolApprovalAlertState,
   getChatMessageRuntimeToolApprovalConnectionRequiredAlertState,
   getChatMessageRuntimeToolApprovalFailedAlertState,
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
@@ -199,9 +196,6 @@ const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
 const CHAT_MESSAGE_HISTORY_WINDOW = getChatMessageRuntimeHistoryWindowState();
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
-const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState();
-const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState();
-const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
@@ -503,23 +497,23 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (Platform.OS === 'web') {
-      const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState(mobileRuntimeKillSwitchAlerts);
+      const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState();
       const confirmed = window.confirm(confirmationAlert.webMessage);
       if (confirmed) {
         try {
           const result = await client.killSwitch();
-          const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result, mobileRuntimeKillSwitchAlerts);
+          const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result);
           window.alert(resultAlert.webMessage);
         } catch (e: any) {
           console.error('[ChatScreen] Kill switch error:', e);
-          const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e, mobileRuntimeKillSwitchAlerts);
+          const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e);
           window.alert(failedAlert.webMessage);
         }
       }
       return;
     }
 
-    const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState(mobileRuntimeKillSwitchAlerts);
+    const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState();
     Alert.alert(
       confirmationAlert.title,
       confirmationAlert.message,
@@ -531,11 +525,11 @@ export default function ChatScreen({ route, navigation }: any) {
           onPress: async () => {
             try {
               const result = await client.killSwitch();
-              const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result, mobileRuntimeKillSwitchAlerts);
+              const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result);
               Alert.alert(resultAlert.title, resultAlert.message);
             } catch (e: any) {
               console.error('[ChatScreen] Kill switch error:', e);
-              const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e, mobileRuntimeKillSwitchAlerts);
+              const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e);
               Alert.alert(failedAlert.title, failedAlert.message);
             }
           },
@@ -657,7 +651,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
     const serverConversationId = currentSession?.serverConversationId;
     if (!settingsClient || !serverConversationId) {
-      const unavailableAlert = getChatMessageRuntimeBranchUnavailableAlertState(mobileRuntimeBranchAlerts);
+      const unavailableAlert = getChatMessageRuntimeBranchUnavailableAlertState();
       Alert.alert(unavailableAlert.title, unavailableAlert.message);
       return;
     }
@@ -673,10 +667,10 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
 
-      const createdAlert = getChatMessageRuntimeBranchCreatedAlertState(mobileRuntimeBranchAlerts);
+      const createdAlert = getChatMessageRuntimeBranchCreatedAlertState();
       Alert.alert(createdAlert.title, createdAlert.message);
     } catch (error: any) {
-      const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error, mobileRuntimeBranchAlerts);
+      const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
       setBranchingMessageIndex(null);
@@ -743,7 +737,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!settingsClient) {
-      const connectionRequiredAlert = getChatMessageRuntimeToolApprovalConnectionRequiredAlertState(mobileRuntimeToolApprovalAlerts);
+      const connectionRequiredAlert = getChatMessageRuntimeToolApprovalConnectionRequiredAlertState();
       Alert.alert(connectionRequiredAlert.title, connectionRequiredAlert.message);
       return;
     }
@@ -753,11 +747,11 @@ export default function ChatScreen({ route, navigation }: any) {
       const response = await settingsClient.respondToToolApproval(approvalId, approved);
       setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
       if (!response.success) {
-        const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState(mobileRuntimeToolApprovalAlerts);
+        const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState();
         Alert.alert(unavailableAlert.title, unavailableAlert.message);
       }
     } catch (error: any) {
-      const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error, mobileRuntimeToolApprovalAlerts);
+      const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
       setPendingToolApprovalResponseId(null);
