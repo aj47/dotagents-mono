@@ -2042,6 +2042,19 @@ type ChatMessageConversationToolActivityGroupThreadRenderState = {
   groupThreadState: ChatMessageConversationToolActivityGroupThreadState;
 };
 
+type ChatMessageConversationRuntimeThreadStateInput = {
+  itemKey: string | number;
+  groupRenderState: ToolActivityGroupMobileRenderState | null;
+  groupThreadState: ChatMessageConversationToolActivityGroupThreadState;
+  body: ChatMessageThreadBodyPropsInput | null;
+};
+
+type ChatMessageConversationRuntimeThreadState =
+  Pick<ChatMessageRuntimeThreadProps, 'groupRenderState' | 'onToggleGroup' | 'body'>
+  & {
+    threadKey: string | number;
+  };
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -2242,6 +2255,22 @@ export function createChatMessageConversationToolActivityGroupThreadRenderState(
       itemKey,
       onToggleGroup,
     }),
+  };
+}
+
+export function createChatMessageConversationRuntimeThreadState({
+  itemKey,
+  groupRenderState,
+  groupThreadState,
+  body,
+}: ChatMessageConversationRuntimeThreadStateInput): ChatMessageConversationRuntimeThreadState {
+  const isGroupOnlyThread = groupThreadState.shouldRenderGroupOnlyThread;
+
+  return {
+    threadKey: isGroupOnlyThread ? groupThreadState.groupOnlyThreadKey : itemKey,
+    groupRenderState,
+    onToggleGroup: groupThreadState.onToggleGroup,
+    body: isGroupOnlyThread ? null : body,
   };
 }
 

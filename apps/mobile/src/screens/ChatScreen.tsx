@@ -35,6 +35,7 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageConversationRenderContext,
+  createChatMessageConversationRuntimeThreadState,
   createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadPresentationState,
   createChatMessageConversationThreadStyleSlots,
@@ -3733,13 +3734,19 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
               onToggleGroup: toggleGroupExpansion,
             });
+            const groupOnlyThreadState = createChatMessageConversationRuntimeThreadState({
+              itemKey: i,
+              groupRenderState,
+              groupThreadState,
+              body: null,
+            });
             if (groupThreadState.shouldRenderGroupOnlyThread) {
               return (
                 <ChatMessageRuntimeThread
-                  key={groupThreadState.groupOnlyThreadKey}
-                  groupRenderState={groupRenderState}
-                  onToggleGroup={groupThreadState.onToggleGroup}
-                  body={null}
+                  key={groupOnlyThreadState.threadKey}
+                  groupRenderState={groupOnlyThreadState.groupRenderState}
+                  onToggleGroup={groupOnlyThreadState.onToggleGroup}
+                  body={groupOnlyThreadState.body}
                   styles={chatMessageConversationThreadStyles.runtimeThread}
                 />
               );
@@ -3794,13 +3801,20 @@ export default function ChatScreen({ route, navigation }: any) {
               return null;
             }
 
+            const messageThreadState = createChatMessageConversationRuntimeThreadState({
+              itemKey: i,
+              groupRenderState,
+              groupThreadState,
+              body: messageThreadBody,
+            });
+
             return (
               <ChatMessageRuntimeThread
-                key={i}
-                groupRenderState={groupRenderState}
-                onToggleGroup={groupThreadState.onToggleGroup}
+                key={messageThreadState.threadKey}
+                groupRenderState={messageThreadState.groupRenderState}
+                onToggleGroup={messageThreadState.onToggleGroup}
                 styles={chatMessageConversationThreadStyles.runtimeThread}
-                body={messageThreadBody}
+                body={messageThreadState.body}
               />
             );
           })}
