@@ -232,14 +232,17 @@ test('shows the shared total agent time in the mobile chat header', () => {
 
 test('lets mobile respond to desktop tool approval requests from progress updates', () => {
   assert.match(screenSource, /settingsClient\.respondToToolApproval\(approvalId, approved\)/);
-  assert.match(screenSource, /variant: 'approval'/);
-  assert.match(screenSource, /toolApproval: update\.pendingToolApproval/);
+  assert.doesNotMatch(screenSource, /variant: 'approval'/);
+  assert.doesNotMatch(screenSource, /toolApproval: update\.pendingToolApproval/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeToolApprovalRequiredContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeToolApprovalRequiredContent,/);
+  assert.doesNotMatch(screenSource, /formatChatMessageRuntimeToolApprovalRequiredContent/);
   assert.match(
     screenSource,
-    /formatChatMessageRuntimeToolApprovalRequiredContent\(update\.pendingToolApproval\.toolName\)/,
+    /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/,
   );
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolApprovalRequiredMessage/);
+  assert.match(chatMessageChromeSource, /content: formatChatMessageRuntimeToolApprovalRequiredContent\(toolApproval\.toolName\)/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);

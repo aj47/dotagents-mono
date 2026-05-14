@@ -58,8 +58,8 @@ import {
   formatChatMessageRuntimeConnectionStatus,
   formatChatMessageRuntimeDebugError,
   formatChatMessageRuntimeStartingRequestDebugMessage,
-  formatChatMessageRuntimeToolApprovalRequiredContent,
   createChatMessageConversationRuntimeThreadListRenderState,
+  createChatMessageRuntimeToolApprovalRequiredMessage,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -1865,12 +1865,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (update.pendingToolApproval) {
-      messages.push({
-        role: 'assistant',
-        content: formatChatMessageRuntimeToolApprovalRequiredContent(update.pendingToolApproval.toolName),
-        variant: 'approval',
-        toolApproval: update.pendingToolApproval,
-      });
+      messages.push(createChatMessageRuntimeToolApprovalRequiredMessage(update.pendingToolApproval));
     }
 
     const messagesWithUserResponse = applyUserResponseToChatMessages(

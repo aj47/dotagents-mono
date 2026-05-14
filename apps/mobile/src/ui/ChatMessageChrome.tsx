@@ -3255,6 +3255,32 @@ export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: st
   return formatChatRuntimeToolApprovalRequiredContent(toolName);
 }
 
+export type ChatMessageRuntimeToolApprovalLike = {
+  toolName: string;
+};
+
+export type ChatMessageRuntimeToolApprovalRequiredMessage<
+  TToolApproval extends ChatMessageRuntimeToolApprovalLike,
+> = {
+  role: 'assistant';
+  content: string;
+  variant: 'approval';
+  toolApproval: TToolApproval;
+};
+
+export function createChatMessageRuntimeToolApprovalRequiredMessage<
+  TToolApproval extends ChatMessageRuntimeToolApprovalLike,
+>(
+  toolApproval: TToolApproval,
+): ChatMessageRuntimeToolApprovalRequiredMessage<TToolApproval> {
+  return {
+    role: 'assistant',
+    content: formatChatMessageRuntimeToolApprovalRequiredContent(toolApproval.toolName),
+    variant: 'approval',
+    toolApproval,
+  };
+}
+
 export function getChatMessageRuntimeLatestStepSummary<T extends ChatRuntimeStepSummaryLike>(
   input: { latestSummary?: T | null; stepSummaries?: T[] | null },
 ): T | null {
