@@ -95,7 +95,6 @@ import {
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
-  getChatComposerMicMobileWebPressStyleState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -198,7 +197,6 @@ const CHAT_MESSAGE_HISTORY_WINDOW = getChatRuntimeMessageHistoryWindowMobileStat
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
-const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
@@ -2911,7 +2909,6 @@ export default function ChatScreen({ route, navigation }: any) {
       colors: theme.colors,
       platform: Platform.OS,
       isWebPlatform,
-      micWebPressedStyle: composerMicWebPressStyle,
     }),
     [isWebPlatform, theme.colors],
   );

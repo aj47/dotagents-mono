@@ -186,7 +186,8 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(chatMessageChromeSource, /getChatComposerTextToSpeechMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatComposerEditBeforeSendMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatComposerMicMobileRenderState,/);
-  assert.match(screenSource, /getChatComposerMicMobileWebPressStyleState,/);
+  assert.doesNotMatch(screenSource, /getChatComposerMicMobileWebPressStyleState,/);
+  assert.match(chatMessageChromeSource, /getChatComposerMicMobileWebPressStyleState,/);
   assert.doesNotMatch(screenSource, /mobileComposerImageAttachmentRenderState/);
   assert.doesNotMatch(screenSource, /mobileComposerTextToSpeechRenderState/);
   assert.doesNotMatch(screenSource, /mobileComposerEditBeforeSendRenderState/);
@@ -204,7 +205,7 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
   assert.match(chatMessageChromeSource, /\.\.\.chrome\.micButton/);
-  assert.match(chatMessageChromeSource, /webPressedStyle: isWebPlatform \? micWebPressedStyle : undefined/);
+  assert.match(chatMessageChromeSource, /webPressedStyle: isWebPlatform \? getChatComposerMicMobileWebPressStyleState\(\) as any : undefined/);
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_PRESENTATION\.(imageAttachment|textToSpeech|editBeforeSend|mic)\.mobileIcon/);
   assert.doesNotMatch(screenSource, /composerImageAttachmentMobileIcon/);
   assert.doesNotMatch(screenSource, /composer(TextToSpeech|EditBeforeSend)MobileIcon/);

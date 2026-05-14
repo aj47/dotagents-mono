@@ -116,6 +116,7 @@ import {
   getChatComposerMicMobileRenderState,
   getChatComposerMobileActionAvailabilityRenderState,
   getChatComposerMobileControlState,
+  getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
   getChatComposerMobileSurfaceState,
   getChatComposerMobileVisibilityRenderState,
@@ -2135,7 +2136,6 @@ type ChatComposerRuntimeDockChromeInput = {
     & Parameters<typeof getHandsFreeComposerMobileSurfaceRenderState>[0]['colors'];
   platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
   isWebPlatform: boolean;
-  micWebPressedStyle?: ChatComposerMicButtonProps['webPressedStyle'];
 };
 
 type ChatComposerRuntimeControlRenderStateColors =
@@ -4555,7 +4555,6 @@ export function createChatComposerRuntimeDockChromeProps({
   colors,
   platform,
   isWebPlatform,
-  micWebPressedStyle,
 }: ChatComposerRuntimeDockChromeInput): ChatComposerRuntimeDockChromeProps {
   const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState({
     colors,
@@ -4594,7 +4593,7 @@ export function createChatComposerRuntimeDockChromeProps({
       activeOpacity: composerSurface.submitButton.pressedOpacity,
     },
     micButton: {
-      webPressedStyle: isWebPlatform ? micWebPressedStyle : undefined,
+      webPressedStyle: isWebPlatform ? getChatComposerMicMobileWebPressStyleState() as any : undefined,
     },
   };
 }

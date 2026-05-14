@@ -1273,7 +1273,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /getChatComposerQueueMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatComposerSubmitMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatComposerMicMobileRenderState,/);
-  assert.match(screenSource, /getChatComposerMicMobileWebPressStyleState,/);
+  assert.doesNotMatch(screenSource, /getChatComposerMicMobileWebPressStyleState,/);
+  assert.match(chatMessageChromeSource, /getChatComposerMicMobileWebPressStyleState,/);
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState,/);
   assert.match(screenSource, /createChatComposerStyleSlots,/);
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
@@ -1285,7 +1286,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
   assert.match(chatMessageChromeSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface;/);
-  assert.match(screenSource, /const chatComposerRuntimeDockChrome = useMemo\(\s+\(\) => createChatComposerRuntimeDockChromeProps\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+isWebPlatform,\s+micWebPressedStyle: composerMicWebPressStyle,\s+\}\),\s+\[isWebPlatform, theme\.colors\],\s+\);/);
+  assert.match(screenSource, /const chatComposerRuntimeDockChrome = useMemo\(\s+\(\) => createChatComposerRuntimeDockChromeProps\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+isWebPlatform,\s+\}\),\s+\[isWebPlatform, theme\.colors\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
@@ -1297,10 +1298,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /activeOpacity: composerSurface\.accessoryButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /controlPressedOpacity: handsFreeSurface\.controlButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);
-  assert.match(chatMessageChromeSource, /webPressedStyle: isWebPlatform \? micWebPressedStyle : undefined/);
+  assert.match(chatMessageChromeSource, /webPressedStyle: isWebPlatform \? getChatComposerMicMobileWebPressStyleState\(\) as any : undefined/);
   assert.match(chatMessageChromeSource, /export function ChatComposerRuntimeDock/);
   assert.match(chatMessageChromeSource, /const mobileComposerControls = getChatComposerMobileControlState\(\);/);
-  assert.match(screenSource, /const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState\(\) as any;/);
+  assert.doesNotMatch(screenSource, /const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState\(\) as any;/);
   assert.doesNotMatch(screenSource, /mobileComposerVisibilityRenderState/);
   assert.doesNotMatch(screenSource, /mobileComposerQueueRenderState/);
   assert.doesNotMatch(screenSource, /composerSubmitRenderState/);
