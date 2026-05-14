@@ -472,6 +472,29 @@ type ChatComposerRuntimeDraftState = {
   removePendingImage: (attachmentId: string) => void;
 };
 
+type ChatComposerRuntimeImagePickerAsset = ImageMimeTypeSource & {
+  uri: string;
+  base64?: string | null;
+  fileSize?: number | null;
+};
+
+type ChatComposerRuntimeImagePickerResult = {
+  canceled: boolean;
+  assets?: ChatComposerRuntimeImagePickerAsset[] | null;
+};
+
+type ChatComposerRuntimeImageAttachmentPickerStateInput = {
+  pendingImages: ChatComposerRuntimeImageAttachment[];
+  setPendingImages: Dispatch<SetStateAction<ChatComposerRuntimeImageAttachment[]>>;
+  pickImages: (selectionLimit: number) => Promise<ChatComposerRuntimeImagePickerResult>;
+  showAlert: (title: string, message: string) => void;
+  now?: () => number;
+};
+
+type ChatComposerRuntimeImageAttachmentPickerState = {
+  handlePickImages: () => Promise<void>;
+};
+
 type ChatComposerTextEntryModifierKeys = {
   shift: boolean;
   ctrl: boolean;
@@ -3757,6 +3780,139 @@ export function getChatComposerImageAttachmentAlertState(
   input: ChatComposerImageAttachmentAlertInput,
 ): ReturnType<typeof getChatImageAttachmentMobileAlertState> {
   return getChatImageAttachmentMobileAlertState(input);
+}
+
+export function useChatComposerRuntimeImageAttachmentPickerState({
+  pendingImages,
+  setPendingImages,
+  pickImages,
+  showAlert,
+  now = Date.now,
+}: ChatComposerRuntimeImageAttachmentPickerStateInput): ChatComposerRuntimeImageAttachmentPickerState {
+  const showImageAttachmentAlert = useCallback((input: ChatComposerImageAttachmentAlertInput) => {
+    const alertState = getChatComposerImageAttachmentAlertState(input);
+    showAlert(alertState.title, alertState.message);
+  }, [showAlert]);
+
+  const handlePickImages = useCallback(async () => {
+    if (pendingImages.length >= CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages) {
+      showImageAttachmentAlert({
+        reason: 'limitReached',
+        maxImages: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages,
+      });
+      return;
+    }
+
+    const existingEmbeddedBytes = pendingImages.reduce(
+      (sum, image) => sum + getChatComposerRuntimeImageDataUrlBytes(image.dataUrl),
+      0
+    );
+    if (existingEmbeddedBytes >= CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes) {
+      showImageAttachmentAlert({
+        reason: 'budgetReached',
+        maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes,
+      });
+      return;
+    }
+
+    try {
+      const slotsRemaining = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages - pendingImages.length;
+      const result = await pickImages(slotsRemaining);
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      const selectedAssets = result.assets.slice(0, slotsRemaining);
+      const nextImages: ChatComposerRuntimeImageAttachment[] = [];
+      const missingBase64Names: string[] = [];
+      const oversizedImageNames: string[] = [];
+      const unknownMimeNames: string[] = [];
+      const budgetExceededNames: string[] = [];
+      let runningEmbeddedBytes = existingEmbeddedBytes;
+
+      selectedAssets.forEach((asset, index) => {
+        const displayName = asset.fileName || `Image ${index + 1}`;
+        if (!asset.base64) {
+          missingBase64Names.push(displayName);
+          return;
+        }
+
+        const inferredBytes = getChatComposerRuntimeBase64ImageBytes(asset.base64);
+        const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
+          ? asset.fileSize
+          : inferredBytes;
+        if (fileSizeBytes > CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes) {
+          oversizedImageNames.push(displayName);
+          return;
+        }
+
+        const mimeType = inferChatComposerRuntimeImageMimeType(asset);
+        if (!mimeType) {
+          unknownMimeNames.push(displayName);
+          return;
+        }
+
+        const dataUrl = `data:${mimeType};base64,${asset.base64}`;
+        const embeddedBytes = getChatComposerRuntimeImageDataUrlBytes(dataUrl) || inferredBytes;
+        if (runningEmbeddedBytes + embeddedBytes > CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes) {
+          budgetExceededNames.push(displayName);
+          return;
+        }
+        runningEmbeddedBytes += embeddedBytes;
+
+        const timestamp = now();
+        const fileName = asset.fileName || `image-${timestamp}-${index + 1}`;
+        nextImages.push({
+          id: `${timestamp}-${index}-${asset.uri}`,
+          name: fileName,
+          previewUri: asset.uri,
+          dataUrl,
+        });
+      });
+
+      if (nextImages.length > 0) {
+        setPendingImages((prev) => [...prev, ...nextImages]);
+      }
+
+      if (missingBase64Names.length > 0) {
+        showImageAttachmentAlert({
+          reason: 'missingData',
+          names: missingBase64Names,
+        });
+      }
+
+      if (oversizedImageNames.length > 0) {
+        showImageAttachmentAlert({
+          reason: 'selectionTooLarge',
+          names: oversizedImageNames,
+          maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes,
+        });
+      }
+
+      if (unknownMimeNames.length > 0) {
+        showImageAttachmentAlert({
+          reason: 'unsupportedFormat',
+          names: unknownMimeNames,
+        });
+      }
+
+      if (budgetExceededNames.length > 0) {
+        showImageAttachmentAlert({
+          reason: 'budgetExceeded',
+          names: budgetExceededNames,
+          maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes,
+        });
+      }
+    } catch (error: unknown) {
+      showImageAttachmentAlert({
+        reason: 'pickerError',
+        error,
+      });
+    }
+  }, [now, pendingImages, pickImages, setPendingImages, showImageAttachmentAlert]);
+
+  return {
+    handlePickImages,
+  };
 }
 
 export function getChatComposerHandsFreeCopyState(): ReturnType<typeof getHandsFreeComposerCopyState> {

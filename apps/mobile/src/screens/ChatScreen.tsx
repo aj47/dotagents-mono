@@ -15,7 +15,6 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
-  CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   createChatConversationHomePromptEditorSaveActionState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
@@ -44,12 +43,9 @@ import {
   hasChatComposerRuntimeMessageContent,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   formatChatComposerHandsFreeSleepingDebugMessage,
-  getChatComposerImageAttachmentAlertState,
   getChatComposerHandsFreeDebugMessage,
   getChatComposerRuntimeQueueDebugMessage,
-  getChatComposerRuntimeImageDataUrlBytes,
-  getChatComposerRuntimeBase64ImageBytes,
-  inferChatComposerRuntimeImageMimeType,
+  useChatComposerRuntimeImageAttachmentPickerState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
   createChatRuntimeNavigationHeaderOptions,
@@ -111,9 +107,7 @@ import {
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
-  ChatComposerImageAttachmentAlertInput,
   ChatConversationHomeQuickStartItem,
-  ChatComposerRuntimeImageAttachment,
 } from '../ui/ChatMessageChrome';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
@@ -139,9 +133,6 @@ import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
-const MAX_PENDING_IMAGES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages;
-const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes;
-const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes;
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
 
@@ -162,10 +153,6 @@ export default function ChatScreen({ route, navigation }: any) {
     theme,
     bottomInset: insets.bottom,
   });
-  const showImageAttachmentAlert = useCallback((input: ChatComposerImageAttachmentAlertInput) => {
-    const alertState = getChatComposerImageAttachmentAlertState(input);
-    Alert.alert(alertState.title, alertState.message);
-  }, []);
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
@@ -356,6 +343,22 @@ export default function ChatScreen({ route, navigation }: any) {
     mergeVoiceTextIntoComposer,
     removePendingImage,
   } = useChatComposerRuntimeDraftState();
+  const pickComposerImages = useCallback(
+    (selectionLimit: number) => ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit,
+      quality: 0.8,
+      base64: true,
+    }),
+    []
+  );
+  const { handlePickImages } = useChatComposerRuntimeImageAttachmentPickerState({
+    pendingImages,
+    setPendingImages,
+    pickImages: pickComposerImages,
+    showAlert: Alert.alert,
+  });
   const {
     respondToUserHistory,
     playedResponseEventIdsRef,
@@ -1380,127 +1383,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const queuedMessages = messageQueue.getQueue(currentConversationId);
   const isMessageQueuePaused = messageQueue.isQueuePaused(currentConversationId);
   const nextQueuedMessage = !responding && !isMessageQueuePaused ? messageQueue.peek(currentConversationId) : null;
-  const handlePickImages = useCallback(async () => {
-    if (pendingImages.length >= MAX_PENDING_IMAGES) {
-      showImageAttachmentAlert({
-        reason: 'limitReached',
-        maxImages: MAX_PENDING_IMAGES,
-      });
-      return;
-    }
-
-    const existingEmbeddedBytes = pendingImages.reduce(
-      (sum, image) => sum + getChatComposerRuntimeImageDataUrlBytes(image.dataUrl),
-      0
-    );
-    if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
-      showImageAttachmentAlert({
-        reason: 'budgetReached',
-        maxBytes: MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES,
-      });
-      return;
-    }
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        selectionLimit: MAX_PENDING_IMAGES - pendingImages.length,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (result.canceled || !result.assets || result.assets.length === 0) return;
-
-      const slotsRemaining = MAX_PENDING_IMAGES - pendingImages.length;
-      const selectedAssets = result.assets.slice(0, slotsRemaining);
-      const nextImages: ChatComposerRuntimeImageAttachment[] = [];
-      const missingBase64Names: string[] = [];
-      const oversizedImageNames: string[] = [];
-      const unknownMimeNames: string[] = [];
-      const budgetExceededNames: string[] = [];
-      let runningEmbeddedBytes = existingEmbeddedBytes;
-
-      selectedAssets.forEach((asset, index) => {
-        const displayName = asset.fileName || `Image ${index + 1}`;
-        if (!asset.base64) {
-          missingBase64Names.push(displayName);
-          return;
-        }
-
-        const inferredBytes = getChatComposerRuntimeBase64ImageBytes(asset.base64);
-        const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
-          ? asset.fileSize
-          : inferredBytes;
-        if (fileSizeBytes > MAX_PENDING_IMAGE_FILE_SIZE_BYTES) {
-          oversizedImageNames.push(displayName);
-          return;
-        }
-
-        const mimeType = inferChatComposerRuntimeImageMimeType(asset);
-        if (!mimeType) {
-          unknownMimeNames.push(displayName);
-          return;
-        }
-
-        const dataUrl = `data:${mimeType};base64,${asset.base64}`;
-        const embeddedBytes = getChatComposerRuntimeImageDataUrlBytes(dataUrl) || inferredBytes;
-        if (runningEmbeddedBytes + embeddedBytes > MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
-          budgetExceededNames.push(displayName);
-          return;
-        }
-        runningEmbeddedBytes += embeddedBytes;
-
-        const fileName = asset.fileName || `image-${Date.now()}-${index + 1}`;
-        nextImages.push({
-          id: `${Date.now()}-${index}-${asset.uri}`,
-          name: fileName,
-          previewUri: asset.uri,
-          dataUrl,
-        });
-      });
-
-      if (nextImages.length > 0) {
-        setPendingImages((prev) => [...prev, ...nextImages]);
-      }
-
-      if (missingBase64Names.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'missingData',
-          names: missingBase64Names,
-        });
-      }
-
-      if (oversizedImageNames.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'selectionTooLarge',
-          names: oversizedImageNames,
-          maxBytes: MAX_PENDING_IMAGE_FILE_SIZE_BYTES,
-        });
-      }
-
-      if (unknownMimeNames.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'unsupportedFormat',
-          names: unknownMimeNames,
-        });
-      }
-
-      if (budgetExceededNames.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'budgetExceeded',
-          names: budgetExceededNames,
-          maxBytes: MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES,
-        });
-      }
-    } catch (error: any) {
-      showImageAttachmentAlert({
-        reason: 'pickerError',
-        error,
-      });
-    }
-  }, [pendingImages, showImageAttachmentAlert]);
-
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
 
