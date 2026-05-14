@@ -66,6 +66,7 @@ import {
 import type { HandsFreeComposerControlState } from '@dotagents/shared/hands-free-controller';
 import {
   getPromptLibraryEditorDismissActionState,
+  getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
@@ -1619,7 +1620,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   agentSelectorVisible: ChatMessageRuntimeOverlaysProps['agentSelector']['visible'];
   onAgentSelectorClose: ChatMessageRuntimeOverlaysProps['agentSelector']['onClose'];
   promptEditorVisible: ChatConversationHomePromptEditorModalProps['visible'];
-  promptEditorRenderState: ChatConversationHomePromptEditorModalProps['renderState'];
+  promptEditorRenderStateInput: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0];
   promptEditorIsEditing: ChatConversationHomePromptEditorModalProps['isEditing'];
   promptEditorNameValue: ChatConversationHomePromptEditorModalProps['nameValue'];
   onPromptEditorNameChange: ChatConversationHomePromptEditorModalProps['onNameChange'];
@@ -2996,7 +2997,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   agentSelectorVisible,
   onAgentSelectorClose,
   promptEditorVisible,
-  promptEditorRenderState,
+  promptEditorRenderStateInput,
   promptEditorIsEditing,
   promptEditorNameValue,
   onPromptEditorNameChange,
@@ -3007,6 +3008,8 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   onPromptEditorSave,
   promptEditorStyles,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
+  const promptEditorRenderState = getPromptLibraryEditorMobileRenderState(promptEditorRenderStateInput);
+
   return {
     frame: {
       keyboardAvoidingBehavior,

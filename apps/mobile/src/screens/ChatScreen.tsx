@@ -189,7 +189,6 @@ import {
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
   getPromptLibraryEditorInputPaddingVertical,
-  getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileSurfaceRenderState,
@@ -369,13 +368,6 @@ export default function ChatScreen({ route, navigation }: any) {
       viewportStyles: chatMessageRuntimeViewportStyles,
     }),
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
-  );
-  const promptLibraryEditorRenderState = useMemo(
-    () => getPromptLibraryEditorMobileRenderState({
-      colors: theme.colors,
-      platform: Platform.OS,
-    }),
-    [theme.colors],
   );
   const mobileComposerSurfaceRenderState = useMemo(
     () => getChatComposerMobileSurfaceRenderState({
@@ -3447,7 +3439,10 @@ export default function ChatScreen({ route, navigation }: any) {
     agentSelectorVisible,
     onAgentSelectorClose: () => setAgentSelectorVisible(false),
     promptEditorVisible: addPromptModalVisible,
-    promptEditorRenderState: promptLibraryEditorRenderState,
+    promptEditorRenderStateInput: {
+      colors: theme.colors,
+      platform: Platform.OS,
+    },
     promptEditorIsEditing: Boolean(editingPrompt),
     promptEditorNameValue: newPromptName,
     onPromptEditorNameChange: setNewPromptName,

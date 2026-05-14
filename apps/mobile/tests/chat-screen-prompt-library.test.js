@@ -36,7 +36,8 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;/);
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.match(screenSource, /getPromptLibraryCopyState,/);
-  assert.match(screenSource, /getPromptLibraryEditorMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryEditorMobileRenderState,/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileRenderState,/);
   assert.match(screenSource, /getPromptLibraryShortcutPressIntent,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorTitle,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorSaveActionLabel,/);
@@ -56,7 +57,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceColors,/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
   assert.match(screenSource, /const promptLibraryCopy = getPromptLibraryCopyState\(\);/);
-  assert.match(screenSource, /const promptLibraryEditorRenderState = useMemo\(\s+\(\) => getPromptLibraryEditorMobileRenderState\(\{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}\),\s+\[theme\.colors\],\s+\);/);
+  assert.doesNotMatch(screenSource, /const promptLibraryEditorRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const promptLibraryShortcutRenderState = useMemo/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
@@ -188,7 +189,8 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /newPrompt(Name|Content)\.trim\(\)/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
-  assert.match(screenSource, /promptEditorRenderState: promptLibraryEditorRenderState/);
+  assert.match(screenSource, /promptEditorRenderStateInput: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\}/);
+  assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(promptEditorRenderStateInput\);/);
   assert.match(screenSource, /promptEditorIsEditing: Boolean\(editingPrompt\)/);
   assert.match(screenSource, /promptEditorStyles: promptEditorModalStyles/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
