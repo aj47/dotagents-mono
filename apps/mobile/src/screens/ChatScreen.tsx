@@ -28,15 +28,15 @@ import {
   useChatRuntimeConnectionRetryActionState,
   useChatRuntimeForegroundState,
   useChatRuntimeHandsFreeMutableState,
-  useChatRuntimeHandsFreeToggleActionsState,
-  useChatRuntimeTextToSpeechToggleActionsState,
+  useChatRuntimeHandsFreeToggleChromeActionsState,
+  useChatRuntimeTextToSpeechToggleChromeActionsState,
   useChatComposerRuntimeDraftState,
   createChatComposerHandsFreeTranscriptAddedDebugState,
   createChatComposerHandsFreePermissionDeniedDebugState,
   createChatComposerHandsFreeRecognizerErrorDebugState,
   useChatComposerRuntimeImageLibraryPickerState,
   useChatComposerRuntimeSubmissionChromeState,
-  useChatComposerRuntimeHandsFreeControlActionsState,
+  useChatComposerRuntimeHandsFreeControlChromeActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderChromeOptions,
@@ -72,10 +72,10 @@ import {
   useChatMessageRuntimeSessionLoadState,
   useChatMessageRuntimeSessionPersistState,
   useChatMessageRuntimeResponseHistoryState,
-  useChatMessageRuntimeAssistantSpeechActionsState,
+  useChatMessageRuntimeAssistantSpeechChromeActionsState,
   useChatMessageRuntimeResponseSpeechQueueActionsState,
-  useChatMessageRuntimeSpeechActionsState,
-  useChatMessageRuntimeSpeechCleanupState,
+  useChatMessageRuntimeSpeechChromeActionsState,
+  useChatMessageRuntimeSpeechChromeCleanupState,
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
@@ -113,7 +113,6 @@ import { useProfile } from '../store/profile';
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
-import * as Speech from 'expo-speech';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type {
@@ -507,7 +506,7 @@ export default function ChatScreen({ route, navigation }: any) {
     sleepPhrase: handsFreeSleepPhrase,
     log: voiceLog,
   });
-  const { toggleTextToSpeech: toggleTts } = useChatRuntimeTextToSpeechToggleActionsState({
+  const { toggleTextToSpeech: toggleTts } = useChatRuntimeTextToSpeechToggleChromeActionsState({
     ttsEnabled,
     config,
     setConfig,
@@ -518,7 +517,6 @@ export default function ChatScreen({ route, navigation }: any) {
     clearIntendedSpeakingMessage,
     clearQueuedResponseSpeech,
     clearSpeakingMessage,
-    stopSpeech: Speech.stop,
     stopRemoteSpeech: stopRemoteTts,
     voiceLog,
   });
@@ -580,7 +578,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setHandsFreePhaseRefValue,
   });
 
-  const { toggleHandsFree } = useChatRuntimeHandsFreeToggleActionsState({
+  const { toggleHandsFree } = useChatRuntimeHandsFreeToggleChromeActionsState({
     config,
     setConfig,
     saveConfig,
@@ -588,7 +586,6 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeRef,
     setHandsFreeRefValue,
     stopRecognitionOnly,
-    stopSpeech: Speech.stop,
     stopRemoteSpeech: stopRemoteTts,
     setDebugInfo,
   });
@@ -614,7 +611,7 @@ export default function ChatScreen({ route, navigation }: any) {
     onHandsFreeButtonPress: toggleHandsFree,
   });
 
-  const { speakAssistantResponse } = useChatMessageRuntimeAssistantSpeechActionsState({
+  const { speakAssistantResponse } = useChatMessageRuntimeAssistantSpeechChromeActionsState({
     ttsEnabledRef,
     recentAutoSpeechByTextRef,
     config,
@@ -624,7 +621,6 @@ export default function ChatScreen({ route, navigation }: any) {
     effectiveRemoteTtsRate,
     handsFree,
     handsFreeController,
-    speakNative: Speech.speak,
     speakRemote: speakRemoteTts,
     voiceLog,
   });
@@ -638,7 +634,7 @@ export default function ChatScreen({ route, navigation }: any) {
     speakAssistantResponse,
   });
 
-  const { speakMessage } = useChatMessageRuntimeSpeechActionsState({
+  const { speakMessage } = useChatMessageRuntimeSpeechChromeActionsState({
     speakingMessageIndex,
     config,
     effectiveTtsProvider,
@@ -652,15 +648,12 @@ export default function ChatScreen({ route, navigation }: any) {
     startSpeakingMessage,
     clearSpeakingMessage,
     clearIntendedSpeakingMessage,
-    speakNative: Speech.speak,
-    stopNativeSpeech: Speech.stop,
     speakRemote: speakRemoteTts,
     stopRemoteSpeech: stopRemoteTts,
     voiceLog,
   });
 
-  useChatMessageRuntimeSpeechCleanupState({
-    stopNativeSpeech: Speech.stop,
+  useChatMessageRuntimeSpeechChromeCleanupState({
     stopRemoteSpeech: stopRemoteTts,
   });
 
@@ -1514,13 +1507,12 @@ export default function ChatScreen({ route, navigation }: any) {
     resumeHandsFreeByUser,
     pauseHandsFreeByUser,
     handleHandsFreePrimaryControl,
-  } = useChatComposerRuntimeHandsFreeControlActionsState({
+  } = useChatComposerRuntimeHandsFreeControlChromeActionsState({
     handsFreeController,
     listening,
     wakePhrase: handsFreeWakePhrase,
     startRecording,
     stopRecognitionOnly,
-    stopSpeech: Speech.stop,
     setDebugInfo,
   });
 

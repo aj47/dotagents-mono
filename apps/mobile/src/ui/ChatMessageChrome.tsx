@@ -26,6 +26,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   getChatDisplayExpansionState,
@@ -699,6 +700,11 @@ type ChatComposerRuntimeHandsFreeControlActionsStateInput = {
   setDebugInfo: (message: string) => void;
 };
 
+type ChatComposerRuntimeHandsFreeControlChromeActionsStateInput = Omit<
+  ChatComposerRuntimeHandsFreeControlActionsStateInput,
+  'stopSpeech'
+>;
+
 type ChatComposerRuntimeHandsFreeControlActionsState = {
   wakeHandsFreeByUser: () => void;
   sleepHandsFreeByUser: () => void;
@@ -880,6 +886,11 @@ type ChatMessageRuntimeAssistantSpeechActionsStateInput = {
   duplicateSuppressionMs?: number;
 };
 
+type ChatMessageRuntimeAssistantSpeechChromeActionsStateInput = Omit<
+  ChatMessageRuntimeAssistantSpeechActionsStateInput,
+  'speakNative'
+>;
+
 type ChatMessageRuntimeAssistantSpeechActionsState = {
   speakAssistantResponse: ChatMessageRuntimeResponseSpeechSpeaker;
 };
@@ -950,6 +961,11 @@ type ChatMessageRuntimeSpeechActionsStateInput = {
   voiceLog: VoiceDebugLog;
 };
 
+type ChatMessageRuntimeSpeechChromeActionsStateInput = Omit<
+  ChatMessageRuntimeSpeechActionsStateInput,
+  'speakNative' | 'stopNativeSpeech'
+>;
+
 type ChatMessageRuntimeSpeechActionsState = {
   speakMessage: (messageIndex: number, content: string) => void;
 };
@@ -958,6 +974,11 @@ type ChatMessageRuntimeSpeechCleanupStateInput = {
   stopNativeSpeech: () => void;
   stopRemoteSpeech: () => void;
 };
+
+type ChatMessageRuntimeSpeechChromeCleanupStateInput = Omit<
+  ChatMessageRuntimeSpeechCleanupStateInput,
+  'stopNativeSpeech'
+>;
 
 type ChatComposerRuntimeEditBeforeSendState = {
   editBeforeSendEnabled: boolean;
@@ -1092,6 +1113,11 @@ type ChatRuntimeHandsFreeToggleActionsStateInput<TConfig extends object> = {
   setDebugInfo: (message: string) => void;
 };
 
+type ChatRuntimeHandsFreeToggleChromeActionsStateInput<TConfig extends object> = Omit<
+  ChatRuntimeHandsFreeToggleActionsStateInput<TConfig>,
+  'stopSpeech'
+>;
+
 type ChatRuntimeHandsFreeToggleActionsState = {
   toggleHandsFree: () => Promise<void>;
 };
@@ -1111,6 +1137,11 @@ type ChatRuntimeTextToSpeechToggleActionsStateInput<TConfig extends object> = {
   stopRemoteSpeech: () => void;
   voiceLog: VoiceDebugLog;
 };
+
+type ChatRuntimeTextToSpeechToggleChromeActionsStateInput<TConfig extends object> = Omit<
+  ChatRuntimeTextToSpeechToggleActionsStateInput<TConfig>,
+  'stopSpeech'
+>;
 
 type ChatRuntimeTextToSpeechToggleActionsState = {
   toggleTextToSpeech: () => Promise<void>;
@@ -8089,6 +8120,15 @@ export function useChatComposerRuntimeHandsFreeControlActionsState({
   };
 }
 
+export function useChatComposerRuntimeHandsFreeControlChromeActionsState(
+  input: ChatComposerRuntimeHandsFreeControlChromeActionsStateInput,
+): ChatComposerRuntimeHandsFreeControlActionsState {
+  return useChatComposerRuntimeHandsFreeControlActionsState({
+    ...input,
+    stopSpeech: Speech.stop,
+  });
+}
+
 export function useChatComposerRuntimeHandsFreeRecognizerLifecycleState({
   handsFree,
   handsFreeRuntimeActive,
@@ -8692,6 +8732,15 @@ export function useChatMessageRuntimeAssistantSpeechActionsState({
   };
 }
 
+export function useChatMessageRuntimeAssistantSpeechChromeActionsState(
+  input: ChatMessageRuntimeAssistantSpeechChromeActionsStateInput,
+): ChatMessageRuntimeAssistantSpeechActionsState {
+  return useChatMessageRuntimeAssistantSpeechActionsState({
+    ...input,
+    speakNative: Speech.speak,
+  });
+}
+
 export function useChatMessageRuntimeSpeechPlaybackState(): ChatMessageRuntimeSpeechPlaybackState {
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
   const intendedSpeakingIndexRef = useRef<number | null>(null);
@@ -8847,6 +8896,16 @@ export function useChatMessageRuntimeSpeechActionsState({
   };
 }
 
+export function useChatMessageRuntimeSpeechChromeActionsState(
+  input: ChatMessageRuntimeSpeechChromeActionsStateInput,
+): ChatMessageRuntimeSpeechActionsState {
+  return useChatMessageRuntimeSpeechActionsState({
+    ...input,
+    speakNative: Speech.speak,
+    stopNativeSpeech: Speech.stop,
+  });
+}
+
 export function useChatMessageRuntimeSpeechCleanupState({
   stopNativeSpeech,
   stopRemoteSpeech,
@@ -8857,6 +8916,15 @@ export function useChatMessageRuntimeSpeechCleanupState({
       stopRemoteSpeech();
     };
   }, [stopNativeSpeech, stopRemoteSpeech]);
+}
+
+export function useChatMessageRuntimeSpeechChromeCleanupState({
+  stopRemoteSpeech,
+}: ChatMessageRuntimeSpeechChromeCleanupStateInput): void {
+  useChatMessageRuntimeSpeechCleanupState({
+    stopNativeSpeech: Speech.stop,
+    stopRemoteSpeech,
+  });
 }
 
 export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntimeEditBeforeSendState {
@@ -9066,6 +9134,15 @@ export function useChatRuntimeHandsFreeToggleActionsState<TConfig extends object
   };
 }
 
+export function useChatRuntimeHandsFreeToggleChromeActionsState<TConfig extends object>(
+  input: ChatRuntimeHandsFreeToggleChromeActionsStateInput<TConfig>,
+): ChatRuntimeHandsFreeToggleActionsState {
+  return useChatRuntimeHandsFreeToggleActionsState({
+    ...input,
+    stopSpeech: Speech.stop,
+  });
+}
+
 export function useChatRuntimeTextToSpeechToggleActionsState<TConfig extends object>({
   ttsEnabled,
   config,
@@ -9116,6 +9193,15 @@ export function useChatRuntimeTextToSpeechToggleActionsState<TConfig extends obj
   return {
     toggleTextToSpeech,
   };
+}
+
+export function useChatRuntimeTextToSpeechToggleChromeActionsState<TConfig extends object>(
+  input: ChatRuntimeTextToSpeechToggleChromeActionsStateInput<TConfig>,
+): ChatRuntimeTextToSpeechToggleActionsState {
+  return useChatRuntimeTextToSpeechToggleActionsState({
+    ...input,
+    stopSpeech: Speech.stop,
+  });
 }
 
 export function useChatRuntimeConnectionRetryState(): ChatRuntimeConnectionRetryState {

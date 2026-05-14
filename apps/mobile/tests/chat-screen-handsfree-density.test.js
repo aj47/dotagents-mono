@@ -114,9 +114,11 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 });
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
-  assert.match(screenSource, /useChatRuntimeHandsFreeToggleActionsState,/);
-  assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleActionsState\(\{\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+setHandsFreeRefValue,\s+stopRecognitionOnly,\s+stopSpeech: Speech\.stop,\s+stopRemoteSpeech: stopRemoteTts,\s+setDebugInfo,\s+\}\);/);
+  assert.match(screenSource, /useChatRuntimeHandsFreeToggleChromeActionsState,/);
+  assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleChromeActionsState\(\{\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+setHandsFreeRefValue,\s+stopRecognitionOnly,\s+stopRemoteSpeech: stopRemoteTts,\s+setDebugInfo,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleActionsState/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleChromeActionsState/);
+  assert.match(chatMessageChromeSource, /useChatRuntimeHandsFreeToggleActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,/);
   assert.match(chatMessageChromeSource, /const next = !handsFreeRef\.current;\s+setHandsFreeRefValue\(next\);/);
   assert.match(chatMessageChromeSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\(\);[\s\S]*?stopSpeech\(\);[\s\S]*?stopRemoteSpeech\(\);[\s\S]*?getChatComposerHandsFreeDebugMessage\('disabled'\)/);
   assert.doesNotMatch(screenSource, /const next = !handsFreeRef\.current;\s*setHandsFreeRefValue\(next\);/);
@@ -147,10 +149,12 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
 });
 
 test('keeps wake/sleep controls inline and wires a dedicated pause/resume control button', () => {
-  assert.match(screenSource, /useChatComposerRuntimeHandsFreeControlActionsState,/);
-  assert.match(screenSource, /const \{\s+wakeHandsFreeByUser,\s+sleepHandsFreeByUser,\s+resumeHandsFreeByUser,\s+pauseHandsFreeByUser,\s+handleHandsFreePrimaryControl,\s+\} = useChatComposerRuntimeHandsFreeControlActionsState\(\{\s+handsFreeController,\s+listening,\s+wakePhrase: handsFreeWakePhrase,\s+startRecording,\s+stopRecognitionOnly,\s+stopSpeech: Speech\.stop,\s+setDebugInfo,\s+\}\);/);
+  assert.match(screenSource, /useChatComposerRuntimeHandsFreeControlChromeActionsState,/);
+  assert.match(screenSource, /const \{\s+wakeHandsFreeByUser,\s+sleepHandsFreeByUser,\s+resumeHandsFreeByUser,\s+pauseHandsFreeByUser,\s+handleHandsFreePrimaryControl,\s+\} = useChatComposerRuntimeHandsFreeControlChromeActionsState\(\{\s+handsFreeController,\s+listening,\s+wakePhrase: handsFreeWakePhrase,\s+startRecording,\s+stopRecognitionOnly,\s+setDebugInfo,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const wakeHandsFreeByUser = useCallback\(\(\) => \{/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeHandsFreeControlActionsState/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeHandsFreeControlChromeActionsState/);
+  assert.match(chatMessageChromeSource, /useChatComposerRuntimeHandsFreeControlActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,/);
   assert.match(chatMessageChromeSource, /const wakeHandsFreeByUser = useCallback\(\(\) => \{[\s\S]*?wakeByUser\(\);[\s\S]*?void startRecording\(\);/);
   assert.match(chatMessageChromeSource, /const pauseHandsFreeByUser = useCallback\(\(\) => \{[\s\S]*?pauseByUser\(\);[\s\S]*?stopSpeech\(\);[\s\S]*?void stopRecognitionOnly\(\);/);
   assert.doesNotMatch(screenSource, /const handsFreeControlState = getHandsFreeComposerControlState\(handsFreeController\.state\.phase\);/);
