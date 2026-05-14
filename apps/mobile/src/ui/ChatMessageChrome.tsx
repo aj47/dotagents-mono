@@ -600,6 +600,12 @@ type ChatConversationHomePromptEditorModalStyles = {
   saveButtonText: StyleProp<TextStyle>;
 };
 
+type ChatConversationHomePromptEditorSaveActionInput = {
+  draft: Parameters<typeof getPromptLibraryEditorSaveActionState>[0];
+  isEditing: boolean;
+  isSaving: boolean;
+};
+
 type ChatConversationHomePromptEditorModalProps = {
   visible: boolean;
   isEditing: boolean;
@@ -5598,11 +5604,11 @@ export function ChatConversationHomePromptEditorModal({
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
   const editorDismissActionState = getPromptLibraryEditorDismissActionState(isSaving);
-  const editorSaveActionState = getPromptLibraryEditorSaveActionState(
-    { name: nameValue, content: contentValue },
+  const editorSaveActionState = createChatConversationHomePromptEditorSaveActionState({
+    draft: { name: nameValue, content: contentValue },
     isEditing,
     isSaving,
-  );
+  });
   const {
     chrome: editorChrome,
     colors,
@@ -5697,6 +5703,18 @@ export function ChatConversationHomePromptEditorModal({
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+export function createChatConversationHomePromptEditorSaveActionState({
+  draft,
+  isEditing,
+  isSaving,
+}: ChatConversationHomePromptEditorSaveActionInput): ReturnType<typeof getPromptLibraryEditorSaveActionState> {
+  return getPromptLibraryEditorSaveActionState(
+    draft,
+    isEditing,
+    isSaving,
   );
 }
 

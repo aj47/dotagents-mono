@@ -26,6 +26,7 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
+  createChatConversationHomePromptEditorSaveActionState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -163,7 +164,6 @@ import {
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
-  getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
@@ -1430,11 +1430,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handleSavePrompt = async () => {
     const draft = { name: newPromptName, content: newPromptContent };
-    const saveActionState = getPromptLibraryEditorSaveActionState(
+    const saveActionState = createChatConversationHomePromptEditorSaveActionState({
       draft,
-      Boolean(editingPrompt),
-      isSavingPrompt,
-    );
+      isEditing: Boolean(editingPrompt),
+      isSaving: isSavingPrompt,
+    });
     if (!settingsClient || saveActionState.isDisabled) return;
     setIsSavingPrompt(true);
     try {

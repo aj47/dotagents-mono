@@ -180,7 +180,8 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
   assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
-  assert.match(screenSource, /getPromptLibraryEditorSaveActionState\(\s+draft,\s+Boolean\(editingPrompt\),\s+isSavingPrompt,\s+\)/);
+  assert.match(screenSource, /createChatConversationHomePromptEditorSaveActionState\(\{\s+draft,\s+isEditing: Boolean\(editingPrompt\),\s+isSaving: isSavingPrompt,\s+\}\)/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryEditorSaveActionState,/);
   assert.match(screenSource, /if \(!settingsClient \|\| saveActionState\.isDisabled\) return;/);
   assert.match(screenSource, /onPromptEditorSave: handleSavePrompt/);
   assert.match(chatMessageChromeSource, /onPress=\{onSave\}/);
@@ -199,7 +200,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /saveLabel: getPromptLibraryEditorSaveActionLabel\(Boolean\(editingPrompt\), isSavingPrompt\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle\(isEditing\)/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorDismissActionState\(isSaving\)/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionState\(\s+\{ name: nameValue, content: contentValue \},\s+isEditing,\s+isSaving,\s+\)/);
+  assert.match(chatMessageChromeSource, /createChatConversationHomePromptEditorSaveActionState\(\{\s+draft: \{ name: nameValue, content: contentValue \},\s+isEditing,\s+isSaving,\s+\}\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /style=\{styles\.header\}/);
   assert.match(chatMessageChromeSource, /style=\{styles\.closeButton\}/);
