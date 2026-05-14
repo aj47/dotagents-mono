@@ -28,6 +28,10 @@ import {
   createChatConversationHomeQuickStartItems,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorSaveActionState,
+  formatChatConversationHomePromptDeleteConfirmMessage,
+  formatChatConversationHomePromptDeleteWebConfirmMessage,
+  formatChatConversationHomePromptSaveSuccessMessage,
+  formatChatConversationHomePromptTaskStartedMessage,
   createChatComposerRuntimeFollowUpPresentationState,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
@@ -62,6 +66,8 @@ import {
   createChatMessageRuntimeSurfaceChromeProps,
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
+  getChatConversationHomePromptLibraryCopyState,
+  getChatConversationHomeQuickStartPressIntent,
   getChatMessageRuntimeBranchAlertState,
   getChatMessageRuntimeDebugState,
   getChatMessageRuntimeHistoryWindowState,
@@ -154,12 +160,6 @@ import type {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
-  formatPromptLibraryDeletePromptConfirmMessage,
-  formatPromptLibraryDeletePromptWebConfirmMessage,
-  formatPromptLibraryTaskStartedMessage,
-  getPromptLibraryCopyState,
-  getPromptLibrarySaveSuccessMessage,
-  getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
 } from '@dotagents/shared/predefined-prompts';
@@ -197,7 +197,7 @@ const handsFreeCopy = getHandsFreeComposerCopyState();
 const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
-const promptLibraryCopy = getPromptLibraryCopyState();
+const promptLibraryCopy = getChatConversationHomePromptLibraryCopyState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -585,7 +585,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setRunningPromptTaskId(task.id);
     try {
       await settingsClient.runLoop(task.id);
-      Alert.alert(promptLibraryCopy.feedback.taskStartedTitle, formatPromptLibraryTaskStartedMessage(task.name));
+      Alert.alert(promptLibraryCopy.feedback.taskStartedTitle, formatChatConversationHomePromptTaskStartedMessage(task.name));
     } catch (error: any) {
       Alert.alert(promptLibraryCopy.feedback.errorTitle, error?.message || promptLibraryCopy.feedback.taskRunFailed);
     } finally {
@@ -616,7 +616,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [isSavingPrompt]);
 
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
-    const pressIntent = getPromptLibraryShortcutPressIntent(item);
+    const pressIntent = getChatConversationHomeQuickStartPressIntent(item);
     if (pressIntent.kind === 'add-prompt') {
       openAddPromptModal();
       return;
@@ -1442,7 +1442,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert(promptLibraryCopy.feedback.successTitle, getPromptLibrarySaveSuccessMessage(Boolean(editingPrompt)));
+      Alert.alert(promptLibraryCopy.feedback.successTitle, formatChatConversationHomePromptSaveSuccessMessage(Boolean(editingPrompt)));
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       Alert.alert(promptLibraryCopy.feedback.errorTitle, error.message || promptLibraryCopy.feedback.promptSaveFailed);
@@ -1470,13 +1470,13 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (Platform.OS === 'web') {
       const confirmFn = (globalThis as { confirm?: (message?: string) => boolean }).confirm;
-      if (confirmFn?.(formatPromptLibraryDeletePromptWebConfirmMessage(prompt.name))) {
+      if (confirmFn?.(formatChatConversationHomePromptDeleteWebConfirmMessage(prompt.name))) {
         void deletePrompt();
       }
       return;
     }
 
-    Alert.alert(promptLibraryCopy.feedback.deletePromptTitle, formatPromptLibraryDeletePromptConfirmMessage(prompt.name), [
+    Alert.alert(promptLibraryCopy.feedback.deletePromptTitle, formatChatConversationHomePromptDeleteConfirmMessage(prompt.name), [
       { text: promptLibraryCopy.actions.cancel, style: 'cancel' },
       { text: promptLibraryCopy.actions.delete, style: 'destructive', onPress: () => { void deletePrompt(); } },
     ]);

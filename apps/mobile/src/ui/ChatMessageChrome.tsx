@@ -86,6 +86,10 @@ import {
 } from '@dotagents/shared/accessibility-utils';
 import {
   buildPromptLibraryShortcutItems,
+  formatPromptLibraryDeletePromptConfirmMessage,
+  formatPromptLibraryDeletePromptWebConfirmMessage,
+  formatPromptLibraryTaskStartedMessage,
+  getPromptLibraryCopyState,
   getPromptLibraryEditorDismissActionState,
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
@@ -96,10 +100,13 @@ import {
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileShortcutRenderState,
+  getPromptLibrarySaveSuccessMessage,
+  getPromptLibraryShortcutPressIntent,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibrarySkillLike,
   type PromptLibraryMobileShortcutRenderState,
+  type PromptLibraryShortcutPressIntent,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
@@ -574,6 +581,35 @@ export type ChatConversationHomeQuickStartItem<
   TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
 > = PromptLibraryShortcutItem<TPrompt, TTask>;
+
+export function getChatConversationHomePromptLibraryCopyState(): ReturnType<typeof getPromptLibraryCopyState> {
+  return getPromptLibraryCopyState();
+}
+
+export function formatChatConversationHomePromptSaveSuccessMessage(isEditing: boolean): string {
+  return getPromptLibrarySaveSuccessMessage(isEditing);
+}
+
+export function formatChatConversationHomePromptDeleteWebConfirmMessage(promptName: string): string {
+  return formatPromptLibraryDeletePromptWebConfirmMessage(promptName);
+}
+
+export function formatChatConversationHomePromptDeleteConfirmMessage(promptName: string): string {
+  return formatPromptLibraryDeletePromptConfirmMessage(promptName);
+}
+
+export function formatChatConversationHomePromptTaskStartedMessage(taskName: string): string {
+  return formatPromptLibraryTaskStartedMessage(taskName);
+}
+
+export function getChatConversationHomeQuickStartPressIntent<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>(
+  item: ChatConversationHomeQuickStartItem<TPrompt, TTask>,
+): PromptLibraryShortcutPressIntent<TTask> {
+  return getPromptLibraryShortcutPressIntent(item);
+}
 
 type ChatConversationHomeQuickStartItemsInput<
   TPrompt extends PredefinedPromptSummary,
