@@ -26,6 +26,7 @@ import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
   createChatConversationHomePromptEditorModalStyleSlots,
+  createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
@@ -3489,6 +3490,52 @@ export default function ChatScreen({ route, navigation }: any) {
     onLoadEarlierMessages: handleLoadEarlierMessages,
     debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,
   });
+  const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
+    chrome: chatComposerRuntimeDockChrome,
+    speechPreviewLabel: mobileComposerControls.sttPreview.label,
+    speechPreviewText: sttPreview,
+    pendingImages,
+    pendingImagesRenderState: imageAttachmentRenderState,
+    onRemovePendingImage: removePendingImage,
+    handsFreeControlsVisible: mobileComposerVisibilityRenderState.handsFreeControls.isVisible,
+    handsFreeStatus: {
+      phase: handsFreeController.state.phase,
+      label: handsFreeController.statusLabel,
+      subtitle: handsFreeStatusSubtitle,
+    },
+    handsFreeControlState,
+    onWakeHandsFree: wakeHandsFreeByUser,
+    onSleepHandsFree: sleepHandsFreeByUser,
+    onResumeHandsFree: resumeHandsFreeByUser,
+    onPauseHandsFree: pauseHandsFreeByUser,
+    imageAttachmentRenderState: mobileComposerImageAttachmentRenderState,
+    onImageAttachmentPress: handlePickImages,
+    textToSpeechRenderState: mobileComposerTextToSpeechRenderState,
+    onTextToSpeechPress: toggleTts,
+    editBeforeSendShouldRender: mobileComposerVisibilityRenderState.editBeforeSendControl.shouldRender,
+    editBeforeSendRenderState: mobileComposerEditBeforeSendRenderState,
+    onEditBeforeSendPress: () => setWillCancel((current) => !current),
+    textEntryInputRef: inputRef,
+    textEntryValue: input,
+    onTextEntryChangeText: handleInputChange,
+    onTextEntryKeyPress: handleInputKeyPress,
+    textEntryAccessibilityLabel: mobileComposerControls.field.accessibilityLabel,
+    textEntryAccessibilityHint: composerAccessibilityHint,
+    textEntryPlaceholder: composerPlaceholder,
+    textEntryVoiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement,
+    queueActionShouldRender: mobileComposerVisibilityRenderState.queueAction.shouldRender,
+    queueActionRenderState: mobileComposerQueueRenderState,
+    onQueueActionPress: queueComposerInput,
+    submitActionRenderState: composerSubmitRenderState,
+    onSubmitActionPress: sendComposerInput,
+    micButtonRenderState: mobileComposerMicRenderState,
+    shouldUsePushToTalk: mobileComposerVisibilityRenderState.micButton.shouldUsePushToTalk,
+    shouldUseHandsFreePrimaryControl: mobileComposerVisibilityRenderState.micButton.shouldUseHandsFreePrimaryControl,
+    onMicPressIn: handlePushToTalkPressIn,
+    onMicPressOut: handlePushToTalkPressOut,
+    onMicPress: handleHandsFreePrimaryControl,
+    micWrapperRef: micButtonRef,
+  });
   const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps({
     responseHistoryPanel: {
       responses: respondToUserHistory,
@@ -3537,83 +3584,7 @@ export default function ChatScreen({ route, navigation }: any) {
         void handleRetryLastFailedMessage();
       },
     },
-    composer: {
-      speechPreview: {
-        label: mobileComposerControls.sttPreview.label,
-        text: sttPreview,
-      },
-      pendingImagesRail: {
-        images: pendingImages,
-        renderState: imageAttachmentRenderState,
-        onRemove: removePendingImage,
-      },
-      handsFreeControls: {
-        isVisible: mobileComposerVisibilityRenderState.handsFreeControls.isVisible,
-        status: {
-          phase: handsFreeController.state.phase,
-          label: handsFreeController.statusLabel,
-          subtitle: handsFreeStatusSubtitle,
-        },
-        controlState: handsFreeControlState,
-        onWake: wakeHandsFreeByUser,
-        onSleep: sleepHandsFreeByUser,
-        onResume: resumeHandsFreeByUser,
-        onPause: pauseHandsFreeByUser,
-        ...chatComposerRuntimeDockChrome.handsFreeControls,
-      },
-      imageAttachmentControl: {
-        renderState: mobileComposerImageAttachmentRenderState,
-        onPress: handlePickImages,
-        ...chatComposerRuntimeDockChrome.imageAttachmentControl,
-      },
-      textToSpeechControl: {
-        renderState: mobileComposerTextToSpeechRenderState,
-        onPress: toggleTts,
-        ...chatComposerRuntimeDockChrome.textToSpeechControl,
-      },
-      editBeforeSendControl: {
-        shouldRender: mobileComposerVisibilityRenderState.editBeforeSendControl.shouldRender,
-        renderState: mobileComposerEditBeforeSendRenderState,
-        onPress: () => setWillCancel((current) => !current),
-        ...chatComposerRuntimeDockChrome.editBeforeSendControl,
-      },
-      textEntry: {
-        inputRef,
-        value: input,
-        onChangeText: handleInputChange,
-        onKeyPress: handleInputKeyPress,
-        accessibilityLabel: mobileComposerControls.field.accessibilityLabel,
-        accessibilityHint: composerAccessibilityHint,
-        placeholder: composerPlaceholder,
-        voiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement,
-        ...chatComposerRuntimeDockChrome.textEntry,
-      },
-      queueAction: {
-        shouldRender: mobileComposerVisibilityRenderState.queueAction.shouldRender,
-        renderState: mobileComposerQueueRenderState,
-        onPress: queueComposerInput,
-        ...chatComposerRuntimeDockChrome.queueAction,
-      },
-      submitAction: {
-        renderState: composerSubmitRenderState,
-        onPress: sendComposerInput,
-        ...chatComposerRuntimeDockChrome.submitAction,
-      },
-      micButton: {
-        renderState: mobileComposerMicRenderState,
-        onPressIn: mobileComposerVisibilityRenderState.micButton.shouldUsePushToTalk
-          ? handlePushToTalkPressIn
-          : undefined,
-        onPressOut: mobileComposerVisibilityRenderState.micButton.shouldUsePushToTalk
-          ? handlePushToTalkPressOut
-          : undefined,
-        onPress: mobileComposerVisibilityRenderState.micButton.shouldUseHandsFreePrimaryControl
-          ? handleHandsFreePrimaryControl
-          : undefined,
-        ...chatComposerRuntimeDockChrome.micButton,
-      },
-      micWrapperRef: micButtonRef,
-    },
+    composer: chatComposerRuntimeDock,
   });
   const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps({
     keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,

@@ -1924,6 +1924,49 @@ type ChatComposerRuntimeDockChromeInput = {
   micWebPressedStyle?: ChatComposerMicButtonProps['webPressedStyle'];
 };
 
+type ChatComposerRuntimeDockChromePropsInput = {
+  chrome: ChatComposerRuntimeDockChromeProps;
+  speechPreviewLabel: ChatComposerSpeechPreviewProps['label'];
+  speechPreviewText: ChatComposerSpeechPreviewProps['text'];
+  pendingImages: ChatComposerPendingImagesRailProps['images'];
+  pendingImagesRenderState: ChatComposerPendingImagesRailProps['renderState'];
+  onRemovePendingImage: ChatComposerPendingImagesRailProps['onRemove'];
+  handsFreeControlsVisible: ChatComposerHandsFreeControlsProps['isVisible'];
+  handsFreeStatus: ChatComposerRuntimeHandsFreeControlsProps['status'];
+  handsFreeControlState: ChatComposerRuntimeHandsFreeControlsProps['controlState'];
+  onWakeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onWake'];
+  onSleepHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onSleep'];
+  onResumeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onResume'];
+  onPauseHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onPause'];
+  imageAttachmentRenderState: ChatComposerIconButtonProps['renderState'];
+  onImageAttachmentPress: ChatComposerIconButtonProps['onPress'];
+  textToSpeechRenderState: ChatComposerIconButtonProps['renderState'];
+  onTextToSpeechPress: ChatComposerIconButtonProps['onPress'];
+  editBeforeSendShouldRender: ChatComposerIconButtonProps['shouldRender'];
+  editBeforeSendRenderState: ChatComposerIconButtonProps['renderState'];
+  onEditBeforeSendPress: ChatComposerIconButtonProps['onPress'];
+  textEntryInputRef: ChatComposerTextEntryProps['inputRef'];
+  textEntryValue: ChatComposerTextEntryProps['value'];
+  onTextEntryChangeText: ChatComposerTextEntryProps['onChangeText'];
+  onTextEntryKeyPress: ChatComposerTextEntryProps['onKeyPress'];
+  textEntryAccessibilityLabel: ChatComposerTextEntryProps['accessibilityLabel'];
+  textEntryAccessibilityHint: ChatComposerTextEntryProps['accessibilityHint'];
+  textEntryPlaceholder: ChatComposerTextEntryProps['placeholder'];
+  textEntryVoiceStatusLiveRegionAnnouncement: ChatComposerTextEntryProps['voiceStatusLiveRegionAnnouncement'];
+  queueActionShouldRender: ChatComposerLabeledActionButtonProps['shouldRender'];
+  queueActionRenderState: ChatComposerLabeledActionButtonProps['renderState'];
+  onQueueActionPress: ChatComposerLabeledActionButtonProps['onPress'];
+  submitActionRenderState: ChatComposerLabeledActionButtonProps['renderState'];
+  onSubmitActionPress: ChatComposerLabeledActionButtonProps['onPress'];
+  micButtonRenderState: ChatComposerMicButtonProps['renderState'];
+  shouldUsePushToTalk: boolean;
+  shouldUseHandsFreePrimaryControl: boolean;
+  onMicPressIn: ChatComposerMicButtonProps['onPressIn'];
+  onMicPressOut: ChatComposerMicButtonProps['onPressOut'];
+  onMicPress: ChatComposerMicButtonProps['onPress'];
+  micWrapperRef?: ChatComposerInputDockProps['micWrapperRef'];
+};
+
 type ChatMessageThreadBodyStyleSlots = {
   retryStatus: ChatMessageRetryStatusStyles;
   delegationCard: ChatMessageDelegationCardStyles;
@@ -3888,6 +3931,117 @@ export function createChatComposerRuntimeDockChromeProps({
     micButton: {
       webPressedStyle: isWebPlatform ? micWebPressedStyle : undefined,
     },
+  };
+}
+
+export function createChatComposerRuntimeDockProps({
+  chrome,
+  speechPreviewLabel,
+  speechPreviewText,
+  pendingImages,
+  pendingImagesRenderState,
+  onRemovePendingImage,
+  handsFreeControlsVisible,
+  handsFreeStatus,
+  handsFreeControlState,
+  onWakeHandsFree,
+  onSleepHandsFree,
+  onResumeHandsFree,
+  onPauseHandsFree,
+  imageAttachmentRenderState,
+  onImageAttachmentPress,
+  textToSpeechRenderState,
+  onTextToSpeechPress,
+  editBeforeSendShouldRender,
+  editBeforeSendRenderState,
+  onEditBeforeSendPress,
+  textEntryInputRef,
+  textEntryValue,
+  onTextEntryChangeText,
+  onTextEntryKeyPress,
+  textEntryAccessibilityLabel,
+  textEntryAccessibilityHint,
+  textEntryPlaceholder,
+  textEntryVoiceStatusLiveRegionAnnouncement,
+  queueActionShouldRender,
+  queueActionRenderState,
+  onQueueActionPress,
+  submitActionRenderState,
+  onSubmitActionPress,
+  micButtonRenderState,
+  shouldUsePushToTalk,
+  shouldUseHandsFreePrimaryControl,
+  onMicPressIn,
+  onMicPressOut,
+  onMicPress,
+  micWrapperRef,
+}: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
+  return {
+    speechPreview: {
+      label: speechPreviewLabel,
+      text: speechPreviewText,
+    },
+    pendingImagesRail: {
+      images: pendingImages,
+      renderState: pendingImagesRenderState,
+      onRemove: onRemovePendingImage,
+    },
+    handsFreeControls: {
+      isVisible: handsFreeControlsVisible,
+      status: handsFreeStatus,
+      controlState: handsFreeControlState,
+      onWake: onWakeHandsFree,
+      onSleep: onSleepHandsFree,
+      onResume: onResumeHandsFree,
+      onPause: onPauseHandsFree,
+      ...chrome.handsFreeControls,
+    },
+    imageAttachmentControl: {
+      renderState: imageAttachmentRenderState,
+      onPress: onImageAttachmentPress,
+      ...chrome.imageAttachmentControl,
+    },
+    textToSpeechControl: {
+      renderState: textToSpeechRenderState,
+      onPress: onTextToSpeechPress,
+      ...chrome.textToSpeechControl,
+    },
+    editBeforeSendControl: {
+      shouldRender: editBeforeSendShouldRender,
+      renderState: editBeforeSendRenderState,
+      onPress: onEditBeforeSendPress,
+      ...chrome.editBeforeSendControl,
+    },
+    textEntry: {
+      inputRef: textEntryInputRef,
+      value: textEntryValue,
+      onChangeText: onTextEntryChangeText,
+      onKeyPress: onTextEntryKeyPress,
+      accessibilityLabel: textEntryAccessibilityLabel,
+      accessibilityHint: textEntryAccessibilityHint,
+      placeholder: textEntryPlaceholder,
+      voiceStatusLiveRegionAnnouncement: textEntryVoiceStatusLiveRegionAnnouncement,
+      ...chrome.textEntry,
+    },
+    queueAction: {
+      shouldRender: queueActionShouldRender,
+      renderState: queueActionRenderState,
+      onPress: onQueueActionPress,
+      ...chrome.queueAction,
+    },
+    submitAction: {
+      renderState: submitActionRenderState,
+      onPress: onSubmitActionPress,
+      ...chrome.submitAction,
+    },
+    micButton: {
+      renderState: micButtonRenderState,
+      onPressIn: shouldUsePushToTalk ? onMicPressIn : undefined,
+      onPressOut: shouldUsePushToTalk ? onMicPressOut : undefined,
+      onPress: shouldUseHandsFreePrimaryControl ? onMicPress : undefined,
+      ...chrome.micButton,
+    },
+    micWrapperRef,
   };
 }
 

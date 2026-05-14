@@ -1054,7 +1054,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /<ChatMessageHistoryBanner\s+\{\.\.\.historyBanner\}\s+styles=\{styles\.historyBanner\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageDebugPanelStack\s+\{\.\.\.debugPanels\}\s+panelStyle=\{styles\.debugPanels\.panelStyle\}\s+textStyle=\{styles\.debugPanels\.textStyle\}/);
-  assert.match(screenSource, /const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps\(\{[\s\S]*?responseHistoryPanel: \{\s+responses: respondToUserHistory,[\s\S]*?scrollToBottomRenderState,[\s\S]*?voiceOverlay: \{[\s\S]*?queuePanel: \{[\s\S]*?connectionBanner: \{[\s\S]*?composer: \{/);
+  assert.match(screenSource, /const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps\(\{[\s\S]*?responseHistoryPanel: \{\s+responses: respondToUserHistory,[\s\S]*?scrollToBottomRenderState,[\s\S]*?voiceOverlay: \{[\s\S]*?queuePanel: \{[\s\S]*?connectionBanner: \{[\s\S]*?composer: chatComposerRuntimeDock,/);
   assert.match(screenSource, /dock: chatMessageRuntimeDock,/);
   assert.doesNotMatch(screenSource, /shouldRender: respondToUserHistory\.length > 0/);
   assert.doesNotMatch(screenSource, /<ChatMessageRuntimeDock/);
@@ -1208,6 +1208,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /getChatComposerMicMobileWebPressStyleState,/);
   assert.match(screenSource, /createChatComposerStyleSlots,/);
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
+  assert.match(screenSource, /createChatComposerRuntimeDockProps,/);
   assert.match(screenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /const chatComposerStyles = useMemo\(\s+\(\) => createChatComposerStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const chatComposerRuntimeDockStyles = useMemo\(\s+\(\) => createChatComposerRuntimeDockStyleSlots\(\{/);
@@ -1216,6 +1217,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /const chatComposerRuntimeDockChrome = useMemo\(\s+\(\) => createChatComposerRuntimeDockChromeProps\(\{\s+composerSurface: mobileComposerSurface,\s+composerTextColors: mobileComposerTextColors,\s+handsFreeSurface: mobileHandsFreeSurface,\s+webAccessibility: mobileComposerWebAccessibility,\s+isWebPlatform,\s+micWebPressedStyle: composerMicWebPressStyle,\s+\}\),\s+\[isWebPlatform, mobileComposerSurface, mobileComposerTextColors, mobileComposerWebAccessibility, mobileHandsFreeSurface\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
+  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockChromeProps/);
   assert.match(chatMessageChromeSource, /activeOpacity: composerSurface\.accessoryButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /controlPressedOpacity: handsFreeSurface\.controlButton\.pressedOpacity/);
@@ -1239,9 +1241,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = getChatComposerMobileSurfaceState\(\);/);
   assert.match(chatMessageChromeSource, /inputArea:\s*\{\s+paddingBottom: layout\.inputArea\.paddingBottom,\s+\}/);
   assert.doesNotMatch(screenSource, /inputArea:\s*\{\s*paddingBottom:\s*mobileSafeAreaLayout\.inputArea\.paddingBottom,\s*\}/);
-  assert.match(screenSource, /imageAttachmentControl: \{\s+renderState: mobileComposerImageAttachmentRenderState,\s+onPress: handlePickImages,\s+\.\.\.chatComposerRuntimeDockChrome\.imageAttachmentControl,/);
-  assert.match(screenSource, /textToSpeechControl: \{\s+renderState: mobileComposerTextToSpeechRenderState,\s+onPress: toggleTts,\s+\.\.\.chatComposerRuntimeDockChrome\.textToSpeechControl,/);
-  assert.match(screenSource, /editBeforeSendControl: \{\s+shouldRender: mobileComposerVisibilityRenderState\.editBeforeSendControl\.shouldRender,\s+renderState: mobileComposerEditBeforeSendRenderState,\s+onPress: \(\) => setWillCancel\(\(current\) => !current\),\s+\.\.\.chatComposerRuntimeDockChrome\.editBeforeSendControl,/);
+  assert.match(screenSource, /imageAttachmentRenderState: mobileComposerImageAttachmentRenderState,\s+onImageAttachmentPress: handlePickImages,/);
+  assert.match(screenSource, /textToSpeechRenderState: mobileComposerTextToSpeechRenderState,\s+onTextToSpeechPress: toggleTts,/);
+  assert.match(screenSource, /editBeforeSendShouldRender: mobileComposerVisibilityRenderState\.editBeforeSendControl\.shouldRender,\s+editBeforeSendRenderState: mobileComposerEditBeforeSendRenderState,\s+onEditBeforeSendPress: \(\) => setWillCancel\(\(current\) => !current\),/);
+  assert.match(chatMessageChromeSource, /imageAttachmentControl: \{\s+renderState: imageAttachmentRenderState,\s+onPress: onImageAttachmentPress,\s+\.\.\.chrome\.imageAttachmentControl,/);
+  assert.match(chatMessageChromeSource, /textToSpeechControl: \{\s+renderState: textToSpeechRenderState,\s+onPress: onTextToSpeechPress,\s+\.\.\.chrome\.textToSpeechControl,/);
+  assert.match(chatMessageChromeSource, /editBeforeSendControl: \{\s+shouldRender: editBeforeSendShouldRender,\s+renderState: editBeforeSendRenderState,\s+onPress: onEditBeforeSendPress,\s+\.\.\.chrome\.editBeforeSendControl,/);
   assert.doesNotMatch(screenSource, /activeOpacity: mobileComposerSurface\.accessoryButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /<ChatComposerIconButton\s+\{\.\.\.imageAttachmentControl\}\s+style=\{styles\.accessoryButton\.style\}\s+activeStyle=\{styles\.accessoryButton\.activeStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerIconButton\s+\{\.\.\.textToSpeechControl\}\s+style=\{styles\.accessoryButton\.style\}\s+activeStyle=\{styles\.accessoryButton\.activeStyle\}/);
@@ -1258,7 +1263,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /name=\{renderState\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{renderState\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{renderState\.icon\.color\}/);
-  assert.match(screenSource, /speechPreview: \{\s+label: mobileComposerControls\.sttPreview\.label,\s+text: sttPreview,\s+\}/);
+  assert.match(screenSource, /speechPreviewLabel: mobileComposerControls\.sttPreview\.label,\s+speechPreviewText: sttPreview,/);
+  assert.match(chatMessageChromeSource, /speechPreview: \{\s+label: speechPreviewLabel,\s+text: speechPreviewText,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerSpeechPreview\s+\{\.\.\.speechPreview\}\s+styles=\{styles\.speechPreview\}/);
   assert.match(chatMessageChromeSource, /speechPreview: \{\s+box: styles\.sttPreviewBox,\s+label: styles\.sttPreviewLabel,\s+text: styles\.sttPreviewText,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerSpeechPreview/);
@@ -1267,12 +1273,13 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /\{text\}/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{mobileComposer(ImageAttachment|TextToSpeech|EditBeforeSend)RenderState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /aria-checked=\{mobileComposer(TextToSpeech|EditBeforeSend)RenderState\.ariaChecked\}/);
-  assert.match(screenSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
+  assert.match(screenSource, /textEntryAccessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ checked: (ttsEnabled|willCancel) \}\}/);
   assert.doesNotMatch(screenSource, /aria-checked=\{(ttsEnabled|willCancel)\}/);
   assert.doesNotMatch(screenSource, /composerImageAttachmentMobileIcon/);
   assert.doesNotMatch(screenSource, /composer(TextToSpeech|EditBeforeSend)MobileIcon/);
-  assert.match(screenSource, /queueAction: \{\s+shouldRender: mobileComposerVisibilityRenderState\.queueAction\.shouldRender,\s+renderState: mobileComposerQueueRenderState,\s+onPress: queueComposerInput,\s+\.\.\.chatComposerRuntimeDockChrome\.queueAction,/);
+  assert.match(screenSource, /queueActionShouldRender: mobileComposerVisibilityRenderState\.queueAction\.shouldRender,\s+queueActionRenderState: mobileComposerQueueRenderState,\s+onQueueActionPress: queueComposerInput,/);
+  assert.match(chatMessageChromeSource, /queueAction: \{\s+shouldRender: queueActionShouldRender,\s+renderState: queueActionRenderState,\s+onPress: onQueueActionPress,\s+\.\.\.chrome\.queueAction,/);
   assert.doesNotMatch(screenSource, /shouldRender: !handsFree/);
   assert.doesNotMatch(screenSource, /shouldRender: handsFree && messageQueueEnabled/);
   assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.queueAction\}\s+styles=\{styles\.queueAction\}/);
@@ -1287,7 +1294,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /name=\{mobileComposerQueueRenderState\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /getChatComposerQueueMobile(Action|Icon)State,/);
   assert.doesNotMatch(screenSource, /mobileComposerQueue(Action|Icon|IconColors)/);
-  assert.match(screenSource, /submitAction: \{\s+renderState: composerSubmitRenderState,\s+onPress: sendComposerInput,\s+\.\.\.chatComposerRuntimeDockChrome\.submitAction,/);
+  assert.match(screenSource, /submitActionRenderState: composerSubmitRenderState,\s+onSubmitActionPress: sendComposerInput,/);
+  assert.match(chatMessageChromeSource, /submitAction: \{\s+renderState: submitActionRenderState,\s+onPress: onSubmitActionPress,\s+\.\.\.chrome\.submitAction,/);
   assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.submitAction\}\s+styles=\{styles\.submitAction\}/);
   assert.match(chatMessageChromeSource, /submitAction: \{\s+button: styles\.sendButton,\s+disabledButton: styles\.sendButtonDisabled,\s+text: styles\.sendButtonText,\s+\}/);
   assert.doesNotMatch(screenSource, /name=\{composerSubmitRenderState\.icon\.name\}/);
@@ -1300,7 +1308,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /disabled=\{(!composerHasContent|isComposerSubmitDisabled)\}/);
   assert.doesNotMatch(screenSource, /isDisabled: !composerHasContent/);
   assert.doesNotMatch(screenSource, /isDisabled: isComposerSubmitDisabled/);
-  assert.match(screenSource, /micButton: \{\s+renderState: mobileComposerMicRenderState,\s+onPressIn: mobileComposerVisibilityRenderState\.micButton\.shouldUsePushToTalk\s+\? handlePushToTalkPressIn\s+: undefined,\s+onPressOut: mobileComposerVisibilityRenderState\.micButton\.shouldUsePushToTalk\s+\? handlePushToTalkPressOut\s+: undefined,\s+onPress: mobileComposerVisibilityRenderState\.micButton\.shouldUseHandsFreePrimaryControl\s+\? handleHandsFreePrimaryControl\s+: undefined,\s+\.\.\.chatComposerRuntimeDockChrome\.micButton,/);
+  assert.match(screenSource, /micButtonRenderState: mobileComposerMicRenderState,\s+shouldUsePushToTalk: mobileComposerVisibilityRenderState\.micButton\.shouldUsePushToTalk,\s+shouldUseHandsFreePrimaryControl: mobileComposerVisibilityRenderState\.micButton\.shouldUseHandsFreePrimaryControl,\s+onMicPressIn: handlePushToTalkPressIn,\s+onMicPressOut: handlePushToTalkPressOut,\s+onMicPress: handleHandsFreePrimaryControl,/);
+  assert.match(chatMessageChromeSource, /micButton: \{\s+renderState: micButtonRenderState,\s+onPressIn: shouldUsePushToTalk \? onMicPressIn : undefined,\s+onPressOut: shouldUsePushToTalk \? onMicPressOut : undefined,\s+onPress: shouldUseHandsFreePrimaryControl \? onMicPress : undefined,\s+\.\.\.chrome\.micButton,/);
   assert.doesNotMatch(screenSource, /onPress(In|Out)?: !?handsFree \? handle/);
   assert.match(chatMessageChromeSource, /<ChatComposerMicButton\s+\{\.\.\.micButton\}\s+styles=\{styles\.micButton\}/);
   assert.match(chatMessageChromeSource, /micButton: \{\s+button: styles\.mic,\s+activeButton: styles\.micOn,\s+label: styles\.micLabel,\s+activeLabel: styles\.micLabelOn,\s+\}/);
@@ -1323,8 +1332,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ busy: listening \}\}/);
   assert.doesNotMatch(screenSource, /WebkitTouchCallout: 'none'/);
   assert.doesNotMatch(screenSource, /touchAction: 'manipulation'/);
-  assert.match(screenSource, /textEntry: \{\s+inputRef,\s+value: input,\s+onChangeText: handleInputChange,\s+onKeyPress: handleInputKeyPress,\s+accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel,\s+accessibilityHint: composerAccessibilityHint,\s+placeholder: composerPlaceholder,\s+voiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement,\s+\.\.\.chatComposerRuntimeDockChrome\.textEntry,/);
-  assert.match(screenSource, /voiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement/);
+  assert.match(screenSource, /textEntryInputRef: inputRef,\s+textEntryValue: input,\s+onTextEntryChangeText: handleInputChange,\s+onTextEntryKeyPress: handleInputKeyPress,\s+textEntryAccessibilityLabel: mobileComposerControls\.field\.accessibilityLabel,\s+textEntryAccessibilityHint: composerAccessibilityHint,\s+textEntryPlaceholder: composerPlaceholder,\s+textEntryVoiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement,/);
+  assert.match(chatMessageChromeSource, /textEntry: \{\s+inputRef: textEntryInputRef,\s+value: textEntryValue,\s+onChangeText: onTextEntryChangeText,\s+onKeyPress: onTextEntryKeyPress,\s+accessibilityLabel: textEntryAccessibilityLabel,\s+accessibilityHint: textEntryAccessibilityHint,\s+placeholder: textEntryPlaceholder,\s+voiceStatusLiveRegionAnnouncement: textEntryVoiceStatusLiveRegionAnnouncement,\s+\.\.\.chrome\.textEntry,/);
+  assert.match(screenSource, /textEntryVoiceStatusLiveRegionAnnouncement: voiceInputLiveRegionAnnouncement/);
   assert.match(chatMessageChromeSource, /isWebPlatform,\s+inputDescriptionNativeId: webAccessibility\.inputDescriptionNativeId,\s+voiceStatusLiveRegionNativeId: webAccessibility\.voiceStatusLiveRegionNativeId,\s+voiceStatusLiveRegionPoliteness: webAccessibility\.voiceStatusLiveRegionPoliteness,/);
   assert.match(chatMessageChromeSource, /<ChatComposerTextEntry\s+\{\.\.\.textEntry\}\s+styles=\{styles\.textEntry\}/);
   assert.match(chatMessageChromeSource, /textEntry: \{\s+input: styles\.input,\s+visuallyHiddenHint: styles\.visuallyHiddenComposerHint,\s+\}/);
@@ -1417,7 +1427,8 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
   assert.match(screenSource, /showImageAttachmentAlert\(\{\s+reason: 'limitReached',\s+maxImages: MAX_PENDING_IMAGES,\s+\}\);/);
   assert.match(screenSource, /showImageAttachmentAlert\(\{\s+reason: 'pickerError',\s+error,\s+\}\);/);
-  assert.match(screenSource, /pendingImagesRail: \{\s+images: pendingImages,\s+renderState: imageAttachmentRenderState,\s+onRemove: removePendingImage,\s+\}/);
+  assert.match(screenSource, /pendingImages,\s+pendingImagesRenderState: imageAttachmentRenderState,\s+onRemovePendingImage: removePendingImage,/);
+  assert.match(chatMessageChromeSource, /pendingImagesRail: \{\s+images: pendingImages,\s+renderState: pendingImagesRenderState,\s+onRemove: onRemovePendingImage,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerPendingImagesRail\s+\{\.\.\.pendingImagesRail\}\s+styles=\{styles\.pendingImagesRail\}/);
   assert.match(chatMessageChromeSource, /pendingImagesRail: \{\s+row: styles\.pendingImagesRow,\s+card: styles\.pendingImageCard,\s+preview: styles\.pendingImagePreview,\s+removeButton: styles\.pendingImageRemoveButton,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerPendingImagesRail/);
