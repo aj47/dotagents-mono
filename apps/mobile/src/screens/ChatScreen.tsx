@@ -46,7 +46,7 @@ import {
   createChatMessageToolApprovalProps,
   createChatMessageToolExecutionStackProps,
   createChatMessageToolExecutionCompactPreviewRow,
-  createChatMessageToolExecutionDetailRow,
+  createChatMessageToolExecutionRows,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
@@ -3864,32 +3864,16 @@ export default function ChatScreen({ route, navigation }: any) {
               colors: theme.colors,
             });
             const toolExecutionExpandControl = getToolExecutionDetailMobileExpandControlRenderState();
-            const compactToolExecutionRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) =>
-              createChatMessageToolExecutionCompactPreviewRow({
-                key: String(origIdx),
-                toolCall,
-                label,
-                result,
-                colors: theme.colors,
-              }),
-            );
             const stableMessageKey = m.id ?? String(i);
-            const toolExecutionDetailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) => {
-              const toolCallKey = `${stableMessageKey}-${origIdx}`;
-              const isToolCallFullyExpanded = getChatDisplayExpansionState(expandedToolCalls, toolCallKey);
-
-              return createChatMessageToolExecutionDetailRow({
-                key: toolCallKey,
-                toolCall,
-                label,
-                result,
-                isExpanded: isToolCallFullyExpanded,
-                colors: theme.colors,
-                previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-                pendingResultRenderState: toolExecutionDetailPendingResultState,
-                onToggle: () => toggleToolCallExpansion(stableMessageKey, origIdx),
-                onCopyPayload: (content) => { void handleCopyToolPayload(content); },
-              });
+            const toolExecutionRows = createChatMessageToolExecutionRows({
+              entries: renderedToolEntries,
+              stableMessageKey,
+              expandedToolCalls,
+              colors: theme.colors,
+              previewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+              pendingResultRenderState: toolExecutionDetailPendingResultState,
+              onToggleToolCall: toggleToolCallExpansion,
+              onCopyPayload: (content) => { void handleCopyToolPayload(content); },
             });
             const messageRenderState = getChatMessageMobileRenderState({
               role: m.role,
@@ -4135,7 +4119,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       isExpanded,
                       compact: {
                         renderState: toolExecutionExpandControl,
-                        rows: compactToolExecutionRows,
+                        rows: toolExecutionRows.compactRows,
                         onToggle: () => toggleMessageExpansion(i),
                       },
                       expanded: {
@@ -4147,7 +4131,7 @@ export default function ChatScreen({ route, navigation }: any) {
                         hasErrors,
                         emptyStateRenderState: toolExecutionDetailEmptyState,
                       },
-                      detailRows: toolExecutionDetailRows,
+                      detailRows: toolExecutionRows.detailRows,
                     }),
                   }),
                 })}

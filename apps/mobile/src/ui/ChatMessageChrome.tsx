@@ -23,8 +23,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  getChatDisplayExpansionState,
   getChatMessageActionMobileButtonState,
   getChatMessageActionLayoutRenderState,
+  type ChatDisplayExpansionStateMap,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
@@ -965,6 +967,22 @@ type ChatMessageToolExecutionDetailRowInput = {
   pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
   onToggle?: ChatMessageToolExecutionCallListRow['onHeaderPress'];
   onCopyPayload: (content: string) => void;
+};
+
+type ChatMessageToolExecutionRowsInput = {
+  entries: readonly ChatMessageDisplayToolEntry[];
+  stableMessageKey: string;
+  expandedToolCalls: ChatDisplayExpansionStateMap<string>;
+  colors: ChatMessageToolExecutionCompactPreviewRowInput['colors'];
+  previewNumberOfLines: number;
+  pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
+  onToggleToolCall: (stableMessageKey: string, toolCallIndex: number) => void;
+  onCopyPayload: (content: string) => void;
+};
+
+type ChatMessageToolExecutionRows = {
+  compactRows: readonly ChatMessageDelegationToolPreviewRow[];
+  detailRows: readonly ChatMessageToolExecutionCallListRow[];
 };
 
 type ChatMessageToolExecutionCallListProps = {
@@ -2041,6 +2059,45 @@ export function createChatMessageToolExecutionDetailRow({
     pendingResult: !result && resultDetail.isPending ? {
       renderState: pendingResultRenderState,
     } : null,
+  };
+}
+
+export function createChatMessageToolExecutionRows({
+  entries,
+  stableMessageKey,
+  expandedToolCalls,
+  colors,
+  previewNumberOfLines,
+  pendingResultRenderState,
+  onToggleToolCall,
+  onCopyPayload,
+}: ChatMessageToolExecutionRowsInput): ChatMessageToolExecutionRows {
+  return {
+    compactRows: entries.map(({ toolCall, label, origIdx, result }) =>
+      createChatMessageToolExecutionCompactPreviewRow({
+        key: String(origIdx),
+        toolCall,
+        label,
+        result,
+        colors,
+      }),
+    ),
+    detailRows: entries.map(({ toolCall, label, origIdx, result }) => {
+      const toolCallKey = `${stableMessageKey}-${origIdx}`;
+
+      return createChatMessageToolExecutionDetailRow({
+        key: toolCallKey,
+        toolCall,
+        label,
+        result,
+        isExpanded: getChatDisplayExpansionState(expandedToolCalls, toolCallKey),
+        colors,
+        previewNumberOfLines,
+        pendingResultRenderState,
+        onToggle: () => onToggleToolCall(stableMessageKey, origIdx),
+        onCopyPayload,
+      });
+    }),
   };
 }
 
