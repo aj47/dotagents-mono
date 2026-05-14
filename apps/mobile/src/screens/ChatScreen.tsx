@@ -3396,7 +3396,6 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceOverlayVisible: mobileComposerVisibilityRenderState.voiceOverlay.isVisible,
     voiceOverlayLabel,
     voiceOverlayTranscript: liveTranscript,
-    voiceOverlayTranscriptNumberOfLines: mobileComposerSurface.voiceOverlay.transcriptNumberOfLines,
     queuePanelEnabled: messageQueueEnabled,
     queuePanelConversationId: currentConversationId,
     queuedMessages,

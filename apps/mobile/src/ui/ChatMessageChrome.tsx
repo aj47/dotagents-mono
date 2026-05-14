@@ -91,6 +91,7 @@ import {
   getChatComposerImageAttachmentMobileRenderState,
   getChatComposerMicMobileRenderState,
   getChatComposerMobileActionAvailabilityRenderState,
+  getChatComposerMobileSurfaceState,
   getChatComposerMobileVisibilityRenderState,
   getChatComposerQueueMobileRenderState,
   getChatComposerSubmitMobileRenderState,
@@ -1570,7 +1571,6 @@ type ChatMessageRuntimeDockChromePropsInput = {
   voiceOverlayVisible: ChatComposerVoiceOverlayProps['isVisible'];
   voiceOverlayLabel: ChatComposerVoiceOverlayProps['label'];
   voiceOverlayTranscript: ChatComposerVoiceOverlayProps['transcript'];
-  voiceOverlayTranscriptNumberOfLines: ChatComposerVoiceOverlayProps['transcriptNumberOfLines'];
   queuePanelEnabled: boolean;
   queuePanelConversationId: ChatMessageQueuePanelDockProps['panel']['conversationId'];
   queuedMessages: ChatMessageQueuePanelDockProps['panel']['messages'];
@@ -2915,7 +2915,6 @@ export function createChatMessageRuntimeDockChromeProps({
   voiceOverlayVisible,
   voiceOverlayLabel,
   voiceOverlayTranscript,
-  voiceOverlayTranscriptNumberOfLines,
   queuePanelEnabled,
   queuePanelConversationId,
   queuedMessages,
@@ -2935,6 +2934,7 @@ export function createChatMessageRuntimeDockChromeProps({
   onConnectionBannerRetry,
   composer,
 }: ChatMessageRuntimeDockChromePropsInput): ChatMessageRuntimeDockChromeProps {
+  const composerSurface = getChatComposerMobileSurfaceState();
   const scrollToBottomRenderState = getChatRuntimeScrollToBottomMobileRenderState({
     isVisible: scrollToBottomVisible,
     colors,
@@ -2970,7 +2970,7 @@ export function createChatMessageRuntimeDockChromeProps({
       isVisible: voiceOverlayVisible,
       label: voiceOverlayLabel,
       transcript: voiceOverlayTranscript,
-      transcriptNumberOfLines: voiceOverlayTranscriptNumberOfLines,
+      transcriptNumberOfLines: composerSurface.voiceOverlay.transcriptNumberOfLines,
     },
     queuePanel: {
       shouldRender: queuePanelDockRenderState.shouldRender,
