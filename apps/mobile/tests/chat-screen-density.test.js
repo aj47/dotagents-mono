@@ -1718,7 +1718,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileCopyButtonRenderState,/);
-  assert.match(screenSource, /getToolExecutionDetailCopyFailureAlertState,/);
+  assert.doesNotMatch(screenSource, /getToolExecutionDetailCopyFailureAlertState,/);
+  assert.match(chatMessageChromeSource, /getToolExecutionDetailCopyFailureAlertState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileEmptyStateRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileEmptyStateRenderState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileExpandControlRenderState,/);
@@ -1777,7 +1778,11 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionDetailEmptyState = getToolExecutionDetailMobileEmptyStateRenderState\(\);/);
   assert.match(chatMessageChromeSource, /toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState\(\),/);
   assert.doesNotMatch(screenSource, /const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState\(\);/);
-  assert.match(screenSource, /const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState\(\);/);
+  assert.match(
+    screenSource,
+    /const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState\(\);/,
+  );
+  assert.match(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureAlertState/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToolIcon = getToolExecutionCompactMobileToolIconState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactStatusSpinner = getToolExecutionCompactMobilePendingSpinnerState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToggleIcon = getToolExecutionCompactMobileToggleIconState\(\);/);

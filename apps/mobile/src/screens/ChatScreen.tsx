@@ -53,6 +53,7 @@ import {
   createChatMessageRuntimeViewportChromeProps,
   createChatRuntimeMobileChromeStyleState,
   getChatMessageRuntimeHistoryWindowState,
+  getChatMessageToolExecutionCopyFailureAlertState,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -123,9 +124,6 @@ import {
   groupToolActivity,
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
-import {
-  getToolExecutionDetailCopyFailureAlertState,
-} from '@dotagents/shared/tool-execution-display';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   isChatMessageConversationContent,
@@ -198,7 +196,7 @@ const mobileRuntimeDebug = getChatRuntimeDebugState();
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
-const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
+const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
 const promptLibraryCopy = getPromptLibraryCopyState();

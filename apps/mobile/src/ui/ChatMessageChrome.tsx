@@ -198,6 +198,7 @@ import {
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
   getToolExecutionDetailMobileEmptyStateRenderState,
@@ -3746,6 +3747,12 @@ export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState 
     failedTitle: copyState.failedTitle,
     failedMessage: copyState.failedMessage,
   };
+}
+
+export function getChatMessageToolExecutionCopyFailureAlertState(): ReturnType<
+  typeof getToolExecutionDetailCopyFailureAlertState
+> {
+  return getToolExecutionDetailCopyFailureAlertState();
 }
 
 export function createChatMessageConversationBodyProps({
