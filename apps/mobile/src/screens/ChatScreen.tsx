@@ -52,6 +52,7 @@ import {
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   createChatMessageThreadBodyStyleSlots,
+  createChatMessageThreadBodyProps,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -4148,7 +4149,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 groupRenderState={groupRenderState}
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageRuntimeThreadStyles}
-                body={{
+                body={createChatMessageThreadBodyProps({
                   retryStatus: createChatMessageRetryStatusProps({
                     isRetry: m.variant === 'retry',
                     renderState: retryStatusRenderState,
@@ -4234,7 +4235,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       detailRows: toolExecutionDetailRows,
                     }),
                   }),
-                }}
+                })}
               />
             );
           })}

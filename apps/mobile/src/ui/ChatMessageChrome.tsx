@@ -1612,6 +1612,8 @@ type ChatMessageThreadBodyProps = {
   };
 };
 
+export type ChatMessageThreadBodyPropsInput = Omit<ChatMessageThreadBodyProps, 'styles'>;
+
 export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
 export type ChatMessageConversationBodyPropsInput = {
@@ -1781,6 +1783,22 @@ export function createChatMessageConversationBodyProps({
       slots: actionSet.visibleSlots,
       components: actionSet.components,
     },
+  };
+}
+
+export function createChatMessageThreadBodyProps({
+  retryStatus,
+  delegationCard,
+  toolApproval,
+  inlineActivity,
+  conversation,
+}: ChatMessageThreadBodyPropsInput): ChatMessageThreadBodyPropsInput {
+  return {
+    retryStatus: retryStatus ?? null,
+    delegationCard: delegationCard ?? null,
+    toolApproval: toolApproval ?? null,
+    inlineActivity: inlineActivity ?? null,
+    conversation,
   };
 }
 

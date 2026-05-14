@@ -2288,7 +2288,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupBoundary\s+key=\{`group-\$\{groupRenderState!\.groupKey\}`\}/);
   assert.doesNotMatch(screenSource, /const isFirstInExpandedGroup = groupRenderState\?\.shouldRenderExpandedHeader \?\? false;/);
   assert.doesNotMatch(screenSource, /const isLastInExpandedGroup = groupRenderState\?\.shouldRenderExpandedFooter \?\? false;/);
-  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyle=\{messageToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{group \? \(\) => toggleGroupExpansion\(group\) : undefined\}\s+styles=\{chatMessageRuntimeThreadStyles\}\s+body=\{\{/);
+  assert.match(screenSource, /<ChatMessageRuntimeThread\s+key=\{i\}\s+surfaceToneStyle=\{messageToneStyle\}\s+groupRenderState=\{groupRenderState\}\s+onToggleGroup=\{group \? \(\) => toggleGroupExpansion\(group\) : undefined\}\s+styles=\{chatMessageRuntimeThreadStyles\}\s+body=\{createChatMessageThreadBodyProps\(\{/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupThreadSurface\s+key=\{i\}/);
   assert.doesNotMatch(screenSource, /surfaceStyle=\{styles\.msg\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupToggle\s+renderState=\{groupRenderState!\}/);
@@ -2522,6 +2522,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /createChatMessageToolApprovalProps,/);
   assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
+  assert.match(screenSource, /createChatMessageThreadBodyProps,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const mobileMessageActionCopy = getChatMessageActionCopyState\(\);/);
   assert.match(screenSource, /const isMessageSpeaking = speakingMessageIndex === i;/);
@@ -2543,6 +2544,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
+  assert.match(chatMessageChromeSource, /retryStatus: retryStatus \?\? null/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /turnDuration: availability\.turnDuration\.canRender \? \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
   assert.match(chatMessageChromeSource, /speech: renderChatMessageActionButton\(speech, availability\.speech\.canRender\),/);
@@ -2556,7 +2559,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/<ChatMessageConversationContent/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageContentRow/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 0);
-  assert.match(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
+  assert.match(screenSource, /body=\{createChatMessageThreadBodyProps\(\{[\s\S]*?conversation: createChatMessageConversationBodyProps\(\{\s+contentState: messageContentRenderState,\s+actionSet: messageActionSet,/);
+  assert.doesNotMatch(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps/);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow/g) ?? []).length, 2);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageCollapsedPreview/g) ?? []).length, 1);
   assert.equal((screenSource.match(/<ChatMessageActionSlotList/g) ?? []).length, 0);
