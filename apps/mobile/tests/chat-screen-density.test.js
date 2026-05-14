@@ -3366,7 +3366,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(screenSource, /promptQuickStarts\.map\(\(item\) => \{/);
   assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
-  assert.match(screenSource, /getPromptLibraryMobileCopyState,/);
+  assert.doesNotMatch(screenSource, /getPromptLibraryMobileCopyState,/);
+  assert.match(chatMessageChromeSource, /getPromptLibraryMobileCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileRenderState,/);
@@ -3379,7 +3380,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibrarySurface = getPromptLibraryMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
+  assert.doesNotMatch(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
+  assert.match(chatMessageChromeSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.doesNotMatch(screenSource, /const promptLibraryEditorRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const promptLibraryShortcutRenderState = useMemo/);
@@ -3508,7 +3510,8 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
   assert.match(screenSource, /sortPredefinedPromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
-  assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{\s+prompts: predefinedPrompts,/);
+  assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{\s+prompts: predefinedPrompts,/);
+  assert.match(chatMessageChromeSource, /buildPromptLibraryShortcutItems\(\{/);
   assert.match(screenSource, /canAddPrompt: Boolean\(settingsClient\),/);
   assert.doesNotMatch(screenSource, /isSlashCommandPrompt\(prompt\)/);
   assert.doesNotMatch(screenSource, /const isSlashCommandPrompt =/);
@@ -3522,8 +3525,9 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /onEditPrompt\(item\.prompt!\)/);
   assert.match(chatMessageChromeSource, /onDeletePrompt\(item\.prompt!\)/);
   assert.match(screenSource, /createPredefinedPromptRecord\(draft, now\)/);
-  assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{[\s\S]*?prompts: predefinedPrompts,[\s\S]*?skills: availableSkills,[\s\S]*?tasks: availableTasks,/);
-  assert.match(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
+  assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{[\s\S]*?prompts: predefinedPrompts,[\s\S]*?skills: availableSkills,[\s\S]*?tasks: availableTasks,/);
+  assert.doesNotMatch(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
+  assert.match(chatMessageChromeSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback/);
   assert.doesNotMatch(screenSource, /getPromptLibraryPromptContent\(prompt\)/);
   assert.doesNotMatch(screenSource, /getPromptLibraryPromptDescription\(prompt\)/);
   assert.doesNotMatch(screenSource, /getPromptLibrarySkillContent\(skill\)/);
@@ -3736,7 +3740,8 @@ test('loads predefined prompts, skills, and tasks directly into mobile quick-sta
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);
   assert.match(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
-  assert.match(screenSource, /buildPromptLibraryShortcutItems\(\{\s+prompts: predefinedPrompts,\s+skills: availableSkills,\s+tasks: availableTasks,/);
+  assert.match(screenSource, /createChatConversationHomeQuickStartItems\(\{\s+prompts: predefinedPrompts,\s+skills: availableSkills,\s+tasks: availableTasks,/);
+  assert.match(chatMessageChromeSource, /export function createChatConversationHomeQuickStartItems/);
   assert.doesNotMatch(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
   assert.doesNotMatch(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
   assert.match(screenSource, /handleRunPromptTask\(pressIntent\.task\)/);

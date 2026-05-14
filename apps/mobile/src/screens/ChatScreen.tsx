@@ -25,6 +25,7 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeSurface,
+  createChatConversationHomeQuickStartItems,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorSaveActionState,
   createChatComposerRuntimeFollowUpPresentationState,
@@ -155,14 +156,12 @@ import type {
   Skill,
 } from '@dotagents/shared/api-types';
 import {
-  buildPromptLibraryShortcutItems,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   formatPromptLibraryDeletePromptConfirmMessage,
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
-  getPromptLibraryMobileCopyState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
@@ -203,7 +202,6 @@ const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAle
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
 const promptLibraryCopy = getPromptLibraryCopyState();
-const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
 
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
@@ -2920,14 +2918,11 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
-    () => buildPromptLibraryShortcutItems({
+    () => createChatConversationHomeQuickStartItems({
       prompts: predefinedPrompts,
       skills: availableSkills,
       tasks: availableTasks,
       canAddPrompt: Boolean(settingsClient),
-      addPromptTitle: mobilePromptLibraryCopy.addPromptTitle,
-      addPromptDescription: mobilePromptLibraryCopy.addPromptDescription,
-      taskDescriptionFallback: mobilePromptLibraryCopy.taskDescriptionFallback,
     }),
     [availableSkills, availableTasks, predefinedPrompts, settingsClient]
   );

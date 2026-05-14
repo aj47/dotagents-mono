@@ -83,17 +83,20 @@ import {
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
 import {
+  buildPromptLibraryShortcutItems,
   getPromptLibraryEditorDismissActionState,
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
+  getPromptLibraryMobileCopyState,
   getPromptLibraryMobileSurfaceRenderState,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileShortcutRenderState,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
+  type PromptLibrarySkillLike,
   type PromptLibraryMobileShortcutRenderState,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
@@ -550,6 +553,17 @@ export type ChatConversationHomeQuickStartItem<
   TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
 > = PromptLibraryShortcutItem<TPrompt, TTask>;
 
+type ChatConversationHomeQuickStartItemsInput<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = {
+  prompts?: readonly TPrompt[];
+  skills?: readonly TSkill[];
+  tasks?: readonly TTask[];
+  canAddPrompt?: boolean;
+};
+
 type ChatConversationHomeQuickStartsStyles = {
   card: StyleProp<ViewStyle>;
   emptyText: StyleProp<TextStyle>;
@@ -585,6 +599,29 @@ type ChatConversationHomeQuickStartsProps<
   shortcutRenderState: PromptLibraryMobileShortcutRenderState;
   styles: ChatConversationHomeQuickStartsStyles;
 };
+
+export function createChatConversationHomeQuickStartItems<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  prompts,
+  skills,
+  tasks,
+  canAddPrompt,
+}: ChatConversationHomeQuickStartItemsInput<TPrompt, TSkill, TTask>): ChatConversationHomeQuickStartItem<TPrompt, TTask>[] {
+  const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
+
+  return buildPromptLibraryShortcutItems({
+    prompts,
+    skills,
+    tasks,
+    canAddPrompt,
+    addPromptTitle: mobilePromptLibraryCopy.addPromptTitle,
+    addPromptDescription: mobilePromptLibraryCopy.addPromptDescription,
+    taskDescriptionFallback: mobilePromptLibraryCopy.taskDescriptionFallback,
+  });
+}
 
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
