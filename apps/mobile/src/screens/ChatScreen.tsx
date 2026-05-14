@@ -27,6 +27,7 @@ import {
   getChatConversationHomePromptTaskStartedAlertState,
   useChatConversationHomePromptTaskRunState,
   useChatConversationHomePromptEditorState,
+  useChatRuntimeAgentSelectorOverlayState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
@@ -294,7 +295,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [latestStepSummary, setLatestStepSummary] = useState<AgentStepSummary | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
-  const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const {
+    agentSelectorVisible,
+    openAgentSelector,
+    closeAgentSelector,
+  } = useChatRuntimeAgentSelectorOverlayState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -735,7 +740,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useLayoutEffect(() => {
     navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
       ...mobileHeaderRenderState,
-      onAgentSelectorPress: () => setAgentSelectorVisible(true),
+      onAgentSelectorPress: openAgentSelector,
       onBackButtonPress: () => navigation.navigate('Sessions'),
       onPinButtonPress: handleToggleCurrentSessionPinned,
       conversationStatusSpinnerSource: isDark ? darkSpinner : lightSpinner,
@@ -743,7 +748,7 @@ export default function ChatScreen({ route, navigation }: any) {
       onHandsFreeButtonPress: toggleHandsFree,
       styles: chatRuntimeHeaderStyles,
     }));
-  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, mobileHeaderRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree]);
+  }, [navigation, handleKillSwitch, handleToggleCurrentSessionPinned, mobileHeaderRenderState, isDark, chatRuntimeHeaderStyles, toggleHandsFree, openAgentSelector]);
 
 		  useEffect(() => {
 			const subscription = AppState.addEventListener('change', (nextState) => {
@@ -2565,7 +2570,7 @@ export default function ChatScreen({ route, navigation }: any) {
       colors: theme.colors,
       keyboardVerticalOffset: headerHeight,
       agentSelectorVisible,
-      onAgentSelectorClose: () => setAgentSelectorVisible(false),
+      onAgentSelectorClose: closeAgentSelector,
       promptEditorVisible: addPromptModalVisible,
       promptEditorIsEditing,
       promptEditorNameValue: newPromptName,

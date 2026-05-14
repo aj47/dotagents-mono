@@ -415,6 +415,12 @@ type ChatConversationHomePromptEditorState = {
   clearPromptEditorSave: () => void;
 };
 
+type ChatRuntimeAgentSelectorOverlayState = {
+  agentSelectorVisible: boolean;
+  openAgentSelector: () => void;
+  closeAgentSelector: () => void;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -5678,6 +5684,24 @@ export function useChatConversationHomePromptEditorState(): ChatConversationHome
     dismissPromptEditor,
     beginPromptEditorSave,
     clearPromptEditorSave,
+  };
+}
+
+export function useChatRuntimeAgentSelectorOverlayState(): ChatRuntimeAgentSelectorOverlayState {
+  const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+
+  const openAgentSelector = useCallback(() => {
+    setAgentSelectorVisible(true);
+  }, []);
+
+  const closeAgentSelector = useCallback(() => {
+    setAgentSelectorVisible(false);
+  }, []);
+
+  return {
+    agentSelectorVisible,
+    openAgentSelector,
+    closeAgentSelector,
   };
 }
 

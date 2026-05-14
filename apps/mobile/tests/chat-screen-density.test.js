@@ -88,7 +88,12 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /header: getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /getChatRuntimeAgentSelectorMobileRenderState,/);
   assert.match(screenSource, /const mobileHeaderRenderState = useMemo\(\s+\(\) => createChatRuntimeNavigationHeaderRenderState\(\{\s+agentName: currentProfile\?\.name,[\s\S]*?colors: theme\.colors,\s+\}\),/);
-  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,\s+onAgentSelectorPress: \(\) => setAgentSelectorVisible\(true\),/);
+  assert.match(screenSource, /useChatRuntimeAgentSelectorOverlayState,/);
+  assert.match(screenSource, /const \{\s+agentSelectorVisible,\s+openAgentSelector,\s+closeAgentSelector,\s+\} = useChatRuntimeAgentSelectorOverlayState\(\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeAgentSelectorOverlayState/);
+  assert.match(chatMessageChromeSource, /const \[agentSelectorVisible, setAgentSelectorVisible\] = useState\(false\);/);
+  assert.doesNotMatch(screenSource, /const \[agentSelectorVisible, setAgentSelectorVisible\] = useState\(false\);/);
+  assert.match(screenSource, /\.\.\.mobileHeaderRenderState,\s+onAgentSelectorPress: openAgentSelector,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderAgentSelector/);
   assert.doesNotMatch(screenSource, /button: styles\.headerAgentSelectorButton,\s+chip: styles\.headerAgentSelectorChip,\s+label: styles\.headerAgentSelectorText,/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeHeaderStyleSlots/);
@@ -1120,7 +1125,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /<ChatMessageConversationFrame/);
   assert.doesNotMatch(screenSource, /keyboardAvoidingStyle=\{styles\.keyboardAvoidingContainer\}/);
   assert.doesNotMatch(screenSource, /rootStyle=\{styles\.chatRoot\}/);
-  assert.match(screenSource, /agentSelectorVisible,\s+onAgentSelectorClose: \(\) => setAgentSelectorVisible\(false\),/);
+  assert.match(screenSource, /agentSelectorVisible,\s+onAgentSelectorClose: closeAgentSelector,/);
   assert.match(screenSource, /promptEditorVisible: addPromptModalVisible,[\s\S]*?onPromptEditorSave: handleSavePrompt,/);
   assert.doesNotMatch(screenSource, /<ChatMessageRuntimeOverlays/);
   assert.doesNotMatch(screenSource, /overlays=\{\{/);
