@@ -3738,6 +3738,24 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
 });
 
+test('keeps message runtime refs in chat chrome state hooks', () => {
+  assert.match(screenSource, /useChatMessageRuntimeMessageState,/);
+  assert.match(screenSource, /useChatMessageRuntimeSendRef,/);
+  assert.match(screenSource, /const \{\s+messages,\s+setMessages,\s+messagesRef,\s+progressMessagesRef,\s+\} = useChatMessageRuntimeMessageState<ChatMessage>\(\);/);
+  assert.match(screenSource, /const \{ sendRef, syncSendRef \} = useChatMessageRuntimeSendRef\(\);/);
+  assert.match(screenSource, /syncSendRef\(send\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeMessageState<TMessage>\(\)/);
+  assert.match(chatMessageChromeSource, /const \[messages, setMessages\] = useState<TMessage\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /const messagesRef = useRef<TMessage\[\]>\(messages\);/);
+  assert.match(chatMessageChromeSource, /const progressMessagesRef = useRef<TMessage\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSendRef\(\)/);
+  assert.match(chatMessageChromeSource, /const sendRef = useRef<ChatMessageRuntimeSendCallback>\(async \(\) => \{\}\);/);
+  assert.doesNotMatch(screenSource, /const \[messages, setMessages\] = useState<ChatMessage\[\]>\(\[\]\);/);
+  assert.doesNotMatch(screenSource, /const messagesRef = useRef<ChatMessage\[\]>\(messages\);/);
+  assert.doesNotMatch(screenSource, /const progressMessagesRef = useRef<ChatMessage\[\]>\(\[\]\);/);
+  assert.doesNotMatch(screenSource, /const sendRef = useRef<\(text: string\) => Promise<void>>\(async \(\) => \{\}\);/);
+});
+
 test('routes every desktop TTS provider through the paired remote TTS endpoint', () => {
   assert.match(screenSource, /const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeRemoteSpeechSettingsState,/);

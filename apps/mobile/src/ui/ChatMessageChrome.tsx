@@ -495,6 +495,20 @@ type ChatRuntimeMutableRef<T> = {
   current: T;
 };
 
+type ChatMessageRuntimeMessageState<TMessage> = {
+  messages: TMessage[];
+  setMessages: Dispatch<SetStateAction<TMessage[]>>;
+  messagesRef: ChatRuntimeMutableRef<TMessage[]>;
+  progressMessagesRef: ChatRuntimeMutableRef<TMessage[]>;
+};
+
+type ChatMessageRuntimeSendCallback = (text: string) => Promise<void>;
+
+type ChatMessageRuntimeSendRefState = {
+  sendRef: ChatRuntimeMutableRef<ChatMessageRuntimeSendCallback>;
+  syncSendRef: (send: ChatMessageRuntimeSendCallback) => void;
+};
+
 type ChatMessageRuntimeResponseHistoryState = {
   respondToUserHistory: AgentUserResponseEvent[];
   setRespondToUserHistory: Dispatch<SetStateAction<AgentUserResponseEvent[]>>;
@@ -6052,6 +6066,36 @@ export function useChatComposerRuntimeTextEntrySubmissionState({
   return {
     onChangeText: handleTextEntryChangeText,
     onKeyPress: handleTextEntryKeyPress,
+  };
+}
+
+export function useChatMessageRuntimeMessageState<TMessage>(): ChatMessageRuntimeMessageState<TMessage> {
+  const [messages, setMessages] = useState<TMessage[]>([]);
+  const messagesRef = useRef<TMessage[]>(messages);
+  const progressMessagesRef = useRef<TMessage[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  return {
+    messages,
+    setMessages,
+    messagesRef,
+    progressMessagesRef,
+  };
+}
+
+export function useChatMessageRuntimeSendRef(): ChatMessageRuntimeSendRefState {
+  const sendRef = useRef<ChatMessageRuntimeSendCallback>(async () => {});
+
+  const syncSendRef = useCallback((send: ChatMessageRuntimeSendCallback) => {
+    sendRef.current = send;
+  }, []);
+
+  return {
+    sendRef,
+    syncSendRef,
   };
 }
 

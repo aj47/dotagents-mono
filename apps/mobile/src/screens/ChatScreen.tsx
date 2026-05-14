@@ -69,6 +69,8 @@ import {
   getChatMessageRuntimeNextResponseEventOrdinal,
   sortChatMessageRuntimeResponseEvents,
   useChatMessageRuntimeTurnDurations,
+  useChatMessageRuntimeMessageState,
+  useChatMessageRuntimeSendRef,
   useChatMessageRuntimeResponseHistoryState,
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeSpeechTextState,
@@ -591,7 +593,13 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [beginBranchMessage, clearBranchMessage, currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const {
+    messages,
+    setMessages,
+    messagesRef,
+    progressMessagesRef,
+  } = useChatMessageRuntimeMessageState<ChatMessage>();
+  const { sendRef, syncSendRef } = useChatMessageRuntimeSendRef();
   const turnDurations = useChatMessageRuntimeTurnDurations({
     messages,
     isResponding: responding,
@@ -670,14 +678,6 @@ export default function ChatScreen({ route, navigation }: any) {
     dragEndDebounceMs,
     onLoadEarlierMessages: loadEarlierMessages,
   });
-  // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
-  const messagesRef = useRef<ChatMessage[]>(messages);
-  // Track progress messages so we can merge them with final conversationHistory
-  // instead of replacing, preventing intermediate messages from disappearing (#1083)
-  const progressMessagesRef = useRef<ChatMessage[]>([]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-	// Stable ref to the latest send() to avoid stale closures in speech callbacks
-	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
   const {
     expandedMessages,
     expandedToolCalls,
@@ -2276,7 +2276,7 @@ export default function ChatScreen({ route, navigation }: any) {
   // Keep sendRef in sync with the latest send() implementation for speech callbacks.
   // IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
   // We intentionally assign during render (not useEffect) so it is available immediately.
-  sendRef.current = send;
+  syncSendRef(send);
 
   const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
   const sendComposerInput = useCallback(() => {
