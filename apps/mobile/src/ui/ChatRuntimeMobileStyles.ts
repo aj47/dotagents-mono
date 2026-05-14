@@ -1865,16 +1865,22 @@ export function useChatRuntimeMobileStyleSlots({
     }),
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
   );
+  const chatMessageRuntimeSurfaceChrome = useMemo(
+    () => ({
+      styles: chatMessageRuntimeSurfaceStyles,
+    }),
+    [chatMessageRuntimeSurfaceStyles],
+  );
   const chatRuntimeChrome = useMemo(
     () => ({
       platform: chatRuntimeChromeEnvironment.platform,
       header: chatRuntimeHeaderChrome,
       messageRuntime: chatMessageRuntimeChrome,
-      surfaceStyles: chatMessageRuntimeSurfaceStyles,
+      surface: chatMessageRuntimeSurfaceChrome,
     }),
     [
       chatMessageRuntimeChrome,
-      chatMessageRuntimeSurfaceStyles,
+      chatMessageRuntimeSurfaceChrome,
       chatRuntimeChromeEnvironment,
       chatRuntimeHeaderChrome,
     ],

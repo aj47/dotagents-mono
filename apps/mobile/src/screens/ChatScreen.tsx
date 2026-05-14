@@ -1714,7 +1714,7 @@ export default function ChatScreen({ route, navigation }: any) {
   return (
     <ChatMessageRuntimeSurface
       {...chatMessageRuntimeSurface}
-      styles={chatRuntimeChrome.surfaceStyles}
+      {...chatRuntimeChrome.surface}
     />
   );
 }
