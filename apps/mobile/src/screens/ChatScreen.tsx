@@ -96,23 +96,16 @@ import {
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
   getChatRuntimeBranchMobileAlertState,
-  getChatRuntimeConnectionBannerMobileRenderState,
+  getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDebugState,
-  getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileSafeAreaLayoutState,
-  getChatRuntimeRetryStatusMobileRenderState,
-  getChatRuntimeScrollToBottomMobileRenderState,
-  getChatRuntimeStepSummaryMobileRenderState,
-  getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
-  getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
@@ -3415,46 +3408,33 @@ function createStyles(theme: Theme, screenHeight: number) {
   const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
   const activeHeaderPinButtonColors = headerStyleState.pinButton.active;
   const headerKillSwitchButtonColors = headerStyleState.killSwitchButton;
-  const viewportStyleState = getChatRuntimeViewportMobileRenderState({
+  const conversationChromeStyleState = getChatRuntimeConversationChromeMobileStyleRenderState({
     colors: theme.colors,
   });
+  const viewportStyleState = conversationChromeStyleState.viewport;
   const viewportSurface = viewportStyleState.surface;
   const loadingStateSurface = viewportStyleState.loadingState;
   const inlineActivitySurface = viewportStyleState.inlineActivity;
-  const streamingContentStyleState = getChatRuntimeStreamingContentMobileRenderState({
-    colors: theme.colors,
-  });
+  const streamingContentStyleState = conversationChromeStyleState.streamingContent;
   const streamingContentSurface = streamingContentStyleState.surface;
   const streamingContentSurfaceColors = streamingContentStyleState.colors;
   const streamingContentSpinnerSize = streamingContentStyleState.spinner.size;
-  const connectionBannerStyleState = getChatRuntimeConnectionBannerMobileRenderState({
-    colors: theme.colors,
-  });
+  const connectionBannerStyleState = conversationChromeStyleState.connectionBanner;
   const connectionBannerSurface = connectionBannerStyleState.surface;
   const connectionBannerSurfaceColors = connectionBannerStyleState.colors;
-  const retryStatusStyleState = getChatRuntimeRetryStatusMobileRenderState({
-    colors: theme.colors,
-  });
+  const retryStatusStyleState = conversationChromeStyleState.retryStatus;
   const retryStatusSurface = retryStatusStyleState.surface;
   const retryStatusSurfaceColors = retryStatusStyleState.colors;
-  const stepSummaryStyleState = getChatRuntimeStepSummaryMobileRenderState({
-    colors: theme.colors,
-  });
+  const stepSummaryStyleState = conversationChromeStyleState.stepSummary;
   const stepSummarySurface = stepSummaryStyleState.surface;
   const stepSummarySurfaceColors = stepSummaryStyleState.colors;
-  const delegationCardStyleState = getChatRuntimeDelegationCardMobileRenderState({
-    colors: theme.colors,
-  });
+  const delegationCardStyleState = conversationChromeStyleState.delegationCard;
   const delegationCardSurface = delegationCardStyleState.surface;
   const delegationCardSurfaceColors = delegationCardStyleState.colors;
-  const scrollToBottomStyleState = getChatRuntimeScrollToBottomMobileRenderState({
-    colors: theme.colors,
-  });
+  const scrollToBottomStyleState = conversationChromeStyleState.scrollToBottom;
   const scrollToBottomSurface = scrollToBottomStyleState.surface;
   const scrollToBottomSurfaceColors = scrollToBottomStyleState.colors;
-  const messageHistoryBannerStyleState = getChatRuntimeMessageHistoryBannerMobileRenderState({
-    colors: theme.colors,
-  });
+  const messageHistoryBannerStyleState = conversationChromeStyleState.messageHistoryBanner;
   const messageHistoryBannerSurface = messageHistoryBannerStyleState.surface;
   const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState.colors;
   const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;

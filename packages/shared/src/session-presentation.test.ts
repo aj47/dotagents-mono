@@ -91,6 +91,7 @@ import {
   getChatRuntimeConnectionBannerMobileState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
+  getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationCardMobileState,
@@ -1512,6 +1513,46 @@ describe("session presentation semantics", () => {
       inlineActivity: getChatRuntimeInlineActivityMobileState(),
       colors: getChatRuntimeViewportMobileColors({
         background: "#ffffff",
+      }),
+    })
+    const conversationChromeStyleColors = {
+      background: "#ffffff",
+      foreground: "#0f172a",
+      mutedForeground: "#64748b",
+      info: "#2563eb",
+      warning: "#d97706",
+      destructive: "#dc2626",
+      primary: "#111827",
+      primaryForeground: "#f8fafc",
+      border: "#e2e8f0",
+      muted: "#f1f5f9",
+    }
+    expect(getChatRuntimeConversationChromeMobileStyleRenderState({
+      colors: conversationChromeStyleColors,
+    })).toEqual({
+      viewport: getChatRuntimeViewportMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      streamingContent: getChatRuntimeStreamingContentMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      connectionBanner: getChatRuntimeConnectionBannerMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      retryStatus: getChatRuntimeRetryStatusMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      stepSummary: getChatRuntimeStepSummaryMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      delegationCard: getChatRuntimeDelegationCardMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      scrollToBottom: getChatRuntimeScrollToBottomMobileRenderState({
+        colors: conversationChromeStyleColors,
+      }),
+      messageHistoryBanner: getChatRuntimeMessageHistoryBannerMobileRenderState({
+        colors: conversationChromeStyleColors,
       }),
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerSize).toBe(32)

@@ -1108,6 +1108,29 @@ export interface ChatRuntimeMessageHistoryBannerMobileRenderState {
   }
 }
 
+export interface ChatRuntimeConversationChromeMobileStyleRenderStateInput {
+  colors:
+    & ChatRuntimeViewportMobileColorPalette
+    & ChatRuntimeStreamingContentMobileColorPalette
+    & ChatRuntimeConnectionBannerMobileColorPalette
+    & ChatRuntimeRetryStatusMobileColorPalette
+    & ChatRuntimeStepSummaryMobileColorPalette
+    & ChatRuntimeDelegationCardMobileColorPalette
+    & ChatRuntimeScrollToBottomMobileColorPalette
+    & ChatRuntimeMessageHistoryBannerMobileColorPalette
+}
+
+export interface ChatRuntimeConversationChromeMobileStyleRenderState {
+  viewport: ChatRuntimeViewportMobileRenderState
+  streamingContent: ChatRuntimeStreamingContentMobileRenderState
+  connectionBanner: ChatRuntimeConnectionBannerMobileRenderState
+  retryStatus: ChatRuntimeRetryStatusMobileRenderState
+  stepSummary: ChatRuntimeStepSummaryMobileRenderState
+  delegationCard: ChatRuntimeDelegationCardMobileRenderState
+  scrollToBottom: ChatRuntimeScrollToBottomMobileRenderState
+  messageHistoryBanner: ChatRuntimeMessageHistoryBannerMobileRenderState
+}
+
 export interface ChatRuntimeMobileActivityAccessibilityState {
   loadingMessagesLabel: string
   loadingAgentActivityLabel: string
@@ -5781,6 +5804,37 @@ export function getChatRuntimeViewportMobileRenderState({
     loadingState: getChatRuntimeLoadingStateMobileState(),
     inlineActivity: getChatRuntimeInlineActivityMobileState(),
     colors: getChatRuntimeViewportMobileColors(colors),
+  }
+}
+
+export function getChatRuntimeConversationChromeMobileStyleRenderState({
+  colors,
+}: ChatRuntimeConversationChromeMobileStyleRenderStateInput): ChatRuntimeConversationChromeMobileStyleRenderState {
+  return {
+    viewport: getChatRuntimeViewportMobileRenderState({
+      colors,
+    }),
+    streamingContent: getChatRuntimeStreamingContentMobileRenderState({
+      colors,
+    }),
+    connectionBanner: getChatRuntimeConnectionBannerMobileRenderState({
+      colors,
+    }),
+    retryStatus: getChatRuntimeRetryStatusMobileRenderState({
+      colors,
+    }),
+    stepSummary: getChatRuntimeStepSummaryMobileRenderState({
+      colors,
+    }),
+    delegationCard: getChatRuntimeDelegationCardMobileRenderState({
+      colors,
+    }),
+    scrollToBottom: getChatRuntimeScrollToBottomMobileRenderState({
+      colors,
+    }),
+    messageHistoryBanner: getChatRuntimeMessageHistoryBannerMobileRenderState({
+      colors,
+    }),
   }
 }
 
