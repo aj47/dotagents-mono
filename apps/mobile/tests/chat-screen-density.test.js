@@ -1875,7 +1875,7 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /sortAgentUserResponseEvents,/);
   assert.doesNotMatch(screenSource, /getNextAgentUserResponseEventOrdinal,/);
   assert.match(screenSource, /sortChatMessageRuntimeResponseEvents\(update\.responseEvents\)/);
-  assert.match(screenSource, /getChatMessageRuntimeNextResponseEventOrdinal\(events\)/);
+  assert.doesNotMatch(screenSource, /getChatMessageRuntimeNextResponseEventOrdinal\(events\)/);
   assert.match(chatMessageChromeSource, /sortAgentUserResponseEvents,/);
   assert.match(chatMessageChromeSource, /getNextAgentUserResponseEventOrdinal,/);
   assert.match(chatMessageChromeSource, /export function sortChatMessageRuntimeResponseEvents/);
@@ -3723,10 +3723,14 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(screenSource, /const speechText = createChatMessageRuntimeSpeechTextState\(content\);/);
   assert.match(screenSource, /const ttsTextKey = speechText\.autoTextKey;/);
   assert.match(screenSource, /useChatMessageRuntimeResponseHistoryState,/);
-  assert.match(screenSource, /const \{\s+respondToUserHistory,\s+setRespondToUserHistory,\s+respondToUserHistoryRef,\s+nextResponseEventOrdinalRef,\s+playedResponseEventIdsRef,\s+queuedResponseEventsRef,\s+activeAutoSpeechEventIdRef,\s+recentAutoSpeechByTextRef,\s+clearQueuedResponseSpeech,\s+resetResponseSpeechPlaybackState,\s+\} = useChatMessageRuntimeResponseHistoryState\(\);/);
+  assert.match(screenSource, /const \{\s+respondToUserHistory,\s+playedResponseEventIdsRef,\s+queuedResponseEventsRef,\s+activeAutoSpeechEventIdRef,\s+recentAutoSpeechByTextRef,\s+replaceResponseHistory,\s+createFallbackResponseEvent,\s+mergeResponseEvents,\s+clearQueuedResponseSpeech,\s+resetResponseSpeechPlaybackState,\s+\} = useChatMessageRuntimeResponseHistoryState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryState/);
   assert.match(chatMessageChromeSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.match(chatMessageChromeSource, /const syncResponseHistoryRefs = useCallback\(\(events: AgentUserResponseEvent\[\]\) => \{[\s\S]*?respondToUserHistoryRef\.current = events;[\s\S]*?nextResponseEventOrdinalRef\.current = getChatMessageRuntimeNextResponseEventOrdinal\(events\);/);
+  assert.match(chatMessageChromeSource, /const replaceResponseHistory = useCallback\(\(events: AgentUserResponseEvent\[\]\) => \{[\s\S]*?const sortedEvents = sortChatMessageRuntimeResponseEvents\(events\);[\s\S]*?setRespondToUserHistory\(sortedEvents\);/);
+  assert.match(chatMessageChromeSource, /const createFallbackResponseEvent = useCallback\(\([\s\S]*?legacy-progress-\$\{sessionId \?\? 'session'\}-\$\{runId \?\? 'run'\}-\$\{ordinal\}-\$\{timestamp\}/);
+  assert.match(chatMessageChromeSource, /const mergeResponseEvents = useCallback\(\(incomingEvents: AgentUserResponseEvent\[\]\) => \{[\s\S]*?const merged = new Map\(respondToUserHistoryRef\.current\.map\(\(event\) => \[event\.id, event\]\)\);[\s\S]*?setRespondToUserHistory\(mergedEvents\);/);
   assert.match(chatMessageChromeSource, /const clearQueuedResponseSpeech = useCallback\(\(\) => \{[\s\S]*?queuedResponseEventsRef\.current = \[\];[\s\S]*?activeAutoSpeechEventIdRef\.current = null;/);
   assert.match(chatMessageChromeSource, /const resetResponseSpeechPlaybackState = useCallback\(\(playedEventIds: Iterable<string> = \[\]\) => \{[\s\S]*?playedResponseEventIdsRef\.current = new Set\(playedEventIds\);[\s\S]*?queuedResponseEventsRef\.current = \[\];[\s\S]*?activeAutoSpeechEventIdRef\.current = null;/);
   assert.match(chatMessageChromeSource, /preprocessTextForTTS/);
@@ -3736,6 +3740,9 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.doesNotMatch(screenSource, /normalizeAutoTtsTextKey/);
   assert.doesNotMatch(screenSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);
   assert.doesNotMatch(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.doesNotMatch(screenSource, /const syncResponseHistoryRefs = useCallback/);
+  assert.doesNotMatch(screenSource, /setRespondToUserHistory\(sortedEvents\)/);
+  assert.doesNotMatch(screenSource, /const merged = new Map\(respondToUserHistoryRef\.current/);
   assert.doesNotMatch(screenSource, /queuedResponseEventsRef\.current = \[\];\s+activeAutoSpeechEventIdRef\.current = null;/);
   assert.match(screenSource, /clearQueuedResponseSpeech\(\);/);
   assert.match(screenSource, /resetResponseSpeechPlaybackState\(savedResponses\.map\(\(event\) => event\.id\)\);/);

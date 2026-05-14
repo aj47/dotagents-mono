@@ -517,13 +517,17 @@ type ChatMessageRuntimeSendRefState = {
 
 type ChatMessageRuntimeResponseHistoryState = {
   respondToUserHistory: AgentUserResponseEvent[];
-  setRespondToUserHistory: Dispatch<SetStateAction<AgentUserResponseEvent[]>>;
-  respondToUserHistoryRef: ChatRuntimeMutableRef<AgentUserResponseEvent[]>;
-  nextResponseEventOrdinalRef: ChatRuntimeMutableRef<number>;
   playedResponseEventIdsRef: ChatRuntimeMutableRef<Set<string>>;
   queuedResponseEventsRef: ChatRuntimeMutableRef<AgentUserResponseEvent[]>;
   activeAutoSpeechEventIdRef: ChatRuntimeMutableRef<string | null>;
   recentAutoSpeechByTextRef: ChatRuntimeMutableRef<Map<string, number>>;
+  replaceResponseHistory: (events: AgentUserResponseEvent[]) => void;
+  createFallbackResponseEvent: (
+    sessionId: string | null | undefined,
+    runId: number | undefined,
+    text: string,
+  ) => AgentUserResponseEvent;
+  mergeResponseEvents: (incomingEvents: AgentUserResponseEvent[]) => void;
   clearQueuedResponseSpeech: () => void;
   resetResponseSpeechPlaybackState: (playedEventIds?: Iterable<string>) => void;
 };
@@ -6150,6 +6154,48 @@ export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeR
   const activeAutoSpeechEventIdRef = useRef<string | null>(null);
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
 
+  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
+    respondToUserHistoryRef.current = events;
+    nextResponseEventOrdinalRef.current = getChatMessageRuntimeNextResponseEventOrdinal(events);
+  }, []);
+
+  const replaceResponseHistory = useCallback((events: AgentUserResponseEvent[]) => {
+    const sortedEvents = sortChatMessageRuntimeResponseEvents(events);
+    syncResponseHistoryRefs(sortedEvents);
+    setRespondToUserHistory(sortedEvents);
+  }, [syncResponseHistoryRefs]);
+
+  const createFallbackResponseEvent = useCallback((
+    sessionId: string | null | undefined,
+    runId: number | undefined,
+    text: string,
+  ): AgentUserResponseEvent => {
+    const ordinal = nextResponseEventOrdinalRef.current;
+    nextResponseEventOrdinalRef.current = ordinal + 1;
+    const timestamp = Date.now();
+
+    return {
+      id: `legacy-progress-${sessionId ?? 'session'}-${runId ?? 'run'}-${ordinal}-${timestamp}`,
+      sessionId: sessionId ?? 'session',
+      runId,
+      ordinal,
+      text,
+      timestamp,
+    };
+  }, []);
+
+  const mergeResponseEvents = useCallback((incomingEvents: AgentUserResponseEvent[]) => {
+    if (!incomingEvents.length) return;
+    const merged = new Map(respondToUserHistoryRef.current.map((event) => [event.id, event]));
+    for (const event of incomingEvents) {
+      merged.set(event.id, event);
+    }
+
+    const mergedEvents = sortChatMessageRuntimeResponseEvents(Array.from(merged.values()));
+    syncResponseHistoryRefs(mergedEvents);
+    setRespondToUserHistory(mergedEvents);
+  }, [syncResponseHistoryRefs]);
+
   const clearQueuedResponseSpeech = useCallback(() => {
     queuedResponseEventsRef.current = [];
     activeAutoSpeechEventIdRef.current = null;
@@ -6163,13 +6209,13 @@ export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeR
 
   return {
     respondToUserHistory,
-    setRespondToUserHistory,
-    respondToUserHistoryRef,
-    nextResponseEventOrdinalRef,
     playedResponseEventIdsRef,
     queuedResponseEventsRef,
     activeAutoSpeechEventIdRef,
     recentAutoSpeechByTextRef,
+    replaceResponseHistory,
+    createFallbackResponseEvent,
+    mergeResponseEvents,
     clearQueuedResponseSpeech,
     resetResponseSpeechPlaybackState,
   };

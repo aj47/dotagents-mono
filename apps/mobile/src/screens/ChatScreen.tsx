@@ -68,7 +68,6 @@ import {
   createChatMessageRuntimeUserTextMessage,
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeResponseHistoryEvents,
-  getChatMessageRuntimeNextResponseEventOrdinal,
   sortChatMessageRuntimeResponseEvents,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
@@ -351,13 +350,13 @@ export default function ChatScreen({ route, navigation }: any) {
   } = useChatComposerRuntimeDraftState();
   const {
     respondToUserHistory,
-    setRespondToUserHistory,
-    respondToUserHistoryRef,
-    nextResponseEventOrdinalRef,
     playedResponseEventIdsRef,
     queuedResponseEventsRef,
     activeAutoSpeechEventIdRef,
     recentAutoSpeechByTextRef,
+    replaceResponseHistory,
+    createFallbackResponseEvent,
+    mergeResponseEvents,
     clearQueuedResponseSpeech,
     resetResponseSpeechPlaybackState,
   } = useChatMessageRuntimeResponseHistoryState();
@@ -911,48 +910,6 @@ export default function ChatScreen({ route, navigation }: any) {
 		Speech.speak(processedText, speechOptions);
 		return true;
 		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveRemoteTtsModel, effectiveRemoteTtsRate, effectiveRemoteTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
-
-	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
-	    respondToUserHistoryRef.current = events;
-	    nextResponseEventOrdinalRef.current = getChatMessageRuntimeNextResponseEventOrdinal(events);
-	  }, []);
-
-	  const replaceResponseHistory = useCallback((events: AgentUserResponseEvent[]) => {
-	    const sortedEvents = sortChatMessageRuntimeResponseEvents(events);
-	    syncResponseHistoryRefs(sortedEvents);
-	    setRespondToUserHistory(sortedEvents);
-	  }, [syncResponseHistoryRefs]);
-
-	  const createFallbackResponseEvent = useCallback((
-	    sessionId: string | null | undefined,
-	    runId: number | undefined,
-	    text: string,
-	  ): AgentUserResponseEvent => {
-	    const ordinal = nextResponseEventOrdinalRef.current;
-	    nextResponseEventOrdinalRef.current = ordinal + 1;
-	    const timestamp = Date.now();
-
-	    return {
-	      id: `legacy-progress-${sessionId ?? 'session'}-${runId ?? 'run'}-${ordinal}-${timestamp}`,
-	      sessionId: sessionId ?? 'session',
-	      runId,
-	      ordinal,
-	      text,
-	      timestamp,
-	    };
-	  }, []);
-
-	  const mergeResponseEvents = useCallback((incomingEvents: AgentUserResponseEvent[]) => {
-	    if (!incomingEvents.length) return;
-	    const merged = new Map(respondToUserHistoryRef.current.map((event) => [event.id, event]));
-	    for (const event of incomingEvents) {
-	      merged.set(event.id, event);
-	    }
-
-	    const mergedEvents = sortChatMessageRuntimeResponseEvents(Array.from(merged.values()));
-	    syncResponseHistoryRefs(mergedEvents);
-	    setRespondToUserHistory(mergedEvents);
-	  }, [syncResponseHistoryRefs]);
 
   const processAutoSpeechQueue = useCallback(() => {
     if (activeAutoSpeechEventIdRef.current || queuedResponseEventsRef.current.length === 0) {
