@@ -3131,8 +3131,13 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /queuePanelStyle: conversationDockStyles\.queuePanelStyle,/);
   assert.doesNotMatch(screenSource, /style=\{styles\.messageQueuePanelWrapper\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageQueuePanelDock/);
+  assert.match(chatMessageChromeSource, /type ChatMessageQueuePanelViewProps = ComponentProps<typeof MessageQueuePanel>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageQueuePanelDockPanelProps = Omit<[\s\S]*?ChatMessageQueuePanelViewProps,[\s\S]*?'isListCollapsed' \| 'onToggleListCollapsed'[\s\S]*?> & \{\s+conversationId: string;/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeQueuePanelDockChromeState/);
+  assert.match(chatMessageChromeSource, /const queuePanelChromeState = useChatMessageRuntimeQueuePanelDockChromeState\(\{[\s\S]*?conversationId,[\s\S]*?\}\);/);
   assert.match(chatMessageChromeSource, /if \(!shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?<MessageQueuePanel \{\.\.\.panel\} \/>[\s\S]*?<\/View>/);
+  assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?<MessageQueuePanel\s+\{\.\.\.panelProps\}\s+\{\.\.\.queuePanelChromeState\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<MessageQueuePanel \{\.\.\.panel\} \/>/);
   assert.match(messageQueuePanelSource, /if \(!queuePanelRenderState\.shouldRender\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(messageQueuePanelSource, /if \(messages\.length === 0\) \{\s+return null;\s+\}/);
   assert.match(messageQueuePanelSource, /actionButton:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.buttonFlexDirection,[\s\S]*?alignItems:\s*actionSurface\.buttonAlignItems,[\s\S]*?gap:\s*actionSurface\.buttonGap/);

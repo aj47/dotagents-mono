@@ -2893,9 +2893,28 @@ type ChatMessageRuntimeResponseHistoryPanelChromeState = Pick<
   'isCollapsed' | 'shouldAnimateNewest' | 'speakingIndex' | 'onToggleCollapsed' | 'onSpeakResponse'
 >;
 
+type ChatMessageQueuePanelViewProps = ComponentProps<typeof MessageQueuePanel>;
+
+type ChatMessageQueuePanelDockPanelProps = Omit<
+  ChatMessageQueuePanelViewProps,
+  'isListCollapsed' | 'onToggleListCollapsed'
+> & {
+  conversationId: string;
+};
+
+type ChatMessageRuntimeQueuePanelDockChromeStateInput = Pick<
+  ChatMessageQueuePanelDockPanelProps,
+  'conversationId'
+>;
+
+type ChatMessageRuntimeQueuePanelDockChromeState = Pick<
+  ChatMessageQueuePanelViewProps,
+  'isListCollapsed' | 'onToggleListCollapsed'
+>;
+
 type ChatMessageQueuePanelDockProps = {
   shouldRender: boolean;
-  panel: ComponentProps<typeof MessageQueuePanel>;
+  panel: ChatMessageQueuePanelDockPanelProps;
   style: StyleProp<ViewStyle>;
 };
 
@@ -9172,6 +9191,25 @@ export function useChatMessageRuntimeResponseHistoryPanelChromeState({
   };
 }
 
+export function useChatMessageRuntimeQueuePanelDockChromeState({
+  conversationId,
+}: ChatMessageRuntimeQueuePanelDockChromeStateInput): ChatMessageRuntimeQueuePanelDockChromeState {
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
+
+  useEffect(() => {
+    setIsListCollapsed(false);
+  }, [conversationId]);
+
+  const onToggleListCollapsed = useCallback(() => {
+    setIsListCollapsed((current) => !current);
+  }, []);
+
+  return {
+    isListCollapsed,
+    onToggleListCollapsed,
+  };
+}
+
 export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntimeEditBeforeSendState {
   const [editBeforeSendEnabled, setEditBeforeSendEnabled] = useState(false);
 
@@ -14184,11 +14222,22 @@ export function ChatMessageQueuePanelDock({
   panel,
   style,
 }: ChatMessageQueuePanelDockProps) {
+  const {
+    conversationId,
+    ...panelProps
+  } = panel;
+  const queuePanelChromeState = useChatMessageRuntimeQueuePanelDockChromeState({
+    conversationId,
+  });
+
   if (!shouldRender) return null;
 
   return (
     <View style={style}>
-      <MessageQueuePanel {...panel} />
+      <MessageQueuePanel
+        {...panelProps}
+        {...queuePanelChromeState}
+      />
     </View>
   );
 }

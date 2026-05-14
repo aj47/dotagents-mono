@@ -67,6 +67,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /isPaused\?: boolean;/);
   assert.match(source, /onPause\?: \(\) => void;/);
   assert.match(source, /onResume\?: \(\) => void;/);
+  assert.match(source, /isListCollapsed: boolean;/);
+  assert.match(source, /onToggleListCollapsed: \(\) => void;/);
   assert.match(source, /getMessageQueuePanelMobileRenderState/);
   assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
   assert.match(source, /const queuePanelState = queuePanelRenderState\.panel;/);
@@ -85,6 +87,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /name=\{queuePanelIcons\.sendNextName\}/);
   assert.match(source, /name=\{queuePanelIcons\.clearName\}/);
   assert.match(source, /name=\{queuePanelState\.toggleIconName\}/);
+  assert.match(source, /onPress=\{onToggleListCollapsed\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelState\.listToggleLabel\}/);
   assert.match(source, /accessibilityState=\{queuePanelState\.listToggleAccessibilityState\}/);
   assert.match(source, /queuePanelCopy\.pausedNotice/);
@@ -100,6 +103,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.doesNotMatch(source, /name=\{isExpanded \? 'chevron-up' : 'chevron-down'\}/);
   assert.doesNotMatch(source, /name=\{isListCollapsed \? 'chevron-down' : 'chevron-up'\}/);
   assert.doesNotMatch(source, /accessibilityState=\{\{ expanded: queuePanelState\.isExpanded \}\}/);
+  assert.doesNotMatch(source, /const \[isListCollapsed, setIsListCollapsed\] = useState\(false\);/);
+  assert.doesNotMatch(source, /setIsListCollapsed\(false\);/);
   assert.doesNotMatch(source, /MESSAGE_QUEUE_PANEL_PRESENTATION\.mobileIcon/);
   assert.doesNotMatch(source, /MESSAGE_QUEUE_PANEL_PRESENTATION/);
   assert.doesNotMatch(source, /accessibilityRole="button"/);

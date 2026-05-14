@@ -28,7 +28,6 @@ type MessageQueuePanelColors =
   & Parameters<typeof getQueuedMessageItemMobileRenderState>[0]['colors'];
 
 interface MessageQueuePanelProps {
-  conversationId: string;
   messages: QueuedMessage[];
   colors: MessageQueuePanelColors;
   onRemove: (messageId: string) => void;
@@ -41,6 +40,8 @@ interface MessageQueuePanelProps {
   isPaused?: boolean;
   onPause?: () => void;
   onResume?: () => void;
+  isListCollapsed: boolean;
+  onToggleListCollapsed: () => void;
 }
 
 interface QueuedMessageItemProps {
@@ -379,7 +380,6 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
  * Panel component for displaying and managing queued messages.
  */
 export function MessageQueuePanel({
-  conversationId,
   messages,
   colors,
   onRemove,
@@ -392,8 +392,9 @@ export function MessageQueuePanel({
   isPaused = false,
   onPause,
   onResume,
+  isListCollapsed,
+  onToggleListCollapsed,
 }: MessageQueuePanelProps) {
-  const [isListCollapsed, setIsListCollapsed] = useState(false);
   const queuePanelRenderState = getMessageQueuePanelMobileRenderState({
     messages,
     colors,
@@ -408,10 +409,6 @@ export function MessageQueuePanel({
   const panelStatusColors = panelColors.status[queuePanelState.statusKey];
   const queuePanelIcons = queuePanelRenderState.icons;
   const queuePanelCopy = queuePanelRenderState.copy;
-
-  useEffect(() => {
-    setIsListCollapsed(false);
-  }, [conversationId]);
 
   if (!queuePanelRenderState.shouldRender) {
     return null;
@@ -669,7 +666,7 @@ export function MessageQueuePanel({
           )}
           <TouchableOpacity
             style={styles.clearButton}
-            onPress={() => setIsListCollapsed((prev) => !prev)}
+            onPress={onToggleListCollapsed}
             activeOpacity={panelSurface.actionPressedOpacity}
             accessibilityRole={panelSurface.actionAccessibilityRole}
             accessibilityLabel={queuePanelState.listToggleLabel}
