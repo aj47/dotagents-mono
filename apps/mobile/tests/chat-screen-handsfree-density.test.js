@@ -53,7 +53,7 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
 });
 
 test('lets handsfree users queue a drafted message without sending immediately', () => {
-  assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage, currentConversationId\);[\s\S]*?setInput\(''\);[\s\S]*?setPendingImages\(\[\]\);/);
+  assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage, currentConversationId\);[\s\S]*?clearComposerDraft\(\);/);
   assert.doesNotMatch(screenSource, /queueActionShouldRender:/);
   assert.doesNotMatch(screenSource, /queueActionRenderState:/);
   assert.match(screenSource, /onQueueActionPress: queueComposerInput,/);
@@ -171,8 +171,9 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(chatMessageChromeSource, /formatHandsFreeRecognizerErrorDebugMessage/);
   assert.match(screenSource, /formatChatComposerHandsFreeSleepingDebugMessage/);
   assert.match(screenSource, /formatChatComposerHandsFreeRecognizerErrorDebugMessage/);
-  assert.match(screenSource, /mergeChatComposerRuntimeVoiceText/);
-  assert.doesNotMatch(screenSource, /mergeVoiceText/);
+  assert.match(screenSource, /mergeVoiceTextIntoComposer\(finalText\)/);
+  assert.doesNotMatch(screenSource, /mergeChatComposerRuntimeVoiceText/);
+  assert.doesNotMatch(screenSource, /mergeVoiceText\(/);
   assert.match(chatMessageChromeSource, /mergeVoiceText/);
   assert.match(chatMessageChromeSource, /export function mergeChatComposerRuntimeVoiceText/);
   assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('transcriptAdded'\)/);

@@ -32,13 +32,13 @@ import {
   useChatComposerRuntimeEditBeforeSendState,
   useChatRuntimeRequestDebugState,
   useChatRuntimeConnectionRetryState,
+  useChatComposerRuntimeDraftState,
   createChatConversationHomePromptRecord,
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
   updateChatConversationHomePromptList,
   buildChatComposerRuntimeMessageContent,
   hasChatComposerRuntimeMessageContent,
-  mergeChatComposerRuntimeVoiceText,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   formatChatComposerHandsFreeSleepingDebugMessage,
   getChatComposerImageAttachmentAlertState,
@@ -105,9 +105,9 @@ import {
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
-  ChatComposerTextEntryRef,
   ChatComposerImageAttachmentAlertInput,
   ChatConversationHomeQuickStartItem,
+  ChatComposerRuntimeImageAttachment,
   ChatMessageRuntimeRemoteSpeechProvider,
 } from '../ui/ChatMessageChrome';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
@@ -135,13 +135,6 @@ import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
-
-interface PendingImageAttachment {
-  id: string;
-  name: string;
-  previewUri: string;
-  dataUrl: string;
-}
 
 const MAX_PENDING_IMAGES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes;
@@ -328,6 +321,19 @@ export default function ChatScreen({ route, navigation }: any) {
     setLastFailedMessage,
     clearLastFailedMessage,
   } = useChatRuntimeConnectionRetryState();
+  const {
+    input,
+    setInput,
+    pendingImages,
+    setPendingImages,
+    inputRef,
+    clearComposerInput,
+    clearPendingImages,
+    clearComposerDraft,
+    focusComposerInput,
+    mergeVoiceTextIntoComposer,
+    removePendingImage,
+  } = useChatComposerRuntimeDraftState();
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -471,8 +477,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const existing = currentValue.trim();
       return existing.length > 0 ? `${existing}\n\n${trimmed}` : trimmed;
     });
-    inputRef.current?.focus?.();
-  }, []);
+    focusComposerInput();
+  }, [focusComposerInput]);
 
   const handleRunPromptTask = useCallback(async (task: Loop) => {
     if (!settingsClient || !canRunPromptTask) return;
@@ -657,9 +663,6 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
-	  const [input, setInput] = useState('');
-	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
-	  const inputRef = useRef<ChatComposerTextEntryRef>(null);
   const {
     expandedMessages,
     expandedToolCalls,
@@ -716,9 +719,9 @@ export default function ChatScreen({ route, navigation }: any) {
 			if (!finalText) return;
 
 			if (mode === 'edit') {
-				setInput((current) => mergeChatComposerRuntimeVoiceText(current, finalText));
+				mergeVoiceTextIntoComposer(finalText);
 				setDebugInfo(getChatComposerHandsFreeDebugMessage('transcriptAdded'));
-				setTimeout(() => inputRef.current?.focus(), 0);
+				setTimeout(focusComposerInput, 0);
 				return;
 			}
 
@@ -1467,7 +1470,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const slotsRemaining = MAX_PENDING_IMAGES - pendingImages.length;
       const selectedAssets = result.assets.slice(0, slotsRemaining);
-      const nextImages: PendingImageAttachment[] = [];
+      const nextImages: ChatComposerRuntimeImageAttachment[] = [];
       const missingBase64Names: string[] = [];
       const oversizedImageNames: string[] = [];
       const unknownMimeNames: string[] = [];
@@ -1554,10 +1557,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [pendingImages, showImageAttachmentAlert]);
 
-  const removePendingImage = useCallback((attachmentId: string) => {
-    setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));
-  }, []);
-
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
 
@@ -1565,9 +1564,9 @@ export default function ChatScreen({ route, navigation }: any) {
     if (messageQueueEnabled && responding) {
       console.log('[ChatScreen] Agent busy, queuing message:', createChatMessageRuntimeLogMeta(text));
       messageQueue.enqueue(currentConversationId, text, currentConversationId);
-      setInput('');
+      clearComposerInput();
       if (options?.fromComposer) {
-        setPendingImages([]);
+        clearPendingImages();
       }
       return;
     }
@@ -1616,9 +1615,9 @@ export default function ChatScreen({ route, navigation }: any) {
       requestId: thisRequestId
     });
 
-    setInput('');
+    clearComposerInput();
 	    if (options?.fromComposer) {
-	      setPendingImages([]);
+	      clearPendingImages();
 	    }
 
     // Capture the session ID at request start to guard against session changes
@@ -2292,10 +2291,9 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!composedMessage.trim()) return;
 
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
-    setInput('');
-    setPendingImages([]);
+    clearComposerDraft();
     setDebugInfo(getChatComposerRuntimeQueueDebugMessage());
-  }, [currentConversationId, input, messageQueue, pendingImages]);
+  }, [clearComposerDraft, currentConversationId, input, messageQueue, pendingImages]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({

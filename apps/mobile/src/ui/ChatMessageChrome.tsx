@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type SetStateAction } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -319,7 +319,10 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
 export type ChatComposerImageAttachmentAlertInput = ChatImageAttachmentMobileAlertInput;
-export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput;
+export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput & {
+  id: string;
+  previewUri: string;
+};
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
 
@@ -444,6 +447,20 @@ type ChatRuntimeAgentSelectorOverlayState = {
   agentSelectorVisible: boolean;
   openAgentSelector: () => void;
   closeAgentSelector: () => void;
+};
+
+type ChatComposerRuntimeDraftState = {
+  input: string;
+  setInput: Dispatch<SetStateAction<string>>;
+  pendingImages: ChatComposerRuntimeImageAttachment[];
+  setPendingImages: Dispatch<SetStateAction<ChatComposerRuntimeImageAttachment[]>>;
+  inputRef: RefObject<ChatComposerTextEntryRef | null>;
+  clearComposerInput: () => void;
+  clearPendingImages: () => void;
+  clearComposerDraft: () => void;
+  focusComposerInput: () => void;
+  mergeVoiceTextIntoComposer: (text: string) => void;
+  removePendingImage: (attachmentId: string) => void;
 };
 
 type ChatComposerRuntimeEditBeforeSendState = {
@@ -5808,6 +5825,51 @@ export function useChatRuntimeAgentSelectorOverlayState(): ChatRuntimeAgentSelec
     agentSelectorVisible,
     openAgentSelector,
     closeAgentSelector,
+  };
+}
+
+export function useChatComposerRuntimeDraftState(): ChatComposerRuntimeDraftState {
+  const [input, setInput] = useState('');
+  const [pendingImages, setPendingImages] = useState<ChatComposerRuntimeImageAttachment[]>([]);
+  const inputRef = useRef<ChatComposerTextEntryRef>(null);
+
+  const clearComposerInput = useCallback(() => {
+    setInput('');
+  }, []);
+
+  const clearPendingImages = useCallback(() => {
+    setPendingImages([]);
+  }, []);
+
+  const clearComposerDraft = useCallback(() => {
+    setInput('');
+    setPendingImages([]);
+  }, []);
+
+  const focusComposerInput = useCallback(() => {
+    inputRef.current?.focus?.();
+  }, []);
+
+  const mergeVoiceTextIntoComposer = useCallback((text: string) => {
+    setInput((current) => mergeChatComposerRuntimeVoiceText(current, text));
+  }, []);
+
+  const removePendingImage = useCallback((attachmentId: string) => {
+    setPendingImages((current) => current.filter((image) => image.id !== attachmentId));
+  }, []);
+
+  return {
+    input,
+    setInput,
+    pendingImages,
+    setPendingImages,
+    inputRef,
+    clearComposerInput,
+    clearPendingImages,
+    clearComposerDraft,
+    focusComposerInput,
+    mergeVoiceTextIntoComposer,
+    removePendingImage,
   };
 }
 
