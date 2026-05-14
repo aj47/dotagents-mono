@@ -30,7 +30,9 @@ import {
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
+  isChatMessageLiveStreamingConversationContent,
   type ChatDisplayExpansionStateMap,
+  type ChatMessageConversationContentLike,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutStateInput,
   type ChatMessageActionSlot,
@@ -41,7 +43,9 @@ import {
   type ChatMessageSpeechMobileRenderState,
 } from '@dotagents/shared/message-display-utils';
 import {
+  getChatMessageDisplayState,
   getCompactToolExecutionPreview,
+  type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from '@dotagents/shared/chat-utils';
 import {
@@ -248,6 +252,16 @@ type ChatMessageRenderStateInput =
   & {
     toolEntries: readonly Pick<ChatMessageDisplayToolEntry, 'result'>[];
   };
+
+type ChatMessageConversationRenderContextInput = {
+  message: ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike;
+  messageIndex: number;
+  isResponding: boolean;
+  lastConversationContentMessageIndex: number;
+  expandedMessages: ChatDisplayExpansionStateMap<number>;
+  resultOnlyToolLabel: string;
+  colors: Parameters<typeof getChatMessageMobileRenderState>[0]['colors'];
+};
 
 export type ChatMessageActionSet = {
   components: Record<ChatMessageActionSlot, ReactNode>;
@@ -1903,6 +1917,54 @@ export function createChatMessageRenderState({
     ...input,
     hasErrors,
   });
+}
+
+export function createChatMessageConversationRenderContext({
+  message,
+  messageIndex,
+  isResponding,
+  lastConversationContentMessageIndex,
+  expandedMessages,
+  resultOnlyToolLabel,
+  colors,
+}: ChatMessageConversationRenderContextInput) {
+  const messageDisplayState = getChatMessageDisplayState(message, {
+    resultOnlyToolLabel,
+  });
+  const visibleMessageContent = messageDisplayState.visibleContent;
+  const renderedToolEntries = messageDisplayState.visibleToolEntries;
+  const displayToolCallCount = messageDisplayState.displayToolCallCount;
+  const isExpanded = getChatDisplayExpansionState(expandedMessages, messageIndex);
+  const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
+    isResponding,
+    messageIndex,
+    lastConversationContentMessageIndex,
+    message,
+    content: visibleMessageContent,
+    displayToolCallCount,
+  });
+  const messageRenderState = createChatMessageRenderState({
+    role: message.role,
+    isComplete: !isResponding,
+    isLast: messageIndex === lastConversationContentMessageIndex,
+    toolEntries: renderedToolEntries,
+    content: visibleMessageContent,
+    isExpanded,
+    shouldCollapse: messageDisplayState.shouldCollapse,
+    isToolOnly: messageDisplayState.isToolOnly,
+    isLiveStreaming: isLiveStreamingAssistantMessage,
+    colors,
+  });
+
+  return {
+    visibleMessageContent,
+    renderedToolEntries,
+    displayToolCallCount,
+    isExpanded,
+    isLiveStreamingAssistantMessage,
+    messageRenderState,
+    shouldRenderSurface: messageDisplayState.shouldRenderSurface,
+  };
 }
 
 export function createChatMessageActionComponents({

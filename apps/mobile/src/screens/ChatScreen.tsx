@@ -35,7 +35,7 @@ import {
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatMessageActionStyleSlots,
-  createChatMessageRenderState,
+  createChatMessageConversationRenderContext,
   createChatMessageConversationDockStyleSlots,
   createChatMessageInlineActivityProps,
   createChatMessageRuntimeDockStyleSlots,
@@ -74,7 +74,6 @@ import {
   getNextAgentUserResponseEventOrdinal,
   sortAgentUserResponseEvents,
   getToolResultsSummary,
-  getChatMessageDisplayState,
   hasVisibleChatMessageContent,
   preserveChatMessageDisplayContentFromProgress,
   applyUserResponseToChatMessages,
@@ -176,10 +175,8 @@ import {
   getChatMessageActionCopyState,
   applyChatDisplayGroupedExpansionInheritance,
   getChatMessageActionMobileStyleRenderState,
-  getChatDisplayExpansionState,
   getChatMessageMobileRenderState,
   findLastChatMessageConversationContentIndex,
-  isChatMessageLiveStreamingConversationContent,
   isChatMessageConversationContent,
   sanitizeMessagesForModel,
   setChatDisplayExpansionState,
@@ -3779,35 +3776,21 @@ export default function ChatScreen({ route, navigation }: any) {
               );
             }
 
-            const messageDisplayState = getChatMessageDisplayState(m, {
-              resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
-            });
-            const visibleMessageContent = messageDisplayState.visibleContent;
-            const effectiveShouldCollapse = messageDisplayState.shouldCollapse;
-            // expandedMessages is auto-updated via useEffect to expand the last assistant message
-            // and persist the expansion state so it doesn't collapse when new messages arrive
-            const isExpanded = getChatDisplayExpansionState(expandedMessages, i);
-
-            const renderedToolEntries = messageDisplayState.visibleToolEntries;
-            const displayToolCallCount = messageDisplayState.displayToolCallCount;
-            const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
-              isResponding: responding,
-              messageIndex: i,
-              lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
-              message: m,
-              content: visibleMessageContent,
+            const {
+              visibleMessageContent,
+              renderedToolEntries,
               displayToolCallCount,
-            });
-            const messageRenderState = createChatMessageRenderState({
-              role: m.role,
-              isComplete: !responding,
-              isLast: i === lastAssistantContentMessageIndex,
-              toolEntries: renderedToolEntries,
-              content: visibleMessageContent,
               isExpanded,
-              shouldCollapse: effectiveShouldCollapse,
-              isToolOnly: messageDisplayState.isToolOnly,
-              isLiveStreaming: isLiveStreamingAssistantMessage,
+              isLiveStreamingAssistantMessage,
+              messageRenderState,
+              shouldRenderSurface,
+            } = createChatMessageConversationRenderContext({
+              message: m,
+              messageIndex: i,
+              isResponding: responding,
+              lastConversationContentMessageIndex: lastAssistantContentMessageIndex,
+              expandedMessages,
+              resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
               colors: theme.colors,
             });
             const messageInlineActivityProps = createChatMessageInlineActivityProps({
@@ -3817,7 +3800,7 @@ export default function ChatScreen({ route, navigation }: any) {
             });
             // Skip empty messages unless they are the current shared inline activity row.
             // Also skip messages that only have toolResults but no toolCalls (raw result blobs).
-            if (!messageDisplayState.shouldRenderSurface && !messageInlineActivityProps) {
+            if (!shouldRenderSurface && !messageInlineActivityProps) {
               return null;
             }
 

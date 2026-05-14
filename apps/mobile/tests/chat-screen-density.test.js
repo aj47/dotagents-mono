@@ -1468,15 +1468,18 @@ test('caps live transcript height so the recording overlay is less likely to cov
 });
 
 test('derives visible assistant content from respond_to_user output and suppresses raw tool payloads', () => {
-  assert.match(screenSource, /getChatMessageDisplayState,/);
+  assert.doesNotMatch(screenSource, /getChatMessageDisplayState,/);
+  assert.match(screenSource, /createChatMessageConversationRenderContext,/);
   assert.match(screenSource, /hasVisibleChatMessageContent,/);
   assert.match(screenSource, /applyChatMessageAutoExpansionState,/);
   assert.match(screenSource, /applyUserResponseToChatMessages,/);
-  assert.match(screenSource, /const messageDisplayState = getChatMessageDisplayState\(m, \{\s+resultOnlyToolLabel: toolExecutionResultOnlyFallback\.label,\s+\}\);/);
-  assert.match(screenSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
-  assert.match(screenSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
-  assert.match(screenSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
-  assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityProps\) \{\s+return null;\s+\}/);
+  assert.match(screenSource, /const \{\s+visibleMessageContent,\s+renderedToolEntries,\s+displayToolCallCount,\s+isExpanded,\s+isLiveStreamingAssistantMessage,\s+messageRenderState,\s+shouldRenderSurface,\s+\} = createChatMessageConversationRenderContext\(\{/);
+  assert.match(screenSource, /resultOnlyToolLabel: toolExecutionResultOnlyFallback\.label,/);
+  assert.match(chatMessageChromeSource, /const messageDisplayState = getChatMessageDisplayState\(message, \{\s+resultOnlyToolLabel,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
+  assert.match(chatMessageChromeSource, /const renderedToolEntries = messageDisplayState\.visibleToolEntries;/);
+  assert.match(chatMessageChromeSource, /const displayToolCallCount = messageDisplayState\.displayToolCallCount;/);
+  assert.match(screenSource, /if \(!shouldRenderSurface && !messageInlineActivityProps\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.doesNotMatch(screenSource, /if \(visibleMessageContent\.trim\(\)\.length === 0 && displayToolCallCount === 0\)/);
   assert.doesNotMatch(screenSource, /isCompletionControlTool,/);
@@ -1494,16 +1497,16 @@ test('derives visible assistant content from respond_to_user output and suppress
 });
 
 test('bases assistant collapse decisions on visible content instead of raw tool payload metadata', () => {
-  assert.match(screenSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
-  assert.match(screenSource, /createChatMessageRenderState,/);
-  assert.match(screenSource, /const effectiveShouldCollapse = messageDisplayState\.shouldCollapse;/);
+  assert.doesNotMatch(screenSource, /const visibleMessageContent = messageDisplayState\.visibleContent;/);
+  assert.doesNotMatch(screenSource, /createChatMessageRenderState,/);
+  assert.doesNotMatch(screenSource, /const effectiveShouldCollapse = messageDisplayState\.shouldCollapse;/);
   assert.doesNotMatch(screenSource, /shouldCollapseMessage,/);
   assert.doesNotMatch(screenSource, /const shouldCollapse = m\.role === 'assistant'/);
   assert.doesNotMatch(screenSource, /const hasToolMetadata =\s+\(m\.toolCalls\?\.length \?\? 0\) > 0/);
   assert.doesNotMatch(screenSource, /getChatMessageEffectiveCollapseState\(\{\s+content: m\.role === 'assistant' \? visibleMessageContent : m\.content/);
   assert.doesNotMatch(screenSource, /const effectiveShouldCollapse = hasRespondToUserContent \? false : shouldCollapse;/);
   assert.doesNotMatch(screenSource, /const shouldCollapse = shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
-  assert.match(screenSource, /const messageRenderState = createChatMessageRenderState\(\{[\s\S]*?content: visibleMessageContent,[\s\S]*?shouldCollapse: effectiveShouldCollapse,[\s\S]*?isLiveStreaming: isLiveStreamingAssistantMessage,/);
+  assert.match(chatMessageChromeSource, /const messageRenderState = createChatMessageRenderState\(\{[\s\S]*?content: visibleMessageContent,[\s\S]*?shouldCollapse: messageDisplayState\.shouldCollapse,[\s\S]*?isLiveStreaming: isLiveStreamingAssistantMessage,/);
   assert.doesNotMatch(screenSource, /const messageContentRenderState = messageRenderState\.content;/);
   assert.doesNotMatch(screenSource, /shouldShowCollapsedTextPreview,\s+shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRenderState/);
@@ -2058,7 +2061,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState\.colors;/);
   assert.match(screenSource, /const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState\.loadButton\.pressedOpacity;/);
   assert.match(screenSource, /const messageInlineActivityProps = createChatMessageInlineActivityProps\(\{\s+message: m,\s+isResponding: responding,\s+spinnerSource: isDark \? darkSpinner : lightSpinner,\s+\}\);/);
-  assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityProps\) \{/);
+  assert.match(screenSource, /if \(!shouldRenderSurface && !messageInlineActivityProps\) \{/);
   assert.match(screenSource, /inlineActivity: messageInlineActivityProps,/);
   assert.doesNotMatch(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
@@ -2133,14 +2136,15 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
 
 test('uses desktop-style streaming response chrome while mobile assistant content is live', () => {
   assert.match(screenSource, /getChatRuntimeStreamingContentMobileRenderState,/);
-  assert.match(screenSource, /isChatMessageLiveStreamingConversationContent,/);
+  assert.doesNotMatch(screenSource, /isChatMessageLiveStreamingConversationContent,/);
+  assert.match(chatMessageChromeSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.match(screenSource, /isChatMessageConversationContent,/);
   assert.match(screenSource, /&& isChatMessageConversationContent\(messages\[messages\.length - 1\]\)/);
   assert.match(screenSource, /const lastAssistantContentMessageIndex = findLastChatMessageConversationContentIndex\(\s+messages,\s+\(message\) => message,\s+\(message\) => hasVisibleChatMessageContent\(message\),\s+\);/);
-  assert.match(screenSource, /const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent\(\{\s+isResponding: responding,\s+messageIndex: i,\s+lastConversationContentMessageIndex: lastAssistantContentMessageIndex,\s+message: m,\s+content: visibleMessageContent,\s+displayToolCallCount,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent\(\{\s+isResponding,\s+messageIndex,\s+lastConversationContentMessageIndex,\s+message,\s+content: visibleMessageContent,\s+displayToolCallCount,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const isLiveStreamingAssistantMessage =\s+responding &&/);
   assert.doesNotMatch(screenSource, /i === lastAssistantContentMessageIndex &&\s+isChatMessageConversationContent\(m\)/);
-  assert.match(screenSource, /isLiveStreaming: isLiveStreamingAssistantMessage,/);
+  assert.match(chatMessageChromeSource, /isLiveStreaming: isLiveStreamingAssistantMessage,/);
   assert.doesNotMatch(screenSource, /shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
   assert.doesNotMatch(screenSource, /const streamingContentRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming: isLiveStreamingAssistantMessage,\s+content: visibleMessageContent,\s+colors: theme\.colors,\s+\}\);/);
   assert.match(screenSource, /conversation: \{\s+messageRenderState,[\s\S]*?expanded: \{[\s\S]*?isStreaming: isLiveStreamingAssistantMessage,[\s\S]*?markdownContent: visibleMessageContent,[\s\S]*?colors: theme\.colors,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
@@ -2622,7 +2626,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionRows,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionDetailRow,/);
   assert.doesNotMatch(screenSource, /createChatMessageToolExecutionStackProps,/);
-  assert.match(screenSource, /createChatMessageRenderState,/);
+  assert.match(screenSource, /createChatMessageConversationRenderContext,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageThreadBodyProps,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
@@ -2653,6 +2657,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionRows/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRenderState/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationRenderContext/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
   assert.match(chatMessageChromeSource, /retryStatus: createChatMessageRetryStatusProps\(retryStatus\),/);
@@ -2727,7 +2732,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /const mobileMessageCopiedButtonColors = mobileMessageActionStyleState\.buttons\.copied\.colors;/);
   assert.match(screenSource, /const mobileMessageSpeechButtonColors = mobileMessageActionStyleState\.buttons\.speech\.colors;/);
   assert.match(screenSource, /const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState\.buttons\.speechActive\.colors;/);
-  assert.match(screenSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
+  assert.doesNotMatch(screenSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
+  assert.match(chatMessageChromeSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
   assert.doesNotMatch(screenSource, /const messageExpansionRenderState = getChatMessageExpansionMobileRenderState/);
   assert.doesNotMatch(screenSource, /expansion: \{\s+renderState: messageRenderState\.expansion,/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{spec\.renderState\.accessibilityLabel\}/);
@@ -2886,9 +2892,9 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
 test('uses shared desktop chat message presentation tones for mobile message cards', () => {
   assert.match(screenSource, /getChatMessageMobileRenderState,/);
   assert.match(screenSource, /findLastChatMessageConversationContentIndex,/);
-  assert.match(screenSource, /const messageRenderState = createChatMessageRenderState\(\{\s+role: m\.role,\s+isComplete: !responding,/);
-  assert.match(screenSource, /isLast: i === lastAssistantContentMessageIndex,/);
-  assert.match(screenSource, /toolEntries: renderedToolEntries,\s+content: visibleMessageContent,\s+isExpanded,\s+shouldCollapse: effectiveShouldCollapse,\s+isToolOnly: messageDisplayState\.isToolOnly,\s+isLiveStreaming: isLiveStreamingAssistantMessage,\s+colors: theme\.colors,/);
+  assert.match(screenSource, /createChatMessageConversationRenderContext\(\{\s+message: m,\s+messageIndex: i,\s+isResponding: responding,\s+lastConversationContentMessageIndex: lastAssistantContentMessageIndex,/);
+  assert.match(chatMessageChromeSource, /const messageRenderState = createChatMessageRenderState\(\{\s+role: message\.role,\s+isComplete: !isResponding,\s+isLast: messageIndex === lastConversationContentMessageIndex,/);
+  assert.match(chatMessageChromeSource, /toolEntries: renderedToolEntries,\s+content: visibleMessageContent,\s+isExpanded,\s+shouldCollapse: messageDisplayState\.shouldCollapse,\s+isToolOnly: messageDisplayState\.isToolOnly,\s+isLiveStreaming: isLiveStreamingAssistantMessage,\s+colors,/);
   assert.doesNotMatch(screenSource, /const messageContentRenderState = messageRenderState\.content;/);
   assert.doesNotMatch(screenSource, /const messageToneStyle = messageThreadSurfaceStyles\.getToneStyle\(messageRenderState\.toneStyleSlot\);/);
   assert.match(chatMessageChromeSource, /const surfaceToneStyleSlot = body\.conversation\.messageRenderState\.toneStyleSlot;/);
