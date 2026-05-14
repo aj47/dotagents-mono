@@ -626,8 +626,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   useChatRuntimeNavigationHeaderChromeOptions({
     navigation,
-    colors: chatRuntimeChrome.colors,
-    spinnerSource: chatRuntimeChrome.spinnerSource,
+    ...chatRuntimeChrome.header,
     agentName: currentProfile?.name,
     isPinned: isCurrentSessionPinned,
     handsFree,
@@ -640,7 +639,6 @@ export default function ChatScreen({ route, navigation }: any) {
     onPinButtonPress: handleToggleCurrentSessionPinned,
     onKillSwitchButtonPress: handleKillSwitch,
     onHandsFreeButtonPress: toggleHandsFree,
-    styles: chatRuntimeChrome.headerStyles,
   });
 
   const { speakAssistantResponse } = useChatMessageRuntimeAssistantSpeechActionsState({
@@ -1563,10 +1561,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
-    colors: chatRuntimeChrome.colors,
-    platform: chatRuntimeChrome.platform,
-    spinnerSource: chatRuntimeChrome.spinnerSource,
-    styles: chatRuntimeChrome.messageRuntimeStyles,
+    ...chatRuntimeChrome.messageRuntime,
     composer: {
       speechPreviewText: sttPreview,
       pendingImages,

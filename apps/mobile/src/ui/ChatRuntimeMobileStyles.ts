@@ -1801,6 +1801,23 @@ export function useChatRuntimeMobileStyleSlots({
     }),
     [chatMessageConversationThreadStyles, promptEditorModalStyles],
   );
+  const chatRuntimeHeaderChrome = useMemo(
+    () => ({
+      colors: chatRuntimeChromeEnvironment.colors,
+      spinnerSource: chatRuntimeSpinnerSource,
+      styles: chatRuntimeHeaderStyles,
+    }),
+    [chatRuntimeChromeEnvironment, chatRuntimeHeaderStyles, chatRuntimeSpinnerSource],
+  );
+  const chatMessageRuntimeChrome = useMemo(
+    () => ({
+      colors: chatRuntimeChromeEnvironment.colors,
+      platform: chatRuntimeChromeEnvironment.platform,
+      spinnerSource: chatRuntimeSpinnerSource,
+      styles: chatMessageRuntimeChromeStyles,
+    }),
+    [chatMessageRuntimeChromeStyles, chatRuntimeChromeEnvironment, chatRuntimeSpinnerSource],
+  );
   const mobileSafeAreaLayout = useMemo(
     () => createChatRuntimeMobileSafeAreaLayoutState(bottomInset),
     [bottomInset],
@@ -1850,19 +1867,16 @@ export function useChatRuntimeMobileStyleSlots({
   );
   const chatRuntimeChrome = useMemo(
     () => ({
-      colors: chatRuntimeChromeEnvironment.colors,
       platform: chatRuntimeChromeEnvironment.platform,
-      spinnerSource: chatRuntimeSpinnerSource,
-      headerStyles: chatRuntimeHeaderStyles,
-      messageRuntimeStyles: chatMessageRuntimeChromeStyles,
+      header: chatRuntimeHeaderChrome,
+      messageRuntime: chatMessageRuntimeChrome,
       surfaceStyles: chatMessageRuntimeSurfaceStyles,
     }),
     [
-      chatMessageRuntimeChromeStyles,
+      chatMessageRuntimeChrome,
       chatMessageRuntimeSurfaceStyles,
       chatRuntimeChromeEnvironment,
-      chatRuntimeHeaderStyles,
-      chatRuntimeSpinnerSource,
+      chatRuntimeHeaderChrome,
     ],
   );
 
