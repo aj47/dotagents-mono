@@ -280,6 +280,27 @@ type ChatMessageActionStyleSlots = {
   expansion: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle'>;
 };
 
+type ChatMessageConversationActionSetInput = {
+  message: Pick<ChatMessageDisplayStateMessageLike, 'role'> & {
+    branchMessageIndex?: number;
+  };
+  messageIndex: number;
+  visibleMessageContent: string;
+  turnDuration?: Pick<ChatMessageTurnDurationActionSpecInput, 'durationMs' | 'isLive'>;
+  conversationId?: string;
+  pendingBranchMessageIndex?: number | null;
+  isResponding: boolean;
+  isSpeaking: boolean;
+  isCopied: boolean;
+  ttsEnabled: boolean;
+  colors: Parameters<typeof getChatMessageMobileRenderState>[0]['colors'];
+  styles: ChatMessageActionStyleSlots;
+  onSpeakMessage: (messageIndex: number, content: string) => void;
+  onBranchMessage?: (messageIndex: number) => void;
+  onCopyMessage: (messageIndex: number, content: string) => void | Promise<void>;
+  onToggleMessageExpansion: (messageIndex: number) => void;
+};
+
 type ChatRuntimeHeaderAgentSelectorStyles = {
   button: StyleProp<ViewStyle>;
   chip: StyleProp<ViewStyle>;
@@ -1964,6 +1985,67 @@ export function createChatMessageConversationRenderContext({
     isLiveStreamingAssistantMessage,
     messageRenderState,
     shouldRenderSurface: messageDisplayState.shouldRenderSurface,
+  };
+}
+
+export function createChatMessageConversationActionSetInput({
+  message,
+  messageIndex,
+  visibleMessageContent,
+  turnDuration,
+  conversationId,
+  pendingBranchMessageIndex,
+  isResponding,
+  isSpeaking,
+  isCopied,
+  ttsEnabled,
+  colors,
+  styles,
+  onSpeakMessage,
+  onBranchMessage,
+  onCopyMessage,
+  onToggleMessageExpansion,
+}: ChatMessageConversationActionSetInput): Omit<ChatMessageActionSetInput, 'messageRenderState'> {
+  return {
+    turnDuration: {
+      role: message.role,
+      durationMs: turnDuration?.durationMs,
+      isLive: turnDuration?.isLive,
+      colors,
+      ...styles.turnDuration,
+    },
+    speech: {
+      role: message.role,
+      content: visibleMessageContent,
+      ttsEnabled,
+      isSpeaking,
+      colors,
+      onPress: () => onSpeakMessage(messageIndex, visibleMessageContent),
+      ...styles.speech,
+    },
+    branch: {
+      conversationId,
+      role: message.role,
+      branchMessageIndex: message.branchMessageIndex,
+      fallbackMessageIndex: messageIndex,
+      pendingMessageIndex: pendingBranchMessageIndex,
+      colors,
+      onBranchMessage,
+      ...styles.branch,
+    },
+    copy: {
+      role: message.role,
+      content: visibleMessageContent,
+      isAssistantComplete: !isResponding,
+      isCopied,
+      colors,
+      onPress: () => { void onCopyMessage(messageIndex, visibleMessageContent); },
+      ...styles.copy,
+    },
+    expansion: {
+      onPress: () => onToggleMessageExpansion(messageIndex),
+      ...styles.expansion,
+    },
   };
 }
 
