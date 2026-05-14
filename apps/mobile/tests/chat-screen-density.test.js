@@ -1297,6 +1297,9 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryState/);
   assert.match(chatMessageChromeSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
+  assert.match(screenSource, /useChatRuntimeConnectionRetryActionState,/);
+  assert.match(screenSource, /const \{ handleRetryLastFailedMessage \} = useChatRuntimeConnectionRetryActionState<ChatMessage>\(\{\s+lastFailedMessage,\s+clearLastFailedMessage,\s+getSessionClient,\s+sessionStore,\s+setMessages,\s+send,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryActionState/);
   assert.match(chatMessageChromeSource, /const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\);/);
   assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+colors: theme\.colors,\s+onConnectionBannerRetry: \(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\},/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: onConnectionBannerRetry,\s+\}/);
@@ -1304,12 +1307,12 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+banner: styles\.connectionBanner,\s+reconnecting: styles\.connectionBannerReconnecting,\s+failed: styles\.connectionBannerFailed,\s+content: styles\.connectionBannerContent,/);
   assert.match(chatMessageChromeSource, /icon: styles\.connectionBannerIcon,\s+textContainer: styles\.connectionBannerTextContainer,\s+title: styles\.connectionBannerText,\s+subtitle: styles\.connectionBannerSubtext,/);
   assert.match(chatMessageChromeSource, /retryButton: styles\.retryButton,\s+retryButtonText: styles\.retryButtonText,\s+\}/);
-  assert.match(screenSource, /const handleRetryLastFailedMessage = async \(\) => \{/);
-  assert.match(screenSource, /const messageToRetry = lastFailedMessage;/);
-  assert.match(screenSource, /clearLastFailedMessage\(\);/);
-  assert.match(screenSource, /const retryClient = getSessionClient\(\);/);
-  assert.match(screenSource, /await sessionStore\.setServerConversationId\(recoveryConversationId\);/);
-  assert.match(screenSource, /setTimeout\(\(\) => send\(messageToRetry\), 0\);/);
+  assert.doesNotMatch(screenSource, /const handleRetryLastFailedMessage = async \(\) => \{/);
+  assert.match(chatMessageChromeSource, /const messageToRetry = lastFailedMessage;/);
+  assert.match(chatMessageChromeSource, /clearLastFailedMessage\(\);/);
+  assert.match(chatMessageChromeSource, /const retryClient = getSessionClient\(\);/);
+  assert.match(chatMessageChromeSource, /await sessionStore\.setServerConversationId\(recoveryConversationId\);/);
+  assert.match(chatMessageChromeSource, /void send\(messageToRetry\);/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConnectionBanner/);
   assert.match(chatMessageChromeSource, /renderState\.reconnecting\.shouldRender \? \(/);
   assert.match(chatMessageChromeSource, /renderState\.failed\.shouldRender \? \(/);
@@ -1912,7 +1915,8 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /getNextAgentUserResponseEventOrdinal,/);
   assert.match(chatMessageChromeSource, /export function sortChatMessageRuntimeResponseEvents/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeNextResponseEventOrdinal/);
-  assert.match(screenSource, /createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>\(serverMessages\)/);
+  assert.doesNotMatch(screenSource, /createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>\(serverMessages\)/);
+  assert.match(chatMessageChromeSource, /createChatMessageRuntimeRecoverableHistoryMessages<[\s\S]*?TMessage,[\s\S]*?TToolCall,[\s\S]*?TToolResult[\s\S]*?>\(serverMessages\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeHistoryDisplayMessages\(\s+historyMessages,\s+\{\s+\.\.\.displayOptions,\s+skipUserMessages,\s+startIndex: currentTurnStartIndex,\s+\},\s+\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRecoveredHistoryMessages/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRecoverableHistoryMessages/);
@@ -3927,8 +3931,9 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
     2,
   );
   assert.match(screenSource, /appendChatMessageRuntimePendingTurnMessages,/);
-  assert.match(screenSource, /removeChatMessageRuntimePendingTurnMessages,/);
-  assert.match(screenSource, /setMessages\(\(m\) => removeChatMessageRuntimePendingTurnMessages\(m\)\)/);
+  assert.doesNotMatch(screenSource, /removeChatMessageRuntimePendingTurnMessages,/);
+  assert.doesNotMatch(screenSource, /setMessages\(\(m\) => removeChatMessageRuntimePendingTurnMessages\(m\)\)/);
+  assert.match(chatMessageChromeSource, /setMessages\(\(messages\) => removeChatMessageRuntimePendingTurnMessages\(messages\)\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantTextMessage\(finalDisplayText\)/);
   assert.match(screenSource, /createChatMessageRuntimeCompletedTextTurnMessages\(\s+currentMessages,\s+messageCountBeforeTurn,\s+userMsg,\s+finalDisplayText,\s+\)/);
   assert.match(screenSource, /appendChatMessageRuntimeAssistantDebugErrorMessage\(m, queuedErrorMessage\)/);

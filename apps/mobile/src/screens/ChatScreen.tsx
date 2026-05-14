@@ -31,6 +31,7 @@ import {
   useChatRuntimeRequestDebugState,
   useChatRuntimeRequestTrackingState,
   useChatRuntimeConnectionRetryState,
+  useChatRuntimeConnectionRetryActionState,
   useChatRuntimeForegroundState,
   useChatRuntimeHandsFreeMutableState,
   useChatComposerRuntimeDraftState,
@@ -55,7 +56,6 @@ import {
   formatChatMessageRuntimeStartingRequestDebugMessage,
   createChatRuntimeMobileConfigState,
   createChatMessageRuntimeFinalHistoryTurnMessages,
-  createChatMessageRuntimeRecoverableHistoryMessages,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
@@ -97,7 +97,6 @@ import {
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
-  removeChatMessageRuntimePendingTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -2087,6 +2086,15 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo,
   });
 
+  const { handleRetryLastFailedMessage } = useChatRuntimeConnectionRetryActionState<ChatMessage>({
+    lastFailedMessage,
+    clearLastFailedMessage,
+    getSessionClient,
+    sessionStore,
+    setMessages,
+    send,
+  });
+
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
     composerChrome: {
       colors: theme.colors,
@@ -2254,53 +2262,6 @@ export default function ChatScreen({ route, navigation }: any) {
       promptEditorStyles: promptEditorModalStyles,
     },
   });
-
-  const handleRetryLastFailedMessage = async () => {
-    const messageToRetry = lastFailedMessage;
-    if (!messageToRetry) return;
-    clearLastFailedMessage();
-
-    // Use the recovery conversation ID if available, so the retry resumes
-    // the same server-created conversation when the first attempt failed mid-stream.
-    const retryClient = getSessionClient();
-    const recoveryConversationId = retryClient?.getRecoveryConversationId();
-
-    // Try to recover conversation state from server first (fixes #815).
-    // If the server already processed the message, sync state instead of re-sending.
-    if (recoveryConversationId && retryClient) {
-      console.log('[ChatScreen] Retry: Checking server conversation state:', recoveryConversationId);
-      try {
-        const serverConversation = await retryClient.getConversation(recoveryConversationId);
-        if (serverConversation && serverConversation.messages.length > 0) {
-          const serverMessages = serverConversation.messages;
-          const recoveredMessages = createChatMessageRuntimeRecoverableHistoryMessages<ChatMessage>(serverMessages);
-
-          if (recoveredMessages) {
-            console.log('[ChatScreen] Retry: Server already has response, syncing state');
-
-            await sessionStore.setServerConversationId(recoveryConversationId);
-
-            setMessages(recoveredMessages);
-            await sessionStore.setMessages(recoveredMessages);
-
-            console.log('[ChatScreen] Retry: Successfully recovered', recoveredMessages.length, 'messages from server');
-            return;
-          }
-        }
-      } catch (error) {
-        console.log('[ChatScreen] Retry: Could not fetch server state, will retry message:', error);
-      }
-
-      console.log('[ChatScreen] Retry: Using recovery conversationId:', recoveryConversationId);
-      await sessionStore.setServerConversationId(recoveryConversationId);
-    }
-
-    setMessages((m) => removeChatMessageRuntimePendingTurnMessages(m));
-    // Let React commit the message removal before send() reads current state.
-    setTimeout(() => send(messageToRetry), 0);
-  };
-
-
 
   return (
     <ChatMessageRuntimeSurface

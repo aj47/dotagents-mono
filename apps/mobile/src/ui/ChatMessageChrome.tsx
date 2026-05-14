@@ -698,6 +698,38 @@ type ChatRuntimeConnectionRetryState = {
   clearLastFailedMessage: () => void;
 };
 
+type ChatRuntimeConnectionRetryClient<TToolCall = unknown, TToolResult = unknown> = {
+  getRecoveryConversationId: () => string | null | undefined;
+  getConversation: (
+    conversationId: string,
+  ) => Promise<{
+    messages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[];
+  } | null | undefined>;
+};
+
+type ChatRuntimeConnectionRetrySessionStore<TMessage> = {
+  setServerConversationId: (conversationId: string) => void | Promise<void>;
+  setMessages: (messages: TMessage[]) => void | Promise<void>;
+};
+
+type ChatRuntimeConnectionRetryActionStateInput<
+  TMessage extends ChatDisplayMessageLike,
+  TToolCall = unknown,
+  TToolResult = unknown,
+> = {
+  lastFailedMessage: string | null;
+  clearLastFailedMessage: () => void;
+  getSessionClient: () => ChatRuntimeConnectionRetryClient<TToolCall, TToolResult> | null;
+  sessionStore: ChatRuntimeConnectionRetrySessionStore<TMessage>;
+  setMessages: Dispatch<SetStateAction<TMessage[]>>;
+  send: (text: string) => void | Promise<void>;
+  retryDelayMs?: number;
+};
+
+type ChatRuntimeConnectionRetryActionState = {
+  handleRetryLastFailedMessage: () => Promise<void>;
+};
+
 type ChatMessageActionIcon = {
   name: IoniconName;
   size: number;
@@ -6805,6 +6837,79 @@ export function useChatRuntimeConnectionRetryState(): ChatRuntimeConnectionRetry
     lastFailedMessage,
     setLastFailedMessage,
     clearLastFailedMessage,
+  };
+}
+
+export function useChatRuntimeConnectionRetryActionState<
+  TMessage extends ChatDisplayMessageLike,
+  TToolCall = unknown,
+  TToolResult = unknown,
+>({
+  lastFailedMessage,
+  clearLastFailedMessage,
+  getSessionClient,
+  sessionStore,
+  setMessages,
+  send,
+  retryDelayMs = 0,
+}: ChatRuntimeConnectionRetryActionStateInput<TMessage, TToolCall, TToolResult>): ChatRuntimeConnectionRetryActionState {
+  const handleRetryLastFailedMessage = useCallback(async () => {
+    const messageToRetry = lastFailedMessage;
+    if (!messageToRetry) return;
+    clearLastFailedMessage();
+
+    const retryClient = getSessionClient();
+    const recoveryConversationId = retryClient?.getRecoveryConversationId();
+
+    if (recoveryConversationId && retryClient) {
+      console.log('[ChatRuntime] Retry: Checking server conversation state:', recoveryConversationId);
+      try {
+        const serverConversation = await retryClient.getConversation(recoveryConversationId);
+        if (serverConversation && serverConversation.messages.length > 0) {
+          const serverMessages = serverConversation.messages;
+          const recoveredMessages = createChatMessageRuntimeRecoverableHistoryMessages<
+            TMessage,
+            TToolCall,
+            TToolResult
+          >(serverMessages);
+
+          if (recoveredMessages) {
+            console.log('[ChatRuntime] Retry: Server already has response, syncing state');
+
+            await sessionStore.setServerConversationId(recoveryConversationId);
+
+            setMessages(recoveredMessages);
+            await sessionStore.setMessages(recoveredMessages);
+
+            console.log('[ChatRuntime] Retry: Successfully recovered', recoveredMessages.length, 'messages from server');
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('[ChatRuntime] Retry: Could not fetch server state, will retry message:', error);
+      }
+
+      console.log('[ChatRuntime] Retry: Using recovery conversationId:', recoveryConversationId);
+      await sessionStore.setServerConversationId(recoveryConversationId);
+    }
+
+    setMessages((messages) => removeChatMessageRuntimePendingTurnMessages(messages));
+    // Let React commit the message removal before send() reads current state.
+    setTimeout(() => {
+      void send(messageToRetry);
+    }, retryDelayMs);
+  }, [
+    clearLastFailedMessage,
+    getSessionClient,
+    lastFailedMessage,
+    retryDelayMs,
+    send,
+    sessionStore,
+    setMessages,
+  ]);
+
+  return {
+    handleRetryLastFailedMessage,
   };
 }
 
