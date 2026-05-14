@@ -2502,7 +2502,6 @@ type ChatComposerRuntimeDockChromeInput = {
   colors: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['colors']
     & Parameters<typeof getHandsFreeComposerMobileSurfaceRenderState>[0]['colors'];
   platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
-  isWebPlatform: boolean;
 };
 
 type ChatComposerRuntimeControlRenderStateColors =
@@ -2579,7 +2578,6 @@ type ChatComposerRuntimeDockChromePropsInput = {
   onTextEntryKeyPress: ChatComposerTextEntryProps['onKeyPress'];
   textEntryHandsFree: Parameters<typeof createChatComposerAccessibilityHint>[0]['handsFree'];
   textEntryListening: Parameters<typeof createChatComposerAccessibilityHint>[0]['listening'];
-  textEntryIsWebPlatform: NonNullable<Parameters<typeof createChatComposerAccessibilityHint>[0]['isWeb']>;
   textEntryWillCancel: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['willCancel'];
   textEntryLiveTranscript: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['liveTranscript'];
   textEntryWakePhrase: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['wakePhrase'];
@@ -6126,8 +6124,8 @@ export function createChatRuntimeMobileChromeStyleState({
 export function createChatComposerRuntimeDockChromeProps({
   colors,
   platform,
-  isWebPlatform,
 }: ChatComposerRuntimeDockChromeInput): ChatComposerRuntimeDockChromeProps {
+  const isWebPlatform = platform === 'web';
   const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState({
     colors,
     platform,
@@ -6324,7 +6322,6 @@ export function createChatComposerRuntimeDockProps({
   onTextEntryKeyPress,
   textEntryHandsFree,
   textEntryListening,
-  textEntryIsWebPlatform,
   textEntryWillCancel,
   textEntryLiveTranscript,
   textEntryWakePhrase,
@@ -6337,6 +6334,7 @@ export function createChatComposerRuntimeDockProps({
   micWrapperRef,
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
   const mobileComposerControls = getChatComposerMobileControlState();
+  const isWebPlatform = chrome.textEntry.webAccessibility.isWebPlatform;
   const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState({
     conversationState: composerControlConversationState,
     isResponding: composerControlIsResponding,
@@ -6370,7 +6368,7 @@ export function createChatComposerRuntimeDockProps({
   const textEntryAccessibilityHint = createChatComposerAccessibilityHint({
     handsFree: textEntryHandsFree,
     listening: textEntryListening,
-    isWeb: textEntryIsWebPlatform,
+    isWeb: isWebPlatform,
   });
   const resolvedTextEntryPlaceholderFallback =
     textEntryPlaceholderFallback

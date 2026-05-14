@@ -1091,7 +1091,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
   assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+composerChrome: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+isWebPlatform,\s+\},/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+composerChrome: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\},/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
   assert.match(screenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+styles=\{chatMessageRuntimeSurfaceStyles\}/);
@@ -1382,7 +1382,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
   assert.match(chatMessageChromeSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface;/);
-  assert.match(screenSource, /composerChrome: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+isWebPlatform,\s+\},/);
+  assert.match(screenSource, /composerChrome: \{\s+colors: theme\.colors,\s+platform: Platform\.OS,\s+\},/);
+  assert.doesNotMatch(screenSource, /const isWebPlatform = Platform\.OS === 'web';/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
@@ -1525,7 +1526,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ busy: listening \}\}/);
   assert.doesNotMatch(screenSource, /WebkitTouchCallout: 'none'/);
   assert.doesNotMatch(screenSource, /touchAction: 'manipulation'/);
-  assert.match(screenSource, /textEntryInputRef: inputRef,\s+textEntryValue: input,\s+onTextEntryChangeText: handleInputChange,\s+onTextEntryKeyPress: handleInputKeyPress,\s+textEntryHandsFree: handsFree,\s+textEntryListening: listening,\s+textEntryIsWebPlatform: isWebPlatform,\s+textEntryWillCancel: willCancel,\s+textEntryLiveTranscript: liveTranscript,\s+textEntryWakePhrase: handsFreeWakePhrase,\s+onQueueActionPress: queueComposerInput,/);
+  assert.match(screenSource, /textEntryInputRef: inputRef,\s+textEntryValue: input,\s+onTextEntryChangeText: handleInputChange,\s+onTextEntryKeyPress: handleInputKeyPress,\s+textEntryHandsFree: handsFree,\s+textEntryListening: listening,\s+textEntryWillCancel: willCancel,\s+textEntryLiveTranscript: liveTranscript,\s+textEntryWakePhrase: handsFreeWakePhrase,\s+onQueueActionPress: queueComposerInput,/);
   assert.doesNotMatch(screenSource, /textEntryPlaceholderFallback: composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
   assert.match(chatMessageChromeSource, /textEntry: \{\s+inputRef: textEntryInputRef,\s+value: textEntryValue,\s+onChangeText: onTextEntryChangeText,\s+onKeyPress: onTextEntryKeyPress,\s+accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel,\s+accessibilityHint: textEntryAccessibilityHint,\s+placeholder: textEntryPlaceholder,\s+voiceStatusLiveRegionAnnouncement: textEntryVoiceStatusLiveRegionAnnouncement,\s+\.\.\.chrome\.textEntry,/);
   assert.doesNotMatch(screenSource, /textEntryAccessibilityHint: composerAccessibilityHint/);
@@ -1534,7 +1535,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /const composerAccessibilityHint = createChatComposerAccessibilityHint/);
   assert.doesNotMatch(screenSource, /const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement/);
   assert.doesNotMatch(screenSource, /const composerPlaceholder = getHandsFreeComposerPlaceholder/);
-  assert.match(chatMessageChromeSource, /const textEntryAccessibilityHint = createChatComposerAccessibilityHint\(\{\s+handsFree: textEntryHandsFree,\s+listening: textEntryListening,\s+isWeb: textEntryIsWebPlatform,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const isWebPlatform = chrome\.textEntry\.webAccessibility\.isWebPlatform;/);
+  assert.match(chatMessageChromeSource, /const textEntryAccessibilityHint = createChatComposerAccessibilityHint\(\{\s+handsFree: textEntryHandsFree,\s+listening: textEntryListening,\s+isWeb: isWebPlatform,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const resolvedTextEntryPlaceholderFallback =\s+textEntryPlaceholderFallback\s+\?\? \(composerControlPresentation\.placeholder \|\| composerControlPresentation\.submitTitle\);/);
   assert.match(chatMessageChromeSource, /const textEntryPlaceholder = getHandsFreeComposerPlaceholder\(\{\s+handsFree: textEntryHandsFree,\s+phase: handsFreeStatusPhase,\s+wakePhrase: textEntryWakePhrase,\s+listening: textEntryListening,\s+fallback: resolvedTextEntryPlaceholderFallback,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const textEntryVoiceStatusLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement\(\{\s+listening: textEntryListening,\s+handsFree: textEntryHandsFree,\s+willCancel: textEntryWillCancel,\s+liveTranscript: textEntryLiveTranscript,\s+sttPreview: speechPreviewText \?\? undefined,\s+\}\);/);

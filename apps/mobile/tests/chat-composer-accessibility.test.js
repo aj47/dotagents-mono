@@ -107,7 +107,9 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.doesNotMatch(screenSource, /mobileComposerControls\.field\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
   assert.match(chatMessageChromeSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
-  assert.match(screenSource, /colors: theme\.colors,\s+platform: Platform\.OS,\s+isWebPlatform,/);
+  assert.match(screenSource, /colors: theme\.colors,\s+platform: Platform\.OS,/);
+  assert.doesNotMatch(screenSource, /isWebPlatform,/);
+  assert.match(chatMessageChromeSource, /const isWebPlatform = platform === 'web';/);
   assert.match(chatMessageChromeSource, /webAccessibility: \{\s+isWebPlatform,/);
   assert.match(chatMessageChromeSource, /inputDescriptionNativeId: webAccessibility\.inputDescriptionNativeId/);
   assert.match(chatMessageChromeSource, /voiceStatusLiveRegionNativeId: webAccessibility\.voiceStatusLiveRegionNativeId/);

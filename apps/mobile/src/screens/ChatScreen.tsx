@@ -2412,7 +2412,6 @@ export default function ChatScreen({ route, navigation }: any) {
   // We intentionally assign during render (not useEffect) so it is available immediately.
   sendRef.current = send;
 
-	const isWebPlatform = Platform.OS === 'web';
   const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
@@ -2587,7 +2586,6 @@ export default function ChatScreen({ route, navigation }: any) {
     composerChrome: {
       colors: theme.colors,
       platform: Platform.OS,
-      isWebPlatform,
     },
     composer: {
       speechPreviewText: sttPreview,
@@ -2624,7 +2622,6 @@ export default function ChatScreen({ route, navigation }: any) {
       onTextEntryKeyPress: handleInputKeyPress,
       textEntryHandsFree: handsFree,
       textEntryListening: listening,
-      textEntryIsWebPlatform: isWebPlatform,
       textEntryWillCancel: willCancel,
       textEntryLiveTranscript: liveTranscript,
       textEntryWakePhrase: handsFreeWakePhrase,
