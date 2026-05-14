@@ -100,10 +100,12 @@ import {
   getChatDisplayExpansionState,
   getChatDisplayGroupedExpansionState,
   getChatMessageContentRenderState,
+  getChatMessageCopyActionAccessibilityLabel,
   getChatMessageCopyActionState,
   getChatMessageDesktopSurfaceState,
   getChatMessageDisplayTone,
   getChatMessageEffectiveCollapseState,
+  getChatMessageExpansionActionAccessibilityLabel,
   getChatMessageExpansionActionState,
   getChatMessageExpansionLabel,
   getChatMessageSpeechActionState,
@@ -803,6 +805,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     isAssistantComplete: isComplete,
     isCopied,
   })
+  const messageCopyAccessibilityLabel = getChatMessageCopyActionAccessibilityLabel(messageCopyAction)
 
   // Copy to clipboard handler
   const handleCopyResponse = async (e: React.MouseEvent) => {
@@ -858,6 +861,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     shouldCollapse,
     isExpanded,
   })
+  const messageExpansionAccessibilityLabel = getChatMessageExpansionActionAccessibilityLabel(messageExpansionAction)
 
   // Track the computed ttsSource (ttsText || effectiveContent) since that's what determines the
   // ttsKey and should also gate async state updates.
@@ -1319,7 +1323,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         onClick={handleCopyResponse}
         className={desktopChatMessageActionSurface.buttonClassName}
         title={messageCopyAction.label ?? chatMessageActionCopy.copy.messageLabel}
-        aria-label={messageCopyAction.label ?? chatMessageActionCopy.copy.messageLabel}
+        aria-label={messageCopyAccessibilityLabel}
       >
         {isCopied ? (
           <CheckCheck className={desktopChatMessageActionSurface.copiedIconClassName} />
@@ -1333,7 +1337,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         onClick={handleChevronClick}
         className={desktopChatMessageActionSurface.buttonClassName}
         title={messageExpansionAction.label ?? chatMessageActionCopy.expansion.messageName}
-        aria-label={messageExpansionAction.accessibilityLabel ?? messageExpansionAction.label ?? chatMessageActionCopy.expansion.messageName}
+        aria-label={messageExpansionAccessibilityLabel}
         aria-expanded={messageExpansionAction.isExpanded}
       >
         {isExpanded ? (
