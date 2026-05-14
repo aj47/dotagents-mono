@@ -72,6 +72,7 @@ import {
   sortChatMessageRuntimeResponseEvents,
   createChatMessageRuntimeTurnDurationMessages,
   computeChatMessageRuntimeTurnDurations,
+  createChatMessageRuntimeSpeechTextState,
   createChatMessageRuntimeToolActivityGroups,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
   applyChatMessageRuntimeAutoExpansionState,
@@ -135,11 +136,7 @@ import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
-import {
-  mergeVoiceText,
-  normalizeAutoTtsTextKey,
-} from '@dotagents/shared/voice-text-utils';
+import { mergeVoiceText } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
   DEFAULT_EDGE_TTS_VOICE,
@@ -905,13 +902,14 @@ export default function ChatScreen({ route, navigation }: any) {
 			onSettled?.();
 			return false;
 		}
-		const processedText = preprocessTextForTTS(content);
-		if (!processedText) {
+    const speechText = createChatMessageRuntimeSpeechTextState(content);
+		if (!speechText) {
 				onSettled?.();
 			return false;
 		}
 
-      const ttsTextKey = normalizeAutoTtsTextKey(processedText);
+      const ttsTextKey = speechText.autoTextKey;
+      const processedText = speechText.processedText;
       const now = Date.now();
       const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
       if (now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
@@ -1082,11 +1080,12 @@ export default function ChatScreen({ route, navigation }: any) {
     intendedSpeakingIndexRef.current = index;
     Speech.stop();
     stopRemoteTts();
-    const processedText = preprocessTextForTTS(content);
-    if (!processedText) {
+    const speechText = createChatMessageRuntimeSpeechTextState(content);
+    if (!speechText) {
       intendedSpeakingIndexRef.current = null;
       return;
     }
+    const processedText = speechText.processedText;
 	    if (handsFree) {
 	      handsFreeController.onSpeechStarted();
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');

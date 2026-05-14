@@ -3544,8 +3544,14 @@ test('uses shared desktop chat message presentation tones for mobile message car
 
 test('suppresses duplicate auto TTS starts for the same mobile response text', () => {
   assert.match(screenSource, /const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;/);
-  assert.match(screenSource, /normalizeAutoTtsTextKey/);
-  assert.match(screenSource, /from '@dotagents\/shared\/voice-text-utils'/);
+  assert.match(screenSource, /createChatMessageRuntimeSpeechTextState,/);
+  assert.match(screenSource, /const speechText = createChatMessageRuntimeSpeechTextState\(content\);/);
+  assert.match(screenSource, /const ttsTextKey = speechText\.autoTextKey;/);
+  assert.match(chatMessageChromeSource, /preprocessTextForTTS/);
+  assert.match(chatMessageChromeSource, /normalizeAutoTtsTextKey/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSpeechTextState/);
+  assert.doesNotMatch(screenSource, /preprocessTextForTTS/);
+  assert.doesNotMatch(screenSource, /normalizeAutoTtsTextKey/);
   assert.match(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
   assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
 });

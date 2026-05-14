@@ -97,6 +97,8 @@ import {
   formatVoiceDebugEntry,
   type VoiceDebugEntry,
 } from '@dotagents/shared/voice-debug-log';
+import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
+import { normalizeAutoTtsTextKey } from '@dotagents/shared/voice-text-utils';
 import {
   createChatComposerAccessibilityHint,
   createMinimumTouchTargetStyle,
@@ -312,6 +314,11 @@ export interface ChatMessageRuntimeKillSwitchConfirmationAlertState {
 export interface ChatMessageRuntimeResolvedAlertState {
   title: string;
   message: string;
+}
+
+export interface ChatMessageRuntimeSpeechTextState {
+  processedText: string;
+  autoTextKey: string;
 }
 
 export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatMessageRuntimeResolvedAlertState {
@@ -3798,6 +3805,20 @@ export function computeChatMessageRuntimeTurnDurations(
   nowMs: number,
 ): ReturnType<typeof computeTurnDurations> {
   return computeTurnDurations(messages, isComplete, nowMs);
+}
+
+export function createChatMessageRuntimeSpeechTextState(
+  content: string,
+): ChatMessageRuntimeSpeechTextState | null {
+  const processedText = preprocessTextForTTS(content);
+  if (!processedText) {
+    return null;
+  }
+
+  return {
+    processedText,
+    autoTextKey: normalizeAutoTtsTextKey(processedText),
+  };
 }
 
 export function createChatMessageRuntimeToolActivityGroups(
