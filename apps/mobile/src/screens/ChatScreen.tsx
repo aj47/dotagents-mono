@@ -197,7 +197,6 @@ export default function ChatScreen({ route, navigation }: any) {
     handleCopyMessage,
     handleCopyToolPayload,
   } = useChatMessageRuntimeClipboardChromeActionsState({
-    showAlert: Alert.alert,
     showCopiedMessageFeedback,
   });
   const {
@@ -303,7 +302,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const { handlePickImages } = useChatComposerRuntimeImageLibraryPickerState({
     pendingImages,
     setPendingImages,
-    showAlert: Alert.alert,
   });
   const {
     respondToUserHistory,

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   AppState,
   Image,
   KeyboardAvoidingView,
@@ -606,7 +607,7 @@ type ChatComposerRuntimeImageAttachmentPickerStateInput = {
 
 type ChatComposerRuntimeImageLibraryPickerStateInput = Omit<
   ChatComposerRuntimeImageAttachmentPickerStateInput,
-  'pickImages'
+  'pickImages' | 'showAlert'
 >;
 
 type ChatComposerRuntimeImageAttachmentPickerState = {
@@ -1305,7 +1306,7 @@ type ChatMessageRuntimeClipboardActionsStateInput = {
 
 type ChatMessageRuntimeClipboardChromeActionsStateInput = Omit<
   ChatMessageRuntimeClipboardActionsStateInput,
-  'copyText'
+  'copyText' | 'showAlert'
 >;
 
 type ChatMessageRuntimeClipboardActionsState = {
@@ -4818,6 +4819,7 @@ export function useChatComposerRuntimeImageLibraryPickerState(
   return useChatComposerRuntimeImageAttachmentPickerState({
     ...input,
     pickImages: pickComposerImages,
+    showAlert: Alert.alert,
   });
 }
 
@@ -9782,6 +9784,7 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
   return useChatMessageRuntimeClipboardActionsState({
     ...input,
     copyText: Clipboard.setStringAsync,
+    showAlert: Alert.alert,
   });
 }
 
