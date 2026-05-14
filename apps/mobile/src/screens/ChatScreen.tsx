@@ -210,7 +210,6 @@ import {
   getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
-  getHandsFreeStatusSubtitle,
 } from '@dotagents/shared/hands-free-controller';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
@@ -3211,24 +3210,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
 		const handsFreeControlState = getHandsFreeComposerControlState(handsFreeController.state.phase);
 
-	const handsFreeStatusSubtitle = useMemo(() => {
-		if (!handsFree) return undefined;
-		return getHandsFreeStatusSubtitle({
-			phase: handsFreeController.state.phase,
-			wakePhrase: handsFreeWakePhrase,
-			sleepPhrase: handsFreeSleepPhrase,
-			lastError: handsFreeController.state.lastError,
-			foregroundOnly: handsFreeForegroundOnly,
-		});
-	}, [
-		handsFree,
-		handsFreeController.state.lastError,
-		handsFreeController.state.phase,
-		handsFreeForegroundOnly,
-		handsFreeSleepPhrase,
-		handsFreeWakePhrase,
-	]);
-
   const {
     threadStates: conversationThreadStates,
     visibleMessageCount: conversationThreadVisibleMessageCount,
@@ -3315,7 +3296,11 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeControlsVisible: mobileComposerVisibilityRenderState.handsFreeControls.isVisible,
     handsFreeStatusPhase: handsFreeController.state.phase,
     handsFreeStatusLabel: handsFreeController.statusLabel,
-    handsFreeStatusSubtitle,
+    handsFreeStatusEnabled: handsFree,
+    handsFreeStatusWakePhrase: handsFreeWakePhrase,
+    handsFreeStatusSleepPhrase: handsFreeSleepPhrase,
+    handsFreeStatusLastError: handsFreeController.state.lastError,
+    handsFreeStatusForegroundOnly: handsFreeForegroundOnly,
     handsFreeControlState,
     onWakeHandsFree: wakeHandsFreeByUser,
     onSleepHandsFree: sleepHandsFreeByUser,

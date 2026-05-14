@@ -66,6 +66,7 @@ import {
 import {
   getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
+  getHandsFreeStatusSubtitle,
   type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
 import {
@@ -2109,7 +2110,11 @@ type ChatComposerRuntimeDockChromePropsInput = {
   handsFreeControlsVisible: ChatComposerHandsFreeControlsProps['isVisible'];
   handsFreeStatusPhase: ChatComposerRuntimeHandsFreeControlsProps['status']['phase'];
   handsFreeStatusLabel: ChatComposerRuntimeHandsFreeControlsProps['status']['label'];
-  handsFreeStatusSubtitle: ChatComposerRuntimeHandsFreeControlsProps['status']['subtitle'];
+  handsFreeStatusEnabled: boolean;
+  handsFreeStatusWakePhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]['wakePhrase'];
+  handsFreeStatusSleepPhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]['sleepPhrase'];
+  handsFreeStatusLastError: Parameters<typeof getHandsFreeStatusSubtitle>[0]['lastError'];
+  handsFreeStatusForegroundOnly: Parameters<typeof getHandsFreeStatusSubtitle>[0]['foregroundOnly'];
   handsFreeControlState: ChatComposerRuntimeHandsFreeControlsProps['controlState'];
   onWakeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onWake'];
   onSleepHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onSleep'];
@@ -4467,7 +4472,11 @@ export function createChatComposerRuntimeDockProps({
   handsFreeControlsVisible,
   handsFreeStatusPhase,
   handsFreeStatusLabel,
-  handsFreeStatusSubtitle,
+  handsFreeStatusEnabled,
+  handsFreeStatusWakePhrase,
+  handsFreeStatusSleepPhrase,
+  handsFreeStatusLastError,
+  handsFreeStatusForegroundOnly,
   handsFreeControlState,
   onWakeHandsFree,
   onSleepHandsFree,
@@ -4508,6 +4517,15 @@ export function createChatComposerRuntimeDockProps({
   const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
     colors: pendingImagesColors,
   });
+  const handsFreeStatusSubtitle = handsFreeStatusEnabled
+    ? getHandsFreeStatusSubtitle({
+        phase: handsFreeStatusPhase,
+        wakePhrase: handsFreeStatusWakePhrase,
+        sleepPhrase: handsFreeStatusSleepPhrase,
+        lastError: handsFreeStatusLastError,
+        foregroundOnly: handsFreeStatusForegroundOnly,
+      })
+    : undefined;
   const textEntryAccessibilityHint = createChatComposerAccessibilityHint({
     handsFree: textEntryHandsFree,
     listening: textEntryListening,
