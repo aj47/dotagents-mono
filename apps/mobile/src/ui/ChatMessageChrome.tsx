@@ -4032,10 +4032,30 @@ export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState 
   };
 }
 
+export function getChatMessageCopyFailureAlertState(
+  error: unknown,
+  feedbackState: ChatMessageCopyFeedbackState = getChatMessageCopyFeedbackState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: feedbackState.failedTitle,
+    message: getChatRuntimeAlertMessage(error, feedbackState.failedMessage),
+  };
+}
+
 export function getChatMessageToolExecutionCopyFailureAlertState(): ReturnType<
   typeof getToolExecutionDetailCopyFailureAlertState
 > {
   return getToolExecutionDetailCopyFailureAlertState();
+}
+
+export function getChatMessageToolExecutionCopyFailureResolvedAlertState(
+  error: unknown,
+  alertState: ReturnType<typeof getToolExecutionDetailCopyFailureAlertState> = getToolExecutionDetailCopyFailureAlertState(),
+): ChatMessageRuntimeResolvedAlertState {
+  return {
+    title: alertState.title,
+    message: getChatRuntimeAlertMessage(error, alertState.fallbackMessage),
+  };
 }
 
 export function createChatMessageConversationBodyProps({

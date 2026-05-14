@@ -89,7 +89,9 @@ import {
   getChatMessageRuntimeToolApprovalConnectionRequiredAlertState,
   getChatMessageRuntimeToolApprovalFailedAlertState,
   getChatMessageRuntimeToolApprovalUnavailableAlertState,
+  getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureAlertState,
+  getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatMessageCopyFeedbackState,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -641,10 +643,8 @@ export default function ChatScreen({ route, navigation }: any) {
         setCopiedMessageIndex((current) => (current === messageIndex ? null : current));
       }, messageCopyFeedbackState.feedbackResetDelayMs);
     } catch (error) {
-      Alert.alert(
-        messageCopyFeedbackState.failedTitle,
-        formatChatMessageRuntimeAlertMessage(error, messageCopyFeedbackState.failedMessage),
-      );
+      const failedAlert = getChatMessageCopyFailureAlertState(error, messageCopyFeedbackState);
+      Alert.alert(failedAlert.title, failedAlert.message);
     }
   }, []);
 
@@ -655,10 +655,8 @@ export default function ChatScreen({ route, navigation }: any) {
     try {
       await Clipboard.setStringAsync(copyContent);
     } catch (error) {
-      Alert.alert(
-        toolExecutionDetailCopyFailureAlert.title,
-        formatChatMessageRuntimeAlertMessage(error, toolExecutionDetailCopyFailureAlert.fallbackMessage),
-      );
+      const failedAlert = getChatMessageToolExecutionCopyFailureResolvedAlertState(error, toolExecutionDetailCopyFailureAlert);
+      Alert.alert(failedAlert.title, failedAlert.message);
     }
   }, []);
 
