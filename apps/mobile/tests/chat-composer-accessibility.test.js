@@ -134,7 +134,8 @@ test('exposes the handsfree queue control as an accessible button', () => {
   assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
   assert.match(chatMessageChromeSource, /disabled=\{renderState\.isDisabled\}/);
   assert.doesNotMatch(screenSource, /const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage\(\);/);
-  assert.match(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
+  assert.doesNotMatch(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
+  assert.match(chatMessageChromeSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
   assert.match(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage\(\): string \{\s+return getChatComposerQueueMobileActionState\(\)\.debugMessage;\s+\}/);
 });
 
@@ -234,7 +235,8 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
 
 test('uses shared pending image attachment presentation in the mobile composer', () => {
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState/);
-  assert.match(screenSource, /buildChatComposerRuntimeMessageContent/);
+  assert.doesNotMatch(screenSource, /buildChatComposerRuntimeMessageContent/);
+  assert.match(chatMessageChromeSource, /buildChatComposerRuntimeMessageContent/);
   assert.doesNotMatch(screenSource, /buildChatImageAttachmentMessage/);
   assert.match(chatMessageChromeSource, /buildChatImageAttachmentMessage/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);

@@ -39,12 +39,10 @@ import {
   deleteChatConversationHomePromptFromList,
   sortChatConversationHomePromptsByUpdatedAt,
   updateChatConversationHomePromptList,
-  buildChatComposerRuntimeMessageContent,
-  hasChatComposerRuntimeMessageContent,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   getChatComposerHandsFreeDebugMessage,
-  getChatComposerRuntimeQueueDebugMessage,
   useChatComposerRuntimeImageAttachmentPickerState,
+  useChatComposerRuntimeSubmissionActionsState,
   useChatComposerRuntimeHandsFreeControlActionsState,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
@@ -2052,21 +2050,19 @@ export default function ChatScreen({ route, navigation }: any) {
   // We intentionally assign during render (not useEffect) so it is available immediately.
   syncSendRef(send);
 
-  const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
-  const sendComposerInput = useCallback(() => {
-    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
-    if (!composedMessage.trim()) return;
-    void send(composedMessage, { fromComposer: true });
-  }, [input, pendingImages, send]);
-
-  const queueComposerInput = useCallback(() => {
-    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
-    if (!composedMessage.trim()) return;
-
-    messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
-    clearComposerDraft();
-    setDebugInfo(getChatComposerRuntimeQueueDebugMessage());
-  }, [clearComposerDraft, currentConversationId, input, messageQueue, pendingImages]);
+  const {
+    composerHasContent,
+    sendComposerInput,
+    queueComposerInput,
+  } = useChatComposerRuntimeSubmissionActionsState({
+    input,
+    pendingImages,
+    currentConversationId,
+    queue: messageQueue,
+    send,
+    clearComposerDraft,
+    setDebugInfo,
+  });
 
   const composerTextEntrySubmissionState = useChatComposerRuntimeTextEntrySubmissionState({
     hasContent: composerHasContent,

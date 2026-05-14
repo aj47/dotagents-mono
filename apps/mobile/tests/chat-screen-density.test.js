@@ -1420,10 +1420,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /createChatMessageRuntimeChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeFollowUpPresentationState,/);
-  assert.match(screenSource, /hasChatComposerRuntimeMessageContent,/);
-  assert.match(screenSource, /buildChatComposerRuntimeMessageContent,/);
-  assert.match(screenSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
-  assert.match(screenSource, /const composedMessage = buildChatComposerRuntimeMessageContent\(input, pendingImages\);/);
+  assert.match(screenSource, /useChatComposerRuntimeSubmissionActionsState,/);
+  assert.match(screenSource, /const \{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+\} = useChatComposerRuntimeSubmissionActionsState\(\{\s+input,\s+pendingImages,\s+currentConversationId,\s+queue: messageQueue,\s+send,\s+clearComposerDraft,\s+setDebugInfo,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /hasChatComposerRuntimeMessageContent,/);
+  assert.doesNotMatch(screenSource, /buildChatComposerRuntimeMessageContent,/);
+  assert.doesNotMatch(screenSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
+  assert.doesNotMatch(screenSource, /const composedMessage = buildChatComposerRuntimeMessageContent\(input, pendingImages\);/);
   assert.match(screenSource, /const chatComposerStyles = useMemo\(\s+\(\) => createChatComposerStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const chatComposerRuntimeDockStyles = useMemo\(\s+\(\) => createChatComposerRuntimeDockStyleSlots\(\{/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
@@ -1437,6 +1439,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeFollowUpPresentationState/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionActionsState/);
+  assert.match(chatMessageChromeSource, /const composerHasContent = hasChatComposerRuntimeMessageContent\(input, pendingImages\);/);
+  assert.match(chatMessageChromeSource, /const composedMessage = buildChatComposerRuntimeMessageContent\(input, pendingImages\);/);
   assert.match(chatMessageChromeSource, /export function hasChatComposerRuntimeMessageContent/);
   assert.match(chatMessageChromeSource, /export function buildChatComposerRuntimeMessageContent/);
   assert.doesNotMatch(screenSource, /getFollowUpInputPresentation/);
@@ -1540,7 +1545,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /queueAction: \{\s+button: styles\.queueButton,\s+disabledButton: styles\.sendButtonDisabled,\s+text: styles\.queueButtonText,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerLabeledActionButton/);
   assert.doesNotMatch(screenSource, /const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage\(\);/);
-  assert.match(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
+  assert.doesNotMatch(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
+  assert.match(chatMessageChromeSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
   assert.match(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage\(\): string \{\s+return getChatComposerQueueMobileActionState\(\)\.debugMessage;\s+\}/);
   assert.match(chatMessageChromeSource, /disabled=\{renderState\.isDisabled\}/);
   assert.match(chatMessageChromeSource, /style=\{\[styles\.button, renderState\.isDisabled && styles\.disabledButton\]\}/);

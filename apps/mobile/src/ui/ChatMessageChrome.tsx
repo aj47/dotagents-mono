@@ -520,6 +520,35 @@ type ChatComposerRuntimeTextEntrySubmissionState = {
   onKeyPress: NonNullable<ChatComposerTextEntryProps['onKeyPress']>;
 };
 
+type ChatComposerRuntimeSendActionOptions = {
+  fromComposer?: boolean;
+};
+
+type ChatComposerRuntimeSendAction = (
+  text: string,
+  options?: ChatComposerRuntimeSendActionOptions,
+) => void | Promise<void>;
+
+type ChatComposerRuntimeQueueController = {
+  enqueue: (conversationId: string, text: string, sourceConversationId?: string) => void;
+};
+
+type ChatComposerRuntimeSubmissionActionsStateInput = {
+  input: string;
+  pendingImages: readonly ChatComposerRuntimeImageAttachment[];
+  currentConversationId: string;
+  queue: ChatComposerRuntimeQueueController;
+  send: ChatComposerRuntimeSendAction;
+  clearComposerDraft: () => void;
+  setDebugInfo: (message: string) => void;
+};
+
+type ChatComposerRuntimeSubmissionActionsState = {
+  composerHasContent: boolean;
+  sendComposerInput: () => void;
+  queueComposerInput: () => void;
+};
+
 type ChatComposerRuntimeHandsFreeController = {
   state: {
     phase: HandsFreePhase;
@@ -6281,6 +6310,39 @@ export function useChatComposerRuntimeDraftState(): ChatComposerRuntimeDraftStat
     focusComposerInput,
     mergeVoiceTextIntoComposer,
     removePendingImage,
+  };
+}
+
+export function useChatComposerRuntimeSubmissionActionsState({
+  input,
+  pendingImages,
+  currentConversationId,
+  queue,
+  send,
+  clearComposerDraft,
+  setDebugInfo,
+}: ChatComposerRuntimeSubmissionActionsStateInput): ChatComposerRuntimeSubmissionActionsState {
+  const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
+
+  const sendComposerInput = useCallback(() => {
+    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
+    if (!composedMessage.trim()) return;
+    void send(composedMessage, { fromComposer: true });
+  }, [input, pendingImages, send]);
+
+  const queueComposerInput = useCallback(() => {
+    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
+    if (!composedMessage.trim()) return;
+
+    queue.enqueue(currentConversationId, composedMessage, currentConversationId);
+    clearComposerDraft();
+    setDebugInfo(getChatComposerRuntimeQueueDebugMessage());
+  }, [clearComposerDraft, currentConversationId, input, pendingImages, queue, setDebugInfo]);
+
+  return {
+    composerHasContent,
+    sendComposerInput,
+    queueComposerInput,
   };
 }
 
