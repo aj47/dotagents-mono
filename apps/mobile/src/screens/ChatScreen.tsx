@@ -96,6 +96,7 @@ import {
   hasChatMessageRuntimeAssistantContentAfter,
   hasChatMessageRuntimeMessagesAfter,
   isLastChatMessageRuntimeConversationContent,
+  removeChatMessageRuntimePendingTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -3133,14 +3134,7 @@ export default function ChatScreen({ route, navigation }: any) {
       await sessionStore.setServerConversationId(recoveryConversationId);
     }
 
-    setMessages((m) => {
-      const newMessages = [...m];
-      if (newMessages.length >= 2) {
-        newMessages.pop();
-        newMessages.pop();
-      }
-      return newMessages;
-    });
+    setMessages((m) => removeChatMessageRuntimePendingTurnMessages(m));
     // Let React commit the message removal before send() reads current state.
     setTimeout(() => send(messageToRetry), 0);
   };

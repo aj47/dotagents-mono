@@ -3288,6 +3288,15 @@ export function appendChatMessageRuntimePendingTurnMessages<
   ];
 }
 
+export function removeChatMessageRuntimePendingTurnMessages<TMessage>(
+  messages: readonly TMessage[],
+): TMessage[] {
+  if (messages.length < 2) {
+    return [...messages];
+  }
+  return messages.slice(0, -2);
+}
+
 export function createChatMessageRuntimeAssistantDebugErrorMessage(
   message: string,
 ): ChatMessageRuntimeAssistantTextMessage {

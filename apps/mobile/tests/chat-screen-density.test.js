@@ -3485,11 +3485,15 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
     2,
   );
   assert.match(screenSource, /appendChatMessageRuntimePendingTurnMessages,/);
+  assert.match(screenSource, /removeChatMessageRuntimePendingTurnMessages,/);
+  assert.match(screenSource, /setMessages\(\(m\) => removeChatMessageRuntimePendingTurnMessages\(m\)\)/);
   assert.match(screenSource, /createChatMessageRuntimeAssistantTextMessage\(finalDisplayText\)/);
   assert.match(screenSource, /appendChatMessageRuntimeAssistantDebugErrorMessage\(m, queuedErrorMessage\)/);
   assert.match(chatMessageChromeSource, /export function appendChatMessageRuntimeAssistantDebugErrorMessage/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeAssistantDebugErrorMessage\(message\) as TMessage/);
   assert.match(chatMessageChromeSource, /export function appendChatMessageRuntimePendingTurnMessages/);
+  assert.match(chatMessageChromeSource, /export function removeChatMessageRuntimePendingTurnMessages/);
+  assert.match(chatMessageChromeSource, /return messages\.slice\(0, -2\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantPlaceholderMessage/);
   assert.match(chatMessageChromeSource, /return createChatMessageRuntimeAssistantTextMessage\(''\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantDebugErrorMessage/);
@@ -3497,6 +3501,7 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantErrorMessage\(errorMessage, partialContent\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantDebugErrorMessage\(queuedErrorMessage\)/);
   assert.doesNotMatch(screenSource, /const errorMessageState = createChatMessageRuntimeAssistantErrorMessage/);
+  assert.doesNotMatch(screenSource, /newMessages\.pop\(\)/);
   assert.doesNotMatch(screenSource, /\[\.\.\.m, userMsg, createChatMessageRuntimeAssistantPlaceholderMessage\(\)\]/);
   assert.doesNotMatch(screenSource, /\{ role: 'assistant', content: '' \}/);
   assert.doesNotMatch(screenSource, /role: 'assistant' as const/);
