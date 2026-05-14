@@ -215,8 +215,10 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(screenSource, /getChatConversationHomePromptSaveSuccessAlertState\(wasEditingPrompt\)/);
   assert.match(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /getChatConversationHomePromptDeleteFailedAlertState\(error\)/);
-  assert.match(screenSource, /getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
-  assert.match(screenSource, /getChatConversationHomePromptTaskStartedAlertState\(task\.name\)/);
+  assert.doesNotMatch(screenSource, /getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
+  assert.doesNotMatch(screenSource, /getChatConversationHomePromptTaskStartedAlertState\(task\.name\)/);
+  assert.match(chatMessageChromeSource, /getChatConversationHomePromptTaskStartedAlertState\(task\.name\)/);
   assert.match(screenSource, /getChatConversationHomePromptDeleteConfirmAlertState\(prompt\.name\)/);
   assert.match(screenSource, /confirmFn\?\.\(confirmAlert\.webMessage\)/);
   assert.doesNotMatch(screenSource, /getPromptLibrarySaveSuccessMessage/);

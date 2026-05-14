@@ -422,6 +422,26 @@ type ChatConversationHomePromptTaskRunState = {
   clearPromptTaskRun: () => void;
 };
 
+type ChatConversationHomePromptTaskRunClient = {
+  runLoop: (taskId: string) => Promise<unknown>;
+};
+
+type ChatConversationHomePromptTaskRunActionsStateInput<
+  TTaskRunClient extends ChatConversationHomePromptTaskRunClient,
+> = {
+  taskClient?: TTaskRunClient | null;
+  canRunPromptTask: boolean;
+  beginPromptTaskRun: (taskId: string) => void;
+  clearPromptTaskRun: () => void;
+  showAlert: (title: string, message: string) => void;
+};
+
+type ChatConversationHomePromptTaskRunActionsState<
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = {
+  handleRunPromptTask: (task: TTask) => Promise<void>;
+};
+
 type ChatConversationHomeQuickStartCatalogState = {
   predefinedPrompts: PredefinedPromptSummary[];
   setPredefinedPrompts: Dispatch<SetStateAction<PredefinedPromptSummary[]>>;
@@ -6242,6 +6262,42 @@ export function useChatConversationHomePromptTaskRunState(): ChatConversationHom
     canRunPromptTask: runningPromptTaskId === null,
     beginPromptTaskRun,
     clearPromptTaskRun,
+  };
+}
+
+export function useChatConversationHomePromptTaskRunActionsState<
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+  TTaskRunClient extends ChatConversationHomePromptTaskRunClient,
+>({
+  taskClient,
+  canRunPromptTask,
+  beginPromptTaskRun,
+  clearPromptTaskRun,
+  showAlert,
+}: ChatConversationHomePromptTaskRunActionsStateInput<TTaskRunClient>): ChatConversationHomePromptTaskRunActionsState<TTask> {
+  const handleRunPromptTask = useCallback(async (task: TTask) => {
+    if (!taskClient || !canRunPromptTask) return;
+    beginPromptTaskRun(task.id);
+    try {
+      await taskClient.runLoop(task.id);
+      const taskStartedAlert = getChatConversationHomePromptTaskStartedAlertState(task.name);
+      showAlert(taskStartedAlert.title, taskStartedAlert.message);
+    } catch (error: any) {
+      const failedAlert = getChatConversationHomePromptTaskRunFailedAlertState(error);
+      showAlert(failedAlert.title, failedAlert.message);
+    } finally {
+      clearPromptTaskRun();
+    }
+  }, [
+    beginPromptTaskRun,
+    canRunPromptTask,
+    clearPromptTaskRun,
+    showAlert,
+    taskClient,
+  ]);
+
+  return {
+    handleRunPromptTask,
   };
 }
 

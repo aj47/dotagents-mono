@@ -20,8 +20,7 @@ import {
   getChatConversationHomePromptDeleteFailedAlertState,
   getChatConversationHomePromptSaveFailedAlertState,
   getChatConversationHomePromptSaveSuccessAlertState,
-  getChatConversationHomePromptTaskRunFailedAlertState,
-  getChatConversationHomePromptTaskStartedAlertState,
+  useChatConversationHomePromptTaskRunActionsState,
   useChatConversationHomePromptTaskRunState,
   useChatConversationHomeQuickStartCatalogState,
   useChatConversationHomePromptEditorState,
@@ -480,20 +479,13 @@ export default function ChatScreen({ route, navigation }: any) {
     focusComposerInput();
   }, [focusComposerInput]);
 
-  const handleRunPromptTask = useCallback(async (task: Loop) => {
-    if (!settingsClient || !canRunPromptTask) return;
-    beginPromptTaskRun(task.id);
-    try {
-      await settingsClient.runLoop(task.id);
-      const taskStartedAlert = getChatConversationHomePromptTaskStartedAlertState(task.name);
-      Alert.alert(taskStartedAlert.title, taskStartedAlert.message);
-    } catch (error: any) {
-      const failedAlert = getChatConversationHomePromptTaskRunFailedAlertState(error);
-      Alert.alert(failedAlert.title, failedAlert.message);
-    } finally {
-      clearPromptTaskRun();
-    }
-  }, [beginPromptTaskRun, canRunPromptTask, clearPromptTaskRun, settingsClient]);
+  const { handleRunPromptTask } = useChatConversationHomePromptTaskRunActionsState<Loop, ExtendedSettingsApiClient>({
+    taskClient: settingsClient,
+    canRunPromptTask,
+    beginPromptTaskRun,
+    clearPromptTaskRun,
+    showAlert: Alert.alert,
+  });
 
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
     const pressIntent = getChatConversationHomeQuickStartPressIntent(item);
