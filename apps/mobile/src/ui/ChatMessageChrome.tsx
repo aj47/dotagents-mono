@@ -3294,6 +3294,18 @@ export function createChatMessageRuntimeAssistantDebugErrorMessage(
   return createChatMessageRuntimeAssistantTextMessage(formatChatMessageRuntimeDebugError(message));
 }
 
+export function appendChatMessageRuntimeAssistantDebugErrorMessage<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  messages: readonly TMessage[],
+  message: string,
+): TMessage[] {
+  return [
+    ...messages,
+    createChatMessageRuntimeAssistantDebugErrorMessage(message) as TMessage,
+  ];
+}
+
 export function createChatMessageRuntimeAssistantErrorMessage(
   errorMessage: string,
   partialContent?: string | null,
@@ -3389,6 +3401,17 @@ export function updateLastChatMessageRuntimeConversationContent<
     }
   }
   return copy;
+}
+
+export function updateLastChatMessageRuntimeAssistantErrorMessage<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  messages: readonly TMessage[],
+  errorMessage: string,
+  partialContent?: string | null,
+): TMessage[] {
+  const errorMessageState = createChatMessageRuntimeAssistantErrorMessage(errorMessage, partialContent);
+  return updateLastChatMessageRuntimeConversationContent(messages, errorMessageState.content);
 }
 
 export function replaceChatMessageRuntimeTurnMessages<TMessage>(

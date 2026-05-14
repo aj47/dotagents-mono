@@ -47,6 +47,7 @@ import {
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaLayoutState,
   createChatRuntimeMobileSafeAreaStyleSlots,
+  appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
@@ -59,8 +60,6 @@ import {
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeHistoryDisplayMessages,
   createChatMessageRuntimeActivityMessage,
-  createChatMessageRuntimeAssistantDebugErrorMessage,
-  createChatMessageRuntimeAssistantErrorMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeCompletedTurnMessages,
@@ -98,6 +97,7 @@ import {
   hasChatMessageRuntimeMessagesAfter,
   isLastChatMessageRuntimeConversationContent,
   replaceChatMessageRuntimeTurnMessages,
+  updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -2341,11 +2341,11 @@ export default function ChatScreen({ route, navigation }: any) {
       // Update the in-flight assistant message instead of appending a new one
       // This avoids duplicating the assistant loading placeholder and ensures
       // the retry pop logic removes the correct items
-      setMessages((m) => {
-        const errorMessageState = createChatMessageRuntimeAssistantErrorMessage(errorMessage, partialContent);
-        // Find and update the last assistant message instead of appending
-        return updateLastChatMessageRuntimeConversationContent(m, errorMessageState.content);
-      });
+      setMessages((m) => updateLastChatMessageRuntimeAssistantErrorMessage(
+        m,
+        errorMessage,
+        partialContent,
+      ));
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
@@ -2615,7 +2615,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const queuedErrorMessage = formatChatMessageRuntimeAlertMessage(e, getChatMessageRuntimeDebugMessage('unknownError'));
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorMessage);
       setConversationState('blocked');
-      setMessages((m) => [...m, createChatMessageRuntimeAssistantDebugErrorMessage(queuedErrorMessage)]);
+      setMessages((m) => appendChatMessageRuntimeAssistantDebugErrorMessage(m, queuedErrorMessage));
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
 	      }
