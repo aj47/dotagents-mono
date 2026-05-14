@@ -161,6 +161,33 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
   const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
+  const createChatRuntimeMobileHeaderDurationChipStyle = (
+    badge: typeof headerTurnDurationBadge,
+    colors: typeof headerTurnDurationColors,
+  ) => ({
+    flexDirection: badge.flexDirection,
+    alignItems: badge.alignItems,
+    justifyContent: badge.justifyContent,
+    gap: badge.gap,
+    minHeight: badge.minHeight,
+    maxWidth: badge.maxWidth,
+    paddingHorizontal: badge.paddingHorizontal,
+    borderRadius: badge.borderRadius,
+    backgroundColor: colors.chip.backgroundColor,
+    marginHorizontal: badge.marginHorizontal,
+    flexShrink: badge.flexShrink,
+    opacity: badge.opacity,
+  } as const);
+  const createChatRuntimeMobileHeaderDurationTextStyle = (
+    badge: typeof headerTurnDurationBadge,
+    colors: typeof headerTurnDurationColors,
+  ) => ({
+    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform),
+    fontSize: badge.fontSize,
+    lineHeight: badge.lineHeight,
+    fontWeight: badge.fontWeight,
+    color: colors.text.color,
+  } as const);
   const createChatRuntimeMobileMessageActionButtonStyle = (
     button: typeof mobileMessageExpansionButton,
     colors: typeof mobileMessageExpansionButtonColors,
@@ -341,32 +368,28 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       height: sessionStatusSurface.runningIndicator.size,
     },
     headerDurationChip: {
-      flexDirection: headerTurnDurationBadge.flexDirection,
-      alignItems: headerTurnDurationBadge.alignItems,
-      justifyContent: headerTurnDurationBadge.justifyContent,
-      gap: headerTurnDurationBadge.gap,
-      minHeight: headerTurnDurationBadge.minHeight,
-      maxWidth: headerTurnDurationBadge.maxWidth,
-      paddingHorizontal: headerTurnDurationBadge.paddingHorizontal,
-      borderRadius: headerTurnDurationBadge.borderRadius,
-      backgroundColor: headerTurnDurationColors.chip.backgroundColor,
-      marginHorizontal: headerTurnDurationBadge.marginHorizontal,
-      flexShrink: headerTurnDurationBadge.flexShrink,
-      opacity: headerTurnDurationBadge.opacity,
-    } as const,
+      ...createChatRuntimeMobileHeaderDurationChipStyle(
+        headerTurnDurationBadge,
+        headerTurnDurationColors,
+      ),
+    },
     headerDurationChipLive: {
-      backgroundColor: headerTurnDurationLiveColors.chip.backgroundColor,
-      opacity: headerTurnDurationLiveBadge.opacity,
-    } as const,
+      ...createChatRuntimeMobileHeaderDurationChipStyle(
+        headerTurnDurationLiveBadge,
+        headerTurnDurationLiveColors,
+      ),
+    },
     headerDurationChipText: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(headerTurnDurationBadge.fontFamilyByPlatform),
-      fontSize: headerTurnDurationBadge.fontSize,
-      lineHeight: headerTurnDurationBadge.lineHeight,
-      fontWeight: headerTurnDurationBadge.fontWeight,
-      color: headerTurnDurationColors.text.color,
+      ...createChatRuntimeMobileHeaderDurationTextStyle(
+        headerTurnDurationBadge,
+        headerTurnDurationColors,
+      ),
     },
     headerDurationChipTextLive: {
-      color: headerTurnDurationLiveColors.text.color,
+      ...createChatRuntimeMobileHeaderDurationTextStyle(
+        headerTurnDurationLiveBadge,
+        headerTurnDurationLiveColors,
+      ),
     },
     headerActionButton,
     headerEdgeActionButton,
