@@ -57,6 +57,8 @@ import {
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatMessageRuntimeStreamingText,
+  createChatMessageRuntimeFinalResponseTextState,
   sortChatMessageRuntimeResponseEvents,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
@@ -938,24 +940,28 @@ export default function ChatScreen({ route, navigation }: any) {
           console.log('[ChatScreen] Request superseded within same session, skipping onToken update');
           return;
         }
-        // Handle both delta tokens and full-text updates.
-        // Progress events with streamingContent.text send the full accumulated text,
-        // while SSE delta events send just the new token.
-        // Detect full-text updates to prevent double-words from compounding tokens.
-        if (tok.startsWith(streamingText) && tok.length >= streamingText.length) {
-          streamingText = tok;
-        } else {
-          streamingText += tok;
-        }
+        streamingText = createChatMessageRuntimeStreamingText(streamingText, tok);
 
         setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
       };
 
       const modelMessages = createChatMessageRuntimeModelMessages([...currentMessages, userMsg]);
 	      const response = await client.chat(modelMessages, onToken, onProgress, serverConversationId);
-      const finalText = response.content || streamingText;
 		      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
-		      const finalDisplayText = finalResponseEvent?.text || lastUserResponse || finalText;
+      const {
+        finalText,
+        finalDisplayText,
+        ttsText,
+        userResponseText,
+        alreadySpokenMidTurn,
+      } = createChatMessageRuntimeFinalResponseTextState({
+        responseContent: response.content,
+        streamingText,
+        finalResponseEvent,
+        lastUserResponse,
+        midTurnLegacyResponseText,
+        playedResponseEventIds: playedResponseEventIdsRef.current,
+      });
       console.log('[ChatScreen] Chat completed, conversationId:', response.conversationId);
 
       // Guard: skip UI updates if session has changed, BUT still persist to the original session
@@ -1002,7 +1008,7 @@ export default function ChatScreen({ route, navigation }: any) {
         const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>(
           response.conversationHistory,
           {
-            userResponse: finalResponseEvent?.text || lastUserResponse,
+            userResponse: userResponseText,
           },
         );
 	        console.log('[ChatScreen] finalTurnMessages count:', finalTurnMessages.length);
@@ -1082,10 +1088,6 @@ export default function ChatScreen({ route, navigation }: any) {
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // userResponse is explicitly set by the agent for user communication
       // Skip TTS if we already played the same text mid-turn
-	      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
-	      const alreadySpokenMidTurn = !!(finalResponseEvent
-	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
-	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
 	      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && ttsEnabledRef.current) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
@@ -1307,23 +1309,27 @@ export default function ChatScreen({ route, navigation }: any) {
       const onToken = (tok: string) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
-        // Handle both delta tokens and full-text updates.
-        // Progress events with streamingContent.text send the full accumulated text,
-        // while SSE delta events send just the new token.
-        // Detect full-text updates to prevent double-words from compounding tokens.
-        if (tok.startsWith(streamingText) && tok.length >= streamingText.length) {
-          streamingText = tok;
-        } else {
-          streamingText += tok;
-        }
+        streamingText = createChatMessageRuntimeStreamingText(streamingText, tok);
         setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
       };
 
       const modelMessages = createChatMessageRuntimeModelMessages([...currentMessages, userMsg]);
       const response = await client.chat(modelMessages, onToken, onProgress, startingServerConversationId);
-      const finalText = response.content || streamingText;
 	      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
-	      const finalDisplayText = finalResponseEvent?.text || lastUserResponse || finalText;
+      const {
+        finalText,
+        finalDisplayText,
+        ttsText,
+        userResponseText,
+        alreadySpokenMidTurn,
+      } = createChatMessageRuntimeFinalResponseTextState({
+        responseContent: response.content,
+        streamingText,
+        finalResponseEvent,
+        lastUserResponse,
+        midTurnLegacyResponseText,
+        playedResponseEventIds: playedResponseEventIdsRef.current,
+      });
 
       // Early exit guards - finalize queue status before returning to prevent stuck 'processing' items
       if (sessionStore.currentSessionId !== requestSessionId) {
@@ -1356,7 +1362,7 @@ export default function ChatScreen({ route, navigation }: any) {
           response.conversationHistory,
           {
             mergeToolResults: false,
-            userResponse: finalResponseEvent?.text || lastUserResponse,
+            userResponse: userResponseText,
           },
         );
 
@@ -1371,10 +1377,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // Skip TTS if we already played the same text mid-turn
-	      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
-	      const alreadySpokenMidTurn = !!(finalResponseEvent
-	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
-	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
       if (!alreadySpokenMidTurn && ttsText && ttsEnabledRef.current) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();

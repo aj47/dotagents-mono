@@ -5064,6 +5064,15 @@ type ChatMessageRuntimeSessionDisplayMessagesOptions = {
   includeId?: boolean;
 };
 
+type ChatMessageRuntimeFinalResponseTextStateInput = {
+  responseContent?: string | null;
+  streamingText: string;
+  finalResponseEvent?: Pick<AgentUserResponseEvent, 'id' | 'text'> | null;
+  lastUserResponse?: string;
+  midTurnLegacyResponseText?: string;
+  playedResponseEventIds?: ReadonlySet<string>;
+};
+
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
@@ -5099,6 +5108,41 @@ export function hasChatMessageRuntimeAssistantContentAfter(
     }
   }
   return false;
+}
+
+export function createChatMessageRuntimeStreamingText(
+  currentText: string,
+  nextToken: string,
+): string {
+  if (nextToken.startsWith(currentText) && nextToken.length >= currentText.length) {
+    return nextToken;
+  }
+  return currentText + nextToken;
+}
+
+export function createChatMessageRuntimeFinalResponseTextState({
+  responseContent,
+  streamingText,
+  finalResponseEvent,
+  lastUserResponse,
+  midTurnLegacyResponseText,
+  playedResponseEventIds,
+}: ChatMessageRuntimeFinalResponseTextStateInput) {
+  const finalText = responseContent || streamingText;
+  const userResponseText = finalResponseEvent?.text || lastUserResponse;
+  const finalDisplayText = userResponseText || finalText;
+  const ttsText = userResponseText || finalText;
+  const alreadySpokenMidTurn = !!(finalResponseEvent
+    ? playedResponseEventIds?.has(finalResponseEvent.id)
+    : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
+
+  return {
+    finalText,
+    finalDisplayText,
+    ttsText,
+    userResponseText,
+    alreadySpokenMidTurn,
+  };
 }
 
 export function createChatMessageRuntimeSessionDisplayMessages<

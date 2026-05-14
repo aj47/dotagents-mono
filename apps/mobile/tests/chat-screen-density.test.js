@@ -1904,8 +1904,11 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeProgressMessages/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeUserResponseMessages\(\s+messages,\s+update\.userResponse \|\| update\.spokenContent,\s+\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeUserResponseMessages\(newMessages, finalResponseEvent\?\.text \|\| lastUserResponse\)/);
-  assert.match(screenSource, /createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>\(\s+response\.conversationHistory,\s+\{\s+userResponse: finalResponseEvent\?\.text \|\| lastUserResponse,\s+\},\s+\)/);
-  assert.match(screenSource, /createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+userResponse: finalResponseEvent\?\.text \|\| lastUserResponse,\s+\},\s+\)/);
+  assert.match(screenSource, /createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>\(\s+response\.conversationHistory,\s+\{\s+userResponse: userResponseText,\s+\},\s+\)/);
+  assert.match(screenSource, /createChatMessageRuntimeFinalHistoryTurnMessages<ChatMessage>\(\s+response\.conversationHistory,\s+\{\s+mergeToolResults: false,\s+userResponse: userResponseText,\s+\},\s+\)/);
+  assert.match(screenSource, /createChatMessageRuntimeFinalResponseTextState,/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeFinalResponseTextState/);
+  assert.match(chatMessageChromeSource, /const userResponseText = finalResponseEvent\?\.text \|\| lastUserResponse;/);
   assert.match(chatMessageChromeSource, /applyUserResponseToChatMessages,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeUserResponseMessages/);
   assert.match(chatMessageChromeSource, /return applyUserResponseToChatMessages\(messages, userResponse\)/);
