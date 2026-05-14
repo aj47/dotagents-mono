@@ -62,7 +62,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /getChatRuntimeCurrentAgentLabel,/);
   assert.match(chatMessageChromeSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\);/);
   assert.match(chatMessageChromeSource, /getChatRuntimeHeaderMobileSurfaceState\(\)\.agentSelectorText\.numberOfLines/);
-  assert.match(screenSource, /getChatRuntimeHeaderMobileStyleRenderState,/);
+  assert.match(screenSource, /getChatRuntimeHeaderChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeHeaderChromeMobileStyleRenderState/);
+  assert.match(sessionPresentationSource, /header: getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /getChatRuntimeAgentSelectorMobileRenderState,/);
   assert.match(screenSource, /const mobileHeaderRenderState = useMemo\(\s+\(\) => createChatRuntimeNavigationHeaderRenderState\(\{\s+agentName: currentProfile\?\.name,[\s\S]*?colors: theme\.colors,\s+\}\),/);
   assert.match(screenSource, /\.\.\.mobileHeaderRenderState,\s+onAgentSelectorPress: \(\) => setAgentSelectorVisible\(true\),/);
@@ -90,7 +92,8 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /size=\{renderState\.icon\.size\}/);
   assert.doesNotMatch(screenSource, /const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState\(\);/);
   assert.match(chatMessageChromeSource, /color=\{renderState\.icon\.color\}/);
-  assert.match(screenSource, /const headerStyleState = getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const headerChromeStyleState = getChatRuntimeHeaderChromeMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const headerStyleState = headerChromeStyleState\.header;/);
   assert.match(screenSource, /const headerSurface = headerStyleState\.surface;/);
   assert.match(screenSource, /const headerAgentSelectorColors = headerStyleState\.agentSelector;/);
   assert.match(screenSource, /headerAgentSelectorButton:\s*\{[\s\S]*?alignItems:\s*headerSurface\.agentSelectorButton\.alignItems,[\s\S]*?justifyContent:\s*headerSurface\.agentSelectorButton\.justifyContent,[\s\S]*?height:\s*headerSurface\.agentSelectorButton\.height,[\s\S]*?minHeight:\s*headerSurface\.agentSelectorButton\.minHeight/);
@@ -124,7 +127,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
 test('shows a conversation-state chip in the mobile chat header while preserving the compact header actions row', () => {
   assert.doesNotMatch(screenSource, /getSessionStatusMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getSessionStatusMobileRenderState,/);
-  assert.match(screenSource, /getSessionStatusMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /sessionStatus: getSessionStatusMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /getChatSessionStatusMobileStyleState,/);
   assert.doesNotMatch(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(chatMessageChromeSource, /conversationStatusRenderState: getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors,\s+\}\),/);
@@ -146,7 +149,7 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderActionsRow/);
   assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?\{children\}[\s\S]*?<\/View>/);
   assert.doesNotMatch(screenSource, /const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const sessionStatusStyleState = getSessionStatusMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const sessionStatusStyleState = headerChromeStyleState\.sessionStatus;/);
   assert.match(screenSource, /const sessionStatusSurface = sessionStatusStyleState\.surface;/);
   assert.match(screenSource, /headerActionsRow:\s*\{[\s\S]*?flexDirection:\s*headerSurface\.actionsRow\.flexDirection,[\s\S]*?alignItems:\s*headerSurface\.actionsRow\.alignItems,[\s\S]*?gap:\s*headerSurface\.actionsRow\.gap/);
   assert.match(screenSource, /headerConversationChip:\s*\{[\s\S]*?flexDirection:\s*sessionStatusSurface\.chip\.flexDirection,[\s\S]*?alignItems:\s*sessionStatusSurface\.chip\.alignItems,[\s\S]*?gap:\s*sessionStatusSurface\.chip\.gap,[\s\S]*?borderRadius:\s*sessionStatusSurface\.chip\.borderRadius/);
@@ -170,7 +173,8 @@ test('shows a conversation-state chip in the mobile chat header while preserving
 test('shows the shared total agent time in the mobile chat header', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeTurnDurationHeaderMobileBadgeState,/);
-  assert.match(screenSource, /getChatRuntimeTurnDurationHeaderMobileRenderState,/);
+  assert.match(sessionPresentationSource, /standard: getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: 1,\s+colors,\s+\}\),/);
+  assert.match(sessionPresentationSource, /live: getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: 1,\s+isLive: true,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /getChatRuntimeTurnDurationHeaderMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileHeaderTurnDurationBadge = getChatRuntimeTurnDurationHeaderMobileBadgeState\(\);/);
@@ -200,8 +204,8 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(chatMessageChromeSource, /color=\{renderState\.icon\.color\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.badge\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
-  assert.match(screenSource, /const headerTurnDurationStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: 1,\s+colors: theme\.colors,\s+\}\);/);
-  assert.match(screenSource, /const headerTurnDurationLiveStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState\(\{\s+durationMs: 1,\s+isLive: true,\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const headerTurnDurationStyleState = headerChromeStyleState\.turnDuration\.standard;/);
+  assert.match(screenSource, /const headerTurnDurationLiveStyleState = headerChromeStyleState\.turnDuration\.live;/);
   assert.match(screenSource, /const headerTurnDurationBadge = headerTurnDurationStyleState\.badge;/);
   assert.match(screenSource, /const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState\.badge;/);
   assert.match(screenSource, /const headerTurnDurationColors = headerTurnDurationStyleState\.colors;/);
@@ -840,7 +844,7 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /const headerHandsFreeMobileRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHeaderKillSwitchRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /styles\.headerHandsFreeIconContainer/);
-  assert.match(screenSource, /const headerStyleState = getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors: theme\.colors,\s+\}\);/);
+  assert.match(screenSource, /const headerStyleState = headerChromeStyleState\.header;/);
   assert.match(screenSource, /const inactiveHeaderPinButtonColors = headerStyleState\.pinButton\.inactive;/);
   assert.match(screenSource, /const activeHeaderPinButtonColors = headerStyleState\.pinButton\.active;/);
   assert.match(screenSource, /const headerKillSwitchButtonColors = headerStyleState\.killSwitchButton;/);

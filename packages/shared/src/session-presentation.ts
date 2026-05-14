@@ -602,6 +602,22 @@ export interface ChatRuntimeHeaderMobileStyleRenderState {
   killSwitchButton: ChatRuntimeKillSwitchMobileColors
 }
 
+export interface ChatRuntimeHeaderChromeMobileStyleRenderStateInput {
+  colors:
+    & ChatRuntimeHeaderMobileStyleColorPalette
+    & ChatSessionStatusMobileColorPalette
+    & ChatRuntimeTurnDurationHeaderMobileBadgeColorPalette
+}
+
+export interface ChatRuntimeHeaderChromeMobileStyleRenderState {
+  header: ChatRuntimeHeaderMobileStyleRenderState
+  sessionStatus: ChatSessionStatusMobileStyleRenderState
+  turnDuration: {
+    standard: ChatRuntimeTurnDurationHeaderMobileRenderState
+    live: ChatRuntimeTurnDurationHeaderMobileRenderState
+  }
+}
+
 export interface ChatRuntimeKillSwitchMobileAlertState {
   confirmation: {
     title: string
@@ -4987,6 +5003,30 @@ export function getChatRuntimeHeaderMobileStyleRenderState({
       active: getChatRuntimePinMobileColors(true, colors),
     },
     killSwitchButton: getChatRuntimeKillSwitchMobileColors(colors),
+  }
+}
+
+export function getChatRuntimeHeaderChromeMobileStyleRenderState({
+  colors,
+}: ChatRuntimeHeaderChromeMobileStyleRenderStateInput): ChatRuntimeHeaderChromeMobileStyleRenderState {
+  return {
+    header: getChatRuntimeHeaderMobileStyleRenderState({
+      colors,
+    }),
+    sessionStatus: getSessionStatusMobileStyleRenderState({
+      colors,
+    }),
+    turnDuration: {
+      standard: getChatRuntimeTurnDurationHeaderMobileRenderState({
+        durationMs: 1,
+        colors,
+      }),
+      live: getChatRuntimeTurnDurationHeaderMobileRenderState({
+        durationMs: 1,
+        isLive: true,
+        colors,
+      }),
+    },
   }
 }
 

@@ -112,6 +112,7 @@ import {
   getChatRuntimeHandsFreeMobileColors,
   getChatRuntimeHandsFreeMobileIconState,
   getChatRuntimeHandsFreeMobileRenderState,
+  getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
@@ -1256,6 +1257,9 @@ describe("session presentation semantics", () => {
     const headerMobileStyleColors = {
       ...pinMobileColors,
       destructive: "#dc2626",
+      info: "#0ea5e9",
+      success: "#16a34a",
+      warning: "#d97706",
     }
     expect(getChatRuntimeHeaderMobileStyleRenderState({
       colors: headerMobileStyleColors,
@@ -1267,6 +1271,27 @@ describe("session presentation semantics", () => {
         active: getChatRuntimePinMobileColors(true, headerMobileStyleColors),
       },
       killSwitchButton: getChatRuntimeKillSwitchMobileColors(headerMobileStyleColors),
+    })
+    expect(getChatRuntimeHeaderChromeMobileStyleRenderState({
+      colors: headerMobileStyleColors,
+    })).toEqual({
+      header: getChatRuntimeHeaderMobileStyleRenderState({
+        colors: headerMobileStyleColors,
+      }),
+      sessionStatus: getSessionStatusMobileStyleRenderState({
+        colors: headerMobileStyleColors,
+      }),
+      turnDuration: {
+        standard: getChatRuntimeTurnDurationHeaderMobileRenderState({
+          durationMs: 1,
+          colors: headerMobileStyleColors,
+        }),
+        live: getChatRuntimeTurnDurationHeaderMobileRenderState({
+          durationMs: 1,
+          isLive: true,
+          colors: headerMobileStyleColors,
+        }),
+      },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)

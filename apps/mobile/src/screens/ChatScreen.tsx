@@ -99,7 +99,7 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeDebugState,
   getChatRuntimeDelegationCardMobileRenderState,
-  getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryBannerMobileRenderState,
@@ -112,11 +112,9 @@ import {
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
-  getChatRuntimeTurnDurationHeaderMobileRenderState,
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
-  getSessionStatusMobileStyleRenderState,
 } from '@dotagents/shared/session-presentation';
 import {
   createAgentDelegationProgressMessages as createDelegationProgressMessages,
@@ -3408,9 +3406,10 @@ export default function ChatScreen({ route, navigation }: any) {
 }
 
 function createStyles(theme: Theme, screenHeight: number) {
-  const headerStyleState = getChatRuntimeHeaderMobileStyleRenderState({
+  const headerChromeStyleState = getChatRuntimeHeaderChromeMobileStyleRenderState({
     colors: theme.colors,
   });
+  const headerStyleState = headerChromeStyleState.header;
   const headerSurface = headerStyleState.surface;
   const headerAgentSelectorColors = headerStyleState.agentSelector;
   const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
@@ -3491,9 +3490,7 @@ function createStyles(theme: Theme, screenHeight: number) {
   const headerEdgeActionButton = createMinimumTouchTargetStyle({
     horizontalPadding: headerSurface.edgeActionButton.horizontalPadding,
   });
-  const sessionStatusStyleState = getSessionStatusMobileStyleRenderState({
-    colors: theme.colors,
-  });
+  const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
   const sessionStatusSurface = sessionStatusStyleState.surface;
   const compactToolExecutionStyleState = getToolExecutionCompactMobileStyleRenderState({
     colors: theme.colors,
@@ -3533,15 +3530,8 @@ function createStyles(theme: Theme, screenHeight: number) {
   const toolResultBadgeErrorColors = toolExecutionDetailStyleColors.badge.error;
   const toolResultErrorColors = toolExecutionDetailStyleColors.error;
   const toolExecutionDetailContentColors = toolExecutionDetailStyleColors.content;
-  const headerTurnDurationStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState({
-    durationMs: 1,
-    colors: theme.colors,
-  });
-  const headerTurnDurationLiveStyleState = getChatRuntimeTurnDurationHeaderMobileRenderState({
-    durationMs: 1,
-    isLive: true,
-    colors: theme.colors,
-  });
+  const headerTurnDurationStyleState = headerChromeStyleState.turnDuration.standard;
+  const headerTurnDurationLiveStyleState = headerChromeStyleState.turnDuration.live;
   const headerTurnDurationBadge = headerTurnDurationStyleState.badge;
   const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState.badge;
   const headerTurnDurationColors = headerTurnDurationStyleState.colors;
