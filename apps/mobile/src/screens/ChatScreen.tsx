@@ -63,6 +63,7 @@ import {
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
+  applyChatMessageRuntimeProgressTurnStatusState,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -883,7 +884,10 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         const progressTurnState = createChatMessageRuntimeProgressTurnState<ChatMessage>(update);
         latestConversationState = progressTurnState.conversationState;
-        setConversationState(progressTurnState.conversationState);
+        applyChatMessageRuntimeProgressTurnStatusState(progressTurnState, {
+          setLatestStepSummary,
+          setConversationState,
+        });
         const responseState = createChatMessageRuntimeProgressResponseState({
           update,
           requestSessionId,
@@ -907,9 +911,6 @@ export default function ChatScreen({ route, navigation }: any) {
         ) {
           midTurnLegacyResponseText = responseState.legacyResponseText;
           speakAssistantResponse(responseState.legacyResponseText, 'mid-turn progress');
-        }
-        if (progressTurnState.latestStepSummary) {
-          setLatestStepSummary(progressTurnState.latestStepSummary);
         }
         const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {
@@ -1271,7 +1272,10 @@ export default function ChatScreen({ route, navigation }: any) {
         if (activeRequestIdRef.current !== thisRequestId) return;
         const progressTurnState = createChatMessageRuntimeProgressTurnState<ChatMessage>(update);
         latestConversationState = progressTurnState.conversationState;
-        setConversationState(progressTurnState.conversationState);
+        applyChatMessageRuntimeProgressTurnStatusState(progressTurnState, {
+          setLatestStepSummary,
+          setConversationState,
+        });
         const responseState = createChatMessageRuntimeProgressResponseState({
           update,
           requestSessionId,
@@ -1295,9 +1299,6 @@ export default function ChatScreen({ route, navigation }: any) {
         ) {
           midTurnLegacyResponseText = responseState.legacyResponseText;
           speakAssistantResponse(responseState.legacyResponseText, 'queued mid-turn progress');
-        }
-        if (progressTurnState.latestStepSummary) {
-          setLatestStepSummary(progressTurnState.latestStepSummary);
         }
         const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {

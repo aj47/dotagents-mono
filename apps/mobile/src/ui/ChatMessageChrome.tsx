@@ -947,6 +947,11 @@ type ChatRuntimePendingTurnStatusSetters = Pick<
   'setLatestStepSummary' | 'setResponding' | 'setConversationState'
 >;
 
+type ChatRuntimeProgressTurnStatusSetters = Pick<
+  ChatRuntimeStatusState,
+  'setLatestStepSummary' | 'setConversationState'
+>;
+
 type ChatRuntimeRequestDebugState = {
   requestDebugText: string;
   setRequestDebugText: Dispatch<SetStateAction<string>>;
@@ -5508,6 +5513,19 @@ export function createChatMessageRuntimeProgressTurnState<
       progressMessages,
     ),
   };
+}
+
+export function applyChatMessageRuntimeProgressTurnStatusState(
+  progressTurnState: {
+    conversationState: AgentConversationState;
+    latestStepSummary?: AgentStepSummary | null;
+  },
+  statusSetters: ChatRuntimeProgressTurnStatusSetters,
+): void {
+  statusSetters.setConversationState(progressTurnState.conversationState);
+  if (progressTurnState.latestStepSummary) {
+    statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary);
+  }
 }
 
 export function createChatMessageRuntimePendingTurnStatusState() {

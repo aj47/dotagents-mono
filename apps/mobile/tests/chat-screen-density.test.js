@@ -2921,10 +2921,19 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(chatMessageChromeSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /const nextStepSummary = getChatMessageRuntimeLatestStepSummary\(update\);/);
-  assert.match(screenSource, /progressTurnState\.latestStepSummary/);
+  assert.match(chatMessageChromeSource, /progressTurnState\.latestStepSummary/);
   assert.match(chatMessageChromeSource, /latestStepSummary: getChatMessageRuntimeLatestStepSummary\(update\),/);
   assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeLatestStepSummary/);
-  assert.match(screenSource, /setLatestStepSummary\(progressTurnState\.latestStepSummary\);/);
+  assert.match(screenSource, /applyChatMessageRuntimeProgressTurnStatusState,/);
+  assert.equal(
+    (screenSource.match(/applyChatMessageRuntimeProgressTurnStatusState\(progressTurnState, \{\s+setLatestStepSummary,\s+setConversationState,\s+\}\);/g) || []).length,
+    2,
+  );
+  assert.doesNotMatch(screenSource, /setLatestStepSummary\(progressTurnState\.latestStepSummary\);/);
+  assert.doesNotMatch(screenSource, /setConversationState\(progressTurnState\.conversationState\);/);
+  assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeProgressTurnStatusState/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setConversationState\(progressTurnState\.conversationState\)/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setLatestStepSummary\(progressTurnState\.latestStepSummary\)/);
   assert.doesNotMatch(screenSource, /const latestStepSummaryRenderState = useMemo/);
   assert.match(chatMessageChromeSource, /renderState: getChatRuntimeStepSummaryMobileRenderState\(\{\s+summary: latestStepSummary,\s+colors,/);
   assert.match(screenSource, /latestStepSummary,\s+colors: theme\.colors,\s+onLoadEarlierMessages: loadEarlierMessages,/);
