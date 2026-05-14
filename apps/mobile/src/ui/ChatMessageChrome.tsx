@@ -32,6 +32,7 @@ import {
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
   findLastChatMessageConversationContentIndex,
+  isChatMessageConversationContent,
   isChatMessageLiveStreamingConversationContent,
   setChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
@@ -3275,6 +3276,15 @@ export function createChatMessageRuntimeAssistantDebugErrorMessage(
   return createChatMessageRuntimeAssistantTextMessage(formatChatMessageRuntimeDebugError(message));
 }
 
+export function createChatMessageRuntimeAssistantErrorMessage(
+  errorMessage: string,
+  partialContent?: string | null,
+): ChatMessageRuntimeAssistantTextMessage {
+  return createChatMessageRuntimeAssistantTextMessage(
+    formatChatMessageRuntimeAssistantErrorContent(errorMessage, partialContent),
+  );
+}
+
 export type ChatMessageRuntimeRetryMessage = ChatMessageRuntimeAssistantTextMessage & {
   variant: 'retry';
   retryInfo: AgentRetryInfo;
@@ -3333,6 +3343,34 @@ export function createChatMessageRuntimeActivityMessage(
     role: 'assistant',
     content: formatChatMessageRuntimeActivityContent(step),
   };
+}
+
+export type ChatMessageRuntimeConversationContentUpdateMessage =
+  ChatMessageConversationContentLike & {
+    content?: string;
+  };
+
+export function isLastChatMessageRuntimeConversationContent(
+  messages: readonly ChatMessageConversationContentLike[],
+): boolean {
+  const lastMessage = messages[messages.length - 1];
+  return !!lastMessage && isChatMessageConversationContent(lastMessage);
+}
+
+export function updateLastChatMessageRuntimeConversationContent<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  messages: readonly TMessage[],
+  content: string,
+): TMessage[] {
+  const copy = [...messages];
+  for (let i = copy.length - 1; i >= 0; i--) {
+    if (isChatMessageConversationContent(copy[i])) {
+      copy[i] = { ...copy[i], content } as TMessage;
+      break;
+    }
+  }
+  return copy;
 }
 
 export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {

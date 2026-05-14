@@ -491,7 +491,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.doesNotMatch(screenSource, /retryStatusMetaRow:\s*\{[^}]*?flexWrap:\s*'wrap'/);
   assert.doesNotMatch(screenSource, /retryStatusAttempt:\s*\{[^}]*?color:\s*theme\.colors\.mutedForeground/);
   assert.doesNotMatch(screenSource, /retryStatusDescription:\s*\{[^}]*?color:\s*theme\.colors\.mutedForeground/);
-  assert.match(screenSource, /isChatMessageConversationContent\(copy\[i\]\)/);
+  assert.doesNotMatch(screenSource, /isChatMessageConversationContent\(copy\[i\]\)/);
+  assert.match(chatMessageChromeSource, /isChatMessageConversationContent\(copy\[i\]\)/);
   assert.doesNotMatch(screenSource, /isAssistantConversationContentMessage/);
   assert.doesNotMatch(screenSource, /Retrying in \{.*\}s/);
   assert.doesNotMatch(screenSource, /m\.variant === 'retry'[\s\S]{0,260}accessibilityRole="text"/);
@@ -2418,8 +2419,21 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.match(chatMessageChromeSource, /isChatMessageLiveStreamingConversationContent,/);
-  assert.match(screenSource, /isChatMessageConversationContent,/);
-  assert.match(screenSource, /&& isChatMessageConversationContent\(messages\[messages\.length - 1\]\)/);
+  assert.doesNotMatch(screenSource, /isChatMessageConversationContent,/);
+  assert.match(chatMessageChromeSource, /isChatMessageConversationContent,/);
+  assert.match(screenSource, /&& isLastChatMessageRuntimeConversationContent\(messages\)/);
+  assert.match(chatMessageChromeSource, /export function isLastChatMessageRuntimeConversationContent/);
+  assert.match(chatMessageChromeSource, /return !!lastMessage && isChatMessageConversationContent\(lastMessage\)/);
+  assert.equal(
+    (screenSource.match(/updateLastChatMessageRuntimeConversationContent\(m, streamingText\)/g) || []).length,
+    2,
+  );
+  assert.equal(
+    (screenSource.match(/updateLastChatMessageRuntimeConversationContent\(m, finalDisplayText\)/g) || []).length,
+    2,
+  );
+  assert.match(chatMessageChromeSource, /export function updateLastChatMessageRuntimeConversationContent/);
+  assert.match(chatMessageChromeSource, /copy\[i\] = \{ \.\.\.copy\[i\], content \} as TMessage/);
   assert.match(screenSource, /createChatMessageRuntimeAssistantTextMessage\(update\.streamingContent\.text\)/);
   assert.doesNotMatch(screenSource, /messages\.push\(\{\s+role: 'assistant',\s+content: update\.streamingContent\.text,\s+\}\)/);
   assert.doesNotMatch(screenSource, /const lastAssistantContentMessageIndex = findLastChatMessageConversationContentIndex/);
@@ -3418,7 +3432,10 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /setDebugInfo\(formatChatMessageRuntimeDebugError\(errorMessage\)\)/);
   assert.match(screenSource, /formatChatMessageRuntimeStartingRequestDebugMessage\(config\.baseUrl\)/);
   assert.match(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
-  assert.match(screenSource, /formatChatMessageRuntimeAssistantErrorContent\(errorMessage, partialContent\)/);
+  assert.match(screenSource, /createChatMessageRuntimeAssistantErrorMessage\(errorMessage, partialContent\)/);
+  assert.doesNotMatch(screenSource, /formatChatMessageRuntimeAssistantErrorContent/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantErrorMessage/);
+  assert.match(chatMessageChromeSource, /formatChatMessageRuntimeAssistantErrorContent\(errorMessage, partialContent\)/);
   assert.match(screenSource, /const queuedErrorMessage = formatChatMessageRuntimeAlertMessage\(e, getChatMessageRuntimeDebugMessage\('unknownError'\)\)/);
   assert.equal(
     (screenSource.match(/createChatMessageRuntimeAssistantPlaceholderMessage\(\)/g) || []).length,

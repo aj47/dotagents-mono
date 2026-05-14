@@ -51,7 +51,6 @@ import {
   createChatRuntimeNavigationHeaderRenderState,
   createChatRuntimeSafeAreaMergedStyleSlots,
   formatChatMessageRuntimeAlertMessage,
-  formatChatMessageRuntimeAssistantErrorContent,
   formatChatMessageRuntimeConnectionErrorMessage,
   formatChatMessageRuntimeConnectionStatus,
   formatChatMessageRuntimeDebugError,
@@ -59,6 +58,7 @@ import {
   createChatMessageConversationRuntimeThreadListRenderState,
   createChatMessageRuntimeActivityMessage,
   createChatMessageRuntimeAssistantDebugErrorMessage,
+  createChatMessageRuntimeAssistantErrorMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantPlaceholderMessage,
   createChatMessageRuntimeAssistantTextMessage,
@@ -91,6 +91,8 @@ import {
   getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
+  isLastChatMessageRuntimeConversationContent,
+  updateLastChatMessageRuntimeConversationContent,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -147,7 +149,6 @@ import {
 } from '@dotagents/shared/tool-activity-grouping';
 import {
   applyChatDisplayGroupedExpansionInheritance,
-  isChatMessageConversationContent,
   sanitizeMessagesForModel,
   toggleChatDisplayExpansionState,
 } from '@dotagents/shared/message-display-utils';
@@ -1849,7 +1850,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (update.streamingContent?.text) {
       if (
         messages.length > 0
-        && isChatMessageConversationContent(messages[messages.length - 1])
+        && isLastChatMessageRuntimeConversationContent(messages)
       ) {
         messages[messages.length - 1].content = update.streamingContent.text;
       } else {
@@ -2176,16 +2177,7 @@ export default function ChatScreen({ route, navigation }: any) {
           streamingText += tok;
         }
 
-        setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (isChatMessageConversationContent(copy[i])) {
-              copy[i] = { ...copy[i], content: streamingText };
-              break;
-            }
-          }
-          return copy;
-        });
+        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
       };
 
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
@@ -2362,16 +2354,7 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         } else {
           // Normal case: update UI state
-          setMessages((m) => {
-            const copy = [...m];
-            for (let i = copy.length - 1; i >= 0; i--) {
-              if (isChatMessageConversationContent(copy[i])) {
-	                copy[i] = { ...copy[i], content: finalDisplayText };
-                break;
-              }
-            }
-            return copy;
-          });
+          setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalDisplayText));
         }
       } else {
         console.log('[ChatScreen] WARNING: No conversationHistory and no finalText!');
@@ -2435,16 +2418,9 @@ export default function ChatScreen({ route, navigation }: any) {
       // This avoids duplicating the assistant loading placeholder and ensures
       // the retry pop logic removes the correct items
       setMessages((m) => {
-        const errorContent = formatChatMessageRuntimeAssistantErrorContent(errorMessage, partialContent);
+        const errorMessageState = createChatMessageRuntimeAssistantErrorMessage(errorMessage, partialContent);
         // Find and update the last assistant message instead of appending
-        const copy = [...m];
-        for (let i = copy.length - 1; i >= 0; i--) {
-          if (isChatMessageConversationContent(copy[i])) {
-            copy[i] = { ...copy[i], content: errorContent };
-            break;
-          }
-        }
-        return copy;
+        return updateLastChatMessageRuntimeConversationContent(m, errorMessageState.content);
       });
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
@@ -2635,16 +2611,7 @@ export default function ChatScreen({ route, navigation }: any) {
         } else {
           streamingText += tok;
         }
-        setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (isChatMessageConversationContent(copy[i])) {
-              copy[i] = { ...copy[i], content: streamingText };
-              break;
-            }
-          }
-          return copy;
-        });
+        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, streamingText));
       };
 
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
@@ -2718,16 +2685,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return [...beforePlaceholder, ...finalTurnMessages];
         });
       } else if (finalDisplayText) {
-        setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (isChatMessageConversationContent(copy[i])) {
-              copy[i] = { ...copy[i], content: finalDisplayText };
-              break;
-            }
-          }
-          return copy;
-        });
+        setMessages((m) => updateLastChatMessageRuntimeConversationContent(m, finalDisplayText));
       }
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
