@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  applyChatDisplayGroupedExpansionInheritance,
   getChatDisplayExpansionState,
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
@@ -35,6 +36,7 @@ import {
   isChatMessageConversationContent,
   isChatMessageLiveStreamingConversationContent,
   setChatDisplayExpansionState,
+  toggleChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
   type ChatMessageActionAvailabilityRenderState,
@@ -127,8 +129,11 @@ import {
 } from '@dotagents/shared/message-queue-utils';
 import type { PredefinedPromptSummary } from '@dotagents/shared/api-types';
 import {
+  getToolActivityGroupExpansionInheritanceItems,
   getToolActivityGroupMobileRenderState,
   getToolActivityGroupMobileSurfaceRenderState,
+  getToolActivityGroupStateKey,
+  groupToolActivity,
   type ToolActivityGroup,
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
@@ -449,6 +454,10 @@ type ChatMessageConversationToolActivityGroupRenderStateInput =
   & {
     group?: ToolActivityGroup | null;
   };
+
+export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup;
+export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>;
+export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpansionStateMap<string>;
 
 export type ChatMessageActionSet = {
   components: Record<ChatMessageActionSlot, ReactNode>;
@@ -3752,6 +3761,38 @@ export function createChatMessageRuntimeTurnDurationMessages(
     });
     return entries;
   }, []);
+}
+
+export function createChatMessageRuntimeToolActivityGroups(
+  messages: Parameters<typeof groupToolActivity>[0],
+): ChatMessageRuntimeToolActivityGroups {
+  return groupToolActivity(messages);
+}
+
+export function toggleChatMessageRuntimeToolActivityGroupExpansionState(
+  groupState: ChatMessageRuntimeToolActivityGroupExpansionState,
+  group: ChatMessageRuntimeToolActivityGroup,
+): ChatMessageRuntimeToolActivityGroupExpansionState {
+  return toggleChatDisplayExpansionState(
+    groupState,
+    getToolActivityGroupStateKey(group),
+  ) as ChatMessageRuntimeToolActivityGroupExpansionState;
+}
+
+export function applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
+  groupState,
+  inheritedState,
+  groups,
+}: {
+  groupState: ChatMessageRuntimeToolActivityGroupExpansionState;
+  inheritedState?: ChatDisplayExpansionStateMap<number>;
+  groups: readonly ChatMessageRuntimeToolActivityGroup[];
+}): ChatMessageRuntimeToolActivityGroupExpansionState {
+  return applyChatDisplayGroupedExpansionInheritance({
+    groupState,
+    inheritedState,
+    groups: getToolActivityGroupExpansionInheritanceItems(groups),
+  }) as ChatMessageRuntimeToolActivityGroupExpansionState;
 }
 
 export function mergeChatMessageRuntimeToolResultsIntoLastMessage<

@@ -67,6 +67,9 @@ import {
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeResponseHistoryEvents,
   createChatMessageRuntimeTurnDurationMessages,
+  createChatMessageRuntimeToolActivityGroups,
+  applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
+  toggleChatMessageRuntimeToolActivityGroupExpansionState,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
@@ -108,6 +111,7 @@ import type {
   ChatConversationHomeQuickStartItem,
   ChatMessageScrollEvent,
   ChatMessageScrollViewportRef,
+  ChatMessageRuntimeToolActivityGroup,
 } from '../ui/ChatMessageChrome';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
@@ -144,13 +148,6 @@ import {
   getTextToSpeechVoiceValue,
 } from '@dotagents/shared/text-to-speech-settings';
 import {
-  getToolActivityGroupExpansionInheritanceItems,
-  getToolActivityGroupStateKey,
-  groupToolActivity,
-  type ToolActivityGroup,
-} from '@dotagents/shared/tool-activity-grouping';
-import {
-  applyChatDisplayGroupedExpansionInheritance,
   sanitizeMessagesForModel,
   toggleChatDisplayExpansionState,
 } from '@dotagents/shared/message-display-utils';
@@ -1653,19 +1650,18 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   // Compute tool-activity groups for consecutive connected tool-call messages
-  const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
+  const toolActivityGroups = useMemo(() => createChatMessageRuntimeToolActivityGroups(messages), [messages]);
 
   // Toggle expansion of a tool-activity group using a stable key for the run.
-  const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
-    const key = getToolActivityGroupStateKey(group);
-    setExpandedGroups(prev => toggleChatDisplayExpansionState(prev, key));
+  const toggleGroupExpansion = useCallback((group: ChatMessageRuntimeToolActivityGroup) => {
+    setExpandedGroups(prev => toggleChatMessageRuntimeToolActivityGroupExpansionState(prev, group));
   }, []);
 
   useEffect(() => {
-    setExpandedGroups(prev => applyChatDisplayGroupedExpansionInheritance({
+    setExpandedGroups(prev => applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
       groupState: prev,
       inheritedState: expandedMessages,
-      groups: getToolActivityGroupExpansionInheritanceItems(toolActivityGroups.groups),
+      groups: toolActivityGroups.groups,
     }));
   }, [expandedMessages, toolActivityGroups.groups]);
 
