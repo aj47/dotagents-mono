@@ -2936,18 +2936,21 @@ type ChatMessageRuntimeChromePropsInput<
     & ChatComposerRuntimeDockChromeInput['platform']
     & ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>['platform'];
   spinnerSource: ImageSourcePropType;
+  styles: {
+    actionStyles: ChatMessageConversationActionSetInput['styles'];
+    threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
+    promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
+  };
   composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome' | 'pendingImagesColors' | 'composerControlColors'>;
   dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer' | 'colors'>;
-  threadList: Omit<ChatMessageConversationRuntimeThreadListRenderStateInput, 'spinnerSource' | 'colors'> & {
-    threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
-  };
+  threadList: Omit<ChatMessageConversationRuntimeThreadListRenderStateInput, 'spinnerSource' | 'colors' | 'actionStyles'>;
   viewport: Omit<
     ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>,
     'visibleMessageCount' | 'totalMessageCount' | 'hiddenMessageCount' | 'loadingSpinnerSource' | 'colors'
   >;
   surface: Omit<
     ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>,
-    'dock' | 'viewport' | 'threadStates' | 'threadStyles' | 'colors' | 'platform'
+    'dock' | 'viewport' | 'threadStates' | 'threadStyles' | 'colors' | 'platform' | 'promptEditorStyles'
   >;
 };
 
@@ -6755,19 +6758,17 @@ export function createChatMessageRuntimeChromeProps<
   colors,
   platform,
   spinnerSource,
+  styles,
   composer,
   dock,
   threadList,
   viewport,
   surface,
 }: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
-  const {
-    threadStyles,
-    ...threadListInput
-  } = threadList;
   const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState({
-    ...threadListInput,
+    ...threadList,
     colors,
+    actionStyles: styles.actionStyles,
     spinnerSource,
   });
   const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps({
@@ -6798,10 +6799,11 @@ export function createChatMessageRuntimeChromeProps<
     ...surface,
     platform,
     colors,
+    promptEditorStyles: styles.promptEditorStyles,
     dock: chatMessageRuntimeDock,
     viewport: chatMessageRuntimeViewport,
     threadStates: conversationThreadListState.threadStates,
-    threadStyles,
+    threadStyles: styles.threadStyles,
   });
 }
 

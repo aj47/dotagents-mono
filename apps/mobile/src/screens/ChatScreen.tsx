@@ -1519,6 +1519,11 @@ export default function ChatScreen({ route, navigation }: any) {
     colors: theme.colors,
     platform: Platform.OS,
     spinnerSource: chatRuntimeSpinnerSource,
+    styles: {
+      actionStyles: chatMessageConversationThreadStyles.actionSet,
+      threadStyles: chatMessageConversationThreadStyles.runtimeThread,
+      promptEditorStyles: promptEditorModalStyles,
+    },
     composer: {
       speechPreviewText: sttPreview,
       pendingImages,
@@ -1610,8 +1615,6 @@ export default function ChatScreen({ route, navigation }: any) {
       speakingMessageIndex,
       copiedMessageIndex,
       ttsEnabled,
-      actionStyles: chatMessageConversationThreadStyles.actionSet,
-      threadStyles: chatMessageConversationThreadStyles.runtimeThread,
       assetBaseUrl: config.baseUrl,
       assetAuthToken: config.apiKey,
       expandedDelegationConversationPreviews,
@@ -1667,7 +1670,6 @@ export default function ChatScreen({ route, navigation }: any) {
       promptEditorIsSaving: isSavingPrompt,
       onPromptEditorClose: closePromptModal,
       onPromptEditorSave: handleSavePrompt,
-      promptEditorStyles: promptEditorModalStyles,
     },
   });
 
