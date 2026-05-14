@@ -115,6 +115,7 @@ import {
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
+  type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
 } from '@dotagents/shared/session-presentation';
@@ -1376,6 +1377,35 @@ type ChatMessageRuntimeViewportProps<
   styles: ChatMessageRuntimeViewportStyleSlots;
 };
 
+type ChatMessageRuntimeViewportChromeProps<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> = Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' | 'styles'>;
+
+type ChatMessageRuntimeViewportChromePropsInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> =
+  Omit<
+    ChatMessageRuntimeViewportChromeProps<TPrompt, TTask>,
+    'loadingState' | 'homeQuickStarts' | 'historyBanner' | 'stepSummary' | 'debugPanels'
+  >
+  & {
+    loadingRenderState: ChatRuntimeLoadingStateMobileRenderState;
+    loadingSpinnerSource: ImageSourcePropType;
+    homeQuickStartsRenderState: ChatRuntimeHomeQuickStartsMobileRenderState;
+    quickStartItems: readonly ChatConversationHomeQuickStartItem<TPrompt, TTask>[];
+    isLoadingQuickStartPrompts: boolean;
+    runningPromptTaskId?: string | null;
+    onQuickStartPress: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onPress'];
+    onEditPrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onEditPrompt'];
+    onDeletePrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onDeletePrompt'];
+    shortcutRenderState: PromptLibraryMobileShortcutRenderState;
+    affordanceRenderState: ChatMessageConversationViewportAffordanceRenderState;
+    onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
+    debugPanelsRenderState: ChatRuntimeDebugPanelsMobileRenderState;
+  };
+
 type ChatMessageResponseHistoryPanelDockProps = ComponentProps<typeof ResponseHistoryPanel>;
 
 type ChatMessageQueuePanelDockProps = {
@@ -2537,6 +2567,50 @@ export function createChatMessageConversationViewportAffordanceRenderState({
         colors,
       }),
     },
+  };
+}
+
+export function createChatMessageRuntimeViewportChromeProps<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>({
+  loadingRenderState,
+  loadingSpinnerSource,
+  homeQuickStartsRenderState,
+  quickStartItems,
+  isLoadingQuickStartPrompts,
+  runningPromptTaskId,
+  onQuickStartPress,
+  onEditPrompt,
+  onDeletePrompt,
+  shortcutRenderState,
+  affordanceRenderState,
+  onLoadEarlierMessages,
+  debugPanelsRenderState,
+  ...scrollViewportProps
+}: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
+  return {
+    ...scrollViewportProps,
+    loadingState: {
+      renderState: loadingRenderState,
+      spinnerSource: loadingSpinnerSource,
+    },
+    homeQuickStarts: {
+      shouldRender: homeQuickStartsRenderState.shouldRender,
+      items: quickStartItems,
+      isLoading: isLoadingQuickStartPrompts,
+      runningTaskId: runningPromptTaskId,
+      onPress: onQuickStartPress,
+      onEditPrompt,
+      onDeletePrompt,
+      shortcutRenderState,
+    },
+    historyBanner: {
+      ...affordanceRenderState.historyBanner,
+      onLoadEarlier: onLoadEarlierMessages,
+    },
+    stepSummary: affordanceRenderState.stepSummary,
+    debugPanels: debugPanelsRenderState,
   };
 }
 

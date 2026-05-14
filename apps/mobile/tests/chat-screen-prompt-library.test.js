@@ -59,7 +59,8 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /const promptLibraryShortcutRenderState = useMemo\(\s+\(\) => getPromptLibraryMobileShortcutRenderState\(theme\.colors\),\s+\[theme\.colors\],\s+\);/);
   assert.match(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
-  assert.match(screenSource, /runningTaskId: runningPromptTaskId/);
+  assert.match(screenSource, /runningPromptTaskId,/);
+  assert.match(chatMessageChromeSource, /runningTaskId: runningPromptTaskId,/);
   assert.match(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
   assert.match(screenSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
   assert.match(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);

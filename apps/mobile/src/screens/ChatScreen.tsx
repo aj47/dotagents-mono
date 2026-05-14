@@ -44,6 +44,7 @@ import {
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
+  createChatMessageRuntimeViewportChromeProps,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatComposerTextEntryKeyPressEvent,
@@ -3461,6 +3462,28 @@ export default function ChatScreen({ route, navigation }: any) {
       Math.min(messages.length, current + CHAT_MESSAGE_HISTORY_WINDOW.loadIncrement),
     );
   };
+  const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps({
+    scrollRef: scrollViewRef,
+    keyboardShouldPersistTaps: mobileRuntimeViewport.keyboardShouldPersistTaps,
+    contentInsetAdjustmentBehavior: mobileRuntimeViewport.contentInsetAdjustmentBehavior,
+    onScroll: handleScroll,
+    onScrollBeginDrag: handleScrollBeginDrag,
+    onScrollEndDrag: handleScrollEndDrag,
+    scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW.scrollEventThrottleMs,
+    loadingRenderState: mobileRuntimeLoadingRenderState,
+    loadingSpinnerSource: isDark ? darkSpinner : lightSpinner,
+    homeQuickStartsRenderState: mobileRuntimeHomeQuickStartsRenderState,
+    quickStartItems: promptQuickStarts,
+    isLoadingQuickStartPrompts,
+    runningPromptTaskId,
+    onQuickStartPress: handleQuickStartPress,
+    onEditPrompt: openEditPromptModal,
+    onDeletePrompt: handleDeletePrompt,
+    shortcutRenderState: promptLibraryShortcutRenderState,
+    affordanceRenderState: conversationViewportAffordanceRenderState,
+    onLoadEarlierMessages: handleLoadEarlierMessages,
+    debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,
+  });
 
   const handleRetryLastFailedMessage = async () => {
     const messageToRetry = lastFailedMessage;
@@ -3713,35 +3736,7 @@ export default function ChatScreen({ route, navigation }: any) {
             styles: promptEditorModalStyles,
           },
       }}
-      viewport={{
-        scrollRef: scrollViewRef,
-        keyboardShouldPersistTaps: mobileRuntimeViewport.keyboardShouldPersistTaps,
-        contentInsetAdjustmentBehavior: mobileRuntimeViewport.contentInsetAdjustmentBehavior,
-        onScroll: handleScroll,
-        onScrollBeginDrag: handleScrollBeginDrag,
-        onScrollEndDrag: handleScrollEndDrag,
-        scrollEventThrottle: CHAT_MESSAGE_HISTORY_WINDOW.scrollEventThrottleMs,
-        loadingState: {
-          renderState: mobileRuntimeLoadingRenderState,
-          spinnerSource: isDark ? darkSpinner : lightSpinner,
-        },
-        homeQuickStarts: {
-          shouldRender: mobileRuntimeHomeQuickStartsRenderState.shouldRender,
-          items: promptQuickStarts,
-          isLoading: isLoadingQuickStartPrompts,
-          runningTaskId: runningPromptTaskId,
-          onPress: handleQuickStartPress,
-          onEditPrompt: openEditPromptModal,
-          onDeletePrompt: handleDeletePrompt,
-          shortcutRenderState: promptLibraryShortcutRenderState,
-        },
-        historyBanner: {
-          ...conversationViewportAffordanceRenderState.historyBanner,
-          onLoadEarlier: handleLoadEarlierMessages,
-        },
-        stepSummary: conversationViewportAffordanceRenderState.stepSummary,
-        debugPanels: mobileRuntimeDebugPanelsRenderState,
-      }}
+      viewport={chatMessageRuntimeViewport}
       styles={chatMessageRuntimeSurfaceStyles}
     >
           <ChatMessageConversationRuntimeThreadList

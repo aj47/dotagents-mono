@@ -73,7 +73,7 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
   assert.match(screenSource, /voiceEntryCount: voiceEvents\.length/);
   assert.match(screenSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
   assert.match(screenSource, /formatVoiceDebugEntry\(entry\)/);
-  assert.match(screenSource, /debugPanels: mobileRuntimeDebugPanelsRenderState,/);
+  assert.match(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
   assert.doesNotMatch(screenSource, />Voice debug<\/Text>/);
 });
 
