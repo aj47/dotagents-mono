@@ -1375,6 +1375,11 @@ type ChatMessageInlineActivityProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
+type ChatMessageInlineActivityPropsInput = Pick<
+  ChatMessageInlineActivityProps,
+  'renderState' | 'spinnerSource'
+>;
+
 type ChatMessageContentRowProps = {
   children: ReactNode;
   slots: readonly ChatMessageActionSlot[];
@@ -1754,6 +1759,18 @@ export function createChatMessageConversationBodyProps({
       components: actionSet.components,
     },
   };
+}
+
+export function createChatMessageInlineActivityProps({
+  renderState,
+  spinnerSource,
+}: ChatMessageInlineActivityPropsInput): ChatMessageThreadBodyProps['inlineActivity'] {
+  return renderState.shouldRender
+    ? {
+        renderState,
+        spinnerSource,
+      }
+    : null;
 }
 
 export function createChatMessageExpandedContentProps({

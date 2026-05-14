@@ -1963,7 +1963,10 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState\.loadButton\.pressedOpacity;/);
   assert.match(screenSource, /const messageInlineActivityRenderState = getChatRuntimeInlineActivityMobileRenderState\(\{\s+message: m,\s+isResponding: responding,\s+\}\);/);
   assert.match(screenSource, /if \(!messageDisplayState\.shouldRenderSurface && !messageInlineActivityRenderState\.shouldRender\) \{/);
-  assert.match(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{[\s\S]*?renderState: messageInlineActivityRenderState,[\s\S]*?spinnerSource: isDark \? darkSpinner : lightSpinner,/);
+  assert.match(screenSource, /inlineActivity: createChatMessageInlineActivityProps\(\{\s+renderState: messageInlineActivityRenderState,\s+spinnerSource: isDark \? darkSpinner : lightSpinner,\s+\}\),/);
+  assert.doesNotMatch(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
+  assert.match(chatMessageChromeSource, /return renderState\.shouldRender\s+\? \{\s+renderState,\s+spinnerSource,\s+\}\s+: null;/);
   assert.doesNotMatch(screenSource, /inlineActivity: m\.role === 'assistant'/);
   assert.doesNotMatch(screenSource, /style: styles\.inlineActivityIndicator/);
   assert.match(chatMessageChromeSource, /inlineActivity: \{\s+style: styles\.inlineActivityIndicator,\s+spinnerStyle: styles\.inlineActivitySpinner,/);
@@ -2506,6 +2509,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /createChatMessageActionSet,/);
   assert.match(screenSource, /createChatMessageConversationBodyProps,/);
   assert.match(screenSource, /createChatMessageExpandedContentProps,/);
+  assert.match(screenSource, /createChatMessageInlineActivityProps,/);
   assert.match(screenSource, /createChatMessageToolExecutionStackProps,/);
   assert.match(screenSource, /createChatMessageActionStyleSlots,/);
   assert.match(screenSource, /const messageActionStyles = useMemo\(\s+\(\) => createChatMessageActionStyleSlots\(styles\),\s+\[styles\],\s+\);/);
@@ -2523,6 +2527,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageActionSet/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);

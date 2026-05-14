@@ -40,6 +40,7 @@ import {
   createChatMessageConversationBodyProps,
   createChatMessageConversationDockStyleSlots,
   createChatMessageExpandedContentProps,
+  createChatMessageInlineActivityProps,
   createChatMessageToolExecutionStackProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -4185,10 +4186,10 @@ export default function ChatScreen({ route, navigation }: any) {
                     onDeny: () => respondToToolApproval(m.toolApproval!.approvalId, false),
                     onApprove: () => respondToToolApproval(m.toolApproval!.approvalId, true),
                   } : null,
-                  inlineActivity: messageInlineActivityRenderState.shouldRender ? {
+                  inlineActivity: createChatMessageInlineActivityProps({
                     renderState: messageInlineActivityRenderState,
                     spinnerSource: isDark ? darkSpinner : lightSpinner,
-                  } : null,
+                  }),
                   conversation: createChatMessageConversationBodyProps({
                     contentState: messageContentRenderState,
                     actionSet: messageActionSet,
