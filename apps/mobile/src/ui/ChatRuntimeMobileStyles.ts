@@ -237,6 +237,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   ) => ({
     opacity: button.pressedOpacity,
   } as const);
+  const createChatRuntimeMobileMessageActionButtonDisabledStyle = (
+    button: typeof mobileMessageExpansionButton,
+  ) => ({
+    opacity: button.disabledOpacity,
+  } as const);
   const createChatRuntimeMobileMessageTurnDurationBadgeStyle = (
     badge: typeof mobileMessageTurnDurationBadge,
     colors: typeof mobileMessageTurnDurationBadgeColors,
@@ -1787,9 +1792,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ),
     },
     messageBranchButtonPressed: createChatRuntimeMobileMessageActionButtonPressedStyle(mobileMessageBranchButton),
-    messageBranchButtonDisabled: {
-      opacity: mobileMessageBranchButton.disabledOpacity,
-    },
+    messageBranchButtonDisabled: createChatRuntimeMobileMessageActionButtonDisabledStyle(mobileMessageBranchButton),
     messageCopyButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(
         mobileMessageCopyButton,

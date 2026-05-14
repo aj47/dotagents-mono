@@ -3771,6 +3771,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /renderState: messageRenderState\.expansion,/);
   assert.match(screenSource, /const createChatRuntimeMobileMessageActionButtonPressedStyle = \(\s+button: typeof mobileMessageExpansionButton,/);
   assert.match(screenSource, /opacity: button\.pressedOpacity/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageActionButtonDisabledStyle = \(\s+button: typeof mobileMessageExpansionButton,/);
+  assert.match(screenSource, /opacity: button\.disabledOpacity/);
   assert.match(screenSource, /messageExpandButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageExpansionButton\)/);
   assert.match(screenSource, /messageBranchButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageBranchButton\)/);
   assert.match(screenSource, /messageCopyButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageCopyButton\)/);
@@ -5026,7 +5028,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /const messageActionSurface = CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION\.mobile;/);
   assert.doesNotMatch(screenSource, /messageActionsRow:\s*\{[\s\S]*?messageActionSurface\.row\./);
   assert.match(screenSource, /messageBranchButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageActionButtonStyle\(\s+mobileMessageBranchButton,\s+mobileMessageBranchButtonColors,\s+\)/);
-  assert.match(screenSource, /messageBranchButtonDisabled:\s*\{[\s\S]*?opacity:\s*mobileMessageBranchButton\.disabledOpacity/);
+  assert.match(screenSource, /messageBranchButtonDisabled:\s*createChatRuntimeMobileMessageActionButtonDisabledStyle\(mobileMessageBranchButton\)/);
   assert.doesNotMatch(screenSource, /messageBranchButton:\s*\{[\s\S]*?theme\.colors\[mobileMessageBranchButton\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.branch\.mobileIcon\./);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.branch\.(unavailableTitle|unavailableMessage|createdTitle|createdMessage|failedTitle|failedMessage)/);
