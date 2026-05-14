@@ -180,6 +180,33 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   ) => ({
     opacity: button.pressedOpacity,
   } as const);
+  const createChatRuntimeMobileMessageTurnDurationBadgeStyle = (
+    badge: typeof mobileMessageTurnDurationBadge,
+    colors: typeof mobileMessageTurnDurationBadgeColors,
+  ) => ({
+    alignSelf: badge.alignSelf,
+    flexDirection: badge.flexDirection,
+    minHeight: badge.minHeight,
+    marginTop: badge.marginTop,
+    paddingHorizontal: badge.paddingHorizontal,
+    borderRadius: badge.borderRadius,
+    backgroundColor: colors.backgroundColor,
+    alignItems: badge.alignItems,
+    justifyContent: badge.justifyContent,
+    gap: badge.gap,
+    flexShrink: badge.flexShrink,
+    opacity: badge.opacity,
+  } as const);
+  const createChatRuntimeMobileMessageTurnDurationTextStyle = (
+    badge: typeof mobileMessageTurnDurationBadge,
+    colors: typeof mobileMessageTurnDurationBadgeColors,
+  ) => ({
+    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform),
+    fontSize: badge.fontSize,
+    lineHeight: badge.lineHeight,
+    fontWeight: badge.fontWeight,
+    color: colors.color,
+  } as const);
 
   return StyleSheet.create({
     keyboardAvoidingContainer: {
@@ -1680,32 +1707,28 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       gap: spacing[mobileMessageActionRow.gap],
     },
     messageTurnDurationBadge: {
-      alignSelf: mobileMessageTurnDurationBadge.alignSelf,
-      flexDirection: mobileMessageTurnDurationBadge.flexDirection,
-      minHeight: mobileMessageTurnDurationBadge.minHeight,
-      marginTop: mobileMessageTurnDurationBadge.marginTop,
-      paddingHorizontal: mobileMessageTurnDurationBadge.paddingHorizontal,
-      borderRadius: mobileMessageTurnDurationBadge.borderRadius,
-      backgroundColor: mobileMessageTurnDurationBadgeColors.backgroundColor,
-      alignItems: mobileMessageTurnDurationBadge.alignItems,
-      justifyContent: mobileMessageTurnDurationBadge.justifyContent,
-      gap: mobileMessageTurnDurationBadge.gap,
-      flexShrink: mobileMessageTurnDurationBadge.flexShrink,
-      opacity: mobileMessageTurnDurationBadge.opacity,
-    } as const,
+      ...createChatRuntimeMobileMessageTurnDurationBadgeStyle(
+        mobileMessageTurnDurationBadge,
+        mobileMessageTurnDurationBadgeColors,
+      ),
+    },
     messageTurnDurationBadgeLive: {
-      backgroundColor: mobileMessageTurnDurationLiveBadgeColors.backgroundColor,
-      opacity: mobileMessageTurnDurationLiveBadge.opacity,
-    } as const,
+      ...createChatRuntimeMobileMessageTurnDurationBadgeStyle(
+        mobileMessageTurnDurationLiveBadge,
+        mobileMessageTurnDurationLiveBadgeColors,
+      ),
+    },
     messageTurnDurationText: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(mobileMessageTurnDurationBadge.fontFamilyByPlatform),
-      fontSize: mobileMessageTurnDurationBadge.fontSize,
-      lineHeight: mobileMessageTurnDurationBadge.lineHeight,
-      fontWeight: mobileMessageTurnDurationBadge.fontWeight,
-      color: mobileMessageTurnDurationBadgeColors.color,
+      ...createChatRuntimeMobileMessageTurnDurationTextStyle(
+        mobileMessageTurnDurationBadge,
+        mobileMessageTurnDurationBadgeColors,
+      ),
     },
     messageTurnDurationTextLive: {
-      color: mobileMessageTurnDurationLiveBadgeColors.color,
+      ...createChatRuntimeMobileMessageTurnDurationTextStyle(
+        mobileMessageTurnDurationLiveBadge,
+        mobileMessageTurnDurationLiveBadgeColors,
+      ),
     },
     messageBranchButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(

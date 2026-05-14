@@ -74,7 +74,7 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.match(mobileTypographySource, /export type MobileFontFamilyByPlatform = Readonly<\{/);
   assert.match(mobileTypographySource, /export const resolveMobileFontFamily = \(fontFamilyByPlatform: MobileFontFamilyByPlatform\) =>\s+Platform\.OS === 'ios' \? fontFamilyByPlatform\.ios : fontFamilyByPlatform\.default;/);
   assert.match(screenSource, /headerDurationChipText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(headerTurnDurationBadge\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(mobileMessageTurnDurationBadge\.fontFamilyByPlatform\)/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationTextStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform\)/);
   assert.match(screenSource, /debugText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform\)/);
   assert.match(screenSource, /toolApprovalTool:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.toolName\.fontFamilyByPlatform\)/);
   assert.match(screenSource, /toolApprovalArgumentsPreview:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.argumentsPreview\.fontFamilyByPlatform\)/);
@@ -3937,10 +3937,14 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /turnDuration: turnDurationEntry,/);
   assert.match(screenSource, /turnDurationsByUserTimestamp: turnDurations\.byUserTimestamp,/);
   assert.match(chatMessageChromeSource, /speech: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+ttsEnabled,\s+isSpeaking,\s+colors,\s+onPress: \(\) => onSpeakMessage\(messageIndex, visibleMessageContent\),/);
-  assert.match(screenSource, /messageTurnDurationBadge:\s*\{[\s\S]*?alignSelf:\s*mobileMessageTurnDurationBadge\.alignSelf,[\s\S]*?flexDirection:\s*mobileMessageTurnDurationBadge\.flexDirection,[\s\S]*?minHeight:\s*mobileMessageTurnDurationBadge\.minHeight,[\s\S]*?backgroundColor:\s*mobileMessageTurnDurationBadgeColors\.backgroundColor,[\s\S]*?alignItems:\s*mobileMessageTurnDurationBadge\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageTurnDurationBadge\.justifyContent,[\s\S]*?gap:\s*mobileMessageTurnDurationBadge\.gap,[\s\S]*?flexShrink:\s*mobileMessageTurnDurationBadge\.flexShrink/);
-  assert.match(screenSource, /messageTurnDurationBadgeLive:\s*\{[\s\S]*?backgroundColor:\s*mobileMessageTurnDurationLiveBadgeColors\.backgroundColor,[\s\S]*?opacity:\s*mobileMessageTurnDurationLiveBadge\.opacity/);
-  assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(mobileMessageTurnDurationBadge\.fontFamilyByPlatform\),[\s\S]*?fontSize:\s*mobileMessageTurnDurationBadge\.fontSize[\s\S]*?color:\s*mobileMessageTurnDurationBadgeColors\.color/);
-  assert.match(screenSource, /messageTurnDurationTextLive:\s*\{[\s\S]*?color:\s*mobileMessageTurnDurationLiveBadgeColors\.color/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationBadgeStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,\s+colors: typeof mobileMessageTurnDurationBadgeColors,/);
+  assert.match(screenSource, /backgroundColor: colors\.backgroundColor,[\s\S]*?alignItems: badge\.alignItems,[\s\S]*?justifyContent: badge\.justifyContent,[\s\S]*?gap: badge\.gap,[\s\S]*?flexShrink: badge\.flexShrink,[\s\S]*?opacity: badge\.opacity/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationTextStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,\s+colors: typeof mobileMessageTurnDurationBadgeColors,/);
+  assert.match(screenSource, /fontFamily: resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform\),[\s\S]*?fontSize: badge\.fontSize[\s\S]*?color: colors\.color/);
+  assert.match(screenSource, /messageTurnDurationBadge:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationBadgeStyle\(\s+mobileMessageTurnDurationBadge,\s+mobileMessageTurnDurationBadgeColors,\s+\)/);
+  assert.match(screenSource, /messageTurnDurationBadgeLive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationBadgeStyle\(\s+mobileMessageTurnDurationLiveBadge,\s+mobileMessageTurnDurationLiveBadgeColors,\s+\)/);
+  assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationTextStyle\(\s+mobileMessageTurnDurationBadge,\s+mobileMessageTurnDurationBadgeColors,\s+\)/);
+  assert.match(screenSource, /messageTurnDurationTextLive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationTextStyle\(\s+mobileMessageTurnDurationLiveBadge,\s+mobileMessageTurnDurationLiveBadgeColors,\s+\)/);
   assert.doesNotMatch(screenSource, /messageTurnDurationBadge:\s*\{[\s\S]*?theme\.colors\[mobileMessageTurnDurationBadge\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /messageTurnDurationBadgeLive:\s*\{[\s\S]*?theme\.colors\[mobileMessageTurnDurationLiveBadge\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?theme\.colors\[mobileMessageTurnDurationBadge\.colorToken\]/);
