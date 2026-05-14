@@ -4764,8 +4764,13 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /const \[pendingBranchMessageIndex, setPendingBranchMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /setPendingBranchMessageIndex\(null\);[\s\S]*?\}, \[sessionId\]\);/);
   assert.doesNotMatch(screenSource, /const \[branchingMessageIndex, setBranchingMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(screenSource, /useChatRuntimeNavigateToChatActionsState,/);
+  assert.match(screenSource, /const \{ navigateToChat \} = useChatRuntimeNavigateToChatActionsState\(\{\s+navigation,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigateToChatActionsState/);
+  assert.match(chatMessageChromeSource, /navigation\.navigate\('Chat'\);/);
+  assert.doesNotMatch(screenSource, /navigation\.navigate\('Chat'\)/);
   assert.match(screenSource, /useChatMessageRuntimeBranchActionsState,/);
-  assert.match(screenSource, /const \{ handleBranchFromMessagePress \} = useChatMessageRuntimeBranchActionsState\(\{\s+branchClient: settingsClient,\s+serverConversationId: currentSession\?\.serverConversationId,\s+sessionStore,\s+beginBranchMessage,\s+clearBranchMessage,\s+navigateToChat: \(\) => navigation\.navigate\('Chat'\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleBranchFromMessagePress \} = useChatMessageRuntimeBranchActionsState\(\{\s+branchClient: settingsClient,\s+serverConversationId: currentSession\?\.serverConversationId,\s+sessionStore,\s+beginBranchMessage,\s+clearBranchMessage,\s+navigateToChat,\s+showAlert: Alert\.alert,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeBranchActionsState/);
   assert.match(chatMessageChromeSource, /handleBranchFromMessagePress: \(messageIndex: number\) => void/);
   assert.match(chatMessageChromeSource, /const handleBranchFromMessagePress = useCallback\(\(messageIndex: number\) => \{\s+void handleBranchFromMessage\(messageIndex\);\s+\}, \[handleBranchFromMessage\]\);/);

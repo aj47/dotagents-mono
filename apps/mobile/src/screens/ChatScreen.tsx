@@ -93,6 +93,7 @@ import {
   useChatMessageRuntimeKillSwitchActionsState,
   showChatMessageRuntimeKillSwitchNativeConfirmAlert,
   useChatRuntimeBackToSessionsActionsState,
+  useChatRuntimeNavigateToChatActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeBranchActionsState,
@@ -417,6 +418,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const { handleToggleCurrentSessionPinned } = useChatRuntimeCurrentSessionPinActionsState({
     sessionStore,
   });
+  const { navigateToChat } = useChatRuntimeNavigateToChatActionsState({
+    navigation,
+  });
 
   const { handleBranchFromMessagePress } = useChatMessageRuntimeBranchActionsState({
     branchClient: settingsClient,
@@ -424,7 +428,7 @@ export default function ChatScreen({ route, navigation }: any) {
     sessionStore,
     beginBranchMessage,
     clearBranchMessage,
-    navigateToChat: () => navigation.navigate('Chat'),
+    navigateToChat,
     showAlert: Alert.alert,
   });
 

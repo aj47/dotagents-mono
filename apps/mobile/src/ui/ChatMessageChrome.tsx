@@ -3750,12 +3750,24 @@ type ChatRuntimeBackToSessionsNavigation = {
   navigate: (screenName: 'Sessions') => void;
 };
 
+type ChatRuntimeNavigateToChatNavigation = {
+  navigate: (screenName: 'Chat') => void;
+};
+
 type ChatRuntimeBackToSessionsActionsStateInput = {
   navigation: ChatRuntimeBackToSessionsNavigation;
 };
 
+type ChatRuntimeNavigateToChatActionsStateInput = {
+  navigation: ChatRuntimeNavigateToChatNavigation;
+};
+
 type ChatRuntimeBackToSessionsActionsState = {
   handleBackToSessions: () => void;
+};
+
+type ChatRuntimeNavigateToChatActionsState = {
+  navigateToChat: () => void;
 };
 
 type ChatMessageRuntimeKillSwitchClient = {
@@ -9076,6 +9088,18 @@ export function useChatRuntimeBackToSessionsActionsState({
 
   return {
     handleBackToSessions,
+  };
+}
+
+export function useChatRuntimeNavigateToChatActionsState({
+  navigation,
+}: ChatRuntimeNavigateToChatActionsStateInput): ChatRuntimeNavigateToChatActionsState {
+  const navigateToChat = useCallback(() => {
+    navigation.navigate('Chat');
+  }, [navigation]);
+
+  return {
+    navigateToChat,
   };
 }
 
