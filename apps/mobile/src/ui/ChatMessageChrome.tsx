@@ -1907,10 +1907,10 @@ type ChatMessageConversationThreadBodyInput = {
     & ChatMessageConversationRetryStatusInput['message']
     & ChatMessageConversationDelegationCardInput['message']
     & ChatMessageConversationToolApprovalInput['message']
-    & ChatMessageConversationToolExecutionStackInput['message'];
+    & ChatMessageConversationToolExecutionStackInput['message']
+    & ChatMessageInlineActivityPropsInput['message'];
   messageIndex: number;
   messageRenderState: ChatMessageConversationBodyPropsInput['messageRenderState'];
-  inlineActivity: ChatMessageThreadBodyPropsInput['inlineActivity'];
   visibleMessageContent: string;
   renderedToolEntries: ChatMessageConversationToolExecutionStackInput['renderedToolEntries'];
   displayToolCallCount: number;
@@ -2270,7 +2270,6 @@ export function createChatMessageConversationThreadBodyInput({
   message,
   messageIndex,
   messageRenderState,
-  inlineActivity,
   visibleMessageContent,
   renderedToolEntries,
   displayToolCallCount,
@@ -2334,7 +2333,11 @@ export function createChatMessageConversationThreadBodyInput({
       onToggleArguments: onToggleToolApprovalArguments,
       onRespondToToolApproval,
     }),
-    inlineActivity,
+    inlineActivity: createChatMessageInlineActivityProps({
+      message,
+      isResponding,
+      spinnerSource,
+    }),
     conversation: {
       messageRenderState,
       actionSet: createChatMessageConversationActionSetInput({

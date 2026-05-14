@@ -38,7 +38,6 @@ import {
   createChatMessageConversationThreadBodyInput,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationDockStyleSlots,
-  createChatMessageInlineActivityProps,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageConversationViewportStyleSlots,
@@ -3775,70 +3774,65 @@ export default function ChatScreen({ route, navigation }: any) {
               resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
               colors: theme.colors,
             });
-            const messageInlineActivityProps = createChatMessageInlineActivityProps({
-              message: m,
-              isResponding: responding,
-              spinnerSource: isDark ? darkSpinner : lightSpinner,
-            });
-            // Skip empty messages unless they are the current shared inline activity row.
-            // Also skip messages that only have toolResults but no toolCalls (raw result blobs).
-            if (!shouldRenderSurface && !messageInlineActivityProps) {
-              return null;
-            }
-
             const turnDurationEntry =
               typeof m.timestamp === 'number'
                 ? turnDurations.byUserTimestamp.get(m.timestamp)
                 : undefined;
+            const messageThreadBody = createChatMessageConversationThreadBodyInput({
+              message: m,
+              messageIndex: i,
+              messageRenderState,
+              visibleMessageContent,
+              renderedToolEntries,
+              displayToolCallCount,
+              isExpanded,
+              isStreaming: isLiveStreamingAssistantMessage,
+              turnDuration: turnDurationEntry,
+              conversationId: currentSession?.serverConversationId,
+              pendingBranchMessageIndex: branchingMessageIndex,
+              isResponding: responding,
+              isSpeaking: speakingMessageIndex === i,
+              isCopied: copiedMessageIndex === i,
+              ttsEnabled,
+              colors: theme.colors,
+              actionStyles: chatMessageConversationThreadStyles.actionSet,
+              assetBaseUrl: config.baseUrl,
+              assetAuthToken: config.apiKey,
+              spinnerSource: isDark ? darkSpinner : lightSpinner,
+              delegationSurface: mobileRuntimeDelegationCard,
+              expandedDelegationConversationPreviews,
+              expandedDelegationToolPreviews,
+              delegationRoleStyles: delegationConversationPreviewRoleStyles,
+              setExpandedDelegationConversationPreviews,
+              setExpandedDelegationToolPreviews,
+              expandedToolApprovals,
+              pendingApprovalResponseId: pendingToolApprovalResponseId,
+              onToggleToolApprovalArguments: toggleToolApprovalArguments,
+              onRespondToToolApproval: respondToToolApproval,
+              expandedToolCalls,
+              toolPayloadPreviewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+              pendingToolResultRenderState: toolExecutionDetailPendingResultState,
+              toolExecutionEmptyStateRenderState: toolExecutionDetailEmptyState,
+              onToggleToolCall: toggleToolCallExpansion,
+              onCopyToolPayload: handleCopyToolPayload,
+              onSpeakMessage: speakMessage,
+              onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
+              onCopyMessage: handleCopyMessage,
+              onToggleMessageExpansion: toggleMessageExpansion,
+            });
+            // Skip empty messages unless they are the current shared inline activity row.
+            // Also skip messages that only have toolResults but no toolCalls (raw result blobs).
+            if (!shouldRenderSurface && !messageThreadBody.inlineActivity) {
+              return null;
+            }
+
             return (
               <ChatMessageRuntimeThread
                 key={i}
                 groupRenderState={groupRenderState}
                 onToggleGroup={group ? () => toggleGroupExpansion(group) : undefined}
                 styles={chatMessageConversationThreadStyles.runtimeThread}
-                body={createChatMessageConversationThreadBodyInput({
-                  message: m,
-                  messageIndex: i,
-                  messageRenderState,
-                  inlineActivity: messageInlineActivityProps,
-                  visibleMessageContent,
-                  renderedToolEntries,
-                  displayToolCallCount,
-                  isExpanded,
-                  isStreaming: isLiveStreamingAssistantMessage,
-                  turnDuration: turnDurationEntry,
-                  conversationId: currentSession?.serverConversationId,
-                  pendingBranchMessageIndex: branchingMessageIndex,
-                  isResponding: responding,
-                  isSpeaking: speakingMessageIndex === i,
-                  isCopied: copiedMessageIndex === i,
-                  ttsEnabled,
-                  colors: theme.colors,
-                  actionStyles: chatMessageConversationThreadStyles.actionSet,
-                  assetBaseUrl: config.baseUrl,
-                  assetAuthToken: config.apiKey,
-                  spinnerSource: isDark ? darkSpinner : lightSpinner,
-                  delegationSurface: mobileRuntimeDelegationCard,
-                  expandedDelegationConversationPreviews,
-                  expandedDelegationToolPreviews,
-                  delegationRoleStyles: delegationConversationPreviewRoleStyles,
-                  setExpandedDelegationConversationPreviews,
-                  setExpandedDelegationToolPreviews,
-                  expandedToolApprovals,
-                  pendingApprovalResponseId: pendingToolApprovalResponseId,
-                  onToggleToolApprovalArguments: toggleToolApprovalArguments,
-                  onRespondToToolApproval: respondToToolApproval,
-                  expandedToolCalls,
-                  toolPayloadPreviewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-                  pendingToolResultRenderState: toolExecutionDetailPendingResultState,
-                  toolExecutionEmptyStateRenderState: toolExecutionDetailEmptyState,
-                  onToggleToolCall: toggleToolCallExpansion,
-                  onCopyToolPayload: handleCopyToolPayload,
-                  onSpeakMessage: speakMessage,
-                  onBranchMessage: (messageIndex) => { void handleBranchFromMessage(messageIndex); },
-                  onCopyMessage: handleCopyMessage,
-                  onToggleMessageExpansion: toggleMessageExpansion,
-                })}
+                body={messageThreadBody}
               />
             );
           })}
