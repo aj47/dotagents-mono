@@ -2903,6 +2903,16 @@ type ChatMessageRuntimeBranchProgressState = {
   clearBranchMessage: () => void;
 };
 
+type ChatMessageRuntimeToolApprovalResponseStateInput = {
+  sessionId?: string | null;
+};
+
+type ChatMessageRuntimeToolApprovalResponseState = {
+  pendingToolApprovalResponseId: string | null;
+  beginToolApprovalResponse: (approvalId: string) => void;
+  clearToolApprovalResponse: () => void;
+};
+
 type ChatMessageRuntimeScrollControllerInput = {
   messages: readonly unknown[];
   sessionId?: string | null;
@@ -5590,6 +5600,30 @@ export function useChatMessageRuntimeBranchProgressState({
     pendingBranchMessageIndex,
     beginBranchMessage,
     clearBranchMessage,
+  };
+}
+
+export function useChatMessageRuntimeToolApprovalResponseState({
+  sessionId,
+}: ChatMessageRuntimeToolApprovalResponseStateInput = {}): ChatMessageRuntimeToolApprovalResponseState {
+  const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingToolApprovalResponseId(null);
+  }, [sessionId]);
+
+  const beginToolApprovalResponse = useCallback((approvalId: string) => {
+    setPendingToolApprovalResponseId(approvalId);
+  }, []);
+
+  const clearToolApprovalResponse = useCallback(() => {
+    setPendingToolApprovalResponseId(null);
+  }, []);
+
+  return {
+    pendingToolApprovalResponseId,
+    beginToolApprovalResponse,
+    clearToolApprovalResponse,
   };
 }
 

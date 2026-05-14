@@ -86,6 +86,7 @@ import {
   getChatMessageCopyFailureAlertState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   useChatMessageRuntimeBranchProgressState,
+  useChatMessageRuntimeToolApprovalResponseState,
   useChatMessageCopyFeedbackState,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   removeChatMessageRuntimePendingTurnMessages,
@@ -187,7 +188,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.voice);
   const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>(DEFAULT_REMOTE_SPEECH_SETTINGS.model);
   const [remoteTtsRate, setRemoteTtsRate] = useState(DEFAULT_REMOTE_SPEECH_SETTINGS.rate);
-  const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
+  const {
+    pendingToolApprovalResponseId,
+    beginToolApprovalResponse,
+    clearToolApprovalResponse,
+  } = useChatMessageRuntimeToolApprovalResponseState({
+    sessionId: sessionStore.currentSessionId,
+  });
   const {
     pendingBranchMessageIndex,
     beginBranchMessage,
@@ -562,7 +569,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    setPendingToolApprovalResponseId(approvalId);
+    beginToolApprovalResponse(approvalId);
     try {
       const response = await settingsClient.respondToToolApproval(approvalId, approved);
       setMessages((current) => removeChatMessageRuntimeToolApprovalMessage(current, approvalId));
@@ -574,9 +581,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error);
       Alert.alert(failedAlert.title, failedAlert.message);
     } finally {
-      setPendingToolApprovalResponseId(null);
+      clearToolApprovalResponse();
     }
-  }, [settingsClient]);
+  }, [beginToolApprovalResponse, clearToolApprovalResponse, settingsClient]);
   const {
     visibleMessageCount,
     loadEarlierMessages,

@@ -284,6 +284,14 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalSpinnerMobileColors,/);
   assert.doesNotMatch(screenSource, /\? mobileRuntimeCopy\.approval\.processingTitle\s*: mobileRuntimeCopy\.approval\.title/);
+  assert.match(screenSource, /useChatMessageRuntimeToolApprovalResponseState,/);
+  assert.match(screenSource, /const \{\s+pendingToolApprovalResponseId,\s+beginToolApprovalResponse,\s+clearToolApprovalResponse,\s+\} = useChatMessageRuntimeToolApprovalResponseState\(\{\s+sessionId: sessionStore\.currentSessionId,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeToolApprovalResponseState/);
+  assert.match(chatMessageChromeSource, /const \[pendingToolApprovalResponseId, setPendingToolApprovalResponseId\] = useState<string \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /setPendingToolApprovalResponseId\(null\);[\s\S]*?\}, \[sessionId\]\);/);
+  assert.doesNotMatch(screenSource, /const \[pendingToolApprovalResponseId, setPendingToolApprovalResponseId\] = useState<string \| null>\(null\);/);
+  assert.match(screenSource, /beginToolApprovalResponse\(approvalId\);/);
+  assert.match(screenSource, /clearToolApprovalResponse\(\);/);
   assert.doesNotMatch(screenSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<Record<string, boolean>>\(\{\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeThreadExpansionState,/);
   assert.match(chatMessageChromeSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<ChatMessageRuntimeToolApprovalExpansionState>\(\{\}\);/);
