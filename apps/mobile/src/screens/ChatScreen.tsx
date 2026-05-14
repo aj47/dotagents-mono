@@ -116,7 +116,6 @@ import {
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeTurnDurationHeaderMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
-  getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAlertMessage,
   getFollowUpInputPresentation,
@@ -237,7 +236,6 @@ const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const mobileRuntimeKillSwitchAlerts = getChatRuntimeKillSwitchMobileAlertState();
 const mobileRuntimeDebug = getChatRuntimeDebugState();
 const composerMicWebPressStyle = getChatComposerMicMobileWebPressStyleState() as any;
-const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(Platform.OS);
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
@@ -3421,7 +3419,7 @@ export default function ChatScreen({ route, navigation }: any) {
     composer: chatComposerRuntimeDock,
   });
   const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps({
-    keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,
+    platform: Platform.OS,
     keyboardVerticalOffset: headerHeight,
     dock: chatMessageRuntimeDock,
     viewport: chatMessageRuntimeViewport,

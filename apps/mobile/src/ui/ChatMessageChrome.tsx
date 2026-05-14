@@ -115,6 +115,7 @@ import {
   getChatRuntimeStepSummaryMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
+  getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAgentSelectorMobileRenderState,
   getChatRuntimeBackMobileRenderState,
@@ -1619,7 +1620,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
 > = {
-  keyboardAvoidingBehavior: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardAvoidingBehavior'];
+  platform: Parameters<typeof getChatRuntimeViewportMobileKeyboardAvoidingBehavior>[0];
   keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
   dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
   viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
@@ -2999,7 +3000,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
 >({
-  keyboardAvoidingBehavior,
+  platform,
   keyboardVerticalOffset,
   dock,
   viewport,
@@ -3020,6 +3021,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   promptEditorStyles,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
   const promptEditorRenderState = getPromptLibraryEditorMobileRenderState(promptEditorRenderStateInput);
+  const keyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(platform);
 
   return {
     frame: {

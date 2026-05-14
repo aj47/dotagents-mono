@@ -967,12 +967,13 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
 
 test('uses shared runtime presentation for the mobile chat viewport and loading state', () => {
   assert.match(screenSource, /getChatRuntimeViewportMobileRenderState,/);
-  assert.match(screenSource, /getChatRuntimeViewportMobileKeyboardAvoidingBehavior,/);
+  assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileKeyboardAvoidingBehavior,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeViewportMobileKeyboardAvoidingBehavior,/);
   assert.match(screenSource, /createChatMessageRuntimeViewportContentRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeLoadingStateMobileState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeViewportMobileColors,/);
-  assert.match(screenSource, /const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior\(Platform\.OS\);/);
+  assert.doesNotMatch(screenSource, /const mobileRuntimeViewportKeyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior\(Platform\.OS\);/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeViewportRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeViewport = mobileRuntimeViewportRenderState\.surface;/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState\.loadingState;/);
@@ -981,7 +982,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /const viewportSurfaceColors = viewportStyleState\.colors;/);
   assert.match(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{\s+keyboardAvoidingBehavior: mobileRuntimeViewportKeyboardAvoidingBehavior,\s+keyboardVerticalOffset: headerHeight,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeSurfaceChromeProps\(\{\s+platform: Platform\.OS,\s+keyboardVerticalOffset: headerHeight,/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
   assert.match(screenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+styles=\{chatMessageRuntimeSurfaceStyles\}/);
@@ -996,6 +997,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /<ChatMessageRuntimeOverlays/);
   assert.doesNotMatch(screenSource, /overlays=\{\{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSurfaceChromeProps/);
+  assert.match(chatMessageChromeSource, /const keyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior\(platform\);/);
   assert.match(chatMessageChromeSource, /frame: \{\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+\}/);
   assert.match(chatMessageChromeSource, /overlays: \{\s+agentSelector: \{\s+visible: agentSelectorVisible,\s+onClose: onAgentSelectorClose,\s+\},[\s\S]*?promptEditor: \{\s+visible: promptEditorVisible,/);
   assert.match(chatMessageChromeSource, /<ChatMessageConversationRuntimeThreadList \{\.\.\.threadList\} \/>/);
