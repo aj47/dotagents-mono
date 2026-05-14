@@ -155,6 +155,10 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(chatMessageChromeSource, /formatHandsFreeRecognizerErrorDebugMessage/);
   assert.match(screenSource, /formatChatComposerHandsFreeSleepingDebugMessage/);
   assert.match(screenSource, /formatChatComposerHandsFreeRecognizerErrorDebugMessage/);
+  assert.match(screenSource, /mergeChatComposerRuntimeVoiceText/);
+  assert.doesNotMatch(screenSource, /mergeVoiceText/);
+  assert.match(chatMessageChromeSource, /mergeVoiceText/);
+  assert.match(chatMessageChromeSource, /export function mergeChatComposerRuntimeVoiceText/);
   assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('transcriptAdded'\)/);
   assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('permissionDenied'\)/);
   assert.match(screenSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);

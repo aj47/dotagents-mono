@@ -37,6 +37,7 @@ import {
   createChatComposerRuntimeFollowUpPresentationState,
   buildChatComposerRuntimeMessageContent,
   hasChatComposerRuntimeMessageContent,
+  mergeChatComposerRuntimeVoiceText,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -138,7 +139,6 @@ import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-import { mergeVoiceText } from '@dotagents/shared/voice-text-utils';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
   sanitizeMessagesForModel,
@@ -785,7 +785,7 @@ export default function ChatScreen({ route, navigation }: any) {
 			if (!finalText) return;
 
 			if (mode === 'edit') {
-				setInput((current) => mergeVoiceText(current, finalText));
+				setInput((current) => mergeChatComposerRuntimeVoiceText(current, finalText));
 				setDebugInfo(getChatComposerHandsFreeDebugMessage('transcriptAdded'));
 				setTimeout(() => inputRef.current?.focus(), 0);
 				return;

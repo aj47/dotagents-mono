@@ -98,7 +98,10 @@ import {
   type VoiceDebugEntry,
 } from '@dotagents/shared/voice-debug-log';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
-import { normalizeAutoTtsTextKey } from '@dotagents/shared/voice-text-utils';
+import {
+  mergeVoiceText,
+  normalizeAutoTtsTextKey,
+} from '@dotagents/shared/voice-text-utils';
 import {
   createChatComposerAccessibilityHint,
   createMinimumTouchTargetStyle,
@@ -5980,6 +5983,13 @@ export function hasChatComposerRuntimeMessageContent(
   pendingImages: readonly ChatComposerRuntimeImageAttachment[],
 ): boolean {
   return input.trim().length > 0 || pendingImages.length > 0;
+}
+
+export function mergeChatComposerRuntimeVoiceText(
+  currentText?: string | null,
+  finalizedText?: string | null,
+): string {
+  return mergeVoiceText(currentText, finalizedText);
 }
 
 export function buildChatComposerRuntimeMessageContent(
