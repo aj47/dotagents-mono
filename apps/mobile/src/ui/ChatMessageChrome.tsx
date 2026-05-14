@@ -3284,6 +3284,32 @@ type ChatMessageRuntimeBranchActionsState = {
   handleBranchFromMessage: (messageIndex: number) => Promise<void>;
 };
 
+type ChatMessageRuntimeKillSwitchClient = {
+  killSwitch: () => Promise<ChatMessageRuntimeKillSwitchResultLike>;
+};
+
+type ChatMessageRuntimeKillSwitchNativeConfirmInput = Pick<
+  ChatMessageRuntimeKillSwitchConfirmationAlertState,
+  'title' | 'message' | 'cancelLabel' | 'confirmLabel'
+> & {
+  onConfirm: () => void;
+};
+
+type ChatMessageRuntimeKillSwitchActionsStateInput<
+  TKillSwitchClient extends ChatMessageRuntimeKillSwitchClient,
+> = {
+  platform: string;
+  getKillSwitchClient: () => TKillSwitchClient | null | undefined;
+  confirmWeb: (message: string) => boolean;
+  showWebAlert: (message: string) => void;
+  confirmNative: (input: ChatMessageRuntimeKillSwitchNativeConfirmInput) => void;
+  showAlert: (title: string, message: string) => void;
+};
+
+type ChatMessageRuntimeKillSwitchActionsState = {
+  handleKillSwitch: () => Promise<void>;
+};
+
 type ChatMessageRuntimeToolApprovalResponseStateInput = {
   sessionId?: string | null;
 };
@@ -7017,6 +7043,75 @@ export function useChatMessageRuntimeBranchActionsState<
 
   return {
     handleBranchFromMessage,
+  };
+}
+
+export function useChatMessageRuntimeKillSwitchActionsState<
+  TKillSwitchClient extends ChatMessageRuntimeKillSwitchClient,
+>({
+  platform,
+  getKillSwitchClient,
+  confirmWeb,
+  showWebAlert,
+  confirmNative,
+  showAlert,
+}: ChatMessageRuntimeKillSwitchActionsStateInput<TKillSwitchClient>): ChatMessageRuntimeKillSwitchActionsState {
+  const handleKillSwitch = useCallback(async () => {
+    console.log('[ChatMessageRuntime] Kill switch button pressed');
+    const client = getKillSwitchClient();
+    if (!client) {
+      console.error('[ChatMessageRuntime] No client available for kill switch');
+      return;
+    }
+
+    const runKillSwitch = async () => {
+      try {
+        const result = await client.killSwitch();
+        const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result);
+        if (platform === 'web') {
+          showWebAlert(resultAlert.webMessage);
+          return;
+        }
+        showAlert(resultAlert.title, resultAlert.message);
+      } catch (error: any) {
+        console.error('[ChatMessageRuntime] Kill switch error:', error);
+        const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(error);
+        if (platform === 'web') {
+          showWebAlert(failedAlert.webMessage);
+          return;
+        }
+        showAlert(failedAlert.title, failedAlert.message);
+      }
+    };
+
+    const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState();
+    if (platform === 'web') {
+      if (confirmWeb(confirmationAlert.webMessage)) {
+        await runKillSwitch();
+      }
+      return;
+    }
+
+    confirmNative({
+      title: confirmationAlert.title,
+      message: confirmationAlert.message,
+      cancelLabel: confirmationAlert.cancelLabel,
+      confirmLabel: confirmationAlert.confirmLabel,
+      onConfirm: () => {
+        void runKillSwitch();
+      },
+    });
+  }, [
+    confirmNative,
+    confirmWeb,
+    getKillSwitchClient,
+    platform,
+    showAlert,
+    showWebAlert,
+  ]);
+
+  return {
+    handleKillSwitch,
   };
 }
 

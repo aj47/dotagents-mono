@@ -82,9 +82,7 @@ import {
   getChatMessageRuntimeDebugMessage,
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
-  getChatMessageRuntimeKillSwitchConfirmationAlertState,
-  getChatMessageRuntimeKillSwitchConnectionFailedAlertState,
-  getChatMessageRuntimeKillSwitchResultAlertState,
+  useChatMessageRuntimeKillSwitchActionsState,
   getChatMessageRuntimeLatestStepSummary,
   resolveChatMessageRuntimeConversationStateFromProgress,
   useChatMessageRuntimeBranchProgressState,
@@ -441,55 +439,23 @@ export default function ChatScreen({ route, navigation }: any) {
     return unsubscribe;
   }, [sessionStore.currentSessionId, connectionManager]);
 
-  const handleKillSwitch = async () => {
-    console.log('[ChatScreen] Kill switch button pressed');
-    const client = getSessionClient();
-    if (!client) {
-      console.error('[ChatScreen] No client available for kill switch');
-      return;
-    }
-
-    if (Platform.OS === 'web') {
-      const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState();
-      const confirmed = window.confirm(confirmationAlert.webMessage);
-      if (confirmed) {
-        try {
-          const result = await client.killSwitch();
-          const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result);
-          window.alert(resultAlert.webMessage);
-        } catch (e: any) {
-          console.error('[ChatScreen] Kill switch error:', e);
-          const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e);
-          window.alert(failedAlert.webMessage);
-        }
-      }
-      return;
-    }
-
-    const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState();
-    Alert.alert(
-      confirmationAlert.title,
-      confirmationAlert.message,
-      [
-        { text: confirmationAlert.cancelLabel, style: 'cancel' },
+  const { handleKillSwitch } = useChatMessageRuntimeKillSwitchActionsState({
+    platform: Platform.OS,
+    getKillSwitchClient: getSessionClient,
+    confirmWeb: (message) => window.confirm(message),
+    showWebAlert: (message) => window.alert(message),
+    confirmNative: ({ title, message, cancelLabel, confirmLabel, onConfirm }) => {
+      Alert.alert(title, message, [
+        { text: cancelLabel, style: 'cancel' },
         {
-          text: confirmationAlert.confirmLabel,
+          text: confirmLabel,
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await client.killSwitch();
-              const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result);
-              Alert.alert(resultAlert.title, resultAlert.message);
-            } catch (e: any) {
-              console.error('[ChatScreen] Kill switch error:', e);
-              const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(e);
-              Alert.alert(failedAlert.title, failedAlert.message);
-            }
-          },
+          onPress: onConfirm,
         },
-      ],
-    );
-  };
+      ]);
+    },
+    showAlert: Alert.alert,
+  });
 
   const handleNewChat = useCallback(() => {
     // Reset all UI states unconditionally when creating a new chat
