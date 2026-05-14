@@ -144,10 +144,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
-  const {
-    chatRuntimeChrome,
-    chatMessageRuntimeSurfaceStyles,
-  } = useChatRuntimeMobileStyleSlots({
+  const { chatRuntimeChrome } = useChatRuntimeMobileStyleSlots({
     theme,
     bottomInset: insets.bottom,
     isDark,
@@ -1722,7 +1719,7 @@ export default function ChatScreen({ route, navigation }: any) {
   return (
     <ChatMessageRuntimeSurface
       {...chatMessageRuntimeSurface}
-      styles={chatMessageRuntimeSurfaceStyles}
+      styles={chatRuntimeChrome.surfaceStyles}
     />
   );
 }

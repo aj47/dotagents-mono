@@ -1801,21 +1801,6 @@ export function useChatRuntimeMobileStyleSlots({
     }),
     [chatMessageConversationThreadStyles, promptEditorModalStyles],
   );
-  const chatRuntimeChrome = useMemo(
-    () => ({
-      colors: chatRuntimeChromeEnvironment.colors,
-      platform: chatRuntimeChromeEnvironment.platform,
-      spinnerSource: chatRuntimeSpinnerSource,
-      headerStyles: chatRuntimeHeaderStyles,
-      messageRuntimeStyles: chatMessageRuntimeChromeStyles,
-    }),
-    [
-      chatMessageRuntimeChromeStyles,
-      chatRuntimeChromeEnvironment,
-      chatRuntimeHeaderStyles,
-      chatRuntimeSpinnerSource,
-    ],
-  );
   const mobileSafeAreaLayout = useMemo(
     () => createChatRuntimeMobileSafeAreaLayoutState(bottomInset),
     [bottomInset],
@@ -1863,9 +1848,25 @@ export function useChatRuntimeMobileStyleSlots({
     }),
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
   );
+  const chatRuntimeChrome = useMemo(
+    () => ({
+      colors: chatRuntimeChromeEnvironment.colors,
+      platform: chatRuntimeChromeEnvironment.platform,
+      spinnerSource: chatRuntimeSpinnerSource,
+      headerStyles: chatRuntimeHeaderStyles,
+      messageRuntimeStyles: chatMessageRuntimeChromeStyles,
+      surfaceStyles: chatMessageRuntimeSurfaceStyles,
+    }),
+    [
+      chatMessageRuntimeChromeStyles,
+      chatMessageRuntimeSurfaceStyles,
+      chatRuntimeChromeEnvironment,
+      chatRuntimeHeaderStyles,
+      chatRuntimeSpinnerSource,
+    ],
+  );
 
   return {
     chatRuntimeChrome,
-    chatMessageRuntimeSurfaceStyles,
   };
 }

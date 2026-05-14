@@ -138,7 +138,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileChromeEnvironment\(theme: Theme\): ChatRuntimeMobileChromeEnvironment/);
   assert.match(chatRuntimeMobileStylesSource, /const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment\(theme\);/);
   assert.match(chatRuntimeMobileStylesSource, /const chatChromeStyleState = createChatRuntimeMobileChromeStyleState\(chatRuntimeChromeEnvironment\);/);
-  assert.match(chatScreenSource, /chatRuntimeChrome,/);
+  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\{/);
   assert.doesNotMatch(chatScreenSource, /chatRuntimeChromeEnvironment/);
   assert.doesNotMatch(chatScreenSource, /chatRuntimeSpinnerSource/);
   assert.doesNotMatch(chatScreenSource, /chatMessageRuntimeChromeStyles/);
@@ -183,7 +183,7 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.doesNotMatch(screenSource, /getChatSessionStatusMobileStyleState,/);
   assert.doesNotMatch(screenSource, /getSessionStatusMobileSurfaceState,/);
   assert.match(chatMessageChromeSource, /conversationStatusRenderState: getSessionStatusMobileRenderState\(\{\s+session: headerConversationState \? \{ conversationState: headerConversationState \} : null,\s+colors,\s+\}\),/);
-  assert.match(chatScreenSource, /chatRuntimeChrome,/);
+  assert.match(chatScreenSource, /const \{ chatRuntimeChrome \} = useChatRuntimeMobileStyleSlots\(\{/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeThemeSpinnerSource/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeThemeSpinnerSource,/);
   assert.match(chatScreenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{[\s\S]*?spinnerSource: chatRuntimeChrome\.spinnerSource,/);
@@ -1204,13 +1204,15 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>\(\{\s+colors: chatRuntimeChrome\.colors,\s+platform: chatRuntimeChrome\.platform,\s+spinnerSource: chatRuntimeChrome\.spinnerSource,/);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
-  assert.match(screenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+styles=\{chatMessageRuntimeSurfaceStyles\}/);
+  assert.match(chatRuntimeMobileStylesSource, /surfaceStyles: chatMessageRuntimeSurfaceStyles,/);
+  assert.match(chatScreenSource, /<ChatMessageRuntimeSurface\s+\s+\{\.\.\.chatMessageRuntimeSurface\}\s+styles=\{chatRuntimeChrome\.surfaceStyles\}/);
+  assert.doesNotMatch(chatScreenSource, /chatMessageRuntimeSurfaceStyles/);
   assert.match(screenSource, /const chatMessageRuntimeChromeStyles = useMemo\(\s+\(\) => \(\{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,\s+threadStyles: chatMessageConversationThreadStyles\.runtimeThread,\s+promptEditorStyles: promptEditorModalStyles,\s+\}\),\s+\[chatMessageConversationThreadStyles, promptEditorModalStyles\],\s+\);/);
   assert.match(chatScreenSource, /styles: chatRuntimeChrome\.messageRuntimeStyles,/);
   assert.doesNotMatch(chatScreenSource, /styles: \{\s+actionStyles: chatMessageConversationThreadStyles\.actionSet,/);
   assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.match(chatMessageChromeSource, /threadStates: conversationThreadListState\.threadStates,\s+threadStyles: styles\.threadStyles,/);
-  assert.match(screenSource, /styles=\{chatMessageRuntimeSurfaceStyles\}/);
+  assert.match(chatScreenSource, /styles=\{chatRuntimeChrome\.surfaceStyles\}/);
   assert.doesNotMatch(screenSource, /styles=\{\{\s+frame: conversationViewportStyles\.frame/);
   assert.doesNotMatch(screenSource, /<ChatMessageConversationFrame/);
   assert.doesNotMatch(screenSource, /keyboardAvoidingStyle=\{styles\.keyboardAvoidingContainer\}/);
