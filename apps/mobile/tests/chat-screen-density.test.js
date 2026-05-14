@@ -37,11 +37,14 @@ const packageJson = JSON.parse(
 );
 
 test('keeps mobile chat runtime stylesheet in the ui layer', () => {
-  assert.match(chatScreenSource, /createChatRuntimeMobileStyles\(theme\)/);
+  assert.match(chatScreenSource, /import \{ useChatRuntimeMobileStyleSlots \} from '\.\.\/ui\/ChatRuntimeMobileStyles';/);
+  assert.match(chatScreenSource, /useChatRuntimeMobileStyleSlots\(\{\s+theme,\s+bottomInset: insets\.bottom,\s+\}\)/);
+  assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileStyles\(theme\)/);
   assert.doesNotMatch(chatScreenSource, /function createStyles/);
   assert.doesNotMatch(chatScreenSource, /StyleSheet\.create/);
   assert.doesNotMatch(chatScreenSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileStyles/);
+  assert.match(chatRuntimeMobileStylesSource, /const styles = useMemo\(\(\) => createChatRuntimeMobileStyles\(theme\), \[theme\]\);/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatRuntimeMobileStylesSource, /return StyleSheet\.create\(\{/);
 });
@@ -978,7 +981,8 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
-  assert.match(screenSource, /const mobileSafeAreaLayout = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaLayoutState\(insets\.bottom\),\s+\[insets\.bottom\],\s+\);/);
+  assert.match(chatScreenSource, /bottomInset: insets\.bottom,/);
+  assert.match(chatRuntimeMobileStylesSource, /const mobileSafeAreaLayout = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaLayoutState\(bottomInset\),\s+\[bottomInset\],\s+\);/);
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaStyleSlots,/);
   assert.match(screenSource, /createChatRuntimeSafeAreaMergedStyleSlots,/);
   assert.match(screenSource, /const mobileSafeAreaStyles = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaStyleSlots\(mobileSafeAreaLayout\),\s+\[mobileSafeAreaLayout\],\s+\);/);
@@ -3036,7 +3040,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
-  assert.match(screenSource, /import \{[\s\S]*?ChatMessageRuntimeSurface,[\s\S]*?createChatMessageConversationRuntimeThreadListRenderState,[\s\S]*?createChatMessageConversationThreadStyleSlots,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.match(chatScreenSource, /import \{[\s\S]*?ChatMessageRuntimeSurface,[\s\S]*?createChatMessageConversationRuntimeThreadListRenderState,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.doesNotMatch(chatScreenSource, /createChatMessageConversationThreadStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatMessageConversationThreadStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationThreadPresentationState,/);
   assert.doesNotMatch(screenSource, /ChatMessageConversationRuntimeThreadList,/);
   assert.doesNotMatch(screenSource, /ChatMessageConversationRuntimeThread,/);

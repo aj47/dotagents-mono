@@ -1,13 +1,32 @@
+import { useMemo } from 'react';
 import {
   Platform,
   StyleSheet,
 } from 'react-native';
 
 import {
+  createChatComposerRuntimeDockStyleSlots,
+  createChatComposerStyleSlots,
+  createChatConversationHomePromptEditorModalStyleSlots,
+  createChatMessageConversationDockStyleSlots,
+  createChatMessageConversationThreadStyleSlots,
+  createChatMessageConversationViewportStyleSlots,
+  createChatMessageRuntimeDockStyleSlots,
+  createChatMessageRuntimeSurfaceStyleSlots,
+  createChatMessageRuntimeViewportStyleSlots,
+  createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileChromeStyleState,
+  createChatRuntimeMobileSafeAreaLayoutState,
+  createChatRuntimeMobileSafeAreaStyleSlots,
+  createChatRuntimeSafeAreaMergedStyleSlots,
   resolveChatRuntimeMobileFontFamily,
 } from './ChatMessageChrome';
 import { radius, spacing, type Theme } from './theme';
+
+type ChatRuntimeMobileStyleSlotsInput = {
+  theme: Theme;
+  bottomInset: number;
+};
 
 export function createChatRuntimeMobileStyles(theme: Theme) {
   const chatChromeStyleState = createChatRuntimeMobileChromeStyleState({
@@ -1713,4 +1732,90 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       opacity: mobileMessageSpeechButton.pressedOpacity,
     } as const,
   });
+}
+
+export function useChatRuntimeMobileStyleSlots({
+  theme,
+  bottomInset,
+}: ChatRuntimeMobileStyleSlotsInput) {
+  const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
+  const chatMessageConversationThreadStyles = useMemo(
+    () => createChatMessageConversationThreadStyleSlots(styles),
+    [styles],
+  );
+  const chatRuntimeHeaderStyles = useMemo(
+    () => createChatRuntimeHeaderStyleSlots(styles),
+    [styles],
+  );
+  const chatComposerStyles = useMemo(
+    () => createChatComposerStyleSlots(styles),
+    [styles],
+  );
+  const conversationDockStyles = useMemo(
+    () => createChatMessageConversationDockStyleSlots(styles),
+    [styles],
+  );
+  const conversationViewportStyles = useMemo(
+    () => createChatMessageConversationViewportStyleSlots(styles),
+    [styles],
+  );
+  const promptEditorModalStyles = useMemo(
+    () => createChatConversationHomePromptEditorModalStyleSlots(styles),
+    [styles],
+  );
+  const mobileSafeAreaLayout = useMemo(
+    () => createChatRuntimeMobileSafeAreaLayoutState(bottomInset),
+    [bottomInset],
+  );
+  const mobileSafeAreaStyles = useMemo(
+    () => createChatRuntimeMobileSafeAreaStyleSlots(mobileSafeAreaLayout),
+    [mobileSafeAreaLayout],
+  );
+  const chatSafeAreaStyles = useMemo(
+    () => createChatRuntimeSafeAreaMergedStyleSlots({
+      chatComposerStyles,
+      conversationDockStyles,
+      conversationViewportStyles,
+      safeAreaStyles: mobileSafeAreaStyles,
+    }),
+    [chatComposerStyles, conversationDockStyles, conversationViewportStyles, mobileSafeAreaStyles],
+  );
+  const chatComposerRuntimeDockStyles = useMemo(
+    () => createChatComposerRuntimeDockStyleSlots({
+      chatComposerStyles,
+      safeAreaStyles: chatSafeAreaStyles,
+    }),
+    [chatComposerStyles, chatSafeAreaStyles],
+  );
+  const chatMessageRuntimeDockStyles = useMemo(
+    () => createChatMessageRuntimeDockStyleSlots({
+      conversationDockStyles,
+      composerStyles: chatComposerRuntimeDockStyles,
+      safeAreaStyles: chatSafeAreaStyles,
+    }),
+    [conversationDockStyles, chatComposerRuntimeDockStyles, chatSafeAreaStyles],
+  );
+  const chatMessageRuntimeViewportStyles = useMemo(
+    () => createChatMessageRuntimeViewportStyleSlots({
+      conversationViewportStyles,
+      safeAreaStyles: chatSafeAreaStyles,
+    }),
+    [conversationViewportStyles, chatSafeAreaStyles],
+  );
+  const chatMessageRuntimeSurfaceStyles = useMemo(
+    () => createChatMessageRuntimeSurfaceStyleSlots({
+      conversationViewportStyles,
+      dockStyles: chatMessageRuntimeDockStyles,
+      viewportStyles: chatMessageRuntimeViewportStyles,
+    }),
+    [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
+  );
+
+  return {
+    chatMessageConversationThreadStyles,
+    chatMessageRuntimeSurfaceStyles,
+    chatRuntimeHeaderStyles,
+    promptEditorModalStyles,
+    styles,
+  };
 }

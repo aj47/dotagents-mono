@@ -19,7 +19,6 @@ import {
   ChatMessageRuntimeSurface,
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   createChatConversationHomeQuickStartItems,
-  createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorSaveActionState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
@@ -37,8 +36,6 @@ import {
   mergeChatComposerRuntimeVoiceText,
   createChatComposerRuntimeDockProps,
   createChatComposerRuntimeDockChromeProps,
-  createChatComposerRuntimeDockStyleSlots,
-  createChatComposerStyleSlots,
   formatChatComposerHandsFreeRecognizerErrorDebugMessage,
   formatChatComposerHandsFreeSleepingDebugMessage,
   getChatComposerImageAttachmentAlertState,
@@ -47,14 +44,10 @@ import {
   getChatComposerRuntimeImageDataUrlBytes,
   getChatComposerRuntimeBase64ImageBytes,
   inferChatComposerRuntimeImageMimeType,
-  createChatRuntimeHeaderStyleSlots,
-  createChatRuntimeMobileSafeAreaLayoutState,
-  createChatRuntimeMobileSafeAreaStyleSlots,
   appendChatMessageRuntimeAssistantDebugErrorMessage,
   appendChatMessageRuntimePendingTurnMessages,
   createChatRuntimeNavigationHeaderOptions,
   createChatRuntimeNavigationHeaderRenderState,
-  createChatRuntimeSafeAreaMergedStyleSlots,
   formatChatMessageRuntimeAlertMessage,
   formatChatMessageRuntimeConnectionErrorMessage,
   formatChatMessageRuntimeConnectionStatus,
@@ -86,12 +79,6 @@ import {
   toggleChatMessageRuntimeToolCallExpansionState,
   toggleChatMessageRuntimeToolApprovalExpansionState,
   toggleChatMessageRuntimeToolActivityGroupExpansionState,
-  createChatMessageConversationThreadStyleSlots,
-  createChatMessageConversationDockStyleSlots,
-  createChatMessageRuntimeDockStyleSlots,
-  createChatMessageRuntimeSurfaceStyleSlots,
-  createChatMessageConversationViewportStyleSlots,
-  createChatMessageRuntimeViewportStyleSlots,
   createChatMessageRuntimeDockChromeProps,
   createChatMessageRuntimeDebugPanelsRenderState,
   createChatMessageRuntimeSurfaceChromeProps,
@@ -152,7 +139,7 @@ import type {
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
-import { createChatRuntimeMobileStyles } from '../ui/ChatRuntimeMobileStyles';
+import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
@@ -179,78 +166,16 @@ export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
-  const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
-  const chatMessageConversationThreadStyles = useMemo(
-    () => createChatMessageConversationThreadStyleSlots(styles),
-    [styles],
-  );
-  const chatRuntimeHeaderStyles = useMemo(
-    () => createChatRuntimeHeaderStyleSlots(styles),
-    [styles],
-  );
-  const chatComposerStyles = useMemo(
-    () => createChatComposerStyleSlots(styles),
-    [styles],
-  );
-  const conversationDockStyles = useMemo(
-    () => createChatMessageConversationDockStyleSlots(styles),
-    [styles],
-  );
-  const conversationViewportStyles = useMemo(
-    () => createChatMessageConversationViewportStyleSlots(styles),
-    [styles],
-  );
-  const promptEditorModalStyles = useMemo(
-    () => createChatConversationHomePromptEditorModalStyleSlots(styles),
-    [styles],
-  );
-  const mobileSafeAreaLayout = useMemo(
-    () => createChatRuntimeMobileSafeAreaLayoutState(insets.bottom),
-    [insets.bottom],
-  );
-  const mobileSafeAreaStyles = useMemo(
-    () => createChatRuntimeMobileSafeAreaStyleSlots(mobileSafeAreaLayout),
-    [mobileSafeAreaLayout],
-  );
-  const chatSafeAreaStyles = useMemo(
-    () => createChatRuntimeSafeAreaMergedStyleSlots({
-      chatComposerStyles,
-      conversationDockStyles,
-      conversationViewportStyles,
-      safeAreaStyles: mobileSafeAreaStyles,
-    }),
-    [chatComposerStyles, conversationDockStyles, conversationViewportStyles, mobileSafeAreaStyles],
-  );
-  const chatComposerRuntimeDockStyles = useMemo(
-    () => createChatComposerRuntimeDockStyleSlots({
-      chatComposerStyles,
-      safeAreaStyles: chatSafeAreaStyles,
-    }),
-    [chatComposerStyles, chatSafeAreaStyles],
-  );
-  const chatMessageRuntimeDockStyles = useMemo(
-    () => createChatMessageRuntimeDockStyleSlots({
-      conversationDockStyles,
-      composerStyles: chatComposerRuntimeDockStyles,
-      safeAreaStyles: chatSafeAreaStyles,
-    }),
-    [conversationDockStyles, chatComposerRuntimeDockStyles, chatSafeAreaStyles],
-  );
-  const chatMessageRuntimeViewportStyles = useMemo(
-    () => createChatMessageRuntimeViewportStyleSlots({
-      conversationViewportStyles,
-      safeAreaStyles: chatSafeAreaStyles,
-    }),
-    [conversationViewportStyles, chatSafeAreaStyles],
-  );
-  const chatMessageRuntimeSurfaceStyles = useMemo(
-    () => createChatMessageRuntimeSurfaceStyleSlots({
-      conversationViewportStyles,
-      dockStyles: chatMessageRuntimeDockStyles,
-      viewportStyles: chatMessageRuntimeViewportStyles,
-    }),
-    [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
-  );
+  const {
+    chatMessageConversationThreadStyles,
+    chatMessageRuntimeSurfaceStyles,
+    chatRuntimeHeaderStyles,
+    promptEditorModalStyles,
+    styles,
+  } = useChatRuntimeMobileStyleSlots({
+    theme,
+    bottomInset: insets.bottom,
+  });
   const showImageAttachmentAlert = useCallback((input: ChatComposerImageAttachmentAlertInput) => {
     const alertState = getChatComposerImageAttachmentAlertState(input);
     Alert.alert(alertState.title, alertState.message);
