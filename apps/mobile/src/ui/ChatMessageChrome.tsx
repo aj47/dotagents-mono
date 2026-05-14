@@ -5306,10 +5306,20 @@ export function createChatMessageRuntimeProgressTurnState<
   update: AgentProgressUpdate,
   lifecycleState: AgentConversationState = 'running',
 ) {
+  const progressMessages = createChatMessageRuntimeProgressMessages<TMessage>(update);
+
   return {
     conversationState: resolveChatMessageRuntimeConversationStateFromProgress(update, lifecycleState),
     latestStepSummary: getChatMessageRuntimeLatestStepSummary(update),
-    progressMessages: createChatMessageRuntimeProgressMessages<TMessage>(update),
+    progressMessages,
+    updateMessages: (
+      messages: readonly TMessage[],
+      messageCountBeforeTurn: number,
+    ) => replaceChatMessageRuntimeTurnMessages(
+      messages,
+      messageCountBeforeTurn,
+      progressMessages,
+    ),
   };
 }
 

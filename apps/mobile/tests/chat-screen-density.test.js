@@ -272,7 +272,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeToolApprovalRequiredContent/);
   assert.match(screenSource, /createChatMessageRuntimeProgressTurnState<ChatMessage>\(update\)/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeProgressMessages<ChatMessage>\(update\)/);
-  assert.match(chatMessageChromeSource, /progressMessages: createChatMessageRuntimeProgressMessages<TMessage>\(update\)/);
+  assert.match(chatMessageChromeSource, /const progressMessages = createChatMessageRuntimeProgressMessages<TMessage>\(update\);/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeToolApprovalRequiredMessage\(update\.pendingToolApproval\)/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeToolApprovalRequiredMessage/);
@@ -1975,9 +1975,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /hasChatMessageRuntimeMessagesAfter\(update\.conversationHistory, currentTurnStartIndex\)/);
   assert.doesNotMatch(screenSource, /hasChatMessageRuntimeAssistantContentAfter\(\s+serverMessages,/);
   assert.match(chatMessageChromeSource, /hasChatMessageRuntimeAssistantContentAfter\(\s+historyMessages,\s+lastUserMessageIndex,\s+\)/);
-  assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages,/);
+  assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeTurnMessages,/);
   assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeFinalTurnMessages,/);
-  assert.match(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+progressMessages,\s+\)/);
+  assert.equal(
+    (screenSource.match(/progressTurnState\.updateMessages\(\s+m,\s+messageCountBeforeTurn,\s+\)/g) || []).length,
+    2,
+  );
   assert.match(screenSource, /finalTurnState\.updateMessages\(\s+m,\s+messageCountBeforeTurn,\s+progressMsgs,\s+\)/);
   assert.match(screenSource, /finalTurnState\.updateMessages\(\s+m,\s+messageCountBeforeTurn,\s+\)/);
   assert.doesNotMatch(screenSource, /replaceChatMessageRuntimeTurnMessages\(\s+m,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);
@@ -1994,6 +1997,7 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /export function hasChatMessageRuntimeAssistantContentAfter/);
   assert.match(chatMessageChromeSource, /export function replaceChatMessageRuntimeTurnMessages/);
   assert.match(chatMessageChromeSource, /const beforePlaceholder = messages\.slice\(0, messageCountBeforeTurn \+ 1\)/);
+  assert.match(chatMessageChromeSource, /updateMessages: \(\s+messages: readonly TMessage\[\],\s+messageCountBeforeTurn: number,\s+\) => replaceChatMessageRuntimeTurnMessages\(/);
   assert.match(chatMessageChromeSource, /export function replaceChatMessageRuntimeFinalTurnMessages/);
   assert.match(chatMessageChromeSource, /mergeChatMessageRuntimeFinalTurnMessagesWithProgress\(\s+finalTurnMessages,\s+progressMessages,\s+\)/);
   assert.match(chatMessageChromeSource, /replaceChatMessageRuntimeTurnMessages\(\s+messages,\s+messageCountBeforeTurn,\s+mergedMessages,\s+\)/);

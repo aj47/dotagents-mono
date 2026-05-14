@@ -93,7 +93,6 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
-  replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
 } from '../ui/ChatMessageChrome';
 import type {
@@ -924,10 +923,9 @@ export default function ChatScreen({ route, navigation }: any) {
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
           progressMessagesRef.current = progressMessages;
-          setMessages((m) => replaceChatMessageRuntimeTurnMessages(
+          setMessages((m) => progressTurnState.updateMessages(
             m,
             messageCountBeforeTurn,
-            progressMessages,
           ));
         }
       };
@@ -1309,10 +1307,9 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {
-          setMessages((m) => replaceChatMessageRuntimeTurnMessages(
+          setMessages((m) => progressTurnState.updateMessages(
             m,
             messageCountBeforeTurn,
-            progressMessages,
           ));
         }
       };
