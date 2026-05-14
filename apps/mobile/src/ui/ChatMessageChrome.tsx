@@ -203,6 +203,7 @@ import {
   getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailResultState,
   getToolExecutionMobileVisibilityRenderState,
+  getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
@@ -2520,8 +2521,11 @@ type ChatMessageConversationHistoryWindowState<TMessage> = {
 type ChatMessageConversationRuntimeThreadListRenderStateInput =
   Omit<
     ChatMessageConversationThreadListRenderStateInput,
-    'allMessages' | 'messages' | 'firstMessageIndex' | 'presentation'
+    'allMessages' | 'messages' | 'firstMessageIndex' | 'presentation' | 'resultOnlyToolLabel'
   >
+  & {
+    resultOnlyToolLabel?: ChatMessageConversationThreadListRenderStateInput['resultOnlyToolLabel'];
+  }
   & ChatMessageConversationHistoryWindowStateInput<
     ChatMessageConversationThreadListRenderStateInput['messages'][number]
   >;
@@ -3228,6 +3232,8 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
   const presentation = createChatMessageConversationThreadPresentationState({
     colors: threadListInput.colors,
   });
+  const resultOnlyToolLabel =
+    threadListInput.resultOnlyToolLabel ?? getToolExecutionResultOnlyFallbackRenderState().label;
 
   return {
     threadStates: createChatMessageConversationThreadListRenderState({
@@ -3236,6 +3242,7 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
       messages: visibleMessages,
       firstMessageIndex: firstVisibleMessageIndex,
       presentation,
+      resultOnlyToolLabel,
     }),
     visibleMessageCount: visibleMessages.length,
     totalMessageCount: messages.length,

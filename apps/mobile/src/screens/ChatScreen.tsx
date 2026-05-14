@@ -124,7 +124,6 @@ import {
 } from '@dotagents/shared/tool-activity-grouping';
 import {
   getToolExecutionDetailCopyFailureAlertState,
-  getToolExecutionResultOnlyFallbackRenderState,
 } from '@dotagents/shared/tool-execution-display';
 import {
   applyChatDisplayGroupedExpansionInheritance,
@@ -200,7 +199,6 @@ const mobileRuntimeDebug = getChatRuntimeDebugState();
 const mobileRuntimeBranchAlerts = getChatRuntimeBranchMobileAlertState();
 const mobileRuntimeToolApprovalAlerts = getChatRuntimeToolApprovalMobileAlertState();
 const handsFreeCopy = getHandsFreeComposerCopyState();
-const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState();
 const toolExecutionDetailCopyFailureAlert = getToolExecutionDetailCopyFailureAlertState();
 const messageCopyFeedbackState = getChatMessageCopyFeedbackState();
 const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage();
@@ -3108,7 +3106,6 @@ export default function ChatScreen({ route, navigation }: any) {
     inheritedState: expandedMessages,
     onToggleGroup: toggleGroupExpansion,
     expandedMessages,
-    resultOnlyToolLabel: toolExecutionResultOnlyFallback.label,
     turnDurationsByUserTimestamp: turnDurations.byUserTimestamp,
     conversationId: currentSession?.serverConversationId,
     pendingBranchMessageIndex: branchingMessageIndex,
