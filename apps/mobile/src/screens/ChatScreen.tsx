@@ -1521,15 +1521,12 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<PredefinedPromptSummary, Loop>({
+    colors: theme.colors,
+    platform: Platform.OS,
     spinnerSource: chatRuntimeSpinnerSource,
-    composerChrome: {
-      colors: theme.colors,
-      platform: Platform.OS,
-    },
     composer: {
       speechPreviewText: sttPreview,
       pendingImages,
-      pendingImagesColors: theme.colors,
       onRemovePendingImage: removePendingImage,
       handsFreeStatusPhase: handsFreeController.state.phase,
       handsFreeStatusLabel: handsFreeController.statusLabel,
@@ -1551,7 +1548,6 @@ export default function ChatScreen({ route, navigation }: any) {
       composerControlMicPhase: handsFreeController.state.phase,
       composerControlListening: listening,
       composerControlMessageQueueEnabled: messageQueueEnabled,
-      composerControlColors: theme.colors,
       onImageAttachmentPress: handlePickImages,
       onTextToSpeechPress: toggleTts,
       onEditBeforeSendPress: toggleEditBeforeSend,
@@ -1602,7 +1598,6 @@ export default function ChatScreen({ route, navigation }: any) {
       connectionState,
       lastFailedMessage,
       isResponding: responding,
-      colors: theme.colors,
       onConnectionBannerRetry: handleRetryLastFailedMessagePress,
     },
     threadList: {
@@ -1620,7 +1615,6 @@ export default function ChatScreen({ route, navigation }: any) {
       speakingMessageIndex,
       copiedMessageIndex,
       ttsEnabled,
-      colors: theme.colors,
       actionStyles: chatMessageConversationThreadStyles.actionSet,
       threadStyles: chatMessageConversationThreadStyles.runtimeThread,
       assetBaseUrl: config.baseUrl,
@@ -1660,15 +1654,12 @@ export default function ChatScreen({ route, navigation }: any) {
       onDeletePrompt: handleDeletePrompt,
       messageHistoryLoadIncrement,
       latestStepSummary,
-      colors: theme.colors,
       onLoadEarlierMessages: loadEarlierMessages,
       requestDebugText: debugInfo,
       voiceDebugEnabled: handsFreeDebugEnabled,
       voiceEvents,
     },
     surface: {
-      platform: Platform.OS,
-      colors: theme.colors,
       keyboardVerticalOffset: headerHeight,
       agentSelectorVisible,
       onAgentSelectorClose: closeAgentSelector,

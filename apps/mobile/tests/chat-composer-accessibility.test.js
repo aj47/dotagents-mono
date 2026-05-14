@@ -45,7 +45,9 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(chatMessageChromeSource, /getChatComposerEditBeforeSendMobileRenderState/);
   assert.match(chatMessageChromeSource, /const mobileComposerControls = getChatComposerMobileControlState\(\);/);
   assert.doesNotMatch(screenSource, /mobileComposerQueueRenderState/);
-  assert.match(screenSource, /composerControlHasContent: composerHasContent,[\s\S]*?composerControlConversationState: conversationState,[\s\S]*?composerControlIsResponding: responding,[\s\S]*?composerControlColors: theme\.colors,/);
+  assert.match(screenSource, /composerControlHasContent: composerHasContent,[\s\S]*?composerControlConversationState: conversationState,[\s\S]*?composerControlIsResponding: responding,[\s\S]*?onImageAttachmentPress: handlePickImages,/);
+  assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
   assert.match(chatMessageChromeSource, /const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState\(\{\s+conversationState: composerControlConversationState,\s+isResponding: composerControlIsResponding,\s+isQueueEnabled: composerControlMessageQueueEnabled,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const controlRenderState = createChatComposerRuntimeControlRenderState\(\{[\s\S]*?hasContent: composerControlHasContent,[\s\S]*?presentation: composerControlPresentation,[\s\S]*?colors: composerControlColors,[\s\S]*?\}\);/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
@@ -243,7 +245,8 @@ test('uses shared pending image attachment presentation in the mobile composer',
   assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
-  assert.match(screenSource, /pendingImagesColors: theme\.colors/);
+  assert.doesNotMatch(screenSource, /pendingImagesColors: theme\.colors/);
+  assert.match(chatMessageChromeSource, /pendingImagesColors: colors,/);
   assert.match(chatMessageChromeSource, /const pendingImagesRenderState = getChatImageAttachmentMobileRenderState\(\{\s+colors: pendingImagesColors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /renderState: pendingImagesRenderState/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.removeButton\.accessibilityLabel\}/);

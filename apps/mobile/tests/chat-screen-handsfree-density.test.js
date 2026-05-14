@@ -166,7 +166,9 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(chatMessageChromeSource, /onPress=\{secondaryOnPress\}[\s\S]*?\{controlState\.secondary\.label\}/);
   assert.doesNotMatch(screenSource, /const micButtonLabel = getHandsFreeMicButtonLabel/);
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState/);
-  assert.match(screenSource, /composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+composerControlColors: theme\.colors,/);
+  assert.match(screenSource, /composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+onImageAttachmentPress: handlePickImages,/);
+  assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
+  assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeControlRenderState\(\{[\s\S]*?micPhase: composerControlMicPhase,[\s\S]*?listening: composerControlListening,[\s\S]*?colors: composerControlColors,[\s\S]*?\}\)/);
   assert.match(chatMessageChromeSource, /const micLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: micPhase,[\s\S]*?listening,[\s\S]*?\}\);/);
   assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState\(\{[\s\S]*?label: micLabel,[\s\S]*?handsFree,[\s\S]*?listening,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,[\s\S]*?\}\),/);

@@ -2908,20 +2908,30 @@ type ChatMessageRuntimeChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = {
+  colors:
+    & ChatComposerRuntimeDockChromeInput['colors']
+    & ChatComposerRuntimeDockChromePropsInput['pendingImagesColors']
+    & ChatComposerRuntimeDockChromePropsInput['composerControlColors']
+    & ChatMessageRuntimeDockChromePropsInput['colors']
+    & ChatMessageConversationRuntimeThreadListRenderStateInput['colors']
+    & ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>['colors']
+    & ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>['colors'];
+  platform:
+    & ChatComposerRuntimeDockChromeInput['platform']
+    & ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>['platform'];
   spinnerSource: ImageSourcePropType;
-  composerChrome: ChatComposerRuntimeDockChromeInput;
-  composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome'>;
-  dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer'>;
-  threadList: Omit<ChatMessageConversationRuntimeThreadListRenderStateInput, 'spinnerSource'> & {
+  composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome' | 'pendingImagesColors' | 'composerControlColors'>;
+  dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer' | 'colors'>;
+  threadList: Omit<ChatMessageConversationRuntimeThreadListRenderStateInput, 'spinnerSource' | 'colors'> & {
     threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
   };
   viewport: Omit<
     ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>,
-    'visibleMessageCount' | 'totalMessageCount' | 'hiddenMessageCount' | 'loadingSpinnerSource'
+    'visibleMessageCount' | 'totalMessageCount' | 'hiddenMessageCount' | 'loadingSpinnerSource' | 'colors'
   >;
   surface: Omit<
     ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>,
-    'dock' | 'viewport' | 'threadStates' | 'threadStyles'
+    'dock' | 'viewport' | 'threadStates' | 'threadStyles' | 'colors' | 'platform'
   >;
 };
 
@@ -6726,8 +6736,9 @@ export function createChatMessageRuntimeChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 >({
+  colors,
+  platform,
   spinnerSource,
-  composerChrome,
   composer,
   dock,
   threadList,
@@ -6740,15 +6751,22 @@ export function createChatMessageRuntimeChromeProps<
   } = threadList;
   const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState({
     ...threadListInput,
+    colors,
     spinnerSource,
   });
-  const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps(composerChrome);
+  const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps({
+    colors,
+    platform,
+  });
   const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
     chrome: chatComposerRuntimeDockChrome,
     ...composer,
+    pendingImagesColors: colors,
+    composerControlColors: colors,
   });
   const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps({
     ...viewport,
+    colors,
     loadingSpinnerSource: spinnerSource,
     visibleMessageCount: conversationThreadListState.visibleMessageCount,
     totalMessageCount: conversationThreadListState.totalMessageCount,
@@ -6756,11 +6774,14 @@ export function createChatMessageRuntimeChromeProps<
   });
   const chatMessageRuntimeDock = createChatMessageRuntimeDockChromeProps({
     ...dock,
+    colors,
     composer: chatComposerRuntimeDock,
   });
 
   return createChatMessageRuntimeSurfaceChromeProps({
     ...surface,
+    platform,
+    colors,
     dock: chatMessageRuntimeDock,
     viewport: chatMessageRuntimeViewport,
     threadStates: conversationThreadListState.threadStates,
