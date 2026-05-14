@@ -85,6 +85,7 @@ import {
   getChatRuntimeConnectionBannerMobileColors,
   getChatRuntimeBranchActionAccessibilityLabel,
   getChatRuntimeBranchActionState,
+  getChatRuntimeBranchActionTitle,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeBranchMobileIconState,
   getChatRuntimeBranchMobileRenderState,
@@ -2950,6 +2951,7 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeBranchActionAccessibilityLabel({
       accessibilityLabel: null,
     })).toBe(CHAT_RUNTIME_PRESENTATION.branch.buttonAccessibilityLabel)
+    expect(getChatRuntimeBranchActionTitle()).toBe(CHAT_RUNTIME_PRESENTATION.branch.buttonTitle)
     expect(getChatRuntimeBranchMobileRenderState({
       conversationId: "conv-1",
       role: "assistant",

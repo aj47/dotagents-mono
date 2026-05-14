@@ -4888,6 +4888,10 @@ export function getChatRuntimeBranchActionAccessibilityLabel(
   return input.accessibilityLabel ?? CHAT_RUNTIME_PRESENTATION.branch.buttonAccessibilityLabel
 }
 
+export function getChatRuntimeBranchActionTitle(): string {
+  return CHAT_RUNTIME_PRESENTATION.branch.buttonTitle
+}
+
 export function getChatRuntimeBranchMobileRenderState(
   input: ChatRuntimeBranchMobileRenderStateInput,
 ): ChatRuntimeBranchMobileRenderState {
