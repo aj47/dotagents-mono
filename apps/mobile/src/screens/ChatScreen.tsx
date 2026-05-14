@@ -28,6 +28,7 @@ import {
   useChatConversationHomePromptEditorState,
   useChatRuntimeAgentSelectorOverlayState,
   useChatComposerRuntimeEditBeforeSendState,
+  useChatRuntimeStatusState,
   useChatRuntimeRequestDebugState,
   useChatRuntimeRequestTrackingState,
   useChatRuntimeConnectionRetryState,
@@ -119,10 +120,9 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
-import type { AgentProgressUpdate, AgentStepSummary } from '@dotagents/shared/agent-progress';
+import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
-import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
@@ -304,10 +304,16 @@ export default function ChatScreen({ route, navigation }: any) {
     try { await saveConfig(nextCfg); } catch {}
   };
 
-  const [responding, setResponding] = useState(false);
-  const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
-  const [latestStepSummary, setLatestStepSummary] = useState<AgentStepSummary | null>(null);
-  const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
+  const {
+    responding,
+    setResponding,
+    conversationState,
+    setConversationState,
+    latestStepSummary,
+    setLatestStepSummary,
+    connectionState,
+    setConnectionState,
+  } = useChatRuntimeStatusState();
   const {
     agentSelectorVisible,
     openAgentSelector,

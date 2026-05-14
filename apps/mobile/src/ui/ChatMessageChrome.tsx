@@ -75,6 +75,7 @@ import {
   type AgentDelegationConversationPreviewRow,
   type AgentDelegationPresentation,
   type AgentProgressUpdate,
+  type AgentStepSummary,
   type AgentUserResponseEvent,
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
@@ -535,6 +536,17 @@ type ChatMessageRuntimeSpeechPlaybackState = {
 type ChatComposerRuntimeEditBeforeSendState = {
   editBeforeSendEnabled: boolean;
   toggleEditBeforeSend: () => void;
+};
+
+type ChatRuntimeStatusState = {
+  responding: boolean;
+  setResponding: Dispatch<SetStateAction<boolean>>;
+  conversationState: AgentConversationState | null;
+  setConversationState: Dispatch<SetStateAction<AgentConversationState | null>>;
+  latestStepSummary: AgentStepSummary | null;
+  setLatestStepSummary: Dispatch<SetStateAction<AgentStepSummary | null>>;
+  connectionState: RecoveryState | null;
+  setConnectionState: Dispatch<SetStateAction<RecoveryState | null>>;
 };
 
 type ChatRuntimeRequestDebugState = {
@@ -6184,6 +6196,24 @@ export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntime
   return {
     editBeforeSendEnabled,
     toggleEditBeforeSend,
+  };
+}
+
+export function useChatRuntimeStatusState(): ChatRuntimeStatusState {
+  const [responding, setResponding] = useState(false);
+  const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
+  const [latestStepSummary, setLatestStepSummary] = useState<AgentStepSummary | null>(null);
+  const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
+
+  return {
+    responding,
+    setResponding,
+    conversationState,
+    setConversationState,
+    latestStepSummary,
+    setLatestStepSummary,
+    connectionState,
+    setConnectionState,
   };
 }
 

@@ -2782,8 +2782,12 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
 });
 
 test('surfaces desktop step summaries as compact mobile runtime chrome without persisting them as messages', () => {
-  assert.match(screenSource, /AgentStepSummary/);
-  assert.match(screenSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
+  assert.match(screenSource, /useChatRuntimeStatusState,/);
+  assert.match(screenSource, /const \{\s+responding,\s+setResponding,\s+conversationState,\s+setConversationState,\s+latestStepSummary,\s+setLatestStepSummary,\s+connectionState,\s+setConnectionState,\s+\} = useChatRuntimeStatusState\(\);/);
+  assert.match(chatMessageChromeSource, /type AgentStepSummary,/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeStatusState\(\)/);
+  assert.match(chatMessageChromeSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
+  assert.doesNotMatch(screenSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
