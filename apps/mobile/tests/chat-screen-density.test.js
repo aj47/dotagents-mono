@@ -922,7 +922,12 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchMobileAlertState,/);
   assert.match(chatMessageChromeSource, /killSwitchButtonShouldRender: getChatRuntimeKillSwitchMobileVisibilityRenderState\(\{\s+conversationState: headerConversationState,\s+\}\)\.shouldRender,/);
   assert.match(screenSource, /useChatMessageRuntimeKillSwitchActionsState,/);
-  assert.match(screenSource, /const \{ handleKillSwitch \} = useChatMessageRuntimeKillSwitchActionsState\(\{\s+platform: Platform\.OS,\s+getKillSwitchClient: getSessionClient,\s+confirmWeb: \(message\) => window\.confirm\(message\),\s+showWebAlert: \(message\) => window\.alert\(message\),\s+confirmNative: \(\{ title, message, cancelLabel, confirmLabel, onConfirm \}\) => \{[\s\S]*?showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleKillSwitch \} = useChatMessageRuntimeKillSwitchActionsState\(\{\s+platform: Platform\.OS,\s+getKillSwitchClient: getSessionClient,\s+confirmWeb: \(message\) => window\.confirm\(message\),\s+showWebAlert: \(message\) => window\.alert\(message\),\s+confirmNative: \(input\) => showChatMessageRuntimeKillSwitchNativeConfirmAlert\(input, Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /showChatMessageRuntimeKillSwitchNativeConfirmAlert,/);
+  assert.match(chatMessageChromeSource, /export function showChatMessageRuntimeKillSwitchNativeConfirmAlert/);
+  assert.match(chatMessageChromeSource, /\{ text: input\.cancelLabel, style: 'cancel' \}/);
+  assert.match(chatMessageChromeSource, /text: input\.confirmLabel,[\s\S]*?style: 'destructive',[\s\S]*?onPress: input\.onConfirm/);
+  assert.doesNotMatch(screenSource, /confirmNative: \(\{ title, message, cancelLabel, confirmLabel, onConfirm \}\)/);
   assert.match(screenSource, /\.\.\.mobileHeaderRenderState,[\s\S]*?onKillSwitchButtonPress: handleKillSwitch,/);
   assert.doesNotMatch(screenSource, /shouldRender: headerConversationState === 'running'/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileActionState,/);
@@ -4532,7 +4537,11 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteActionsState,/);
-  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: Platform\.OS,\s+confirmWeb: \(message\) => Boolean\(\(globalThis as \{ confirm\?: \(message\?: string\) => boolean \}\)\.confirm\?\.\(message\)\),\s+confirmNative: \(\{ title, message, cancelLabel, deleteLabel, onConfirm \}\) => \{[\s\S]*?showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: Platform\.OS,\s+confirmWeb: \(message\) => Boolean\(\(globalThis as \{ confirm\?: \(message\?: string\) => boolean \}\)\.confirm\?\.\(message\)\),\s+confirmNative: \(input\) => showChatConversationHomePromptDeleteNativeConfirmAlert\(input, Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /showChatConversationHomePromptDeleteNativeConfirmAlert,/);
+  assert.match(chatMessageChromeSource, /export function showChatConversationHomePromptDeleteNativeConfirmAlert/);
+  assert.match(chatMessageChromeSource, /\{ text: input\.deleteLabel, style: 'destructive', onPress: input\.onConfirm \}/);
+  assert.doesNotMatch(screenSource, /confirmNative: \(\{ title, message, cancelLabel, deleteLabel, onConfirm \}\)/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptEditorDeleteActionsState/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptDeleteConfirmAlertState\(prompt\.name\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptDeleteConfirmAlertState\(prompt\.name\)/);

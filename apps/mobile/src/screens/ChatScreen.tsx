@@ -86,6 +86,7 @@ import {
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchActionsState,
+  showChatMessageRuntimeKillSwitchNativeConfirmAlert,
   useChatRuntimeCurrentSessionPinActionsState,
   useChatMessageRuntimeBranchProgressState,
   useChatMessageRuntimeBranchActionsState,
@@ -95,6 +96,7 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardActionsState,
+  showChatConversationHomePromptDeleteNativeConfirmAlert,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatConversationHomeQuickStartItem,
@@ -387,16 +389,7 @@ export default function ChatScreen({ route, navigation }: any) {
     getKillSwitchClient: getSessionClient,
     confirmWeb: (message) => window.confirm(message),
     showWebAlert: (message) => window.alert(message),
-    confirmNative: ({ title, message, cancelLabel, confirmLabel, onConfirm }) => {
-      Alert.alert(title, message, [
-        { text: cancelLabel, style: 'cancel' },
-        {
-          text: confirmLabel,
-          style: 'destructive',
-          onPress: onConfirm,
-        },
-      ]);
-    },
+    confirmNative: (input) => showChatMessageRuntimeKillSwitchNativeConfirmAlert(input, Alert.alert),
     showAlert: Alert.alert,
   });
 
@@ -736,12 +729,7 @@ export default function ChatScreen({ route, navigation }: any) {
     clearPromptEditorSave,
     platform: Platform.OS,
     confirmWeb: (message) => Boolean((globalThis as { confirm?: (message?: string) => boolean }).confirm?.(message)),
-    confirmNative: ({ title, message, cancelLabel, deleteLabel, onConfirm }) => {
-      Alert.alert(title, message, [
-        { text: cancelLabel, style: 'cancel' },
-        { text: deleteLabel, style: 'destructive', onPress: onConfirm },
-      ]);
-    },
+    confirmNative: (input) => showChatConversationHomePromptDeleteNativeConfirmAlert(input, Alert.alert),
     showAlert: Alert.alert,
   });
 

@@ -234,7 +234,9 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteActionsState,/);
-  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: Platform\.OS,\s+confirmWeb: \(message\) => Boolean\(\(globalThis as \{ confirm\?: \(message\?: string\) => boolean \}\)\.confirm\?\.\(message\)\),\s+confirmNative: \(\{ title, message, cancelLabel, deleteLabel, onConfirm \}\) => \{[\s\S]*?showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+platform: Platform\.OS,\s+confirmWeb: \(message\) => Boolean\(\(globalThis as \{ confirm\?: \(message\?: string\) => boolean \}\)\.confirm\?\.\(message\)\),\s+confirmNative: \(input\) => showChatConversationHomePromptDeleteNativeConfirmAlert\(input, Alert\.alert\),\s+showAlert: Alert\.alert,\s+\}\);/);
+  assert.match(screenSource, /showChatConversationHomePromptDeleteNativeConfirmAlert,/);
+  assert.match(chatMessageChromeSource, /export function showChatConversationHomePromptDeleteNativeConfirmAlert/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptEditorDeleteActionsState/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptDeleteFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptDeleteFailedAlertState\(error\)/);

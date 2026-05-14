@@ -465,6 +465,18 @@ type ChatConversationHomePromptEditorDeleteActionsState = {
   handleDeletePrompt: (prompt: PredefinedPromptSummary) => void;
 };
 
+type ChatRuntimeNativeConfirmAlertButton = {
+  text: string;
+  style: 'cancel' | 'destructive';
+  onPress?: () => void;
+};
+
+type ChatRuntimeNativeConfirmAlertPresenter = (
+  title: string,
+  message: string,
+  buttons: ChatRuntimeNativeConfirmAlertButton[],
+) => void;
+
 type ChatConversationHomePromptTaskRunState = {
   runningPromptTaskId: string | null;
   canRunPromptTask: boolean;
@@ -1487,6 +1499,16 @@ export function getChatConversationHomePromptDeleteConfirmAlertState(
     deleteLabel: copy.actions.delete,
     webMessage: formatChatConversationHomePromptDeleteWebConfirmMessage(promptName),
   };
+}
+
+export function showChatConversationHomePromptDeleteNativeConfirmAlert(
+  input: ChatConversationHomePromptEditorDeleteNativeConfirmInput,
+  showAlert: ChatRuntimeNativeConfirmAlertPresenter,
+): void {
+  showAlert(input.title, input.message, [
+    { text: input.cancelLabel, style: 'cancel' },
+    { text: input.deleteLabel, style: 'destructive', onPress: input.onConfirm },
+  ]);
 }
 
 export function formatChatConversationHomePromptDeleteFailedMessage(error: unknown): string {
@@ -3727,6 +3749,20 @@ type ChatMessageRuntimeKillSwitchActionsStateInput<
 type ChatMessageRuntimeKillSwitchActionsState = {
   handleKillSwitch: () => Promise<void>;
 };
+
+export function showChatMessageRuntimeKillSwitchNativeConfirmAlert(
+  input: ChatMessageRuntimeKillSwitchNativeConfirmInput,
+  showAlert: ChatRuntimeNativeConfirmAlertPresenter,
+): void {
+  showAlert(input.title, input.message, [
+    { text: input.cancelLabel, style: 'cancel' },
+    {
+      text: input.confirmLabel,
+      style: 'destructive',
+      onPress: input.onConfirm,
+    },
+  ]);
+}
 
 type ChatMessageRuntimeToolApprovalResponseStateInput = {
   sessionId?: string | null;
