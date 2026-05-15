@@ -160,12 +160,10 @@ import {
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupExpansionInheritanceItems,
-  getToolActivityGroupMobileRenderState,
   getToolActivityGroupStateKey,
   groupToolActivity,
   type ToolActivityGroup,
   type ToolActivityGroupMobileRenderState,
-  type ToolActivityGroupMobileRenderStateInput,
 } from '@dotagents/shared/tool-activity-grouping';
 import {
   formatConnectionStatus,
@@ -201,7 +199,9 @@ import {
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupThreadRenderState,
   getChatRuntimeConversationToolActivityGroupThreadState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -281,6 +281,9 @@ import {
   type ChatRuntimeConversationRuntimeThreadState,
   type ChatRuntimeConversationRuntimeThreadStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
+  type ChatRuntimeConversationToolActivityGroupRenderStateInput,
+  type ChatRuntimeConversationToolActivityGroupThreadRenderState,
+  type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   type ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput,
   type ChatRuntimeConversationToolActivityGroupThreadState,
@@ -1339,10 +1342,7 @@ type ChatMessageConversationRenderContext =
   ChatRuntimeConversationMessageRenderContextMobileState;
 
 type ChatMessageConversationToolActivityGroupRenderStateInput =
-  Omit<ToolActivityGroupMobileRenderStateInput, 'group'>
-  & {
-    group?: ToolActivityGroup | null;
-  };
+  ChatRuntimeConversationToolActivityGroupRenderStateInput;
 
 export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup;
 export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>;
@@ -3609,14 +3609,10 @@ type ChatMessageConversationToolActivityGroupThreadState =
   ChatRuntimeConversationToolActivityGroupThreadState;
 
 type ChatMessageConversationToolActivityGroupThreadRenderStateInput =
-  ChatMessageConversationToolActivityGroupRenderStateInput
-  & Pick<ChatMessageConversationToolActivityGroupThreadStateInput, 'itemKey' | 'onToggleGroup'>;
+  ChatRuntimeConversationToolActivityGroupThreadRenderStateInput;
 
-type ChatMessageConversationToolActivityGroupThreadRenderState = {
-  groupRenderState: ToolActivityGroupMobileRenderState | null;
-  groupThreadState: ChatMessageConversationToolActivityGroupThreadState;
-  groupOnlyThreadState: ChatMessageConversationToolActivityGroupRuntimeThreadState;
-};
+type ChatMessageConversationToolActivityGroupThreadRenderState =
+  ChatRuntimeConversationToolActivityGroupThreadRenderState;
 
 type ChatMessageConversationRuntimeThreadStateInput =
   ChatRuntimeConversationRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
@@ -4062,18 +4058,16 @@ export function createChatMessageConversationToolActivityGroupRenderState({
   defaultExpanded,
   colors,
 }: ChatMessageConversationToolActivityGroupRenderStateInput): ToolActivityGroupMobileRenderState | null {
-  return group
-    ? getToolActivityGroupMobileRenderState({
-        group,
-        itemIndex,
-        groupState,
-        inheritedState,
-        groupKey,
-        inheritedKey,
-        defaultExpanded,
-        colors,
-      })
-    : null;
+  return getChatRuntimeConversationToolActivityGroupRenderState({
+    group,
+    itemIndex,
+    groupState,
+    inheritedState,
+    groupKey,
+    inheritedKey,
+    defaultExpanded,
+    colors,
+  });
 }
 
 export function createChatMessageConversationToolActivityGroupThreadState({
@@ -4096,26 +4090,12 @@ export function createChatMessageConversationToolActivityGroupThreadRenderState(
   onToggleGroup,
   ...renderStateInput
 }: ChatMessageConversationToolActivityGroupThreadRenderStateInput): ChatMessageConversationToolActivityGroupThreadRenderState {
-  const groupRenderState = createChatMessageConversationToolActivityGroupRenderState({
+  return getChatRuntimeConversationToolActivityGroupThreadRenderState({
     group,
-    ...renderStateInput,
-  });
-  const groupThreadState = createChatMessageConversationToolActivityGroupThreadState({
-    group,
-    groupRenderState,
     itemKey,
     onToggleGroup,
+    ...renderStateInput,
   });
-
-  return {
-    groupRenderState,
-    groupThreadState,
-    groupOnlyThreadState: createChatMessageConversationToolActivityGroupRuntimeThreadState({
-      itemKey,
-      groupRenderState,
-      groupThreadState,
-    }),
-  };
 }
 
 export function createChatMessageConversationRuntimeThreadState({

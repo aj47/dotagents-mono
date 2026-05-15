@@ -100,7 +100,9 @@ import {
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupThreadRenderState,
   getChatRuntimeConversationToolActivityGroupThreadState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
@@ -3143,11 +3145,25 @@ describe("session presentation semantics", () => {
       toolCallCount: 2,
       previewLines: ["read_file"],
     }
-    const collapsedGroupRenderState = {
+    const computedGroupRenderState = getChatRuntimeConversationToolActivityGroupRenderState({
+      group: toolActivityGroup,
+      itemIndex: 3,
+      groupState: {},
+      inheritedState: {},
       groupKey: "tools-3",
-      shouldSkipCollapsedItem: false,
+      inheritedKey: 3,
+      defaultExpanded: false,
+      colors: {
+        info: "#0ea5e9",
+        mutedForeground: "#64748b",
+      },
+    })
+    expect(computedGroupRenderState).toMatchObject({
+      groupKey: "tools-3",
       shouldRenderCollapsedHeader: true,
-    } as ToolActivityGroupMobileRenderState
+    })
+    if (!computedGroupRenderState) throw new Error("Expected a tool activity group render state")
+    const collapsedGroupRenderState: ToolActivityGroupMobileRenderState = computedGroupRenderState
     let toggledGroup: ToolActivityGroup | null = null
     const collapsedGroupThreadState = getChatRuntimeConversationToolActivityGroupThreadState({
       group: toolActivityGroup,
@@ -3161,6 +3177,24 @@ describe("session presentation semantics", () => {
     expect(collapsedGroupThreadState.shouldRenderGroupOnlyThread).toBe(true)
     collapsedGroupThreadState.onToggleGroup?.()
     expect(toggledGroup).toBe(toolActivityGroup)
+    expect(getChatRuntimeConversationToolActivityGroupThreadRenderState({
+      group: toolActivityGroup,
+      itemIndex: 3,
+      itemKey: 3,
+      groupState: {},
+      inheritedState: {},
+      groupKey: "tools-3",
+      inheritedKey: 3,
+      defaultExpanded: false,
+      colors: {
+        info: "#0ea5e9",
+        mutedForeground: "#64748b",
+      },
+      onToggleGroup: () => {},
+    }).groupOnlyThreadState).toMatchObject({
+      threadKey: "group-tools-3",
+      shouldRenderThread: true,
+    })
     expect(getChatRuntimeConversationRuntimeThreadState({
       itemKey: 3,
       groupRenderState: collapsedGroupRenderState,

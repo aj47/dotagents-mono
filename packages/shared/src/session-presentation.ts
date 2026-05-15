@@ -98,10 +98,12 @@ import {
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 import {
+  getToolActivityGroupMobileRenderState,
   getToolActivityGroupMobileSurfaceRenderState,
   type ToolActivityGroup,
   type ToolActivityGroupMobileColorPalette,
   type ToolActivityGroupMobileRenderState,
+  type ToolActivityGroupMobileRenderStateInput,
 } from "./tool-activity-grouping"
 import {
   getMessageQueuePanelMobileDockRenderState,
@@ -526,6 +528,15 @@ export interface ChatRuntimeConversationMessageRenderContextMobileState {
 
 export type ChatRuntimeConversationThreadKey = string | number
 
+export type ChatRuntimeConversationToolActivityGroupRenderStateInput =
+  Omit<ToolActivityGroupMobileRenderStateInput, "group">
+  & {
+    group?: ToolActivityGroup | null
+  }
+
+export type ChatRuntimeConversationToolActivityGroupRenderState =
+  ToolActivityGroupMobileRenderState | null
+
 export interface ChatRuntimeConversationToolActivityGroupThreadStateInput {
   group?: ToolActivityGroup | null
   groupRenderState?: ToolActivityGroupMobileRenderState | null
@@ -563,6 +574,16 @@ export type ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput =
 
 export type ChatRuntimeConversationToolActivityGroupRuntimeThreadState =
   ChatRuntimeConversationRenderableRuntimeThreadState<null>
+
+export type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput =
+  ChatRuntimeConversationToolActivityGroupRenderStateInput
+  & Pick<ChatRuntimeConversationToolActivityGroupThreadStateInput, "itemKey" | "onToggleGroup">
+
+export interface ChatRuntimeConversationToolActivityGroupThreadRenderState {
+  groupRenderState: ChatRuntimeConversationToolActivityGroupRenderState
+  groupThreadState: ChatRuntimeConversationToolActivityGroupThreadState
+  groupOnlyThreadState: ChatRuntimeConversationToolActivityGroupRuntimeThreadState
+}
 
 export interface ChatRuntimeConversationThreadVisibilityInput<TBody extends { inlineActivity?: unknown | null }> {
   renderContext: Pick<ChatRuntimeConversationMessageRenderContextMobileState, "shouldRenderSurface">
@@ -5739,6 +5760,30 @@ export function getChatRuntimeConversationMessageRenderContextMobileState({
   }
 }
 
+export function getChatRuntimeConversationToolActivityGroupRenderState({
+  group,
+  itemIndex,
+  groupState,
+  inheritedState,
+  groupKey,
+  inheritedKey,
+  defaultExpanded,
+  colors,
+}: ChatRuntimeConversationToolActivityGroupRenderStateInput): ChatRuntimeConversationToolActivityGroupRenderState {
+  return group
+    ? getToolActivityGroupMobileRenderState({
+        group,
+        itemIndex,
+        groupState,
+        inheritedState,
+        groupKey,
+        inheritedKey,
+        defaultExpanded,
+        colors,
+      })
+    : null
+}
+
 export function getChatRuntimeConversationToolActivityGroupThreadState({
   group,
   groupRenderState,
@@ -5780,6 +5825,34 @@ export function getChatRuntimeConversationToolActivityGroupRuntimeThreadState(
       body: null,
     }),
     shouldRenderThread: runtimeThreadInput.groupThreadState.shouldRenderGroupOnlyThread,
+  }
+}
+
+export function getChatRuntimeConversationToolActivityGroupThreadRenderState({
+  group,
+  itemKey,
+  onToggleGroup,
+  ...renderStateInput
+}: ChatRuntimeConversationToolActivityGroupThreadRenderStateInput): ChatRuntimeConversationToolActivityGroupThreadRenderState {
+  const groupRenderState = getChatRuntimeConversationToolActivityGroupRenderState({
+    group,
+    ...renderStateInput,
+  })
+  const groupThreadState = getChatRuntimeConversationToolActivityGroupThreadState({
+    group,
+    groupRenderState,
+    itemKey,
+    onToggleGroup,
+  })
+
+  return {
+    groupRenderState,
+    groupThreadState,
+    groupOnlyThreadState: getChatRuntimeConversationToolActivityGroupRuntimeThreadState({
+      itemKey,
+      groupRenderState,
+      groupThreadState,
+    }),
   }
 }
 
