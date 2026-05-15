@@ -4389,10 +4389,6 @@ export function createChatComposerHandsFreeRecognizerErrorDebugState(message: st
   };
 }
 
-export function getChatMessageRuntimeDebugState(): ReturnType<typeof getChatRuntimeDebugState> {
-  return getChatRuntimeDebugState();
-}
-
 export type ChatMessageRuntimeDebugMessageKey = keyof ReturnType<typeof getChatRuntimeDebugState>;
 
 export function getChatMessageRuntimeDebugMessage(
@@ -4401,23 +4397,11 @@ export function getChatMessageRuntimeDebugMessage(
   return getChatRuntimeDebugState()[key];
 }
 
-export function formatChatMessageRuntimeAlertMessage(
-  ...args: Parameters<typeof getChatRuntimeAlertMessage>
-): ReturnType<typeof getChatRuntimeAlertMessage> {
-  return getChatRuntimeAlertMessage(...args);
-}
-
-export function formatChatMessageRuntimeDebugError(
-  ...args: Parameters<typeof formatChatRuntimeDebugError>
-): ReturnType<typeof formatChatRuntimeDebugError> {
-  return formatChatRuntimeDebugError(...args);
-}
-
 export function createChatMessageRuntimeNoSessionAvailableDebugState() {
   const message = getChatMessageRuntimeDebugMessage('noSessionAvailable');
   return {
     message,
-    debugInfo: formatChatMessageRuntimeDebugError(message),
+    debugInfo: formatChatRuntimeDebugError(message),
   };
 }
 
@@ -4439,7 +4423,7 @@ function createChatMessageRuntimeQueueFailureState(
 
 export function createChatMessageRuntimeStartingRequestDebugState(baseUrl: string) {
   return {
-    debugInfo: formatChatMessageRuntimeStartingRequestDebugMessage(baseUrl),
+    debugInfo: formatChatRuntimeStartingRequestDebugMessage(baseUrl),
   };
 }
 
@@ -4461,47 +4445,6 @@ export function createChatMessageRuntimeSessionChangedDuringProcessingQueueFailu
 
 export function createChatMessageRuntimeRequestSupersededQueueFailureState() {
   return createChatMessageRuntimeQueueFailureState('requestSuperseded');
-}
-
-export function formatChatMessageRuntimeStartingRequestDebugMessage(
-  ...args: Parameters<typeof formatChatRuntimeStartingRequestDebugMessage>
-): ReturnType<typeof formatChatRuntimeStartingRequestDebugMessage> {
-  return formatChatRuntimeStartingRequestDebugMessage(...args);
-}
-
-export function formatChatMessageRuntimeConnectionErrorMessage(
-  ...args: Parameters<typeof formatChatRuntimeConnectionErrorMessage>
-): ReturnType<typeof formatChatRuntimeConnectionErrorMessage> {
-  return formatChatRuntimeConnectionErrorMessage(...args);
-}
-
-export function formatChatMessageRuntimeConnectionStatus(state: RecoveryState): string {
-  return formatConnectionStatus(state);
-}
-
-export function formatChatMessageRuntimeAssistantErrorContent(
-  ...args: Parameters<typeof formatChatRuntimeAssistantErrorContent>
-): ReturnType<typeof formatChatRuntimeAssistantErrorContent> {
-  return formatChatRuntimeAssistantErrorContent(...args);
-}
-
-export function formatChatMessageRuntimeWebConfirmMessage(
-  ...args: Parameters<typeof formatChatRuntimeWebConfirmMessage>
-): ReturnType<typeof formatChatRuntimeWebConfirmMessage> {
-  return formatChatRuntimeWebConfirmMessage(...args);
-}
-
-export function formatChatMessageRuntimeAssistantFeedbackContent(
-  thinkingContent: string | null | undefined,
-  hasToolActivity: boolean,
-): string {
-  return formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity);
-}
-
-export function formatChatMessageRuntimeActivityContent(
-  step?: ChatRuntimeActivityStepLike | null,
-): string {
-  return formatChatRuntimeActivityContent(step);
 }
 
 export type ChatMessageRuntimeAssistantTextMessage = {
@@ -4595,7 +4538,7 @@ export function removeChatMessageRuntimePendingTurnMessages<TMessage>(
 export function createChatMessageRuntimeAssistantDebugErrorMessage(
   message: string,
 ): ChatMessageRuntimeAssistantTextMessage {
-  return createChatMessageRuntimeAssistantTextMessage(formatChatMessageRuntimeDebugError(message));
+  return createChatMessageRuntimeAssistantTextMessage(formatChatRuntimeDebugError(message));
 }
 
 export function appendChatMessageRuntimeAssistantDebugErrorMessage<
@@ -4615,7 +4558,7 @@ export function createChatMessageRuntimeAssistantErrorMessage(
   partialContent?: string | null,
 ): ChatMessageRuntimeAssistantTextMessage {
   return createChatMessageRuntimeAssistantTextMessage(
-    formatChatMessageRuntimeAssistantErrorContent(errorMessage, partialContent),
+    formatChatRuntimeAssistantErrorContent(errorMessage, partialContent),
   );
 }
 
@@ -4659,7 +4602,7 @@ export function createChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToo
 >): ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> {
   return {
     role: 'assistant',
-    content: formatChatMessageRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity),
+    content: formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity),
     ...(toolCalls && toolCalls.length > 0 ? { toolCalls } : {}),
     ...(toolResults && toolResults.length > 0 ? { toolResults } : {}),
   };
@@ -4675,7 +4618,7 @@ export function createChatMessageRuntimeActivityMessage(
 ): ChatMessageRuntimeActivityMessage {
   return {
     role: 'assistant',
-    content: formatChatMessageRuntimeActivityContent(step),
+    content: formatChatRuntimeActivityContent(step),
   };
 }
 
@@ -4725,7 +4668,7 @@ export function createChatMessageRuntimeAssistantErrorTurnState<
   partialContent?: string | null,
 ) {
   return {
-    debugInfo: formatChatMessageRuntimeDebugError(errorMessage),
+    debugInfo: formatChatRuntimeDebugError(errorMessage),
     updateMessages: (messages: readonly TMessage[]) => updateLastChatMessageRuntimeAssistantErrorMessage(
       messages,
       errorMessage,
@@ -4736,7 +4679,7 @@ export function createChatMessageRuntimeAssistantErrorTurnState<
 
 export type ChatMessageRuntimeConnectionErrorTurnStateInput = {
   message: string;
-  recoveryState: Parameters<typeof formatChatMessageRuntimeConnectionErrorMessage>[1];
+  recoveryState: Parameters<typeof formatChatRuntimeConnectionErrorMessage>[1];
   partialContent?: string | null;
 };
 
@@ -4747,7 +4690,7 @@ export function createChatMessageRuntimeConnectionErrorTurnState<
   recoveryState,
   partialContent,
 }: ChatMessageRuntimeConnectionErrorTurnStateInput) {
-  const errorMessage = formatChatMessageRuntimeConnectionErrorMessage(message, recoveryState);
+  const errorMessage = formatChatRuntimeConnectionErrorMessage(message, recoveryState);
   return createChatMessageRuntimeAssistantErrorTurnState<TMessage>(
     errorMessage,
     partialContent,
@@ -4772,7 +4715,7 @@ export function createChatMessageRuntimeQueuedErrorState<
 >(
   error: unknown,
 ) {
-  const message = formatChatMessageRuntimeAlertMessage(
+  const message = getChatRuntimeAlertMessage(
     error,
     getChatMessageRuntimeDebugMessage('unknownError'),
   );
@@ -5953,10 +5896,6 @@ export function createChatMessageRuntimeRecoverableHistoryMessages<
   );
 }
 
-export function formatChatMessageRuntimeToolApprovalRequiredContent(toolName: string): string {
-  return formatChatRuntimeToolApprovalRequiredContent(toolName);
-}
-
 export type ChatMessageRuntimeToolApprovalLike = {
   toolName: string;
 };
@@ -5983,7 +5922,7 @@ export function createChatMessageRuntimeToolApprovalRequiredMessage<
 ): ChatMessageRuntimeToolApprovalRequiredMessage<TToolApproval> {
   return {
     role: 'assistant',
-    content: formatChatMessageRuntimeToolApprovalRequiredContent(toolApproval.toolName),
+    content: formatChatRuntimeToolApprovalRequiredContent(toolApproval.toolName),
     variant: 'approval',
     toolApproval,
   };
@@ -8404,7 +8343,7 @@ export function useChatRuntimeConnectionStatusSubscription({
     return connectionManager.subscribeToConnectionStatus(currentSessionId, (state) => {
       if (currentSessionIdRef.current !== currentSessionId) return;
       setConnectionState(state);
-      logConnectionStatus?.(formatChatMessageRuntimeConnectionStatus(state));
+      logConnectionStatus?.(formatConnectionStatus(state));
     });
   }, [
     connectionManager,
