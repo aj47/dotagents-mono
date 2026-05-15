@@ -819,13 +819,13 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationToolActivityLabel\(formatToolExecutionCount\('tool_call', displayToolCallCount\)\)/);
   assert.doesNotMatch(screenSource, /const delegationToolPreviewRows = createChatMessageDelegationToolPreviewRows\(/);
   assert.doesNotMatch(screenSource, /delegationVisibleToolRows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
-  assert.match(chatMessageChromeSource, /return getChatRuntimeDelegationToolPreviewRowsMobileRenderState\(\{\s+rows,\s+colors,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionCompactPreviewRow/);
   assert.doesNotMatch(chatMessageChromeSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
   assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
   assert.match(sessionPresentationSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
   assert.match(sessionPresentationSource, /renderState: getToolExecutionCompactMobileRenderState\(\{\s+state,\s+preview,\s+colors,/);
-  assert.match(chatMessageChromeSource, /rows: createChatMessageDelegationToolPreviewRows\(\{\s+rows: toolPreviewState\.rows,\s+colors,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState\(\{\s+rows: toolPreviewState\.rows,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{`\$\{toolPresentation\.label\}: \$\{toolPreview\}`\}/);
   assert.match(chatMessageChromeSource, /styles\.toolPreviewStatusIcon/);
@@ -2414,7 +2414,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const executionRows = createChatMessageToolExecutionRows\(\{\s+\.\.\.rowInput,\s+colors,\s+\}\);/);
   assert.match(chatMessageChromeSource, /rows: executionRows\.compactRows,/);
   assert.match(chatMessageChromeSource, /detailRows: executionRows\.detailRows,/);
-  assert.match(chatMessageChromeSource, /compactRows: entries\.map\(\(\{ toolCall, label, origIdx, result \}\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
+  assert.match(chatMessageChromeSource, /compactRows: entries\.map\(\(\{ toolCall, label, origIdx, result \}\) =>\s+getChatRuntimeToolExecutionCompactPreviewMobileRowState\(\{/);
   assert.doesNotMatch(screenSource, /const tcState = getToolExecutionCallDisplayState\(tcResult\);/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[result\]\)/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[tcResult\]\)/);
@@ -3770,8 +3770,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionCompactPreviewRow/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionCompactPreviewRow/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionDetailRow/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionRows/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);

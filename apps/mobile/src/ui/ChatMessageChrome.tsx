@@ -1861,16 +1861,8 @@ type ChatMessageDelegationCardStyles = {
 type ChatMessageDelegationToolPreviewRow =
   ChatRuntimeToolExecutionCompactPreviewMobileRowState;
 
-type ChatMessageToolExecutionCompactPreviewRowInput =
-  ChatRuntimeToolExecutionCompactPreviewMobileRowInput;
-
-type ChatMessageDelegationToolPreviewRowsInput = {
-  rows: readonly Pick<ChatMessageDisplayToolEntry, 'toolCall' | 'label' | 'result'>[];
-  colors: ChatMessageToolExecutionCompactPreviewRowInput['colors'];
-};
-
 type ChatMessageDelegationCardColors =
-  ChatMessageToolExecutionCompactPreviewRowInput['colors']
+  ChatRuntimeToolExecutionCompactPreviewMobileRowInput['colors']
   & Parameters<typeof getChatRuntimeDelegationStatusMobileRenderState>[0]['colors'];
 
 type ChatMessageDelegationCardProps = {
@@ -2308,7 +2300,7 @@ type ChatMessageToolExecutionRowsInput = {
   entries: readonly ChatMessageDisplayToolEntry[];
   stableMessageKey: string;
   expandedToolCalls: ChatDisplayExpansionStateMap<string>;
-  colors: ChatMessageToolExecutionCompactPreviewRowInput['colors'];
+  colors: ChatRuntimeToolExecutionCompactPreviewMobileRowInput['colors'];
   previewNumberOfLines: number;
   pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
   onToggleToolCall: (stableMessageKey: string, toolCallIndex: number) => void;
@@ -9059,7 +9051,7 @@ export function createChatMessageDelegationCardProps({
     toolPreview: {
       shouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
       label: formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount),
-      rows: createChatMessageDelegationToolPreviewRows({
+      rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
         rows: toolPreviewState.rows,
         colors,
       }),
@@ -9155,32 +9147,6 @@ export function createChatMessageCollapsedPreviewProps({
   };
 }
 
-export function createChatMessageToolExecutionCompactPreviewRow({
-  key,
-  toolCall,
-  label,
-  result,
-  colors,
-}: ChatMessageToolExecutionCompactPreviewRowInput): ChatMessageDelegationToolPreviewRow {
-  return getChatRuntimeToolExecutionCompactPreviewMobileRowState({
-    key,
-    toolCall,
-    label,
-    result,
-    colors,
-  });
-}
-
-export function createChatMessageDelegationToolPreviewRows({
-  rows,
-  colors,
-}: ChatMessageDelegationToolPreviewRowsInput): ChatMessageDelegationToolPreviewRow[] {
-  return getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
-    rows,
-    colors,
-  });
-}
-
 export function createChatMessageToolExecutionDetailRow({
   key,
   toolCall,
@@ -9233,7 +9199,7 @@ export function createChatMessageToolExecutionRows({
 }: ChatMessageToolExecutionRowsInput): ChatMessageToolExecutionRows {
   return {
     compactRows: entries.map(({ toolCall, label, origIdx, result }) =>
-      createChatMessageToolExecutionCompactPreviewRow({
+      getChatRuntimeToolExecutionCompactPreviewMobileRowState({
         key: String(origIdx),
         toolCall,
         label,
