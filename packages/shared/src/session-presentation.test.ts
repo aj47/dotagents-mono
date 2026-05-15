@@ -195,6 +195,7 @@ import {
   getSessionStatusMobileSurfaceState,
   getSessionPresentation,
   getSidebarStatusPresentation,
+  shouldRenderChatRuntimeActivityStep,
 } from "./session-presentation"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
@@ -2905,6 +2906,9 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeActivityContent({ type: "tool_call" })).toBe("Running tool...")
     expect(formatChatRuntimeActivityContent({ description: "Planning" })).toBe("Planning")
     expect(formatChatRuntimeActivityContent()).toBe("Agent is thinking...")
+    expect(shouldRenderChatRuntimeActivityStep()).toBe(true)
+    expect(shouldRenderChatRuntimeActivityStep({ title: "Reading files" })).toBe(true)
+    expect(shouldRenderChatRuntimeActivityStep({ title: "Verifying changes" })).toBe(false)
     expect(formatChatRuntimeVisibleUpdatesSummary(12)).toBe("Showing latest 12 updates")
     expect(formatChatRuntimeConversationHistorySummary(120, 240)).toBe("Showing latest 120 of 240 messages")
     expect(formatChatRuntimeConversationHistorySummary(40, 80, { includeScrollHint: true })).toBe(

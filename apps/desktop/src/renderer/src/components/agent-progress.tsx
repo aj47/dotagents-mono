@@ -148,6 +148,7 @@ import {
   getChatRuntimeTurnDurationBadgeState,
   getFollowUpInputPresentation,
   getSessionPresentation,
+  shouldRenderChatRuntimeActivityStep,
 } from "@dotagents/shared/session-presentation"
 import {
   formatIndexedToolExecutionLabel,
@@ -3573,8 +3574,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             isAssistantThought: true,
           })
         } else if (!isStreaming) {
-          const isVerificationStep = currentThinkingStep.title?.toLowerCase().includes("verifying")
-          if (!isVerificationStep) {
+          if (shouldRenderChatRuntimeActivityStep(currentThinkingStep)) {
             nextMessages.push({
               role: "assistant",
               content: formatChatRuntimeActivityContent(currentThinkingStep),
@@ -3599,8 +3599,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 isAssistantThought: true,
             })
           } else if (step.status === "in_progress" && !isComplete) {
-            const isVerificationStep = step.title?.toLowerCase().includes("verifying")
-            if (!isVerificationStep) {
+            if (shouldRenderChatRuntimeActivityStep(step)) {
               nextMessages.push({
                 role: "assistant",
                 content: formatChatRuntimeActivityContent(step),
@@ -3989,9 +3988,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       )
 
       const activeStep = [...progress.steps].reverse().find((step) => step.status === "in_progress")
-      const isVerificationStep = activeStep?.title?.toLowerCase().includes("verifying")
+      const shouldRenderActiveStep = shouldRenderChatRuntimeActivityStep(activeStep)
 
-      if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && !isVerificationStep) {
+      if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && shouldRenderActiveStep) {
         const text = formatChatRuntimeActivityContent(activeStep)
 
         items.push({

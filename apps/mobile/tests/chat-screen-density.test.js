@@ -2741,6 +2741,9 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /formatChatRuntimeAssistantFeedbackContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeActivityContent,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeAssistantFeedbackContent,/);
+  assert.match(chatMessageChromeSource, /shouldRenderChatRuntimeActivityStep,/);
+  assert.match(chatMessageChromeSource, /const shouldRenderActiveStep = shouldRenderChatRuntimeActivityStep\(activeStep\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /title\?\.toLowerCase\(\)\.includes\('verifying'\)/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeActivityContent/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeAssistantFeedbackContent/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);

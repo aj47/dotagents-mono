@@ -264,6 +264,7 @@ import {
   getChatRuntimeTurnDurationHeaderMobileRenderState,
   getFollowUpInputPresentation,
   getSessionStatusMobileRenderState,
+  shouldRenderChatRuntimeActivityStep,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
@@ -5451,7 +5452,7 @@ export function createChatMessageRuntimeProgressMessages<
     }
 
     const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
-    const isVerificationStep = activeStep?.title?.toLowerCase().includes('verifying');
+    const shouldRenderActiveStep = shouldRenderChatRuntimeActivityStep(activeStep);
     const hasCurrentToolActivity = currentToolCalls.length > 0 || currentToolResults.length > 0;
     const hasCurrentAssistantFeedback = hasCurrentToolActivity || thinkingContent.trim().length > 0;
     const hasCurrentStateFeedback =
@@ -5471,7 +5472,7 @@ export function createChatMessageRuntimeProgressMessages<
     } else if (
       !update.isComplete &&
       !hasCurrentStateFeedback &&
-      !isVerificationStep
+      shouldRenderActiveStep
     ) {
       messages.push(createChatMessageRuntimeActivityMessage(activeStep) as unknown as TMessage);
     }

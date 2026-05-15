@@ -4807,6 +4807,14 @@ export function formatChatRuntimeActivityContent(step?: ChatRuntimeActivityStepL
   return step?.description?.trim() || CHAT_RUNTIME_PRESENTATION.activity.thinkingLabel
 }
 
+export function isChatRuntimeVerificationActivityStep(step?: ChatRuntimeActivityStepLike | null): boolean {
+  return !!step?.title?.toLowerCase().includes("verifying")
+}
+
+export function shouldRenderChatRuntimeActivityStep(step?: ChatRuntimeActivityStepLike | null): boolean {
+  return !isChatRuntimeVerificationActivityStep(step)
+}
+
 export function formatChatRuntimeVisibleUpdatesSummary(visibleCount: number): string {
   return `Showing latest ${visibleCount} updates`
 }
