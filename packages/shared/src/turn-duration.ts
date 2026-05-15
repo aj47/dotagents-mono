@@ -16,6 +16,16 @@ export interface TurnDurationMessage {
   isThinking?: boolean
 }
 
+/** Source message shape that can be normalized for turn-duration accounting. */
+export interface TurnDurationSourceMessage {
+  role: "user" | "assistant" | "tool"
+  timestamp?: number | null
+  content?: string | null
+  toolCalls?: readonly unknown[] | null
+  toolResults?: readonly unknown[] | null
+  isThinking?: boolean
+}
+
 export interface TurnDurationEntry {
   /** Duration in milliseconds from the user message to the turn end. */
   durationMs: number
@@ -32,6 +42,29 @@ export interface TurnDurationsResult {
   totalMs: number
   /** True when at least one turn is still in progress. */
   hasLive: boolean
+}
+
+export function createTurnDurationMessages(
+  messages: readonly TurnDurationSourceMessage[],
+): TurnDurationMessage[] {
+  return messages.reduce<TurnDurationMessage[]>((entries, message) => {
+    if (typeof message.timestamp !== "number" || !Number.isFinite(message.timestamp)) {
+      return entries
+    }
+
+    entries.push({
+      role: message.role,
+      timestamp: message.timestamp,
+      isThinking:
+        typeof message.isThinking === "boolean"
+          ? message.isThinking
+          : message.role === "assistant" &&
+            (!message.content || message.content.length === 0) &&
+            !message.toolCalls?.length &&
+            !message.toolResults?.length,
+    })
+    return entries
+  }, [])
 }
 
 /**

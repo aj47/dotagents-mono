@@ -129,6 +129,7 @@ import {
 } from '@dotagents/shared/accessibility-utils';
 import {
   computeTurnDurations,
+  createTurnDurationMessages,
   type TurnDurationMessage,
 } from '@dotagents/shared/turn-duration';
 import {
@@ -5942,22 +5943,7 @@ export function getChatMessageRuntimeNextResponseEventOrdinal<
 export function createChatMessageRuntimeTurnDurationMessages(
   messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[],
 ): TurnDurationMessage[] {
-  return messages.reduce<TurnDurationMessage[]>((entries, message) => {
-    if (typeof message.timestamp !== 'number' || !Number.isFinite(message.timestamp)) {
-      return entries;
-    }
-
-    entries.push({
-      role: message.role,
-      timestamp: message.timestamp,
-      isThinking:
-        message.role === 'assistant' &&
-        (!message.content || message.content.length === 0) &&
-        !message.toolCalls?.length &&
-        !message.toolResults?.length,
-    });
-    return entries;
-  }, []);
+  return createTurnDurationMessages(messages);
 }
 
 export function computeChatMessageRuntimeTurnDurations(

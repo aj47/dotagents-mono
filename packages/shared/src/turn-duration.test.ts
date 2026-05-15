@@ -1,10 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import {
   computeTurnDurations,
+  createTurnDurationMessages,
   formatSidebarDuration,
   formatTurnDuration,
   type TurnDurationMessage,
 } from './turn-duration'
+
+describe('createTurnDurationMessages', () => {
+  it('normalizes valid timestamped conversation messages for duration accounting', () => {
+    expect(createTurnDurationMessages([
+      { role: 'user', content: 'Request', timestamp: 1_000 },
+      { role: 'assistant', content: '', timestamp: 2_000 },
+      { role: 'tool', content: 'ok', timestamp: 3_000 },
+      { role: 'assistant', content: 'missing timestamp' },
+      { role: 'assistant', content: 'bad timestamp', timestamp: Number.NaN },
+    ])).toEqual([
+      { role: 'user', timestamp: 1_000, isThinking: false },
+      { role: 'assistant', timestamp: 2_000, isThinking: true },
+      { role: 'tool', timestamp: 3_000, isThinking: false },
+    ])
+  })
+
+  it('preserves explicit thinking state and treats tool metadata as non-thinking work', () => {
+    expect(createTurnDurationMessages([
+      { role: 'assistant', content: '', timestamp: 1_000, isThinking: false },
+      { role: 'assistant', content: '', timestamp: 2_000, toolCalls: [{ name: 'read_file' }] },
+      { role: 'assistant', content: '', timestamp: 3_000, toolResults: [{ content: 'ok' }] },
+    ])).toEqual([
+      { role: 'assistant', timestamp: 1_000, isThinking: false },
+      { role: 'assistant', timestamp: 2_000, isThinking: false },
+      { role: 'assistant', timestamp: 3_000, isThinking: false },
+    ])
+  })
+})
 
 describe('computeTurnDurations', () => {
   it('computes completed turn durations from user messages to latest non-user response before the next user message', () => {

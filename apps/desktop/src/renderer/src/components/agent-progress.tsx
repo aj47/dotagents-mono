@@ -171,7 +171,7 @@ import {
   getToolExecutionStructuredPayloadChildEntries,
   type ToolExecutionStructuredPayloadValue,
 } from "@dotagents/shared/tool-execution-display"
-import { computeTurnDurations } from "@dotagents/shared/turn-duration"
+import { computeTurnDurations, createTurnDurationMessages } from "@dotagents/shared/turn-duration"
 import { useNowTick } from "@renderer/lib/turn-duration"
 
 const toolActivityGroupCopy = getToolActivityGroupCopyState()
@@ -3769,9 +3769,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Live wall-clock tick for in-progress agent turns. Stops ticking when the
   // session is complete so completed sessions don't re-render every second.
   const turnNow = useNowTick(!isComplete)
+  const turnDurationMessages = useMemo(
+    () => createTurnDurationMessages(enrichedMessages),
+    [enrichedMessages],
+  )
   const turnDurations = useMemo(
-    () => computeTurnDurations(enrichedMessages, isComplete, turnNow),
-    [enrichedMessages, isComplete, turnNow],
+    () => computeTurnDurations(turnDurationMessages, isComplete, turnNow),
+    [isComplete, turnDurationMessages, turnNow],
   )
   const totalTurnDurationBadgeState = useMemo(
     () => getChatRuntimeTurnDurationBadgeState({

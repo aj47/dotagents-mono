@@ -3919,8 +3919,10 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /Number\.isFinite\(message\.timestamp\)/);
   assert.doesNotMatch(screenSource, /isThinking:\s+message\.role === 'assistant'[\s\S]*?!message\.toolResults\?\.length/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeTurnDurationMessages/);
-  assert.match(chatMessageChromeSource, /Number\.isFinite\(message\.timestamp\)/);
-  assert.match(chatMessageChromeSource, /isThinking:\s+message\.role === 'assistant'[\s\S]*?!message\.toolResults\?\.length/);
+  assert.match(chatMessageChromeSource, /createTurnDurationMessages,/);
+  assert.match(chatMessageChromeSource, /return createTurnDurationMessages\(messages\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /Number\.isFinite\(message\.timestamp\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /isThinking:\s+message\.role === 'assistant'[\s\S]*?!message\.toolResults\?\.length/);
   assert.match(chatMessageChromeSource, /computeTurnDurations,/);
   assert.match(chatMessageChromeSource, /export function computeChatMessageRuntimeTurnDurations/);
   assert.match(chatMessageChromeSource, /return computeTurnDurations\(messages, isComplete, nowMs\);/);
