@@ -102,11 +102,11 @@ import {
   type VoiceDebugEntry,
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
-import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
-  mergeVoiceText,
-  normalizeAutoTtsTextKey,
-} from '@dotagents/shared/voice-text-utils';
+  CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
+  createChatRuntimeSpeechTextState,
+} from '@dotagents/shared/tts-preprocessing';
+import { mergeVoiceText } from '@dotagents/shared/voice-text-utils';
 import {
   createChatComposerAccessibilityHint,
   createVoiceInputLiveRegionAnnouncement,
@@ -307,11 +307,6 @@ export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS = {
 export interface ChatMessageRuntimeResolvedAlertState {
   title: string;
   message: string;
-}
-
-export interface ChatMessageRuntimeSpeechTextState {
-  processedText: string;
-  autoTextKey: string;
 }
 
 export interface ChatMessageRuntimeLogMeta {
@@ -5023,22 +5018,6 @@ export function useChatMessageRuntimeTurnDurations({
   );
 }
 
-export function createChatMessageRuntimeSpeechTextState(
-  content: string,
-): ChatMessageRuntimeSpeechTextState | null {
-  const processedText = preprocessTextForTTS(content);
-  if (!processedText) {
-    return null;
-  }
-
-  return {
-    processedText,
-    autoTextKey: normalizeAutoTtsTextKey(processedText),
-  };
-}
-
-export const CHAT_MESSAGE_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
-
 export function createChatMessageRuntimeLogMeta(content: string): ChatMessageRuntimeLogMeta {
   return {
     length: content.length,
@@ -7254,7 +7233,7 @@ export function useChatMessageRuntimeAssistantSpeechActionsState({
   speakNative,
   speakRemote,
   voiceLog,
-  duplicateSuppressionMs = CHAT_MESSAGE_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
+  duplicateSuppressionMs = CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
 }: ChatMessageRuntimeAssistantSpeechActionsStateInput): ChatMessageRuntimeAssistantSpeechActionsState {
   const speakAssistantResponse = useCallback((content: string, reason: string, onSettled?: () => void) => {
     if (!ttsEnabledRef.current) {
@@ -7262,7 +7241,7 @@ export function useChatMessageRuntimeAssistantSpeechActionsState({
       return false;
     }
 
-    const speechText = createChatMessageRuntimeSpeechTextState(content);
+    const speechText = createChatRuntimeSpeechTextState(content);
     if (!speechText) {
       onSettled?.();
       return false;
@@ -7446,7 +7425,7 @@ export function useChatMessageRuntimeSpeechActionsState({
     stopNativeSpeech();
     stopRemoteSpeech();
 
-    const speechText = createChatMessageRuntimeSpeechTextState(content);
+    const speechText = createChatRuntimeSpeechTextState(content);
     if (!speechText) {
       clearIntendedSpeakingMessage();
       return;
@@ -7623,11 +7602,12 @@ export function useChatMessageRuntimeResponseHistoryPanelChromeState({
     }
 
     const requestId = stopCurrentSpeech();
-    const processedText = preprocessTextForTTS(text);
-    if (!processedText) {
+    const speechText = createChatRuntimeSpeechTextState(text);
+    if (!speechText) {
       safeSetSpeakingIndex(null);
       return;
     }
+    const processedText = speechText.processedText;
 
     const clearIfCurrentRequest = () => {
       if (speechRequestIdRef.current === requestId) {

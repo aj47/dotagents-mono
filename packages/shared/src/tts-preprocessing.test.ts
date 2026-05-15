@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   buildTTSPreprocessingPrompt,
+  createChatRuntimeSpeechTextState,
   getTTSPreprocessingOptionsFromConfig,
   preprocessTextForTTS,
   validateTTSText,
@@ -13,6 +15,15 @@ describe('preprocessTextForTTS', () => {
     // After normalizeWhitespace, empty string may become "." (trailing sentence end logic)
     const result = preprocessTextForTTS('')
     expect(result.length).toBeLessThanOrEqual(1)
+  })
+
+  it('creates shared chat runtime speech text state for duplicate suppression', () => {
+    expect(CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS).toBe(5_000)
+    expect(createChatRuntimeSpeechTextState('**Hello** world')).toEqual({
+      processedText: 'Hello world.',
+      autoTextKey: 'hello world.',
+    })
+    expect(createChatRuntimeSpeechTextState('   ')).toBeNull()
   })
 
   it('removes thinking blocks', () => {

@@ -11,6 +11,7 @@ import {
   DEFAULT_TTS_REMOVE_CODE_BLOCKS,
   DEFAULT_TTS_REMOVE_URLS,
 } from "./text-to-speech-settings"
+import { normalizeAutoTtsTextKey } from "./voice-text-utils"
 
 export interface TTSPreprocessingOptions {
   removeCodeBlocks?: boolean
@@ -27,6 +28,13 @@ export interface TTSPreprocessingConfigLike {
   ttsRemoveUrls?: boolean
   ttsConvertMarkdown?: boolean
 }
+
+export interface ChatRuntimeSpeechTextState {
+  processedText: string
+  autoTextKey: string
+}
+
+export const CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000
 
 const DEFAULT_OPTIONS: TTSPreprocessingOptions = {
   removeCodeBlocks: DEFAULT_TTS_REMOVE_CODE_BLOCKS,
@@ -132,6 +140,20 @@ export function preprocessTextForTTS(
   }
 
   return processedText
+}
+
+export function createChatRuntimeSpeechTextState(
+  content: string,
+): ChatRuntimeSpeechTextState | null {
+  const processedText = preprocessTextForTTS(content)
+  if (!processedText) {
+    return null
+  }
+
+  return {
+    processedText,
+    autoTextKey: normalizeAutoTtsTextKey(processedText),
+  }
 }
 
 /** Removes thinking blocks (<think>...</think>) from text */
