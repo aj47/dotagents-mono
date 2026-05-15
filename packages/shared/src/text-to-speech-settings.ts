@@ -59,6 +59,28 @@ export const DEFAULT_TTS_REMOVE_URLS = true
 export const DEFAULT_TTS_CONVERT_MARKDOWN = true
 export const DEFAULT_TTS_USE_LLM_PREPROCESSING = false
 
+export type ChatRuntimeRemoteSpeechProvider =
+  | "native"
+  | NonNullable<TextToSpeechConfig["ttsProviderId"]>
+
+export interface ChatRuntimeRemoteSpeechSettingsState {
+  provider: ChatRuntimeRemoteSpeechProvider
+  voice: string | undefined
+  model: string | undefined
+  rate: number
+}
+
+export interface ChatRuntimeEffectiveRemoteSpeechConfigInput {
+  ttsProvider?: "native" | "edge"
+  edgeTtsVoice?: string
+  ttsRate?: number
+}
+
+export interface ChatRuntimeEffectiveRemoteSpeechSettingsStateInput {
+  config: ChatRuntimeEffectiveRemoteSpeechConfigInput
+  remoteSettings: ChatRuntimeRemoteSpeechSettingsState
+}
+
 export const SPEECH_SELECTOR_PRESENTATION = {
   copy: {
     common: {
@@ -580,6 +602,44 @@ export function getTextToSpeechPlaybackRate(settings?: TextToSpeechConfig | null
   const speed = getTextToSpeechSpeedValue(settings)
   if (speed !== undefined) return speed
   return speedSetting?.defaultValue ?? getTextToSpeechSpeedDefault()
+}
+
+export function getChatRuntimeDefaultRemoteSpeechSettingsState(): ChatRuntimeRemoteSpeechSettingsState {
+  return {
+    provider: "native",
+    voice: DEFAULT_EDGE_TTS_VOICE,
+    model: undefined,
+    rate: 1.0,
+  }
+}
+
+export function createChatRuntimeRemoteSpeechSettingsState(
+  settings: TextToSpeechConfig,
+): ChatRuntimeRemoteSpeechSettingsState {
+  const ttsVoiceValue = getTextToSpeechVoiceValue(settings)
+
+  return {
+    provider: settings.ttsProviderId || "native",
+    voice: ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue),
+    model: getTextToSpeechModelValue(settings),
+    rate: getTextToSpeechPlaybackRate(settings),
+  }
+}
+
+export function createChatRuntimeEffectiveRemoteSpeechSettingsState({
+  config,
+  remoteSettings,
+}: ChatRuntimeEffectiveRemoteSpeechSettingsStateInput): ChatRuntimeRemoteSpeechSettingsState {
+  const isLocalEdgeTts = config.ttsProvider === "edge"
+
+  return {
+    provider: isLocalEdgeTts ? "edge" : remoteSettings.provider,
+    voice: isLocalEdgeTts && config.edgeTtsVoice
+      ? config.edgeTtsVoice
+      : remoteSettings.voice,
+    model: isLocalEdgeTts ? undefined : remoteSettings.model,
+    rate: isLocalEdgeTts ? config.ttsRate ?? 1.0 : remoteSettings.rate,
+  }
 }
 
 export function clampTextToSpeechPlaybackRate(value?: number, providerId?: string | null): number {

@@ -64,8 +64,6 @@ import {
   useChatMessageRuntimeSpeechPlaybackState,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
-  createChatMessageRuntimeEffectiveRemoteSpeechSettingsState,
-  getChatMessageRuntimeDefaultRemoteSpeechSettingsState,
   useChatMessageRuntimeRemoteSpeechSettingsState,
   useChatMessageRuntimeThreadExpansionState,
   useChatConversationHomeQuickStartActionsState,
@@ -106,6 +104,10 @@ import {
 } from '@dotagents/shared/hands-free-controller';
 import { createChatRuntimeMobileConfigState } from '@dotagents/shared/mobile-app-config';
 import {
+  createChatRuntimeEffectiveRemoteSpeechSettingsState,
+  getChatRuntimeDefaultRemoteSpeechSettingsState,
+} from '@dotagents/shared/text-to-speech-settings';
+import {
   createChatRuntimeCompletedDebugState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
@@ -121,7 +123,7 @@ import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
-const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
+const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatRuntimeDefaultRemoteSpeechSettingsState();
 
 export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
@@ -197,7 +199,7 @@ export default function ChatScreen({ route, navigation }: any) {
     voice: effectiveRemoteTtsVoice,
     model: effectiveRemoteTtsModel,
     rate: effectiveRemoteTtsRate,
-  } = createChatMessageRuntimeEffectiveRemoteSpeechSettingsState({
+  } = createChatRuntimeEffectiveRemoteSpeechSettingsState({
     config,
     remoteSettings: {
       provider: remoteTtsProvider,

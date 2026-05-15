@@ -19,8 +19,11 @@ import {
   SPEECH_SELECTOR_PRESENTATION,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
   clampTextToSpeechPlaybackRate,
+  createChatRuntimeEffectiveRemoteSpeechSettingsState,
+  createChatRuntimeRemoteSpeechSettingsState,
   formatSpeechSelectorMicrophoneEnumerationError,
   formatLocalSpeechModelProgress,
+  getChatRuntimeDefaultRemoteSpeechSettingsState,
   getSpeechSelectorCopyState,
   getSpeechSelectorMobileCloseIconState,
   getSpeechSelectorMobileSurfaceColors,
@@ -42,6 +45,7 @@ import {
   isTextToSpeechVoiceUpdateValue,
   normalizeTextToSpeechVoiceUpdateValue,
 } from "./text-to-speech-settings"
+import { DEFAULT_EDGE_TTS_VOICE } from "./providers"
 
 describe("text to speech settings helpers", () => {
   it("exports shared boolean defaults", () => {
@@ -225,6 +229,69 @@ describe("text to speech settings helpers", () => {
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "edge", edgeTtsRate: 0.9 })).toBe(0.9)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "supertonic", supertonicSpeed: 1.05 })).toBe(1.05)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "groq" })).toBeUndefined()
+  })
+
+  it("derives remote speech settings from shared TTS settings", () => {
+    expect(getChatRuntimeDefaultRemoteSpeechSettingsState()).toEqual({
+      provider: "native",
+      voice: DEFAULT_EDGE_TTS_VOICE,
+      model: undefined,
+      rate: 1.0,
+    })
+
+    expect(createChatRuntimeRemoteSpeechSettingsState({
+      ttsProviderId: "openai",
+      openaiTtsVoice: "alloy",
+      openaiTtsModel: "gpt-4o-mini-tts",
+      openaiTtsSpeed: 1.25,
+    })).toEqual({
+      provider: "openai",
+      voice: "alloy",
+      model: "gpt-4o-mini-tts",
+      rate: 1.25,
+    })
+
+    expect(createChatRuntimeRemoteSpeechSettingsState({
+      ttsProviderId: "kitten",
+      kittenVoiceId: 3,
+    })).toEqual({
+      provider: "kitten",
+      voice: "3",
+      model: undefined,
+      rate: 1.0,
+    })
+  })
+
+  it("applies mobile local Edge speech overrides to remote speech settings", () => {
+    const remoteSettings = {
+      provider: "openai" as const,
+      voice: "alloy",
+      model: "gpt-4o-mini-tts",
+      rate: 1.25,
+    }
+
+    expect(createChatRuntimeEffectiveRemoteSpeechSettingsState({
+      config: {
+        ttsProvider: "edge",
+        edgeTtsVoice: "en-US-AriaNeural",
+        ttsRate: 0.9,
+      },
+      remoteSettings,
+    })).toEqual({
+      provider: "edge",
+      voice: "en-US-AriaNeural",
+      model: undefined,
+      rate: 0.9,
+    })
+
+    expect(createChatRuntimeEffectiveRemoteSpeechSettingsState({
+      config: {
+        ttsProvider: "native",
+        edgeTtsVoice: "en-US-AriaNeural",
+        ttsRate: 0.9,
+      },
+      remoteSettings,
+    })).toEqual(remoteSettings)
   })
 
   it("describes provider-specific speed controls", () => {

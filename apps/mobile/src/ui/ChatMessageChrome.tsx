@@ -116,15 +116,13 @@ import {
   createTurnDurationMessages,
   type TurnDurationMessage,
 } from '@dotagents/shared/turn-duration';
-import {
-  type MobileAppConfig,
-} from '@dotagents/shared/mobile-app-config';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
-  getTextToSpeechModelValue,
-  getTextToSpeechPlaybackRate,
-  getTextToSpeechVoiceValue,
+  createChatRuntimeRemoteSpeechSettingsState,
+  getChatRuntimeDefaultRemoteSpeechSettingsState,
+  type ChatRuntimeRemoteSpeechProvider,
+  type ChatRuntimeRemoteSpeechSettingsState,
 } from '@dotagents/shared/text-to-speech-settings';
 import {
   createPredefinedPromptRecord,
@@ -321,32 +319,16 @@ export interface ChatMessageRuntimeLogMeta {
   inlineImageCount: number;
 }
 
-export type ChatMessageRuntimeRemoteSpeechProvider =
-  | 'native'
-  | NonNullable<Settings['ttsProviderId']>;
-
-export interface ChatMessageRuntimeRemoteSpeechSettingsState {
-  provider: ChatMessageRuntimeRemoteSpeechProvider;
-  voice: string | undefined;
-  model: string | undefined;
-  rate: number;
-}
-
 type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
-  remoteTtsProvider: ChatMessageRuntimeRemoteSpeechProvider;
-  setRemoteTtsProvider: Dispatch<SetStateAction<ChatMessageRuntimeRemoteSpeechProvider>>;
+  remoteTtsProvider: ChatRuntimeRemoteSpeechProvider;
+  setRemoteTtsProvider: Dispatch<SetStateAction<ChatRuntimeRemoteSpeechProvider>>;
   remoteTtsVoice: string | undefined;
   setRemoteTtsVoice: Dispatch<SetStateAction<string | undefined>>;
   remoteTtsModel: string | undefined;
   setRemoteTtsModel: Dispatch<SetStateAction<string | undefined>>;
   remoteTtsRate: number;
   setRemoteTtsRate: Dispatch<SetStateAction<number>>;
-  applyRemoteSpeechSettings: (settings: ChatMessageRuntimeRemoteSpeechSettingsState) => void;
-};
-
-type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = {
-  config: Pick<MobileAppConfig, 'ttsProvider' | 'edgeTtsVoice' | 'ttsRate'>;
-  remoteSettings: ChatMessageRuntimeRemoteSpeechSettingsState;
+  applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
 
 export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatMessageRuntimeResolvedAlertState {
@@ -489,7 +471,7 @@ type ChatConversationHomeQuickStartCatalogLoadStateInput<
   quickStartClient?: TQuickStartCatalogClient | null;
   isFocused: boolean;
   catalog: ChatConversationHomeQuickStartCatalogState;
-  applyRemoteSpeechSettings: (settings: ChatMessageRuntimeRemoteSpeechSettingsState) => void;
+  applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
 
 type ChatConversationHomePromptEditorState = {
@@ -5070,54 +5052,16 @@ export function createChatMessageRuntimeModelMessages<TMessage extends MessageCo
   return sanitizeMessagesForModel(messages);
 }
 
-export function getChatMessageRuntimeDefaultRemoteSpeechSettingsState(): ChatMessageRuntimeRemoteSpeechSettingsState {
-  return {
-    provider: 'native',
-    voice: DEFAULT_EDGE_TTS_VOICE,
-    model: undefined,
-    rate: 1.0,
-  };
-}
-
-export function createChatMessageRuntimeRemoteSpeechSettingsState(
-  settings: Settings,
-): ChatMessageRuntimeRemoteSpeechSettingsState {
-  const ttsVoiceValue = getTextToSpeechVoiceValue(settings);
-
-  return {
-    provider: settings.ttsProviderId || 'native',
-    voice: ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue),
-    model: getTextToSpeechModelValue(settings),
-    rate: getTextToSpeechPlaybackRate(settings),
-  };
-}
-
-export function createChatMessageRuntimeEffectiveRemoteSpeechSettingsState({
-  config,
-  remoteSettings,
-}: ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput): ChatMessageRuntimeRemoteSpeechSettingsState {
-  const isLocalEdgeTts = config.ttsProvider === 'edge';
-
-  return {
-    provider: isLocalEdgeTts ? 'edge' : remoteSettings.provider,
-    voice: isLocalEdgeTts && config.edgeTtsVoice
-      ? config.edgeTtsVoice
-      : remoteSettings.voice,
-    model: isLocalEdgeTts ? undefined : remoteSettings.model,
-    rate: isLocalEdgeTts ? config.ttsRate ?? 1.0 : remoteSettings.rate,
-  };
-}
-
 export function useChatMessageRuntimeRemoteSpeechSettingsState(
-  initialSettings: ChatMessageRuntimeRemoteSpeechSettingsState = getChatMessageRuntimeDefaultRemoteSpeechSettingsState(),
+  initialSettings: ChatRuntimeRemoteSpeechSettingsState = getChatRuntimeDefaultRemoteSpeechSettingsState(),
 ): ChatMessageRuntimeRemoteSpeechSettingsHookState {
   const [remoteTtsProvider, setRemoteTtsProvider] =
-    useState<ChatMessageRuntimeRemoteSpeechProvider>(initialSettings.provider);
+    useState<ChatRuntimeRemoteSpeechProvider>(initialSettings.provider);
   const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(initialSettings.voice);
   const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>(initialSettings.model);
   const [remoteTtsRate, setRemoteTtsRate] = useState(initialSettings.rate);
 
-  const applyRemoteSpeechSettings = useCallback((settings: ChatMessageRuntimeRemoteSpeechSettingsState) => {
+  const applyRemoteSpeechSettings = useCallback((settings: ChatRuntimeRemoteSpeechSettingsState) => {
     setRemoteTtsProvider(settings.provider);
     setRemoteTtsVoice(settings.voice);
     setRemoteTtsModel(settings.model);
@@ -6423,7 +6367,7 @@ export function useChatConversationHomeQuickStartCatalogLoadState<
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
           const nextPrompts = sortPredefinedPromptsByUpdatedAt(settings.predefinedPrompts || []);
-          const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
+          const remoteSpeechSettings = createChatRuntimeRemoteSpeechSettingsState(settings);
           setPredefinedPrompts(nextPrompts);
           applyRemoteSpeechSettings(remoteSpeechSettings);
         } else {
