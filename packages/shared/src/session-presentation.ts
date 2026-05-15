@@ -108,6 +108,7 @@ import {
   getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailResultState,
   getToolExecutionMobileVisibilityRenderState,
+  getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
@@ -116,6 +117,7 @@ import {
   type ToolExecutionDetailMobileHeaderRenderState,
   type ToolExecutionDetailMobilePendingResultRenderState,
   type ToolExecutionDetailMobileSectionHeaderRenderState,
+  type ToolExecutionResultOnlyFallbackRenderState,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 import {
@@ -7136,6 +7138,14 @@ export function getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
       colors,
     }),
   )
+}
+
+export function getChatRuntimeToolExecutionResultOnlyFallbackRenderState(): ToolExecutionResultOnlyFallbackRenderState {
+  return getToolExecutionResultOnlyFallbackRenderState()
+}
+
+export function getChatRuntimeToolExecutionResultOnlyFallbackLabel(): string {
+  return getChatRuntimeToolExecutionResultOnlyFallbackRenderState().label
 }
 
 export function getChatRuntimeToolExecutionDetailMobileRowState({

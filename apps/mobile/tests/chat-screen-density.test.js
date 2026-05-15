@@ -2125,7 +2125,7 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /const messageRenderContext = createChatMessageConversationRenderContext\(\{/);
   assert.doesNotMatch(screenSource, /const \{\s+visibleMessageContent,\s+renderedToolEntries,\s+displayToolCallCount,\s+isExpanded,\s+isLiveStreamingAssistantMessage,\s+messageRenderState,\s+shouldRenderSurface,\s+\} = createChatMessageConversationRenderContext/);
   assert.doesNotMatch(screenSource, /resultOnlyToolLabel: toolExecutionResultOnlyFallback\.label,/);
-  assert.match(chatMessageChromeSource, /const resultOnlyToolLabel =\s+threadListInput\.resultOnlyToolLabel \?\? getToolExecutionResultOnlyFallbackRenderState\(\)\.label;/);
+  assert.match(chatMessageChromeSource, /const resultOnlyToolLabel =\s+threadListInput\.resultOnlyToolLabel \?\? getChatRuntimeToolExecutionResultOnlyFallbackLabel\(\);/);
   assert.match(chatMessageChromeSource, /const renderContext = getChatRuntimeConversationMessageRenderContextMobileState\(\{\s+message: bodyInput\.message,\s+messageIndex: bodyInput\.messageIndex,\s+isResponding: bodyInput\.isResponding,\s+lastConversationContentMessageIndex,\s+expandedMessages,\s+resultOnlyToolLabel,\s+colors: bodyInput\.colors,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageDisplayState,/);
   assert.match(sessionPresentationSource, /const messageDisplayState = getChatMessageDisplayState\(message, \{\s+resultOnlyToolLabel,\s+\}\)/);
@@ -2353,7 +2353,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileStyleColors,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionResultOnlyFallbackRenderState,/);
-  assert.match(chatMessageChromeSource, /getToolExecutionResultOnlyFallbackRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionResultOnlyFallbackRenderState,/);
+  assert.match(sessionPresentationSource, /getToolExecutionResultOnlyFallbackRenderState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeToolExecutionResultOnlyFallbackRenderState/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeToolExecutionResultOnlyFallbackLabel/);
   assert.doesNotMatch(screenSource, /getToolExecutionSummaryDisplayState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionSummaryDisplayState,/);
   assert.match(sessionPresentationSource, /getToolExecutionSummaryDisplayState,/);

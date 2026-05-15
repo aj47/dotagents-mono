@@ -241,6 +241,8 @@ import {
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
+  getChatRuntimeToolExecutionResultOnlyFallbackLabel,
+  getChatRuntimeToolExecutionResultOnlyFallbackRenderState,
   getChatRuntimeToolExecutionStackMobileRenderState,
   getChatRuntimeTurnDurationBadgeState,
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
@@ -3967,6 +3969,10 @@ describe("session presentation semantics", () => {
     })
     expect(delegationToolPreviewRows[0].key).toBe("execute_command-0")
     expect(delegationToolPreviewRows[0].renderState.state).toBe("pending")
+    expect(getChatRuntimeToolExecutionResultOnlyFallbackRenderState()).toEqual({
+      label: "Tool result",
+    })
+    expect(getChatRuntimeToolExecutionResultOnlyFallbackLabel()).toBe("Tool result")
     const toolDetailRow = getChatRuntimeToolExecutionDetailMobileRowState({
       key: "tool-detail-0",
       toolCall: { name: "read_file", arguments: { path: "/test" } },

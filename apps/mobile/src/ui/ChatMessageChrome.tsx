@@ -201,6 +201,7 @@ import {
   getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
+  getChatRuntimeToolExecutionResultOnlyFallbackLabel,
   getChatRuntimeToolExecutionStackMobileRenderState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
@@ -272,7 +273,6 @@ import {
 } from '@dotagents/shared/session-presentation';
 import {
   getToolExecutionMobileVisibilityRenderState,
-  getToolExecutionResultOnlyFallbackRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -5786,7 +5786,7 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
     colors: threadListInput.colors,
   });
   const resultOnlyToolLabel =
-    threadListInput.resultOnlyToolLabel ?? getToolExecutionResultOnlyFallbackRenderState().label;
+    threadListInput.resultOnlyToolLabel ?? getChatRuntimeToolExecutionResultOnlyFallbackLabel();
 
   return {
     threadStates: createChatMessageConversationThreadListRenderState({
