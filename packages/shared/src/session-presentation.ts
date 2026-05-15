@@ -60,7 +60,9 @@ import {
   getToolExecutionCallDisplayState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
+  getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobileHeaderRenderState,
@@ -68,6 +70,8 @@ import {
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailResultState,
+  getToolExecutionMobileVisibilityRenderState,
+  getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -517,6 +521,31 @@ export interface ChatRuntimeToolExecutionDetailMobileRowState {
   pendingResult: {
     renderState: ToolExecutionDetailMobilePendingResultRenderState
   } | null
+}
+
+export interface ChatRuntimeToolExecutionStackMobileRenderStateInput {
+  displayToolCallCount: number
+  results: Array<ToolResult | null | undefined>
+  colors: Parameters<typeof getToolExecutionDetailMobileCollapseControlRenderState>[0]["colors"]
+  emptyStateRenderState: ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState>
+}
+
+export interface ChatRuntimeToolExecutionStackMobileRenderState {
+  shouldRender: boolean
+  compact: {
+    renderState: ReturnType<typeof getToolExecutionDetailMobileExpandControlRenderState>
+  }
+  expanded: {
+    isPending: boolean
+    allSuccess: boolean
+    hasErrors: boolean
+    topCollapseRenderState: ReturnType<typeof getToolExecutionDetailMobileCollapseControlRenderState>
+    bottomCollapseRenderState: ReturnType<typeof getToolExecutionDetailMobileCollapseControlRenderState>
+    emptyState: {
+      shouldRender: boolean
+      renderState: ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState>
+    }
+  }
 }
 
 export interface ChatRuntimeBranchActionInput {
@@ -5608,6 +5637,45 @@ export function getChatRuntimeToolExecutionDetailMobileRowState({
     pendingResult: !result && resultDetail.isPending ? {
       renderState: pendingResultRenderState,
     } : null,
+  }
+}
+
+export function getChatRuntimeToolExecutionStackMobileRenderState({
+  displayToolCallCount,
+  results,
+  colors,
+  emptyStateRenderState,
+}: ChatRuntimeToolExecutionStackMobileRenderStateInput): ChatRuntimeToolExecutionStackMobileRenderState {
+  const visibility = getToolExecutionMobileVisibilityRenderState({
+    toolCallCount: displayToolCallCount,
+  })
+  const compactRenderState = getToolExecutionDetailMobileExpandControlRenderState()
+  const topCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
+    placement: "top",
+    toolCallCount: displayToolCallCount,
+    colors,
+  })
+  const bottomCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
+    colors,
+  })
+  const executionSummary = getToolExecutionSummaryDisplayState(results)
+
+  return {
+    shouldRender: visibility.toolExecutionStack.shouldRender,
+    compact: {
+      renderState: compactRenderState,
+    },
+    expanded: {
+      isPending: executionSummary.isPending,
+      allSuccess: executionSummary.allSuccess,
+      hasErrors: executionSummary.hasErrors,
+      topCollapseRenderState,
+      bottomCollapseRenderState,
+      emptyState: {
+        shouldRender: visibility.emptyState.shouldRender,
+        renderState: emptyStateRenderState,
+      },
+    },
   }
 }
 

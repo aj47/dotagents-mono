@@ -225,6 +225,7 @@ import {
   getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
+  getChatRuntimeToolExecutionStackMobileRenderState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -282,12 +283,11 @@ import {
   type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
   type ChatRuntimeToolExecutionDetailMobileRowInput,
   type ChatRuntimeToolExecutionDetailMobileRowState,
+  type ChatRuntimeToolExecutionStackMobileRenderStateInput,
   type FollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
   getToolExecutionDetailCopyFailureAlertState,
-  getToolExecutionDetailMobileCollapseControlRenderState,
-  getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
@@ -2279,7 +2279,7 @@ type ChatMessageToolExecutionStackProps = {
 
 type ChatMessageToolExecutionStackPropsInput = {
   displayToolCallCount: number;
-  colors: Parameters<typeof getToolExecutionDetailMobileCollapseControlRenderState>[0]['colors'];
+  colors: ChatRuntimeToolExecutionStackMobileRenderStateInput['colors'];
   isExpanded: ChatMessageToolExecutionStackProps['isExpanded'];
   rows: Omit<ChatMessageToolExecutionRowsInput, 'colors'>;
   compact: {
@@ -10249,46 +10249,29 @@ export function createChatMessageToolExecutionStackProps({
 }: ChatMessageToolExecutionStackPropsInput): ChatMessageConversationBodyProps['toolExecutionStack'] {
   const { onToggle: onCompactToggle } = compact;
   const { emptyStateRenderState, onToggle: onExpandedToggle, ...expandedProps } = expanded;
-  const visibility = getToolExecutionMobileVisibilityRenderState({
-    toolCallCount: displayToolCallCount,
-  });
-  const compactRenderState = getToolExecutionDetailMobileExpandControlRenderState();
-  const topCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
-    placement: 'top',
-    toolCallCount: displayToolCallCount,
-    colors,
-  });
-  const bottomCollapseRenderState = getToolExecutionDetailMobileCollapseControlRenderState({
-    colors,
-  });
   const executionRows = createChatMessageToolExecutionRows({
     ...rowInput,
     colors,
   });
-  const executionSummary = getToolExecutionSummaryDisplayState(
-    rowInput.entries.map(entry => entry.result),
-  );
+  const stackRenderState = getChatRuntimeToolExecutionStackMobileRenderState({
+    displayToolCallCount,
+    results: rowInput.entries.map(entry => entry.result),
+    colors,
+    emptyStateRenderState,
+  });
 
   return {
-    shouldRender: visibility.toolExecutionStack.shouldRender,
+    shouldRender: stackRenderState.shouldRender,
     isExpanded,
     compact: {
-      renderState: compactRenderState,
+      ...stackRenderState.compact,
       rows: executionRows.compactRows,
       onPress: onCompactToggle,
     },
     expanded: {
       ...expandedProps,
-      isPending: executionSummary.isPending,
-      allSuccess: executionSummary.allSuccess,
-      hasErrors: executionSummary.hasErrors,
-      topCollapseRenderState,
-      bottomCollapseRenderState,
+      ...stackRenderState.expanded,
       onCollapsePress: onExpandedToggle,
-      emptyState: {
-        shouldRender: visibility.emptyState.shouldRender,
-        renderState: emptyStateRenderState,
-      },
     },
     detailRows: executionRows.detailRows,
   };

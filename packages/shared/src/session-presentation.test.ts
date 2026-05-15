@@ -190,6 +190,7 @@ import {
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
+  getChatRuntimeToolExecutionStackMobileRenderState,
   getChatRuntimeTurnDurationBadgeState,
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
@@ -3131,6 +3132,40 @@ describe("session presentation semantics", () => {
     expect(pendingToolDetailRow.pendingResult).toEqual({
       renderState: messageThreadPresentation.pendingToolResultRenderState,
     })
+    const toolExecutionStackState = getChatRuntimeToolExecutionStackMobileRenderState({
+      displayToolCallCount: 2,
+      results: [
+        { success: true, content: "ok" },
+        { success: false, content: "", error: "Nope" },
+      ],
+      colors: compactToolPreviewColors,
+      emptyStateRenderState: messageThreadPresentation.toolExecutionEmptyStateRenderState,
+    })
+    expect(toolExecutionStackState.shouldRender).toBe(true)
+    expect(toolExecutionStackState.compact.renderState.ariaExpanded).toBe(false)
+    expect(toolExecutionStackState.expanded).toMatchObject({
+      isPending: false,
+      allSuccess: false,
+      hasErrors: true,
+      topCollapseRenderState: {
+        placement: "top",
+      },
+      bottomCollapseRenderState: {
+        placement: "bottom",
+      },
+      emptyState: {
+        shouldRender: false,
+        renderState: messageThreadPresentation.toolExecutionEmptyStateRenderState,
+      },
+    })
+    const emptyToolExecutionStackState = getChatRuntimeToolExecutionStackMobileRenderState({
+      displayToolCallCount: 0,
+      results: [],
+      colors: compactToolPreviewColors,
+      emptyStateRenderState: messageThreadPresentation.toolExecutionEmptyStateRenderState,
+    })
+    expect(emptyToolExecutionStackState.shouldRender).toBe(false)
+    expect(emptyToolExecutionStackState.expanded.emptyState.shouldRender).toBe(true)
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")
