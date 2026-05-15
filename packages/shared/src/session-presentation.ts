@@ -9,6 +9,12 @@ import {
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from "./chat-utils"
+import {
+  getAgentDelegationCardState,
+  type ACPDelegationProgress,
+  type AgentDelegationConversationPreviewRow,
+  type AgentDelegationPresentation,
+} from "./agent-progress"
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
@@ -753,6 +759,41 @@ export interface ChatRuntimeConversationDelegationCardMobileState<
   colors: ChatRuntimeConversationDelegationCardMobileColors
   onShowAllConversationPreview: (runId: string) => void
   onShowAllToolPreview: (runId: string) => void
+}
+
+export interface ChatRuntimeDelegationCardMobilePresentationStateInput {
+  isDelegation: boolean
+  surface: ChatRuntimeDelegationCardMobileRenderState["surface"]
+  delegation?: ACPDelegationProgress | null
+  toolEntries: readonly ChatMessageDisplayToolEntry[]
+  displayToolCallCount: number
+  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>
+  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>
+  roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+  colors: ChatRuntimeConversationDelegationCardMobileColors
+}
+
+export interface ChatRuntimeDelegationCardMobilePresentationState {
+  runId: string
+  surface: ChatRuntimeDelegationCardMobileRenderState["surface"]
+  agentName: string
+  presentation: AgentDelegationPresentation
+  accessibilityLabel: string
+  messageCountLabel: string | null
+  statusStyles: ChatSessionStatusMobileStyleState
+  conversationPreview: {
+    rows: AgentDelegationConversationPreviewRow[]
+    roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+    hiddenCount: number
+    moreAction: ChatRuntimeDelegationMorePreviewActionState
+  }
+  toolPreview: {
+    shouldRender: boolean
+    label: string
+    rows: ChatRuntimeToolExecutionCompactPreviewMobileRowState[]
+    hiddenCount: number
+    moreAction: ChatRuntimeDelegationMorePreviewActionState
+  }
 }
 
 export interface ChatRuntimeConversationActionSetMobileStyleSlots<
@@ -6806,6 +6847,88 @@ export function getChatRuntimeConversationDelegationCardMobileState<
       setExpandedDelegationToolPreviews((current) =>
         setChatDisplayExpansionState(current, runId, true),
       )
+    },
+  }
+}
+
+export function getChatRuntimeDelegationCardMobilePresentationState({
+  isDelegation,
+  surface,
+  delegation,
+  toolEntries,
+  displayToolCallCount,
+  expandedDelegationConversationPreviews,
+  expandedDelegationToolPreviews,
+  roleStyles,
+  colors,
+}: ChatRuntimeDelegationCardMobilePresentationStateInput): ChatRuntimeDelegationCardMobilePresentationState | null {
+  if (!isDelegation || !delegation) return null
+
+  const isConversationPreviewExpanded = getChatDisplayExpansionState(
+    expandedDelegationConversationPreviews,
+    delegation.runId,
+  )
+  const isToolPreviewExpanded = getChatDisplayExpansionState(
+    expandedDelegationToolPreviews,
+    delegation.runId,
+  )
+  const cardState = getAgentDelegationCardState(
+    delegation,
+    toolEntries,
+    {
+      maxSubtitleLength: surface.subtitleMaxLength,
+      conversationPreviewMaxRows: surface.conversationPreviewMaxRows,
+      conversationPreviewMaxLength: surface.conversationPreviewMaxLength,
+      includeAllConversationPreview: isConversationPreviewExpanded,
+      toolPreviewMaxRows: surface.toolPreviewMaxRows,
+      includeAllToolPreview: isToolPreviewExpanded,
+    },
+  )
+  const { presentation } = cardState
+  const messageCount = presentation.messageCount ?? 0
+  const conversationPreviewState = cardState.conversationPreview
+  const hiddenConversationCount = conversationPreviewState.hiddenCount
+  const toolPreviewState = cardState.toolPreview
+  const hiddenToolCount = toolPreviewState.hiddenCount
+  const toolPreviewVisibilityRenderState = getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState({
+    displayToolCallCount,
+  })
+
+  return {
+    runId: delegation.runId,
+    surface,
+    agentName: delegation.agentName,
+    presentation,
+    accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel({
+      agentName: delegation.agentName,
+      statusLabel: presentation.statusLabel,
+      subtitle: presentation.subtitle,
+      sourceLabel: presentation.sourceLabel,
+      trackingLabel: presentation.trackingLabel,
+      messageCount,
+    }),
+    messageCountLabel: messageCount > 0
+      ? formatChatRuntimeDelegationMessageCount(messageCount)
+      : null,
+    statusStyles: getChatRuntimeDelegationStatusMobileRenderState({
+      status: delegation.status,
+      colors,
+    }).styles,
+    conversationPreview: {
+      rows: conversationPreviewState.rows,
+      roleStyles,
+      hiddenCount: hiddenConversationCount,
+      moreAction: getChatRuntimeDelegationConversationPreviewMoreActionState(hiddenConversationCount),
+    },
+    toolPreview: {
+      shouldRender: toolPreviewVisibilityRenderState.shouldRender,
+      label: formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount),
+      rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
+        rows: toolPreviewState.rows,
+        colors,
+      }),
+      hiddenCount: hiddenToolCount,
+      moreAction: getChatRuntimeDelegationToolPreviewMoreActionState(hiddenToolCount),
     },
   }
 }

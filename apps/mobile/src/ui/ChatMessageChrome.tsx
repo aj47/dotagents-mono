@@ -62,12 +62,9 @@ import {
 } from '@dotagents/shared/chat-utils';
 import {
   createAgentDelegationProgressMessages,
-  getAgentDelegationCardState,
   resolveAgentProgressConversationState,
   type ACPDelegationProgress,
   type AgentRetryInfo,
-  type AgentDelegationConversationPreviewRow,
-  type AgentDelegationPresentation,
   type AgentProgressUpdate,
   type AgentStepSummary,
   type AgentUserResponseEvent,
@@ -156,9 +153,6 @@ import {
   formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeConnectionErrorMessage,
   formatChatRuntimeDebugError,
-  formatChatRuntimeDelegationAccessibilityLabel,
-  formatChatRuntimeDelegationMessageCount,
-  formatChatRuntimeDelegationToolCallActivityLabel,
   formatChatRuntimeToolApprovalRequiredContent,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
@@ -173,9 +167,6 @@ import {
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
   getChatRuntimeAlertMessage,
-  getChatRuntimeDelegationConversationPreviewMoreActionState,
-  getChatRuntimeDelegationStatusMobileRenderState,
-  getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDockChromeMobileRenderState,
   getChatRuntimeHomeQuickStartEmptyMobileRenderState,
   getChatRuntimeHomeQuickStartItemMobileRenderState,
@@ -198,8 +189,7 @@ import {
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
-  getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState,
-  getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
+  getChatRuntimeDelegationCardMobilePresentationState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
   getChatRuntimeToolExecutionResultOnlyFallbackLabel,
@@ -219,8 +209,8 @@ import {
   shouldRenderChatRuntimeConversationThread,
   shouldRenderChatRuntimeActivityStep,
   type ChatConversationHomePromptDeleteConfirmAlertState,
-  type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
-  type ChatRuntimeDelegationMorePreviewActionState,
+  type ChatRuntimeConversationDelegationCardMobileState,
+  type ChatRuntimeDelegationCardMobilePresentationState,
   type ChatRuntimeAgentSelectorMobileRenderState,
   type ChatRuntimeActivityStepLike,
   type ChatRuntimeBackMobileRenderState,
@@ -239,7 +229,6 @@ import {
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
-  type ChatRuntimeDelegationCardMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeLoadingStateMobileRenderState,
@@ -250,7 +239,6 @@ import {
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
-  type ChatSessionStatusMobileStyleState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
@@ -1720,60 +1708,21 @@ type ChatMessageDelegationCardStyles = {
   toolPreviewMore: StyleProp<TextStyle>;
 };
 
-type ChatMessageDelegationToolPreviewRow =
-  ChatRuntimeToolExecutionCompactPreviewMobileRowState;
-
-type ChatMessageDelegationCardColors =
-  ChatRuntimeToolExecutionCompactPreviewMobileRowInput['colors']
-  & Parameters<typeof getChatRuntimeDelegationStatusMobileRenderState>[0]['colors'];
-
-type ChatMessageDelegationCardProps = {
-  surface: ChatRuntimeDelegationCardMobileRenderState['surface'];
-  agentName: string;
-  presentation: AgentDelegationPresentation;
-  accessibilityLabel: string;
-  messageCountLabel: string | null;
-  statusStyles?: ChatSessionStatusMobileStyleState | null;
-  conversationPreview: {
-    rows: AgentDelegationConversationPreviewRow[];
-    roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots;
-    hiddenCount: number;
-    moreAction: ChatRuntimeDelegationMorePreviewActionState;
+type ChatMessageDelegationCardProps = Omit<
+  ChatRuntimeDelegationCardMobilePresentationState,
+  'conversationPreview' | 'toolPreview'
+> & {
+  conversationPreview: ChatRuntimeDelegationCardMobilePresentationState['conversationPreview'] & {
     onShowAll?: (event: GestureResponderEvent) => void;
   };
-  toolPreview: {
-    shouldRender: boolean;
-    label: string;
-    rows: ChatMessageDelegationToolPreviewRow[];
-    hiddenCount: number;
-    moreAction: ChatRuntimeDelegationMorePreviewActionState;
+  toolPreview: ChatRuntimeDelegationCardMobilePresentationState['toolPreview'] & {
     onShowAll?: (event: GestureResponderEvent) => void;
   };
   styles: ChatMessageDelegationCardStyles;
 };
 
-type ChatMessageDelegationCardPropsInput = Omit<
-  ChatMessageDelegationCardProps,
-  | 'agentName'
-  | 'presentation'
-  | 'accessibilityLabel'
-  | 'messageCountLabel'
-  | 'statusStyles'
-  | 'conversationPreview'
-  | 'toolPreview'
-  | 'styles'
-> & {
-  isDelegation: boolean;
-  delegation?: ACPDelegationProgress | null;
-  toolEntries: readonly ChatMessageDisplayToolEntry[];
-  displayToolCallCount: number;
-  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>;
-  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>;
-  roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots;
-  colors: ChatMessageDelegationCardColors;
-  onShowAllConversationPreview?: (runId: string) => void;
-  onShowAllToolPreview?: (runId: string) => void;
-};
+type ChatMessageDelegationCardPropsInput =
+  ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;
 
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
 
@@ -2170,7 +2119,7 @@ type ChatMessageToolExecutionRowsInput = {
 };
 
 type ChatMessageToolExecutionRows = {
-  compactRows: readonly ChatMessageDelegationToolPreviewRow[];
+  compactRows: readonly ChatRuntimeToolExecutionCompactPreviewMobileRowState[];
   detailRows: readonly ChatMessageToolExecutionCallListRow[];
 };
 
@@ -8529,91 +8478,25 @@ export function createChatMessageRetryStatusProps({
     : null;
 }
 
-export function createChatMessageDelegationCardProps({
-  isDelegation,
-  surface,
-  delegation,
-  toolEntries,
-  displayToolCallCount,
-  expandedDelegationConversationPreviews,
-  expandedDelegationToolPreviews,
-  roleStyles,
-  colors,
-  onShowAllConversationPreview,
-  onShowAllToolPreview,
-}: ChatMessageDelegationCardPropsInput): ChatMessageThreadBodyProps['delegationCard'] {
-  if (!isDelegation || !delegation) return null;
-
-  const isConversationPreviewExpanded = getChatDisplayExpansionState(
-    expandedDelegationConversationPreviews,
-    delegation.runId,
-  );
-  const isToolPreviewExpanded = getChatDisplayExpansionState(
-    expandedDelegationToolPreviews,
-    delegation.runId,
-  );
-  const cardState = getAgentDelegationCardState(
-    delegation,
-    toolEntries,
-    {
-      maxSubtitleLength: surface.subtitleMaxLength,
-      conversationPreviewMaxRows: surface.conversationPreviewMaxRows,
-      conversationPreviewMaxLength: surface.conversationPreviewMaxLength,
-      includeAllConversationPreview: isConversationPreviewExpanded,
-      toolPreviewMaxRows: surface.toolPreviewMaxRows,
-      includeAllToolPreview: isToolPreviewExpanded,
-    },
-  );
-  const { presentation } = cardState;
-  const messageCount = presentation.messageCount ?? 0;
-  const conversationPreviewState = cardState.conversationPreview;
-  const hiddenConversationCount = conversationPreviewState.hiddenCount;
-  const toolPreviewState = cardState.toolPreview;
-  const hiddenToolCount = toolPreviewState.hiddenCount;
-  const toolPreviewVisibilityRenderState = getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState({
-    displayToolCallCount,
-  });
+export function createChatMessageDelegationCardProps(
+  cardInput: ChatMessageDelegationCardPropsInput,
+): ChatMessageThreadBodyProps['delegationCard'] {
+  const presentationState = getChatRuntimeDelegationCardMobilePresentationState(cardInput);
+  if (!presentationState) return null;
+  const {
+    onShowAllConversationPreview,
+    onShowAllToolPreview,
+  } = cardInput;
 
   return {
-    surface,
-    agentName: delegation.agentName,
-    presentation,
-    accessibilityLabel: formatChatRuntimeDelegationAccessibilityLabel({
-      agentName: delegation.agentName,
-      statusLabel: presentation.statusLabel,
-      subtitle: presentation.subtitle,
-      sourceLabel: presentation.sourceLabel,
-      trackingLabel: presentation.trackingLabel,
-      messageCount,
-    }),
-    messageCountLabel: messageCount > 0
-      ? formatChatRuntimeDelegationMessageCount(messageCount)
-      : null,
-    statusStyles: getChatRuntimeDelegationStatusMobileRenderState({
-      status: delegation.status,
-      colors,
-    }).styles,
+    ...presentationState,
     conversationPreview: {
-      rows: conversationPreviewState.rows,
-      roleStyles,
-      hiddenCount: hiddenConversationCount,
-      moreAction: getChatRuntimeDelegationConversationPreviewMoreActionState(hiddenConversationCount),
-      onShowAll: onShowAllConversationPreview
-        ? () => onShowAllConversationPreview(delegation.runId)
-        : undefined,
+      ...presentationState.conversationPreview,
+      onShowAll: () => onShowAllConversationPreview(presentationState.runId),
     },
     toolPreview: {
-      shouldRender: toolPreviewVisibilityRenderState.shouldRender,
-      label: formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount),
-      rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
-        rows: toolPreviewState.rows,
-        colors,
-      }),
-      hiddenCount: hiddenToolCount,
-      moreAction: getChatRuntimeDelegationToolPreviewMoreActionState(hiddenToolCount),
-      onShowAll: onShowAllToolPreview
-        ? () => onShowAllToolPreview(delegation.runId)
-        : undefined,
+      ...presentationState.toolPreview,
+      onShowAll: () => onShowAllToolPreview(presentationState.runId),
     },
   };
 }

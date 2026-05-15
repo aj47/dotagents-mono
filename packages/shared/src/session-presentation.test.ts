@@ -137,6 +137,7 @@ import {
   getChatRuntimeConversationToolActivityGroupThreadState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
+  getChatRuntimeDelegationCardMobilePresentationState,
   getChatRuntimeDelegationCardMobileRenderState,
   getChatRuntimeDelegationCardMobileState,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
@@ -3509,6 +3510,53 @@ describe("session presentation semantics", () => {
         runId: "run-1",
       },
     })
+    const delegationPresentationState = getChatRuntimeDelegationCardMobilePresentationState({
+      ...delegationCardState,
+      delegation: {
+        runId: "run-1",
+        agentName: "Worker",
+        task: "Inspect files",
+        status: "running",
+        startTime: 1_700_000_000_000,
+        conversation: [{
+          role: "assistant",
+          content: "Looking through the changed files.",
+          timestamp: 1_700_000_010_000,
+        }],
+      },
+      toolEntries: [{
+        toolCall: { name: "read_file", arguments: { path: "/tmp/file.ts" } },
+        label: "read_file:/tmp/file.ts",
+        origIdx: 0,
+        result: { success: true, content: "ok" },
+      }],
+      displayToolCallCount: 1,
+    })
+    expect(delegationPresentationState).toMatchObject({
+      runId: "run-1",
+      agentName: "Worker",
+      messageCountLabel: "1m",
+      conversationPreview: {
+        hiddenCount: 0,
+        rows: [{
+          role: "assistant",
+          content: "Looking through the changed files.",
+        }],
+      },
+      toolPreview: {
+        shouldRender: true,
+        label: "Tool activity · 1 tool call",
+        hiddenCount: 0,
+        rows: [{
+          preview: "read_file:/tmp/file.ts",
+          renderState: {
+            state: "success",
+          },
+        }],
+      },
+    })
+    expect(delegationPresentationState?.accessibilityLabel).toContain("Worker")
+    expect(delegationPresentationState?.statusStyles.text.color).toBe("#2563eb")
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")
     expect(expandedDelegationConversationPreviews).toEqual({ "run-1": true })
