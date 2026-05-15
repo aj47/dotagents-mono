@@ -2322,8 +2322,10 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
   assert.match(sessionPresentationSource, /return getChatMessageMobileRenderState\(\{\s+\.\.\.input,\s+hasErrors,\s+\}\)/);
   assert.doesNotMatch(chatMessageChromeSource, /const contentRenderState = messageRenderState\.content;/);
   assert.match(sessionPresentationSource, /renderState: message\.content,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageContentRenderState,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConversationContentState = Pick<\s+ChatMessageContentRenderState,\s+'shouldRenderExpandedContent' \| 'shouldRenderCollapsedTextPreview'\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRenderState,/);
+  assert.match(sessionPresentationSource, /export type ChatRuntimeConversationContentMobileRenderState = Pick<\s+ChatMessageContentRenderState,\s+"shouldRenderExpandedContent" \| "shouldRenderCollapsedTextPreview"\s+>/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationContentState = ChatRuntimeConversationContentMobileRenderState;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const contentState = messageRenderState\.content;/);
   assert.doesNotMatch(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0/);
 });
 
@@ -3158,10 +3160,11 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(screenSource, /threadList: \{[\s\S]*?messages,[\s\S]*?visibleMessageCount,[\s\S]*?onToggleMessageExpansion: toggleMessageExpansion,/);
   assert.match(chatMessageChromeSource, /const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState\(\{\s+\.\.\.threadList,\s+colors,\s+actionStyles: styles\.actionStyles,\s+spinnerSource,\s+\}\);/);
   assert.doesNotMatch(screenSource, /spinnerSource: isDark \? darkSpinner : lightSpinner,/);
-  assert.match(sessionPresentationSource, /\.\.\.getChatRuntimeConversationContentMobileState\(\{\s+messageIndex,\s+visibleMessageContent,\s+isStreaming: isLiveStreamingAssistantMessage,\s+canToggleCollapsedPreview: messageRenderState\.collapsedPreviewAction\.canToggle,\s+colors,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+onToggleMessageExpansion,/);
+  assert.match(sessionPresentationSource, /\.\.\.getChatRuntimeConversationContentMobileState\(\{\s+messageIndex,\s+visibleMessageContent,\s+isStreaming: isLiveStreamingAssistantMessage,\s+canToggleCollapsedPreview: messageRenderState\.collapsedPreviewAction\.canToggle,\s+contentState: messageRenderState\.content,\s+colors,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+onToggleMessageExpansion,/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageConversationContentInput/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeConversationContentMobileState\(\{/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationContentMobileState/);
+  assert.match(sessionPresentationSource, /return \{\s+contentState,\s+expanded: \{/);
   assert.match(sessionPresentationSource, /streamingRenderState: getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming,\s+content: visibleMessageContent,\s+colors,/);
   assert.match(sessionPresentationSource, /markdownContent: visibleMessageContent,/);
   assert.match(sessionPresentationSource, /onPress: canToggleCollapsedPreview\s+\? \(\) => onToggleMessageExpansion\(messageIndex\)\s+: undefined,/);

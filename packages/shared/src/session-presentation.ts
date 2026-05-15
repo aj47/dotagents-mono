@@ -81,6 +81,7 @@ import {
   type ChatMessageActionLayoutState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
+  type ChatMessageContentRenderState,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
   type ChatMessageCopyMobileRenderState,
@@ -639,6 +640,11 @@ export interface ChatRuntimeConversationMessageRuntimeThreadStateInput<
 export type ChatRuntimeConversationMessageRuntimeThreadState<TBody extends { inlineActivity?: unknown | null }> =
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
 
+export type ChatRuntimeConversationContentMobileRenderState = Pick<
+  ChatMessageContentRenderState,
+  "shouldRenderExpandedContent" | "shouldRenderCollapsedTextPreview"
+>
+
 export interface ChatRuntimeConversationContentMobileStateInput<
   TColors extends ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
   TSpinnerSource,
@@ -649,6 +655,7 @@ export interface ChatRuntimeConversationContentMobileStateInput<
   visibleMessageContent: string
   isStreaming: boolean
   canToggleCollapsedPreview: boolean
+  contentState: ChatRuntimeConversationContentMobileRenderState
   colors: TColors
   assetBaseUrl?: TAssetBaseUrl
   assetAuthToken?: TAssetAuthToken
@@ -661,6 +668,7 @@ export interface ChatRuntimeConversationContentMobileState<
   TAssetBaseUrl = string,
   TAssetAuthToken = string,
 > {
+  contentState: ChatRuntimeConversationContentMobileRenderState
   expanded: {
     streamingRenderState: ChatRuntimeStreamingContentMobileRenderState
     markdownContent: string
@@ -6751,6 +6759,7 @@ export function getChatRuntimeConversationContentMobileState<
   visibleMessageContent,
   isStreaming,
   canToggleCollapsedPreview,
+  contentState,
   colors,
   assetBaseUrl,
   assetAuthToken,
@@ -6767,6 +6776,7 @@ export function getChatRuntimeConversationContentMobileState<
   TAssetAuthToken
 > {
   return {
+    contentState,
     expanded: {
       streamingRenderState: getChatRuntimeStreamingContentMobileRenderState({
         isStreaming,
@@ -7312,6 +7322,7 @@ export function getChatRuntimeConversationThreadBodyMobileState<
         visibleMessageContent,
         isStreaming: isLiveStreamingAssistantMessage,
         canToggleCollapsedPreview: messageRenderState.collapsedPreviewAction.canToggle,
+        contentState: messageRenderState.content,
         colors,
         assetBaseUrl,
         assetAuthToken,

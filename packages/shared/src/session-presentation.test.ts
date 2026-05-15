@@ -3404,6 +3404,7 @@ describe("session presentation semantics", () => {
       visibleMessageContent: "Working",
       isStreaming: true,
       canToggleCollapsedPreview: true,
+      contentState: liveConversationMessageContext.messageRenderState.content,
       colors: messageThreadStyleColors,
       assetBaseUrl: "http://localhost:3000/assets",
       assetAuthToken: "token",
@@ -3411,6 +3412,10 @@ describe("session presentation semantics", () => {
       onToggleMessageExpansion: (messageIndex) => {
         toggledMessageIndex = messageIndex
       },
+    })
+    expect(contentState.contentState).toMatchObject({
+      shouldRenderExpandedContent: true,
+      shouldRenderCollapsedTextPreview: false,
     })
     expect(contentState.expanded).toMatchObject({
       streamingRenderState: {

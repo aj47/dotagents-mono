@@ -43,7 +43,6 @@ import {
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
-  type ChatMessageContentRenderState,
   type ChatMessageExpansionMobileRenderState,
   type MessageContentForModelLike,
 } from '@dotagents/shared/message-display-utils';
@@ -233,6 +232,7 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
+  type ChatRuntimeConversationContentMobileRenderState,
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderState,
@@ -2745,10 +2745,7 @@ type ChatMessageContentRowProps = {
   bodyStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageConversationContentState = Pick<
-  ChatMessageContentRenderState,
-  'shouldRenderExpandedContent' | 'shouldRenderCollapsedTextPreview'
->;
+type ChatMessageConversationContentState = ChatRuntimeConversationContentMobileRenderState;
 
 type ChatMessageStreamingContentRenderState = {
   shouldRender: boolean;
@@ -2976,6 +2973,7 @@ export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conve
 
 export type ChatMessageConversationBodyPropsInput = {
   messageRenderState: ChatMessageMobileRenderState;
+  contentState: ChatMessageConversationContentState;
   actionSet: ChatMessageActionSetInput;
   expanded: ChatMessageExpandedContentPropsInput;
   collapsed: Pick<ChatMessageCollapsedPreviewPropsInput, 'onPress'>;
@@ -8265,12 +8263,12 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
 
 export function createChatMessageConversationBodyProps({
   messageRenderState,
+  contentState,
   actionSet: actionSetInput,
   expanded,
   collapsed,
   toolExecutionStack,
 }: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
-  const contentState = messageRenderState.content;
   const actionSet = createChatMessageActionSet(actionSetInput);
 
   return {
