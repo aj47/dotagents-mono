@@ -187,7 +187,6 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDockChromeMobileRenderState,
-  getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
@@ -2439,12 +2438,6 @@ type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState &
   textStyle: StyleProp<TextStyle>;
 };
 
-type ChatMessageRuntimeDebugPanelsRenderStateInput = {
-  requestDebugText?: string | null;
-  voiceDebugEnabled?: boolean;
-  voiceEvents?: readonly VoiceDebugEntry[] | null;
-};
-
 type ChatMessageConversationViewportStyleSlots = {
   frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' | 'rootStyle'>;
   scrollViewport: Pick<ChatMessageScrollViewportProps, 'style' | 'contentContainerStyle'>;
@@ -2568,9 +2561,21 @@ type ChatMessageRuntimeViewportChromePropsInput<
       TTask
     >['colors'];
     onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
-    requestDebugText?: ChatMessageRuntimeDebugPanelsRenderStateInput['requestDebugText'];
-    voiceDebugEnabled?: ChatMessageRuntimeDebugPanelsRenderStateInput['voiceDebugEnabled'];
-    voiceEvents?: ChatMessageRuntimeDebugPanelsRenderStateInput['voiceEvents'];
+    requestDebugText?: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['requestDebugText'];
+    voiceDebugEnabled?: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['voiceDebugEnabled'];
+    voiceEvents?: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['voiceEvents'];
   };
 
 type ChatMessageResponseHistoryPanelViewProps = ComponentProps<typeof ResponseHistoryPanel>;
@@ -3961,18 +3966,6 @@ export function createChatMessageConversationItemThreadRenderState({
     groupRenderState,
     groupThreadState,
     ...messageThreadInput,
-  });
-}
-
-export function createChatMessageRuntimeDebugPanelsRenderState({
-  requestDebugText,
-  voiceDebugEnabled = false,
-  voiceEvents = [],
-}: ChatMessageRuntimeDebugPanelsRenderStateInput): ChatRuntimeDebugPanelsMobileRenderState {
-  return getChatRuntimeDebugPanelsMobileDisplayState({
-    requestDebugText,
-    voiceDebugEnabled,
-    voiceEvents,
   });
 }
 

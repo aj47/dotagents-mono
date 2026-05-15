@@ -136,7 +136,7 @@ test('falls back to normal direct-send handling for stale handsfree finalization
 
 test('surfaces recent voice debug events in chat when internal diagnostics are enabled', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileDisplayState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileDisplayState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeDebugPanelsMobileRenderState/);
   assert.match(screenSource, /useChatComposerRuntimeVoiceDebugResetState,/);
   assert.match(screenSource, /useChatComposerRuntimeVoiceDebugResetState\(\{\s+isVoiceDebugEnabled: handsFreeDebugEnabled,\s+clearVoiceDebug,\s+\}\);/);

@@ -4392,7 +4392,7 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /formatChatRuntimeAssistantErrorContent,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileDisplayState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileDisplayState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeDebugState,/);
   assert.doesNotMatch(screenSource, /resolveAgentProgressConversationState,/);
@@ -4621,7 +4621,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /handleNewChat/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(sessionPresentationSource, /debugPanels: getChatRuntimeDebugPanelsMobileDisplayState\(\{\s+requestDebugText,\s+voiceDebugEnabled,\s+voiceEvents,\s+\}\),/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState\(\{[\s\S]*?return getChatRuntimeDebugPanelsMobileDisplayState\(\{[\s\S]*?requestDebugText,[\s\S]*?voiceDebugEnabled,[\s\S]*?voiceEvents,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileDisplayState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeDebugPanelsMobileDisplayState/);
   assert.doesNotMatch(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
   assert.doesNotMatch(screenSource, /requestShouldRender: Boolean\(debugInfo\)/);
