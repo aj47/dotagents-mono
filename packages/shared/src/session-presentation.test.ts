@@ -179,6 +179,7 @@ import {
   getChatRuntimeToolApprovalMobileSurfaceColors,
   getChatRuntimeToolApprovalMobileSurfaceState,
   getChatRuntimeToolApprovalSpinnerMobileColors,
+  getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeTurnDurationBadgeState,
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
@@ -2869,6 +2870,19 @@ describe("session presentation semantics", () => {
     expect(messageThreadPresentation.toolPayloadPreviewNumberOfLines).toBe(2)
     expect(messageThreadPresentation.pendingToolResultRenderState.label).toBe("Waiting...")
     expect(messageThreadPresentation.toolExecutionEmptyStateRenderState.label).toBe("No tool calls")
+    const threadChromeStyle = getChatRuntimeThreadChromeMobileStyleRenderState({
+      colors: {
+        ...messageThreadStyleColors,
+        background: "#ffffff",
+        destructive: "#dc2626",
+        successForeground: "#ecfdf5",
+      },
+    })
+    expect(threadChromeStyle.compactToolExecution.statusColors.success).toBe("#16a34a")
+    expect(threadChromeStyle.toolExecutionDetail.payloadPreview.numberOfLines).toBe(2)
+    expect(threadChromeStyle.toolActivityGroup.colors.countBadge.color).toBe("#0ea5e9")
+    expect(threadChromeStyle.toolApproval.title).toBe("Tool Approval Required")
+    expect(threadChromeStyle.messageThread.message.surface.paddingHorizontal).toBe("sm")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")

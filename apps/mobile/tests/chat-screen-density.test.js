@@ -337,6 +337,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeThreadChromeMobileStyleRenderState,/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeThreadChromeMobileStyleRenderState\(\{\s+colors,\s+\}\);/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeThreadChromeMobileStyleRenderState\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalActionMobileIconColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalActionMobileIconState,/);
@@ -402,7 +405,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /const isArgumentsExpanded = getChatDisplayExpansionState\(\s+expandedToolApprovals,\s+toolApproval\.approvalId,/);
   assert.match(chatMessageChromeSource, /const isResponding = pendingApprovalResponseId === toolApproval\.approvalId;/);
   assert.match(chatMessageChromeSource, /const renderState = getChatRuntimeToolApprovalMobileRenderState\(\{\s+toolName: toolApproval\.toolName,\s+isArgumentsExpanded,\s+isResponding,\s+colors,/);
-  assert.match(chatMessageChromeSource, /toolApproval: getChatRuntimeToolApprovalMobileRenderState\(\{\s+toolName: '',\s+colors,\s+\}\),/);
+  assert.match(sessionPresentationSource, /toolApproval: getChatRuntimeToolApprovalMobileRenderState\(\{\s+toolName: "",\s+colors,\s+\}\),/);
   assert.match(screenSource, /const toolApprovalStyleState = threadChromeStyleState\.toolApproval;/);
   assert.doesNotMatch(screenSource, /const mobileToolApprovalHeaderIcon =/);
   assert.doesNotMatch(screenSource, /const mobileToolApprovalApproveIcon =/);
@@ -2238,7 +2241,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /formatToolExecutionCount,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailArgumentsState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getToolExecutionCompactMobileStyleRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionCompactMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileCopyButtonRenderState,/);
@@ -2252,7 +2256,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobilePendingResultRenderState,/);
   assert.match(sessionPresentationSource, /getToolExecutionDetailMobilePendingResultRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileSectionHeaderRenderState,/);
-  assert.match(chatMessageChromeSource, /getToolExecutionDetailMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getToolExecutionDetailMobileStyleRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionDetailMobileStyleRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailResultState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionCallDisplayState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionMobileVisibilityRenderState,/);
@@ -3234,7 +3239,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /createChatMessageConversationToolActivityGroupRenderState,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationToolActivityGroupThreadState,/);
   assert.match(chatMessageChromeSource, /getToolActivityGroupMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getToolActivityGroupMobileSurfaceRenderState,/);
+  assert.match(sessionPresentationSource, /getToolActivityGroupMobileSurfaceRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolActivityGroupMobileSurfaceRenderState,/);
   assert.match(chatMessageChromeSource, /getToolActivityGroupExpansionInheritanceItems,/);
   assert.match(chatMessageChromeSource, /getToolActivityGroupStateKey,/);
   assert.match(chatMessageChromeSource, /groupToolActivity,/);

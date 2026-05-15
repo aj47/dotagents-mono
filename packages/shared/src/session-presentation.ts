@@ -30,11 +30,16 @@ import {
 } from "./accessibility-utils"
 import {
   formatToolExecutionCount,
+  getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileStyleRenderState,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
+import {
+  getToolActivityGroupMobileSurfaceRenderState,
+  type ToolActivityGroupMobileColorPalette,
+} from "./tool-activity-grouping"
 import { formatTurnDuration } from "./turn-duration"
 
 export type SessionLifecycleState = AgentConversationState
@@ -294,6 +299,24 @@ export interface ChatRuntimeMessageThreadPresentationMobileRenderState {
   >["payloadPreview"]["numberOfLines"]
   pendingToolResultRenderState: ReturnType<typeof getToolExecutionDetailMobilePendingResultRenderState>
   toolExecutionEmptyStateRenderState: ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState>
+}
+
+export type ChatRuntimeThreadChromeMobileStyleColorPalette =
+  & ToolExecutionSurfaceColorPalette
+  & ToolActivityGroupMobileColorPalette
+  & ChatRuntimeToolApprovalMobileSurfaceColorPalette
+  & ChatMessageMobileRenderColorPalette
+
+export interface ChatRuntimeThreadChromeMobileStyleRenderStateInput {
+  colors: ChatRuntimeThreadChromeMobileStyleColorPalette
+}
+
+export interface ChatRuntimeThreadChromeMobileStyleRenderState {
+  compactToolExecution: ReturnType<typeof getToolExecutionCompactMobileStyleRenderState>
+  toolExecutionDetail: ReturnType<typeof getToolExecutionDetailMobileStyleRenderState>
+  toolActivityGroup: ReturnType<typeof getToolActivityGroupMobileSurfaceRenderState>
+  toolApproval: ReturnType<typeof getChatRuntimeToolApprovalMobileRenderState>
+  messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
 }
 
 export interface ChatRuntimeBranchActionInput {
@@ -5042,6 +5065,29 @@ export function getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors,
     }),
     toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState(),
+  }
+}
+
+export function getChatRuntimeThreadChromeMobileStyleRenderState({
+  colors,
+}: ChatRuntimeThreadChromeMobileStyleRenderStateInput): ChatRuntimeThreadChromeMobileStyleRenderState {
+  return {
+    compactToolExecution: getToolExecutionCompactMobileStyleRenderState({
+      colors,
+    }),
+    toolExecutionDetail: getToolExecutionDetailMobileStyleRenderState({
+      colors,
+    }),
+    toolActivityGroup: getToolActivityGroupMobileSurfaceRenderState({
+      colors,
+    }),
+    toolApproval: getChatRuntimeToolApprovalMobileRenderState({
+      toolName: "",
+      colors,
+    }),
+    messageThread: getChatRuntimeMessageThreadMobileStyleRenderState({
+      colors,
+    }),
   }
 }
 
