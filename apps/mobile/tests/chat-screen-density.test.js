@@ -2248,7 +2248,8 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
   assert.doesNotMatch(screenSource, /const messageContentRenderState = messageRenderState\.content;/);
   assert.doesNotMatch(screenSource, /shouldShowCollapsedTextPreview,\s+shouldRenderExpandedContent,\s+shouldRenderCollapsedTextPreview,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRenderState/);
-  assert.match(chatMessageChromeSource, /return getChatMessageMobileRenderState\(\{\s+\.\.\.input,\s+hasErrors,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationMessageMobileRenderState\(\{\s+\.\.\.input,\s+toolResults: toolEntries\.map\(entry => entry\.result\),\s+\}\);/);
+  assert.match(sessionPresentationSource, /return getChatMessageMobileRenderState\(\{\s+\.\.\.input,\s+hasErrors,\s+\}\)/);
   assert.match(chatMessageChromeSource, /const contentRenderState = messageRenderState\.content;/);
   assert.match(chatMessageChromeSource, /type ChatMessageContentRenderState,/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationContentState = Pick<\s+ChatMessageContentRenderState,\s+'shouldRenderExpandedContent' \| 'shouldRenderCollapsedTextPreview'\s+>;/);
@@ -2256,7 +2257,8 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 });
 
 test('uses shared media sanitization for collapsed mobile message previews', () => {
-  assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.match(sessionPresentationSource, /getChatMessageMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
   assert.match(screenSource, /createChatMessageRuntimeModelMessages\(\[\.\.\.currentMessages, userMsg\]\)/);
   assert.match(chatMessageChromeSource, /sanitizeMessagesForModel/);
@@ -2321,7 +2323,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /getToolExecutionResultOnlyFallbackRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionResultOnlyFallbackRenderState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionSummaryDisplayState,/);
-  assert.match(chatMessageChromeSource, /getToolExecutionSummaryDisplayState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionSummaryDisplayState,/);
+  assert.match(sessionPresentationSource, /getToolExecutionSummaryDisplayState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionCompactMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColorMap,/);
   assert.doesNotMatch(screenSource, /getToolExecutionStatusMobileColor,/);
@@ -2376,7 +2379,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionDetailCopy = getToolExecutionDetailCopyState\(\);/);
   assert.doesNotMatch(screenSource, /const toolExecutionStatusCopy = getToolExecutionStatusCopyState\(\);/);
   assert.doesNotMatch(screenSource, /getToolExecutionSummaryDisplayState\(renderedToolEntries\.map\(entry => entry\.result\)\)/);
-  assert.match(chatMessageChromeSource, /const \{ hasErrors \} = getToolExecutionSummaryDisplayState\(\s+toolEntries\.map\(entry => entry\.result\),\s+\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const \{ hasErrors \} = getToolExecutionSummaryDisplayState\(\s+toolEntries\.map\(entry => entry\.result\),\s+\);/);
+  assert.match(sessionPresentationSource, /const \{ hasErrors \} = getToolExecutionSummaryDisplayState\(toolResults\)/);
   assert.doesNotMatch(chatMessageChromeSource, /const executionSummary = getToolExecutionSummaryDisplayState\(\s+rowInput\.entries\.map\(entry => entry\.result\),\s+\);/);
   assert.match(sessionPresentationSource, /const executionSummary = getToolExecutionSummaryDisplayState\(results\)/);
   assert.match(sessionPresentationSource, /isPending: executionSummary\.isPending,\s+allSuccess: executionSummary\.allSuccess,\s+hasErrors: executionSummary\.hasErrors,/);
@@ -3659,7 +3663,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /getChatMessageCopyMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageExpansionMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.match(sessionPresentationSource, /getChatMessageMobileRenderState,/);
   assert.match(sessionPresentationSource, /message: getChatMessageMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /getChatMessageSpeechMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatMessageSpeechMobileRenderState,/);
@@ -4081,7 +4086,8 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
 
 test('uses shared desktop chat message presentation tones for mobile message cards', () => {
   assert.doesNotMatch(screenSource, /getChatMessageMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
+  assert.match(sessionPresentationSource, /getChatMessageMobileRenderState,/);
   assert.match(sessionPresentationSource, /message: getChatMessageMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageThreadPresentationMobileRenderState\(\{[\s\S]*?delegationSurface: delegationCardRenderState\.surface,[\s\S]*?delegationRoleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots\(colors\),[\s\S]*?pendingToolResultRenderState: getToolExecutionDetailMobilePendingResultRenderState\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageThreadPresentationMobileRenderState,/);

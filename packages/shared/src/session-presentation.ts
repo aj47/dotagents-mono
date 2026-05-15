@@ -459,6 +459,14 @@ export interface ChatRuntimeThreadChromeMobileStyleRenderState {
   messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
 }
 
+export type ChatRuntimeConversationMessageMobileRenderStateInput =
+  Omit<Parameters<typeof getChatMessageMobileRenderState>[0], "hasErrors"> & {
+    toolResults: Array<ToolResult | null | undefined>
+  }
+
+export type ChatRuntimeConversationMessageMobileRenderState =
+  ReturnType<typeof getChatMessageMobileRenderState>
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
   toolCall: ToolCall
@@ -5521,6 +5529,18 @@ export function getChatRuntimeThreadChromeMobileStyleRenderState({
       colors,
     }),
   }
+}
+
+export function getChatRuntimeConversationMessageMobileRenderState({
+  toolResults,
+  ...input
+}: ChatRuntimeConversationMessageMobileRenderStateInput): ChatRuntimeConversationMessageMobileRenderState {
+  const { hasErrors } = getToolExecutionSummaryDisplayState(toolResults)
+
+  return getChatMessageMobileRenderState({
+    ...input,
+    hasErrors,
+  })
 }
 
 export function getChatRuntimeToolExecutionCompactPreviewMobileRowState({

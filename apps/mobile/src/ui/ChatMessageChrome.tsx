@@ -38,7 +38,6 @@ import {
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageCopyMobileRenderState,
-  getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
@@ -207,6 +206,7 @@ import {
   getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
@@ -273,6 +273,7 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatComposerRuntimeChromeMobileStyleRenderState,
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
+  type ChatRuntimeConversationMessageMobileRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileColorPalette,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMobileChromeStyleRenderState,
@@ -290,7 +291,6 @@ import {
   getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
-  getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -1319,10 +1319,10 @@ type ChatMessageRuntimeClipboardActionsState = {
   handleCopyToolPayload: (content: string) => Promise<void>;
 };
 
-type ChatMessageMobileRenderState = ReturnType<typeof getChatMessageMobileRenderState>;
+type ChatMessageMobileRenderState = ReturnType<typeof getChatRuntimeConversationMessageMobileRenderState>;
 
 type ChatMessageRenderStateInput =
-  Omit<Parameters<typeof getChatMessageMobileRenderState>[0], 'hasErrors'>
+  Omit<ChatRuntimeConversationMessageMobileRenderStateInput, 'toolResults'>
   & {
     toolEntries: readonly Pick<ChatMessageDisplayToolEntry, 'result'>[];
   };
@@ -1334,7 +1334,7 @@ type ChatMessageConversationRenderContextInput = {
   lastConversationContentMessageIndex: number;
   expandedMessages: ChatDisplayExpansionStateMap<number>;
   resultOnlyToolLabel: string;
-  colors: Parameters<typeof getChatMessageMobileRenderState>[0]['colors'];
+  colors: ChatRuntimeConversationMessageMobileRenderStateInput['colors'];
 };
 
 type ChatMessageConversationRenderContext = {
@@ -1393,7 +1393,7 @@ type ChatMessageConversationActionSetInput = {
   isSpeaking: boolean;
   isCopied: boolean;
   ttsEnabled: boolean;
-  colors: Parameters<typeof getChatMessageMobileRenderState>[0]['colors'];
+  colors: ChatRuntimeConversationMessageMobileRenderStateInput['colors'];
   styles: ChatMessageActionStyleSlots;
   onSpeakMessage: (messageIndex: number, content: string) => void;
   onBranchMessage?: (messageIndex: number) => void;
@@ -4080,13 +4080,9 @@ export function createChatMessageRenderState({
   toolEntries,
   ...input
 }: ChatMessageRenderStateInput) {
-  const { hasErrors } = getToolExecutionSummaryDisplayState(
-    toolEntries.map(entry => entry.result),
-  );
-
-  return getChatMessageMobileRenderState({
+  return getChatRuntimeConversationMessageMobileRenderState({
     ...input,
-    hasErrors,
+    toolResults: toolEntries.map(entry => entry.result),
   });
 }
 

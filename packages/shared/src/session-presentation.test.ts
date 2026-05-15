@@ -95,6 +95,7 @@ import {
   getChatRuntimeConnectionBannerMobileState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
+  getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
   getChatRuntimeDelegationCardMobileRenderState,
@@ -3043,6 +3044,32 @@ describe("session presentation semantics", () => {
     expect(messageThreadStyle.turnDuration.live.colors).toEqual(
       getChatMessageActionMobileTurnDurationBadgeColors({ isLive: true }, messageThreadStyleColors),
     )
+    const successfulConversationMessage = getChatRuntimeConversationMessageMobileRenderState({
+      role: "assistant",
+      isComplete: true,
+      isLast: true,
+      content: "Done",
+      isExpanded: false,
+      shouldCollapse: false,
+      isToolOnly: false,
+      isLiveStreaming: false,
+      toolResults: [{ success: true, content: "ok" }],
+      colors: messageThreadStyleColors,
+    })
+    expect(successfulConversationMessage.tone).toBe("assistant_final")
+    const failedConversationMessage = getChatRuntimeConversationMessageMobileRenderState({
+      role: "assistant",
+      isComplete: true,
+      isLast: true,
+      content: "Done",
+      isExpanded: false,
+      shouldCollapse: false,
+      isToolOnly: false,
+      isLiveStreaming: false,
+      toolResults: [{ success: false, content: "", error: "Nope" }],
+      colors: messageThreadStyleColors,
+    })
+    expect(failedConversationMessage.tone).toBe("assistant")
     const messageThreadPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: {
         ...messageThreadStyleColors,
