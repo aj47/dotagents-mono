@@ -1832,6 +1832,19 @@ export interface ChatSessionStatusMobileRenderState {
   }
 }
 
+export type ChatSessionStatusDesktopIndicatorKind =
+  | "needs_input"
+  | "blocked"
+  | "background"
+  | "running"
+  | "complete"
+
+export interface ChatSessionStatusDesktopRenderState {
+  kind: ChatSessionStatusDesktopIndicatorKind
+  iconClassName: string
+  loadingSpinnerClassName: string
+}
+
 export interface ChatRuntimeDelegationStatusMobileRenderStateInput {
   status: string
   colors: ChatSessionStatusMobileColorPalette
@@ -3138,6 +3151,15 @@ export const CHAT_RUNTIME_PRESENTATION = {
 } as const
 
 export const CHAT_SESSION_STATUS_SURFACE_PRESENTATION = {
+  desktop: {
+    iconClassNames: {
+      needsInput: "h-3.5 w-3.5 text-amber-500 animate-pulse",
+      blocked: "h-3.5 w-3.5 text-red-500",
+      background: "h-3.5 w-3.5 text-muted-foreground",
+      complete: "h-3.5 w-3.5 text-green-500",
+    },
+    loadingSpinnerClassName: "[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5",
+  },
   mobile: {
     chip: {
       flexDirection: "row",
@@ -3187,6 +3209,15 @@ export const CHAT_SESSION_STATUS_SURFACE_PRESENTATION = {
     },
   },
 } as const satisfies {
+  desktop: {
+    iconClassNames: {
+      needsInput: string
+      blocked: string
+      background: string
+      complete: string
+    }
+    loadingSpinnerClassName: string
+  }
   mobile: {
     chip: {
       flexDirection: string
@@ -6059,6 +6090,54 @@ export function getChatSessionStatusMobileStyleState(
 
 export function getSessionStatusMobileSurfaceState() {
   return CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile
+}
+
+export function getSessionStatusDesktopSurfaceState() {
+  return CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop
+}
+
+export function getSessionStatusDesktopRenderState(
+  presentation: SessionPresentation,
+): ChatSessionStatusDesktopRenderState {
+  const surface = getSessionStatusDesktopSurfaceState()
+
+  if (presentation.lifecycleState === "needs_input") {
+    return {
+      kind: "needs_input",
+      iconClassName: surface.iconClassNames.needsInput,
+      loadingSpinnerClassName: surface.loadingSpinnerClassName,
+    }
+  }
+
+  if (presentation.lifecycleState === "blocked") {
+    return {
+      kind: "blocked",
+      iconClassName: surface.iconClassNames.blocked,
+      loadingSpinnerClassName: surface.loadingSpinnerClassName,
+    }
+  }
+
+  if (presentation.lifecycleState === "running" && presentation.attentionState === "background") {
+    return {
+      kind: "background",
+      iconClassName: surface.iconClassNames.background,
+      loadingSpinnerClassName: surface.loadingSpinnerClassName,
+    }
+  }
+
+  if (presentation.lifecycleState === "running") {
+    return {
+      kind: "running",
+      iconClassName: "",
+      loadingSpinnerClassName: surface.loadingSpinnerClassName,
+    }
+  }
+
+  return {
+    kind: "complete",
+    iconClassName: surface.iconClassNames.complete,
+    loadingSpinnerClassName: surface.loadingSpinnerClassName,
+  }
 }
 
 export function getSessionStatusMobileStyleRenderState({

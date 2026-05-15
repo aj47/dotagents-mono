@@ -148,6 +148,7 @@ import {
   getChatRuntimeTurnDurationBadgeState,
   getFollowUpInputPresentation,
   getSessionPresentation,
+  getSessionStatusDesktopRenderState,
   shouldRenderChatRuntimeActivityStep,
 } from "@dotagents/shared/session-presentation"
 import {
@@ -4325,6 +4326,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const conversationState = sessionPresentation.lifecycleState
   const conversationStateLabel = sessionPresentation.label
   const conversationStateBadgeClass = sessionPresentation.badgeClassName
+  const conversationStatusIndicatorState = getSessionStatusDesktopRenderState(sessionPresentation)
   const isSessionActiveForInput = conversationState === "running" || conversationState === "needs_input"
   const followUpInputPresentation = getFollowUpInputPresentation({
     conversationState,
@@ -4334,19 +4336,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Get status indicator for tile variant
   const getStatusIndicator = () => {
-    if (conversationState === "needs_input") {
-      return <Shield className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+    if (conversationStatusIndicatorState.kind === "needs_input") {
+      return <Shield className={conversationStatusIndicatorState.iconClassName} />
     }
-    if (conversationState === "blocked") {
-      return <XCircle className="h-3.5 w-3.5 text-red-500" />
+    if (conversationStatusIndicatorState.kind === "blocked") {
+      return <XCircle className={conversationStatusIndicatorState.iconClassName} />
     }
-    if (conversationState === "running" && sessionPresentation.attentionState === "background") {
-      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
+    if (conversationStatusIndicatorState.kind === "background") {
+      return <Moon className={conversationStatusIndicatorState.iconClassName} />
     }
-    if (conversationState === "running") {
-      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
+    if (conversationStatusIndicatorState.kind === "running") {
+      return <LoadingSpinner size="sm" className={conversationStatusIndicatorState.loadingSpinnerClassName} />
     }
-    return <Check className="h-3.5 w-3.5 text-green-500" />
+    return <Check className={conversationStatusIndicatorState.iconClassName} />
   }
 
   // Get title for tile variant

@@ -190,6 +190,8 @@ import {
   getChatSessionStatusMobileStyleState,
   getFollowUpInputPresentation,
   getSessionStatusMobileColors,
+  getSessionStatusDesktopRenderState,
+  getSessionStatusDesktopSurfaceState,
   getSessionStatusMobileRenderState,
   getSessionStatusMobileStyleRenderState,
   getSessionStatusMobileSurfaceState,
@@ -3096,6 +3098,54 @@ describe("session presentation semantics", () => {
         size: CHAT_RUNTIME_PRESENTATION.pin.mobileIcon.size,
         colorToken: "primary",
       },
+    })
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.needsInput).toBe(
+      "h-3.5 w-3.5 text-amber-500 animate-pulse",
+    )
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.blocked).toBe(
+      "h-3.5 w-3.5 text-red-500",
+    )
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.background).toBe(
+      "h-3.5 w-3.5 text-muted-foreground",
+    )
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.complete).toBe(
+      "h-3.5 w-3.5 text-green-500",
+    )
+    expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.loadingSpinnerClassName).toBe(
+      "[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5",
+    )
+    expect(getSessionStatusDesktopSurfaceState()).toBe(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop)
+    expect(getSessionStatusDesktopRenderState(
+      getSessionPresentation({ conversationState: "needs_input" }),
+    )).toMatchObject({
+      kind: "needs_input",
+      iconClassName: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.needsInput,
+      loadingSpinnerClassName: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.loadingSpinnerClassName,
+    })
+    expect(getSessionStatusDesktopRenderState(
+      getSessionPresentation({ conversationState: "blocked" }),
+    )).toMatchObject({
+      kind: "blocked",
+      iconClassName: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.blocked,
+    })
+    expect(getSessionStatusDesktopRenderState(
+      getSessionPresentation({ conversationState: "running", isSnoozed: true }),
+    )).toMatchObject({
+      kind: "background",
+      iconClassName: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.background,
+    })
+    expect(getSessionStatusDesktopRenderState(
+      getSessionPresentation({ conversationState: "running" }),
+    )).toMatchObject({
+      kind: "running",
+      iconClassName: "",
+      loadingSpinnerClassName: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.loadingSpinnerClassName,
+    })
+    expect(getSessionStatusDesktopRenderState(
+      getSessionPresentation({ conversationState: "complete", isComplete: true }),
+    )).toMatchObject({
+      kind: "complete",
+      iconClassName: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.desktop.iconClassNames.complete,
     })
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.flexDirection).toBe("row")
     expect(CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.alignItems).toBe("center")
