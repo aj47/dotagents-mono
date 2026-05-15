@@ -33,14 +33,20 @@ import {
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
+  getPromptLibraryMobileShortcutEmptyRenderState,
+  getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
   getPromptLibrarySaveSuccessMessage,
+  getPromptLibraryShortcutPressIntent,
   type PredefinedPromptDraft,
   type PromptLibraryEditorDismissActionState,
   type PromptLibraryEditorSaveActionState,
+  type PromptLibraryMobileShortcutEmptyRenderState,
+  type PromptLibraryMobileShortcutItemRenderState,
   type PromptLibraryShortcutItem,
+  type PromptLibraryShortcutPressIntent,
   type PromptLibrarySkillLike,
   type PromptLibraryMobileSurfaceColorPalette,
   type PromptLibraryTaskLike,
@@ -8572,6 +8578,37 @@ export function getChatRuntimeHomeQuickStartItemsMobileState<
     addPromptDescription: mobilePromptLibraryCopy.addPromptDescription,
     taskDescriptionFallback: mobilePromptLibraryCopy.taskDescriptionFallback,
   })
+}
+
+export function getChatRuntimeHomeQuickStartPressIntent<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>(
+  item: PromptLibraryShortcutItem<TPrompt, TTask>,
+): PromptLibraryShortcutPressIntent<TTask> {
+  return getPromptLibraryShortcutPressIntent(item)
+}
+
+export function getChatRuntimeHomeQuickStartEmptyMobileRenderState(
+  shortcutRenderState: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>,
+  isLoading: boolean,
+): PromptLibraryMobileShortcutEmptyRenderState {
+  return getPromptLibraryMobileShortcutEmptyRenderState(shortcutRenderState, isLoading)
+}
+
+export function getChatRuntimeHomeQuickStartItemMobileRenderState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+>(
+  item: PromptLibraryShortcutItem<TPrompt, TTask>,
+  shortcutRenderState: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>,
+  runningTaskId?: string | null,
+): PromptLibraryMobileShortcutItemRenderState {
+  return getPromptLibraryMobileShortcutItemRenderState(
+    item,
+    shortcutRenderState,
+    runningTaskId,
+  )
 }
 
 export function getChatRuntimeViewportChromeMobileRenderState<

@@ -164,7 +164,10 @@ import {
   getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeHomeQuickStartEmptyMobileRenderState,
   getChatRuntimeHomeQuickStartItemsMobileState,
+  getChatRuntimeHomeQuickStartItemMobileRenderState,
+  getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeInlineActivityMobileRenderState,
@@ -1872,6 +1875,20 @@ describe("session presentation semantics", () => {
     expect(quickStartItems.map((item) => item.id)).toEqual(["prompt-1", "action-add-prompt"])
     expect(quickStartItems[0]?.source).toBe("saved-prompt")
     expect(quickStartItems[1]?.source).toBe("action")
+    expect(getChatRuntimeHomeQuickStartPressIntent(quickStartItems[0]!)).toEqual({
+      kind: "insert-content",
+      content: "Summarize this thread.",
+    })
+    expect(getChatRuntimeHomeQuickStartPressIntent(quickStartItems[1]!)).toEqual({
+      kind: "add-prompt",
+    })
+    const taskQuickStartItems = getChatRuntimeHomeQuickStartItemsMobileState({
+      tasks: [{ id: "task-1", name: "Daily", prompt: "Run the daily brief." }],
+    })
+    expect(getChatRuntimeHomeQuickStartPressIntent(taskQuickStartItems[0]!)).toEqual({
+      kind: "run-task",
+      task: { id: "task-1", name: "Daily", prompt: "Run the daily brief." },
+    })
     const viewportChrome = getChatRuntimeViewportChromeMobileRenderState({
       isLoadingMessages: false,
       messageCount: 0,
@@ -1900,6 +1917,29 @@ describe("session presentation semantics", () => {
     expect(viewportChrome.content.homeQuickStarts.shouldRender).toBe(true)
     expect(viewportChrome.quickStartItems.map((item) => item.id)).toEqual(["prompt-1", "action-add-prompt"])
     expect(viewportChrome.shortcutRenderState.copy.loadingLabel).toBe("Loading desktop library...")
+    expect(getChatRuntimeHomeQuickStartEmptyMobileRenderState(
+      viewportChrome.shortcutRenderState,
+      true,
+    ).label).toBe("Loading desktop library...")
+    expect(getChatRuntimeHomeQuickStartEmptyMobileRenderState(
+      viewportChrome.shortcutRenderState,
+      false,
+    ).label).toBe("No prompts, skills, or tasks available from your connected desktop app.")
+    const quickStartPromptRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
+      viewportChrome.quickStartItems[0]!,
+      viewportChrome.shortcutRenderState,
+      null,
+    )
+    expect(quickStartPromptRenderState.sourceLabel).toBe("prompt")
+    expect(quickStartPromptRenderState.interaction.isDisabled).toBe(false)
+    expect(quickStartPromptRenderState.promptActions?.edit.label).toBe("Edit")
+    const addPromptRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
+      viewportChrome.quickStartItems[1]!,
+      viewportChrome.shortcutRenderState,
+      null,
+    )
+    expect(addPromptRenderState.interaction.isAddPrompt).toBe(true)
+    expect(addPromptRenderState.addAction?.icon.name).toBe("add-circle-outline")
     expect(viewportChrome.affordance.historyBanner.renderState.shouldRender).toBe(true)
     expect(viewportChrome.affordance.stepSummary.renderState.shouldRender).toBe(true)
     expect(viewportChrome.debugPanels.requestShouldRender).toBe(true)

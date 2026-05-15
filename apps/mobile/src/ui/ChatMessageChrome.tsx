@@ -126,9 +126,6 @@ import {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
-  getPromptLibraryMobileShortcutEmptyRenderState,
-  getPromptLibraryMobileShortcutItemRenderState,
-  getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
   type PromptLibraryEditorMobileRenderState,
@@ -180,6 +177,9 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDockChromeMobileRenderState,
+  getChatRuntimeHomeQuickStartEmptyMobileRenderState,
+  getChatRuntimeHomeQuickStartItemMobileRenderState,
+  getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
@@ -1457,7 +1457,7 @@ export function useChatConversationHomeQuickStartActionsState<
   runPromptTask,
 }: ChatConversationHomeQuickStartActionsStateInput<TTask>): ChatConversationHomeQuickStartActionsState<TPrompt, TTask> {
   const handleQuickStartPress = useCallback((item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => {
-    const pressIntent = getPromptLibraryShortcutPressIntent(item);
+    const pressIntent = getChatRuntimeHomeQuickStartPressIntent(item);
     if (pressIntent.kind === 'add-prompt') {
       openAddPrompt();
       return;
@@ -10054,14 +10054,14 @@ export function ChatConversationHomeQuickStarts<
 }: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
   if (!shouldRender) return null;
   const { surface: shortcutSurface } = shortcutRenderState;
-  const shortcutEmptyRenderState = getPromptLibraryMobileShortcutEmptyRenderState(shortcutRenderState, isLoading);
+  const shortcutEmptyRenderState = getChatRuntimeHomeQuickStartEmptyMobileRenderState(shortcutRenderState, isLoading);
 
   return (
     <View style={styles.card}>
       {items.length > 0 ? (
         <View style={styles.grid}>
           {items.map((item) => {
-            const shortcutItemRenderState = getPromptLibraryMobileShortcutItemRenderState(
+            const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
               item,
               shortcutRenderState,
               runningTaskId,
