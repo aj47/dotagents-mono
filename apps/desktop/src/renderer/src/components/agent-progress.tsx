@@ -845,14 +845,17 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }, [conversationId, navigate, resolvedBranchMessageIndex])
 
-  const displayResults = (message.toolResults || []).filter(
-    (r) =>
-      (r.error && r.error.trim().length > 0) ||
-      (r.content && r.content.trim().length > 0),
-  )
-  const hasExtras =
-    (message.toolCalls?.length ?? 0) > 0 ||
-    displayResults.length > 0
+  const visibleMessageToolEntries = messageDisplayState.visibleToolEntries
+  const displayToolCalls = visibleMessageToolEntries.map(({ toolCall }) => toolCall)
+  const displayResults = visibleMessageToolEntries.flatMap(({ result }) => {
+    if (!result) return []
+
+    return (result.error && result.error.trim().length > 0) ||
+      (result.content && result.content.trim().length > 0)
+      ? [result]
+      : []
+  })
+  const hasExtras = displayToolCalls.length > 0 || displayResults.length > 0
   const shouldCollapse = messageDisplayState.shouldCollapse
   const messageExpansionAction = getChatMessageExpansionActionState({
     shouldCollapse,
@@ -1372,12 +1375,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
           </div>
           {hasExtras && isExpanded && (
             <div className={desktopToolExecutionDetailSurface.messageExtrasContainerClassName}>
-              {message.toolCalls && message.toolCalls.length > 0 && (
+              {displayToolCalls.length > 0 && (
                 <div className={desktopToolExecutionDetailSurface.messageExtrasSectionClassName}>
                   <div className={desktopToolExecutionDetailSurface.messageExtrasHeadingClassName}>
-                    {formatToolExecutionHeading("tool_call", message.toolCalls.length)}:
+                    {formatToolExecutionHeading("tool_call", displayToolCalls.length)}:
                   </div>
-                  {message.toolCalls.map((toolCall, index) => {
+                  {displayToolCalls.map((toolCall, index) => {
                     const toolArgumentsDetail = getToolExecutionDetailArgumentsState(toolCall.arguments)
 
                     return (

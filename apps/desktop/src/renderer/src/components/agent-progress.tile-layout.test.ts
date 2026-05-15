@@ -235,7 +235,7 @@ describe("agent progress tile layout", () => {
   })
 
   it("renders collapsed tool previews inline as the single-line summary", () => {
-    expect(agentProgressSource).toContain('formatToolExecutionHeading("tool_call", message.toolCalls.length)')
+    expect(agentProgressSource).toContain('formatToolExecutionHeading("tool_call", displayToolCalls.length)')
     expect(agentProgressSource).toContain('formatIndexedToolExecutionLabel("tool", index)')
     expect(agentProgressSource).toContain('formatToolExecutionSectionLabel(toolExecutionDetailCopy.inputLabel)')
     expect(agentProgressSource).toContain('formatToolExecutionSectionLabel(toolExecutionDetailCopy.outputLabel)')
@@ -421,6 +421,13 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('collapseAssistantWithToolMetadata: true,')
     expect(agentProgressSource).not.toContain('displayContent: message.responseEvent?.text')
     expect(agentProgressSource).toContain('const effectiveContent = messageDisplayState.visibleContent')
+    expect(agentProgressSource).toContain('const visibleMessageToolEntries = messageDisplayState.visibleToolEntries')
+    expect(agentProgressSource).toContain('const displayToolCalls = visibleMessageToolEntries.map(({ toolCall }) => toolCall)')
+    expect(agentProgressSource).toContain('const displayResults = visibleMessageToolEntries.flatMap(({ result }) => {')
+    expect(agentProgressSource).toContain('const hasExtras = displayToolCalls.length > 0 || displayResults.length > 0')
+    expect(agentProgressSource).toContain('displayToolCalls.length > 0')
+    expect(agentProgressSource).toContain('displayToolCalls.map((toolCall, index) => {')
+    expect(agentProgressSource).not.toContain('message.toolCalls.map((toolCall, index) => {')
     expect(agentProgressSource).toContain('getChatRuntimeTurnDurationBadgeState')
     expect(agentProgressSource).toContain('const messageTurnDurationBadgeState = getChatRuntimeTurnDurationBadgeState({')
     expect(agentProgressSource).toContain('scope: "message",')
