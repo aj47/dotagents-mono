@@ -253,7 +253,6 @@ import {
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
-  type ChatComposerRuntimeControlMobileRenderState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
@@ -282,7 +281,6 @@ import {
   type ChatRuntimeToolExecutionDetailMobileRowInput,
   type ChatRuntimeToolExecutionDetailMobileRowState,
   type ChatRuntimeToolExecutionStackMobileRenderStateInput,
-  type FollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
   getToolExecutionDetailCopyFailureAlertState,
@@ -3187,9 +3185,6 @@ type ChatComposerRuntimeFollowUpPresentationStateInput = {
   isResponding?: boolean;
   isQueueEnabled?: boolean;
 };
-
-type ChatComposerRuntimeControlRenderState =
-  ChatComposerRuntimeControlMobileRenderState;
 
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
@@ -9832,17 +9827,6 @@ export function createChatComposerRuntimeDockChromeProps({
   };
 }
 
-export function createChatComposerRuntimeFollowUpPresentationState({
-  conversationState,
-  isResponding = false,
-  isQueueEnabled = false,
-}: ChatComposerRuntimeFollowUpPresentationStateInput): FollowUpInputPresentation {
-  return getFollowUpInputPresentation({
-    conversationState: conversationState ?? (isResponding ? 'running' : 'complete'),
-    isQueueEnabled,
-  });
-}
-
 export function hasChatComposerRuntimeMessageContent(
   input: string,
   pendingImages: readonly ChatComposerRuntimeImageAttachment[],
@@ -9876,32 +9860,6 @@ export function buildChatComposerRuntimeMessageContent(
   pendingImages: readonly ChatComposerRuntimeImageAttachment[],
 ): string {
   return buildChatImageAttachmentMessage(input, pendingImages);
-}
-
-export function createChatComposerRuntimeControlRenderState({
-  hasContent = false,
-  handsFree = false,
-  presentation,
-  pendingImageCount = 0,
-  ttsEnabled = false,
-  editBeforeSendEnabled = false,
-  micPhase,
-  listening = false,
-  messageQueueEnabled = false,
-  colors,
-}: ChatComposerRuntimeControlRenderStateInput): ChatComposerRuntimeControlRenderState {
-  return getChatComposerRuntimeControlMobileRenderState({
-    hasContent,
-    handsFree,
-    presentation,
-    pendingImageCount,
-    ttsEnabled,
-    editBeforeSendEnabled,
-    micPhase,
-    listening,
-    messageQueueEnabled,
-    colors,
-  });
 }
 
 export function resolveChatRuntimeMobileFontFamily(
@@ -9959,12 +9917,12 @@ export function createChatComposerRuntimeDockProps({
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
   const mobileComposerControls = getChatComposerMobileControlState();
   const isWebPlatform = chrome.textEntry.webAccessibility.isWebPlatform;
-  const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState({
-    conversationState: composerControlConversationState,
-    isResponding: composerControlIsResponding,
+  const composerControlPresentation = getFollowUpInputPresentation({
+    conversationState:
+      composerControlConversationState ?? (composerControlIsResponding ? 'running' : 'complete'),
     isQueueEnabled: composerControlMessageQueueEnabled,
   });
-  const controlRenderState = createChatComposerRuntimeControlRenderState({
+  const controlRenderState = getChatComposerRuntimeControlMobileRenderState({
     hasContent: composerControlHasContent,
     handsFree: textEntryHandsFree,
     presentation: composerControlPresentation,

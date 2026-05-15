@@ -1632,12 +1632,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /const isWebPlatform = Platform\.OS === 'web';/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
-  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerRuntimeControlMobileRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeControlMobileRenderState/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockChromeProps/);
-  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeFollowUpPresentationState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeFollowUpPresentationState/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionChromeState/);
   assert.match(chatMessageChromeSource, /const submissionActions = useChatComposerRuntimeSubmissionActionsState\(submissionInput\);/);
@@ -1683,9 +1683,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,\s+composerControlPendingImageCount: pendingImages\.length,\s+composerControlTtsEnabled: ttsEnabled,\s+composerControlEditBeforeSendEnabled: willCancel,\s+composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+onImageAttachmentPress: handlePickImages,/);
   assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
-  assert.match(chatMessageChromeSource, /const composerControlPresentation = createChatComposerRuntimeFollowUpPresentationState\(\{\s+conversationState: composerControlConversationState,\s+isResponding: composerControlIsResponding,\s+isQueueEnabled: composerControlMessageQueueEnabled,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const controlRenderState = createChatComposerRuntimeControlRenderState\(\{\s+hasContent: composerControlHasContent,\s+handsFree: textEntryHandsFree,\s+presentation: composerControlPresentation,[\s\S]*?colors: composerControlColors,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState\(\{[\s\S]*?return getChatComposerRuntimeControlMobileRenderState\(\{[\s\S]*?hasContent,[\s\S]*?handsFree,[\s\S]*?presentation,[\s\S]*?pendingImageCount,[\s\S]*?colors,/);
+  assert.match(chatMessageChromeSource, /const composerControlPresentation = getFollowUpInputPresentation\(\{[\s\S]*?conversationState:[\s\S]*?composerControlConversationState \?\? \(composerControlIsResponding \? 'running' : 'complete'\),[\s\S]*?isQueueEnabled: composerControlMessageQueueEnabled,[\s\S]*?\}\);/);
+  assert.match(chatMessageChromeSource, /const controlRenderState = getChatComposerRuntimeControlMobileRenderState\(\{\s+hasContent: composerControlHasContent,\s+handsFree: textEntryHandsFree,\s+presentation: composerControlPresentation,[\s\S]*?colors: composerControlColors,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
   assert.doesNotMatch(screenSource, /const mobileComposerWebAccessibility = mobileComposerSurface\.webAccessibility;/);
