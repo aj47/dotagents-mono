@@ -3412,7 +3412,10 @@ describe("session presentation semantics", () => {
       },
     })
     expect(contentState.expanded).toMatchObject({
-      isStreaming: true,
+      streamingRenderState: {
+        shouldRender: true,
+        content: "Working",
+      },
       markdownContent: "Working",
       assetBaseUrl: "http://localhost:3000/assets",
       assetAuthToken: "token",

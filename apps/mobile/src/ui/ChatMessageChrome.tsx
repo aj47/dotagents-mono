@@ -182,7 +182,6 @@ import {
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
-  getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationCardMobilePresentationState,
@@ -252,6 +251,7 @@ import {
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeRetryStatusMobileRenderState,
+  type ChatRuntimeStreamingContentMobileRenderStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
   type ToolExecutionCompactMobileRenderState,
@@ -2962,11 +2962,8 @@ type ChatMessageThreadBodyContentProps =
 
 type ChatMessageExpandedContentPropsInput = Pick<
   ChatMessageThreadBodyContentProps['expanded'],
-  'markdownContent' | 'assetBaseUrl' | 'assetAuthToken' | 'spinnerSource'
-> & {
-  isStreaming: boolean;
-  colors: Parameters<typeof getChatRuntimeStreamingContentMobileRenderState>[0]['colors'];
-};
+  'streamingRenderState' | 'markdownContent' | 'assetBaseUrl' | 'assetAuthToken' | 'spinnerSource'
+>;
 
 type ChatMessageThreadBodyProps = {
   styles: ChatMessageThreadBodyStyleSlots;
@@ -3011,7 +3008,7 @@ type ChatMessageConversationThreadBodySharedInput =
     ChatMessageActionStyleSlots['branch'],
     ChatMessageActionStyleSlots['copy'],
     ChatMessageActionStyleSlots['expansion'],
-    ChatMessageExpandedContentPropsInput['colors'],
+    ChatRuntimeStreamingContentMobileRenderStateInput['colors'],
     ChatMessageExpandedContentPropsInput['spinnerSource'],
     NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
     NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>,
@@ -3030,7 +3027,7 @@ type ChatMessageConversationThreadBodyState =
     ChatMessageActionStyleSlots['branch'],
     ChatMessageActionStyleSlots['copy'],
     ChatMessageActionStyleSlots['expansion'],
-    ChatMessageExpandedContentPropsInput['colors'],
+    ChatRuntimeStreamingContentMobileRenderStateInput['colors'],
     ChatMessageExpandedContentPropsInput['spinnerSource'],
     NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
     NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>,
@@ -8417,19 +8414,12 @@ export function createChatMessageToolApprovalProps({
 }
 
 export function createChatMessageExpandedContentProps({
-  isStreaming,
+  streamingRenderState,
   markdownContent,
-  colors,
   assetBaseUrl,
   assetAuthToken,
   spinnerSource,
 }: ChatMessageExpandedContentPropsInput): ChatMessageThreadBodyContentProps['expanded'] {
-  const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState({
-    isStreaming,
-    content: markdownContent,
-    colors,
-  });
-
   return {
     streamingRenderState,
     markdownContent,

@@ -3162,12 +3162,14 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageConversationContentInput/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeConversationContentMobileState\(\{/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationContentMobileState/);
+  assert.match(sessionPresentationSource, /streamingRenderState: getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming,\s+content: visibleMessageContent,\s+colors,/);
   assert.match(sessionPresentationSource, /markdownContent: visibleMessageContent,/);
   assert.match(sessionPresentationSource, /onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
   assert.match(chatMessageChromeSource, /expanded: createChatMessageExpandedContentProps\(expanded\),/);
-  assert.match(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming,\s+content: markdownContent,\s+colors,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeStreamingContentMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+streamingRenderState=\{expanded\.streamingRenderState\}[\s\S]*?markdownContent=\{expanded\.markdownContent\}[\s\S]*?spinnerSource=\{expanded\.spinnerSource\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /if \(!streamingRenderState\.shouldRender\) \{/);

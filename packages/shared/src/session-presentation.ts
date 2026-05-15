@@ -640,7 +640,7 @@ export type ChatRuntimeConversationMessageRuntimeThreadState<TBody extends { inl
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
 
 export interface ChatRuntimeConversationContentMobileStateInput<
-  TColors,
+  TColors extends ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
   TSpinnerSource,
   TAssetBaseUrl = string,
   TAssetAuthToken = string,
@@ -656,15 +656,13 @@ export interface ChatRuntimeConversationContentMobileStateInput<
 }
 
 export interface ChatRuntimeConversationContentMobileState<
-  TColors,
   TSpinnerSource,
   TAssetBaseUrl = string,
   TAssetAuthToken = string,
 > {
   expanded: {
-    isStreaming: boolean
+    streamingRenderState: ChatRuntimeStreamingContentMobileRenderState
     markdownContent: string
-    colors: TColors
     assetBaseUrl?: TAssetBaseUrl
     assetAuthToken?: TAssetAuthToken
     spinnerSource: TSpinnerSource
@@ -1027,7 +1025,7 @@ export interface ChatRuntimeConversationThreadBodyMobileStateInput<
     & ChatRuntimeConversationDelegationCardMobileStateInput<TDelegation>["colors"]
     & ChatRuntimeConversationToolApprovalMobileStateInput["colors"]
     & ChatRuntimeConversationContentMobileStateInput<
-      TContentColors,
+      TContentColors & ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
       TSpinnerSource,
       TAssetBaseUrl,
       TAssetAuthToken
@@ -1044,13 +1042,13 @@ export interface ChatRuntimeConversationThreadBodyMobileStateInput<
     TExpansionStyle
   >
   assetBaseUrl?: ChatRuntimeConversationContentMobileStateInput<
-    TContentColors,
+    TContentColors & ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
     TSpinnerSource,
     TAssetBaseUrl,
     TAssetAuthToken
   >["assetBaseUrl"]
   assetAuthToken?: ChatRuntimeConversationContentMobileStateInput<
-    TContentColors,
+    TContentColors & ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
     TSpinnerSource,
     TAssetBaseUrl,
     TAssetAuthToken
@@ -1136,7 +1134,6 @@ export interface ChatRuntimeConversationThreadBodyMobileState<
   toolApproval: ChatRuntimeConversationToolApprovalMobileState
   inlineActivity: TInlineActivity
   conversation: ChatRuntimeConversationContentMobileState<
-    TContentColors,
     TSpinnerSource,
     TAssetBaseUrl,
     TAssetAuthToken
@@ -6742,7 +6739,7 @@ export function getChatRuntimeConversationMessageRuntimeThreadState<
 }
 
 export function getChatRuntimeConversationContentMobileState<
-  TColors,
+  TColors extends ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
   TSpinnerSource,
   TAssetBaseUrl = string,
   TAssetAuthToken = string,
@@ -6761,16 +6758,18 @@ export function getChatRuntimeConversationContentMobileState<
   TAssetBaseUrl,
   TAssetAuthToken
 >): ChatRuntimeConversationContentMobileState<
-  TColors,
   TSpinnerSource,
   TAssetBaseUrl,
   TAssetAuthToken
 > {
   return {
     expanded: {
-      isStreaming,
+      streamingRenderState: getChatRuntimeStreamingContentMobileRenderState({
+        isStreaming,
+        content: visibleMessageContent,
+        colors,
+      }),
       markdownContent: visibleMessageContent,
-      colors,
       assetBaseUrl,
       assetAuthToken,
       spinnerSource,
