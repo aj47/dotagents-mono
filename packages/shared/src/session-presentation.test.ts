@@ -182,6 +182,8 @@ import {
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeTurnDurationMobileIconState,
   getChatRuntimeTurnDurationTitle,
+  getChatRuntimeViewportAffordanceMobileRenderState,
+  getChatRuntimeViewportContentMobileRenderState,
   getChatRuntimeViewportMobileColors,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeViewportMobileRenderState,
@@ -1596,6 +1598,19 @@ describe("session presentation semantics", () => {
       isLoadingMessages: false,
       messageCount: 1,
     }).shouldRender).toBe(false)
+    expect(getChatRuntimeViewportContentMobileRenderState({
+      isLoadingMessages: true,
+      messageCount: 0,
+    })).toEqual({
+      loading: getChatRuntimeLoadingStateMobileRenderState({
+        isLoadingMessages: true,
+        messageCount: 0,
+      }),
+      homeQuickStarts: getChatRuntimeHomeQuickStartsMobileRenderState({
+        isLoadingMessages: true,
+        messageCount: 0,
+      }),
+    })
     expect(getChatRuntimeDebugPanelsMobileRenderState({
       requestDebugText: "Request sent",
       voiceDebugEnabled: true,
@@ -2029,6 +2044,32 @@ describe("session presentation semantics", () => {
       meta: "",
       preview: "",
       accessibilityLabel: "",
+    })
+    expect(getChatRuntimeViewportAffordanceMobileRenderState({
+      visibleMessageCount: 40,
+      totalMessageCount: 100,
+      hiddenMessageCount: 60,
+      messageHistoryLoadIncrement: 30,
+      latestStepSummary: {
+        stepNumber: 3,
+        actionSummary: "Compared mobile and desktop chat chrome",
+        importance: "high",
+        keyFindings: ["Mobile did not surface generated step summaries"],
+      },
+      colors: conversationChromeStyleColors,
+    })).toMatchObject({
+      historyBanner: {
+        renderState: {
+          shouldRender: true,
+          summaryLabel: "Showing latest 40 of 100 messages. Scroll up to load older messages.",
+        },
+      },
+      stepSummary: {
+        renderState: {
+          shouldRender: true,
+          badgeLabel: "Summary · Step 3",
+        },
+      },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.gap).toBe(3)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.actionsRow.flexDirection).toBe("row")

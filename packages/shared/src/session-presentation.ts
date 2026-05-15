@@ -146,6 +146,16 @@ export interface ChatRuntimeHomeQuickStartsMobileRenderState {
   shouldRender: boolean
 }
 
+export interface ChatRuntimeViewportContentMobileRenderStateInput {
+  isLoadingMessages?: boolean
+  messageCount?: number | null
+}
+
+export interface ChatRuntimeViewportContentMobileRenderState {
+  loading: ChatRuntimeLoadingStateMobileRenderState
+  homeQuickStarts: ChatRuntimeHomeQuickStartsMobileRenderState
+}
+
 export interface ChatRuntimeDebugPanelMobileRow {
   key: string
   text: string
@@ -1105,6 +1115,26 @@ export interface ChatRuntimeMessageHistoryBannerMobileRenderState {
       color: string
     }
     pressedOpacity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.pressedOpacity
+  }
+}
+
+export interface ChatRuntimeViewportAffordanceMobileRenderStateInput {
+  visibleMessageCount: number
+  totalMessageCount: number
+  hiddenMessageCount: number
+  messageHistoryLoadIncrement: number
+  latestStepSummary?: ChatRuntimeStepSummaryLike | null
+  colors:
+    & ChatRuntimeMessageHistoryBannerMobileColorPalette
+    & ChatRuntimeStepSummaryMobileColorPalette
+}
+
+export interface ChatRuntimeViewportAffordanceMobileRenderState {
+  historyBanner: {
+    renderState: ChatRuntimeMessageHistoryBannerMobileRenderState
+  }
+  stepSummary: {
+    renderState: ChatRuntimeStepSummaryMobileRenderState
   }
 }
 
@@ -5668,6 +5698,34 @@ export function getChatRuntimeStepSummaryMobileRenderState({
   }
 }
 
+export function getChatRuntimeViewportAffordanceMobileRenderState({
+  visibleMessageCount,
+  totalMessageCount,
+  hiddenMessageCount,
+  messageHistoryLoadIncrement,
+  latestStepSummary = null,
+  colors,
+}: ChatRuntimeViewportAffordanceMobileRenderStateInput): ChatRuntimeViewportAffordanceMobileRenderState {
+  return {
+    historyBanner: {
+      renderState: getChatRuntimeMessageHistoryBannerMobileRenderState({
+        visibleCount: visibleMessageCount,
+        totalCount: totalMessageCount,
+        hiddenCount: hiddenMessageCount,
+        loadIncrement: messageHistoryLoadIncrement,
+        includeScrollHint: true,
+        colors,
+      }),
+    },
+    stepSummary: {
+      renderState: getChatRuntimeStepSummaryMobileRenderState({
+        summary: latestStepSummary,
+        colors,
+      }),
+    },
+  }
+}
+
 export function getChatRuntimeStreamingContentMobileState() {
   return CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent
 }
@@ -5906,6 +5964,22 @@ export function getChatRuntimeHomeQuickStartsMobileRenderState({
 }: ChatRuntimeHomeQuickStartsMobileRenderStateInput = {}): ChatRuntimeHomeQuickStartsMobileRenderState {
   return {
     shouldRender: isLoadingMessages !== true && (messageCount ?? 0) === 0,
+  }
+}
+
+export function getChatRuntimeViewportContentMobileRenderState({
+  isLoadingMessages = false,
+  messageCount = 0,
+}: ChatRuntimeViewportContentMobileRenderStateInput = {}): ChatRuntimeViewportContentMobileRenderState {
+  return {
+    loading: getChatRuntimeLoadingStateMobileRenderState({
+      isLoadingMessages,
+      messageCount,
+    }),
+    homeQuickStarts: getChatRuntimeHomeQuickStartsMobileRenderState({
+      isLoadingMessages,
+      messageCount,
+    }),
   }
 }
 

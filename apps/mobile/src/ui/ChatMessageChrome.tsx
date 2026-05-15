@@ -232,19 +232,17 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
-  getChatRuntimeLoadingStateMobileRenderState,
-  getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
-  getChatRuntimeStepSummaryMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
+  getChatRuntimeViewportAffordanceMobileRenderState,
+  getChatRuntimeViewportContentMobileRenderState,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeAgentSelectorMobileRenderState,
@@ -289,6 +287,10 @@ import {
   type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
+  type ChatRuntimeViewportAffordanceMobileRenderState,
+  type ChatRuntimeViewportAffordanceMobileRenderStateInput,
+  type ChatRuntimeViewportContentMobileRenderState,
+  type ChatRuntimeViewportContentMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
   type FollowUpInputPresentation,
@@ -2699,30 +2701,19 @@ type ChatMessageStepSummaryCardProps = {
 };
 
 type ChatMessageConversationViewportAffordanceRenderStateInput = {
-  visibleMessageCount: number;
-  totalMessageCount: number;
-  hiddenMessageCount: number;
-  messageHistoryLoadIncrement: number;
-  latestStepSummary: Parameters<typeof getChatRuntimeStepSummaryMobileRenderState>[0]['summary'];
-  colors:
-    & Parameters<typeof getChatRuntimeMessageHistoryBannerMobileRenderState>[0]['colors']
-    & Parameters<typeof getChatRuntimeStepSummaryMobileRenderState>[0]['colors'];
+  visibleMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput['visibleMessageCount'];
+  totalMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput['totalMessageCount'];
+  hiddenMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput['hiddenMessageCount'];
+  messageHistoryLoadIncrement: ChatRuntimeViewportAffordanceMobileRenderStateInput['messageHistoryLoadIncrement'];
+  latestStepSummary: ChatRuntimeViewportAffordanceMobileRenderStateInput['latestStepSummary'];
+  colors: ChatRuntimeViewportAffordanceMobileRenderStateInput['colors'];
 };
 
-type ChatMessageConversationViewportAffordanceRenderState = {
-  historyBanner: Pick<ChatMessageHistoryBannerProps, 'renderState'>;
-  stepSummary: Pick<ChatMessageStepSummaryCardProps, 'renderState'>;
-};
+type ChatMessageConversationViewportAffordanceRenderState = ChatRuntimeViewportAffordanceMobileRenderState;
 
-type ChatMessageRuntimeViewportContentRenderStateInput = {
-  isLoadingMessages: boolean;
-  messageCount: number;
-};
+type ChatMessageRuntimeViewportContentRenderStateInput = ChatRuntimeViewportContentMobileRenderStateInput;
 
-type ChatMessageRuntimeViewportContentRenderState = {
-  loading: ChatRuntimeLoadingStateMobileRenderState;
-  homeQuickStarts: ChatRuntimeHomeQuickStartsMobileRenderState;
-};
+type ChatMessageRuntimeViewportContentRenderState = ChatRuntimeViewportContentMobileRenderState;
 
 type ChatMessageScrollToBottomButtonProps = {
   renderState: ChatRuntimeScrollToBottomMobileRenderState;
@@ -4522,40 +4513,24 @@ export function createChatMessageConversationViewportAffordanceRenderState({
   latestStepSummary,
   colors,
 }: ChatMessageConversationViewportAffordanceRenderStateInput): ChatMessageConversationViewportAffordanceRenderState {
-  return {
-    historyBanner: {
-      renderState: getChatRuntimeMessageHistoryBannerMobileRenderState({
-        visibleCount: visibleMessageCount,
-        totalCount: totalMessageCount,
-        hiddenCount: hiddenMessageCount,
-        loadIncrement: messageHistoryLoadIncrement,
-        includeScrollHint: true,
-        colors,
-      }),
-    },
-    stepSummary: {
-      renderState: getChatRuntimeStepSummaryMobileRenderState({
-        summary: latestStepSummary,
-        colors,
-      }),
-    },
-  };
+  return getChatRuntimeViewportAffordanceMobileRenderState({
+    visibleMessageCount,
+    totalMessageCount,
+    hiddenMessageCount,
+    messageHistoryLoadIncrement,
+    latestStepSummary,
+    colors,
+  });
 }
 
 export function createChatMessageRuntimeViewportContentRenderState({
   isLoadingMessages,
   messageCount,
 }: ChatMessageRuntimeViewportContentRenderStateInput): ChatMessageRuntimeViewportContentRenderState {
-  return {
-    loading: getChatRuntimeLoadingStateMobileRenderState({
-      isLoadingMessages,
-      messageCount,
-    }),
-    homeQuickStarts: getChatRuntimeHomeQuickStartsMobileRenderState({
-      isLoadingMessages,
-      messageCount,
-    }),
-  };
+  return getChatRuntimeViewportContentMobileRenderState({
+    isLoadingMessages,
+    messageCount,
+  });
 }
 
 export function createChatMessageRuntimeDebugPanelsRenderState({
