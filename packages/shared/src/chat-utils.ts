@@ -2093,11 +2093,17 @@ export interface ChatMessageDisplayToolEntriesOptions {
   includeResultOnlyFallback?: boolean;
 }
 
+export interface ChatMessageVisibleContentCollapseOptions {
+  collapseAssistantWithToolMetadata?: boolean;
+}
+
 export type ChatMessageDisplayStateMessageLike =
   ChatDisplayMessageLike &
   ChatMessageToolEntriesMessageLike;
 
-export interface ChatMessageDisplayStateOptions extends ChatMessageDisplayToolEntriesOptions {}
+export interface ChatMessageDisplayStateOptions
+  extends ChatMessageDisplayToolEntriesOptions,
+    ChatMessageVisibleContentCollapseOptions {}
 
 export interface ChatMessageDisplayState {
   visibleContent: string;
@@ -2216,7 +2222,9 @@ export function getChatMessageDisplayState(
     visibleContent,
     visibleToolEntries,
     displayToolCallCount,
-    shouldCollapse: shouldCollapseVisibleChatMessageContent(message, visibleContent),
+    shouldCollapse: shouldCollapseVisibleChatMessageContent(message, visibleContent, {
+      collapseAssistantWithToolMetadata: options.collapseAssistantWithToolMetadata,
+    }),
     isToolOnly: shouldTreatChatMessageAsToolOnly(message),
     shouldRenderSurface: shouldRenderChatMessageSurface({
       content: visibleContent,
@@ -2228,6 +2236,7 @@ export function getChatMessageDisplayState(
 export function shouldCollapseVisibleChatMessageContent(
   message: ChatDisplayMessageLike,
   visibleContent = getVisibleMessageContent(message),
+  options: ChatMessageVisibleContentCollapseOptions = {},
 ): boolean {
   const hasToolMetadata =
     (message.toolCalls?.length ?? 0) > 0 ||
@@ -2238,7 +2247,9 @@ export function shouldCollapseVisibleChatMessageContent(
 
   return getChatMessageEffectiveCollapseState({
     content: message.role === 'assistant' ? visibleContent : message.content,
-    hasExtras: message.role === 'assistant' ? false : hasToolMetadata,
+    hasExtras: message.role === 'assistant'
+      ? options.collapseAssistantWithToolMetadata === true && hasToolMetadata
+      : hasToolMetadata,
     suppressCollapse: hasRespondToUserContent,
   });
 }

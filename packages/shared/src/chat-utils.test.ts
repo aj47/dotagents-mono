@@ -2091,6 +2091,20 @@ describe('visible message content helpers', () => {
     }, 'Short visible answer')).toBe(false)
     expect(shouldCollapseVisibleChatMessageContent({
       role: 'assistant',
+      content: 'Short visible answer',
+      toolCalls: [{ name: 'read_file', arguments: { path: 'README.md' } }],
+    }, 'Short visible answer', { collapseAssistantWithToolMetadata: true })).toBe(true)
+    expect(getChatMessageDisplayState({
+      role: 'assistant',
+      content: 'Short visible answer',
+      toolCalls: [{ name: 'read_file', arguments: { path: 'README.md' } }],
+      toolResults: [{ success: true, content: 'file content' }],
+    }, { collapseAssistantWithToolMetadata: true })).toMatchObject({
+      visibleContent: 'Short visible answer',
+      shouldCollapse: true,
+    })
+    expect(shouldCollapseVisibleChatMessageContent({
+      role: 'assistant',
       content: 'a'.repeat(101),
     }, 'a'.repeat(101))).toBe(true)
     expect(shouldCollapseVisibleChatMessageContent({

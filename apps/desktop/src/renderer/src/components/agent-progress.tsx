@@ -105,7 +105,6 @@ import {
   getChatMessageCopyActionTitle,
   getChatMessageDesktopSurfaceState,
   getChatMessageDisplayTone,
-  getChatMessageEffectiveCollapseState,
   getChatMessageExpansionActionAccessibilityLabel,
   getChatMessageExpansionActionState,
   getChatMessageExpansionActionTitle,
@@ -787,7 +786,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }, [])
 
-  const messageDisplayState = getChatMessageDisplayState(message)
+  const messageDisplayState = getChatMessageDisplayState(message, {
+    collapseAssistantWithToolMetadata: true,
+  })
   const effectiveContent = messageDisplayState.visibleContent
   const messageBranchAction = getChatRuntimeBranchActionState({
     conversationId,
@@ -852,10 +853,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const hasExtras =
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
-  const shouldCollapse = getChatMessageEffectiveCollapseState({
-    content: effectiveContent,
-    hasExtras,
-  })
+  const shouldCollapse = messageDisplayState.shouldCollapse
   const messageExpansionAction = getChatMessageExpansionActionState({
     shouldCollapse,
     isExpanded,
