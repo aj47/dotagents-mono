@@ -9502,28 +9502,6 @@ export function createChatRuntimeHeaderStyleSlots(
   } as ChatRuntimeHeaderStyleSlots;
 }
 
-export function createChatRuntimeNavigationHeaderRenderState({
-  agentName,
-  isPinned = false,
-  handsFree = false,
-  conversationState = null,
-  isResponding = false,
-  turnDurationMs = null,
-  turnDurationIsLive = false,
-  colors,
-}: ChatRuntimeNavigationHeaderRenderStateInput): ChatRuntimeNavigationHeaderRenderState {
-  return getChatRuntimeNavigationHeaderMobileRenderState({
-    agentName,
-    isPinned,
-    handsFree,
-    conversationState,
-    isResponding,
-    turnDurationMs,
-    turnDurationIsLive,
-    colors,
-  });
-}
-
 export function useChatRuntimeNavigationHeaderRenderState({
   agentName,
   isPinned = false,
@@ -9535,7 +9513,7 @@ export function useChatRuntimeNavigationHeaderRenderState({
   colors,
 }: ChatRuntimeNavigationHeaderRenderStateInput): ChatRuntimeNavigationHeaderRenderState {
   return useMemo(
-    () => createChatRuntimeNavigationHeaderRenderState({
+    () => getChatRuntimeNavigationHeaderMobileRenderState({
       agentName,
       isPinned,
       handsFree,
