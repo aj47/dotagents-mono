@@ -180,6 +180,7 @@ import {
   getChatRuntimeToolApprovalDesktopSurfaceState,
   getChatRuntimeToolApprovalHeaderMobileIconColors,
   getChatRuntimeToolApprovalHeaderMobileIconState,
+  getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileSurfaceColors,
@@ -2781,6 +2782,36 @@ describe("session presentation semantics", () => {
         accessibilityState: { disabled: true },
       },
     })
+    const toolApprovalCardRenderState = getChatRuntimeToolApprovalCardMobileRenderState({
+      isApproval: true,
+      toolApproval: {
+        approvalId: "approval-1",
+        toolName: "write_file",
+        arguments: { path: "/test" },
+      },
+      expandedToolApprovals: { "approval-1": true },
+      pendingApprovalResponseId: "approval-1",
+      colors: toolApprovalSurfaceColors,
+    })
+    expect(toolApprovalCardRenderState).toMatchObject({
+      approvalId: "approval-1",
+      toolName: "write_file",
+      argumentsPreview: "path: /test",
+      argumentsContent: '{\n  "path": "/test"\n}',
+      renderState: {
+        title: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
+        argumentsToggle: {
+          isDisabled: true,
+          ariaExpanded: true,
+        },
+      },
+    })
+    expect(getChatRuntimeToolApprovalCardMobileRenderState({
+      isApproval: false,
+      toolApproval: null,
+      expandedToolApprovals: {},
+      colors: toolApprovalSurfaceColors,
+    })).toBeNull()
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.borderColorToken).toBe("warning")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.textColorToken).toBe("mutedForeground")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.fontFamilyByPlatform.default).toBe("monospace")

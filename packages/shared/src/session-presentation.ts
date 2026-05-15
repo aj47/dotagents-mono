@@ -32,6 +32,7 @@ import type { PredefinedPromptSummary } from "./api-types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
+  getChatDisplayExpansionState,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageActionMobileTurnDurationBadgeColors,
@@ -39,6 +40,7 @@ import {
   getChatMessageMobileRenderState,
   hasChatMessageDisplayContent,
   shouldShowChatMessageTurnDurationBadge,
+  type ChatDisplayExpansionStateMap,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
   type ChatMessageMobileRenderColorPalette,
@@ -53,6 +55,7 @@ import {
 } from "./accessibility-utils"
 import {
   formatToolExecutionCount,
+  getToolExecutionDetailArgumentsState,
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
@@ -1537,6 +1540,18 @@ export interface ChatRuntimeToolApprovalMobileRenderStateInput {
   colors: ChatRuntimeToolApprovalMobileSurfaceColorPalette
 }
 
+export interface ChatRuntimeToolApprovalCardMobileRenderStateInput {
+  isApproval?: boolean
+  toolApproval?: {
+    approvalId: string
+    toolName: string
+    arguments?: unknown
+  } | null
+  expandedToolApprovals: ChatDisplayExpansionStateMap<string>
+  pendingApprovalResponseId?: string | null
+  colors: ChatRuntimeToolApprovalMobileSurfaceColorPalette
+}
+
 export interface ChatRuntimeToolApprovalMobileRenderState {
   copy: typeof CHAT_RUNTIME_PRESENTATION.approval
   surface: typeof TOOL_APPROVAL_SURFACE_PRESENTATION.mobile
@@ -1602,6 +1617,14 @@ export interface ChatRuntimeToolApprovalMobileRenderState {
       color: string
     }
   }
+}
+
+export interface ChatRuntimeToolApprovalCardMobileRenderState {
+  approvalId: string
+  renderState: ChatRuntimeToolApprovalMobileRenderState
+  toolName: string
+  argumentsPreview: string
+  argumentsContent: string
 }
 
 export type ChatComposerMobileIconName =
@@ -4767,6 +4790,37 @@ export function getChatRuntimeToolApprovalMobileRenderState({
         color: denyIconColors.color,
       },
     },
+  }
+}
+
+export function getChatRuntimeToolApprovalCardMobileRenderState({
+  isApproval = false,
+  toolApproval,
+  expandedToolApprovals,
+  pendingApprovalResponseId,
+  colors,
+}: ChatRuntimeToolApprovalCardMobileRenderStateInput): ChatRuntimeToolApprovalCardMobileRenderState | null {
+  if (!isApproval || !toolApproval) return null
+
+  const isArgumentsExpanded = getChatDisplayExpansionState(
+    expandedToolApprovals,
+    toolApproval.approvalId,
+  )
+  const isResponding = pendingApprovalResponseId === toolApproval.approvalId
+  const argumentsDetail = getToolExecutionDetailArgumentsState(toolApproval.arguments)
+  const renderState = getChatRuntimeToolApprovalMobileRenderState({
+    toolName: toolApproval.toolName,
+    isArgumentsExpanded,
+    isResponding,
+    colors,
+  })
+
+  return {
+    approvalId: toolApproval.approvalId,
+    renderState,
+    toolName: toolApproval.toolName,
+    argumentsPreview: argumentsDetail.preview,
+    argumentsContent: argumentsDetail.content,
   }
 }
 

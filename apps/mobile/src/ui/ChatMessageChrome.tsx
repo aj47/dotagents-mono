@@ -217,7 +217,7 @@ import {
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
-  getChatRuntimeToolApprovalMobileRenderState,
+  getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportAffordanceMobileRenderState,
@@ -1994,7 +1994,7 @@ type ChatMessageToolApprovalPropsInput = Omit<
   } | null;
   expandedToolApprovals: ChatDisplayExpansionStateMap<string>;
   pendingApprovalResponseId?: string | null;
-  colors: Parameters<typeof getChatRuntimeToolApprovalMobileRenderState>[0]['colors'];
+  colors: Parameters<typeof getChatRuntimeToolApprovalCardMobileRenderState>[0]['colors'];
   onToggleArguments: (approvalId: string) => void;
   onDeny: (approvalId: string) => void;
   onApprove: (approvalId: string) => void;
@@ -10053,29 +10053,23 @@ export function createChatMessageToolApprovalProps({
   onDeny,
   onApprove,
 }: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
-  if (!isApproval || !toolApproval) return null;
-
-  const isArgumentsExpanded = getChatDisplayExpansionState(
+  const cardRenderState = getChatRuntimeToolApprovalCardMobileRenderState({
+    isApproval,
+    toolApproval,
     expandedToolApprovals,
-    toolApproval.approvalId,
-  );
-  const isResponding = pendingApprovalResponseId === toolApproval.approvalId;
-  const argumentsDetail = getToolExecutionDetailArgumentsState(toolApproval.arguments);
-  const renderState = getChatRuntimeToolApprovalMobileRenderState({
-    toolName: toolApproval.toolName,
-    isArgumentsExpanded,
-    isResponding,
+    pendingApprovalResponseId,
     colors,
   });
+  if (!cardRenderState) return null;
 
   return {
-    renderState,
-    toolName: toolApproval.toolName,
-    argumentsPreview: argumentsDetail.preview,
-    argumentsContent: argumentsDetail.content,
-    onToggleArguments: () => onToggleArguments(toolApproval.approvalId),
-    onDeny: () => onDeny(toolApproval.approvalId),
-    onApprove: () => onApprove(toolApproval.approvalId),
+    renderState: cardRenderState.renderState,
+    toolName: cardRenderState.toolName,
+    argumentsPreview: cardRenderState.argumentsPreview,
+    argumentsContent: cardRenderState.argumentsContent,
+    onToggleArguments: () => onToggleArguments(cardRenderState.approvalId),
+    onDeny: () => onDeny(cardRenderState.approvalId),
+    onApprove: () => onApprove(cardRenderState.approvalId),
   };
 }
 
