@@ -260,7 +260,6 @@ import {
   type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
-  type ChatRuntimeMessageHistoryWindowMobileDisplayState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
@@ -308,7 +307,6 @@ import {
   type ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput,
   type ChatRuntimeConversationToolActivityGroupThreadState,
   type ChatRuntimeConversationToolActivityGroupThreadStateInput,
-  type ChatRuntimeMessageThreadPresentationMobileColorPalette,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMobileChromeStyleRenderState,
   type ChatRuntimeMobileChromeStyleRenderStateInput,
@@ -3516,13 +3514,6 @@ export type ChatMessageThreadBodyPropsInput =
 type ChatMessageConversationThreadVisibilityInput =
   ChatRuntimeConversationThreadVisibilityInput<Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>>;
 
-type ChatMessageConversationThreadPresentationStateInput = {
-  colors: ChatRuntimeMessageThreadPresentationMobileColorPalette;
-};
-
-type ChatMessageConversationThreadPresentationState =
-  ChatRuntimeMessageThreadPresentationMobileRenderState;
-
 type ChatMessageConversationThreadBodySharedInput =
   ChatRuntimeConversationThreadBodyMobileStateInput<
     ChatMessageThreadBodyPropsInput['inlineActivity'],
@@ -3660,12 +3651,6 @@ type ChatMessageConversationThreadListRenderStateInput =
     speakingMessageIndex: number | null;
     copiedMessageIndex: number | null;
   };
-
-type ChatMessageConversationHistoryWindowStateInput<TMessage> =
-  ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<TMessage>;
-
-type ChatMessageConversationHistoryWindowState<TMessage> =
-  ChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage>;
 
 type ChatMessageRuntimeHistoryWindowStateInput = {
   messageCount: number;
@@ -3926,7 +3911,7 @@ type ChatMessageConversationRuntimeThreadListRenderStateInput =
   & {
     resultOnlyToolLabel?: ChatMessageConversationThreadListRenderStateInput['resultOnlyToolLabel'];
   }
-  & ChatMessageConversationHistoryWindowStateInput<
+  & ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<
     ChatMessageConversationThreadListRenderStateInput['messages'][number]
   >;
 
@@ -4183,16 +4168,6 @@ export function createChatMessageConversationItemThreadRenderState({
     groupRenderState,
     groupThreadState,
     ...messageThreadInput,
-  });
-}
-
-export function createChatMessageConversationHistoryWindowState<TMessage>({
-  messages,
-  visibleMessageCount,
-}: ChatMessageConversationHistoryWindowStateInput<TMessage>): ChatMessageConversationHistoryWindowState<TMessage> {
-  return getChatRuntimeMessageHistoryWindowMobileDisplayState({
-    messages,
-    visibleMessageCount,
   });
 }
 
@@ -6702,11 +6677,11 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
     firstVisibleMessageIndex,
     visibleMessages,
     hiddenMessageCount,
-  } = createChatMessageConversationHistoryWindowState({
+  } = getChatRuntimeMessageHistoryWindowMobileDisplayState({
     messages,
     visibleMessageCount,
   });
-  const presentation = createChatMessageConversationThreadPresentationState({
+  const presentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
     colors: threadListInput.colors,
   });
   const resultOnlyToolLabel =
@@ -6725,14 +6700,6 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
     totalMessageCount: messages.length,
     hiddenMessageCount,
   };
-}
-
-export function createChatMessageConversationThreadPresentationState({
-  colors,
-}: ChatMessageConversationThreadPresentationStateInput): ChatMessageConversationThreadPresentationState {
-  return getChatRuntimeMessageThreadPresentationMobileRenderState({
-    colors,
-  });
 }
 
 export function createChatMessageRuntimeThreadChromeStyleState({

@@ -660,8 +660,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationThreadPresentationState/);
   assert.doesNotMatch(screenSource, /presentationColors:/);
-  assert.match(chatMessageChromeSource, /const presentation = createChatMessageConversationThreadPresentationState\(\{\s+colors: threadListInput\.colors,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /return getChatRuntimeMessageThreadPresentationMobileRenderState\(\{\s+colors,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const presentation = getChatRuntimeMessageThreadPresentationMobileRenderState\(\{\s+colors: threadListInput\.colors,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationThreadPresentationState/);
   assert.doesNotMatch(chatMessageChromeSource, /const delegationCardRenderState = getChatRuntimeDelegationCardMobileRenderState\(\{\s+colors,\s+\}\);/);
   assert.match(sessionPresentationSource, /delegationSurface: delegationCardRenderState\.surface,/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeDelegationCardRenderState = useMemo/);
@@ -2893,7 +2893,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /const hiddenMessageCount = firstVisibleMessageIndex;/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileDisplayState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage>/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageConversationHistoryWindowState<TMessage>\(\{[\s\S]*?return getChatRuntimeMessageHistoryWindowMobileDisplayState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationHistoryWindowState/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileDisplayState\(\{\s+messages,\s+visibleMessageCount,\s+\}\);/);
   assert.doesNotMatch(chatMessageChromeSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);/);
   assert.match(sessionPresentationSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\)/);
   assert.match(sessionPresentationSource, /visibleMessages: messages\.slice\(firstVisibleMessageIndex\)/);
@@ -4133,7 +4134,7 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(sessionPresentationSource, /message: getChatMessageMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageThreadPresentationMobileRenderState\(\{[\s\S]*?delegationSurface: delegationCardRenderState\.surface,[\s\S]*?delegationRoleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots\(colors\),[\s\S]*?pendingToolResultRenderState: getToolExecutionDetailMobilePendingResultRenderState\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageThreadPresentationMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /return getChatRuntimeMessageThreadPresentationMobileRenderState\(\{\s+colors,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const presentation = getChatRuntimeMessageThreadPresentationMobileRenderState\(\{\s+colors: threadListInput\.colors,\s+\}\);/);
   assert.doesNotMatch(chatMessageChromeSource, /const delegationCardRenderState = getChatRuntimeDelegationCardMobileRenderState\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /delegationRoleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots\(colors\)/);
   assert.doesNotMatch(chatMessageChromeSource, /pendingToolResultRenderState: getToolExecutionDetailMobilePendingResultRenderState\(\{/);
