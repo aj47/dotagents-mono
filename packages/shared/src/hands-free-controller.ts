@@ -81,6 +81,15 @@ export interface HandsFreeComposerMobileSurfaceRenderState {
   colors: HandsFreeComposerMobileSurfaceColors
 }
 
+export type HandsFreeComposerDebugMessageKey = Exclude<
+  keyof typeof HANDS_FREE_COMPOSER_PRESENTATION.debug,
+  "voiceDebugTitle"
+>
+
+export interface HandsFreeComposerDebugInfoState {
+  debugInfo: string
+}
+
 export const HANDS_FREE_COMPOSER_PRESENTATION = {
   controls: {
     wakeLabel: "Wake",
@@ -230,6 +239,36 @@ export function getHandsFreeComposerMobileSurfaceState(): typeof HANDS_FREE_COMP
 
 export function getHandsFreeComposerCopyState(): typeof HANDS_FREE_COMPOSER_PRESENTATION {
   return HANDS_FREE_COMPOSER_PRESENTATION
+}
+
+export function getHandsFreeComposerDebugMessage(
+  key: HandsFreeComposerDebugMessageKey,
+): string {
+  return HANDS_FREE_COMPOSER_PRESENTATION.debug[key]
+}
+
+function createHandsFreeComposerDebugInfoState(
+  key: HandsFreeComposerDebugMessageKey,
+): HandsFreeComposerDebugInfoState {
+  return {
+    debugInfo: getHandsFreeComposerDebugMessage(key),
+  }
+}
+
+export function createHandsFreeComposerTranscriptAddedDebugState(): HandsFreeComposerDebugInfoState {
+  return createHandsFreeComposerDebugInfoState("transcriptAdded")
+}
+
+export function createHandsFreeComposerPermissionDeniedDebugState(): HandsFreeComposerDebugInfoState {
+  return createHandsFreeComposerDebugInfoState("permissionDenied")
+}
+
+export function createHandsFreeComposerRecognizerErrorDebugState(
+  message: string,
+): HandsFreeComposerDebugInfoState {
+  return {
+    debugInfo: formatHandsFreeRecognizerErrorDebugMessage(message),
+  }
 }
 
 export function getHandsFreeComposerMobileSurfaceColors(

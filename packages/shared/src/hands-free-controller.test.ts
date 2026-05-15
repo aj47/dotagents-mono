@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  createHandsFreeComposerPermissionDeniedDebugState,
+  createHandsFreeComposerRecognizerErrorDebugState,
+  createHandsFreeComposerTranscriptAddedDebugState,
   createInitialHandsFreeState,
   formatHandsFreeActivePlaceholder,
   formatHandsFreeListeningSubtitle,
@@ -9,6 +12,7 @@ import {
   formatHandsFreeSleepingSubtitle,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerControlState,
+  getHandsFreeComposerDebugMessage,
   getHandsFreeComposerPlaceholder,
   getHandsFreeComposerMobileSurfaceColors,
   getHandsFreeComposerMobileSurfaceRenderState,
@@ -55,6 +59,16 @@ describe("hands-free controller", () => {
     expect(HANDS_FREE_COMPOSER_PRESENTATION.debug.permissionDenied).toBe("Speech recognition permission denied.")
     expect(HANDS_FREE_COMPOSER_PRESENTATION.debug.voiceDebugTitle).toBe("Voice debug")
     expect(getHandsFreeComposerCopyState()).toBe(HANDS_FREE_COMPOSER_PRESENTATION)
+    expect(getHandsFreeComposerDebugMessage("awake")).toBe(HANDS_FREE_COMPOSER_PRESENTATION.debug.awake)
+    expect(createHandsFreeComposerTranscriptAddedDebugState()).toEqual({
+      debugInfo: HANDS_FREE_COMPOSER_PRESENTATION.debug.transcriptAdded,
+    })
+    expect(createHandsFreeComposerPermissionDeniedDebugState()).toEqual({
+      debugInfo: HANDS_FREE_COMPOSER_PRESENTATION.debug.permissionDenied,
+    })
+    expect(createHandsFreeComposerRecognizerErrorDebugState("Mic unavailable")).toEqual({
+      debugInfo: "Voice error: Mic unavailable",
+    })
     expect(getHandsFreeComposerMobileSurfaceState()).toBe(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile)
     expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlsRow.flexDirection).toBe("row")
     expect(HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlsRow.alignItems).toBe("center")

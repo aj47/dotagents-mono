@@ -27,9 +27,6 @@ import {
   useChatRuntimeHandsFreeToggleChromeActionsState,
   useChatRuntimeTextToSpeechToggleChromeActionsState,
   useChatComposerRuntimeDraftState,
-  createChatComposerHandsFreeTranscriptAddedDebugState,
-  createChatComposerHandsFreePermissionDeniedDebugState,
-  createChatComposerHandsFreeRecognizerErrorDebugState,
   useChatComposerRuntimeImageLibraryPickerState,
   useChatComposerRuntimeSubmissionChromeState,
   useChatComposerRuntimeHandsFreeControlChromeActionsState,
@@ -103,6 +100,11 @@ import type {
   Loop,
   PredefinedPromptSummary,
 } from '@dotagents/shared/api-types';
+import {
+  createHandsFreeComposerPermissionDeniedDebugState,
+  createHandsFreeComposerRecognizerErrorDebugState,
+  createHandsFreeComposerTranscriptAddedDebugState,
+} from '@dotagents/shared/hands-free-controller';
 import {
   createChatRuntimeCompletedDebugState,
   createChatRuntimeNoSessionAvailableDebugState,
@@ -522,7 +524,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (mode === 'edit') {
         mergeVoiceTextIntoComposer(finalText);
-        setDebugInfo(createChatComposerHandsFreeTranscriptAddedDebugState().debugInfo);
+        setDebugInfo(createHandsFreeComposerTranscriptAddedDebugState().debugInfo);
         setTimeout(focusComposerInput, 0);
         return;
       }
@@ -541,10 +543,10 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     onRecognizerError: (message) => {
       handsFreeController.onRecognizerError(message);
-      setDebugInfo(createChatComposerHandsFreeRecognizerErrorDebugState(message).debugInfo);
+      setDebugInfo(createHandsFreeComposerRecognizerErrorDebugState(message).debugInfo);
     },
     onPermissionDenied: () => {
-      setDebugInfo(createChatComposerHandsFreePermissionDeniedDebugState().debugInfo);
+      setDebugInfo(createHandsFreeComposerPermissionDeniedDebugState().debugInfo);
     },
     log: voiceLog,
   });
