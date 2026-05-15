@@ -39,7 +39,6 @@ import {
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
   sanitizeMessagesForModel,
-  setChatDisplayExpansionState,
   toggleChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
@@ -196,6 +195,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationContentMobileState,
+  getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
@@ -274,6 +274,8 @@ import {
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
   type ChatRuntimeConversationContentMobileState,
   type ChatRuntimeConversationContentMobileStateInput,
+  type ChatRuntimeConversationDelegationCardMobileState,
+  type ChatRuntimeConversationDelegationCardMobileStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationMessageRenderContextMobileState,
@@ -2097,23 +2099,11 @@ type ChatMessageDelegationCardPropsInput = Omit<
   onShowAllToolPreview?: (runId: string) => void;
 };
 
-type ChatMessageDisplayExpansionStateSetter = Dispatch<SetStateAction<ChatDisplayExpansionStateMap<string>>>;
+type ChatMessageConversationDelegationCardInput =
+  ChatRuntimeConversationDelegationCardMobileStateInput<ACPDelegationProgress | null | undefined>;
 
-type ChatMessageConversationDelegationCardInput = {
-  message: {
-    variant?: string;
-    delegation?: ACPDelegationProgress | null;
-  };
-  surface: ChatMessageDelegationCardPropsInput['surface'];
-  toolEntries: ChatMessageDelegationCardPropsInput['toolEntries'];
-  displayToolCallCount: ChatMessageDelegationCardPropsInput['displayToolCallCount'];
-  expandedDelegationConversationPreviews: ChatMessageDelegationCardPropsInput['expandedDelegationConversationPreviews'];
-  expandedDelegationToolPreviews: ChatMessageDelegationCardPropsInput['expandedDelegationToolPreviews'];
-  roleStyles: ChatMessageDelegationCardPropsInput['roleStyles'];
-  colors: ChatMessageDelegationCardPropsInput['colors'];
-  setExpandedDelegationConversationPreviews: ChatMessageDisplayExpansionStateSetter;
-  setExpandedDelegationToolPreviews: ChatMessageDisplayExpansionStateSetter;
-};
+type ChatMessageConversationDelegationCardState =
+  ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;
 
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
 
@@ -6894,28 +6884,19 @@ export function createChatMessageConversationDelegationCardInput({
   colors,
   setExpandedDelegationConversationPreviews,
   setExpandedDelegationToolPreviews,
-}: ChatMessageConversationDelegationCardInput): ChatMessageDelegationCardPropsInput {
-  return {
-    isDelegation: message.variant === 'delegation',
+}: ChatMessageConversationDelegationCardInput): ChatMessageConversationDelegationCardState {
+  return getChatRuntimeConversationDelegationCardMobileState({
+    message,
     surface,
-    delegation: message.delegation,
     toolEntries,
     displayToolCallCount,
     expandedDelegationConversationPreviews,
     expandedDelegationToolPreviews,
     roleStyles,
     colors,
-    onShowAllConversationPreview: (runId) => {
-      setExpandedDelegationConversationPreviews((current) =>
-        setChatDisplayExpansionState(current, runId, true),
-      );
-    },
-    onShowAllToolPreview: (runId) => {
-      setExpandedDelegationToolPreviews((current) =>
-        setChatDisplayExpansionState(current, runId, true),
-      );
-    },
-  };
+    setExpandedDelegationConversationPreviews,
+    setExpandedDelegationToolPreviews,
+  });
 }
 
 export function createChatMessageConversationRetryStatusInput({

@@ -51,6 +51,7 @@ import {
   getChatMessageSpeechMobileRenderState,
   hasChatMessageDisplayContent,
   isChatMessageLiveStreamingConversationContent,
+  setChatDisplayExpansionState,
   shouldShowChatMessageTurnDurationBadge,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutState,
@@ -676,6 +677,50 @@ export interface ChatRuntimeConversationToolApprovalMobileState {
   onToggleArguments: (approvalId: string) => void
   onDeny: (approvalId: string) => void
   onApprove: (approvalId: string) => void
+}
+
+export type ChatRuntimeConversationDelegationExpansionSetter = (
+  updater: (
+    current: ChatDisplayExpansionStateMap<string>,
+  ) => ChatDisplayExpansionStateMap<string>,
+) => void
+
+export type ChatRuntimeConversationDelegationCardMobileColors =
+  ChatRuntimeDelegationCardMobileRenderStateInput["colors"]
+  & ChatRuntimeDelegationStatusMobileRenderStateInput["colors"]
+
+export interface ChatRuntimeConversationDelegationCardMobileStateInput<
+  TDelegation = unknown,
+> {
+  message: {
+    variant?: string
+    delegation?: TDelegation
+  }
+  surface: ChatRuntimeDelegationCardMobileRenderState["surface"]
+  toolEntries: readonly ChatMessageDisplayToolEntry[]
+  displayToolCallCount: number
+  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>
+  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>
+  roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+  colors: ChatRuntimeConversationDelegationCardMobileColors
+  setExpandedDelegationConversationPreviews: ChatRuntimeConversationDelegationExpansionSetter
+  setExpandedDelegationToolPreviews: ChatRuntimeConversationDelegationExpansionSetter
+}
+
+export interface ChatRuntimeConversationDelegationCardMobileState<
+  TDelegation = unknown,
+> {
+  isDelegation: boolean
+  surface: ChatRuntimeDelegationCardMobileRenderState["surface"]
+  delegation?: TDelegation
+  toolEntries: readonly ChatMessageDisplayToolEntry[]
+  displayToolCallCount: number
+  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>
+  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>
+  roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+  colors: ChatRuntimeConversationDelegationCardMobileColors
+  onShowAllConversationPreview: (runId: string) => void
+  onShowAllToolPreview: (runId: string) => void
 }
 
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
@@ -6027,6 +6072,43 @@ export function getChatRuntimeConversationToolApprovalMobileState({
     onToggleArguments,
     onDeny: (approvalId) => { void onRespondToToolApproval(approvalId, false) },
     onApprove: (approvalId) => { void onRespondToToolApproval(approvalId, true) },
+  }
+}
+
+export function getChatRuntimeConversationDelegationCardMobileState<
+  TDelegation = unknown,
+>({
+  message,
+  surface,
+  toolEntries,
+  displayToolCallCount,
+  expandedDelegationConversationPreviews,
+  expandedDelegationToolPreviews,
+  roleStyles,
+  colors,
+  setExpandedDelegationConversationPreviews,
+  setExpandedDelegationToolPreviews,
+}: ChatRuntimeConversationDelegationCardMobileStateInput<TDelegation>): ChatRuntimeConversationDelegationCardMobileState<TDelegation> {
+  return {
+    isDelegation: message.variant === "delegation",
+    surface,
+    delegation: message.delegation,
+    toolEntries,
+    displayToolCallCount,
+    expandedDelegationConversationPreviews,
+    expandedDelegationToolPreviews,
+    roleStyles,
+    colors,
+    onShowAllConversationPreview: (runId) => {
+      setExpandedDelegationConversationPreviews((current) =>
+        setChatDisplayExpansionState(current, runId, true),
+      )
+    },
+    onShowAllToolPreview: (runId) => {
+      setExpandedDelegationToolPreviews((current) =>
+        setChatDisplayExpansionState(current, runId, true),
+      )
+    },
   }
 }
 

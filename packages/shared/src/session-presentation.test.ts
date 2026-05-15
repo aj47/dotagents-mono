@@ -101,6 +101,7 @@ import {
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationRetryStatusMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
@@ -3222,6 +3223,47 @@ describe("session presentation semantics", () => {
       { approvalId: "approval-1", approved: false },
       { approvalId: "approval-2", approved: true },
     ])
+    let expandedDelegationConversationPreviews: Record<string, boolean> = {}
+    let expandedDelegationToolPreviews: Record<string, boolean> = {}
+    const delegationColors = {
+      info: "#2563eb",
+      foreground: "#0f172a",
+      mutedForeground: "#64748b",
+      warning: "#d97706",
+      success: "#16a34a",
+      destructive: "#dc2626",
+    }
+    const delegationCardState = getChatRuntimeConversationDelegationCardMobileState({
+      message: {
+        variant: "delegation",
+        delegation: {
+          runId: "run-1",
+        },
+      },
+      surface: getChatRuntimeDelegationCardMobileState(),
+      toolEntries: [],
+      displayToolCallCount: 0,
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      roleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(delegationColors),
+      colors: delegationColors,
+      setExpandedDelegationConversationPreviews: (updater) => {
+        expandedDelegationConversationPreviews = updater(expandedDelegationConversationPreviews)
+      },
+      setExpandedDelegationToolPreviews: (updater) => {
+        expandedDelegationToolPreviews = updater(expandedDelegationToolPreviews)
+      },
+    })
+    expect(delegationCardState).toMatchObject({
+      isDelegation: true,
+      delegation: {
+        runId: "run-1",
+      },
+    })
+    delegationCardState.onShowAllConversationPreview("run-1")
+    delegationCardState.onShowAllToolPreview("run-2")
+    expect(expandedDelegationConversationPreviews).toEqual({ "run-1": true })
+    expect(expandedDelegationToolPreviews).toEqual({ "run-2": true })
     const toolActivityGroup: ToolActivityGroup = {
       startIndex: 3,
       endIndex: 4,
