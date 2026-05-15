@@ -203,11 +203,14 @@ import {
   getChatRuntimeToolApprovalHeaderMobileIconColors,
   getChatRuntimeToolApprovalHeaderMobileIconState,
   getChatRuntimeToolApprovalCardMobileRenderState,
+  getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
+  getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalMobileAlertState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeToolApprovalMobileSurfaceColors,
   getChatRuntimeToolApprovalMobileSurfaceState,
   getChatRuntimeToolApprovalSpinnerMobileColors,
+  getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
@@ -2615,6 +2618,18 @@ describe("session presentation semantics", () => {
         title: CHAT_RUNTIME_PRESENTATION.approval.failedTitle,
         fallbackMessage: CHAT_RUNTIME_PRESENTATION.approval.responseFailedMessage,
       },
+    })
+    expect(getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState()).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.approval.connectionRequiredTitle,
+      message: CHAT_RUNTIME_PRESENTATION.approval.connectionRequiredMessage,
+    })
+    expect(getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState()).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.approval.unavailableTitle,
+      message: CHAT_RUNTIME_PRESENTATION.approval.unavailableMessage,
+    })
+    expect(getChatRuntimeToolApprovalFailedMobileResolvedAlertState(new Error("Timed out"))).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.approval.failedTitle,
+      message: "Timed out",
     })
     expect(CHAT_RUNTIME_PRESENTATION.approval.title).toBe("Tool Approval Required")
     expect(CHAT_RUNTIME_PRESENTATION.approval.viewArgumentsGlyph).toBe("▶")

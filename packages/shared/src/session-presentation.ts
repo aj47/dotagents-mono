@@ -5294,6 +5294,34 @@ export function getChatRuntimeToolApprovalMobileAlertState(): ChatRuntimeToolApp
   }
 }
 
+export function getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState(
+  alerts: ChatRuntimeToolApprovalMobileAlertState = getChatRuntimeToolApprovalMobileAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alerts.connectionRequired.title,
+    message: alerts.connectionRequired.message,
+  }
+}
+
+export function getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState(
+  alerts: ChatRuntimeToolApprovalMobileAlertState = getChatRuntimeToolApprovalMobileAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alerts.unavailable.title,
+    message: alerts.unavailable.message,
+  }
+}
+
+export function getChatRuntimeToolApprovalFailedMobileResolvedAlertState(
+  error: unknown,
+  alerts: ChatRuntimeToolApprovalMobileAlertState = getChatRuntimeToolApprovalMobileAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alerts.failed.title,
+    message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
+  }
+}
+
 export function formatChatRuntimeToolApprovalRequiredContent(toolName: string): string {
   return `${CHAT_RUNTIME_PRESENTATION.approval.title}: ${toolName}`
 }

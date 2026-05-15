@@ -215,7 +215,9 @@ import {
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
-  getChatRuntimeToolApprovalMobileAlertState,
+  getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
+  getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
+  getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getFollowUpInputPresentation,
   shouldRenderChatRuntimeConversationThread,
   shouldRenderChatRuntimeActivityStep,
@@ -5775,34 +5777,6 @@ export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState(
   };
 }
 
-export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState(
-  alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
-  return {
-    title: alerts.connectionRequired.title,
-    message: alerts.connectionRequired.message,
-  };
-}
-
-export function getChatMessageRuntimeToolApprovalUnavailableAlertState(
-  alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
-  return {
-    title: alerts.unavailable.title,
-    message: alerts.unavailable.message,
-  };
-}
-
-export function getChatMessageRuntimeToolApprovalFailedAlertState(
-  error: unknown,
-  alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
-  return {
-    title: alerts.failed.title,
-    message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
-  };
-}
-
 export function createChatMessageRuntimeViewportChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -8596,7 +8570,7 @@ export function useChatMessageRuntimeToolApprovalActionsState<
 }: ChatMessageRuntimeToolApprovalActionsStateInput<TMessage>): ChatMessageRuntimeToolApprovalActionsState {
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!approvalClient) {
-      const connectionRequiredAlert = getChatMessageRuntimeToolApprovalConnectionRequiredAlertState();
+      const connectionRequiredAlert = getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState();
       showAlert(connectionRequiredAlert.title, connectionRequiredAlert.message);
       return;
     }
@@ -8606,11 +8580,11 @@ export function useChatMessageRuntimeToolApprovalActionsState<
       const response = await approvalClient.respondToToolApproval(approvalId, approved);
       setMessages((current) => removeChatMessageRuntimeToolApprovalMessage(current, approvalId));
       if (!response.success) {
-        const unavailableAlert = getChatMessageRuntimeToolApprovalUnavailableAlertState();
+        const unavailableAlert = getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState();
         showAlert(unavailableAlert.title, unavailableAlert.message);
       }
     } catch (error: unknown) {
-      const failedAlert = getChatMessageRuntimeToolApprovalFailedAlertState(error);
+      const failedAlert = getChatRuntimeToolApprovalFailedMobileResolvedAlertState(error);
       showAlert(failedAlert.title, failedAlert.message);
     } finally {
       clearToolApprovalResponse();
