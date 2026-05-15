@@ -24,6 +24,10 @@ const handsFreeControllerSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'hands-free-controller.ts'),
   'utf8'
 );
+const mobileAppConfigSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'mobile-app-config.ts'),
+  'utf8'
+);
 
 test('renders the extracted handsfree status chip in the mobile chat composer', () => {
   assert.doesNotMatch(screenSource, /HandsFreeStatusChip/);
@@ -111,12 +115,17 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
   assert.doesNotMatch(screenSource, /if \(!handsFreeRuntimeActive && listening\)/);
   assert.match(screenSource, /const chatRuntimeConfig = createChatRuntimeMobileConfigState\(config\);/);
   assert.match(screenSource, /handsFreeMessageDebounceMs,[\s\S]*?handsFreeWakePhrase,[\s\S]*?handsFreeSleepPhrase,[\s\S]*?handsFreeDebugEnabled,[\s\S]*?handsFreeForegroundOnly,[\s\S]*?messageQueueEnabled,[\s\S]*?ttsEnabled: ttsEnabledSetting,/);
-  assert.match(chatMessageChromeSource, /export function createChatRuntimeMobileConfigState/);
-  assert.match(chatMessageChromeSource, /DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS/);
-  assert.match(chatMessageChromeSource, /DEFAULT_HANDS_FREE_WAKE_PHRASE/);
-  assert.match(chatMessageChromeSource, /DEFAULT_HANDS_FREE_SLEEP_PHRASE/);
-  assert.match(chatMessageChromeSource, /DEFAULT_MOBILE_APP_CONFIG/);
-  assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/mobile-app-config'/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatRuntimeMobileConfigState/);
+  assert.match(mobileAppConfigSource, /export function createChatRuntimeMobileConfigState/);
+  assert.doesNotMatch(chatMessageChromeSource, /DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS/);
+  assert.match(mobileAppConfigSource, /DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS/);
+  assert.doesNotMatch(chatMessageChromeSource, /DEFAULT_HANDS_FREE_WAKE_PHRASE/);
+  assert.match(mobileAppConfigSource, /DEFAULT_HANDS_FREE_WAKE_PHRASE/);
+  assert.doesNotMatch(chatMessageChromeSource, /DEFAULT_HANDS_FREE_SLEEP_PHRASE/);
+  assert.match(mobileAppConfigSource, /DEFAULT_HANDS_FREE_SLEEP_PHRASE/);
+  assert.doesNotMatch(chatMessageChromeSource, /DEFAULT_MOBILE_APP_CONFIG/);
+  assert.match(mobileAppConfigSource, /DEFAULT_MOBILE_APP_CONFIG/);
+  assert.match(screenSource, /from '@dotagents\/shared\/mobile-app-config'/);
   assert.doesNotMatch(screenSource, /DEFAULT_HANDS_FREE_(MESSAGE_DEBOUNCE_MS|WAKE_PHRASE|SLEEP_PHRASE)/);
   assert.doesNotMatch(screenSource, /DEFAULT_MOBILE_APP_CONFIG/);
   assert.match(screenSource, /handsFreeDebounceMs:\s*handsFreeMessageDebounceMs/);

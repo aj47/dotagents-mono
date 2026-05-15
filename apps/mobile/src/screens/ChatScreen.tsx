@@ -35,7 +35,6 @@ import {
   useChatRuntimeNavigationHeaderChromeOptions,
   createChatMessageRuntimeConnectionErrorTurnState,
   createChatMessageRuntimeQueuedErrorState,
-  createChatRuntimeMobileConfigState,
   createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimePendingTurnState,
   applyChatMessageRuntimePendingTurnStatusState,
@@ -105,6 +104,7 @@ import {
   createHandsFreeComposerRecognizerErrorDebugState,
   createHandsFreeComposerTranscriptAddedDebugState,
 } from '@dotagents/shared/hands-free-controller';
+import { createChatRuntimeMobileConfigState } from '@dotagents/shared/mobile-app-config';
 import {
   createChatRuntimeCompletedDebugState,
   createChatRuntimeNoSessionAvailableDebugState,

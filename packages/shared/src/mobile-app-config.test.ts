@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createChatRuntimeMobileConfigState,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
@@ -86,5 +87,26 @@ describe('normalizeMobileStoredConfig', () => {
     });
 
     expect(normalized.audioInputDeviceId).toBe('microphone-1');
+  });
+
+  it('derives chat runtime config state from mobile defaults and overrides', () => {
+    expect(createChatRuntimeMobileConfigState({
+      ...DEFAULT_MOBILE_APP_CONFIG,
+      handsFreeMessageDebounceMs: undefined,
+      handsFreeWakePhrase: '',
+      handsFreeSleepPhrase: '',
+      handsFreeDebug: true,
+      handsFreeForegroundOnly: undefined,
+      messageQueueEnabled: undefined,
+      ttsEnabled: undefined,
+    })).toEqual({
+      handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+      handsFreeWakePhrase: DEFAULT_HANDS_FREE_WAKE_PHRASE,
+      handsFreeSleepPhrase: DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+      handsFreeDebugEnabled: true,
+      handsFreeForegroundOnly: DEFAULT_MOBILE_APP_CONFIG.handsFreeForegroundOnly,
+      messageQueueEnabled: DEFAULT_MOBILE_APP_CONFIG.messageQueueEnabled,
+      ttsEnabled: DEFAULT_MOBILE_APP_CONFIG.ttsEnabled,
+    });
   });
 });

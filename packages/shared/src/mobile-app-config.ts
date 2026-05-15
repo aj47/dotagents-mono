@@ -24,6 +24,16 @@ export type MobileAppConfig = AudioInputDeviceConfig & {
   edgeTtsVoice?: string;
 };
 
+export interface ChatRuntimeMobileConfigState {
+  handsFreeMessageDebounceMs: number;
+  handsFreeWakePhrase: string;
+  handsFreeSleepPhrase: string;
+  handsFreeDebugEnabled: boolean;
+  handsFreeForegroundOnly: boolean;
+  messageQueueEnabled: boolean;
+  ttsEnabled: boolean;
+}
+
 export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey dot agents';
 export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = 'go to sleep';
 export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 1500;
@@ -74,5 +84,23 @@ export function normalizeMobileStoredConfig(cfg: MobileAppConfig): MobileAppConf
     handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? DEFAULT_MOBILE_APP_CONFIG.handsFreeForegroundOnly,
     edgeTtsVoice: migrateDeprecatedEdgeTtsVoice(cfg.edgeTtsVoice),
     ttsProvider,
+  };
+}
+
+export function createChatRuntimeMobileConfigState(
+  config: MobileAppConfig,
+): ChatRuntimeMobileConfigState {
+  return {
+    handsFreeMessageDebounceMs:
+      config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+    handsFreeWakePhrase: config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE,
+    handsFreeSleepPhrase: config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+    handsFreeDebugEnabled: config.handsFreeDebug === true,
+    handsFreeForegroundOnly:
+      config.handsFreeForegroundOnly ?? DEFAULT_MOBILE_APP_CONFIG.handsFreeForegroundOnly ?? true,
+    messageQueueEnabled:
+      config.messageQueueEnabled ?? DEFAULT_MOBILE_APP_CONFIG.messageQueueEnabled ?? true,
+    ttsEnabled:
+      config.ttsEnabled ?? DEFAULT_MOBILE_APP_CONFIG.ttsEnabled ?? true,
   };
 }
