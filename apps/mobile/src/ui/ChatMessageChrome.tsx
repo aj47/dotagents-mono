@@ -5376,9 +5376,7 @@ export function applyChatMessageRuntimeProgressTurnStatusState(
   statusSetters: ChatRuntimeProgressTurnStatusSetters,
 ): void {
   statusSetters.setConversationState(progressTurnState.conversationState);
-  if (progressTurnState.latestStepSummary) {
-    statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary);
-  }
+  statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary ?? null);
 }
 
 export function createChatMessageRuntimePendingTurnStatusState() {

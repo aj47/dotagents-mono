@@ -3165,7 +3165,8 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.doesNotMatch(screenSource, /setConversationState\(progressTurnState\.conversationState\);/);
   assert.match(chatMessageChromeSource, /export function applyChatMessageRuntimeProgressTurnStatusState/);
   assert.match(chatMessageChromeSource, /statusSetters\.setConversationState\(progressTurnState\.conversationState\)/);
-  assert.match(chatMessageChromeSource, /statusSetters\.setLatestStepSummary\(progressTurnState\.latestStepSummary\)/);
+  assert.match(chatMessageChromeSource, /statusSetters\.setLatestStepSummary\(progressTurnState\.latestStepSummary \?\? null\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /if \(progressTurnState\.latestStepSummary\) \{\s+statusSetters\.setLatestStepSummary/);
   assert.doesNotMatch(screenSource, /const latestStepSummaryRenderState = useMemo/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeViewportAffordanceMobileRenderState/);
   assert.match(chatMessageChromeSource, /return getChatRuntimeViewportAffordanceMobileRenderState\(\{\s+visibleMessageCount,\s+totalMessageCount,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement,\s+latestStepSummary,\s+colors,/);
