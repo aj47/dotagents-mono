@@ -96,6 +96,7 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
+  getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
@@ -3109,6 +3110,23 @@ describe("session presentation semantics", () => {
       "branch",
       "copy",
     ])
+    const liveConversationMessageContext = getChatRuntimeConversationMessageRenderContextMobileState({
+      message: {
+        role: "assistant",
+        content: "Working",
+      },
+      messageIndex: 4,
+      isResponding: true,
+      lastConversationContentMessageIndex: 4,
+      expandedMessages: { 4: true },
+      resultOnlyToolLabel: "Tool",
+      colors: messageThreadStyleColors,
+    })
+    expect(liveConversationMessageContext.visibleMessageContent).toBe("Working")
+    expect(liveConversationMessageContext.isExpanded).toBe(true)
+    expect(liveConversationMessageContext.isLiveStreamingAssistantMessage).toBe(true)
+    expect(liveConversationMessageContext.messageRenderState.content.shouldRenderExpandedContent).toBe(true)
+    expect(liveConversationMessageContext.shouldRenderSurface).toBe(true)
     const messageThreadPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: {
         ...messageThreadStyleColors,

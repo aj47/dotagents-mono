@@ -3,7 +3,12 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "./conversation-state"
-import { getCompactToolExecutionPreview } from "./chat-utils"
+import {
+  getChatMessageDisplayState,
+  getCompactToolExecutionPreview,
+  type ChatMessageDisplayStateMessageLike,
+  type ChatMessageDisplayToolEntry,
+} from "./chat-utils"
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
@@ -45,10 +50,12 @@ import {
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
   hasChatMessageDisplayContent,
+  isChatMessageLiveStreamingConversationContent,
   shouldShowChatMessageTurnDurationBadge,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutState,
   type ChatDisplayExpansionStateMap,
+  type ChatMessageConversationContentLike,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
   type ChatMessageCopyMobileRenderState,
@@ -493,6 +500,26 @@ export interface ChatRuntimeConversationMessageActionsMobileRenderState {
   expansion: ChatRuntimeConversationMessageMobileRenderState["expansion"]
   availability: ChatMessageActionAvailabilityRenderState
   layout: ChatMessageActionLayoutState
+}
+
+export interface ChatRuntimeConversationMessageRenderContextMobileStateInput {
+  message: ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike
+  messageIndex: number
+  isResponding: boolean
+  lastConversationContentMessageIndex: number
+  expandedMessages: ChatDisplayExpansionStateMap<number>
+  resultOnlyToolLabel: string
+  colors: ChatRuntimeConversationMessageMobileRenderStateInput["colors"]
+}
+
+export interface ChatRuntimeConversationMessageRenderContextMobileState {
+  visibleMessageContent: string
+  renderedToolEntries: ChatMessageDisplayToolEntry[]
+  displayToolCallCount: number
+  isExpanded: boolean
+  isLiveStreamingAssistantMessage: boolean
+  messageRenderState: ChatRuntimeConversationMessageMobileRenderState
+  shouldRenderSurface: boolean
 }
 
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
@@ -5605,6 +5632,53 @@ export function getChatRuntimeConversationMessageActionsMobileRenderState({
       availability,
       renderState: message.content,
     }),
+  }
+}
+
+export function getChatRuntimeConversationMessageRenderContextMobileState({
+  message,
+  messageIndex,
+  isResponding,
+  lastConversationContentMessageIndex,
+  expandedMessages,
+  resultOnlyToolLabel,
+  colors,
+}: ChatRuntimeConversationMessageRenderContextMobileStateInput): ChatRuntimeConversationMessageRenderContextMobileState {
+  const messageDisplayState = getChatMessageDisplayState(message, {
+    resultOnlyToolLabel,
+  })
+  const visibleMessageContent = messageDisplayState.visibleContent
+  const renderedToolEntries = messageDisplayState.visibleToolEntries
+  const displayToolCallCount = messageDisplayState.displayToolCallCount
+  const isExpanded = getChatDisplayExpansionState(expandedMessages, messageIndex)
+  const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
+    isResponding,
+    messageIndex,
+    lastConversationContentMessageIndex,
+    message,
+    content: visibleMessageContent,
+    displayToolCallCount,
+  })
+
+  return {
+    visibleMessageContent,
+    renderedToolEntries,
+    displayToolCallCount,
+    isExpanded,
+    isLiveStreamingAssistantMessage,
+    messageRenderState: getChatRuntimeConversationMessageMobileRenderState({
+      role: message.role,
+      isComplete: !isResponding,
+      isLast: messageIndex === lastConversationContentMessageIndex,
+      toolResults: renderedToolEntries.map((entry) => entry.result),
+      content: visibleMessageContent,
+      isExpanded,
+      shouldCollapse: messageDisplayState.shouldCollapse,
+      isToolOnly: messageDisplayState.isToolOnly,
+      isLiveStreaming: isLiveStreamingAssistantMessage,
+      colors,
+    }),
+    shouldRenderSurface: messageDisplayState.shouldRenderSurface,
   }
 }
 

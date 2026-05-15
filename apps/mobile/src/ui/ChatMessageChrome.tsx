@@ -38,7 +38,6 @@ import {
   getChatMessageActionMobileButtonStatesBySlot,
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
-  isChatMessageLiveStreamingConversationContent,
   sanitizeMessagesForModel,
   setChatDisplayExpansionState,
   toggleChatDisplayExpansionState,
@@ -56,7 +55,6 @@ import {
   applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
-  getChatMessageDisplayState,
   hasVisibleChatMessageContent,
   preserveChatMessageDisplayContentFromProgress,
   sortAgentUserResponseEvents,
@@ -200,7 +198,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
-  getChatRuntimeConversationMessageMobileRenderState,
+  getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
@@ -268,6 +266,9 @@ import {
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
+  type ChatRuntimeConversationMessageRenderContextMobileState,
+  type ChatRuntimeConversationMessageRenderContextMobileStateInput,
+  type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileColorPalette,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
@@ -1314,33 +1315,13 @@ type ChatMessageRuntimeClipboardActionsState = {
   handleCopyToolPayload: (content: string) => Promise<void>;
 };
 
-type ChatMessageMobileRenderState = ReturnType<typeof getChatRuntimeConversationMessageMobileRenderState>;
+type ChatMessageMobileRenderState = ChatRuntimeConversationMessageMobileRenderState;
 
-type ChatMessageRenderStateInput =
-  Omit<ChatRuntimeConversationMessageMobileRenderStateInput, 'toolResults'>
-  & {
-    toolEntries: readonly Pick<ChatMessageDisplayToolEntry, 'result'>[];
-  };
+type ChatMessageConversationRenderContextInput =
+  ChatRuntimeConversationMessageRenderContextMobileStateInput;
 
-type ChatMessageConversationRenderContextInput = {
-  message: ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike;
-  messageIndex: number;
-  isResponding: boolean;
-  lastConversationContentMessageIndex: number;
-  expandedMessages: ChatDisplayExpansionStateMap<number>;
-  resultOnlyToolLabel: string;
-  colors: ChatRuntimeConversationMessageMobileRenderStateInput['colors'];
-};
-
-type ChatMessageConversationRenderContext = {
-  visibleMessageContent: string;
-  renderedToolEntries: readonly ChatMessageDisplayToolEntry[];
-  displayToolCallCount: number;
-  isExpanded: boolean;
-  isLiveStreamingAssistantMessage: boolean;
-  messageRenderState: ChatMessageMobileRenderState;
-  shouldRenderSurface: boolean;
-};
+type ChatMessageConversationRenderContext =
+  ChatRuntimeConversationMessageRenderContextMobileState;
 
 type ChatMessageConversationToolActivityGroupRenderStateInput =
   Omit<ToolActivityGroupMobileRenderStateInput, 'group'>
@@ -4071,62 +4052,10 @@ function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
   );
 }
 
-export function createChatMessageRenderState({
-  toolEntries,
-  ...input
-}: ChatMessageRenderStateInput) {
-  return getChatRuntimeConversationMessageMobileRenderState({
-    ...input,
-    toolResults: toolEntries.map(entry => entry.result),
-  });
-}
-
-export function createChatMessageConversationRenderContext({
-  message,
-  messageIndex,
-  isResponding,
-  lastConversationContentMessageIndex,
-  expandedMessages,
-  resultOnlyToolLabel,
-  colors,
-}: ChatMessageConversationRenderContextInput): ChatMessageConversationRenderContext {
-  const messageDisplayState = getChatMessageDisplayState(message, {
-    resultOnlyToolLabel,
-  });
-  const visibleMessageContent = messageDisplayState.visibleContent;
-  const renderedToolEntries = messageDisplayState.visibleToolEntries;
-  const displayToolCallCount = messageDisplayState.displayToolCallCount;
-  const isExpanded = getChatDisplayExpansionState(expandedMessages, messageIndex);
-  const isLiveStreamingAssistantMessage = isChatMessageLiveStreamingConversationContent({
-    isResponding,
-    messageIndex,
-    lastConversationContentMessageIndex,
-    message,
-    content: visibleMessageContent,
-    displayToolCallCount,
-  });
-  const messageRenderState = createChatMessageRenderState({
-    role: message.role,
-    isComplete: !isResponding,
-    isLast: messageIndex === lastConversationContentMessageIndex,
-    toolEntries: renderedToolEntries,
-    content: visibleMessageContent,
-    isExpanded,
-    shouldCollapse: messageDisplayState.shouldCollapse,
-    isToolOnly: messageDisplayState.isToolOnly,
-    isLiveStreaming: isLiveStreamingAssistantMessage,
-    colors,
-  });
-
-  return {
-    visibleMessageContent,
-    renderedToolEntries,
-    displayToolCallCount,
-    isExpanded,
-    isLiveStreamingAssistantMessage,
-    messageRenderState,
-    shouldRenderSurface: messageDisplayState.shouldRenderSurface,
-  };
+export function createChatMessageConversationRenderContext(
+  input: ChatMessageConversationRenderContextInput,
+): ChatMessageConversationRenderContext {
+  return getChatRuntimeConversationMessageRenderContextMobileState(input);
 }
 
 export function createChatMessageConversationToolActivityGroupRenderState({
