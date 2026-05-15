@@ -45,6 +45,7 @@ import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
   getChatDisplayExpansionState,
+  getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionLayoutRenderState,
   getChatMessageActionMobileIconColors,
@@ -92,12 +93,14 @@ import {
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailMobileStyleRenderState,
+  getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailResultState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
   type ToolExecutionDetailMobileCopyButtonRenderState,
+  type ToolExecutionDetailCopyFailureAlertState,
   type ToolExecutionDetailMobileHeaderRenderState,
   type ToolExecutionDetailMobilePendingResultRenderState,
   type ToolExecutionDetailMobileSectionHeaderRenderState,
@@ -1205,6 +1208,12 @@ export interface ChatRuntimeBranchActionState {
 export interface ChatRuntimeResolvedAlertState {
   title: string
   message: string
+}
+
+export interface ChatMessageCopyFeedbackState {
+  feedbackResetDelayMs: number
+  failedTitle: string
+  failedMessage: string
 }
 
 export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatRuntimeResolvedAlertState {
@@ -4670,6 +4679,40 @@ export function getChatConversationHomePromptTaskRunFailedAlertState(
   return {
     title: copy.feedback.errorTitle,
     message: getChatRuntimeAlertMessage(error, copy.feedback.taskRunFailed),
+  }
+}
+
+export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState {
+  const copyState = getChatMessageActionCopyState().copy
+
+  return {
+    feedbackResetDelayMs: copyState.feedbackResetDelayMs,
+    failedTitle: copyState.failedTitle,
+    failedMessage: copyState.failedMessage,
+  }
+}
+
+export function getChatMessageCopyFeedbackResetDelayMs(): number {
+  return getChatMessageCopyFeedbackState().feedbackResetDelayMs
+}
+
+export function getChatMessageCopyFailureAlertState(
+  error: unknown,
+  feedbackState: ChatMessageCopyFeedbackState = getChatMessageCopyFeedbackState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: feedbackState.failedTitle,
+    message: getChatRuntimeAlertMessage(error, feedbackState.failedMessage),
+  }
+}
+
+export function getChatMessageToolExecutionCopyFailureResolvedAlertState(
+  error: unknown,
+  alertState: ToolExecutionDetailCopyFailureAlertState = getToolExecutionDetailCopyFailureAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alertState.title,
+    message: getChatRuntimeAlertMessage(error, alertState.fallbackMessage),
   }
 }
 

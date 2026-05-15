@@ -80,6 +80,10 @@ import {
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileIconState,
   getChatComposerTextToSpeechMobileRenderState,
+  getChatMessageCopyFailureAlertState,
+  getChatMessageCopyFeedbackResetDelayMs,
+  getChatMessageCopyFeedbackState,
+  getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
   getChatConversationHomePromptSaveFailedAlertState,
@@ -2670,6 +2674,24 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeWebConfirmMessage("Title", "Body")).toBe("Title\n\nBody")
     expect(getChatRuntimeAlertMessage(new Error("Network"), "Fallback")).toBe("Network")
     expect(getChatRuntimeAlertMessage("", "Fallback")).toBe("Fallback")
+    expect(getChatMessageCopyFeedbackState()).toEqual({
+      feedbackResetDelayMs: 2000,
+      failedTitle: "Copy Failed",
+      failedMessage: "Could not copy this message.",
+    })
+    expect(getChatMessageCopyFeedbackResetDelayMs()).toBe(2000)
+    expect(getChatMessageCopyFailureAlertState(new Error("Clipboard denied"))).toEqual({
+      title: "Copy Failed",
+      message: "Clipboard denied",
+    })
+    expect(getChatMessageToolExecutionCopyFailureResolvedAlertState("No payload")).toEqual({
+      title: "Copy Failed",
+      message: "No payload",
+    })
+    expect(getChatMessageToolExecutionCopyFailureResolvedAlertState(null)).toEqual({
+      title: "Copy Failed",
+      message: "Could not copy this tool payload.",
+    })
     expect(getChatConversationHomePromptSaveSuccessAlertState(false)).toEqual({
       title: "Success",
       message: "Prompt saved to your desktop prompt library.",

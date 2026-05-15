@@ -34,7 +34,6 @@ import {
   createChatMessageActionSlotRenderMap,
   getChatDisplayExpansionState,
   getChatMessageActionSlotRenderEntries,
-  getChatMessageActionCopyState,
   getChatMessageActionMobileButtonStatesBySlot,
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
@@ -168,6 +167,9 @@ import {
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
   formatChatRuntimeToolApprovalRequiredContent,
+  getChatMessageCopyFailureAlertState,
+  getChatMessageCopyFeedbackResetDelayMs,
+  getChatMessageToolExecutionCopyFailureResolvedAlertState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
   getChatConversationHomePromptSaveFailedAlertState,
@@ -219,7 +221,6 @@ import {
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
-  type ChatRuntimeResolvedAlertState,
   type ChatRuntimeActivityStepLike,
   type ChatRuntimeBackMobileRenderState,
   type ChatRuntimeBranchMobileRenderState,
@@ -271,7 +272,6 @@ import {
   type ChatRuntimeToolExecutionStackMobileRenderStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
-  getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   type ToolExecutionCompactMobileRenderState,
@@ -1215,12 +1215,6 @@ type ChatMessageActionSetInput = Omit<
   branch: ChatMessageBranchActionSpecInput;
   copy: ChatMessageCopyActionSpecInput;
   expansion: ChatMessageExpansionActionSpecInput;
-};
-
-type ChatMessageCopyFeedbackState = {
-  feedbackResetDelayMs: number;
-  failedTitle: string;
-  failedMessage: string;
 };
 
 type ChatMessageRuntimeClipboardActionsStateInput = {
@@ -5965,20 +5959,6 @@ export function createChatMessageActionSet({
   };
 }
 
-export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState {
-  const copyState = getChatMessageActionCopyState().copy;
-
-  return {
-    feedbackResetDelayMs: copyState.feedbackResetDelayMs,
-    failedTitle: copyState.failedTitle,
-    failedMessage: copyState.failedMessage,
-  };
-}
-
-export function getChatMessageCopyFeedbackResetDelayMs(): number {
-  return getChatMessageCopyFeedbackState().feedbackResetDelayMs;
-}
-
 export function useChatConversationHomePromptEditorSaveActionsState<
   TPromptEditorClient extends ChatConversationHomePromptEditorSaveClient,
 >({
@@ -8439,26 +8419,6 @@ export function useChatMessageCopyFeedbackState(
     copiedMessageIndex,
     clearCopiedMessageFeedback,
     showCopiedMessageFeedback,
-  };
-}
-
-export function getChatMessageCopyFailureAlertState(
-  error: unknown,
-  feedbackState: ChatMessageCopyFeedbackState = getChatMessageCopyFeedbackState(),
-): ChatRuntimeResolvedAlertState {
-  return {
-    title: feedbackState.failedTitle,
-    message: getChatRuntimeAlertMessage(error, feedbackState.failedMessage),
-  };
-}
-
-export function getChatMessageToolExecutionCopyFailureResolvedAlertState(
-  error: unknown,
-  alertState: ReturnType<typeof getToolExecutionDetailCopyFailureAlertState> = getToolExecutionDetailCopyFailureAlertState(),
-): ChatRuntimeResolvedAlertState {
-  return {
-    title: alertState.title,
-    message: getChatRuntimeAlertMessage(error, alertState.fallbackMessage),
   };
 }
 
