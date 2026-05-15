@@ -211,7 +211,6 @@ import {
   getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeViewportAffordanceMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
-  getChatRuntimeViewportContentMobileRenderState,
   getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
@@ -255,8 +254,6 @@ import {
   type ChatRuntimeViewportAffordanceMobileRenderState,
   type ChatRuntimeViewportAffordanceMobileRenderStateInput,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
-  type ChatRuntimeViewportContentMobileRenderState,
-  type ChatRuntimeViewportContentMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
   type ChatComposerRuntimeControlMobileRenderState,
@@ -2431,10 +2428,6 @@ type ChatMessageConversationViewportAffordanceRenderStateInput = {
 
 type ChatMessageConversationViewportAffordanceRenderState = ChatRuntimeViewportAffordanceMobileRenderState;
 
-type ChatMessageRuntimeViewportContentRenderStateInput = ChatRuntimeViewportContentMobileRenderStateInput;
-
-type ChatMessageRuntimeViewportContentRenderState = ChatRuntimeViewportContentMobileRenderState;
-
 type ChatMessageScrollToBottomButtonProps = {
   renderState: ChatRuntimeScrollToBottomMobileRenderState;
   onPress?: (event: GestureResponderEvent) => void;
@@ -2524,8 +2517,16 @@ type ChatMessageRuntimeViewportChromePropsInput<
     | 'contentInsetAdjustmentBehavior'
   >
   & {
-    viewportContentIsLoadingMessages: ChatMessageRuntimeViewportContentRenderStateInput['isLoadingMessages'];
-    viewportContentMessageCount: ChatMessageRuntimeViewportContentRenderStateInput['messageCount'];
+    viewportContentIsLoadingMessages: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['isLoadingMessages'];
+    viewportContentMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['messageCount'];
     loadingSpinnerSource: ImageSourcePropType;
     quickStartPrompts: ChatRuntimeHomeQuickStartItemsMobileStateInput<
       TPrompt,
@@ -3977,16 +3978,6 @@ export function createChatMessageConversationViewportAffordanceRenderState({
     messageHistoryLoadIncrement,
     latestStepSummary,
     colors,
-  });
-}
-
-export function createChatMessageRuntimeViewportContentRenderState({
-  isLoadingMessages,
-  messageCount,
-}: ChatMessageRuntimeViewportContentRenderStateInput): ChatMessageRuntimeViewportContentRenderState {
-  return getChatRuntimeViewportContentMobileRenderState({
-    isLoadingMessages,
-    messageCount,
   });
 }
 
