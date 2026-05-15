@@ -5333,11 +5333,13 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /clearBranchMessage\(\);/);
   assert.match(chatMessageChromeSource, /clearBranchMessage\(\);/);
   assert.match(screenSource, /conversationId: currentSession\?\.serverConversationId,\s+pendingBranchMessageIndex,/);
-  assert.match(sessionPresentationSource, /branch: \{\s+conversationId,\s+role: message\.role,\s+branchMessageIndex: message\.branchMessageIndex,\s+fallbackMessageIndex: messageIndex,\s+pendingMessageIndex: pendingBranchMessageIndex,\s+colors,\s+onBranchMessage,/);
+  assert.match(sessionPresentationSource, /branch: \{\s+conversationId,\s+role: message\.role,\s+branchMessageIndex: message\.branchMessageIndex,\s+fallbackMessageIndex: messageIndex,\s+pendingMessageIndex: pendingBranchMessageIndex,\s+colors,\s+onPress: \(\) => \{/);
+  assert.match(sessionPresentationSource, /const branchMessageIndex = renderState\.branch\.messageIndex\s+if \(branchMessageIndex !== null\) \{\s+onBranchMessage\?\.\(branchMessageIndex\)/);
   assert.doesNotMatch(chatMessageChromeSource, /role: branchRole/);
   assert.match(chatMessageChromeSource, /const branchAction: ChatMessageBranchActionSpec = \{\s+\.\.\.branch,\s+renderState: actionRenderState\.branch,/);
   assert.match(sessionPresentationSource, /const branchRenderState = getChatRuntimeBranchMobileRenderState\(branch\)/);
-  assert.match(chatMessageChromeSource, /if \(actionRenderState\.branch\.messageIndex != null\) \{\s+branch\.onBranchMessage\?\.\(actionRenderState\.branch\.messageIndex\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /branch\.onBranchMessage/);
+  assert.doesNotMatch(chatMessageChromeSource, /actionRenderState\.branch\.messageIndex != null/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{spec\.renderState\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{spec\.renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityState=\{spec\.renderState\.accessibilityState\}/);

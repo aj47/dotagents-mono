@@ -3655,6 +3655,7 @@ describe("session presentation semantics", () => {
         branchMessageIndex: 3,
         fallbackMessageIndex: 4,
         pendingMessageIndex: null,
+        onPress: expect.any(Function),
         styleId: "branch",
       },
       copy: {
@@ -3668,7 +3669,7 @@ describe("session presentation semantics", () => {
       },
     })
     actionSetState.speech.onPress()
-    actionSetState.branch.onBranchMessage?.(3)
+    actionSetState.branch.onPress()
     actionSetState.copy.onPress()
     actionSetState.expansion.onPress()
     expect(actionEvents).toEqual([
@@ -3894,7 +3895,7 @@ describe("session presentation semantics", () => {
       },
     })
     threadBodyState.conversation.actionSet.speech.onPress()
-    threadBodyState.conversation.actionSet.branch.onBranchMessage?.(3)
+    threadBodyState.conversation.actionSet.branch.onPress()
     threadBodyState.conversation.actionSet.copy.onPress()
     expect(threadBodyState.conversation.collapsed.onPress).toBeUndefined()
     threadBodyState.conversation.collapsed.onPress?.()

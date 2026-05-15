@@ -851,7 +851,7 @@ export interface ChatRuntimeConversationActionSetMobileState<
     onPress: () => void
   } & TSpeechStyle
   branch: ChatRuntimeBranchMobileRenderStateInput & {
-    onBranchMessage?: (messageIndex: number) => void
+    onPress: () => void
   } & TBranchStyle
   copy: ChatMessageCopyMobileRenderStateInput & {
     onPress: () => void
@@ -7053,7 +7053,12 @@ export function getChatRuntimeConversationActionSetMobileState<
       fallbackMessageIndex: messageIndex,
       pendingMessageIndex: pendingBranchMessageIndex,
       colors,
-      onBranchMessage,
+      onPress: () => {
+        const branchMessageIndex = renderState.branch.messageIndex
+        if (branchMessageIndex !== null) {
+          onBranchMessage?.(branchMessageIndex)
+        }
+      },
       ...styles.branch,
     },
     copy: {

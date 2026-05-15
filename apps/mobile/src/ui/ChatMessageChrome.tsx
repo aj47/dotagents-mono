@@ -1149,11 +1149,8 @@ type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'
 };
 
 type ChatMessageBranchActionSpecInput =
-  Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive' | 'onPress'>
-  & ChatRuntimeConversationMessageActionsMobileRenderStateInput['branch']
-  & {
-    onBranchMessage?: (messageIndex: number) => void;
-  };
+  Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
+  & ChatRuntimeConversationMessageActionsMobileRenderStateInput['branch'];
 
 type ChatMessageSpeechActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
@@ -5728,11 +5725,6 @@ export function createChatMessageActionSet({
   const branchAction: ChatMessageBranchActionSpec = {
     ...branch,
     renderState: actionRenderState.branch,
-    onPress: () => {
-      if (actionRenderState.branch.messageIndex != null) {
-        branch.onBranchMessage?.(actionRenderState.branch.messageIndex);
-      }
-    },
   };
   const copyAction: ChatMessageCopyActionSpec = {
     ...copy,
