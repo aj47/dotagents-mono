@@ -4970,9 +4970,10 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptDeleteFailedAlertState/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptTaskRunFailedAlertState/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptTaskStartedAlertState/);
-  assert.match(chatMessageChromeSource, /formatChatConversationHomePromptSaveFailedMessage/);
-  assert.match(chatMessageChromeSource, /formatChatConversationHomePromptDeleteFailedMessage/);
-  assert.match(chatMessageChromeSource, /formatChatConversationHomePromptTaskRunFailedMessage/);
+  assert.doesNotMatch(chatMessageChromeSource, /formatChatConversationHomePrompt(SaveSuccess|SaveFailed|DeleteWebConfirm|DeleteConfirm|DeleteFailed|TaskStarted|TaskRunFailed)Message/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, copy\.feedback\.promptSaveFailed\)/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, copy\.feedback\.promptDeleteFailed\)/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, copy\.feedback\.taskRunFailed\)/);
   assert.doesNotMatch(screenSource, /error\??\.message \|\| promptLibraryCopy\.feedback\.(promptSaveFailed|promptDeleteFailed|taskRunFailed)/);
   assert.doesNotMatch(screenSource, /promptLibraryCopy\.feedback\.(successTitle|errorTitle|taskStartedTitle|deletePromptTitle)/);
   assert.doesNotMatch(screenSource, /promptLibraryCopy\.actions\.(cancel|delete)/);

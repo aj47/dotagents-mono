@@ -1526,22 +1526,14 @@ type ChatConversationHomeQuickStartActionsState<
   handleQuickStartPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
 };
 
-export function formatChatConversationHomePromptSaveSuccessMessage(isEditing: boolean): string {
-  return getPromptLibrarySaveSuccessMessage(isEditing);
-}
-
 export function getChatConversationHomePromptSaveSuccessAlertState(
   isEditing: boolean,
 ): ChatMessageRuntimeResolvedAlertState {
   const copy = getPromptLibraryCopyState();
   return {
     title: copy.feedback.successTitle,
-    message: formatChatConversationHomePromptSaveSuccessMessage(isEditing),
+    message: getPromptLibrarySaveSuccessMessage(isEditing),
   };
-}
-
-export function formatChatConversationHomePromptSaveFailedMessage(error: unknown): string {
-  return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptSaveFailed);
 }
 
 export function getChatConversationHomePromptSaveFailedAlertState(
@@ -1550,16 +1542,8 @@ export function getChatConversationHomePromptSaveFailedAlertState(
   const copy = getPromptLibraryCopyState();
   return {
     title: copy.feedback.errorTitle,
-    message: formatChatConversationHomePromptSaveFailedMessage(error),
+    message: getChatRuntimeAlertMessage(error, copy.feedback.promptSaveFailed),
   };
-}
-
-export function formatChatConversationHomePromptDeleteWebConfirmMessage(promptName: string): string {
-  return formatPromptLibraryDeletePromptWebConfirmMessage(promptName);
-}
-
-export function formatChatConversationHomePromptDeleteConfirmMessage(promptName: string): string {
-  return formatPromptLibraryDeletePromptConfirmMessage(promptName);
 }
 
 export function getChatConversationHomePromptDeleteConfirmAlertState(
@@ -1568,10 +1552,10 @@ export function getChatConversationHomePromptDeleteConfirmAlertState(
   const copy = getPromptLibraryCopyState();
   return {
     title: copy.feedback.deletePromptTitle,
-    message: formatChatConversationHomePromptDeleteConfirmMessage(promptName),
+    message: formatPromptLibraryDeletePromptConfirmMessage(promptName),
     cancelLabel: copy.actions.cancel,
     deleteLabel: copy.actions.delete,
-    webMessage: formatChatConversationHomePromptDeleteWebConfirmMessage(promptName),
+    webMessage: formatPromptLibraryDeletePromptWebConfirmMessage(promptName),
   };
 }
 
@@ -1599,22 +1583,14 @@ export function showChatRuntimeWebAlert(message: string): void {
   (globalThis as { alert?: (message?: string) => void }).alert?.(message);
 }
 
-export function formatChatConversationHomePromptDeleteFailedMessage(error: unknown): string {
-  return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.promptDeleteFailed);
-}
-
 export function getChatConversationHomePromptDeleteFailedAlertState(
   error: unknown,
 ): ChatMessageRuntimeResolvedAlertState {
   const copy = getPromptLibraryCopyState();
   return {
     title: copy.feedback.errorTitle,
-    message: formatChatConversationHomePromptDeleteFailedMessage(error),
+    message: getChatRuntimeAlertMessage(error, copy.feedback.promptDeleteFailed),
   };
-}
-
-export function formatChatConversationHomePromptTaskStartedMessage(taskName: string): string {
-  return formatPromptLibraryTaskStartedMessage(taskName);
 }
 
 export function getChatConversationHomePromptTaskStartedAlertState(
@@ -1623,12 +1599,8 @@ export function getChatConversationHomePromptTaskStartedAlertState(
   const copy = getPromptLibraryCopyState();
   return {
     title: copy.feedback.taskStartedTitle,
-    message: formatChatConversationHomePromptTaskStartedMessage(taskName),
+    message: formatPromptLibraryTaskStartedMessage(taskName),
   };
-}
-
-export function formatChatConversationHomePromptTaskRunFailedMessage(error: unknown): string {
-  return getChatRuntimeAlertMessage(error, getPromptLibraryCopyState().feedback.taskRunFailed);
 }
 
 export function getChatConversationHomePromptTaskRunFailedAlertState(
@@ -1637,7 +1609,7 @@ export function getChatConversationHomePromptTaskRunFailedAlertState(
   const copy = getPromptLibraryCopyState();
   return {
     title: copy.feedback.errorTitle,
-    message: formatChatConversationHomePromptTaskRunFailedMessage(error),
+    message: getChatRuntimeAlertMessage(error, copy.feedback.taskRunFailed),
   };
 }
 

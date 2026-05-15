@@ -16,24 +16,30 @@ const chatMessageChromeSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
   'utf8'
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
 
 test('shows desktop library items directly in the new-chat prompt launchers', () => {
   assert.doesNotMatch(screenSource, /const promptQuickStarts = useMemo/);
   assert.doesNotMatch(screenSource, /buildPromptLibraryShortcutItems,/);
   assert.doesNotMatch(screenSource, /createChatConversationHomeQuickStartItems,/);
-  assert.match(chatMessageChromeSource, /createChatConversationHomeQuickStartItems\(\{/);
-  assert.match(chatMessageChromeSource, /buildPromptLibraryShortcutItems,/);
+  assert.doesNotMatch(chatMessageChromeSource, /createChatConversationHomeQuickStartItems\(\{/);
+  assert.doesNotMatch(chatMessageChromeSource, /buildPromptLibraryShortcutItems,/);
+  assert.match(sessionPresentationSource, /quickStartItems: getChatRuntimeHomeQuickStartItemsMobileState\(\{/);
+  assert.match(sessionPresentationSource, /buildPromptLibraryShortcutItems\(\{/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,/);
   assert.match(screenSource, /quickStartSkills: availableSkills,/);
   assert.match(screenSource, /quickStartTasks: availableTasks,/);
   assert.match(screenSource, /quickStartCanAddPrompt: Boolean\(settingsClient\),/);
-  assert.match(chatMessageChromeSource, /prompts: quickStartPrompts,\s+skills: quickStartSkills,\s+tasks: quickStartTasks,\s+canAddPrompt: quickStartCanAddPrompt,/);
+  assert.match(sessionPresentationSource, /prompts: quickStartPrompts,\s+skills: quickStartSkills,\s+tasks: quickStartTasks,\s+canAddPrompt: quickStartCanAddPrompt,/);
   assert.doesNotMatch(screenSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle,/);
   assert.doesNotMatch(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription,/);
   assert.doesNotMatch(screenSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback,/);
-  assert.match(chatMessageChromeSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle,/);
-  assert.match(chatMessageChromeSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription,/);
-  assert.match(chatMessageChromeSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback,/);
+  assert.match(sessionPresentationSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle,/);
+  assert.match(sessionPresentationSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription,/);
+  assert.match(sessionPresentationSource, /taskDescriptionFallback: mobilePromptLibraryCopy\.taskDescriptionFallback,/);
   assert.doesNotMatch(screenSource, /settingsClient\.getSkills\(\)/);
   assert.doesNotMatch(screenSource, /settingsClient\.getLoops\(\)/);
   assert.match(chatMessageChromeSource, /quickStartClient\.getSkills\(\)/);
@@ -50,7 +56,7 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartItem<[\s\S]*?> = PromptLibraryShortcutItem<TPrompt, TTask>;/);
   assert.doesNotMatch(screenSource, /getPromptLibraryCopyState,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryCopyState,/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryEditorMobileRenderState,/);
+  assert.match(sessionPresentationSource, /getPromptLibraryEditorMobileRenderState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryShortcutPressIntent,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryShortcutPressIntent,/);
@@ -59,15 +65,15 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryEditorSaveActionState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileChromeState,/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryMobileShortcutRenderState/);
+  assert.match(sessionPresentationSource, /getPromptLibraryMobileShortcutRenderState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutRenderState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutChromeState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutCopyState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileShortcutSurfaceState,/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.match(sessionPresentationSource, /getPromptLibraryMobileSurfaceRenderState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileCopyState,/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryMobileCopyState,/);
+  assert.match(sessionPresentationSource, /getPromptLibraryMobileCopyState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileIconColors,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceColors,/);
@@ -77,18 +83,19 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.doesNotMatch(screenSource, /const promptLibraryEditorRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const promptLibraryShortcutRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
-  assert.match(chatMessageChromeSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\);/);
+  assert.match(sessionPresentationSource, /const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState\(\)/);
   assert.doesNotMatch(screenSource, /const mobilePromptLibraryEmptyLabel = getPromptLibraryMobileEmptyLibraryLabel\(\);/);
   assert.match(screenSource, /runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /runningTaskId: runningPromptTaskId,/);
   assert.doesNotMatch(screenSource, /shortcutRenderState: promptLibraryShortcutRenderState/);
-  assert.match(chatMessageChromeSource, /const shortcutRenderState = getPromptLibraryMobileShortcutRenderState\(colors\);/);
+  assert.match(sessionPresentationSource, /shortcutRenderState: getPromptLibraryMobileShortcutRenderState\(colors\),/);
   assert.match(screenSource, /useChatConversationHomeQuickStartActionsState,/);
   assert.match(screenSource, /const \{ handleQuickStartPress \} = useChatConversationHomeQuickStartActionsState<PredefinedPromptSummary, Loop>\(\{\s+setComposerInput: setInput,\s+focusComposerInput,\s+openAddPrompt: openAddPromptModal,\s+runPromptTask: handleRunPromptTask,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomeQuickStartActionsState/);
   assert.doesNotMatch(screenSource, /const pressIntent = getChatConversationHomeQuickStartPressIntent\(item\);/);
-  assert.match(chatMessageChromeSource, /const pressIntent = getChatConversationHomeQuickStartPressIntent\(item\);/);
-  assert.match(chatMessageChromeSource, /export function getChatConversationHomeQuickStartPressIntent/);
+  assert.doesNotMatch(chatMessageChromeSource, /const pressIntent = getChatConversationHomeQuickStartPressIntent\(item\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatConversationHomeQuickStartPressIntent/);
+  assert.match(chatMessageChromeSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
   assert.doesNotMatch(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
   assert.match(chatMessageChromeSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
   assert.doesNotMatch(screenSource, /if \(pressIntent\.kind === 'run-task'\)/);
@@ -205,8 +212,8 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(screenSource, /quickStartCanAddPrompt: Boolean\(settingsClient\)/);
   assert.doesNotMatch(screenSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);
   assert.doesNotMatch(screenSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
-  assert.match(chatMessageChromeSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);
-  assert.match(chatMessageChromeSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
+  assert.match(sessionPresentationSource, /addPromptTitle: mobilePromptLibraryCopy\.addPromptTitle/);
+  assert.match(sessionPresentationSource, /addPromptDescription: mobilePromptLibraryCopy\.addPromptDescription/);
   assert.match(screenSource, /useChatConversationHomePromptEditorState,/);
   assert.match(screenSource, /openAddPromptEditor: openAddPromptModal/);
   assert.match(screenSource, /openEditPromptEditor: openEditPromptModal/);
@@ -263,12 +270,10 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /export function getChatConversationHomePromptDeleteFailedAlertState/);
   assert.match(chatMessageChromeSource, /export function getChatConversationHomePromptTaskStartedAlertState/);
   assert.match(chatMessageChromeSource, /export function getChatConversationHomePromptTaskRunFailedAlertState/);
-  assert.match(chatMessageChromeSource, /export function formatChatConversationHomePromptSaveFailedMessage/);
-  assert.match(chatMessageChromeSource, /export function formatChatConversationHomePromptDeleteFailedMessage/);
-  assert.match(chatMessageChromeSource, /export function formatChatConversationHomePromptTaskRunFailedMessage/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage\(error, getPromptLibraryCopyState\(\)\.feedback\.promptSaveFailed\)/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage\(error, getPromptLibraryCopyState\(\)\.feedback\.promptDeleteFailed\)/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeAlertMessage\(error, getPromptLibraryCopyState\(\)\.feedback\.taskRunFailed\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function formatChatConversationHomePrompt(SaveSuccess|SaveFailed|DeleteWebConfirm|DeleteConfirm|DeleteFailed|TaskStarted|TaskRunFailed)Message/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, copy\.feedback\.promptSaveFailed\)/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, copy\.feedback\.promptDeleteFailed\)/);
+  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, copy\.feedback\.taskRunFailed\)/);
   assert.doesNotMatch(screenSource, /error\??\.message \|\| promptLibraryCopy\.feedback\.(promptSaveFailed|promptDeleteFailed|taskRunFailed)/);
   assert.doesNotMatch(screenSource, /promptLibraryCopy\.feedback\.(successTitle|errorTitle|taskStartedTitle|deletePromptTitle)/);
   assert.doesNotMatch(screenSource, /promptLibraryCopy\.actions\.(cancel|delete)/);
@@ -276,10 +281,11 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.match(screenSource, /surface: \{\s+keyboardVerticalOffset: headerHeight,/);
   assert.doesNotMatch(screenSource, /surface: \{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
-  assert.match(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
+  assert.match(sessionPresentationSource, /renderState: getPromptLibraryEditorMobileRenderState\(\{\s+colors,\s+platform,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /renderState: surfaceChromeRenderState\.promptEditor\.renderState,/);
   assert.match(screenSource, /promptEditorIsEditing,/);
   assert.match(chatScreenSource, /\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(chatScreenSource, /surface: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
@@ -313,7 +319,7 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /style=\{styles\.keyboardAvoidingView\}/);
   assert.match(screenSource, /promptEditorModalSurface\.keyboardAvoidingView\.flex/);
   assert.match(screenSource, /promptEditorModalSurface\.overlay\.flex/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.match(sessionPresentationSource, /getPromptLibraryMobileSurfaceRenderState/);
   assert.match(screenSource, /const promptLibrarySurfaceColors = promptLibraryStyleState\.colors;/);
   assert.match(screenSource, /backgroundColor:\s*promptLibrarySurfaceColors\.editorModal\.overlay\.backgroundColor/);
   assert.match(chatMessageChromeSource, /placeholderTextColor=\{colors\.input\.placeholderColor\}/);
