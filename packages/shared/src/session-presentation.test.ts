@@ -3294,6 +3294,12 @@ describe("session presentation semantics", () => {
       flexDirection: "row",
       justifyContent: "flex-end",
     })
+    const threadBodyColors = {
+      ...messageThreadStyleColors,
+      background: "#ffffff",
+      destructive: "#dc2626",
+      successForeground: "#ecfdf5",
+    }
     expect(messageThreadStyle.action.buttons.branch.colors.color).toBe("#2563eb")
     expect(messageThreadStyle.turnDuration.standard).toMatchObject({
       shouldRender: true,
@@ -3641,6 +3647,9 @@ describe("session presentation semantics", () => {
       "expand:4",
     ])
     const toolExecutionStackEvents: string[] = []
+    const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
+      colors: threadBodyColors,
+    })
     const conversationToolExecutionStackState = getChatRuntimeConversationToolExecutionStackMobileState({
       message: {
         id: null,
@@ -3659,8 +3668,8 @@ describe("session presentation semantics", () => {
       isExpanded: false,
       expandedToolCalls: { "4-2": true },
       previewNumberOfLines: 2,
-      pendingResultRenderState: { label: "Waiting" },
-      emptyStateRenderState: { label: "No tool calls" },
+      pendingResultRenderState: toolExecutionPresentation.pendingToolResultRenderState,
+      emptyStateRenderState: toolExecutionPresentation.toolExecutionEmptyStateRenderState,
       colors: {
         info: "#0ea5e9",
         success: "#16a34a",
@@ -3680,23 +3689,26 @@ describe("session presentation semantics", () => {
     expect(conversationToolExecutionStackState).toMatchObject({
       displayToolCallCount: 1,
       isExpanded: false,
-      rows: {
-        stableMessageKey: "4",
-        previewNumberOfLines: 2,
-        pendingResultRenderState: { label: "Waiting" },
-      },
-      expanded: {
-        emptyStateRenderState: { label: "No tool calls" },
+      renderState: {
+        shouldRender: true,
       },
     })
-    expect(conversationToolExecutionStackState.rows.entries).toHaveLength(1)
-    conversationToolExecutionStackState.rows.onToggleToolCall("4", 2)
-    conversationToolExecutionStackState.rows.onCopyPayload("payload")
+    expect(conversationToolExecutionStackState.compactRows).toHaveLength(1)
+    expect(conversationToolExecutionStackState.detailRows).toHaveLength(1)
+    expect(conversationToolExecutionStackState.detailRows[0]).toMatchObject({
+      key: "4-2",
+      toolName: "read_file",
+      pendingResult: {
+        renderState: toolExecutionPresentation.pendingToolResultRenderState,
+      },
+    })
+    conversationToolExecutionStackState.detailRows[0].onHeaderPress()
+    conversationToolExecutionStackState.detailRows[0].input?.onCopyPress()
     conversationToolExecutionStackState.compact.onToggle()
     conversationToolExecutionStackState.expanded.onToggle()
     expect(toolExecutionStackEvents).toEqual([
       "tool:4:2",
-      "copy-payload:payload",
+      "copy-payload:{\n  \"path\": \"/tmp/file\"\n}",
       "toggle-message:4",
       "toggle-message:4",
     ])
@@ -3716,12 +3728,6 @@ describe("session presentation semantics", () => {
     let bodyExpandedDelegationConversationPreviews: Record<string, boolean> = {}
     let bodyExpandedDelegationToolPreviews: Record<string, boolean> = {}
     const bodyEvents: string[] = []
-    const threadBodyColors = {
-      ...messageThreadStyleColors,
-      background: "#ffffff",
-      destructive: "#dc2626",
-      successForeground: "#ecfdf5",
-    }
     const threadBodyPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: threadBodyColors,
     })
@@ -3849,9 +3855,10 @@ describe("session presentation semantics", () => {
         },
         toolExecutionStack: {
           displayToolCallCount: 1,
-          rows: {
-            stableMessageKey: "message-1",
-          },
+          detailRows: [{
+            key: "message-1-2",
+            toolName: "read_file",
+          }],
         },
       },
     })
@@ -3859,8 +3866,8 @@ describe("session presentation semantics", () => {
     threadBodyState.conversation.actionSet.branch.onBranchMessage?.(3)
     threadBodyState.conversation.actionSet.copy.onPress()
     threadBodyState.conversation.collapsed.onToggle()
-    threadBodyState.conversation.toolExecutionStack.rows.onToggleToolCall("message-1", 2)
-    threadBodyState.conversation.toolExecutionStack.rows.onCopyPayload("payload")
+    threadBodyState.conversation.toolExecutionStack.detailRows[0].onHeaderPress()
+    threadBodyState.conversation.toolExecutionStack.detailRows[0].input?.onCopyPress()
     threadBodyState.conversation.toolExecutionStack.expanded.onToggle()
     expect(bodyEvents).toEqual([
       "speak:4:Working",
@@ -3868,7 +3875,7 @@ describe("session presentation semantics", () => {
       "copy:4:Working",
       "expand:4",
       "tool:message-1:2",
-      "payload:payload",
+      "payload:{\n  \"path\": \"/tmp/file\"\n}",
       "expand:4",
     ])
     const toolActivityGroup: ToolActivityGroup = {

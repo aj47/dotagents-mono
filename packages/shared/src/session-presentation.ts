@@ -861,8 +861,10 @@ export interface ChatRuntimeConversationActionSetMobileState<
 }
 
 export interface ChatRuntimeConversationToolExecutionStackMobileStateInput<
-  TPendingResultRenderState = unknown,
-  TEmptyStateRenderState = unknown,
+  TPendingResultRenderState extends ToolExecutionDetailMobilePendingResultRenderState =
+    ToolExecutionDetailMobilePendingResultRenderState,
+  TEmptyStateRenderState extends ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState> =
+    ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState>,
 > {
   message: {
     id?: string | null
@@ -881,28 +883,35 @@ export interface ChatRuntimeConversationToolExecutionStackMobileStateInput<
   onToggleMessageExpansion: (messageIndex: number) => void
 }
 
-export interface ChatRuntimeConversationToolExecutionStackMobileState<
-  TPendingResultRenderState = unknown,
-  TEmptyStateRenderState = unknown,
-> {
+export interface ChatRuntimeConversationToolExecutionDetailInputMobileState
+  extends ChatRuntimeToolExecutionDetailMobileRowInputSectionState {
+  onCopyPress: () => void
+}
+
+export interface ChatRuntimeConversationToolExecutionDetailResultMobileState
+  extends ChatRuntimeToolExecutionDetailMobileRowResultSectionState {
+  onCopyPress: () => void
+  onErrorCopyPress: () => void
+}
+
+export interface ChatRuntimeConversationToolExecutionDetailMobileRowState
+  extends Omit<ChatRuntimeToolExecutionDetailMobileRowState, "input" | "result"> {
+  onHeaderPress: () => void
+  input: ChatRuntimeConversationToolExecutionDetailInputMobileState | null
+  result: ChatRuntimeConversationToolExecutionDetailResultMobileState | null
+}
+
+export interface ChatRuntimeConversationToolExecutionStackMobileState {
   displayToolCallCount: number
-  colors: ChatRuntimeToolExecutionStackMobileRenderStateInput["colors"]
   isExpanded: boolean
-  rows: {
-    entries: readonly ChatMessageDisplayToolEntry[]
-    stableMessageKey: string
-    expandedToolCalls: ChatDisplayExpansionStateMap<string>
-    previewNumberOfLines: number
-    pendingResultRenderState: TPendingResultRenderState
-    onToggleToolCall: (stableMessageKey: string, toolEntryIndex: number) => void
-    onCopyPayload: (content: string) => void
-  }
+  renderState: ChatRuntimeToolExecutionStackMobileRenderState
+  compactRows: readonly ChatRuntimeToolExecutionCompactPreviewMobileRowState[]
+  detailRows: readonly ChatRuntimeConversationToolExecutionDetailMobileRowState[]
   compact: {
     onToggle: () => void
   }
   expanded: {
     onToggle: () => void
-    emptyStateRenderState: TEmptyStateRenderState
   }
 }
 
@@ -1140,10 +1149,7 @@ export interface ChatRuntimeConversationThreadBodyMobileState<
       TCopyStyle,
       TExpansionStyle
     >
-    toolExecutionStack: ChatRuntimeConversationToolExecutionStackMobileState<
-      ChatRuntimeMessageThreadPresentationMobileRenderState["pendingToolResultRenderState"],
-      ChatRuntimeMessageThreadPresentationMobileRenderState["toolExecutionEmptyStateRenderState"]
-    >
+    toolExecutionStack: ChatRuntimeConversationToolExecutionStackMobileState
   }
 }
 
@@ -7028,8 +7034,10 @@ export function getChatRuntimeConversationActionSetMobileState<
 }
 
 export function getChatRuntimeConversationToolExecutionStackMobileState<
-  TPendingResultRenderState = unknown,
-  TEmptyStateRenderState = unknown,
+  TPendingResultRenderState extends ToolExecutionDetailMobilePendingResultRenderState =
+    ToolExecutionDetailMobilePendingResultRenderState,
+  TEmptyStateRenderState extends ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState> =
+    ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState>,
 >({
   message,
   messageIndex,
@@ -7047,31 +7055,64 @@ export function getChatRuntimeConversationToolExecutionStackMobileState<
 }: ChatRuntimeConversationToolExecutionStackMobileStateInput<
   TPendingResultRenderState,
   TEmptyStateRenderState
->): ChatRuntimeConversationToolExecutionStackMobileState<
-  TPendingResultRenderState,
-  TEmptyStateRenderState
-> {
+>): ChatRuntimeConversationToolExecutionStackMobileState {
   const stableMessageKey = message.id ?? String(messageIndex)
+  const compactRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) =>
+    getChatRuntimeToolExecutionCompactPreviewMobileRowState({
+      key: String(origIdx),
+      toolCall,
+      label,
+      result,
+      colors,
+    }),
+  )
+  const detailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) => {
+    const toolCallKey = `${stableMessageKey}-${origIdx}`
+    const rowState = getChatRuntimeToolExecutionDetailMobileRowState({
+      key: toolCallKey,
+      toolCall,
+      label,
+      result,
+      isExpanded: getChatDisplayExpansionState(expandedToolCalls, toolCallKey),
+      colors,
+      previewNumberOfLines,
+      pendingResultRenderState,
+    })
+    const input = rowState.input
+    const resultSection = rowState.result
+
+    return {
+      ...rowState,
+      onHeaderPress: () => onToggleToolCall(stableMessageKey, origIdx),
+      input: input ? {
+        ...input,
+        onCopyPress: () => { void onCopyPayload(input.content) },
+      } : null,
+      result: resultSection ? {
+        ...resultSection,
+        onCopyPress: () => { void onCopyPayload(resultSection.resultContent) },
+        onErrorCopyPress: () => { void onCopyPayload(resultSection.error ?? "") },
+      } : null,
+    }
+  })
+  const renderState = getChatRuntimeToolExecutionStackMobileRenderState({
+    displayToolCallCount,
+    results: renderedToolEntries.map(entry => entry.result),
+    colors,
+    emptyStateRenderState,
+  })
 
   return {
     displayToolCallCount,
-    colors,
     isExpanded,
-    rows: {
-      entries: renderedToolEntries,
-      stableMessageKey,
-      expandedToolCalls,
-      previewNumberOfLines,
-      pendingResultRenderState,
-      onToggleToolCall,
-      onCopyPayload: (content) => { void onCopyPayload(content) },
-    },
+    renderState,
+    compactRows,
+    detailRows,
     compact: {
       onToggle: () => onToggleMessageExpansion(messageIndex),
     },
     expanded: {
       onToggle: () => onToggleMessageExpansion(messageIndex),
-      emptyStateRenderState,
     },
   }
 }

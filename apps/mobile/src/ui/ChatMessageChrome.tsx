@@ -32,7 +32,6 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   createChatMessageActionSlotRenderMap,
-  getChatDisplayExpansionState,
   getChatMessageActionSlotRenderEntries,
   getChatMessageActionMobileButtonStatesBySlot,
   findLastChatMessageConversationContentIndex,
@@ -58,7 +57,6 @@ import {
   sortAgentUserResponseEvents,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
-  type ChatMessageDisplayToolEntry,
 } from '@dotagents/shared/chat-utils';
 import {
   createAgentDelegationProgressMessages,
@@ -188,10 +186,7 @@ import {
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationCardMobilePresentationState,
-  getChatRuntimeToolExecutionCompactPreviewMobileRowState,
-  getChatRuntimeToolExecutionDetailMobileRowState,
   getChatRuntimeToolExecutionResultOnlyFallbackLabel,
-  getChatRuntimeToolExecutionStackMobileRenderState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -252,14 +247,11 @@ import {
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationToolApprovalMobileState,
+  type ChatRuntimeConversationToolExecutionDetailMobileRowState,
+  type ChatRuntimeConversationToolExecutionStackMobileState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeRetryStatusMobileRenderState,
-  type ChatRuntimeToolExecutionCompactPreviewMobileRowInput,
-  type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
-  type ChatRuntimeToolExecutionDetailMobileRowInput,
-  type ChatRuntimeToolExecutionDetailMobileRowState,
-  type ChatRuntimeToolExecutionStackMobileRenderStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
   type ToolExecutionCompactMobileRenderState,
@@ -1834,19 +1826,7 @@ type ChatMessageToolExecutionStackProps = {
   styles: ChatMessageToolExecutionStackStyles;
 };
 
-type ChatMessageToolExecutionStackPropsInput = {
-  displayToolCallCount: number;
-  colors: ChatRuntimeToolExecutionStackMobileRenderStateInput['colors'];
-  isExpanded: ChatMessageToolExecutionStackProps['isExpanded'];
-  rows: Omit<ChatMessageToolExecutionRowsInput, 'colors'>;
-  compact: {
-    onToggle?: ChatMessageToolExecutionStackProps['compact']['onPress'];
-  };
-  expanded: {
-    emptyStateRenderState: ToolExecutionDetailMobileEmptyStateRenderState;
-    onToggle?: ChatMessageToolExecutionStackProps['expanded']['onCollapsePress'];
-  };
-};
+type ChatMessageToolExecutionStackPropsInput = ChatRuntimeConversationToolExecutionStackMobileState;
 
 type ChatMessageToolExecutionCopyButtonStyles = {
   button: StyleProp<ViewStyle>;
@@ -2021,20 +2001,15 @@ type ChatMessageToolExecutionResultSectionProps = {
 };
 
 type ChatMessageToolExecutionCallDetailInput = NonNullable<
-  ChatRuntimeToolExecutionDetailMobileRowState['input']
-> & {
-  onCopyPress?: (event: GestureResponderEvent) => void;
-};
+  ChatRuntimeConversationToolExecutionDetailMobileRowState['input']
+>;
 
 type ChatMessageToolExecutionCallDetailResult = NonNullable<
-  ChatRuntimeToolExecutionDetailMobileRowState['result']
-> & {
-  onCopyPress?: (event: GestureResponderEvent) => void;
-  onErrorCopyPress?: (event: GestureResponderEvent) => void;
-};
+  ChatRuntimeConversationToolExecutionDetailMobileRowState['result']
+>;
 
 type ChatMessageToolExecutionCallDetailPendingResult = NonNullable<
-  ChatRuntimeToolExecutionDetailMobileRowState['pendingResult']
+  ChatRuntimeConversationToolExecutionDetailMobileRowState['pendingResult']
 >;
 
 type ChatMessageToolExecutionCallDetailStyles = {
@@ -2054,30 +2029,7 @@ type ChatMessageToolExecutionCallDetailProps = {
   styles: ChatMessageToolExecutionCallDetailStyles;
 };
 
-type ChatMessageToolExecutionCallListRow = Omit<ChatMessageToolExecutionCallDetailProps, 'styles'> & {
-  key: string;
-};
-
-type ChatMessageToolExecutionDetailRowInput = ChatRuntimeToolExecutionDetailMobileRowInput & {
-  onToggle?: ChatMessageToolExecutionCallListRow['onHeaderPress'];
-  onCopyPayload: (content: string) => void;
-};
-
-type ChatMessageToolExecutionRowsInput = {
-  entries: readonly ChatMessageDisplayToolEntry[];
-  stableMessageKey: string;
-  expandedToolCalls: ChatDisplayExpansionStateMap<string>;
-  colors: ChatRuntimeToolExecutionCompactPreviewMobileRowInput['colors'];
-  previewNumberOfLines: number;
-  pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
-  onToggleToolCall: (stableMessageKey: string, toolCallIndex: number) => void;
-  onCopyPayload: (content: string) => void;
-};
-
-type ChatMessageToolExecutionRows = {
-  compactRows: readonly ChatRuntimeToolExecutionCompactPreviewMobileRowState[];
-  detailRows: readonly ChatMessageToolExecutionCallListRow[];
-};
+type ChatMessageToolExecutionCallListRow = ChatRuntimeConversationToolExecutionDetailMobileRowState;
 
 type ChatMessageToolExecutionCallListProps = {
   rows: readonly ChatMessageToolExecutionCallListRow[];
@@ -8499,120 +8451,27 @@ export function createChatMessageCollapsedPreviewProps({
   };
 }
 
-export function createChatMessageToolExecutionDetailRow({
-  key,
-  toolCall,
-  label,
-  result,
-  isExpanded,
-  colors,
-  previewNumberOfLines,
-  pendingResultRenderState,
-  onToggle,
-  onCopyPayload,
-}: ChatMessageToolExecutionDetailRowInput): ChatMessageToolExecutionCallListRow {
-  const rowState = getChatRuntimeToolExecutionDetailMobileRowState({
-    key,
-    toolCall,
-    label,
-    result,
-    isExpanded,
-    colors,
-    previewNumberOfLines,
-    pendingResultRenderState,
-  });
-  const input = rowState.input;
-  const resultSection = rowState.result;
-
-  return {
-    ...rowState,
-    onHeaderPress: onToggle,
-    input: input ? {
-      ...input,
-      onCopyPress: () => onCopyPayload(input.content),
-    } : null,
-    result: resultSection ? {
-      ...resultSection,
-      onCopyPress: () => onCopyPayload(resultSection.resultContent),
-      onErrorCopyPress: () => onCopyPayload(resultSection.error ?? ''),
-    } : null,
-  };
-}
-
-export function createChatMessageToolExecutionRows({
-  entries,
-  stableMessageKey,
-  expandedToolCalls,
-  colors,
-  previewNumberOfLines,
-  pendingResultRenderState,
-  onToggleToolCall,
-  onCopyPayload,
-}: ChatMessageToolExecutionRowsInput): ChatMessageToolExecutionRows {
-  return {
-    compactRows: entries.map(({ toolCall, label, origIdx, result }) =>
-      getChatRuntimeToolExecutionCompactPreviewMobileRowState({
-        key: String(origIdx),
-        toolCall,
-        label,
-        result,
-        colors,
-      }),
-    ),
-    detailRows: entries.map(({ toolCall, label, origIdx, result }) => {
-      const toolCallKey = `${stableMessageKey}-${origIdx}`;
-
-      return createChatMessageToolExecutionDetailRow({
-        key: toolCallKey,
-        toolCall,
-        label,
-        result,
-        isExpanded: getChatDisplayExpansionState(expandedToolCalls, toolCallKey),
-        colors,
-        previewNumberOfLines,
-        pendingResultRenderState,
-        onToggle: () => onToggleToolCall(stableMessageKey, origIdx),
-        onCopyPayload,
-      });
-    }),
-  };
-}
-
 export function createChatMessageToolExecutionStackProps({
-  displayToolCallCount,
-  colors,
   isExpanded,
-  rows: rowInput,
+  renderState,
+  compactRows,
+  detailRows,
   compact,
   expanded,
 }: ChatMessageToolExecutionStackPropsInput): ChatMessageConversationBodyProps['toolExecutionStack'] {
-  const { onToggle: onCompactToggle } = compact;
-  const { emptyStateRenderState, onToggle: onExpandedToggle, ...expandedProps } = expanded;
-  const executionRows = createChatMessageToolExecutionRows({
-    ...rowInput,
-    colors,
-  });
-  const stackRenderState = getChatRuntimeToolExecutionStackMobileRenderState({
-    displayToolCallCount,
-    results: rowInput.entries.map(entry => entry.result),
-    colors,
-    emptyStateRenderState,
-  });
-
   return {
-    shouldRender: stackRenderState.shouldRender,
+    shouldRender: renderState.shouldRender,
     isExpanded,
     compact: {
-      ...stackRenderState.compact,
-      rows: executionRows.compactRows,
-      onPress: onCompactToggle,
+      ...renderState.compact,
+      rows: compactRows,
+      onPress: compact.onToggle,
     },
     expanded: {
-      ...expandedProps,
-      ...stackRenderState.expanded,
-      onCollapsePress: onExpandedToggle,
+      ...renderState.expanded,
+      onCollapsePress: expanded.onToggle,
     },
-    detailRows: executionRows.detailRows,
+    detailRows,
   };
 }
 
