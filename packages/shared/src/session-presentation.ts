@@ -636,6 +636,39 @@ export interface ChatRuntimeHeaderChromeMobileStyleRenderState {
   }
 }
 
+export type ChatRuntimeNavigationHeaderMobileColorPalette =
+  & ChatRuntimeAgentSelectorMobileColorPalette
+  & ChatRuntimeBackMobileColorPalette
+  & ChatRuntimePinMobileColorPalette
+  & ChatRuntimeHandsFreeMobileColorPalette
+  & ChatRuntimeKillSwitchMobileColorPalette
+  & ChatRuntimeTurnDurationHeaderMobileBadgeColorPalette
+  & ChatSessionStatusMobileColorPalette
+
+export interface ChatRuntimeNavigationHeaderMobileRenderStateInput {
+  agentName?: string | null
+  isPinned?: boolean
+  handsFree?: boolean
+  conversationState?: AgentConversationState | null
+  isResponding?: boolean
+  turnDurationMs?: number | null
+  turnDurationIsLive?: boolean
+  colors: ChatRuntimeNavigationHeaderMobileColorPalette
+}
+
+export interface ChatRuntimeNavigationHeaderMobileRenderState {
+  agentSelectorRenderState: ChatRuntimeAgentSelectorMobileRenderState
+  agentSelectorLabelNumberOfLines: number
+  backButtonRenderState: ChatRuntimeBackMobileRenderState
+  pinButtonRenderState: ChatRuntimePinMobileRenderState
+  pinButtonIsActive: boolean
+  conversationStatusRenderState: ChatSessionStatusMobileRenderState
+  turnDurationRenderState: ChatRuntimeTurnDurationHeaderMobileRenderState
+  killSwitchButtonShouldRender: boolean
+  killSwitchButtonRenderState: ChatRuntimeKillSwitchMobileRenderState
+  handsFreeButtonRenderState: ChatRuntimeHandsFreeMobileRenderState
+}
+
 export interface ChatRuntimeKillSwitchMobileAlertState {
   confirmation: {
     title: string
@@ -5390,6 +5423,50 @@ export function getChatRuntimeKillSwitchMobileVisibilityRenderState({
 }: ChatRuntimeKillSwitchMobileVisibilityRenderStateInput = {}): ChatRuntimeKillSwitchMobileVisibilityRenderState {
   return {
     shouldRender: conversationState === "running",
+  }
+}
+
+export function getChatRuntimeNavigationHeaderMobileRenderState({
+  agentName,
+  isPinned = false,
+  handsFree = false,
+  conversationState = null,
+  isResponding = false,
+  turnDurationMs = null,
+  turnDurationIsLive = false,
+  colors,
+}: ChatRuntimeNavigationHeaderMobileRenderStateInput): ChatRuntimeNavigationHeaderMobileRenderState {
+  const agentLabel = getChatRuntimeCurrentAgentLabel(agentName)
+  const pinButtonRenderState = getChatRuntimePinMobileRenderState({ isPinned, colors })
+  const headerConversationState = conversationState ?? (isResponding ? "running" : null)
+
+  return {
+    agentSelectorRenderState: getChatRuntimeAgentSelectorMobileRenderState({
+      agentLabel,
+      colors,
+    }),
+    agentSelectorLabelNumberOfLines:
+      getChatRuntimeHeaderMobileSurfaceState().agentSelectorText.numberOfLines,
+    backButtonRenderState: getChatRuntimeBackMobileRenderState({ colors }),
+    pinButtonRenderState,
+    pinButtonIsActive: pinButtonRenderState.isPinned,
+    conversationStatusRenderState: getSessionStatusMobileRenderState({
+      session: headerConversationState ? { conversationState: headerConversationState } : null,
+      colors,
+    }),
+    turnDurationRenderState: getChatRuntimeTurnDurationHeaderMobileRenderState({
+      durationMs: turnDurationMs,
+      isLive: turnDurationIsLive,
+      colors,
+    }),
+    killSwitchButtonShouldRender: getChatRuntimeKillSwitchMobileVisibilityRenderState({
+      conversationState: headerConversationState,
+    }).shouldRender,
+    killSwitchButtonRenderState: getChatRuntimeKillSwitchMobileRenderState({ colors }),
+    handsFreeButtonRenderState: getChatRuntimeHandsFreeMobileRenderState({
+      isEnabled: handsFree,
+      colors,
+    }),
   }
 }
 

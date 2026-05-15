@@ -137,6 +137,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeMobileActivityAccessibilityState,
+  getChatRuntimeNavigationHeaderMobileRenderState,
   getChatRuntimePinAccessibilityHint,
   getChatRuntimePinAccessibilityLabel,
   getChatRuntimePinDisplayLabel,
@@ -1264,6 +1265,7 @@ describe("session presentation semantics", () => {
     })
     const headerMobileStyleColors = {
       ...pinMobileColors,
+      foreground: "#0f172a",
       destructive: "#dc2626",
       info: "#0ea5e9",
       success: "#16a34a",
@@ -1301,6 +1303,32 @@ describe("session presentation semantics", () => {
         }),
       },
     })
+    const navigationHeaderState = getChatRuntimeNavigationHeaderMobileRenderState({
+      agentName: "Research",
+      isPinned: true,
+      handsFree: true,
+      isResponding: true,
+      turnDurationMs: 1200,
+      turnDurationIsLive: true,
+      colors: headerMobileStyleColors,
+    })
+    expect(navigationHeaderState.agentSelectorRenderState.label).toBe("Research")
+    expect(navigationHeaderState.agentSelectorLabelNumberOfLines).toBe(
+      CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorText.numberOfLines,
+    )
+    expect(navigationHeaderState.backButtonRenderState.icon.color).toBe("#0f172a")
+    expect(navigationHeaderState.pinButtonIsActive).toBe(true)
+    expect(navigationHeaderState.conversationStatusRenderState).toEqual(getSessionStatusMobileRenderState({
+      session: { conversationState: "running" },
+      colors: headerMobileStyleColors,
+    }))
+    expect(navigationHeaderState.turnDurationRenderState).toEqual(getChatRuntimeTurnDurationHeaderMobileRenderState({
+      durationMs: 1200,
+      isLive: true,
+      colors: headerMobileStyleColors,
+    }))
+    expect(navigationHeaderState.killSwitchButtonShouldRender).toBe(true)
+    expect(navigationHeaderState.handsFreeButtonRenderState.isEnabled).toBe(true)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.accessibilityRole).toBe("button")

@@ -245,22 +245,13 @@ import {
   getChatRuntimeViewportContentMobileRenderState,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeViewportMobileRenderState,
-  getChatRuntimeAgentSelectorMobileRenderState,
-  getChatRuntimeBackMobileRenderState,
-  getChatRuntimeCurrentAgentLabel,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
-  getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderChromeMobileStyleRenderState,
-  getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeKillSwitchMobileAlertState,
-  getChatRuntimeKillSwitchMobileRenderState,
-  getChatRuntimeKillSwitchMobileVisibilityRenderState,
-  getChatRuntimePinMobileRenderState,
+  getChatRuntimeNavigationHeaderMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
-  getChatRuntimeTurnDurationHeaderMobileRenderState,
   getFollowUpInputPresentation,
-  getSessionStatusMobileRenderState,
   shouldRenderChatRuntimeActivityStep,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
@@ -286,6 +277,8 @@ import {
   type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
+  type ChatRuntimeNavigationHeaderMobileRenderState,
+  type ChatRuntimeNavigationHeaderMobileRenderStateInput,
   type ChatRuntimeViewportAffordanceMobileRenderState,
   type ChatRuntimeViewportAffordanceMobileRenderStateInput,
   type ChatRuntimeViewportContentMobileRenderState,
@@ -1521,39 +1514,11 @@ type ChatRuntimeThemeSpinnerSourceInput = {
   lightSource: ImageSourcePropType;
 };
 
-type ChatRuntimeNavigationHeaderRenderStateColors =
-  Parameters<typeof getChatRuntimeAgentSelectorMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatRuntimeBackMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatRuntimePinMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatRuntimeHandsFreeMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatRuntimeKillSwitchMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatRuntimeTurnDurationHeaderMobileRenderState>[0]['colors']
-  & Parameters<typeof getSessionStatusMobileRenderState>[0]['colors'];
+type ChatRuntimeNavigationHeaderRenderStateInput =
+  ChatRuntimeNavigationHeaderMobileRenderStateInput;
 
-type ChatRuntimeNavigationHeaderRenderStateInput = {
-  agentName?: string | null;
-  isPinned?: boolean;
-  handsFree?: boolean;
-  conversationState?: AgentConversationState | null;
-  isResponding?: boolean;
-  turnDurationMs?: number | null;
-  turnDurationIsLive?: boolean;
-  colors: ChatRuntimeNavigationHeaderRenderStateColors;
-};
-
-type ChatRuntimeNavigationHeaderRenderState = Pick<
-  ChatRuntimeNavigationHeaderOptionsInput,
-  | 'agentSelectorRenderState'
-  | 'agentSelectorLabelNumberOfLines'
-  | 'backButtonRenderState'
-  | 'pinButtonRenderState'
-  | 'pinButtonIsActive'
-  | 'conversationStatusRenderState'
-  | 'turnDurationRenderState'
-  | 'killSwitchButtonShouldRender'
-  | 'killSwitchButtonRenderState'
-  | 'handsFreeButtonRenderState'
->;
+type ChatRuntimeNavigationHeaderRenderState =
+  ChatRuntimeNavigationHeaderMobileRenderState;
 
 type ChatRuntimeNavigationHeaderOptions = {
   headerTitle: () => ReactNode;
@@ -10645,38 +10610,16 @@ export function createChatRuntimeNavigationHeaderRenderState({
   turnDurationIsLive = false,
   colors,
 }: ChatRuntimeNavigationHeaderRenderStateInput): ChatRuntimeNavigationHeaderRenderState {
-  const agentLabel = getChatRuntimeCurrentAgentLabel(agentName);
-  const pinButtonRenderState = getChatRuntimePinMobileRenderState({ isPinned, colors });
-  const headerConversationState = conversationState ?? (isResponding ? 'running' : null);
-
-  return {
-    agentSelectorRenderState: getChatRuntimeAgentSelectorMobileRenderState({
-      agentLabel,
-      colors,
-    }),
-    agentSelectorLabelNumberOfLines:
-      getChatRuntimeHeaderMobileSurfaceState().agentSelectorText.numberOfLines,
-    backButtonRenderState: getChatRuntimeBackMobileRenderState({ colors }),
-    pinButtonRenderState,
-    pinButtonIsActive: pinButtonRenderState.isPinned,
-    conversationStatusRenderState: getSessionStatusMobileRenderState({
-      session: headerConversationState ? { conversationState: headerConversationState } : null,
-      colors,
-    }),
-    turnDurationRenderState: getChatRuntimeTurnDurationHeaderMobileRenderState({
-      durationMs: turnDurationMs,
-      isLive: turnDurationIsLive,
-      colors,
-    }),
-    killSwitchButtonShouldRender: getChatRuntimeKillSwitchMobileVisibilityRenderState({
-      conversationState: headerConversationState,
-    }).shouldRender,
-    killSwitchButtonRenderState: getChatRuntimeKillSwitchMobileRenderState({ colors }),
-    handsFreeButtonRenderState: getChatRuntimeHandsFreeMobileRenderState({
-      isEnabled: handsFree,
-      colors,
-    }),
-  };
+  return getChatRuntimeNavigationHeaderMobileRenderState({
+    agentName,
+    isPinned,
+    handsFree,
+    conversationState,
+    isResponding,
+    turnDurationMs,
+    turnDurationIsLive,
+    colors,
+  });
 }
 
 export function useChatRuntimeNavigationHeaderRenderState({
