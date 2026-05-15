@@ -2877,7 +2877,7 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
 };
 
-type ChatMessageRuntimeChromePropsInput<
+export type ChatMessageRuntimeChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = {
@@ -2911,7 +2911,7 @@ type ChatMessageRuntimeChromePropsInput<
   >;
 };
 
-type ChatMessageRuntimeChromeSurfaceProps<
+export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask> & {

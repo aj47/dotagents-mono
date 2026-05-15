@@ -97,6 +97,7 @@ import {
 } from '../ui/ChatMessageChrome';
 import type {
   ChatConversationHomeQuickStartItem,
+  ChatMessageRuntimeChromePropsInput,
 } from '../ui/ChatMessageChrome';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -1496,7 +1497,7 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
   });
 
-  const chatMessageRuntimeSurface = {
+  const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = {
     ...chatRuntimeChrome.messageRuntime,
     composer: {
       speechPreviewText: sttPreview,
