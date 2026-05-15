@@ -1925,7 +1925,12 @@ describe('isInternalCompletionControlMessage', () => {
 })
 
 describe('visible message content helpers', () => {
-  it('prefers displayContent when deriving renderable content', () => {
+  it('prefers response events and displayContent when deriving renderable content', () => {
+    expect(getRenderableMessageContent({
+      content: 'stored',
+      displayContent: 'display',
+      responseEvent: { text: 'response event' },
+    })).toBe('response event')
     expect(getRenderableMessageContent({ content: 'stored', displayContent: 'display' })).toBe('display')
     expect(getRenderableMessageContent({ content: 'stored' })).toBe('stored')
   })
@@ -1942,6 +1947,11 @@ describe('visible message content helpers', () => {
     expect(getVisibleMessageContent({
       ...message,
       displayContent: 'Visible answer with ![image](asset://image.png)',
+    })).toBe('Visible answer with ![image](asset://image.png)')
+    expect(getVisibleMessageContent({
+      ...message,
+      displayContent: 'Visible answer without image',
+      responseEvent: { text: 'Visible answer with ![image](asset://image.png)' },
     })).toBe('Visible answer with ![image](asset://image.png)')
   })
 

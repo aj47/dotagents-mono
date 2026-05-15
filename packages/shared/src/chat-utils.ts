@@ -1926,8 +1926,9 @@ export function isInternalCompletionControlMessage(message: {
 export function getRenderableMessageContent(message: {
   content?: string;
   displayContent?: string;
+  responseEvent?: Pick<AgentUserResponseEvent, 'text'> | null;
 }): string {
-  return message.displayContent ?? message.content ?? '';
+  return message.responseEvent?.text ?? message.displayContent ?? message.content ?? '';
 }
 
 export function getRespondToUserContentFromMessage(message: {
@@ -2010,6 +2011,7 @@ export function getVisibleMessageContent(message: {
   role: 'user' | 'assistant' | 'tool';
   content?: string;
   displayContent?: string;
+  responseEvent?: Pick<AgentUserResponseEvent, 'text'> | null;
   toolCalls?: Array<{ name: string; arguments?: unknown }>;
   toolResults?: Array<unknown>;
 }): string {
@@ -2067,6 +2069,7 @@ export type ChatDisplayMessageLike = {
   role: 'user' | 'assistant' | 'tool';
   content?: string;
   displayContent?: string;
+  responseEvent?: Pick<AgentUserResponseEvent, 'text'> | null;
   toolCalls?: Array<{ name: string; arguments?: unknown }>;
   toolResults?: Array<unknown>;
 };

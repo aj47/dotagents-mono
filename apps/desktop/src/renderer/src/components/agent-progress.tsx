@@ -787,12 +787,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }, [])
 
-  // Effective rendered content: prefer the attached respond_to_user event text
-  // (which carries image markdown) over the assistant prose stored on the message.
-  const messageDisplayState = getChatMessageDisplayState({
-    ...message,
-    displayContent: message.responseEvent?.text,
-  })
+  const messageDisplayState = getChatMessageDisplayState(message)
   const effectiveContent = messageDisplayState.visibleContent
   const messageBranchAction = getChatRuntimeBranchActionState({
     conversationId,
@@ -3858,7 +3853,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             ...message,
             toolCalls: message.toolCalls,
             toolResults: results,
-            displayContent: message.responseEvent?.text,
           },
           { includeResultOnlyFallback: false },
         )
