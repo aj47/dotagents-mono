@@ -113,7 +113,6 @@ import {
   type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
 import {
-  formatVoiceDebugEntry,
   type VoiceDebugEntry,
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
@@ -231,6 +230,7 @@ import {
   getChatRuntimeBranchMobileRenderState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
+  getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileState,
@@ -249,7 +249,6 @@ import {
   getChatRuntimeBackMobileRenderState,
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeBranchMobileAlertState,
-  getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDebugState,
   getChatRuntimeHandsFreeMobileRenderState,
   getChatRuntimeHeaderChromeMobileStyleRenderState,
@@ -4538,20 +4537,10 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
   voiceDebugEnabled = false,
   voiceEvents = [],
 }: ChatMessageRuntimeDebugPanelsRenderStateInput): ChatRuntimeDebugPanelsMobileRenderState {
-  const handsFreeCopy = getHandsFreeComposerCopyState();
-  const resolvedVoiceEvents = voiceEvents ? Array.from(voiceEvents) : [];
-
-  return getChatRuntimeDebugPanelsMobileRenderState({
+  return getChatRuntimeDebugPanelsMobileDisplayState({
     requestDebugText,
     voiceDebugEnabled,
-    voiceEntryCount: resolvedVoiceEvents.length,
-    voiceRows: [
-      { key: 'voice-debug-title', text: handsFreeCopy.debug.voiceDebugTitle },
-      ...resolvedVoiceEvents.slice(0, 6).map((entry) => ({
-        key: entry.id,
-        text: formatVoiceDebugEntry(entry),
-      })),
-    ],
+    voiceEvents,
   });
 }
 

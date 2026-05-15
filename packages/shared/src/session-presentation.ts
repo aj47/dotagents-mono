@@ -6,6 +6,8 @@ import {
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
+import { getHandsFreeComposerCopyState } from "./hands-free-controller"
+import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
   getChatMessageActionMobileIconColors,
@@ -166,6 +168,12 @@ export interface ChatRuntimeDebugPanelsMobileRenderStateInput {
   voiceDebugEnabled?: boolean
   voiceEntryCount?: number | null
   voiceRows?: readonly ChatRuntimeDebugPanelMobileRow[] | null
+}
+
+export interface ChatRuntimeDebugPanelsMobileDisplayStateInput {
+  requestDebugText?: string | null
+  voiceDebugEnabled?: boolean
+  voiceEvents?: readonly VoiceDebugEntry[] | null
 }
 
 export interface ChatRuntimeDebugPanelsMobileRenderState {
@@ -5998,6 +6006,28 @@ export function getChatRuntimeDebugPanelsMobileRenderState({
     voiceShouldRender: voiceDebugEnabled === true && (voiceEntryCount ?? 0) > 0,
     voiceRows: resolvedVoiceRows,
   }
+}
+
+export function getChatRuntimeDebugPanelsMobileDisplayState({
+  requestDebugText,
+  voiceDebugEnabled = false,
+  voiceEvents = [],
+}: ChatRuntimeDebugPanelsMobileDisplayStateInput = {}): ChatRuntimeDebugPanelsMobileRenderState {
+  const handsFreeCopy = getHandsFreeComposerCopyState()
+  const resolvedVoiceEvents = voiceEvents ? Array.from(voiceEvents) : []
+
+  return getChatRuntimeDebugPanelsMobileRenderState({
+    requestDebugText,
+    voiceDebugEnabled,
+    voiceEntryCount: resolvedVoiceEvents.length,
+    voiceRows: [
+      { key: "voice-debug-title", text: handsFreeCopy.debug.voiceDebugTitle },
+      ...resolvedVoiceEvents.slice(0, 6).map((entry) => ({
+        key: entry.id,
+        text: formatVoiceDebugEntry(entry),
+      })),
+    ],
+  })
 }
 
 export function getChatRuntimeInlineActivityMobileState() {

@@ -105,6 +105,7 @@ import {
   getChatRuntimeDesktopSurfaceState,
   isChatRuntimeBranchableMessageRole,
   getChatComposerVoiceOverlayLabel,
+  getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeDebugPanelsMobileRenderState,
   getChatRuntimeDelegationStatusMobileColors,
   getChatRuntimeDelegationStatusMobileRenderState,
@@ -1633,6 +1634,24 @@ describe("session presentation semantics", () => {
       voiceShouldRender: false,
       voiceRows: [{ key: "voice-title", text: "Voice events" }],
     })
+    const debugPanelsDisplayState = getChatRuntimeDebugPanelsMobileDisplayState({
+      requestDebugText: "Request sent",
+      voiceDebugEnabled: true,
+      voiceEvents: [{
+        id: "voice-1",
+        at: 0,
+        type: "recognizer-start",
+        summary: "Recognizer started",
+      }],
+    })
+    expect(debugPanelsDisplayState.requestRows).toEqual([{ key: "request-debug", text: "Request sent" }])
+    expect(debugPanelsDisplayState.voiceShouldRender).toBe(true)
+    expect(debugPanelsDisplayState.voiceRows[0]).toEqual({
+      key: "voice-debug-title",
+      text: "Voice debug",
+    })
+    expect(debugPanelsDisplayState.voiceRows[1]?.key).toBe("voice-1")
+    expect(debugPanelsDisplayState.voiceRows[1]?.text).toContain("Recognizer started")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize).toBe(14)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode).toBe("contain")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.alignItems).toBe("center")
