@@ -67,6 +67,7 @@ import {
   getChatComposerQueueMobileRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
   getChatComposerRuntimeControlMobileRenderState,
+  getChatComposerRuntimeDockMobileRenderState,
   getChatComposerSubmitMobileActionState,
   getChatComposerSubmitMobileIconState,
   getChatComposerSubmitMobileRenderState,
@@ -213,6 +214,7 @@ import {
   getSidebarStatusPresentation,
   shouldRenderChatRuntimeActivityStep,
 } from "./session-presentation"
+import { HANDS_FREE_COMPOSER_PRESENTATION } from "./hands-free-controller"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
   getChatMessageActionMobileTurnDurationBadgeColors,
@@ -957,6 +959,28 @@ describe("session presentation semantics", () => {
     expect(composerChromeStyle.promptLibrary.colors.editorModal.saveButton.backgroundColor).toBe("#2563eb")
     expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)
     expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
+    const composerDockChrome = getChatComposerRuntimeDockMobileRenderState({
+      colors: chatRuntimeMobileChromeColors,
+      platform: "web",
+    })
+    expect(composerDockChrome.handsFreeControls.controlPressedOpacity).toBe(
+      HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.pressedOpacity,
+    )
+    expect(composerDockChrome.imageAttachmentControl.activeOpacity).toBe(
+      CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.accessoryButton.pressedOpacity,
+    )
+    expect(composerDockChrome.textToSpeechControl).toBe(composerDockChrome.imageAttachmentControl)
+    expect(composerDockChrome.editBeforeSendControl).toBe(composerDockChrome.imageAttachmentControl)
+    expect(composerDockChrome.textEntry.placeholderTextColor).toBe("#64748b")
+    expect(composerDockChrome.textEntry.webAccessibility.isWebPlatform).toBe(true)
+    expect(composerDockChrome.textEntry.webAccessibility.inputDescriptionNativeId).toBe("chat-composer-hint")
+    expect(composerDockChrome.queueAction.activeOpacity).toBe(
+      CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.pressedOpacity,
+    )
+    expect(composerDockChrome.submitAction.activeOpacity).toBe(
+      CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.pressedOpacity,
+    )
+    expect(composerDockChrome.micButton.webPressedStyle).toEqual(getChatComposerMicMobileWebPressStyleState())
     const runtimeChromeStyle = getChatRuntimeMobileChromeStyleRenderState({
       colors: chatRuntimeMobileChromeColors,
       platform: "android",

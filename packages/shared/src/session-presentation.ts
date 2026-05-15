@@ -1878,6 +1878,48 @@ export interface ChatComposerRuntimeChromeMobileStyleRenderState {
   handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>
 }
 
+export type ChatComposerRuntimeDockMobileColorPalette =
+  & ChatComposerMobileSurfaceRenderStateColorPalette
+  & HandsFreeComposerMobileSurfaceColorPalette
+
+export interface ChatComposerRuntimeDockMobileRenderStateInput {
+  colors: ChatComposerRuntimeDockMobileColorPalette
+  platform?: string | null
+}
+
+export interface ChatComposerRuntimeDockMobileRenderState {
+  handsFreeControls: {
+    controlPressedOpacity: number
+  }
+  imageAttachmentControl: {
+    activeOpacity: number
+  }
+  textToSpeechControl: {
+    activeOpacity: number
+  }
+  editBeforeSendControl: {
+    activeOpacity: number
+  }
+  textEntry: {
+    placeholderTextColor: string
+    webAccessibility: {
+      isWebPlatform: boolean
+      inputDescriptionNativeId: typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.webAccessibility.inputDescriptionNativeId
+      voiceStatusLiveRegionNativeId: typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.webAccessibility.voiceStatusLiveRegionNativeId
+      voiceStatusLiveRegionPoliteness: typeof CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.webAccessibility.voiceStatusLiveRegionPoliteness
+    }
+  }
+  queueAction: {
+    activeOpacity: number
+  }
+  submitAction: {
+    activeOpacity: number
+  }
+  micButton: {
+    webPressedStyle: ChatComposerMicMobileWebPressStyleState | undefined
+  }
+}
+
 export interface ChatComposerSubmitMobileIconStateInput {
   mode?: FollowUpInputMode
   isHandsFree?: boolean
@@ -4299,6 +4341,53 @@ export function getChatComposerRuntimeChromeMobileStyleRenderState({
     handsFree: getHandsFreeComposerMobileSurfaceRenderState({
       colors,
     }),
+  }
+}
+
+export function getChatComposerRuntimeDockMobileRenderState({
+  colors,
+  platform,
+}: ChatComposerRuntimeDockMobileRenderStateInput): ChatComposerRuntimeDockMobileRenderState {
+  const isWebPlatform = platform === "web"
+  const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState({
+    colors,
+    platform,
+  })
+  const composerSurface = composerSurfaceRenderState.surface
+  const composerTextColors = composerSurfaceRenderState.colors.text
+  const webAccessibility = composerSurface.webAccessibility
+  const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState({
+    colors,
+  }).surface
+  const accessoryButton = {
+    activeOpacity: composerSurface.accessoryButton.pressedOpacity,
+  }
+
+  return {
+    handsFreeControls: {
+      controlPressedOpacity: handsFreeSurface.controlButton.pressedOpacity,
+    },
+    imageAttachmentControl: accessoryButton,
+    textToSpeechControl: accessoryButton,
+    editBeforeSendControl: accessoryButton,
+    textEntry: {
+      placeholderTextColor: composerTextColors.input.placeholderColor,
+      webAccessibility: {
+        isWebPlatform,
+        inputDescriptionNativeId: webAccessibility.inputDescriptionNativeId,
+        voiceStatusLiveRegionNativeId: webAccessibility.voiceStatusLiveRegionNativeId,
+        voiceStatusLiveRegionPoliteness: webAccessibility.voiceStatusLiveRegionPoliteness,
+      },
+    },
+    queueAction: {
+      activeOpacity: composerSurface.queueButton.pressedOpacity,
+    },
+    submitAction: {
+      activeOpacity: composerSurface.submitButton.pressedOpacity,
+    },
+    micButton: {
+      webPressedStyle: isWebPlatform ? getChatComposerMicMobileWebPressStyleState() : undefined,
+    },
   }
 }
 

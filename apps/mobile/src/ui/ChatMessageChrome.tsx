@@ -106,7 +106,6 @@ import {
   formatHandsFreeSleepingDebugMessage,
   getHandsFreeComposerControlState,
   getHandsFreeComposerCopyState,
-  getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeStatusSubtitle,
   type HandsFreeComposerControlState,
@@ -184,8 +183,6 @@ import {
 } from '@dotagents/shared/connection-recovery';
 import {
   getChatComposerMobileControlState,
-  getChatComposerMicMobileWebPressStyleState,
-  getChatComposerMobileSurfaceRenderState,
   getChatComposerQueueMobileActionState,
   getChatComposerRuntimeControlMobileRenderState,
   formatChatRuntimeActivityContent,
@@ -214,6 +211,7 @@ import {
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
+  getChatComposerRuntimeDockMobileRenderState,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
@@ -243,6 +241,7 @@ import {
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
+  type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
@@ -3415,11 +3414,8 @@ type ChatComposerRuntimeDockChromeProps = {
   micButton: Pick<ChatComposerMicButtonProps, 'webPressedStyle'>;
 };
 
-type ChatComposerRuntimeDockChromeInput = {
-  colors: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['colors']
-    & Parameters<typeof getHandsFreeComposerMobileSurfaceRenderState>[0]['colors'];
-  platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
-};
+type ChatComposerRuntimeDockChromeInput =
+  ChatComposerRuntimeDockMobileRenderStateInput;
 
 type ChatComposerRuntimeControlRenderStateInput =
   ChatComposerRuntimeControlMobileRenderStateInput;
@@ -10821,45 +10817,15 @@ export function createChatComposerRuntimeDockChromeProps({
   colors,
   platform,
 }: ChatComposerRuntimeDockChromeInput): ChatComposerRuntimeDockChromeProps {
-  const isWebPlatform = platform === 'web';
-  const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState({
+  const dockRenderState = getChatComposerRuntimeDockMobileRenderState({
     colors,
     platform,
   });
-  const composerSurface = composerSurfaceRenderState.surface;
-  const composerTextColors = composerSurfaceRenderState.colors.text;
-  const webAccessibility = composerSurface.webAccessibility;
-  const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState({
-    colors,
-  }).surface;
-  const accessoryButton = {
-    activeOpacity: composerSurface.accessoryButton.pressedOpacity,
-  };
 
   return {
-    handsFreeControls: {
-      controlPressedOpacity: handsFreeSurface.controlButton.pressedOpacity,
-    },
-    imageAttachmentControl: accessoryButton,
-    textToSpeechControl: accessoryButton,
-    editBeforeSendControl: accessoryButton,
-    textEntry: {
-      placeholderTextColor: composerTextColors.input.placeholderColor,
-      webAccessibility: {
-        isWebPlatform,
-        inputDescriptionNativeId: webAccessibility.inputDescriptionNativeId,
-        voiceStatusLiveRegionNativeId: webAccessibility.voiceStatusLiveRegionNativeId,
-        voiceStatusLiveRegionPoliteness: webAccessibility.voiceStatusLiveRegionPoliteness,
-      },
-    },
-    queueAction: {
-      activeOpacity: composerSurface.queueButton.pressedOpacity,
-    },
-    submitAction: {
-      activeOpacity: composerSurface.submitButton.pressedOpacity,
-    },
+    ...dockRenderState,
     micButton: {
-      webPressedStyle: isWebPlatform ? getChatComposerMicMobileWebPressStyleState() as any : undefined,
+      webPressedStyle: dockRenderState.micButton.webPressedStyle as ChatComposerMicButtonProps['webPressedStyle'],
     },
   };
 }
