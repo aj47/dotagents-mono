@@ -194,9 +194,7 @@ import {
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
-  getChatRuntimeConversationRuntimeThreadState,
   getChatRuntimeConversationThreadBodyMobileState,
-  getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -260,14 +258,10 @@ import {
   type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
-  type ChatRuntimeConversationRuntimeThreadState,
-  type ChatRuntimeConversationRuntimeThreadStateInput,
   type ChatRuntimeConversationThreadBodyMobileState,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
-  type ChatRuntimeConversationToolActivityGroupRuntimeThreadState,
-  type ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowInput,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
@@ -3359,12 +3353,6 @@ type ChatMessageRuntimeThreadProps = Omit<
 type ChatMessageConversationToolActivityGroupThreadRenderStateInput =
   ChatRuntimeConversationToolActivityGroupThreadRenderStateInput;
 
-type ChatMessageConversationRuntimeThreadStateInput =
-  ChatRuntimeConversationRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
-
-type ChatMessageConversationRuntimeThreadState =
-  ChatRuntimeConversationRuntimeThreadState<ChatMessageThreadBodyPropsInput>;
-
 type ChatMessageConversationRenderableRuntimeThreadState =
   ChatRuntimeConversationRenderableRuntimeThreadState<ChatMessageThreadBodyPropsInput | null>;
 
@@ -3372,12 +3360,6 @@ type ChatMessageConversationRuntimeThreadProps = {
   threadState: ChatMessageConversationRenderableRuntimeThreadState;
   styles: ChatMessageRuntimeThreadStyleSlots;
 };
-
-type ChatMessageConversationToolActivityGroupRuntimeThreadStateInput =
-  ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput;
-
-type ChatMessageConversationToolActivityGroupRuntimeThreadState =
-  ChatRuntimeConversationToolActivityGroupRuntimeThreadState;
 
 type ChatMessageConversationMessageRuntimeThreadStateInput =
   ChatRuntimeConversationMessageRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
@@ -3781,47 +3763,11 @@ function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
   );
 }
 
-export function createChatMessageConversationRenderContext(
-  input: ChatMessageConversationRenderContextInput,
-): ChatMessageConversationRenderContext {
-  return getChatRuntimeConversationMessageRenderContextMobileState(input);
-}
-
-export function createChatMessageConversationRuntimeThreadState({
-  itemKey,
-  groupRenderState,
-  groupThreadState,
-  body,
-}: ChatMessageConversationRuntimeThreadStateInput): ChatMessageConversationRuntimeThreadState {
-  return getChatRuntimeConversationRuntimeThreadState({
-    itemKey,
-    groupRenderState,
-    groupThreadState,
-    body,
-  });
-}
-
-export function createChatMessageConversationToolActivityGroupRuntimeThreadState(
-  runtimeThreadInput: ChatMessageConversationToolActivityGroupRuntimeThreadStateInput,
-): ChatMessageConversationToolActivityGroupRuntimeThreadState {
-  return getChatRuntimeConversationToolActivityGroupRuntimeThreadState(runtimeThreadInput);
-}
-
 export function shouldRenderChatMessageConversationThread({
   renderContext,
   body,
 }: ChatMessageConversationThreadVisibilityInput): boolean {
   return shouldRenderChatRuntimeConversationThread({ renderContext, body });
-}
-
-export function createChatMessageConversationMessageRuntimeThreadState({
-  renderContext,
-  ...runtimeThreadInput
-}: ChatMessageConversationMessageRuntimeThreadStateInput): ChatMessageConversationMessageRuntimeThreadState {
-  return getChatRuntimeConversationMessageRuntimeThreadState({
-    renderContext,
-    ...runtimeThreadInput,
-  });
 }
 
 export function createChatMessageConversationMessageThreadRenderState({
@@ -3833,7 +3779,7 @@ export function createChatMessageConversationMessageThreadRenderState({
   resultOnlyToolLabel,
   ...bodyInput
 }: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageThreadRenderState {
-  const renderContext = createChatMessageConversationRenderContext({
+  const renderContext = getChatRuntimeConversationMessageRenderContextMobileState({
     message: bodyInput.message,
     messageIndex: bodyInput.messageIndex,
     isResponding: bodyInput.isResponding,
@@ -3848,7 +3794,7 @@ export function createChatMessageConversationMessageThreadRenderState({
   });
 
   return {
-    threadState: createChatMessageConversationMessageRuntimeThreadState({
+    threadState: getChatRuntimeConversationMessageRuntimeThreadState({
       itemKey,
       groupRenderState,
       groupThreadState,
