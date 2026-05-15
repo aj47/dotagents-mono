@@ -65,6 +65,7 @@ import {
   getChatComposerQueueMobileActionState,
   getChatComposerQueueMobileIconState,
   getChatComposerQueueMobileRenderState,
+  getChatComposerRuntimeChromeMobileStyleRenderState,
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerSubmitMobileActionState,
   getChatComposerSubmitMobileIconState,
@@ -137,6 +138,7 @@ import {
   getChatRuntimeMessageHistoryLoadEarlierMobileIconState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeMobileActivityAccessibilityState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
@@ -933,6 +935,33 @@ describe("session presentation semantics", () => {
         text: getChatComposerMobileTextColors(composerSurfaceRenderStateColors),
       },
     })
+    const chatRuntimeMobileChromeColors = {
+      ...composerSurfaceRenderStateColors,
+      destructive: "#dc2626",
+      info: "#0ea5e9",
+      secondary: "#e0f2fe",
+      success: "#16a34a",
+      successForeground: "#ecfdf5",
+      warning: "#d97706",
+    }
+    const composerChromeStyle = getChatComposerRuntimeChromeMobileStyleRenderState({
+      colors: chatRuntimeMobileChromeColors,
+      platform: "ios",
+    })
+    expect(composerChromeStyle.composer.input.paddingVertical).toBe(10)
+    expect(composerChromeStyle.imageAttachment.colors.preview.borderColor).toBe("#cbd5e1")
+    expect(composerChromeStyle.promptLibrary.colors.editorModal.saveButton.backgroundColor).toBe("#2563eb")
+    expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)
+    expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
+    const runtimeChromeStyle = getChatRuntimeMobileChromeStyleRenderState({
+      colors: chatRuntimeMobileChromeColors,
+      platform: "android",
+    })
+    expect(runtimeChromeStyle.header.header.surface.agentSelectorButton.minHeight).toBe(44)
+    expect(runtimeChromeStyle.composer.promptEditorInputPaddingVertical).toBe(8)
+    expect(runtimeChromeStyle.messageQueuePanelWrapper.wrapper.paddingHorizontal).toBe("md")
+    expect(runtimeChromeStyle.headerActionButton.minWidth).toBe(44)
+    expect(runtimeChromeStyle.thread.toolApproval.title).toBe("Tool Approval Required")
     expect(getChatComposerMobileTextInputPlatformState("ios")).toEqual({ paddingVertical: 10 })
     expect(getChatComposerMobileTextInputPlatformState("android")).toEqual({ paddingVertical: 8 })
     expect(getChatComposerMobileTextInputPlatformState("web")).toEqual({ paddingVertical: 10 })

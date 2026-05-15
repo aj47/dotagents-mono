@@ -114,7 +114,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(chatMessageChromeSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\);/);
   assert.match(sessionPresentationSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\)/);
   assert.match(sessionPresentationSource, /getChatRuntimeHeaderMobileSurfaceState\(\)\.agentSelectorText\.numberOfLines/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeHeaderChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeHeaderChromeMobileStyleRenderState/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeHeaderChromeMobileStyleRenderState/);
   assert.match(sessionPresentationSource, /header: getChatRuntimeHeaderMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /getChatRuntimeAgentSelectorMobileRenderState/);
@@ -550,7 +550,7 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeRetryMessage/);
   assert.match(chatMessageChromeSource, /variant: 'retry'/);
   assert.match(chatMessageChromeSource, /retryInfo,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState\(\{\s*retryInfo: m\.retryInfo,\s*colors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeRetryStatusMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type AgentRetryInfo,/);
@@ -633,7 +633,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /getChatRuntimeDelegationToolPreviewMoreActionState,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationToolCallActivityLabel,/);
   assert.match(chatMessageChromeSource, /formatChatRuntimeDelegationToolCallActivityLabel,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileState,/);
   assert.match(chatMessageChromeSource, /ChatRuntimeDelegationCardMobileRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDelegationCardMobileState/);
@@ -1085,7 +1085,7 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /const headerKillSwitchRenderState = getChatRuntimeKillSwitchMobileRenderState/);
   assert.match(screenSource, /const createChatRuntimeMobileHeaderPinButtonStyle = \(\s+colors: typeof inactiveHeaderPinButtonColors,/);
   assert.match(screenSource, /createChatRuntimeMobileHeaderPinButtonStyle[\s\S]*?\.\.\.headerPinButton,[\s\S]*?borderRadius: radius\[headerSurface\.pinButton\.borderRadius\],[\s\S]*?borderColor: colors\.button\.borderColor,[\s\S]*?backgroundColor: colors\.button\.backgroundColor/);
-  assert.match(chatMessageChromeSource, /headerPinButton: createMinimumTouchTargetStyle\(\{\s+horizontalPadding: header\.header\.surface\.pinButton\.horizontalPadding,\s+verticalPadding: header\.header\.surface\.pinButton\.verticalPadding,\s+\}\),/);
+  assert.match(sessionPresentationSource, /headerPinButton: createMinimumTouchTargetStyle\(\{\s+horizontalPadding: header\.header\.surface\.pinButton\.horizontalPadding,\s+verticalPadding: header\.header\.surface\.pinButton\.verticalPadding,\s+\}\),/);
   assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderPinButtonStyle\(inactiveHeaderPinButtonColors\)/);
   assert.match(screenSource, /headerPinButtonActive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderPinButtonStyle\(activeHeaderPinButtonColors\)/);
   assert.match(screenSource, /const createChatRuntimeMobileHeaderIconContainerStyle = \(\{\s+size,/);
@@ -1132,7 +1132,7 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.doesNotMatch(screenSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(screenSource, /createChatRuntimeMobileSafeAreaLayoutState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMobileSafeAreaLayoutState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(chatScreenSource, /bottomInset: insets\.bottom,/);
   assert.match(chatRuntimeMobileStylesSource, /const bottomInset = insets\.bottom;/);
   assert.match(chatRuntimeMobileStylesSource, /const mobileSafeAreaLayout = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaLayoutState\(bottomInset\),\s+\[bottomInset\],\s+\);/);
@@ -1218,7 +1218,7 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
 });
 
 test('uses shared runtime presentation for the mobile chat viewport and loading state', () => {
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.match(screenSource, /const conversationChromeStyleState = chatChromeStyleState\.conversation;/);
   assert.match(sessionPresentationSource, /viewport: getChatRuntimeViewportMobileRenderState\(\{\s+colors,\s+\}\),/);
@@ -1421,7 +1421,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
 });
 
 test('uses shared runtime presentation for mobile connection and retry banners', () => {
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /const connectionBannerRenderState = useMemo/);
   assert.match(screenSource, /useChatRuntimeConnectionRetryState,/);
   assert.match(screenSource, /const \{\s+lastFailedMessage,\s+setLastFailedMessage,\s+clearLastFailedMessage,\s+\} = useChatRuntimeConnectionRetryState\(\);/);
@@ -1585,6 +1585,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface;/);
   assert.doesNotMatch(screenSource, /composerChrome: \{/);
   assert.match(chatMessageChromeSource, /const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps\(\{\s+colors,\s+platform,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /getChatComposerRuntimeChromeMobileStyleRenderState,/);
+  assert.match(chatMessageChromeSource, /return getChatComposerRuntimeChromeMobileStyleRenderState\(\{\s+colors,\s+platform,\s+\}\);/);
+  assert.match(sessionPresentationSource, /export function getChatComposerRuntimeChromeMobileStyleRenderState\(\{/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMobileChromeStyleRenderState,/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeMobileChromeStyleRenderState\(\{\s+colors,\s+platform,\s+\}\);/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeMobileChromeStyleRenderState\(\{/);
   assert.doesNotMatch(screenSource, /const isWebPlatform = Platform\.OS === 'web';/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
@@ -2783,7 +2789,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /createChatMessageConversationHistoryWindowState,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationViewportAffordanceRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeViewportAffordanceMobileRenderState/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
   assert.match(screenSource, /useChatMessageRuntimeHistoryWindowState,/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeHistoryWindowState,/);
@@ -2938,7 +2944,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
 });
 
 test('uses desktop-style streaming response chrome while mobile assistant content is live', () => {
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.match(chatMessageChromeSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.doesNotMatch(screenSource, /isChatMessageConversationContent,/);
@@ -3065,7 +3071,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.doesNotMatch(screenSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /getChatRuntimeLatestStepSummary,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeLatestStepSummary,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationChromeMobileStyleRenderState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /const nextStepSummary = getChatMessageRuntimeLatestStepSummary\(update\);/);
   assert.match(chatMessageChromeSource, /progressTurnState\.latestStepSummary/);
   assert.match(chatMessageChromeSource, /latestStepSummary: getChatMessageRuntimeLatestStepSummary\(update\),/);
@@ -3142,7 +3148,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
   assert.match(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);
-  assert.match(chatMessageChromeSource, /getMessageQueuePanelMobileWrapperRenderState/);
+  assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
@@ -4557,7 +4563,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /items\.map\(\(item\) => \{/);
   assert.match(chatMessageChromeSource, /onPress=\{\(\) => onPress\(item\)\}/);
   assert.doesNotMatch(screenSource, /promptQuickStarts\.map\(\(item\) => \{/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryMobileSurfaceRenderState,/);
+  assert.match(sessionPresentationSource, /getPromptLibraryMobileSurfaceRenderState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileCopyState,/);
   assert.match(chatMessageChromeSource, /getPromptLibraryMobileCopyState,/);
@@ -4894,7 +4900,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /animationType=\{surface\.modal\.animationType\}/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorModalKeyboardAvoidingBehavior\(Platform\.OS\)/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorInputPaddingVertical,/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryEditorInputPaddingVertical,/);
+  assert.match(sessionPresentationSource, /getPromptLibraryEditorInputPaddingVertical/);
   assert.match(chatMessageChromeSource, /keyboardAvoidingBehavior,/);
   assert.match(chatMessageChromeSource, /chrome: editorChrome,/);
   assert.doesNotMatch(screenSource, /closeIcon: promptLibraryEditorCloseIcon/);

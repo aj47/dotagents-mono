@@ -122,7 +122,6 @@ import {
 } from '@dotagents/shared/voice-text-utils';
 import {
   createChatComposerAccessibilityHint,
-  createMinimumTouchTargetStyle,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
 import {
@@ -153,12 +152,10 @@ import {
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
   getPromptLibraryEditorDismissActionState,
-  getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileCopyState,
-  getPromptLibraryMobileSurfaceRenderState,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryMobileShortcutRenderState,
@@ -177,7 +174,6 @@ import {
 } from '@dotagents/shared/predefined-prompts';
 import {
   getMessageQueuePanelMobileDockRenderState,
-  getMessageQueuePanelMobileWrapperRenderState,
 } from '@dotagents/shared/message-queue-utils';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
@@ -219,7 +215,6 @@ import {
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeBranchMobileRenderState,
   getChatRuntimeConnectionBannerMobileRenderState,
-  getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
@@ -227,6 +222,8 @@ import {
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
+  getChatComposerRuntimeChromeMobileStyleRenderState,
+  getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeScrollToBottomMobileRenderState,
@@ -240,7 +237,6 @@ import {
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
-  getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
@@ -282,8 +278,12 @@ import {
   type ChatSessionStatusMobileStyleState,
   type ChatComposerRuntimeControlMobileRenderState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
+  type ChatComposerRuntimeChromeMobileStyleRenderState,
+  type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileColorPalette,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
+  type ChatRuntimeMobileChromeStyleRenderState,
+  type ChatRuntimeMobileChromeStyleRenderStateInput,
   type ChatRuntimeThreadChromeMobileStyleColorPalette,
   type ChatRuntimeThreadChromeMobileStyleRenderState,
   type FollowUpInputPresentation,
@@ -3391,42 +3391,17 @@ type ChatComposerStyleSlots = {
 
 type ChatComposerRuntimeDockStyleSlots = ChatComposerStyleSlots;
 
-type ChatComposerRuntimeChromeStyleStateInput = {
-  colors:
-    & Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['colors']
-    & Parameters<typeof getChatImageAttachmentMobileRenderState>[0]['colors']
-    & Parameters<typeof getPromptLibraryMobileSurfaceRenderState>[0]['colors']
-    & Parameters<typeof getHandsFreeComposerMobileSurfaceRenderState>[0]['colors'];
-  platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
-};
+type ChatComposerRuntimeChromeStyleStateInput =
+  ChatComposerRuntimeChromeMobileStyleRenderStateInput;
 
-export type ChatComposerRuntimeChromeStyleState = {
-  composer: ReturnType<typeof getChatComposerMobileSurfaceRenderState>;
-  imageAttachment: ReturnType<typeof getChatImageAttachmentMobileRenderState>;
-  promptLibrary: ReturnType<typeof getPromptLibraryMobileSurfaceRenderState>;
-  promptEditorInputPaddingVertical: ReturnType<typeof getPromptLibraryEditorInputPaddingVertical>;
-  handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>;
-};
+export type ChatComposerRuntimeChromeStyleState =
+  ChatComposerRuntimeChromeMobileStyleRenderState;
 
-type ChatRuntimeMobileChromeStyleStateInput = {
-  colors:
-    & Parameters<typeof getChatRuntimeHeaderChromeMobileStyleRenderState>[0]['colors']
-    & Parameters<typeof getChatRuntimeConversationChromeMobileStyleRenderState>[0]['colors']
-    & ChatComposerRuntimeChromeStyleStateInput['colors']
-    & ChatMessageRuntimeThreadChromeStyleStateInput['colors'];
-  platform: ChatComposerRuntimeChromeStyleStateInput['platform'];
-};
+type ChatRuntimeMobileChromeStyleStateInput =
+  ChatRuntimeMobileChromeStyleRenderStateInput;
 
-export type ChatRuntimeMobileChromeStyleState = {
-  header: ReturnType<typeof getChatRuntimeHeaderChromeMobileStyleRenderState>;
-  conversation: ReturnType<typeof getChatRuntimeConversationChromeMobileStyleRenderState>;
-  composer: ChatComposerRuntimeChromeStyleState;
-  messageQueuePanelWrapper: ReturnType<typeof getMessageQueuePanelMobileWrapperRenderState>;
-  headerActionButton: ReturnType<typeof createMinimumTouchTargetStyle>;
-  headerEdgeActionButton: ReturnType<typeof createMinimumTouchTargetStyle>;
-  headerPinButton: ReturnType<typeof createMinimumTouchTargetStyle>;
-  thread: ChatMessageRuntimeThreadChromeStyleState;
-};
+export type ChatRuntimeMobileChromeStyleState =
+  ChatRuntimeMobileChromeStyleRenderState;
 
 type ChatComposerRuntimeDockProps = {
   speechPreview: Omit<ChatComposerSpeechPreviewProps, 'styles'>;
@@ -10856,54 +10831,20 @@ export function createChatComposerRuntimeChromeStyleState({
   colors,
   platform,
 }: ChatComposerRuntimeChromeStyleStateInput): ChatComposerRuntimeChromeStyleState {
-  return {
-    composer: getChatComposerMobileSurfaceRenderState({
-      colors,
-      platform,
-    }),
-    imageAttachment: getChatImageAttachmentMobileRenderState({
-      colors,
-    }),
-    promptLibrary: getPromptLibraryMobileSurfaceRenderState({
-      colors,
-    }),
-    promptEditorInputPaddingVertical: getPromptLibraryEditorInputPaddingVertical(platform),
-    handsFree: getHandsFreeComposerMobileSurfaceRenderState({
-      colors,
-    }),
-  };
+  return getChatComposerRuntimeChromeMobileStyleRenderState({
+    colors,
+    platform,
+  });
 }
 
 export function createChatRuntimeMobileChromeStyleState({
   colors,
   platform,
 }: ChatRuntimeMobileChromeStyleStateInput): ChatRuntimeMobileChromeStyleState {
-  const header = getChatRuntimeHeaderChromeMobileStyleRenderState({
+  return getChatRuntimeMobileChromeStyleRenderState({
     colors,
+    platform,
   });
-
-  return {
-    header,
-    conversation: getChatRuntimeConversationChromeMobileStyleRenderState({
-      colors,
-    }),
-    composer: createChatComposerRuntimeChromeStyleState({
-      colors,
-      platform,
-    }),
-    messageQueuePanelWrapper: getMessageQueuePanelMobileWrapperRenderState(),
-    headerActionButton: createMinimumTouchTargetStyle(),
-    headerEdgeActionButton: createMinimumTouchTargetStyle({
-      horizontalPadding: header.header.surface.edgeActionButton.horizontalPadding,
-    }),
-    headerPinButton: createMinimumTouchTargetStyle({
-      horizontalPadding: header.header.surface.pinButton.horizontalPadding,
-      verticalPadding: header.header.surface.pinButton.verticalPadding,
-    }),
-    thread: createChatMessageRuntimeThreadChromeStyleState({
-      colors,
-    }),
-  };
 }
 
 export function createChatComposerRuntimeDockChromeProps({

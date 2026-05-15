@@ -6,7 +6,21 @@ import {
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
-import { getHandsFreeComposerCopyState, getHandsFreeMicButtonLabel } from "./hands-free-controller"
+import {
+  getHandsFreeComposerCopyState,
+  getHandsFreeComposerMobileSurfaceRenderState,
+  getHandsFreeMicButtonLabel,
+  type HandsFreeComposerMobileSurfaceColorPalette,
+} from "./hands-free-controller"
+import {
+  getChatImageAttachmentMobileRenderState,
+  type ChatImageAttachmentMobileSurfaceColorPalette,
+} from "./conversation-media-assets"
+import {
+  getPromptLibraryEditorInputPaddingVertical,
+  getPromptLibraryMobileSurfaceRenderState,
+  type PromptLibraryMobileSurfaceColorPalette,
+} from "./predefined-prompts"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
@@ -25,6 +39,7 @@ import {
   createButtonAccessibilityLabel,
   createMicControlAccessibilityHint,
   createMicControlAccessibilityLabel,
+  createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
 } from "./accessibility-utils"
@@ -40,6 +55,7 @@ import {
   getToolActivityGroupMobileSurfaceRenderState,
   type ToolActivityGroupMobileColorPalette,
 } from "./tool-activity-grouping"
+import { getMessageQueuePanelMobileWrapperRenderState } from "./message-queue-utils"
 import { formatTurnDuration } from "./turn-duration"
 
 export type SessionLifecycleState = AgentConversationState
@@ -1261,6 +1277,28 @@ export interface ChatRuntimeConversationChromeMobileStyleRenderState {
   messageHistoryBanner: ChatRuntimeMessageHistoryBannerMobileRenderState
 }
 
+export type ChatRuntimeMobileChromeStyleColorPalette =
+  & ChatRuntimeHeaderChromeMobileStyleRenderStateInput["colors"]
+  & ChatRuntimeConversationChromeMobileStyleRenderStateInput["colors"]
+  & ChatComposerRuntimeChromeMobileStyleColorPalette
+  & ChatRuntimeThreadChromeMobileStyleColorPalette
+
+export interface ChatRuntimeMobileChromeStyleRenderStateInput {
+  colors: ChatRuntimeMobileChromeStyleColorPalette
+  platform?: string | null
+}
+
+export interface ChatRuntimeMobileChromeStyleRenderState {
+  header: ChatRuntimeHeaderChromeMobileStyleRenderState
+  conversation: ChatRuntimeConversationChromeMobileStyleRenderState
+  composer: ChatComposerRuntimeChromeMobileStyleRenderState
+  messageQueuePanelWrapper: ReturnType<typeof getMessageQueuePanelMobileWrapperRenderState>
+  headerActionButton: ReturnType<typeof createMinimumTouchTargetStyle>
+  headerEdgeActionButton: ReturnType<typeof createMinimumTouchTargetStyle>
+  headerPinButton: ReturnType<typeof createMinimumTouchTargetStyle>
+  thread: ChatRuntimeThreadChromeMobileStyleRenderState
+}
+
 export interface ChatRuntimeMobileActivityAccessibilityState {
   loadingMessagesLabel: string
   loadingAgentActivityLabel: string
@@ -1716,6 +1754,25 @@ export interface ChatComposerMobileSurfaceRenderState {
     surface: ChatComposerMobileSurfaceColors
     text: ChatComposerMobileTextColors
   }
+}
+
+export type ChatComposerRuntimeChromeMobileStyleColorPalette =
+  & ChatComposerMobileSurfaceRenderStateColorPalette
+  & ChatImageAttachmentMobileSurfaceColorPalette
+  & PromptLibraryMobileSurfaceColorPalette
+  & HandsFreeComposerMobileSurfaceColorPalette
+
+export interface ChatComposerRuntimeChromeMobileStyleRenderStateInput {
+  colors: ChatComposerRuntimeChromeMobileStyleColorPalette
+  platform?: string | null
+}
+
+export interface ChatComposerRuntimeChromeMobileStyleRenderState {
+  composer: ChatComposerMobileSurfaceRenderState
+  imageAttachment: ReturnType<typeof getChatImageAttachmentMobileRenderState>
+  promptLibrary: ReturnType<typeof getPromptLibraryMobileSurfaceRenderState>
+  promptEditorInputPaddingVertical: ReturnType<typeof getPromptLibraryEditorInputPaddingVertical>
+  handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>
 }
 
 export interface ChatComposerSubmitMobileIconStateInput {
@@ -4120,6 +4177,28 @@ export function getChatComposerMobileSurfaceRenderState({
   }
 }
 
+export function getChatComposerRuntimeChromeMobileStyleRenderState({
+  colors,
+  platform,
+}: ChatComposerRuntimeChromeMobileStyleRenderStateInput): ChatComposerRuntimeChromeMobileStyleRenderState {
+  return {
+    composer: getChatComposerMobileSurfaceRenderState({
+      colors,
+      platform,
+    }),
+    imageAttachment: getChatImageAttachmentMobileRenderState({
+      colors,
+    }),
+    promptLibrary: getPromptLibraryMobileSurfaceRenderState({
+      colors,
+    }),
+    promptEditorInputPaddingVertical: getPromptLibraryEditorInputPaddingVertical(platform),
+    handsFree: getHandsFreeComposerMobileSurfaceRenderState({
+      colors,
+    }),
+  }
+}
+
 export function getChatComposerMobileTextInputPlatformState(
   platform: string | null | undefined,
 ): ChatComposerMobileTextInputPlatformState {
@@ -6221,6 +6300,38 @@ export function getChatRuntimeConversationChromeMobileStyleRenderState({
       colors,
     }),
     messageHistoryBanner: getChatRuntimeMessageHistoryBannerMobileRenderState({
+      colors,
+    }),
+  }
+}
+
+export function getChatRuntimeMobileChromeStyleRenderState({
+  colors,
+  platform,
+}: ChatRuntimeMobileChromeStyleRenderStateInput): ChatRuntimeMobileChromeStyleRenderState {
+  const header = getChatRuntimeHeaderChromeMobileStyleRenderState({
+    colors,
+  })
+
+  return {
+    header,
+    conversation: getChatRuntimeConversationChromeMobileStyleRenderState({
+      colors,
+    }),
+    composer: getChatComposerRuntimeChromeMobileStyleRenderState({
+      colors,
+      platform,
+    }),
+    messageQueuePanelWrapper: getMessageQueuePanelMobileWrapperRenderState(),
+    headerActionButton: createMinimumTouchTargetStyle(),
+    headerEdgeActionButton: createMinimumTouchTargetStyle({
+      horizontalPadding: header.header.surface.edgeActionButton.horizontalPadding,
+    }),
+    headerPinButton: createMinimumTouchTargetStyle({
+      horizontalPadding: header.header.surface.pinButton.horizontalPadding,
+      verticalPadding: header.header.surface.pinButton.verticalPadding,
+    }),
+    thread: getChatRuntimeThreadChromeMobileStyleRenderState({
       colors,
     }),
   }
