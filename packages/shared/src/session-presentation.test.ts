@@ -95,6 +95,7 @@ import {
   getChatRuntimeConnectionBannerMobileState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
+  getChatRuntimeConversationActionSetMobileState,
   getChatRuntimeConversationContentMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRuntimeThreadState,
@@ -3264,6 +3265,85 @@ describe("session presentation semantics", () => {
     delegationCardState.onShowAllToolPreview("run-2")
     expect(expandedDelegationConversationPreviews).toEqual({ "run-1": true })
     expect(expandedDelegationToolPreviews).toEqual({ "run-2": true })
+    const actionEvents: string[] = []
+    const actionSetState = getChatRuntimeConversationActionSetMobileState({
+      message: {
+        role: "assistant",
+        branchMessageIndex: 3,
+      },
+      messageIndex: 4,
+      visibleMessageContent: "Working",
+      turnDuration: {
+        durationMs: 12000,
+        isLive: true,
+      },
+      conversationId: "conversation-1",
+      pendingBranchMessageIndex: null,
+      isResponding: false,
+      isSpeaking: false,
+      isCopied: false,
+      ttsEnabled: true,
+      colors: messageThreadStyleColors,
+      styles: {
+        turnDuration: { styleId: "duration" },
+        speech: { styleId: "speech" },
+        branch: { styleId: "branch" },
+        copy: { styleId: "copy" },
+        expansion: { styleId: "expansion" },
+      },
+      onSpeakMessage: (messageIndex, content) => {
+        actionEvents.push(`speak:${messageIndex}:${content}`)
+      },
+      onBranchMessage: (messageIndex) => {
+        actionEvents.push(`branch:${messageIndex}`)
+      },
+      onCopyMessage: (messageIndex, content) => {
+        actionEvents.push(`copy:${messageIndex}:${content}`)
+      },
+      onToggleMessageExpansion: (messageIndex) => {
+        actionEvents.push(`expand:${messageIndex}`)
+      },
+    })
+    expect(actionSetState).toMatchObject({
+      turnDuration: {
+        role: "assistant",
+        durationMs: 12000,
+        isLive: true,
+        styleId: "duration",
+      },
+      speech: {
+        role: "assistant",
+        content: "Working",
+        ttsEnabled: true,
+        styleId: "speech",
+      },
+      branch: {
+        conversationId: "conversation-1",
+        branchMessageIndex: 3,
+        fallbackMessageIndex: 4,
+        pendingMessageIndex: null,
+        styleId: "branch",
+      },
+      copy: {
+        content: "Working",
+        isAssistantComplete: true,
+        isCopied: false,
+        styleId: "copy",
+      },
+      expansion: {
+        styleId: "expansion",
+      },
+    })
+    actionSetState.speech.onPress()
+    actionSetState.branch.onBranchMessage?.(3)
+    actionSetState.copy.onPress()
+    actionSetState.expansion.onPress()
+    expect(actionEvents).toEqual([
+      "speak:4:Working",
+      "branch:3",
+      "copy:4:Working",
+      "expand:4",
+    ])
     const toolActivityGroup: ToolActivityGroup = {
       startIndex: 3,
       endIndex: 4,

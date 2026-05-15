@@ -3748,7 +3748,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /const turnDuration = getChatMessageConversationTurnDuration\(\{\s+message,\s+byUserTimestamp: turnDurationsByUserTimestamp,\s+\}\);/);
   assert.match(chatMessageChromeSource, /actionSet: createChatMessageConversationActionSetInput\(\{\s+message,\s+messageIndex,\s+visibleMessageContent,\s+turnDuration,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationActionSetInput/);
-  assert.match(chatMessageChromeSource, /turnDuration: \{\s+role: message\.role,\s+durationMs: turnDuration\?\.durationMs,\s+isLive: turnDuration\?\.isLive,\s+colors,\s+\.\.\.styles\.turnDuration,\s+\},/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationActionSetMobileState\(\{\s+message,\s+messageIndex,\s+visibleMessageContent,\s+turnDuration,\s+conversationId,\s+pendingBranchMessageIndex,\s+isResponding,\s+isSpeaking,\s+isCopied,\s+ttsEnabled,\s+colors,\s+styles,\s+onSpeakMessage,\s+onBranchMessage,\s+onCopyMessage,\s+onToggleMessageExpansion,\s+\}\);/);
+  assert.match(sessionPresentationSource, /turnDuration: \{\s+role: message\.role,\s+durationMs: turnDuration\?\.durationMs,\s+isLive: turnDuration\?\.isLive,\s+colors,\s+\.\.\.styles\.turnDuration,\s+\},/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionComponents/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionSet/);
   assert.match(chatMessageChromeSource, /const actionSet = createChatMessageActionSet\(\{\s+messageRenderState,\s+\.\.\.actionSetInput,\s+\}\);/);
@@ -3836,7 +3837,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/<ChatMessageActionIconButton/g) ?? []).length, 0);
   assert.match(chatMessageChromeSource, /<ChatMessageActionIconButton[\s\S]*?accessibilityRole=\{spec\.renderState\.accessibilityRole\}[\s\S]*?icon=\{spec\.renderState\.icon\}/);
   assert.match(screenSource, /onSpeakMessage: speakMessage,/);
-  assert.match(chatMessageChromeSource, /onPress: \(\) => onSpeakMessage\(messageIndex, visibleMessageContent\)/);
+  assert.match(sessionPresentationSource, /onPress: \(\) => onSpeakMessage\(messageIndex, visibleMessageContent\)/);
   assert.match(screenSource, /useChatMessageRuntimeSpeechPlaybackState,/);
   assert.match(screenSource, /const \{\s+speakingMessageIndex,\s+intendedSpeakingIndexRef,\s+setIntendedSpeakingMessage,\s+startSpeakingMessage,\s+clearSpeakingMessage,\s+clearIntendedSpeakingMessage,\s+\} = useChatMessageRuntimeSpeechPlaybackState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSpeechPlaybackState/);
@@ -3930,7 +3931,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /messageCopyButtonPressed:\s*createChatRuntimeMobileMessageActionButtonPressedStyle\(mobileMessageCopyButton\)/);
   assert.match(screenSource, /speakingMessageIndex,/);
   assert.match(chatMessageChromeSource, /isSpeaking: speakingMessageIndex === messageIndex,/);
-  assert.match(chatMessageChromeSource, /\.\.\.styles\.speech,/);
+  assert.match(sessionPresentationSource, /\.\.\.styles\.speech,/);
   assert.doesNotMatch(screenSource, /pressedStyle: styles\.speakButtonPressed,/);
   assert.match(chatMessageChromeSource, /speech: \{\s+hitSlop: actionButtons\.speech\.hitSlop,\s+style: styles\.speakButton,\s+activeStyle: styles\.speakButtonActive,\s+pressedStyle: styles\.speakButtonPressed,\s+\}/);
   assert.doesNotMatch(screenSource, /hitSlop: mobileMessageSpeechButton\.hitSlop,/);
@@ -4025,7 +4026,7 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.match(chatMessageChromeSource, /renderState: actionRenderState\.copy,/);
   assert.match(screenSource, /copiedMessageIndex,/);
   assert.match(chatMessageChromeSource, /isCopied: copiedMessageIndex === messageIndex,/);
-  assert.match(chatMessageChromeSource, /copy: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+isAssistantComplete: !isResponding,\s+isCopied,\s+colors,\s+onPress: \(\) => \{ void onCopyMessage\(messageIndex, visibleMessageContent\); \},/);
+  assert.match(sessionPresentationSource, /copy: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+isAssistantComplete: !isResponding,\s+isCopied,\s+colors,\s+onPress: \(\) => \{ void onCopyMessage\(messageIndex, visibleMessageContent\) \},/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{spec\.renderState\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{spec\.renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /icon=\{spec\.renderState\.icon\}/);
@@ -4103,7 +4104,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /numberOfLines=\{messageTurnDurationRenderState\.badge\.numberOfLines\}/);
   assert.doesNotMatch(screenSource, /turnDuration: turnDurationEntry,/);
   assert.match(screenSource, /turnDurationsByUserTimestamp: turnDurations\.byUserTimestamp,/);
-  assert.match(chatMessageChromeSource, /speech: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+ttsEnabled,\s+isSpeaking,\s+colors,\s+onPress: \(\) => onSpeakMessage\(messageIndex, visibleMessageContent\),/);
+  assert.match(sessionPresentationSource, /speech: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+ttsEnabled,\s+isSpeaking,\s+colors,\s+onPress: \(\) => onSpeakMessage\(messageIndex, visibleMessageContent\),/);
   assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationBadgeStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,\s+colors: typeof mobileMessageTurnDurationBadgeColors,/);
   assert.match(screenSource, /backgroundColor: colors\.backgroundColor,[\s\S]*?alignItems: badge\.alignItems,[\s\S]*?justifyContent: badge\.justifyContent,[\s\S]*?gap: badge\.gap,[\s\S]*?flexShrink: badge\.flexShrink,[\s\S]*?opacity: badge\.opacity/);
   assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationTextStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,\s+colors: typeof mobileMessageTurnDurationBadgeColors,/);
@@ -5169,7 +5170,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /clearBranchMessage\(\);/);
   assert.match(chatMessageChromeSource, /clearBranchMessage\(\);/);
   assert.match(screenSource, /conversationId: currentSession\?\.serverConversationId,\s+pendingBranchMessageIndex,/);
-  assert.match(chatMessageChromeSource, /branch: \{\s+conversationId,\s+role: message\.role,\s+branchMessageIndex: message\.branchMessageIndex,\s+fallbackMessageIndex: messageIndex,\s+pendingMessageIndex: pendingBranchMessageIndex,\s+colors,\s+onBranchMessage,/);
+  assert.match(sessionPresentationSource, /branch: \{\s+conversationId,\s+role: message\.role,\s+branchMessageIndex: message\.branchMessageIndex,\s+fallbackMessageIndex: messageIndex,\s+pendingMessageIndex: pendingBranchMessageIndex,\s+colors,\s+onBranchMessage,/);
   assert.match(chatMessageChromeSource, /branch: \{\s+conversationId,\s+role: branchRole,\s+branchMessageIndex,\s+fallbackMessageIndex,\s+pendingMessageIndex,\s+colors: branchColors,\s+\},/);
   assert.match(sessionPresentationSource, /const branchRenderState = getChatRuntimeBranchMobileRenderState\(branch\)/);
   assert.match(chatMessageChromeSource, /if \(actionRenderState\.branch\.messageIndex != null\) \{\s+onBranchMessage\?\.\(actionRenderState\.branch\.messageIndex\);/);
@@ -5180,7 +5181,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatScreenSource, /\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?actionStyles: chatMessageConversationThreadStyles\.actionSet,/);
   assert.match(chatMessageChromeSource, /actionStyles: styles\.actionStyles,/);
-  assert.match(chatMessageChromeSource, /\.\.\.styles\.branch,/);
+  assert.match(sessionPresentationSource, /\.\.\.styles\.branch,/);
   assert.doesNotMatch(screenSource, /disabledStyle: styles\.messageBranchButtonDisabled,/);
   assert.match(chatMessageChromeSource, /branch: \{\s+hitSlop: actionButtons\.branch\.hitSlop,\s+style: styles\.messageBranchButton,\s+pressedStyle: styles\.messageBranchButtonPressed,\s+disabledStyle: styles\.messageBranchButtonDisabled,\s+\}/);
   assert.doesNotMatch(screenSource, /messageBranchAction\.accessibilityLabel \?\? mobileRuntimeCopy\.branch\.buttonAccessibilityLabel/);
@@ -5191,7 +5192,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /renderState: messageBranchRenderState,/);
   assert.match(chatMessageChromeSource, /icon\.isPending \? \(/);
   assert.doesNotMatch(screenSource, /theme\.colors\[(messageSpeechMobileIcon|messageExpansionMobileIcon|messageCopyMobileIcon|messageTurnDurationMobileIcon|messageBranchMobileIcon)\.colorToken\]/);
-  assert.match(chatMessageChromeSource, /expansion: \{\s+onPress: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\.\.\.styles\.expansion,\s+\},/);
+  assert.match(sessionPresentationSource, /expansion: \{\s+onPress: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\.\.\.styles\.expansion,\s+\},/);
   assert.doesNotMatch(screenSource, /standaloneActions: \{\s+shouldRender: messageActionSet\.shouldRenderStandaloneActions/);
   assert.match(chatMessageChromeSource, /standaloneActions: \{\s+shouldRender: actionSet\.shouldRenderStandaloneActions,\s+entries: actionSet\.entries,\s+\}/);
   assert.match(chatMessageChromeSource, /standaloneActions: \{\s+rowStyle: styles\.messageActionsRow,/);

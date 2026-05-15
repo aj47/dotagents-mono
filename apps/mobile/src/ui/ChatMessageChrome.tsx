@@ -194,6 +194,7 @@ import {
   getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeConversationActionSetMobileState,
   getChatRuntimeConversationContentMobileState,
   getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
@@ -272,6 +273,8 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatComposerRuntimeChromeMobileStyleRenderState,
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
+  type ChatRuntimeConversationActionSetMobileState,
+  type ChatRuntimeConversationActionSetMobileStateInput,
   type ChatRuntimeConversationContentMobileState,
   type ChatRuntimeConversationContentMobileStateInput,
   type ChatRuntimeConversationDelegationCardMobileState,
@@ -1382,26 +1385,23 @@ type ChatMessageActionStyleSlots = {
   expansion: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle'>;
 };
 
-type ChatMessageConversationActionSetInput = {
-  message: Pick<ChatMessageDisplayStateMessageLike, 'role'> & {
-    branchMessageIndex?: number;
-  };
-  messageIndex: number;
-  visibleMessageContent: string;
-  turnDuration?: Pick<ChatMessageTurnDurationActionSpecInput, 'durationMs' | 'isLive'>;
-  conversationId?: string;
-  pendingBranchMessageIndex?: number | null;
-  isResponding: boolean;
-  isSpeaking: boolean;
-  isCopied: boolean;
-  ttsEnabled: boolean;
-  colors: ChatRuntimeConversationMessageMobileRenderStateInput['colors'];
-  styles: ChatMessageActionStyleSlots;
-  onSpeakMessage: (messageIndex: number, content: string) => void;
-  onBranchMessage?: (messageIndex: number) => void;
-  onCopyMessage: (messageIndex: number, content: string) => void | Promise<void>;
-  onToggleMessageExpansion: (messageIndex: number) => void;
-};
+type ChatMessageConversationActionSetInput =
+  ChatRuntimeConversationActionSetMobileStateInput<
+    ChatMessageActionStyleSlots['turnDuration'],
+    ChatMessageActionStyleSlots['speech'],
+    ChatMessageActionStyleSlots['branch'],
+    ChatMessageActionStyleSlots['copy'],
+    ChatMessageActionStyleSlots['expansion']
+  >;
+
+type ChatMessageConversationActionSetState =
+  ChatRuntimeConversationActionSetMobileState<
+    ChatMessageActionStyleSlots['turnDuration'],
+    ChatMessageActionStyleSlots['speech'],
+    ChatMessageActionStyleSlots['branch'],
+    ChatMessageActionStyleSlots['copy'],
+    ChatMessageActionStyleSlots['expansion']
+  >;
 
 type ChatRuntimeHeaderAgentSelectorStyles = {
   button: StyleProp<ViewStyle>;
@@ -6789,48 +6789,25 @@ export function createChatMessageConversationActionSetInput({
   onBranchMessage,
   onCopyMessage,
   onToggleMessageExpansion,
-}: ChatMessageConversationActionSetInput): Omit<ChatMessageActionSetInput, 'messageRenderState'> {
-  return {
-    turnDuration: {
-      role: message.role,
-      durationMs: turnDuration?.durationMs,
-      isLive: turnDuration?.isLive,
-      colors,
-      ...styles.turnDuration,
-    },
-    speech: {
-      role: message.role,
-      content: visibleMessageContent,
-      ttsEnabled,
-      isSpeaking,
-      colors,
-      onPress: () => onSpeakMessage(messageIndex, visibleMessageContent),
-      ...styles.speech,
-    },
-    branch: {
-      conversationId,
-      role: message.role,
-      branchMessageIndex: message.branchMessageIndex,
-      fallbackMessageIndex: messageIndex,
-      pendingMessageIndex: pendingBranchMessageIndex,
-      colors,
-      onBranchMessage,
-      ...styles.branch,
-    },
-    copy: {
-      role: message.role,
-      content: visibleMessageContent,
-      isAssistantComplete: !isResponding,
-      isCopied,
-      colors,
-      onPress: () => { void onCopyMessage(messageIndex, visibleMessageContent); },
-      ...styles.copy,
-    },
-    expansion: {
-      onPress: () => onToggleMessageExpansion(messageIndex),
-      ...styles.expansion,
-    },
-  };
+}: ChatMessageConversationActionSetInput): ChatMessageConversationActionSetState {
+  return getChatRuntimeConversationActionSetMobileState({
+    message,
+    messageIndex,
+    visibleMessageContent,
+    turnDuration,
+    conversationId,
+    pendingBranchMessageIndex,
+    isResponding,
+    isSpeaking,
+    isCopied,
+    ttsEnabled,
+    colors,
+    styles,
+    onSpeakMessage,
+    onBranchMessage,
+    onCopyMessage,
+    onToggleMessageExpansion,
+  });
 }
 
 export function createChatMessageConversationContentInput({

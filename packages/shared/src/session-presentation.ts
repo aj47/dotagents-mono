@@ -723,6 +723,75 @@ export interface ChatRuntimeConversationDelegationCardMobileState<
   onShowAllToolPreview: (runId: string) => void
 }
 
+export interface ChatRuntimeConversationActionSetMobileStyleSlots<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+> {
+  turnDuration: TTurnDurationStyle
+  speech: TSpeechStyle
+  branch: TBranchStyle
+  copy: TCopyStyle
+  expansion: TExpansionStyle
+}
+
+export interface ChatRuntimeConversationActionSetMobileStateInput<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+> {
+  message: Pick<ChatMessageDisplayStateMessageLike, "role"> & {
+    branchMessageIndex?: number | null
+  }
+  messageIndex: number
+  visibleMessageContent: string
+  turnDuration?: Pick<ChatRuntimeTurnDurationMessageMobileRenderStateInput, "durationMs" | "isLive">
+  conversationId?: string
+  pendingBranchMessageIndex?: number | null
+  isResponding: boolean
+  isSpeaking: boolean
+  isCopied: boolean
+  ttsEnabled: boolean
+  colors: ChatRuntimeConversationMessageMobileRenderStateInput["colors"]
+  styles: ChatRuntimeConversationActionSetMobileStyleSlots<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >
+  onSpeakMessage: (messageIndex: number, content: string) => void
+  onBranchMessage?: (messageIndex: number) => void
+  onCopyMessage: (messageIndex: number, content: string) => void | Promise<void>
+  onToggleMessageExpansion: (messageIndex: number) => void
+}
+
+export interface ChatRuntimeConversationActionSetMobileState<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+> {
+  turnDuration: ChatRuntimeTurnDurationMessageMobileRenderStateInput & TTurnDurationStyle
+  speech: Omit<ChatMessageSpeechMobileRenderStateInput, "isVisible"> & {
+    onPress: () => void
+  } & TSpeechStyle
+  branch: ChatRuntimeBranchMobileRenderStateInput & {
+    onBranchMessage?: (messageIndex: number) => void
+  } & TBranchStyle
+  copy: ChatMessageCopyMobileRenderStateInput & {
+    onPress: () => void
+  } & TCopyStyle
+  expansion: {
+    onPress: () => void
+  } & TExpansionStyle
+}
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
   toolCall: ToolCall
@@ -6108,6 +6177,85 @@ export function getChatRuntimeConversationDelegationCardMobileState<
       setExpandedDelegationToolPreviews((current) =>
         setChatDisplayExpansionState(current, runId, true),
       )
+    },
+  }
+}
+
+export function getChatRuntimeConversationActionSetMobileState<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+>({
+  message,
+  messageIndex,
+  visibleMessageContent,
+  turnDuration,
+  conversationId,
+  pendingBranchMessageIndex,
+  isResponding,
+  isSpeaking,
+  isCopied,
+  ttsEnabled,
+  colors,
+  styles,
+  onSpeakMessage,
+  onBranchMessage,
+  onCopyMessage,
+  onToggleMessageExpansion,
+}: ChatRuntimeConversationActionSetMobileStateInput<
+  TTurnDurationStyle,
+  TSpeechStyle,
+  TBranchStyle,
+  TCopyStyle,
+  TExpansionStyle
+>): ChatRuntimeConversationActionSetMobileState<
+  TTurnDurationStyle,
+  TSpeechStyle,
+  TBranchStyle,
+  TCopyStyle,
+  TExpansionStyle
+> {
+  return {
+    turnDuration: {
+      role: message.role,
+      durationMs: turnDuration?.durationMs,
+      isLive: turnDuration?.isLive,
+      colors,
+      ...styles.turnDuration,
+    },
+    speech: {
+      role: message.role,
+      content: visibleMessageContent,
+      ttsEnabled,
+      isSpeaking,
+      colors,
+      onPress: () => onSpeakMessage(messageIndex, visibleMessageContent),
+      ...styles.speech,
+    },
+    branch: {
+      conversationId,
+      role: message.role,
+      branchMessageIndex: message.branchMessageIndex,
+      fallbackMessageIndex: messageIndex,
+      pendingMessageIndex: pendingBranchMessageIndex,
+      colors,
+      onBranchMessage,
+      ...styles.branch,
+    },
+    copy: {
+      role: message.role,
+      content: visibleMessageContent,
+      isAssistantComplete: !isResponding,
+      isCopied,
+      colors,
+      onPress: () => { void onCopyMessage(messageIndex, visibleMessageContent) },
+      ...styles.copy,
+    },
+    expansion: {
+      onPress: () => onToggleMessageExpansion(messageIndex),
+      ...styles.expansion,
     },
   }
 }
