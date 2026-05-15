@@ -88,6 +88,7 @@ import {
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
   getChatConversationHomePromptEditorDismissActionState,
+  getChatConversationHomePromptEditorTitle,
   getChatConversationHomePromptSaveFailedAlertState,
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
@@ -2733,6 +2734,8 @@ describe("session presentation semantics", () => {
       isDisabled: true,
       accessibilityState: { disabled: true },
     })
+    expect(getChatConversationHomePromptEditorTitle(false)).toBe("Add New Prompt")
+    expect(getChatConversationHomePromptEditorTitle(true)).toBe("Edit Prompt")
     expect(createChatConversationHomePromptEditorSaveActionState({
       draft: { name: "", content: "" },
       isEditing: false,

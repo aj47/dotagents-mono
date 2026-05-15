@@ -126,7 +126,6 @@ import {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
-  getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryShortcutPressIntent,
@@ -171,6 +170,7 @@ import {
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
   getChatConversationHomePromptEditorDismissActionState,
+  getChatConversationHomePromptEditorTitle,
   getChatConversationHomePromptSaveFailedAlertState,
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
@@ -10206,7 +10206,7 @@ export function ChatConversationHomePromptEditorModal({
     keyboardAvoidingBehavior,
     surface,
   } = renderState;
-  const title = getPromptLibraryEditorTitle(isEditing);
+  const title = getChatConversationHomePromptEditorTitle(isEditing);
 
   return (
     <Modal

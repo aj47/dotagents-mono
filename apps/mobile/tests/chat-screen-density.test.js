@@ -5081,7 +5081,9 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /dismissPromptEditor\(\);/);
   assert.doesNotMatch(screenSource, /clearPromptEditorSave\(\);/);
   assert.match(chatMessageChromeSource, /clearPromptEditorSave\(\);/);
-  assert.match(chatMessageChromeSource, /getPromptLibraryEditorTitle\(isEditing\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /getPromptLibraryEditorTitle\(isEditing\)/);
+  assert.match(chatMessageChromeSource, /getChatConversationHomePromptEditorTitle\(isEditing\)/);
+  assert.match(sessionPresentationSource, /export function getChatConversationHomePromptEditorTitle/);
   assert.doesNotMatch(chatMessageChromeSource, /getPromptLibraryEditorDismissActionState\(isSaving\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptEditorDismissActionState\(isSaving\)/);
   assert.match(sessionPresentationSource, /export function getChatConversationHomePromptEditorDismissActionState/);

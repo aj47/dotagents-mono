@@ -32,6 +32,7 @@ import {
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
+  getPromptLibraryEditorTitle,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
@@ -4697,6 +4698,10 @@ export function getChatConversationHomePromptEditorDismissActionState(
   isSaving = false,
 ): PromptLibraryEditorDismissActionState {
   return getPromptLibraryEditorDismissActionState(isSaving)
+}
+
+export function getChatConversationHomePromptEditorTitle(isEditing: boolean): string {
+  return getPromptLibraryEditorTitle(isEditing)
 }
 
 export function createChatConversationHomePromptEditorSaveActionState({
