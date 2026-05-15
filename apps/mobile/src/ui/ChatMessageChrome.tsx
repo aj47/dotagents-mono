@@ -64,7 +64,6 @@ import {
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
   getChatMessageDisplayState,
-  getCompactToolExecutionPreview,
   hasVisibleChatMessageContent,
   preserveChatMessageDisplayContentFromProgress,
   sortAgentUserResponseEvents,
@@ -223,6 +222,8 @@ import {
   getChatRuntimeViewportAffordanceMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeViewportContentMobileRenderState,
+  getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
+  getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -276,11 +277,11 @@ import {
   type ChatRuntimeMobileChromeStyleRenderStateInput,
   type ChatRuntimeThreadChromeMobileStyleColorPalette,
   type ChatRuntimeThreadChromeMobileStyleRenderState,
+  type ChatRuntimeToolExecutionCompactPreviewMobileRowInput,
+  type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
   type FollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
-  getToolExecutionCallDisplayState,
-  getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
   getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailMobileCollapseControlRenderState,
@@ -2043,19 +2044,11 @@ type ChatMessageDelegationCardStyles = {
   toolPreviewMore: StyleProp<TextStyle>;
 };
 
-type ChatMessageDelegationToolPreviewRow = {
-  key: string;
-  preview: string;
-  renderState: ToolExecutionCompactMobileRenderState;
-};
+type ChatMessageDelegationToolPreviewRow =
+  ChatRuntimeToolExecutionCompactPreviewMobileRowState;
 
-type ChatMessageToolExecutionCompactPreviewRowInput = {
-  key: string;
-  toolCall: ChatMessageDisplayToolEntry['toolCall'];
-  label?: string;
-  result?: ChatMessageDisplayToolEntry['result'];
-  colors: Parameters<typeof getToolExecutionCompactMobileRenderState>[0]['colors'];
-};
+type ChatMessageToolExecutionCompactPreviewRowInput =
+  ChatRuntimeToolExecutionCompactPreviewMobileRowInput;
 
 type ChatMessageDelegationToolPreviewRowsInput = {
   rows: readonly Pick<ChatMessageDisplayToolEntry, 'toolCall' | 'label' | 'result'>[];
@@ -10133,33 +10126,23 @@ export function createChatMessageToolExecutionCompactPreviewRow({
   result,
   colors,
 }: ChatMessageToolExecutionCompactPreviewRowInput): ChatMessageDelegationToolPreviewRow {
-  const state = getToolExecutionCallDisplayState(result);
-  const preview = label ?? getCompactToolExecutionPreview(toolCall, result ?? null);
-
-  return {
+  return getChatRuntimeToolExecutionCompactPreviewMobileRowState({
     key,
-    preview,
-    renderState: getToolExecutionCompactMobileRenderState({
-      state,
-      preview,
-      colors,
-    }),
-  };
+    toolCall,
+    label,
+    result,
+    colors,
+  });
 }
 
 export function createChatMessageDelegationToolPreviewRows({
   rows,
   colors,
 }: ChatMessageDelegationToolPreviewRowsInput): ChatMessageDelegationToolPreviewRow[] {
-  return rows.map(({ toolCall, label, result }, toolIndex) =>
-    createChatMessageToolExecutionCompactPreviewRow({
-      key: `${toolCall.name}-${toolIndex}`,
-      toolCall,
-      label,
-      result,
-      colors,
-    }),
-  );
+  return getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
+    rows,
+    colors,
+  });
 }
 
 export function createChatMessageToolExecutionDetailRow({

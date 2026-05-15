@@ -105,6 +105,7 @@ import {
   getChatRuntimeDelegationConversationPreviewRoleMobileStyleState,
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeDelegationToolPreviewMoreActionState,
+  getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
   getChatRuntimeDesktopSurfaceState,
   getChatRuntimeDockChromeMobileRenderState,
   isChatRuntimeBranchableMessageRole,
@@ -187,6 +188,7 @@ import {
   getChatRuntimeToolApprovalMobileSurfaceState,
   getChatRuntimeToolApprovalSpinnerMobileColors,
   getChatRuntimeThreadChromeMobileStyleRenderState,
+  getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeTurnDurationBadgeState,
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
@@ -3063,6 +3065,35 @@ describe("session presentation semantics", () => {
     expect(threadChromeStyle.toolActivityGroup.colors.countBadge.color).toBe("#0ea5e9")
     expect(threadChromeStyle.toolApproval.title).toBe("Tool Approval Required")
     expect(threadChromeStyle.messageThread.message.surface.paddingHorizontal).toBe("sm")
+    const compactToolPreviewColors = {
+      ...messageThreadStyleColors,
+      destructive: "#dc2626",
+    }
+    const compactToolPreviewRow = getChatRuntimeToolExecutionCompactPreviewMobileRowState({
+      key: "tool-0",
+      toolCall: { name: "read_file", arguments: { path: "/test" } },
+      label: "read_file:/test",
+      result: { success: true, content: "ok" },
+      colors: compactToolPreviewColors,
+    })
+    expect(compactToolPreviewRow).toMatchObject({
+      key: "tool-0",
+      preview: "read_file:/test",
+      renderState: {
+        state: "success",
+        preview: "read_file:/test",
+        isSuccess: true,
+      },
+    })
+    const delegationToolPreviewRows = getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
+      rows: [{
+        toolCall: { name: "execute_command", arguments: { cmd: "pwd" } },
+        result: null,
+      }],
+      colors: compactToolPreviewColors,
+    })
+    expect(delegationToolPreviewRows[0].key).toBe("execute_command-0")
+    expect(delegationToolPreviewRows[0].renderState.state).toBe("pending")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")

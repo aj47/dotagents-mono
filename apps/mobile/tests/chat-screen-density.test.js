@@ -812,10 +812,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /const delegationToolPreviewRows = createChatMessageDelegationToolPreviewRows\(/);
   assert.doesNotMatch(screenSource, /delegationVisibleToolRows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);
-  assert.match(chatMessageChromeSource, /return rows\.map\(\(\{ toolCall, label, result \}, toolIndex\) =>\s+createChatMessageToolExecutionCompactPreviewRow\(\{/);
-  assert.match(chatMessageChromeSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
-  assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /renderState: getToolExecutionCompactMobileRenderState\(\{\s+state,\s+preview,\s+colors,/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeDelegationToolPreviewRowsMobileRenderState\(\{\s+rows,\s+colors,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
+  assert.match(sessionPresentationSource, /getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
+  assert.match(sessionPresentationSource, /renderState: getToolExecutionCompactMobileRenderState\(\{\s+state,\s+preview,\s+colors,/);
   assert.match(chatMessageChromeSource, /rows: createChatMessageDelegationToolPreviewRows\(\{\s+rows: toolPreviewState\.rows,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{`\$\{toolPresentation\.label\}: \$\{toolPreview\}`\}/);
@@ -2276,7 +2277,9 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
   assert.doesNotMatch(screenSource, /formatToolExecutionCount,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailArgumentsState,/);
-  assert.match(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionCompactMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeToolExecutionCompactPreviewMobileRowState,/);
+  assert.match(sessionPresentationSource, /getToolExecutionCompactMobileRenderState,/);
   assert.match(sessionPresentationSource, /getToolExecutionCompactMobileStyleRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionCompactMobileStyleRenderState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileCollapseControlRenderState,/);
@@ -2295,7 +2298,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /getToolExecutionDetailMobileStyleRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionDetailMobileStyleRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionDetailResultState,/);
-  assert.match(chatMessageChromeSource, /getToolExecutionCallDisplayState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionCallDisplayState,/);
+  assert.match(sessionPresentationSource, /getToolExecutionCallDisplayState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionMobileVisibilityRenderState,/);
   assert.match(chatMessageChromeSource, /getToolExecutionMobileVisibilityRenderState,/);
   assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileBadgeColors,/);
@@ -2384,8 +2388,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const tcState = getToolExecutionCallDisplayState\(tcResult\);/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[result\]\)/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[tcResult\]\)/);
-  assert.match(chatMessageChromeSource, /const state = getToolExecutionCallDisplayState\(result\);/);
-  assert.match(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const state = getToolExecutionCallDisplayState\(result\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
+  assert.match(sessionPresentationSource, /const state = getToolExecutionCallDisplayState\(result\)/);
+  assert.match(sessionPresentationSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
   assert.doesNotMatch(screenSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
   assert.doesNotMatch(screenSource, /toolPreviewShouldRender: toolExecutionVisibilityRenderState\.toolPreview\.shouldRender,/);
   assert.match(chatMessageChromeSource, /const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\);/);
@@ -3250,7 +3256,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
 test('labels result-only tool entries without showing raw tool_call text', () => {
   assert.doesNotMatch(screenSource, /resultOnlyToolLabel: toolExecutionResultOnlyFallback\.label/);
   assert.match(chatMessageChromeSource, /resultOnlyToolLabel,\s+\}\),/);
-  assert.match(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\);/);
+  assert.match(sessionPresentationSource, /const preview = label \?\? getCompactToolExecutionPreview\(toolCall, result \?\? null\)/);
   assert.match(chatMessageChromeSource, /const toolName = label \?\? toolCall\.name;/);
   assert.match(chatMessageChromeSource, /toolName,/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.toolResultFallbackLabel/);

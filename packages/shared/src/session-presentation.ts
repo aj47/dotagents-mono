@@ -3,6 +3,7 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "./conversation-state"
+import { getCompactToolExecutionPreview } from "./chat-utils"
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
@@ -29,6 +30,7 @@ import {
   type PromptLibraryTaskLike,
 } from "./predefined-prompts"
 import type { PredefinedPromptSummary } from "./api-types"
+import type { ToolCall, ToolResult } from "./types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
@@ -55,11 +57,15 @@ import {
 } from "./accessibility-utils"
 import {
   formatToolExecutionCount,
+  getToolExecutionCallDisplayState,
+  getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileStyleRenderState,
+  type ToolExecutionCompactMobileRenderState,
+  type ToolExecutionCompactMobileRenderStateInput,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 import {
@@ -439,6 +445,25 @@ export interface ChatRuntimeThreadChromeMobileStyleRenderState {
   toolActivityGroup: ReturnType<typeof getToolActivityGroupMobileSurfaceRenderState>
   toolApproval: ReturnType<typeof getChatRuntimeToolApprovalMobileRenderState>
   messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
+}
+
+export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
+  key: string
+  toolCall: ToolCall
+  label?: string
+  result?: ToolResult | null
+  colors: ToolExecutionCompactMobileRenderStateInput["colors"]
+}
+
+export interface ChatRuntimeDelegationToolPreviewRowsMobileRenderStateInput {
+  rows: readonly Pick<ChatRuntimeToolExecutionCompactPreviewMobileRowInput, "toolCall" | "label" | "result">[]
+  colors: ChatRuntimeToolExecutionCompactPreviewMobileRowInput["colors"]
+}
+
+export interface ChatRuntimeToolExecutionCompactPreviewMobileRowState {
+  key: string
+  preview: string
+  renderState: ToolExecutionCompactMobileRenderState
 }
 
 export interface ChatRuntimeBranchActionInput {
@@ -5414,6 +5439,42 @@ export function getChatRuntimeThreadChromeMobileStyleRenderState({
       colors,
     }),
   }
+}
+
+export function getChatRuntimeToolExecutionCompactPreviewMobileRowState({
+  key,
+  toolCall,
+  label,
+  result,
+  colors,
+}: ChatRuntimeToolExecutionCompactPreviewMobileRowInput): ChatRuntimeToolExecutionCompactPreviewMobileRowState {
+  const state = getToolExecutionCallDisplayState(result)
+  const preview = label ?? getCompactToolExecutionPreview(toolCall, result ?? null)
+
+  return {
+    key,
+    preview,
+    renderState: getToolExecutionCompactMobileRenderState({
+      state,
+      preview,
+      colors,
+    }),
+  }
+}
+
+export function getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
+  rows,
+  colors,
+}: ChatRuntimeDelegationToolPreviewRowsMobileRenderStateInput): ChatRuntimeToolExecutionCompactPreviewMobileRowState[] {
+  return rows.map(({ toolCall, label, result }, toolIndex) =>
+    getChatRuntimeToolExecutionCompactPreviewMobileRowState({
+      key: `${toolCall.name}-${toolIndex}`,
+      toolCall,
+      label,
+      result,
+      colors,
+    }),
+  )
 }
 
 export function formatChatRuntimeActivityContent(step?: ChatRuntimeActivityStepLike | null): string {
