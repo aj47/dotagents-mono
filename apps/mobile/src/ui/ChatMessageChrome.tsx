@@ -215,8 +215,6 @@ import {
   formatChatRuntimeToolApprovalRequiredContent,
   formatChatRuntimeWebConfirmMessage,
   getChatRuntimeAlertMessage,
-  getChatRuntimeDelegationCardMobileRenderState,
-  getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
@@ -228,6 +226,7 @@ import {
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
@@ -283,6 +282,8 @@ import {
   type ChatSessionStatusMobileStyleState,
   type ChatComposerRuntimeControlMobileRenderState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
+  type ChatRuntimeMessageThreadPresentationMobileColorPalette,
+  type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type FollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -293,10 +294,8 @@ import {
   getToolExecutionDetailCopyFailureAlertState,
   getToolExecutionDetailMobileCollapseControlRenderState,
   getToolExecutionDetailMobileCopyButtonRenderState,
-  getToolExecutionDetailMobileEmptyStateRenderState,
   getToolExecutionDetailMobileExpandControlRenderState,
   getToolExecutionDetailMobileHeaderRenderState,
-  getToolExecutionDetailMobilePendingResultRenderState,
   getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailMobileStyleRenderState,
   getToolExecutionDetailResultState,
@@ -3618,19 +3617,11 @@ type ChatMessageConversationThreadVisibilityInput = {
 };
 
 type ChatMessageConversationThreadPresentationStateInput = {
-  colors: Parameters<typeof getChatRuntimeDelegationCardMobileRenderState>[0]['colors']
-    & Parameters<typeof getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots>[0]
-    & Parameters<typeof getToolExecutionDetailMobileStyleRenderState>[0]['colors']
-    & Parameters<typeof getToolExecutionDetailMobilePendingResultRenderState>[0]['colors'];
+  colors: ChatRuntimeMessageThreadPresentationMobileColorPalette;
 };
 
-type ChatMessageConversationThreadPresentationState = {
-  delegationSurface: ChatMessageConversationDelegationCardInput['surface'];
-  delegationRoleStyles: ChatMessageConversationDelegationCardInput['roleStyles'];
-  toolPayloadPreviewNumberOfLines: ChatMessageConversationToolExecutionStackInput['previewNumberOfLines'];
-  pendingToolResultRenderState: ChatMessageConversationToolExecutionStackInput['pendingResultRenderState'];
-  toolExecutionEmptyStateRenderState: ChatMessageConversationToolExecutionStackInput['emptyStateRenderState'];
-};
+type ChatMessageConversationThreadPresentationState =
+  ChatRuntimeMessageThreadPresentationMobileRenderState;
 
 type ChatMessageConversationTurnDurationInput = {
   message: {
@@ -6983,22 +6974,9 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
 export function createChatMessageConversationThreadPresentationState({
   colors,
 }: ChatMessageConversationThreadPresentationStateInput): ChatMessageConversationThreadPresentationState {
-  const delegationCardRenderState = getChatRuntimeDelegationCardMobileRenderState({
+  return getChatRuntimeMessageThreadPresentationMobileRenderState({
     colors,
   });
-  const toolExecutionDetailStyleState = getToolExecutionDetailMobileStyleRenderState({
-    colors,
-  });
-
-  return {
-    delegationSurface: delegationCardRenderState.surface,
-    delegationRoleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(colors),
-    toolPayloadPreviewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
-    pendingToolResultRenderState: getToolExecutionDetailMobilePendingResultRenderState({
-      colors,
-    }),
-    toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState(),
-  };
 }
 
 export function createChatMessageRuntimeThreadChromeStyleState({

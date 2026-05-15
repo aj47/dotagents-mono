@@ -28,7 +28,13 @@ import {
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
 } from "./accessibility-utils"
-import { formatToolExecutionCount } from "./tool-execution-display"
+import {
+  formatToolExecutionCount,
+  getToolExecutionDetailMobileEmptyStateRenderState,
+  getToolExecutionDetailMobilePendingResultRenderState,
+  getToolExecutionDetailMobileStyleRenderState,
+  type ToolExecutionSurfaceColorPalette,
+} from "./tool-execution-display"
 import { formatTurnDuration } from "./turn-duration"
 
 export type SessionLifecycleState = AgentConversationState
@@ -269,6 +275,25 @@ export interface ChatRuntimeMessageThreadMobileStyleRenderState {
     standard: ChatRuntimeTurnDurationMessageMobileRenderState
     live: ChatRuntimeTurnDurationMessageMobileRenderState
   }
+}
+
+export type ChatRuntimeMessageThreadPresentationMobileColorPalette =
+  & ChatRuntimeDelegationCardMobileColorPalette
+  & ChatRuntimeDelegationConversationPreviewRoleColorPalette
+  & ToolExecutionSurfaceColorPalette
+
+export interface ChatRuntimeMessageThreadPresentationMobileRenderStateInput {
+  colors: ChatRuntimeMessageThreadPresentationMobileColorPalette
+}
+
+export interface ChatRuntimeMessageThreadPresentationMobileRenderState {
+  delegationSurface: ChatRuntimeDelegationCardMobileRenderState["surface"]
+  delegationRoleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+  toolPayloadPreviewNumberOfLines: ReturnType<
+    typeof getToolExecutionDetailMobileStyleRenderState
+  >["payloadPreview"]["numberOfLines"]
+  pendingToolResultRenderState: ReturnType<typeof getToolExecutionDetailMobilePendingResultRenderState>
+  toolExecutionEmptyStateRenderState: ReturnType<typeof getToolExecutionDetailMobileEmptyStateRenderState>
 }
 
 export interface ChatRuntimeBranchActionInput {
@@ -4996,6 +5021,27 @@ export function getChatRuntimeMessageThreadMobileStyleRenderState({
         colors,
       }),
     },
+  }
+}
+
+export function getChatRuntimeMessageThreadPresentationMobileRenderState({
+  colors,
+}: ChatRuntimeMessageThreadPresentationMobileRenderStateInput): ChatRuntimeMessageThreadPresentationMobileRenderState {
+  const delegationCardRenderState = getChatRuntimeDelegationCardMobileRenderState({
+    colors,
+  })
+  const toolExecutionDetailStyleState = getToolExecutionDetailMobileStyleRenderState({
+    colors,
+  })
+
+  return {
+    delegationSurface: delegationCardRenderState.surface,
+    delegationRoleStyles: getChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots(colors),
+    toolPayloadPreviewNumberOfLines: toolExecutionDetailStyleState.payloadPreview.numberOfLines,
+    pendingToolResultRenderState: getToolExecutionDetailMobilePendingResultRenderState({
+      colors,
+    }),
+    toolExecutionEmptyStateRenderState: getToolExecutionDetailMobileEmptyStateRenderState(),
   }
 }
 

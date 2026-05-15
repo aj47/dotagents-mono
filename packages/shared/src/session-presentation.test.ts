@@ -139,6 +139,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeMobileActivityAccessibilityState,
+  getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   getChatRuntimePinAccessibilityHint,
   getChatRuntimePinAccessibilityLabel,
@@ -2857,6 +2858,17 @@ describe("session presentation semantics", () => {
     expect(messageThreadStyle.turnDuration.live.colors).toEqual(
       getChatMessageActionMobileTurnDurationBadgeColors({ isLive: true }, messageThreadStyleColors),
     )
+    const messageThreadPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
+      colors: {
+        ...messageThreadStyleColors,
+        destructive: "#dc2626",
+      },
+    })
+    expect(messageThreadPresentation.delegationSurface.conversationPreviewMaxRows).toBe(2)
+    expect(messageThreadPresentation.delegationRoleStyles.user.color).toBe("#0ea5e9")
+    expect(messageThreadPresentation.toolPayloadPreviewNumberOfLines).toBe(2)
+    expect(messageThreadPresentation.pendingToolResultRenderState.label).toBe("Waiting...")
+    expect(messageThreadPresentation.toolExecutionEmptyStateRenderState.label).toBe("No tool calls")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")
