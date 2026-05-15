@@ -268,7 +268,6 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatComposerRuntimeChromeMobileStyleRenderState,
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
-  type ChatRuntimeConversationContentMobileStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationMessageRenderContextMobileState,
@@ -3400,13 +3399,6 @@ type ChatMessageExpandedContentPropsInput = Pick<
   colors: Parameters<typeof getChatRuntimeStreamingContentMobileRenderState>[0]['colors'];
 };
 
-type ChatMessageConversationContentInput = ChatRuntimeConversationContentMobileStateInput<
-  ChatMessageExpandedContentPropsInput['colors'],
-  ChatMessageExpandedContentPropsInput['spinnerSource'],
-  NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
-  NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>
->;
-
 type ChatMessageThreadBodyProps = {
   styles: ChatMessageThreadBodyStyleSlots;
   retryStatus?: Omit<ChatMessageRetryStatusProps, 'styles'> | null;
@@ -3450,10 +3442,10 @@ type ChatMessageConversationThreadBodySharedInput =
     ChatMessageActionStyleSlots['branch'],
     ChatMessageActionStyleSlots['copy'],
     ChatMessageActionStyleSlots['expansion'],
-    ChatMessageConversationContentInput['colors'],
-    ChatMessageConversationContentInput['spinnerSource'],
-    NonNullable<ChatMessageConversationContentInput['assetBaseUrl']>,
-    NonNullable<ChatMessageConversationContentInput['assetAuthToken']>,
+    ChatMessageExpandedContentPropsInput['colors'],
+    ChatMessageExpandedContentPropsInput['spinnerSource'],
+    NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
+    NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>,
     AgentRetryInfo | null | undefined,
     ACPDelegationProgress | null | undefined
   >;
@@ -3469,10 +3461,10 @@ type ChatMessageConversationThreadBodyState =
     ChatMessageActionStyleSlots['branch'],
     ChatMessageActionStyleSlots['copy'],
     ChatMessageActionStyleSlots['expansion'],
-    ChatMessageConversationContentInput['colors'],
-    ChatMessageConversationContentInput['spinnerSource'],
-    NonNullable<ChatMessageConversationContentInput['assetBaseUrl']>,
-    NonNullable<ChatMessageConversationContentInput['assetAuthToken']>,
+    ChatMessageExpandedContentPropsInput['colors'],
+    ChatMessageExpandedContentPropsInput['spinnerSource'],
+    NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
+    NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>,
     AgentRetryInfo | null | undefined,
     ACPDelegationProgress | null | undefined
   >;
