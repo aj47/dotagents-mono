@@ -17,10 +17,17 @@ import {
   type ChatImageAttachmentMobileSurfaceColorPalette,
 } from "./conversation-media-assets"
 import {
+  buildPromptLibraryShortcutItems,
   getPromptLibraryEditorInputPaddingVertical,
+  getPromptLibraryMobileCopyState,
+  getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
+  type PromptLibraryShortcutItem,
+  type PromptLibrarySkillLike,
   type PromptLibraryMobileSurfaceColorPalette,
+  type PromptLibraryTaskLike,
 } from "./predefined-prompts"
+import type { PredefinedPromptSummary } from "./api-types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
@@ -185,6 +192,18 @@ export interface ChatRuntimeViewportContentMobileRenderState {
   homeQuickStarts: ChatRuntimeHomeQuickStartsMobileRenderState
 }
 
+export interface ChatRuntimeHomeQuickStartItemsMobileStateInput<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string } = PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string } =
+    PromptLibraryTaskLike & { id: string; name: string },
+> {
+  prompts?: readonly TPrompt[]
+  skills?: readonly TSkill[]
+  tasks?: readonly TTask[]
+  canAddPrompt?: boolean
+}
+
 export interface ChatRuntimeDebugPanelMobileRow {
   key: string
   text: string
@@ -208,6 +227,44 @@ export interface ChatRuntimeDebugPanelsMobileRenderState {
   requestRows: ChatRuntimeDebugPanelMobileRow[]
   voiceShouldRender: boolean
   voiceRows: ChatRuntimeDebugPanelMobileRow[]
+}
+
+export interface ChatRuntimeViewportChromeMobileRenderStateInput<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string } = PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string } =
+    PromptLibraryTaskLike & { id: string; name: string },
+> {
+  isLoadingMessages?: ChatRuntimeViewportContentMobileRenderStateInput["isLoadingMessages"]
+  messageCount?: ChatRuntimeViewportContentMobileRenderStateInput["messageCount"]
+  quickStartPrompts?: ChatRuntimeHomeQuickStartItemsMobileStateInput<TPrompt, TSkill, TTask>["prompts"]
+  quickStartSkills?: ChatRuntimeHomeQuickStartItemsMobileStateInput<TPrompt, TSkill, TTask>["skills"]
+  quickStartTasks?: ChatRuntimeHomeQuickStartItemsMobileStateInput<TPrompt, TSkill, TTask>["tasks"]
+  quickStartCanAddPrompt?: ChatRuntimeHomeQuickStartItemsMobileStateInput<TPrompt, TSkill, TTask>["canAddPrompt"]
+  visibleMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput["visibleMessageCount"]
+  totalMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput["totalMessageCount"]
+  hiddenMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput["hiddenMessageCount"]
+  messageHistoryLoadIncrement: ChatRuntimeViewportAffordanceMobileRenderStateInput["messageHistoryLoadIncrement"]
+  latestStepSummary?: ChatRuntimeViewportAffordanceMobileRenderStateInput["latestStepSummary"]
+  requestDebugText?: ChatRuntimeDebugPanelsMobileDisplayStateInput["requestDebugText"]
+  voiceDebugEnabled?: ChatRuntimeDebugPanelsMobileDisplayStateInput["voiceDebugEnabled"]
+  voiceEvents?: ChatRuntimeDebugPanelsMobileDisplayStateInput["voiceEvents"]
+  colors:
+    & ChatRuntimeViewportMobileColorPalette
+    & ChatRuntimeViewportAffordanceMobileRenderStateInput["colors"]
+    & Parameters<typeof getPromptLibraryMobileShortcutRenderState>[0]
+}
+
+export interface ChatRuntimeViewportChromeMobileRenderState<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> {
+  viewport: ChatRuntimeViewportMobileRenderState
+  content: ChatRuntimeViewportContentMobileRenderState
+  affordance: ChatRuntimeViewportAffordanceMobileRenderState
+  quickStartItems: PromptLibraryShortcutItem<TPrompt, TTask>[]
+  shortcutRenderState: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>
+  debugPanels: ChatRuntimeDebugPanelsMobileRenderState
 }
 
 export interface ChatRuntimeInlineActivityMobileMessageLike {
@@ -6377,6 +6434,81 @@ export function getChatRuntimeViewportContentMobileRenderState({
     homeQuickStarts: getChatRuntimeHomeQuickStartsMobileRenderState({
       isLoadingMessages,
       messageCount,
+    }),
+  }
+}
+
+export function getChatRuntimeHomeQuickStartItemsMobileState<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  prompts,
+  skills,
+  tasks,
+  canAddPrompt,
+}: ChatRuntimeHomeQuickStartItemsMobileStateInput<TPrompt, TSkill, TTask>): PromptLibraryShortcutItem<TPrompt, TTask>[] {
+  const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState()
+
+  return buildPromptLibraryShortcutItems({
+    prompts,
+    skills,
+    tasks,
+    canAddPrompt,
+    addPromptTitle: mobilePromptLibraryCopy.addPromptTitle,
+    addPromptDescription: mobilePromptLibraryCopy.addPromptDescription,
+    taskDescriptionFallback: mobilePromptLibraryCopy.taskDescriptionFallback,
+  })
+}
+
+export function getChatRuntimeViewportChromeMobileRenderState<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  isLoadingMessages = false,
+  messageCount = 0,
+  quickStartPrompts,
+  quickStartSkills,
+  quickStartTasks,
+  quickStartCanAddPrompt,
+  visibleMessageCount,
+  totalMessageCount,
+  hiddenMessageCount,
+  messageHistoryLoadIncrement,
+  latestStepSummary,
+  requestDebugText,
+  voiceDebugEnabled,
+  voiceEvents,
+  colors,
+}: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>): ChatRuntimeViewportChromeMobileRenderState<TPrompt, TTask> {
+  return {
+    viewport: getChatRuntimeViewportMobileRenderState({
+      colors,
+    }),
+    content: getChatRuntimeViewportContentMobileRenderState({
+      isLoadingMessages,
+      messageCount,
+    }),
+    affordance: getChatRuntimeViewportAffordanceMobileRenderState({
+      visibleMessageCount,
+      totalMessageCount,
+      hiddenMessageCount,
+      messageHistoryLoadIncrement,
+      latestStepSummary,
+      colors,
+    }),
+    quickStartItems: getChatRuntimeHomeQuickStartItemsMobileState({
+      prompts: quickStartPrompts,
+      skills: quickStartSkills,
+      tasks: quickStartTasks,
+      canAddPrompt: quickStartCanAddPrompt,
+    }),
+    shortcutRenderState: getPromptLibraryMobileShortcutRenderState(colors),
+    debugPanels: getChatRuntimeDebugPanelsMobileDisplayState({
+      requestDebugText,
+      voiceDebugEnabled,
+      voiceEvents,
     }),
   }
 }

@@ -144,7 +144,6 @@ import {
   getTextToSpeechVoiceValue,
 } from '@dotagents/shared/text-to-speech-settings';
 import {
-  buildPromptLibraryShortcutItems,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   formatPromptLibraryDeletePromptConfirmMessage,
@@ -155,10 +154,8 @@ import {
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
-  getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
-  getPromptLibraryMobileShortcutRenderState,
   getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
@@ -218,6 +215,7 @@ import {
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
+  getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
@@ -232,9 +230,9 @@ import {
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportAffordanceMobileRenderState,
+  getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeViewportContentMobileRenderState,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
-  getChatRuntimeViewportMobileRenderState,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -272,6 +270,7 @@ import {
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
   type ChatRuntimeViewportAffordanceMobileRenderState,
   type ChatRuntimeViewportAffordanceMobileRenderStateInput,
+  type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatRuntimeViewportContentMobileRenderState,
   type ChatRuntimeViewportContentMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
@@ -1822,16 +1821,11 @@ export function createChatConversationHomeQuickStartItems<
   tasks,
   canAddPrompt,
 }: ChatConversationHomeQuickStartItemsInput<TPrompt, TSkill, TTask>): ChatConversationHomeQuickStartItem<TPrompt, TTask>[] {
-  const mobilePromptLibraryCopy = getPromptLibraryMobileCopyState();
-
-  return buildPromptLibraryShortcutItems({
+  return getChatRuntimeHomeQuickStartItemsMobileState({
     prompts,
     skills,
     tasks,
     canAddPrompt,
-    addPromptTitle: mobilePromptLibraryCopy.addPromptTitle,
-    addPromptDescription: mobilePromptLibraryCopy.addPromptDescription,
-    taskDescriptionFallback: mobilePromptLibraryCopy.taskDescriptionFallback,
   });
 }
 
@@ -2805,10 +2799,11 @@ type ChatMessageRuntimeViewportChromePropsInput<
     hiddenMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['hiddenMessageCount'];
     messageHistoryLoadIncrement: ChatMessageConversationViewportAffordanceRenderStateInput['messageHistoryLoadIncrement'];
     latestStepSummary: ChatMessageConversationViewportAffordanceRenderStateInput['latestStepSummary'];
-    colors:
-      & ChatMessageConversationViewportAffordanceRenderStateInput['colors']
-      & Parameters<typeof getPromptLibraryMobileShortcutRenderState>[0]
-      & Parameters<typeof getChatRuntimeViewportMobileRenderState>[0]['colors'];
+    colors: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['colors'];
     onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
     requestDebugText?: ChatMessageRuntimeDebugPanelsRenderStateInput['requestDebugText'];
     voiceDebugEnabled?: ChatMessageRuntimeDebugPanelsRenderStateInput['voiceDebugEnabled'];
@@ -6574,56 +6569,48 @@ export function createChatMessageRuntimeViewportChromeProps<
   voiceEvents,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
-  const contentRenderState = createChatMessageRuntimeViewportContentRenderState({
+  const viewportChromeRenderState = getChatRuntimeViewportChromeMobileRenderState({
     isLoadingMessages: viewportContentIsLoadingMessages,
     messageCount: viewportContentMessageCount,
-  });
-  const affordanceRenderState = createChatMessageConversationViewportAffordanceRenderState({
+    quickStartPrompts,
+    quickStartSkills,
+    quickStartTasks,
+    quickStartCanAddPrompt,
     visibleMessageCount,
     totalMessageCount,
     hiddenMessageCount,
     messageHistoryLoadIncrement,
     latestStepSummary,
-    colors,
-  });
-  const shortcutRenderState = getPromptLibraryMobileShortcutRenderState(colors);
-  const viewportRenderState = getChatRuntimeViewportMobileRenderState({ colors });
-  const quickStartItems = createChatConversationHomeQuickStartItems({
-    prompts: quickStartPrompts,
-    skills: quickStartSkills,
-    tasks: quickStartTasks,
-    canAddPrompt: quickStartCanAddPrompt,
-  });
-  const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState({
     requestDebugText,
     voiceDebugEnabled,
     voiceEvents,
+    colors,
   });
 
   return {
     ...scrollViewportProps,
-    keyboardShouldPersistTaps: viewportRenderState.surface.keyboardShouldPersistTaps,
-    contentInsetAdjustmentBehavior: viewportRenderState.surface.contentInsetAdjustmentBehavior,
+    keyboardShouldPersistTaps: viewportChromeRenderState.viewport.surface.keyboardShouldPersistTaps,
+    contentInsetAdjustmentBehavior: viewportChromeRenderState.viewport.surface.contentInsetAdjustmentBehavior,
     loadingState: {
-      renderState: contentRenderState.loading,
+      renderState: viewportChromeRenderState.content.loading,
       spinnerSource: loadingSpinnerSource,
     },
     homeQuickStarts: {
-      shouldRender: contentRenderState.homeQuickStarts.shouldRender,
-      items: quickStartItems,
+      shouldRender: viewportChromeRenderState.content.homeQuickStarts.shouldRender,
+      items: viewportChromeRenderState.quickStartItems,
       isLoading: isLoadingQuickStartPrompts,
       runningTaskId: runningPromptTaskId,
       onPress: onQuickStartPress,
       onEditPrompt,
       onDeletePrompt,
-      shortcutRenderState,
+      shortcutRenderState: viewportChromeRenderState.shortcutRenderState,
     },
     historyBanner: {
-      ...affordanceRenderState.historyBanner,
+      ...viewportChromeRenderState.affordance.historyBanner,
       onLoadEarlier: onLoadEarlierMessages,
     },
-    stepSummary: affordanceRenderState.stepSummary,
-    debugPanels: debugPanelsRenderState,
+    stepSummary: viewportChromeRenderState.affordance.stepSummary,
+    debugPanels: viewportChromeRenderState.debugPanels,
   };
 }
 

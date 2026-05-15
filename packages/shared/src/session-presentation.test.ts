@@ -120,6 +120,7 @@ import {
   getChatRuntimeHeaderChromeMobileStyleRenderState,
   getChatRuntimeHeaderMobileSurfaceState,
   getChatRuntimeHeaderMobileStyleRenderState,
+  getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeInlineActivityMobileState,
@@ -191,6 +192,7 @@ import {
   getChatRuntimeTurnDurationMobileIconState,
   getChatRuntimeTurnDurationTitle,
   getChatRuntimeViewportAffordanceMobileRenderState,
+  getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeViewportContentMobileRenderState,
   getChatRuntimeViewportMobileColors,
   getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
@@ -1701,6 +1703,69 @@ describe("session presentation semantics", () => {
         messageCount: 0,
       }),
     })
+    const quickStartPrompt = {
+      id: "prompt-1",
+      name: "Summarize",
+      content: "Summarize this thread.",
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const viewportChromeColors = {
+      background: "#f8fafc",
+      border: "#cbd5e1",
+      card: "#ffffff",
+      destructive: "#dc2626",
+      foreground: "#0f172a",
+      info: "#0ea5e9",
+      input: "#cbd5e1",
+      muted: "#e2e8f0",
+      mutedForeground: "#64748b",
+      primary: "#2563eb",
+      primaryForeground: "#ffffff",
+      secondary: "#e0f2fe",
+      success: "#16a34a",
+      successForeground: "#ecfdf5",
+      warning: "#d97706",
+    }
+    const quickStartItems = getChatRuntimeHomeQuickStartItemsMobileState({
+      prompts: [quickStartPrompt],
+      canAddPrompt: true,
+    })
+    expect(quickStartItems.map((item) => item.id)).toEqual(["prompt-1", "action-add-prompt"])
+    expect(quickStartItems[0]?.source).toBe("saved-prompt")
+    expect(quickStartItems[1]?.source).toBe("action")
+    const viewportChrome = getChatRuntimeViewportChromeMobileRenderState({
+      isLoadingMessages: false,
+      messageCount: 0,
+      quickStartPrompts: [quickStartPrompt],
+      quickStartCanAddPrompt: true,
+      visibleMessageCount: 1,
+      totalMessageCount: 3,
+      hiddenMessageCount: 2,
+      messageHistoryLoadIncrement: 20,
+      latestStepSummary: {
+        stepNumber: 2,
+        actionSummary: "Reviewed shared state",
+      },
+      requestDebugText: "Request sent",
+      voiceDebugEnabled: true,
+      voiceEvents: [{
+        id: "voice-1",
+        at: 0,
+        type: "recognizer-start",
+        summary: "Recognizer started",
+      }],
+      colors: viewportChromeColors,
+    })
+    expect(viewportChrome.viewport.surface.keyboardShouldPersistTaps).toBe("handled")
+    expect(viewportChrome.viewport.surface.contentInsetAdjustmentBehavior).toBe("automatic")
+    expect(viewportChrome.content.homeQuickStarts.shouldRender).toBe(true)
+    expect(viewportChrome.quickStartItems.map((item) => item.id)).toEqual(["prompt-1", "action-add-prompt"])
+    expect(viewportChrome.shortcutRenderState.copy.loadingLabel).toBe("Loading desktop library...")
+    expect(viewportChrome.affordance.historyBanner.renderState.shouldRender).toBe(true)
+    expect(viewportChrome.affordance.stepSummary.renderState.shouldRender).toBe(true)
+    expect(viewportChrome.debugPanels.requestShouldRender).toBe(true)
+    expect(viewportChrome.debugPanels.voiceShouldRender).toBe(true)
     expect(getChatRuntimeDebugPanelsMobileRenderState({
       requestDebugText: "Request sent",
       voiceDebugEnabled: true,
