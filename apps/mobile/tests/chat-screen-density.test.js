@@ -5162,28 +5162,28 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /getChatRuntimeBranchActionAccessibilityLabel,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeBranchActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeBranchMobileAlertState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeBranchMobileAlertState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeBranchMobileAlertState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeBranchMobileAlertState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeBranchMobileIconState,/);
-  assert.match(
-    chatMessageChromeSource,
-    /export function getChatMessageRuntimeBranchUnavailableAlertState/,
-  );
+  assert.match(sessionPresentationSource, /export function getChatRuntimeBranchUnavailableMobileResolvedAlertState/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeBranchCreatedMobileResolvedAlertState/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeBranchFailedMobileResolvedAlertState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeBranchAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeBranchUnavailableAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeBranchCreatedAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeBranchFailedAlertState/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchAlertState,/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchUnavailableAlertState\(\)/);
-  assert.match(chatMessageChromeSource, /getChatMessageRuntimeBranchUnavailableAlertState\(\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeBranchUnavailableMobileResolvedAlertState\(\)/);
   assert.match(chatMessageChromeSource, /showAlert\(unavailableAlert\.title, unavailableAlert\.message\)/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchCreatedAlertState\(\)/);
-  assert.match(chatMessageChromeSource, /getChatMessageRuntimeBranchCreatedAlertState\(\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeBranchCreatedMobileResolvedAlertState\(\)/);
   assert.match(chatMessageChromeSource, /showAlert\(createdAlert\.title, createdAlert\.message\)/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchFailedAlertState\(error\)/);
-  assert.match(chatMessageChromeSource, /getChatMessageRuntimeBranchFailedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeBranchFailedMobileResolvedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /showAlert\(failedAlert\.title, failedAlert\.message\)/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchUnavailableAlertState/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchCreatedAlertState/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeBranchFailedAlertState/);
-  assert.match(chatMessageChromeSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
+  assert.match(sessionPresentationSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
   assert.doesNotMatch(screenSource, /mobileRuntimeBranchAlerts\.(unavailable|created|failed)\.(title|message|fallbackMessage)/);
   assert.match(clientSource, /branchMessageIndex\?: number;/);
   assert.doesNotMatch(screenSource, /branchMessageIndex: historyMsg\.branchMessageIndex/);

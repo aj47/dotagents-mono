@@ -209,7 +209,9 @@ import {
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
   getChatRuntimeToolExecutionStackMobileRenderState,
-  getChatRuntimeBranchMobileAlertState,
+  getChatRuntimeBranchCreatedMobileResolvedAlertState,
+  getChatRuntimeBranchFailedMobileResolvedAlertState,
+  getChatRuntimeBranchUnavailableMobileResolvedAlertState,
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
@@ -5773,34 +5775,6 @@ export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState(
   };
 }
 
-export function getChatMessageRuntimeBranchUnavailableAlertState(
-  alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
-  return {
-    title: alerts.unavailable.title,
-    message: alerts.unavailable.message,
-  };
-}
-
-export function getChatMessageRuntimeBranchCreatedAlertState(
-  alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
-  return {
-    title: alerts.created.title,
-    message: alerts.created.message,
-  };
-}
-
-export function getChatMessageRuntimeBranchFailedAlertState(
-  error: unknown,
-  alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
-  return {
-    title: alerts.failed.title,
-    message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
-  };
-}
-
 export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState(
   alerts: ReturnType<typeof getChatRuntimeToolApprovalMobileAlertState> = getChatRuntimeToolApprovalMobileAlertState(),
 ): ChatMessageRuntimeResolvedAlertState {
@@ -8411,7 +8385,7 @@ export function useChatMessageRuntimeBranchActionsState<
 }: ChatMessageRuntimeBranchActionsStateInput<TBranchClient>): ChatMessageRuntimeBranchActionsState {
   const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
     if (!branchClient || !serverConversationId) {
-      const unavailableAlert = getChatMessageRuntimeBranchUnavailableAlertState();
+      const unavailableAlert = getChatRuntimeBranchUnavailableMobileResolvedAlertState();
       showAlert(unavailableAlert.title, unavailableAlert.message);
       return;
     }
@@ -8427,10 +8401,10 @@ export function useChatMessageRuntimeBranchActionsState<
         return;
       }
 
-      const createdAlert = getChatMessageRuntimeBranchCreatedAlertState();
+      const createdAlert = getChatRuntimeBranchCreatedMobileResolvedAlertState();
       showAlert(createdAlert.title, createdAlert.message);
     } catch (error: any) {
-      const failedAlert = getChatMessageRuntimeBranchFailedAlertState(error);
+      const failedAlert = getChatRuntimeBranchFailedMobileResolvedAlertState(error);
       showAlert(failedAlert.title, failedAlert.message);
     } finally {
       clearBranchMessage();

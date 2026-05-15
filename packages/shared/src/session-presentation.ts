@@ -1197,6 +1197,11 @@ export interface ChatRuntimeBranchActionState {
   }
 }
 
+export interface ChatRuntimeResolvedAlertState {
+  title: string
+  message: string
+}
+
 export interface ChatRuntimeBranchMobileAlertState {
   unavailable: {
     title: string
@@ -7076,6 +7081,34 @@ export function getChatRuntimeBranchMobileAlertState(): ChatRuntimeBranchMobileA
       title: CHAT_RUNTIME_PRESENTATION.branch.failedTitle,
       fallbackMessage: CHAT_RUNTIME_PRESENTATION.branch.failedMessage,
     },
+  }
+}
+
+export function getChatRuntimeBranchUnavailableMobileResolvedAlertState(
+  alerts: ChatRuntimeBranchMobileAlertState = getChatRuntimeBranchMobileAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alerts.unavailable.title,
+    message: alerts.unavailable.message,
+  }
+}
+
+export function getChatRuntimeBranchCreatedMobileResolvedAlertState(
+  alerts: ChatRuntimeBranchMobileAlertState = getChatRuntimeBranchMobileAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alerts.created.title,
+    message: alerts.created.message,
+  }
+}
+
+export function getChatRuntimeBranchFailedMobileResolvedAlertState(
+  error: unknown,
+  alerts: ChatRuntimeBranchMobileAlertState = getChatRuntimeBranchMobileAlertState(),
+): ChatRuntimeResolvedAlertState {
+  return {
+    title: alerts.failed.title,
+    message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
   }
 }
 

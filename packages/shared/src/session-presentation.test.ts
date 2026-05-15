@@ -96,6 +96,9 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
   getChatRuntimeConversationActionSetMobileState,
+  getChatRuntimeBranchCreatedMobileResolvedAlertState,
+  getChatRuntimeBranchFailedMobileResolvedAlertState,
+  getChatRuntimeBranchUnavailableMobileResolvedAlertState,
   getChatRuntimeConversationContentMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRuntimeThreadState,
@@ -4095,6 +4098,18 @@ describe("session presentation semantics", () => {
         title: CHAT_RUNTIME_PRESENTATION.branch.failedTitle,
         fallbackMessage: CHAT_RUNTIME_PRESENTATION.branch.failedMessage,
       },
+    })
+    expect(getChatRuntimeBranchUnavailableMobileResolvedAlertState()).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.branch.unavailableTitle,
+      message: CHAT_RUNTIME_PRESENTATION.branch.unavailableMessage,
+    })
+    expect(getChatRuntimeBranchCreatedMobileResolvedAlertState()).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.branch.createdTitle,
+      message: CHAT_RUNTIME_PRESENTATION.branch.createdMessage,
+    })
+    expect(getChatRuntimeBranchFailedMobileResolvedAlertState(new Error("No session"))).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.branch.failedTitle,
+      message: "No session",
     })
     expect(getChatRuntimeBranchActionState({
       conversationId: "conv-1",
