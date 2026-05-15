@@ -168,9 +168,6 @@ import {
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
-import {
-  getMessageQueuePanelMobileDockRenderState,
-} from '@dotagents/shared/message-queue-utils';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
   getToolActivityGroupExpansionInheritanceItems,
@@ -189,11 +186,8 @@ import {
   getChatComposerMobileControlState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
-  getChatComposerMobileSurfaceState,
-  getChatComposerMobileVisibilityRenderState,
   getChatComposerQueueMobileActionState,
   getChatComposerRuntimeControlMobileRenderState,
-  getChatComposerVoiceOverlayLabel,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantErrorContent,
   formatChatRuntimeAssistantFeedbackContent,
@@ -210,7 +204,7 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeBranchMobileRenderState,
-  getChatRuntimeConnectionBannerMobileRenderState,
+  getChatRuntimeDockChromeMobileRenderState,
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
@@ -223,7 +217,6 @@ import {
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
-  getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
@@ -246,13 +239,12 @@ import {
   type ChatRuntimeBackMobileRenderState,
   type ChatRuntimeBranchMobileRenderState,
   type ChatRuntimeConnectionBannerMobileRenderState,
-  type ChatRuntimeConnectionBannerMobileRenderStateInput,
+  type ChatRuntimeDockChromeMobileRenderStateInput,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
-  type ChatRuntimeScrollToBottomMobileRenderStateInput,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryLike,
   type ChatRuntimeStepSummaryMobileRenderState,
@@ -2925,13 +2917,13 @@ type ChatMessageRuntimeDockChromePropsInput = {
   responseHistoryTtsVoiceId: ChatMessageResponseHistoryPanelDockProps['ttsVoiceId'];
   responseHistoryRemoteBaseUrl: ChatMessageResponseHistoryPanelDockProps['remoteBaseUrl'];
   responseHistoryRemoteApiKey: ChatMessageResponseHistoryPanelDockProps['remoteApiKey'];
-  scrollToBottomVisible: ChatRuntimeScrollToBottomMobileRenderStateInput['isVisible'];
+  scrollToBottomVisible: ChatRuntimeDockChromeMobileRenderStateInput['scrollToBottomVisible'];
   onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
   voiceOverlayListening: boolean;
-  voiceOverlayHandsFree: Parameters<typeof getChatComposerVoiceOverlayLabel>[0]['handsFree'];
-  voiceOverlayWillCancel: Parameters<typeof getChatComposerVoiceOverlayLabel>[0]['willCancel'];
+  voiceOverlayHandsFree: ChatRuntimeDockChromeMobileRenderStateInput['voiceOverlayHandsFree'];
+  voiceOverlayWillCancel: ChatRuntimeDockChromeMobileRenderStateInput['voiceOverlayWillCancel'];
   voiceOverlayTranscript: ChatComposerVoiceOverlayProps['transcript'];
-  queuePanelEnabled: boolean;
+  queuePanelEnabled: ChatRuntimeDockChromeMobileRenderStateInput['queuePanelEnabled'];
   queuePanelConversationId: ChatMessageQueuePanelDockProps['panel']['conversationId'];
   queuedMessages: ChatMessageQueuePanelDockProps['panel']['messages'];
   onRemoveQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onRemove'];
@@ -2943,12 +2935,11 @@ type ChatMessageRuntimeDockChromePropsInput = {
   isMessageQueuePaused: ChatMessageQueuePanelDockProps['panel']['isPaused'];
   onPauseMessageQueue: ChatMessageQueuePanelDockProps['panel']['onPause'];
   onResumeMessageQueue: ChatMessageQueuePanelDockProps['panel']['onResume'];
-  connectionState: ChatRuntimeConnectionBannerMobileRenderStateInput['connectionState'];
-  lastFailedMessage: ChatRuntimeConnectionBannerMobileRenderStateInput['lastFailedMessage'];
-  isResponding: ChatRuntimeConnectionBannerMobileRenderStateInput['isResponding'];
+  connectionState: ChatRuntimeDockChromeMobileRenderStateInput['connectionState'];
+  lastFailedMessage: ChatRuntimeDockChromeMobileRenderStateInput['lastFailedMessage'];
+  isResponding: ChatRuntimeDockChromeMobileRenderStateInput['isResponding'];
   colors:
-    & ChatRuntimeScrollToBottomMobileRenderStateInput['colors']
-    & ChatRuntimeConnectionBannerMobileRenderStateInput['colors']
+    & ChatRuntimeDockChromeMobileRenderStateInput['colors']
     & ChatMessageResponseHistoryPanelDockProps['colors']
     & ChatMessageQueuePanelDockProps['panel']['colors'];
   onConnectionBannerRetry?: ChatMessageConnectionBannerProps['onRetry'];
@@ -6649,27 +6640,17 @@ export function createChatMessageRuntimeDockChromeProps({
   onConnectionBannerRetry,
   composer,
 }: ChatMessageRuntimeDockChromePropsInput): ChatMessageRuntimeDockChromeProps {
-  const composerSurface = getChatComposerMobileSurfaceState();
-  const voiceOverlayVisibility = getChatComposerMobileVisibilityRenderState({
-    listening: voiceOverlayListening,
-  });
-  const voiceOverlayLabel = getChatComposerVoiceOverlayLabel({
-    handsFree: voiceOverlayHandsFree,
-    willCancel: voiceOverlayWillCancel,
-  });
-  const scrollToBottomRenderState = getChatRuntimeScrollToBottomMobileRenderState({
-    isVisible: scrollToBottomVisible,
-    colors,
-  });
-  const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState({
+  const dockChromeRenderState = getChatRuntimeDockChromeMobileRenderState({
+    scrollToBottomVisible,
+    voiceOverlayListening,
+    voiceOverlayHandsFree,
+    voiceOverlayWillCancel,
+    queuePanelEnabled,
+    queuePanelMessageCount: queuedMessages.length,
     connectionState,
     lastFailedMessage,
     isResponding,
     colors,
-  });
-  const queuePanelDockRenderState = getMessageQueuePanelMobileDockRenderState({
-    isQueueEnabled: queuePanelEnabled,
-    messageCount: queuedMessages.length,
   });
 
   return {
@@ -6690,17 +6671,17 @@ export function createChatMessageRuntimeDockChromeProps({
       stopRemoteSpeech: stopRemoteTts,
     },
     scrollToBottomButton: {
-      renderState: scrollToBottomRenderState,
+      renderState: dockChromeRenderState.scrollToBottom,
       onPress: onScrollToBottom,
     },
     voiceOverlay: {
-      isVisible: voiceOverlayVisibility.voiceOverlay.isVisible,
-      label: voiceOverlayLabel,
+      isVisible: dockChromeRenderState.voiceOverlay.isVisible,
+      label: dockChromeRenderState.voiceOverlay.label,
       transcript: voiceOverlayTranscript,
-      transcriptNumberOfLines: composerSurface.voiceOverlay.transcriptNumberOfLines,
+      transcriptNumberOfLines: dockChromeRenderState.voiceOverlay.transcriptNumberOfLines,
     },
     queuePanel: {
-      shouldRender: queuePanelDockRenderState.shouldRender,
+      shouldRender: dockChromeRenderState.queuePanel.shouldRender,
       panel: {
         conversationId: queuePanelConversationId,
         messages: queuedMessages,
@@ -6717,7 +6698,7 @@ export function createChatMessageRuntimeDockChromeProps({
       },
     },
     connectionBanner: {
-      renderState: connectionBannerRenderState,
+      renderState: dockChromeRenderState.connectionBanner,
       onRetry: onConnectionBannerRetry,
     },
     composer,

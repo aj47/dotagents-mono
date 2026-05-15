@@ -63,7 +63,12 @@ import {
   getToolActivityGroupMobileSurfaceRenderState,
   type ToolActivityGroupMobileColorPalette,
 } from "./tool-activity-grouping"
-import { getMessageQueuePanelMobileWrapperRenderState } from "./message-queue-utils"
+import {
+  getMessageQueuePanelMobileDockRenderState,
+  getMessageQueuePanelMobileWrapperRenderState,
+  type MessageQueuePanelMobileDockRenderState,
+  type MessageQueuePanelMobileDockRenderStateInput,
+} from "./message-queue-utils"
 import { formatTurnDuration } from "./turn-duration"
 
 export type SessionLifecycleState = AgentConversationState
@@ -173,6 +178,32 @@ export interface ChatRuntimeSurfaceChromeMobileRenderState {
   promptEditor: {
     renderState: ReturnType<typeof getPromptLibraryEditorMobileRenderState>
   }
+}
+
+export interface ChatRuntimeDockChromeMobileRenderStateInput {
+  scrollToBottomVisible: ChatRuntimeScrollToBottomMobileRenderStateInput["isVisible"]
+  voiceOverlayListening: NonNullable<ChatComposerMobileVisibilityRenderStateInput["listening"]>
+  voiceOverlayHandsFree: Parameters<typeof getChatComposerVoiceOverlayLabel>[0]["handsFree"]
+  voiceOverlayWillCancel: Parameters<typeof getChatComposerVoiceOverlayLabel>[0]["willCancel"]
+  queuePanelEnabled?: MessageQueuePanelMobileDockRenderStateInput["isQueueEnabled"]
+  queuePanelMessageCount?: MessageQueuePanelMobileDockRenderStateInput["messageCount"]
+  connectionState: ChatRuntimeConnectionBannerMobileRenderStateInput["connectionState"]
+  lastFailedMessage: ChatRuntimeConnectionBannerMobileRenderStateInput["lastFailedMessage"]
+  isResponding: ChatRuntimeConnectionBannerMobileRenderStateInput["isResponding"]
+  colors:
+    & ChatRuntimeScrollToBottomMobileRenderStateInput["colors"]
+    & ChatRuntimeConnectionBannerMobileRenderStateInput["colors"]
+}
+
+export interface ChatRuntimeDockChromeMobileRenderState {
+  scrollToBottom: ChatRuntimeScrollToBottomMobileRenderState
+  voiceOverlay: {
+    isVisible: ChatComposerMobileVisibilityRenderState["voiceOverlay"]["isVisible"]
+    label: ReturnType<typeof getChatComposerVoiceOverlayLabel>
+    transcriptNumberOfLines: ReturnType<typeof getChatComposerMobileSurfaceState>["voiceOverlay"]["transcriptNumberOfLines"]
+  }
+  queuePanel: MessageQueuePanelMobileDockRenderState
+  connectionBanner: ChatRuntimeConnectionBannerMobileRenderState
 }
 
 export interface ChatRuntimeLoadingStateMobileRenderStateInput {
@@ -6360,6 +6391,49 @@ export function getChatRuntimeSurfaceChromeMobileRenderState({
         platform,
       }),
     },
+  }
+}
+
+export function getChatRuntimeDockChromeMobileRenderState({
+  scrollToBottomVisible,
+  voiceOverlayListening,
+  voiceOverlayHandsFree,
+  voiceOverlayWillCancel,
+  queuePanelEnabled,
+  queuePanelMessageCount,
+  connectionState,
+  lastFailedMessage,
+  isResponding,
+  colors,
+}: ChatRuntimeDockChromeMobileRenderStateInput): ChatRuntimeDockChromeMobileRenderState {
+  const composerSurface = getChatComposerMobileSurfaceState()
+  const voiceOverlayVisibility = getChatComposerMobileVisibilityRenderState({
+    listening: voiceOverlayListening,
+  })
+
+  return {
+    scrollToBottom: getChatRuntimeScrollToBottomMobileRenderState({
+      isVisible: scrollToBottomVisible,
+      colors,
+    }),
+    voiceOverlay: {
+      isVisible: voiceOverlayVisibility.voiceOverlay.isVisible,
+      label: getChatComposerVoiceOverlayLabel({
+        handsFree: voiceOverlayHandsFree,
+        willCancel: voiceOverlayWillCancel,
+      }),
+      transcriptNumberOfLines: composerSurface.voiceOverlay.transcriptNumberOfLines,
+    },
+    queuePanel: getMessageQueuePanelMobileDockRenderState({
+      isQueueEnabled: queuePanelEnabled,
+      messageCount: queuePanelMessageCount,
+    }),
+    connectionBanner: getChatRuntimeConnectionBannerMobileRenderState({
+      connectionState,
+      lastFailedMessage,
+      isResponding,
+      colors,
+    }),
   }
 }
 

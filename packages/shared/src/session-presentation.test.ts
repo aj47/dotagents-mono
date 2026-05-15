@@ -105,6 +105,7 @@ import {
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDesktopSurfaceState,
+  getChatRuntimeDockChromeMobileRenderState,
   isChatRuntimeBranchableMessageRole,
   getChatComposerVoiceOverlayLabel,
   getChatRuntimeDebugPanelsMobileDisplayState,
@@ -1774,6 +1775,28 @@ describe("session presentation semantics", () => {
     expect(surfaceChrome.frame.keyboardAvoidingBehavior).toBe("padding")
     expect(surfaceChrome.promptEditor.renderState.keyboardAvoidingBehavior).toBe("padding")
     expect(surfaceChrome.promptEditor.renderState.copy.nameLabel).toBe("Name")
+    const dockChrome = getChatRuntimeDockChromeMobileRenderState({
+      scrollToBottomVisible: true,
+      voiceOverlayListening: true,
+      voiceOverlayHandsFree: false,
+      voiceOverlayWillCancel: true,
+      queuePanelEnabled: true,
+      queuePanelMessageCount: 2,
+      connectionState: {
+        status: "reconnecting",
+        retryCount: 1,
+        lastError: "Network offline",
+        isAppActive: true,
+      },
+      lastFailedMessage: "Retry this later",
+      isResponding: true,
+      colors: viewportChromeColors,
+    })
+    expect(dockChrome.scrollToBottom.shouldRender).toBe(true)
+    expect(dockChrome.voiceOverlay.isVisible).toBe(true)
+    expect(dockChrome.voiceOverlay.label).toBe("Release to edit")
+    expect(dockChrome.queuePanel.shouldRender).toBe(true)
+    expect(dockChrome.connectionBanner.reconnecting.shouldRender).toBe(true)
     expect(getChatRuntimeDebugPanelsMobileRenderState({
       requestDebugText: "Request sent",
       voiceDebugEnabled: true,

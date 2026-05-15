@@ -1158,8 +1158,10 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /const scrollToBottom = useCallback\(\(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollRef\.current\?\.scrollToEnd\(\{ animated: true \}\);/);
   assert.match(screenSource, /scrollToBottomVisible: !shouldAutoScroll,\s+onScrollToBottom: handleScrollToBottomPress,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockChromeProps/);
-  assert.match(chatMessageChromeSource, /const scrollToBottomRenderState = getChatRuntimeScrollToBottomMobileRenderState\(\{\s+isVisible: scrollToBottomVisible,\s+colors,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /scrollToBottomButton: \{\s+renderState: scrollToBottomRenderState,\s+onPress: onScrollToBottom,\s+\}/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeDockChromeMobileRenderState/);
+  assert.match(sessionPresentationSource, /scrollToBottom: getChatRuntimeScrollToBottomMobileRenderState\(\{\s+isVisible: scrollToBottomVisible,\s+colors,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /const dockChromeRenderState = getChatRuntimeDockChromeMobileRenderState\(\{/);
+  assert.match(chatMessageChromeSource, /scrollToBottomButton: \{\s+renderState: dockChromeRenderState\.scrollToBottom,\s+onPress: onScrollToBottom,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButton\s+\{\.\.\.scrollToBottomButton\}\s+style=\{styles\.scrollToBottomButtonStyle\}/);
   assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: \[\s+conversationDockStyles\.scrollToBottomButtonStyle,\s+safeAreaStyles\.scrollToBottomButton,\s+\]/);
   assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: safeAreaStyles\.scrollToBottomButtonStyle,/);
@@ -1370,7 +1372,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageDebugPanelStack\s+\{\.\.\.debugPanels\}\s+panelStyle=\{styles\.debugPanels\.panelStyle\}\s+textStyle=\{styles\.debugPanels\.textStyle\}/);
   assert.match(screenSource, /dock: \{[\s\S]*?responseHistoryResponses: respondToUserHistory,[\s\S]*?scrollToBottomVisible: !shouldAutoScroll,[\s\S]*?voiceOverlayListening: listening,[\s\S]*?queuePanelEnabled: messageQueueEnabled,[\s\S]*?connectionState,[\s\S]*?lastFailedMessage,[\s\S]*?isResponding: responding,/);
-  assert.match(chatMessageChromeSource, /responseHistoryPanel: \{\s+responses: responseHistoryResponses,[\s\S]*?scrollToBottomButton: \{\s+renderState: scrollToBottomRenderState,/);
+  assert.match(chatMessageChromeSource, /responseHistoryPanel: \{\s+responses: responseHistoryResponses,[\s\S]*?scrollToBottomButton: \{\s+renderState: dockChromeRenderState\.scrollToBottom,/);
   assert.match(chatMessageChromeSource, /composer: chatComposerRuntimeDock,/);
   assert.doesNotMatch(screenSource, /shouldRender: respondToUserHistory\.length > 0/);
   assert.doesNotMatch(screenSource, /<ChatMessageRuntimeDock/);
@@ -1448,10 +1450,10 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryActionState/);
   assert.match(chatMessageChromeSource, /handleRetryLastFailedMessagePress: \(\) => void/);
   assert.match(chatMessageChromeSource, /const handleRetryLastFailedMessagePress = useCallback\(\(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\}, \[handleRetryLastFailedMessage\]\);/);
-  assert.match(chatMessageChromeSource, /const connectionBannerRenderState = getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\);/);
+  assert.match(sessionPresentationSource, /connectionBanner: getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\),/);
   assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+onConnectionBannerRetry: handleRetryLastFailedMessagePress,/);
   assert.doesNotMatch(screenSource, /void handleRetryLastFailedMessage\(\)/);
-  assert.match(chatMessageChromeSource, /connectionBanner: \{\s+renderState: connectionBannerRenderState,\s+onRetry: onConnectionBannerRetry,\s+\}/);
+  assert.match(chatMessageChromeSource, /connectionBanner: \{\s+renderState: dockChromeRenderState\.connectionBanner,\s+onRetry: onConnectionBannerRetry,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageConnectionBanner\s+\{\.\.\.connectionBanner\}\s+styles=\{styles\.connectionBanner\}/);
   assert.match(chatMessageChromeSource, /connectionBanner: \{\s+banner: styles\.connectionBanner,\s+reconnecting: styles\.connectionBannerReconnecting,\s+failed: styles\.connectionBannerFailed,\s+content: styles\.connectionBannerContent,/);
   assert.match(chatMessageChromeSource, /icon: styles\.connectionBannerIcon,\s+textContainer: styles\.connectionBannerTextContainer,\s+title: styles\.connectionBannerText,\s+subtitle: styles\.connectionBannerSubtext,/);
@@ -1554,7 +1556,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /getChatComposerMobileControlState,/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileControlState,/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileVisibilityRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatComposerMobileVisibilityRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatComposerMobileVisibilityRenderState,/);
+  assert.match(sessionPresentationSource, /getChatComposerMobileVisibilityRenderState/);
   assert.match(screenSource, /createChatRuntimeMobileChromeStyleState,/);
   assert.match(chatMessageChromeSource, /getChatComposerMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
@@ -1985,13 +1988,13 @@ test('uses shared mobile icon chrome for pending image removal', () => {
 test('keeps the live voice overlay compact by grouping status and transcript into one card', () => {
   assert.doesNotMatch(screenSource, /getChatComposerVoiceOverlayLabel,/);
   assert.doesNotMatch(screenSource, /const voiceOverlayLabel = getChatComposerVoiceOverlayLabel\(\{ handsFree, willCancel \}\);/);
-  assert.match(chatMessageChromeSource, /getChatComposerVoiceOverlayLabel,/);
-  assert.match(chatMessageChromeSource, /const voiceOverlayLabel = getChatComposerVoiceOverlayLabel\(\{\s+handsFree: voiceOverlayHandsFree,\s+willCancel: voiceOverlayWillCancel,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatComposerVoiceOverlayLabel,/);
+  assert.match(sessionPresentationSource, /label: getChatComposerVoiceOverlayLabel\(\{\s+handsFree: voiceOverlayHandsFree,\s+willCancel: voiceOverlayWillCancel,\s+\}\),/);
   assert.match(screenSource, /voiceOverlayListening: listening,\s+voiceOverlayHandsFree: handsFree,\s+voiceOverlayWillCancel: willCancel,\s+voiceOverlayTranscript: liveTranscript,/);
   assert.doesNotMatch(screenSource, /voiceOverlayTranscriptNumberOfLines:/);
-  assert.match(chatMessageChromeSource, /const composerSurface = getChatComposerMobileSurfaceState\(\);/);
-  assert.match(chatMessageChromeSource, /const voiceOverlayVisibility = getChatComposerMobileVisibilityRenderState\(\{\s+listening: voiceOverlayListening,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /voiceOverlay: \{\s+isVisible: voiceOverlayVisibility\.voiceOverlay\.isVisible,\s+label: voiceOverlayLabel,\s+transcript: voiceOverlayTranscript,\s+transcriptNumberOfLines: composerSurface\.voiceOverlay\.transcriptNumberOfLines,\s+\}/);
+  assert.match(sessionPresentationSource, /const composerSurface = getChatComposerMobileSurfaceState\(\)/);
+  assert.match(sessionPresentationSource, /const voiceOverlayVisibility = getChatComposerMobileVisibilityRenderState\(\{\s+listening: voiceOverlayListening,\s+\}\)/);
+  assert.match(chatMessageChromeSource, /voiceOverlay: \{\s+isVisible: dockChromeRenderState\.voiceOverlay\.isVisible,\s+label: dockChromeRenderState\.voiceOverlay\.label,\s+transcript: voiceOverlayTranscript,\s+transcriptNumberOfLines: dockChromeRenderState\.voiceOverlay\.transcriptNumberOfLines,\s+\}/);
   assert.doesNotMatch(screenSource, /isVisible: listening/);
   assert.match(screenSource, /dockStyles: chatMessageRuntimeDockStyles/);
   assert.match(chatMessageChromeSource, /<ChatComposerVoiceOverlay\s+\{\.\.\.voiceOverlay\}\s+styles=\{styles\.voiceOverlay\}/);
@@ -2026,7 +2029,7 @@ test('keeps the live voice overlay compact by grouping status and transcript int
 
 test('caps live transcript height so the recording overlay is less likely to cover the chat surface', () => {
   assert.doesNotMatch(screenSource, /voiceOverlayTranscriptNumberOfLines: mobileComposerSurface\.voiceOverlay\.transcriptNumberOfLines/);
-  assert.match(chatMessageChromeSource, /transcriptNumberOfLines: composerSurface\.voiceOverlay\.transcriptNumberOfLines/);
+  assert.match(chatMessageChromeSource, /transcriptNumberOfLines: dockChromeRenderState\.voiceOverlay\.transcriptNumberOfLines/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{transcriptNumberOfLines\}/);
   assert.match(screenSource, /overlayTranscript:\s*\{[\s\S]*?color:\s*mobileComposerTextColors\.voiceOverlay\.color/);
   assert.match(screenSource, /overlayTranscript:\s*\{[\s\S]*?marginTop:\s*voiceOverlaySurface\.transcriptMarginTop,[\s\S]*?lineHeight:\s*voiceOverlaySurface\.transcriptLineHeight,[\s\S]*?opacity:\s*voiceOverlaySurface\.transcriptOpacity,/);
@@ -3153,7 +3156,8 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 });
 
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
-  assert.match(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
+  assert.match(sessionPresentationSource, /getMessageQueuePanelMobileDockRenderState/);
+  assert.doesNotMatch(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
@@ -3179,9 +3183,10 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(screenSource, /scheduleChatMessageRuntimeNextQueuedMessage\(\{\s+currentConversationId,\s+queue: messageQueue,\s+canProcessQueue: messageQueueEnabled,/);
   assert.match(chatMessageChromeSource, /if \(!canProcessQueue\) return;[\s\S]*?if \(queue\.isQueuePaused\(currentConversationId\)\) return;/);
   assert.match(screenSource, /queuePanelEnabled: messageQueueEnabled,\s+queuePanelConversationId: currentConversationId,\s+queuedMessages,/);
-  assert.match(chatMessageChromeSource, /const queuePanelDockRenderState = getMessageQueuePanelMobileDockRenderState\(\{\s+isQueueEnabled: queuePanelEnabled,\s+messageCount: queuedMessages\.length,\s+\}\);/);
+  assert.match(sessionPresentationSource, /queuePanel: getMessageQueuePanelMobileDockRenderState\(\{\s+isQueueEnabled: queuePanelEnabled,\s+messageCount: queuePanelMessageCount,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /queuePanelMessageCount: queuedMessages\.length,/);
   assert.match(chatMessageChromeSource, /responseHistoryPanel: \{\s+responses: responseHistoryResponses,\s+colors,/);
-  assert.match(chatMessageChromeSource, /queuePanel: \{\s+shouldRender: queuePanelDockRenderState\.shouldRender,\s+panel: \{\s+conversationId: queuePanelConversationId,\s+messages: queuedMessages,\s+colors,/);
+  assert.match(chatMessageChromeSource, /queuePanel: \{\s+shouldRender: dockChromeRenderState\.queuePanel\.shouldRender,\s+panel: \{\s+conversationId: queuePanelConversationId,\s+messages: queuedMessages,\s+colors,/);
   assert.doesNotMatch(screenSource, /shouldRender: messageQueueEnabled && queuedMessages\.length > 0/);
   assert.match(chatMessageChromeSource, /<ChatMessageQueuePanelDock\s+\{\.\.\.queuePanel\}\s+style=\{styles\.queuePanelStyle\}/);
   assert.match(chatMessageChromeSource, /queuePanelStyle: styles\.messageQueuePanelWrapper,/);
