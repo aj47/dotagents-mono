@@ -3429,10 +3429,10 @@ describe("session presentation semantics", () => {
         mutedForeground: "#64748b",
       },
     })).toMatchObject({
-      isRetry: true,
-      retryInfo: {
-        attempt: 2,
-        reason: "rate_limit",
+      renderState: {
+        shouldRender: true,
+        attemptLabel: "Attempt 2/3",
+        countdownLabel: "Retrying in 10s",
       },
     })
     const approvalResponses: Array<{ approvalId: string; approved: boolean }> = []
@@ -3809,7 +3809,7 @@ describe("session presentation semantics", () => {
     })
     expect(threadBodyState).toMatchObject({
       retryStatus: {
-        isRetry: false,
+        renderState: null,
       },
       delegationCard: {
         isDelegation: false,

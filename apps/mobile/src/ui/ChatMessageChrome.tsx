@@ -184,7 +184,6 @@ import {
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
-  getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalCardMobileRenderState,
@@ -246,6 +245,7 @@ import {
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
+  type ChatRuntimeConversationRetryStatusMobileState,
   type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
@@ -254,6 +254,7 @@ import {
   type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
+  type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowInput,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
   type ChatRuntimeToolExecutionDetailMobileRowInput,
@@ -1578,24 +1579,6 @@ type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & {
   shouldRender: boolean;
 };
 
-type ChatMessageRetryStatusRenderState = {
-  shouldRender: boolean;
-  accessibilityRole: AccessibilityRole;
-  accessibilityLabel: string;
-  title: string;
-  attemptLabel: string;
-  countdownLabel: string;
-  description: string;
-  icon: ChatMessageActionIcon;
-  spinner: {
-    size: ComponentProps<typeof ActivityIndicator>['size'];
-    color: string;
-  };
-  surface: {
-    titleNumberOfLines: number;
-  };
-};
-
 type ChatMessageRetryStatusStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -1607,15 +1590,11 @@ type ChatMessageRetryStatusStyles = {
 };
 
 type ChatMessageRetryStatusProps = {
-  renderState: ChatMessageRetryStatusRenderState;
+  renderState: ChatRuntimeRetryStatusMobileRenderState;
   styles: ChatMessageRetryStatusStyles;
 };
 
-type ChatMessageRetryStatusPropsInput = {
-  isRetry: boolean;
-  retryInfo?: AgentRetryInfo | null;
-  colors: Parameters<typeof getChatRuntimeRetryStatusMobileRenderState>[0]['colors'];
-};
+type ChatMessageRetryStatusPropsInput = ChatRuntimeConversationRetryStatusMobileState;
 
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
@@ -8460,18 +8439,9 @@ export function createChatMessageThreadBodyProps({
 }
 
 export function createChatMessageRetryStatusProps({
-  isRetry,
-  retryInfo,
-  colors,
+  renderState,
 }: ChatMessageRetryStatusPropsInput): ChatMessageThreadBodyProps['retryStatus'] {
-  if (!isRetry) return null;
-
-  const renderState = getChatRuntimeRetryStatusMobileRenderState({
-    retryInfo,
-    colors,
-  });
-
-  return renderState.shouldRender
+  return renderState
     ? {
         renderState,
       }

@@ -685,13 +685,8 @@ export interface ChatRuntimeConversationRetryStatusMobileStateInput<
   colors: ChatRuntimeRetryStatusMobileRenderStateInput["colors"]
 }
 
-export interface ChatRuntimeConversationRetryStatusMobileState<
-  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
-    ChatRuntimeRetryInfoLike | null | undefined,
-> {
-  isRetry: boolean
-  retryInfo?: TRetryInfo
-  colors: ChatRuntimeRetryStatusMobileRenderStateInput["colors"]
+export interface ChatRuntimeConversationRetryStatusMobileState {
+  renderState: ChatRuntimeRetryStatusMobileRenderState | null
 }
 
 export interface ChatRuntimeConversationToolApprovalMobileStateInput {
@@ -1127,7 +1122,7 @@ export interface ChatRuntimeConversationThreadBodyMobileState<
     ChatRuntimeRetryInfoLike | null | undefined,
   TDelegation = unknown,
 > {
-  retryStatus: ChatRuntimeConversationRetryStatusMobileState<TRetryInfo>
+  retryStatus: ChatRuntimeConversationRetryStatusMobileState
   delegationCard: ChatRuntimeConversationDelegationCardMobileState<TDelegation>
   toolApproval: ChatRuntimeConversationToolApprovalMobileState
   inlineActivity: TInlineActivity
@@ -6786,11 +6781,20 @@ export function getChatRuntimeConversationRetryStatusMobileState<
 >({
   message,
   colors,
-}: ChatRuntimeConversationRetryStatusMobileStateInput<TRetryInfo>): ChatRuntimeConversationRetryStatusMobileState<TRetryInfo> {
-  return {
-    isRetry: message.variant === "retry",
+}: ChatRuntimeConversationRetryStatusMobileStateInput<TRetryInfo>): ChatRuntimeConversationRetryStatusMobileState {
+  if (message.variant !== "retry") {
+    return {
+      renderState: null,
+    }
+  }
+
+  const renderState = getChatRuntimeRetryStatusMobileRenderState({
     retryInfo: message.retryInfo,
     colors,
+  })
+
+  return {
+    renderState: renderState.shouldRender ? renderState : null,
   }
 }
 
