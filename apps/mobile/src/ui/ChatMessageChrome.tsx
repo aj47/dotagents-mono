@@ -209,7 +209,6 @@ import {
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalCardMobileRenderState,
-  getChatRuntimeViewportAffordanceMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
@@ -251,8 +250,6 @@ import {
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
-  type ChatRuntimeViewportAffordanceMobileRenderState,
-  type ChatRuntimeViewportAffordanceMobileRenderStateInput,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
@@ -2417,17 +2414,6 @@ type ChatMessageStepSummaryCardProps = {
   styles: ChatMessageStepSummaryCardStyles;
 };
 
-type ChatMessageConversationViewportAffordanceRenderStateInput = {
-  visibleMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput['visibleMessageCount'];
-  totalMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput['totalMessageCount'];
-  hiddenMessageCount: ChatRuntimeViewportAffordanceMobileRenderStateInput['hiddenMessageCount'];
-  messageHistoryLoadIncrement: ChatRuntimeViewportAffordanceMobileRenderStateInput['messageHistoryLoadIncrement'];
-  latestStepSummary: ChatRuntimeViewportAffordanceMobileRenderStateInput['latestStepSummary'];
-  colors: ChatRuntimeViewportAffordanceMobileRenderStateInput['colors'];
-};
-
-type ChatMessageConversationViewportAffordanceRenderState = ChatRuntimeViewportAffordanceMobileRenderState;
-
 type ChatMessageScrollToBottomButtonProps = {
   renderState: ChatRuntimeScrollToBottomMobileRenderState;
   onPress?: (event: GestureResponderEvent) => void;
@@ -2553,11 +2539,31 @@ type ChatMessageRuntimeViewportChromePropsInput<
     onQuickStartPress: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onPress'];
     onEditPrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onEditPrompt'];
     onDeletePrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onDeletePrompt'];
-    visibleMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['visibleMessageCount'];
-    totalMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['totalMessageCount'];
-    hiddenMessageCount: ChatMessageConversationViewportAffordanceRenderStateInput['hiddenMessageCount'];
-    messageHistoryLoadIncrement: ChatMessageConversationViewportAffordanceRenderStateInput['messageHistoryLoadIncrement'];
-    latestStepSummary: ChatMessageConversationViewportAffordanceRenderStateInput['latestStepSummary'];
+    visibleMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['visibleMessageCount'];
+    totalMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['totalMessageCount'];
+    hiddenMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['hiddenMessageCount'];
+    messageHistoryLoadIncrement: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['messageHistoryLoadIncrement'];
+    latestStepSummary: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      PromptLibrarySkillLike & { id: string },
+      TTask
+    >['latestStepSummary'];
     colors: ChatRuntimeViewportChromeMobileRenderStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
@@ -3960,24 +3966,6 @@ export function createChatMessageConversationItemThreadRenderState({
     groupRenderState,
     groupThreadState,
     ...messageThreadInput,
-  });
-}
-
-export function createChatMessageConversationViewportAffordanceRenderState({
-  visibleMessageCount,
-  totalMessageCount,
-  hiddenMessageCount,
-  messageHistoryLoadIncrement,
-  latestStepSummary,
-  colors,
-}: ChatMessageConversationViewportAffordanceRenderStateInput): ChatMessageConversationViewportAffordanceRenderState {
-  return getChatRuntimeViewportAffordanceMobileRenderState({
-    visibleMessageCount,
-    totalMessageCount,
-    hiddenMessageCount,
-    messageHistoryLoadIncrement,
-    latestStepSummary,
-    colors,
   });
 }
 
