@@ -293,7 +293,6 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
-export type ChatComposerImageAttachmentAlertInput = ChatImageAttachmentMobileAlertInput;
 export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput & {
   id: string;
   previewUri: string;
@@ -3988,12 +3987,6 @@ export function useChatMessageRuntimeScrollController({
   };
 }
 
-export function getChatComposerImageAttachmentAlertState(
-  input: ChatComposerImageAttachmentAlertInput,
-): ReturnType<typeof getChatImageAttachmentMobileAlertState> {
-  return getChatImageAttachmentMobileAlertState(input);
-}
-
 export function createChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes>({
   mediaTypes,
   selectionLimit,
@@ -4014,8 +4007,8 @@ export function useChatComposerRuntimeImageAttachmentPickerState({
   showAlert,
   now = Date.now,
 }: ChatComposerRuntimeImageAttachmentPickerStateInput): ChatComposerRuntimeImageAttachmentPickerState {
-  const showImageAttachmentAlert = useCallback((input: ChatComposerImageAttachmentAlertInput) => {
-    const alertState = getChatComposerImageAttachmentAlertState(input);
+  const showImageAttachmentAlert = useCallback((input: ChatImageAttachmentMobileAlertInput) => {
+    const alertState = getChatImageAttachmentMobileAlertState(input);
     showAlert(alertState.title, alertState.message);
   }, [showAlert]);
 

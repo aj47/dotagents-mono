@@ -1918,6 +1918,8 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatImageAttachmentMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatImageAttachmentMobileAlertState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatComposerImageAttachmentAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatComposerImageAttachmentAlertInput/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(chatMessageChromeSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.doesNotMatch(chatScreenSource, /import \* as ImagePicker from 'expo-image-picker';/);
@@ -1957,8 +1959,8 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.doesNotMatch(screenSource, /inferImageMimeTypeFromSource/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatComposerImageAttachmentAlertInput\) => \{/);
-  assert.match(chatMessageChromeSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatComposerImageAttachmentAlertInput\) => \{[\s\S]*?showAlert\(alertState\.title, alertState\.message\);/);
-  assert.match(chatMessageChromeSource, /export function getChatComposerImageAttachmentAlertState/);
+  assert.match(chatMessageChromeSource, /const showImageAttachmentAlert = useCallback\(\(input: ChatImageAttachmentMobileAlertInput\) => \{\s+const alertState = getChatImageAttachmentMobileAlertState\(input\);[\s\S]*?showAlert\(alertState\.title, alertState\.message\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatComposerImageAttachmentAlertState/);
   assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
   assert.match(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
   assert.match(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
