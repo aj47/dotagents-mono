@@ -1526,10 +1526,6 @@ type ChatConversationHomeQuickStartActionsState<
   handleQuickStartPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
 };
 
-export function getChatConversationHomePromptLibraryCopyState(): ReturnType<typeof getPromptLibraryCopyState> {
-  return getPromptLibraryCopyState();
-}
-
 export function formatChatConversationHomePromptSaveSuccessMessage(isEditing: boolean): string {
   return getPromptLibrarySaveSuccessMessage(isEditing);
 }

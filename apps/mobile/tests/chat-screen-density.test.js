@@ -4685,6 +4685,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /getPromptLibraryCopyState,/);
   assert.doesNotMatch(screenSource, /const promptLibraryCopy = getChatConversationHomePromptLibraryCopyState\(\);/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptLibraryCopyState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatConversationHomePromptLibraryCopyState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileEmptyLibraryLabel,/);
   assert.match(sessionPresentationSource, /getPromptLibraryEditorMobileRenderState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorMobileRenderState,/);
