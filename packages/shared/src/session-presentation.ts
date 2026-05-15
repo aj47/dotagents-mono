@@ -1602,6 +1602,26 @@ export interface ChatRuntimeKillSwitchMobileAlertState {
   }
 }
 
+export interface ChatRuntimeKillSwitchResultLike {
+  success: boolean
+  message?: string | null
+  error?: string | null
+}
+
+export interface ChatRuntimeKillSwitchResolvedAlertState {
+  title: string
+  message: string
+  webMessage: string
+}
+
+export interface ChatRuntimeKillSwitchConfirmationAlertState {
+  title: string
+  message: string
+  confirmLabel: string
+  cancelLabel: string
+  webMessage: string
+}
+
 export interface ChatRuntimeRetryStatusMobileIconState {
   name: typeof CHAT_RUNTIME_PRESENTATION.retryStatus.mobileIcon.name
   size: number
@@ -4651,6 +4671,51 @@ export function getChatRuntimeKillSwitchMobileAlertState(): ChatRuntimeKillSwitc
       title: CHAT_RUNTIME_PRESENTATION.common.errorTitle,
       fallbackMessage: CHAT_RUNTIME_PRESENTATION.killSwitch.connectionFailed,
     },
+  }
+}
+
+export function getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState(
+  alerts: ChatRuntimeKillSwitchMobileAlertState = getChatRuntimeKillSwitchMobileAlertState(),
+): ChatRuntimeKillSwitchConfirmationAlertState {
+  return {
+    title: alerts.confirmation.title,
+    message: alerts.confirmation.message,
+    confirmLabel: alerts.confirmation.confirmLabel,
+    cancelLabel: alerts.confirmation.cancelLabel,
+    webMessage: formatChatRuntimeWebConfirmMessage(
+      alerts.confirmation.title,
+      alerts.confirmation.message,
+    ),
+  }
+}
+
+export function getChatRuntimeKillSwitchResultMobileResolvedAlertState(
+  result: ChatRuntimeKillSwitchResultLike,
+  alerts: ChatRuntimeKillSwitchMobileAlertState = getChatRuntimeKillSwitchMobileAlertState(),
+): ChatRuntimeKillSwitchResolvedAlertState {
+  const alertState = result.success ? alerts.success : alerts.failed
+  const message = getChatRuntimeAlertMessage(
+    result.success ? result.message : result.error,
+    alertState.fallbackMessage,
+  )
+
+  return {
+    title: alertState.title,
+    message,
+    webMessage: result.success ? message : `${alertState.title}: ${message}`,
+  }
+}
+
+export function getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState(
+  error: unknown,
+  alerts: ChatRuntimeKillSwitchMobileAlertState = getChatRuntimeKillSwitchMobileAlertState(),
+): ChatRuntimeKillSwitchResolvedAlertState {
+  const message = getChatRuntimeAlertMessage(error, alerts.connectionFailed.fallbackMessage)
+
+  return {
+    title: alerts.connectionFailed.title,
+    message,
+    webMessage: `${alerts.connectionFailed.title}: ${message}`,
   }
 }
 

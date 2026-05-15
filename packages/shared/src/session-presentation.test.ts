@@ -148,12 +148,15 @@ import {
   getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeInlineActivityMobileState,
+  getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState,
+  getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState,
   getChatRuntimeKillSwitchMobileActionState,
   getChatRuntimeKillSwitchMobileAlertState,
   getChatRuntimeKillSwitchMobileColors,
   getChatRuntimeKillSwitchMobileIconState,
   getChatRuntimeKillSwitchMobileRenderState,
   getChatRuntimeKillSwitchMobileVisibilityRenderState,
+  getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeLoadingStateMobileRenderState,
   getChatRuntimeLoadingStateMobileState,
@@ -519,6 +522,37 @@ describe("session presentation semantics", () => {
         title: CHAT_RUNTIME_PRESENTATION.common.errorTitle,
         fallbackMessage: CHAT_RUNTIME_PRESENTATION.killSwitch.connectionFailed,
       },
+    })
+    expect(getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState()).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.killSwitch.title,
+      message: CHAT_RUNTIME_PRESENTATION.killSwitch.message,
+      confirmLabel: CHAT_RUNTIME_PRESENTATION.killSwitch.actionLabel,
+      cancelLabel: CHAT_RUNTIME_PRESENTATION.common.cancel,
+      webMessage: formatChatRuntimeWebConfirmMessage(
+        CHAT_RUNTIME_PRESENTATION.killSwitch.title,
+        CHAT_RUNTIME_PRESENTATION.killSwitch.message,
+      ),
+    })
+    expect(getChatRuntimeKillSwitchResultMobileResolvedAlertState({
+      success: true,
+      message: "Stopped",
+    })).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.common.successTitle,
+      message: "Stopped",
+      webMessage: "Stopped",
+    })
+    expect(getChatRuntimeKillSwitchResultMobileResolvedAlertState({
+      success: false,
+      error: "Denied",
+    })).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.common.errorTitle,
+      message: "Denied",
+      webMessage: `${CHAT_RUNTIME_PRESENTATION.common.errorTitle}: Denied`,
+    })
+    expect(getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState(new Error("Offline"))).toEqual({
+      title: CHAT_RUNTIME_PRESENTATION.common.errorTitle,
+      message: "Offline",
+      webMessage: `${CHAT_RUNTIME_PRESENTATION.common.errorTitle}: Offline`,
     })
     expect(CHAT_RUNTIME_PRESENTATION.header.renameConversationTitleLabel).toBe("Rename conversation title")
     expect(CHAT_RUNTIME_PRESENTATION.header.expandPanelTitle).toBe("Expand panel")

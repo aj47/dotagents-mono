@@ -181,7 +181,6 @@ import {
   formatChatRuntimeDelegationToolCallActivityLabel,
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
-  formatChatRuntimeWebConfirmMessage,
   getChatRuntimeAlertMessage,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
@@ -213,7 +212,9 @@ import {
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
   getChatRuntimeDebugState,
-  getChatRuntimeKillSwitchMobileAlertState,
+  getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState,
+  getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState,
+  getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
@@ -230,7 +231,9 @@ import {
   type ChatRuntimeConnectionBannerMobileRenderState,
   type ChatRuntimeDockChromeMobileRenderStateInput,
   type ChatRuntimeHandsFreeMobileRenderState,
+  type ChatRuntimeKillSwitchConfirmationAlertState,
   type ChatRuntimeKillSwitchMobileRenderState,
+  type ChatRuntimeKillSwitchResultLike,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatRuntimePinMobileRenderState,
@@ -308,26 +311,6 @@ export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS = {
   maxFileBytes: MAX_CHAT_IMAGE_FILE_BYTES,
   maxTotalEmbeddedBytes: MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
 } as const;
-
-export interface ChatMessageRuntimeKillSwitchResultLike {
-  success: boolean;
-  message?: string | null;
-  error?: string | null;
-}
-
-export interface ChatMessageRuntimeKillSwitchResolvedAlertState {
-  title: string;
-  message: string;
-  webMessage: string;
-}
-
-export interface ChatMessageRuntimeKillSwitchConfirmationAlertState {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  webMessage: string;
-}
 
 export interface ChatMessageRuntimeResolvedAlertState {
   title: string;
@@ -3498,11 +3481,11 @@ type ChatRuntimeNavigateToChatActionsState = {
 };
 
 type ChatMessageRuntimeKillSwitchClient = {
-  killSwitch: () => Promise<ChatMessageRuntimeKillSwitchResultLike>;
+  killSwitch: () => Promise<ChatRuntimeKillSwitchResultLike>;
 };
 
 type ChatMessageRuntimeKillSwitchNativeConfirmInput = Pick<
-  ChatMessageRuntimeKillSwitchConfirmationAlertState,
+  ChatRuntimeKillSwitchConfirmationAlertState,
   'title' | 'message' | 'cancelLabel' | 'confirmLabel'
 > & {
   onConfirm: () => void;
@@ -5730,51 +5713,6 @@ export function removeChatMessageRuntimeToolApprovalMessage<
   approvalId: string,
 ): TMessage[] {
   return messages.filter((message) => message.toolApproval?.approvalId !== approvalId);
-}
-
-export function getChatMessageRuntimeKillSwitchConfirmationAlertState(
-  alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
-): ChatMessageRuntimeKillSwitchConfirmationAlertState {
-  return {
-    title: alerts.confirmation.title,
-    message: alerts.confirmation.message,
-    confirmLabel: alerts.confirmation.confirmLabel,
-    cancelLabel: alerts.confirmation.cancelLabel,
-    webMessage: formatChatRuntimeWebConfirmMessage(
-      alerts.confirmation.title,
-      alerts.confirmation.message,
-    ),
-  };
-}
-
-export function getChatMessageRuntimeKillSwitchResultAlertState(
-  result: ChatMessageRuntimeKillSwitchResultLike,
-  alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
-): ChatMessageRuntimeKillSwitchResolvedAlertState {
-  const alertState = result.success ? alerts.success : alerts.failed;
-  const message = getChatRuntimeAlertMessage(
-    result.success ? result.message : result.error,
-    alertState.fallbackMessage,
-  );
-
-  return {
-    title: alertState.title,
-    message,
-    webMessage: result.success ? message : `${alertState.title}: ${message}`,
-  };
-}
-
-export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState(
-  error: unknown,
-  alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
-): ChatMessageRuntimeKillSwitchResolvedAlertState {
-  const message = getChatRuntimeAlertMessage(error, alerts.connectionFailed.fallbackMessage);
-
-  return {
-    title: alerts.connectionFailed.title,
-    message,
-    webMessage: `${alerts.connectionFailed.title}: ${message}`,
-  };
 }
 
 export function createChatMessageRuntimeViewportChromeProps<
@@ -8473,7 +8411,7 @@ export function useChatMessageRuntimeKillSwitchActionsState<
     const runKillSwitch = async () => {
       try {
         const result = await client.killSwitch();
-        const resultAlert = getChatMessageRuntimeKillSwitchResultAlertState(result);
+        const resultAlert = getChatRuntimeKillSwitchResultMobileResolvedAlertState(result);
         if (platform === 'web') {
           showWebAlert(resultAlert.webMessage);
           return;
@@ -8481,7 +8419,7 @@ export function useChatMessageRuntimeKillSwitchActionsState<
         showAlert(resultAlert.title, resultAlert.message);
       } catch (error: any) {
         console.error('[ChatMessageRuntime] Kill switch error:', error);
-        const failedAlert = getChatMessageRuntimeKillSwitchConnectionFailedAlertState(error);
+        const failedAlert = getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState(error);
         if (platform === 'web') {
           showWebAlert(failedAlert.webMessage);
           return;
@@ -8490,7 +8428,7 @@ export function useChatMessageRuntimeKillSwitchActionsState<
       }
     };
 
-    const confirmationAlert = getChatMessageRuntimeKillSwitchConfirmationAlertState();
+    const confirmationAlert = getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState();
     if (platform === 'web') {
       if (confirmWeb(confirmationAlert.webMessage)) {
         await runKillSwitch();

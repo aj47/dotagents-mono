@@ -1007,7 +1007,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(sessionPresentationSource, /getChatRuntimeKillSwitchMobileRenderState/);
   assert.match(sessionPresentationSource, /getChatRuntimeKillSwitchMobileVisibilityRenderState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileAlertState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchMobileAlertState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeKillSwitchMobileAlertState,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeKillSwitchMobileAlertState/);
   assert.match(sessionPresentationSource, /killSwitchButtonShouldRender: getChatRuntimeKillSwitchMobileVisibilityRenderState\(\{\s+conversationState: headerConversationState,\s+\}\)\.shouldRender,/);
   assert.match(screenSource, /useChatMessageRuntimeKillSwitchChromeActionsState,/);
   assert.match(screenSource, /const \{ handleKillSwitch \} = useChatMessageRuntimeKillSwitchChromeActionsState\(\{\s+\.\.\.chatRuntimeChrome\.environment,\s+getKillSwitchClient: getSessionClient,\s+\}\);/);
@@ -1032,27 +1033,30 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /shouldRender: headerConversationState === 'running'/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileIconState,/);
-  assert.match(
-    chatMessageChromeSource,
-    /export function getChatMessageRuntimeKillSwitchConfirmationAlertState/,
-  );
+  assert.match(sessionPresentationSource, /export function getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeKillSwitchResultMobileResolvedAlertState/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchConfirmationAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchResultAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchAlertState,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeWebConfirmMessage,/);
-  assert.match(chatMessageChromeSource, /formatChatRuntimeWebConfirmMessage,/);
+  assert.doesNotMatch(chatMessageChromeSource, /formatChatRuntimeWebConfirmMessage,/);
+  assert.match(sessionPresentationSource, /export function formatChatRuntimeWebConfirmMessage/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeWebConfirmMessage,/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeKillSwitchActionsState/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchConfirmationAlertState\(\)/);
-  assert.match(chatMessageChromeSource, /getChatMessageRuntimeKillSwitchConfirmationAlertState\(\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState\(\)/);
   assert.doesNotMatch(screenSource, /window\.confirm\(confirmationAlert\.webMessage\)/);
   assert.match(chatMessageChromeSource, /confirmWeb\(confirmationAlert\.webMessage\)/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchResultAlertState\(result\)/);
-  assert.match(chatMessageChromeSource, /getChatMessageRuntimeKillSwitchResultAlertState\(result\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchResultMobileResolvedAlertState\(result\)/);
   assert.doesNotMatch(screenSource, /window\.alert\(resultAlert\.webMessage\)/);
   assert.match(chatMessageChromeSource, /showWebAlert\(resultAlert\.webMessage\)/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchConnectionFailedAlertState\(e\)/);
-  assert.match(chatMessageChromeSource, /getChatMessageRuntimeKillSwitchConnectionFailedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState\(error\)/);
   assert.doesNotMatch(screenSource, /window\.alert\(failedAlert\.webMessage\)/);
   assert.match(chatMessageChromeSource, /showWebAlert\(failedAlert\.webMessage\)/);
   assert.doesNotMatch(screenSource, /Alert\.alert\(\s*confirmationAlert\.title,\s*confirmationAlert\.message,/);
@@ -1063,12 +1067,12 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /showAlert\(failedAlert\.title, failedAlert\.message\)/);
   assert.doesNotMatch(screenSource, /client\.killSwitch\(\)/);
   assert.match(chatMessageChromeSource, /client\.killSwitch\(\)/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchConfirmationAlertState/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchResultAlertState/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState/);
-  assert.match(chatMessageChromeSource, /webMessage: formatChatRuntimeWebConfirmMessage\(\s+alerts\.confirmation\.title,\s+alerts\.confirmation\.message,/);
-  assert.match(chatMessageChromeSource, /webMessage: result\.success \? message : `\$\{alertState\.title\}: \$\{message\}`/);
-  assert.match(chatMessageChromeSource, /webMessage: `\$\{alerts\.connectionFailed\.title\}: \$\{message\}`/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchConfirmationAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchResultAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState/);
+  assert.match(sessionPresentationSource, /webMessage: formatChatRuntimeWebConfirmMessage\(\s+alerts\.confirmation\.title,\s+alerts\.confirmation\.message,/);
+  assert.match(sessionPresentationSource, /webMessage: result\.success \? message : `\$\{alertState\.title\}: \$\{message\}`/);
+  assert.match(sessionPresentationSource, /webMessage: `\$\{alerts\.connectionFailed\.title\}: \$\{message\}`/);
   assert.doesNotMatch(screenSource, /mobileRuntimeKillSwitchAlerts\.confirmation\.(title|message|confirmLabel|cancelLabel)/);
   assert.doesNotMatch(screenSource, /result\.message \|\| mobileRuntimeKillSwitchAlerts\.success\.fallbackMessage/);
   assert.doesNotMatch(screenSource, /result\.error \|\| mobileRuntimeKillSwitchAlerts\.failed\.fallbackMessage/);
