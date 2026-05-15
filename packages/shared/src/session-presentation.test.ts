@@ -65,6 +65,7 @@ import {
   getChatComposerQueueMobileActionState,
   getChatComposerQueueMobileIconState,
   getChatComposerQueueMobileRenderState,
+  getChatComposerRuntimeControlMobileRenderState,
   getChatComposerSubmitMobileActionState,
   getChatComposerSubmitMobileIconState,
   getChatComposerSubmitMobileRenderState,
@@ -1088,6 +1089,34 @@ describe("session presentation semantics", () => {
         color: "#f8fafc",
       },
     })
+    const composerControlRenderState = getChatComposerRuntimeControlMobileRenderState({
+      hasContent: true,
+      handsFree: false,
+      presentation: getFollowUpInputPresentation({
+        conversationState: "running",
+        isQueueEnabled: true,
+      }),
+      pendingImageCount: 1,
+      ttsEnabled: true,
+      editBeforeSendEnabled: true,
+      micPhase: "sleeping",
+      listening: false,
+      messageQueueEnabled: true,
+      colors: {
+        primary: "#2563eb",
+        mutedForeground: "#64748b",
+        primaryForeground: "#f8fafc",
+      },
+    })
+    expect(composerControlRenderState.actionAvailability.queueAction.isDisabled).toBe(false)
+    expect(composerControlRenderState.actionAvailability.submitAction.isDisabled).toBe(false)
+    expect(composerControlRenderState.visibility.queueAction.shouldRender).toBe(false)
+    expect(composerControlRenderState.imageAttachment.isActive).toBe(true)
+    expect(composerControlRenderState.textToSpeech.isActive).toBe(true)
+    expect(composerControlRenderState.editBeforeSend.isActive).toBe(true)
+    expect(composerControlRenderState.queueAction.isDisabled).toBe(false)
+    expect(composerControlRenderState.submitAction.isQueueMode).toBe(true)
+    expect(composerControlRenderState.micButton.label).toBe("Hold")
     expect(CHAT_COMPOSER_PRESENTATION.voiceOverlay.releaseToEditLabel).toBe("Release to edit")
     expect(getChatComposerDesktopSurfaceState()).toBe(CHAT_COMPOSER_SURFACE_PRESENTATION.desktop)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.desktop.followUp.overlayFormClassName).toContain("bg-muted/30")

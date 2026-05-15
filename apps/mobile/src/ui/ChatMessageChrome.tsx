@@ -108,7 +108,6 @@ import {
   getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerPlaceholder,
-  getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
   type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
@@ -196,19 +195,13 @@ import {
   type RecoveryState,
 } from '@dotagents/shared/connection-recovery';
 import {
-  getChatComposerEditBeforeSendMobileRenderState,
-  getChatComposerImageAttachmentMobileRenderState,
-  getChatComposerMicMobileRenderState,
-  getChatComposerMobileActionAvailabilityRenderState,
   getChatComposerMobileControlState,
   getChatComposerMicMobileWebPressStyleState,
   getChatComposerMobileSurfaceRenderState,
   getChatComposerMobileSurfaceState,
   getChatComposerMobileVisibilityRenderState,
   getChatComposerQueueMobileActionState,
-  getChatComposerQueueMobileRenderState,
-  getChatComposerSubmitMobileRenderState,
-  getChatComposerTextToSpeechMobileRenderState,
+  getChatComposerRuntimeControlMobileRenderState,
   getChatComposerVoiceOverlayLabel,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantErrorContent,
@@ -288,6 +281,8 @@ import {
   type ChatRuntimeViewportContentMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatSessionStatusMobileStyleState,
+  type ChatComposerRuntimeControlMobileRenderState,
+  type ChatComposerRuntimeControlMobileRenderStateInput,
   type FollowUpInputPresentation,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -3476,26 +3471,8 @@ type ChatComposerRuntimeDockChromeInput = {
   platform: Parameters<typeof getChatComposerMobileSurfaceRenderState>[0]['platform'];
 };
 
-type ChatComposerRuntimeControlRenderStateColors =
-  Parameters<typeof getChatComposerImageAttachmentMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatComposerTextToSpeechMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatComposerEditBeforeSendMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatComposerQueueMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatComposerSubmitMobileRenderState>[0]['colors']
-  & Parameters<typeof getChatComposerMicMobileRenderState>[0]['colors'];
-
-type ChatComposerRuntimeControlRenderStateInput = {
-  hasContent?: boolean;
-  handsFree?: boolean;
-  presentation: FollowUpInputPresentation;
-  pendingImageCount?: number | null;
-  ttsEnabled?: boolean;
-  editBeforeSendEnabled?: boolean;
-  micPhase: Parameters<typeof getHandsFreeMicButtonLabel>[0]['phase'];
-  listening?: boolean;
-  messageQueueEnabled?: boolean;
-  colors: ChatComposerRuntimeControlRenderStateColors;
-};
+type ChatComposerRuntimeControlRenderStateInput =
+  ChatComposerRuntimeControlMobileRenderStateInput;
 
 type ChatComposerRuntimeFollowUpPresentationStateInput = {
   conversationState?: AgentConversationState | null;
@@ -3503,16 +3480,8 @@ type ChatComposerRuntimeFollowUpPresentationStateInput = {
   isQueueEnabled?: boolean;
 };
 
-type ChatComposerRuntimeControlRenderState = {
-  actionAvailability: ReturnType<typeof getChatComposerMobileActionAvailabilityRenderState>;
-  visibility: ReturnType<typeof getChatComposerMobileVisibilityRenderState>;
-  imageAttachment: ReturnType<typeof getChatComposerImageAttachmentMobileRenderState>;
-  textToSpeech: ReturnType<typeof getChatComposerTextToSpeechMobileRenderState>;
-  editBeforeSend: ReturnType<typeof getChatComposerEditBeforeSendMobileRenderState>;
-  queueAction: ReturnType<typeof getChatComposerQueueMobileRenderState>;
-  submitAction: ReturnType<typeof getChatComposerSubmitMobileRenderState>;
-  micButton: ReturnType<typeof getChatComposerMicMobileRenderState>;
-};
+type ChatComposerRuntimeControlRenderState =
+  ChatComposerRuntimeControlMobileRenderState;
 
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
@@ -11089,54 +11058,18 @@ export function createChatComposerRuntimeControlRenderState({
   messageQueueEnabled = false,
   colors,
 }: ChatComposerRuntimeControlRenderStateInput): ChatComposerRuntimeControlRenderState {
-  const micLabel = getHandsFreeMicButtonLabel({
-    handsFree,
-    phase: micPhase,
-    listening,
-  });
-  const actionAvailability = getChatComposerMobileActionAvailabilityRenderState({
+  return getChatComposerRuntimeControlMobileRenderState({
     hasContent,
     handsFree,
     presentation,
+    pendingImageCount,
+    ttsEnabled,
+    editBeforeSendEnabled,
+    micPhase,
+    listening,
+    messageQueueEnabled,
+    colors,
   });
-
-  return {
-    actionAvailability,
-    visibility: getChatComposerMobileVisibilityRenderState({
-      handsFree,
-      listening,
-      messageQueueEnabled,
-    }),
-    imageAttachment: getChatComposerImageAttachmentMobileRenderState({
-      hasImages: (pendingImageCount ?? 0) > 0,
-      colors,
-    }),
-    textToSpeech: getChatComposerTextToSpeechMobileRenderState({
-      isEnabled: ttsEnabled,
-      colors,
-    }),
-    editBeforeSend: getChatComposerEditBeforeSendMobileRenderState({
-      isEnabled: editBeforeSendEnabled,
-      colors,
-    }),
-    queueAction: getChatComposerQueueMobileRenderState({
-      isDisabled: actionAvailability.queueAction.isDisabled,
-      colors,
-    }),
-    submitAction: getChatComposerSubmitMobileRenderState({
-      presentation,
-      isHandsFree: handsFree,
-      isDisabled: actionAvailability.submitAction.isDisabled,
-      colors,
-    }),
-    micButton: getChatComposerMicMobileRenderState({
-      label: micLabel,
-      handsFree,
-      listening,
-      willCancel: editBeforeSendEnabled,
-      colors,
-    }),
-  };
 }
 
 export function getChatComposerRuntimeQueueDebugMessage(): string {

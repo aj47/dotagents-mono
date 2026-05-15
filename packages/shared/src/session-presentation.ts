@@ -6,7 +6,7 @@ import {
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
-import { getHandsFreeComposerCopyState } from "./hands-free-controller"
+import { getHandsFreeComposerCopyState, getHandsFreeMicButtonLabel } from "./hands-free-controller"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
@@ -1763,6 +1763,30 @@ export interface ChatComposerMicMobileRenderState extends ChatComposerMicMobileA
     size: number
     color: string
   }
+}
+
+export interface ChatComposerRuntimeControlMobileRenderStateInput {
+  hasContent?: boolean
+  handsFree?: boolean
+  presentation: FollowUpInputPresentation
+  pendingImageCount?: number | null
+  ttsEnabled?: boolean
+  editBeforeSendEnabled?: boolean
+  micPhase: Parameters<typeof getHandsFreeMicButtonLabel>[0]["phase"]
+  listening?: boolean
+  messageQueueEnabled?: boolean
+  colors: ChatComposerMobileIconColorPalette
+}
+
+export interface ChatComposerRuntimeControlMobileRenderState {
+  actionAvailability: ChatComposerMobileActionAvailabilityRenderState
+  visibility: ChatComposerMobileVisibilityRenderState
+  imageAttachment: ChatComposerImageAttachmentMobileRenderState
+  textToSpeech: ChatComposerTextToSpeechMobileRenderState
+  editBeforeSend: ChatComposerEditBeforeSendMobileRenderState
+  queueAction: ChatComposerQueueMobileRenderState
+  submitAction: ChatComposerSubmitMobileRenderState
+  micButton: ChatComposerMicMobileRenderState
 }
 
 export interface ChatComposerMicMobileWebPressStyleState {
@@ -4095,6 +4119,68 @@ export function getChatComposerMicMobileRenderState(
 
 export function getChatComposerMicMobileWebPressStyleState(): ChatComposerMicMobileWebPressStyleState {
   return CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.micButton.webPressStyle
+}
+
+export function getChatComposerRuntimeControlMobileRenderState({
+  hasContent = false,
+  handsFree = false,
+  presentation,
+  pendingImageCount = 0,
+  ttsEnabled = false,
+  editBeforeSendEnabled = false,
+  micPhase,
+  listening = false,
+  messageQueueEnabled = false,
+  colors,
+}: ChatComposerRuntimeControlMobileRenderStateInput): ChatComposerRuntimeControlMobileRenderState {
+  const micLabel = getHandsFreeMicButtonLabel({
+    handsFree,
+    phase: micPhase,
+    listening,
+  })
+  const actionAvailability = getChatComposerMobileActionAvailabilityRenderState({
+    hasContent,
+    handsFree,
+    presentation,
+  })
+
+  return {
+    actionAvailability,
+    visibility: getChatComposerMobileVisibilityRenderState({
+      handsFree,
+      listening,
+      messageQueueEnabled,
+    }),
+    imageAttachment: getChatComposerImageAttachmentMobileRenderState({
+      hasImages: (pendingImageCount ?? 0) > 0,
+      colors,
+    }),
+    textToSpeech: getChatComposerTextToSpeechMobileRenderState({
+      isEnabled: ttsEnabled,
+      colors,
+    }),
+    editBeforeSend: getChatComposerEditBeforeSendMobileRenderState({
+      isEnabled: editBeforeSendEnabled,
+      colors,
+    }),
+    queueAction: getChatComposerQueueMobileRenderState({
+      isDisabled: actionAvailability.queueAction.isDisabled,
+      colors,
+    }),
+    submitAction: getChatComposerSubmitMobileRenderState({
+      presentation,
+      isHandsFree: handsFree,
+      isDisabled: actionAvailability.submitAction.isDisabled,
+      colors,
+    }),
+    micButton: getChatComposerMicMobileRenderState({
+      label: micLabel,
+      handsFree,
+      listening,
+      willCancel: editBeforeSendEnabled,
+      colors,
+    }),
+  }
 }
 
 export function formatChatRuntimeToolApprovalFailureMessage(
