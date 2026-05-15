@@ -191,7 +191,6 @@ import {
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
@@ -253,6 +252,7 @@ import {
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
+  type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
@@ -1724,17 +1724,6 @@ export function deleteChatConversationHomePromptFromList(
   return deletePredefinedPromptFromList(prompts, promptId);
 }
 
-type ChatConversationHomeQuickStartItemsInput<
-  TPrompt extends PredefinedPromptSummary,
-  TSkill extends PromptLibrarySkillLike & { id: string },
-  TTask extends PromptLibraryTaskLike & { id: string; name: string },
-> = {
-  prompts?: readonly TPrompt[];
-  skills?: readonly TSkill[];
-  tasks?: readonly TTask[];
-  canAddPrompt?: boolean;
-};
-
 type ChatConversationHomeQuickStartsStyles = {
   card: StyleProp<ViewStyle>;
   emptyText: StyleProp<TextStyle>;
@@ -1770,24 +1759,6 @@ type ChatConversationHomeQuickStartsProps<
   shortcutRenderState: PromptLibraryMobileShortcutRenderState;
   styles: ChatConversationHomeQuickStartsStyles;
 };
-
-export function createChatConversationHomeQuickStartItems<
-  TPrompt extends PredefinedPromptSummary,
-  TSkill extends PromptLibrarySkillLike & { id: string },
-  TTask extends PromptLibraryTaskLike & { id: string; name: string },
->({
-  prompts,
-  skills,
-  tasks,
-  canAddPrompt,
-}: ChatConversationHomeQuickStartItemsInput<TPrompt, TSkill, TTask>): ChatConversationHomeQuickStartItem<TPrompt, TTask>[] {
-  return getChatRuntimeHomeQuickStartItemsMobileState({
-    prompts,
-    skills,
-    tasks,
-    canAddPrompt,
-  });
-}
 
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
@@ -2644,22 +2615,22 @@ type ChatMessageRuntimeViewportChromePropsInput<
     viewportContentIsLoadingMessages: ChatMessageRuntimeViewportContentRenderStateInput['isLoadingMessages'];
     viewportContentMessageCount: ChatMessageRuntimeViewportContentRenderStateInput['messageCount'];
     loadingSpinnerSource: ImageSourcePropType;
-    quickStartPrompts: ChatConversationHomeQuickStartItemsInput<
+    quickStartPrompts: ChatRuntimeHomeQuickStartItemsMobileStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
       TTask
     >['prompts'];
-    quickStartSkills: ChatConversationHomeQuickStartItemsInput<
+    quickStartSkills: ChatRuntimeHomeQuickStartItemsMobileStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
       TTask
     >['skills'];
-    quickStartTasks: ChatConversationHomeQuickStartItemsInput<
+    quickStartTasks: ChatRuntimeHomeQuickStartItemsMobileStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
       TTask
     >['tasks'];
-    quickStartCanAddPrompt: ChatConversationHomeQuickStartItemsInput<
+    quickStartCanAddPrompt: ChatRuntimeHomeQuickStartItemsMobileStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
       TTask

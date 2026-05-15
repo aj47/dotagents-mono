@@ -4860,7 +4860,8 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(chatMessageChromeSource, /export function sortChatConversationHomePromptsByUpdatedAt/);
   assert.doesNotMatch(screenSource, /sortPredefinedPromptsByUpdatedAt/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeHomeQuickStartItemsMobileState\(\{\s+prompts,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeHomeQuickStartItemsMobileState\(\{\s+prompts,/);
+  assert.match(sessionPresentationSource, /quickStartItems: getChatRuntimeHomeQuickStartItemsMobileState\(\{\s+prompts: quickStartPrompts,/);
   assert.match(sessionPresentationSource, /buildPromptLibraryShortcutItems\(\{/);
   assert.match(screenSource, /quickStartCanAddPrompt: Boolean\(settingsClient\),/);
   assert.doesNotMatch(screenSource, /isSlashCommandPrompt\(prompt\)/);
@@ -5228,7 +5229,11 @@ test('loads predefined prompts, skills, and tasks directly into mobile quick-sta
   assert.doesNotMatch(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
   assert.doesNotMatch(screenSource, /createChatConversationHomeQuickStartItems\(\{/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,/);
-  assert.match(chatMessageChromeSource, /export function createChatConversationHomeQuickStartItems/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomeQuickStartItems/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStartItemsInput/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeHomeQuickStartItemsMobileState,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHomeQuickStartItemsMobileStateInput,/);
+  assert.match(chatMessageChromeSource, /quickStartPrompts: ChatRuntimeHomeQuickStartItemsMobileStateInput</);
   assert.doesNotMatch(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
   assert.doesNotMatch(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
   assert.doesNotMatch(screenSource, /handleRunPromptTask\(pressIntent\.task\)/);
