@@ -373,8 +373,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /const \[expandedToolApprovals, setExpandedToolApprovals\] = useState<ChatMessageRuntimeToolApprovalExpansionState>\(\{\}\);/);
   assert.match(
     chatMessageChromeSource,
-    /export function getChatMessageRuntimeToolApprovalAlertState/,
+    /export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState/,
   );
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeToolApprovalAlertState/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeToolApprovalAlerts = getChatMessageRuntimeToolApprovalAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalAlertState,/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeToolApprovalConnectionRequiredAlertState\(\)/);
@@ -1033,8 +1034,9 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileIconState,/);
   assert.match(
     chatMessageChromeSource,
-    /export function getChatMessageRuntimeKillSwitchAlertState/,
+    /export function getChatMessageRuntimeKillSwitchConfirmationAlertState/,
   );
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeKillSwitchAlertState/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeKillSwitchAlerts = getChatMessageRuntimeKillSwitchAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchAlertState,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeWebConfirmMessage,/);
@@ -2375,7 +2377,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionResultOnlyFallback = getToolExecutionResultOnlyFallbackRenderState\(\);/);
   assert.doesNotMatch(screenSource, /const toolExecutionDetailCopyFailureAlert = getChatMessageToolExecutionCopyFailureAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageToolExecutionCopyFailureAlertState,/);
-  assert.match(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureAlertState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureAlertState/);
+  assert.match(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureResolvedAlertState/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToolIcon = getToolExecutionCompactMobileToolIconState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactStatusSpinner = getToolExecutionCompactMobilePendingSpinnerState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileToolExecutionCompactToggleIcon = getToolExecutionCompactMobileToggleIconState\(\);/);
@@ -5158,8 +5161,9 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /getChatRuntimeBranchMobileIconState,/);
   assert.match(
     chatMessageChromeSource,
-    /export function getChatMessageRuntimeBranchAlertState/,
+    /export function getChatMessageRuntimeBranchUnavailableAlertState/,
   );
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageRuntimeBranchAlertState/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeBranchAlerts = getChatMessageRuntimeBranchAlertState\(\);/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchAlertState,/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchUnavailableAlertState\(\)/);

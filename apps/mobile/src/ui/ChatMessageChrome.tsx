@@ -5950,12 +5950,6 @@ export function resolveChatMessageRuntimeConversationStateFromProgress(
   return resolveAgentProgressConversationState(update, lifecycleState);
 }
 
-export function getChatMessageRuntimeKillSwitchAlertState(): ReturnType<
-  typeof getChatRuntimeKillSwitchMobileAlertState
-> {
-  return getChatRuntimeKillSwitchMobileAlertState();
-}
-
 export function getChatMessageRuntimeKillSwitchConfirmationAlertState(
   alerts: ReturnType<typeof getChatRuntimeKillSwitchMobileAlertState> = getChatRuntimeKillSwitchMobileAlertState(),
 ): ChatMessageRuntimeKillSwitchConfirmationAlertState {
@@ -6001,12 +5995,6 @@ export function getChatMessageRuntimeKillSwitchConnectionFailedAlertState(
   };
 }
 
-export function getChatMessageRuntimeBranchAlertState(): ReturnType<
-  typeof getChatRuntimeBranchMobileAlertState
-> {
-  return getChatRuntimeBranchMobileAlertState();
-}
-
 export function getChatMessageRuntimeBranchUnavailableAlertState(
   alerts: ReturnType<typeof getChatRuntimeBranchMobileAlertState> = getChatRuntimeBranchMobileAlertState(),
 ): ChatMessageRuntimeResolvedAlertState {
@@ -6033,12 +6021,6 @@ export function getChatMessageRuntimeBranchFailedAlertState(
     title: alerts.failed.title,
     message: getChatRuntimeAlertMessage(error, alerts.failed.fallbackMessage),
   };
-}
-
-export function getChatMessageRuntimeToolApprovalAlertState(): ReturnType<
-  typeof getChatRuntimeToolApprovalMobileAlertState
-> {
-  return getChatRuntimeToolApprovalMobileAlertState();
 }
 
 export function getChatMessageRuntimeToolApprovalConnectionRequiredAlertState(
@@ -9084,12 +9066,6 @@ export function getChatMessageCopyFailureAlertState(
     title: feedbackState.failedTitle,
     message: getChatRuntimeAlertMessage(error, feedbackState.failedMessage),
   };
-}
-
-export function getChatMessageToolExecutionCopyFailureAlertState(): ReturnType<
-  typeof getToolExecutionDetailCopyFailureAlertState
-> {
-  return getToolExecutionDetailCopyFailureAlertState();
 }
 
 export function getChatMessageToolExecutionCopyFailureResolvedAlertState(
