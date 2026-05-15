@@ -203,9 +203,7 @@ import {
   getChatRuntimeConversationToolActivityGroupThreadState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
-  getChatComposerRuntimeChromeMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
-  getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
@@ -264,8 +262,6 @@ import {
   type ChatSessionStatusMobileStyleState,
   type ChatComposerRuntimeControlMobileRenderState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
-  type ChatComposerRuntimeChromeMobileStyleRenderState,
-  type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationMessageRenderContextMobileState,
@@ -288,8 +284,6 @@ import {
   type ChatRuntimeConversationToolActivityGroupThreadState,
   type ChatRuntimeConversationToolActivityGroupThreadStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
-  type ChatRuntimeMobileChromeStyleRenderState,
-  type ChatRuntimeMobileChromeStyleRenderStateInput,
   type ChatRuntimeThreadChromeMobileStyleColorPalette,
   type ChatRuntimeThreadChromeMobileStyleRenderState,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowInput,
@@ -3158,18 +3152,6 @@ type ChatComposerStyleSlots = {
 };
 
 type ChatComposerRuntimeDockStyleSlots = ChatComposerStyleSlots;
-
-type ChatComposerRuntimeChromeStyleStateInput =
-  ChatComposerRuntimeChromeMobileStyleRenderStateInput;
-
-export type ChatComposerRuntimeChromeStyleState =
-  ChatComposerRuntimeChromeMobileStyleRenderState;
-
-type ChatRuntimeMobileChromeStyleStateInput =
-  ChatRuntimeMobileChromeStyleRenderStateInput;
-
-export type ChatRuntimeMobileChromeStyleState =
-  ChatRuntimeMobileChromeStyleRenderState;
 
 type ChatComposerRuntimeDockProps = {
   speechPreview: Omit<ChatComposerSpeechPreviewProps, 'styles'>;
@@ -9894,26 +9876,6 @@ export function createChatComposerRuntimeDockStyleSlots({
   } as ChatComposerRuntimeDockStyleSlots;
 }
 
-export function createChatComposerRuntimeChromeStyleState({
-  colors,
-  platform,
-}: ChatComposerRuntimeChromeStyleStateInput): ChatComposerRuntimeChromeStyleState {
-  return getChatComposerRuntimeChromeMobileStyleRenderState({
-    colors,
-    platform,
-  });
-}
-
-export function createChatRuntimeMobileChromeStyleState({
-  colors,
-  platform,
-}: ChatRuntimeMobileChromeStyleStateInput): ChatRuntimeMobileChromeStyleState {
-  return getChatRuntimeMobileChromeStyleRenderState({
-    colors,
-    platform,
-  });
-}
-
 export function createChatComposerRuntimeDockChromeProps({
   colors,
   platform,
@@ -10221,12 +10183,6 @@ export function createChatMessageRuntimeDockStyleSlots({
     connectionBanner: conversationDockStyles.connectionBanner,
     composer: composerStyles,
   } as ChatMessageRuntimeDockStyleSlots;
-}
-
-export function createChatRuntimeMobileSafeAreaLayoutState(
-  bottomInset: number,
-): ChatRuntimeMobileSafeAreaLayout {
-  return getChatRuntimeMobileSafeAreaLayoutState(bottomInset);
 }
 
 export function createChatRuntimeMobileSafeAreaStyleSlots(

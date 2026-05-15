@@ -37,7 +37,7 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
   assert.doesNotMatch(screenSource, /const handsFreeStatusSubtitle = useMemo/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerCopyState,/);
   assert.match(chatMessageChromeSource, /getHandsFreeComposerCopyState,/);
-  assert.match(screenSource, /createChatRuntimeMobileChromeStyleState,/);
+  assert.match(screenSource, /getChatRuntimeMobileChromeStyleRenderState,/);
   assert.match(sessionPresentationSource, /getHandsFreeComposerMobileSurfaceRenderState/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceColors,/);

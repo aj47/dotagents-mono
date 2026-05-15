@@ -7,6 +7,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  getChatRuntimeMobileChromeStyleRenderState,
+  getChatRuntimeMobileSafeAreaLayoutState,
+} from '@dotagents/shared/session-presentation';
+import {
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
   createChatConversationHomePromptEditorModalStyleSlots,
@@ -17,8 +21,6 @@ import {
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeHeaderStyleSlots,
-  createChatRuntimeMobileChromeStyleState,
-  createChatRuntimeMobileSafeAreaLayoutState,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -44,7 +46,7 @@ export function createChatRuntimeMobileChromeEnvironment(theme: Theme): ChatRunt
 
 export function createChatRuntimeMobileStyles(theme: Theme) {
   const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment(theme);
-  const chatChromeStyleState = createChatRuntimeMobileChromeStyleState(chatRuntimeChromeEnvironment);
+  const chatChromeStyleState = getChatRuntimeMobileChromeStyleRenderState(chatRuntimeChromeEnvironment);
   const headerChromeStyleState = chatChromeStyleState.header;
   const headerStyleState = headerChromeStyleState.header;
   const headerSurface = headerStyleState.surface;
@@ -1896,7 +1898,7 @@ export function useChatRuntimeMobileStyleSlots() {
     [chatMessageRuntimeChromeStyles, chatRuntimeChromeEnvironment, chatRuntimeSpinnerSource],
   );
   const mobileSafeAreaLayout = useMemo(
-    () => createChatRuntimeMobileSafeAreaLayoutState(bottomInset),
+    () => getChatRuntimeMobileSafeAreaLayoutState(bottomInset),
     [bottomInset],
   );
   const mobileSafeAreaStyles = useMemo(
