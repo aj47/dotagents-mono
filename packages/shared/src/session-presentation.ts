@@ -376,6 +376,16 @@ export interface ChatRuntimeInlineActivityMobileRenderState {
   spinnerResizeMode: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode
 }
 
+export interface ChatRuntimeInlineActivityMobileIndicatorStateInput<TSpinnerSource>
+  extends ChatRuntimeInlineActivityMobileRenderStateInput {
+  spinnerSource: TSpinnerSource
+}
+
+export type ChatRuntimeInlineActivityMobileIndicatorState<TSpinnerSource> = {
+  renderState: ChatRuntimeInlineActivityMobileRenderState
+  spinnerSource: TSpinnerSource
+} | null
+
 export interface ChatRuntimeTurnDurationHeaderMobileBadgeColors {
   chip: {
     backgroundColor: string
@@ -8333,6 +8343,20 @@ export function getChatRuntimeInlineActivityMobileRenderState({
     accessibilityState: surface.accessibilityState,
     spinnerResizeMode: surface.spinnerResizeMode,
   }
+}
+
+export function getChatRuntimeInlineActivityMobileIndicatorState<TSpinnerSource>({
+  spinnerSource,
+  ...input
+}: ChatRuntimeInlineActivityMobileIndicatorStateInput<TSpinnerSource>): ChatRuntimeInlineActivityMobileIndicatorState<TSpinnerSource> {
+  const renderState = getChatRuntimeInlineActivityMobileRenderState(input)
+
+  return renderState.shouldRender
+    ? {
+        renderState,
+        spinnerSource,
+      }
+    : null
 }
 
 export function getChatRuntimeMobileActivityAccessibilityState(): ChatRuntimeMobileActivityAccessibilityState {

@@ -142,6 +142,7 @@ import {
   getChatRuntimeHeaderMobileStyleRenderState,
   getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeHomeQuickStartsMobileRenderState,
+  getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeInlineActivityMobileState,
   getChatRuntimeKillSwitchMobileActionState,
@@ -1921,6 +1922,32 @@ describe("session presentation semantics", () => {
       isResponding: true,
       message: { role: "assistant", content: "", toolCalls: [{ name: "search" }] },
     }).shouldRender).toBe(false)
+    expect(getChatRuntimeInlineActivityMobileIndicatorState({
+      isResponding: true,
+      message: {
+        role: "assistant",
+        content: "",
+        toolCalls: [],
+        toolResults: [],
+      },
+      spinnerSource: "spinner.png",
+    })).toEqual({
+      renderState: getChatRuntimeInlineActivityMobileRenderState({
+        isResponding: true,
+        message: {
+          role: "assistant",
+          content: "",
+          toolCalls: [],
+          toolResults: [],
+        },
+      }),
+      spinnerSource: "spinner.png",
+    })
+    expect(getChatRuntimeInlineActivityMobileIndicatorState({
+      isResponding: false,
+      message: { role: "assistant", content: "" },
+      spinnerSource: "spinner.png",
+    })).toBeNull()
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.mobileIcon).toMatchObject({
       name: "pulse-outline",
       size: 13,

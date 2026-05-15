@@ -426,7 +426,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /const toolApprovalArgumentsPreview =/);
   assert.doesNotMatch(screenSource, /toolApproval: createChatMessageToolApprovalProps/);
   assert.match(screenSource, /threadList: \{[\s\S]*?expandedToolApprovals,[\s\S]*?pendingApprovalResponseId: pendingToolApprovalResponseId,[\s\S]*?onToggleToolApprovalArguments: toggleToolApprovalArguments,[\s\S]*?onRespondToToolApproval: respondToToolApproval,/);
-  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationThreadBodyMobileState\(\{[\s\S]*?inlineActivity: createChatMessageInlineActivityProps\(\{/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationThreadBodyMobileState\(\{[\s\S]*?inlineActivity: getChatRuntimeInlineActivityMobileIndicatorState\(\{/);
   assert.match(sessionPresentationSource, /toolApproval: getChatRuntimeConversationToolApprovalMobileState\(\{\s+message,\s+expandedToolApprovals,\s+pendingApprovalResponseId,\s+colors,\s+onToggleArguments: onToggleToolApprovalArguments,\s+onRespondToToolApproval,/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageConversationToolApprovalInput/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeConversationToolApprovalMobileState\(\{/);
@@ -2866,7 +2866,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportContentMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeViewportChromeMobileRenderState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileIndicatorState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeInlineActivityMobileIndicatorState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeMobileActivityAccessibilityState,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationHistoryWindowState,/);
   assert.doesNotMatch(screenSource, /createChatMessageConversationViewportAffordanceRenderState,/);
@@ -2956,11 +2957,11 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState\.loadButton\.pressedOpacity;/);
   assert.doesNotMatch(screenSource, /const messageInlineActivityProps = createChatMessageInlineActivityProps/);
   assert.match(screenSource, /threadList: \{\s+messages,\s+visibleMessageCount,\s+groupByIndex: toolActivityGroups\.groupByIndex,\s+groupState: expandedGroups,\s+inheritedState: expandedMessages,\s+onToggleGroup: toggleGroupExpansion,/);
-  assert.match(chatMessageChromeSource, /inlineActivity: createChatMessageInlineActivityProps\(\{\s+message,\s+isResponding,\s+spinnerSource,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /inlineActivity: getChatRuntimeInlineActivityMobileIndicatorState\(\{\s+message,\s+isResponding,\s+spinnerSource,\s+\}\),/);
   assert.doesNotMatch(screenSource, /inlineActivity: messageInlineActivityRenderState\.shouldRender \? \{/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
-  assert.match(chatMessageChromeSource, /const renderState = getChatRuntimeInlineActivityMobileRenderState\(\{\s+message,\s+isResponding,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /return renderState\.shouldRender\s+\? \{\s+renderState,\s+spinnerSource,\s+\}\s+: null;/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
+  assert.match(sessionPresentationSource, /const renderState = getChatRuntimeInlineActivityMobileRenderState\(input\)/);
+  assert.match(sessionPresentationSource, /return renderState\.shouldRender\s+\? \{\s+renderState,\s+spinnerSource,\s+\}\s+: null/);
   assert.doesNotMatch(screenSource, /inlineActivity: m\.role === 'assistant'/);
   assert.doesNotMatch(screenSource, /style: styles\.inlineActivityIndicator/);
   assert.match(chatMessageChromeSource, /inlineActivity: \{\s+style: styles\.inlineActivityIndicator,\s+spinnerStyle: styles\.inlineActivitySpinner,/);
@@ -3769,7 +3770,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageDelegationCardProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageDelegationToolPreviewRows/);

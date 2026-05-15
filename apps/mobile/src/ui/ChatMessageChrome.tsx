@@ -187,7 +187,7 @@ import {
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
   getChatRuntimeDockChromeMobileRenderState,
-  getChatRuntimeInlineActivityMobileRenderState,
+  getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
@@ -238,7 +238,6 @@ import {
   type ChatRuntimeDelegationCardMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeInlineActivityMobileRenderState,
-  type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
@@ -3019,11 +3018,6 @@ type ChatMessageInlineActivityProps = {
   spinnerSource: ImageSourcePropType;
   style: StyleProp<ViewStyle>;
   spinnerStyle: StyleProp<ImageStyle>;
-};
-
-type ChatMessageInlineActivityPropsInput = Pick<ChatMessageInlineActivityProps, 'spinnerSource'> & {
-  message?: ChatRuntimeInlineActivityMobileMessageLike | null;
-  isResponding: boolean;
 };
 
 type ChatMessageContentRowProps = {
@@ -6220,7 +6214,7 @@ export function createChatMessageConversationThreadBodyInput({
     isResponding,
     spinnerSource,
     ...input,
-    inlineActivity: createChatMessageInlineActivityProps({
+    inlineActivity: getChatRuntimeInlineActivityMobileIndicatorState({
       message,
       isResponding,
       spinnerSource,
@@ -9085,24 +9079,6 @@ export function createChatMessageToolApprovalProps({
     onDeny: () => onDeny(cardRenderState.approvalId),
     onApprove: () => onApprove(cardRenderState.approvalId),
   };
-}
-
-export function createChatMessageInlineActivityProps({
-  message,
-  isResponding,
-  spinnerSource,
-}: ChatMessageInlineActivityPropsInput): ChatMessageThreadBodyProps['inlineActivity'] {
-  const renderState = getChatRuntimeInlineActivityMobileRenderState({
-    message,
-    isResponding,
-  });
-
-  return renderState.shouldRender
-    ? {
-        renderState,
-        spinnerSource,
-      }
-    : null;
 }
 
 export function createChatMessageExpandedContentProps({
