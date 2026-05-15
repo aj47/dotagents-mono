@@ -95,6 +95,7 @@ import {
   getChatRuntimeConnectionBannerMobileState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
+  getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
@@ -3070,6 +3071,44 @@ describe("session presentation semantics", () => {
       colors: messageThreadStyleColors,
     })
     expect(failedConversationMessage.tone).toBe("assistant")
+    const conversationMessageActions = getChatRuntimeConversationMessageActionsMobileRenderState({
+      message: successfulConversationMessage,
+      turnDuration: {
+        role: "assistant",
+        durationMs: 12_000,
+        colors: messageThreadStyleColors,
+      },
+      speech: {
+        role: "assistant",
+        content: "Done",
+        ttsEnabled: true,
+        isSpeaking: false,
+        colors: messageThreadStyleColors,
+      },
+      branch: {
+        conversationId: "conversation-1",
+        role: "assistant",
+        fallbackMessageIndex: 2,
+        pendingMessageIndex: null,
+        colors: messageThreadStyleColors,
+      },
+      copy: {
+        role: "assistant",
+        content: "Done",
+        isAssistantComplete: true,
+        isCopied: false,
+        colors: messageThreadStyleColors,
+      },
+    })
+    expect(conversationMessageActions.speech.canSpeak).toBe(true)
+    expect(conversationMessageActions.branch.messageIndex).toBe(2)
+    expect(conversationMessageActions.availability.turnDuration.canRender).toBe(false)
+    expect(conversationMessageActions.availability.copy.canRender).toBe(true)
+    expect(conversationMessageActions.layout.visibleSlots).toEqual([
+      "speech",
+      "branch",
+      "copy",
+    ])
     const messageThreadPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: {
         ...messageThreadStyleColors,

@@ -35,17 +35,27 @@ import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
   getChatDisplayExpansionState,
+  getChatMessageActionAvailabilityRenderState,
+  getChatMessageActionLayoutRenderState,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageActionMobileTurnDurationBadgeColors,
   getChatMessageActionMobileTurnDurationBadgeState,
+  getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
+  getChatMessageSpeechMobileRenderState,
   hasChatMessageDisplayContent,
   shouldShowChatMessageTurnDurationBadge,
+  type ChatMessageActionAvailabilityRenderState,
+  type ChatMessageActionLayoutState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
+  type ChatMessageCopyMobileRenderState,
+  type ChatMessageCopyMobileRenderStateInput,
   type ChatMessageMobileRenderColorPalette,
+  type ChatMessageSpeechMobileRenderState,
+  type ChatMessageSpeechMobileRenderStateInput,
 } from "./message-display-utils"
 import {
   createButtonAccessibilityLabel,
@@ -466,6 +476,24 @@ export type ChatRuntimeConversationMessageMobileRenderStateInput =
 
 export type ChatRuntimeConversationMessageMobileRenderState =
   ReturnType<typeof getChatMessageMobileRenderState>
+
+export interface ChatRuntimeConversationMessageActionsMobileRenderStateInput {
+  message: Pick<ChatRuntimeConversationMessageMobileRenderState, "content" | "expansion">
+  turnDuration: ChatRuntimeTurnDurationMessageMobileRenderStateInput
+  speech: Omit<ChatMessageSpeechMobileRenderStateInput, "isVisible">
+  branch: ChatRuntimeBranchMobileRenderStateInput
+  copy: ChatMessageCopyMobileRenderStateInput
+}
+
+export interface ChatRuntimeConversationMessageActionsMobileRenderState {
+  turnDuration: ChatRuntimeTurnDurationMessageMobileRenderState
+  speech: ChatMessageSpeechMobileRenderState
+  branch: ChatRuntimeBranchMobileRenderState
+  copy: ChatMessageCopyMobileRenderState
+  expansion: ChatRuntimeConversationMessageMobileRenderState["expansion"]
+  availability: ChatMessageActionAvailabilityRenderState
+  layout: ChatMessageActionLayoutState
+}
 
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
@@ -5541,6 +5569,43 @@ export function getChatRuntimeConversationMessageMobileRenderState({
     ...input,
     hasErrors,
   })
+}
+
+export function getChatRuntimeConversationMessageActionsMobileRenderState({
+  message,
+  turnDuration,
+  speech,
+  branch,
+  copy,
+}: ChatRuntimeConversationMessageActionsMobileRenderStateInput): ChatRuntimeConversationMessageActionsMobileRenderState {
+  const turnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState(turnDuration)
+  const speechRenderState = getChatMessageSpeechMobileRenderState({
+    ...speech,
+    isVisible: message.content.speech.isVisible,
+  })
+  const branchRenderState = getChatRuntimeBranchMobileRenderState(branch)
+  const copyRenderState = getChatMessageCopyMobileRenderState(copy)
+  const expansionRenderState = message.expansion
+  const availability = getChatMessageActionAvailabilityRenderState({
+    turnDuration: turnDurationRenderState.shouldRender,
+    speech: speechRenderState.canSpeak,
+    branch: branchRenderState.canBranch,
+    copy: copyRenderState.canCopy,
+    expansion: expansionRenderState.canToggle,
+  })
+
+  return {
+    turnDuration: turnDurationRenderState,
+    speech: speechRenderState,
+    branch: branchRenderState,
+    copy: copyRenderState,
+    expansion: expansionRenderState,
+    availability,
+    layout: getChatMessageActionLayoutRenderState({
+      availability,
+      renderState: message.content,
+    }),
+  }
 }
 
 export function getChatRuntimeToolExecutionCompactPreviewMobileRowState({

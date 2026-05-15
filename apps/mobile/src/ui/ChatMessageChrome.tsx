@@ -32,13 +32,10 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
   applyChatDisplayGroupedExpansionInheritance,
   createChatMessageActionSlotRenderMap,
-  createChatMessageActionSlotRenderState,
   getChatDisplayExpansionState,
+  getChatMessageActionSlotRenderEntries,
   getChatMessageActionCopyState,
-  getChatMessageActionAvailabilityRenderState,
   getChatMessageActionMobileButtonStatesBySlot,
-  getChatMessageCopyMobileRenderState,
-  getChatMessageSpeechMobileRenderState,
   findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
   isChatMessageLiveStreamingConversationContent,
@@ -47,14 +44,11 @@ import {
   toggleChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
-  type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageContentRenderState,
-  type ChatMessageCopyMobileRenderState,
   type ChatMessageExpansionMobileRenderState,
-  type ChatMessageSpeechMobileRenderState,
   type MessageContentForModelLike,
 } from '@dotagents/shared/message-display-utils';
 import {
@@ -198,7 +192,6 @@ import {
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeDelegationToolPreviewMoreActionState,
-  getChatRuntimeBranchMobileRenderState,
   getChatRuntimeDockChromeMobileRenderState,
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
@@ -206,6 +199,7 @@ import {
   getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -218,7 +212,6 @@ import {
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeThreadChromeMobileStyleRenderState,
-  getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportAffordanceMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeViewportContentMobileRenderState,
@@ -273,6 +266,8 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatComposerRuntimeChromeMobileStyleRenderState,
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
+  type ChatRuntimeConversationMessageActionsMobileRenderState,
+  type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileColorPalette,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
@@ -1238,7 +1233,7 @@ type ChatMessageActionButtonSpec = {
 };
 
 type ChatMessageSpeechActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
-  renderState: ChatMessageSpeechMobileRenderState;
+  renderState: ChatRuntimeConversationMessageActionsMobileRenderState['speech'];
 };
 
 type ChatMessageBranchActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
@@ -1246,23 +1241,23 @@ type ChatMessageBranchActionSpec = Omit<ChatMessageActionButtonSpec, 'renderStat
 };
 
 type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
-  renderState: ChatMessageCopyMobileRenderState;
+  renderState: ChatRuntimeConversationMessageActionsMobileRenderState['copy'];
 };
 
 type ChatMessageBranchActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive' | 'onPress'>
-  & Parameters<typeof getChatRuntimeBranchMobileRenderState>[0]
+  & ChatRuntimeConversationMessageActionsMobileRenderStateInput['branch']
   & {
     onBranchMessage?: (messageIndex: number) => void;
   };
 
 type ChatMessageSpeechActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
-  & Omit<Parameters<typeof getChatMessageSpeechMobileRenderState>[0], 'isVisible'>;
+  & ChatRuntimeConversationMessageActionsMobileRenderStateInput['speech'];
 
 type ChatMessageCopyActionSpecInput =
   Omit<ChatMessageActionButtonSpec, 'renderState' | 'isActive'>
-  & Parameters<typeof getChatMessageCopyMobileRenderState>[0];
+  & ChatRuntimeConversationMessageActionsMobileRenderStateInput['copy'];
 
 type ChatMessageExpansionActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
   renderState: ChatMessageExpansionMobileRenderState;
@@ -1274,10 +1269,10 @@ type ChatMessageTurnDurationActionSpec = ChatMessageTurnDurationBadgeProps;
 
 type ChatMessageTurnDurationActionSpecInput =
   Omit<ChatMessageTurnDurationActionSpec, 'renderState'>
-  & Parameters<typeof getChatRuntimeTurnDurationMessageMobileRenderState>[0];
+  & ChatRuntimeConversationMessageActionsMobileRenderStateInput['turnDuration'];
 
 type ChatMessageActionComponentsInput = {
-  availability: ChatMessageActionAvailabilityRenderState;
+  availability: ChatRuntimeConversationMessageActionsMobileRenderState['availability'];
   turnDuration: ChatMessageTurnDurationActionSpec;
   speech: ChatMessageSpeechActionSpec;
   branch: ChatMessageBranchActionSpec;
@@ -7213,28 +7208,6 @@ export function createChatMessageActionSet({
   expansion,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
-  const contentRenderState = messageRenderState.content;
-  const turnDurationAction: ChatMessageTurnDurationActionSpec = {
-    ...turnDuration,
-    renderState: getChatRuntimeTurnDurationMessageMobileRenderState({
-      role: turnDuration.role,
-      durationMs: turnDuration.durationMs,
-      isLive: turnDuration.isLive,
-      colors: turnDuration.colors,
-    }),
-  };
-  const speechAction: ChatMessageSpeechActionSpec = {
-    ...speech,
-    renderState: getChatMessageSpeechMobileRenderState({
-      role: speech.role,
-      content: speech.content,
-      ttsEnabled: speech.ttsEnabled,
-      isVisible: contentRenderState.speech.isVisible,
-      isSpeaking: speech.isSpeaking,
-      colors: speech.colors,
-    }),
-    isActive: speech.isSpeaking,
-  };
   const {
     onBranchMessage,
     conversationId,
@@ -7245,32 +7218,58 @@ export function createChatMessageActionSet({
     colors: branchColors,
     ...branchStyleProps
   } = branch;
-  const branchRenderState = getChatRuntimeBranchMobileRenderState({
-    conversationId,
-    role: branchRole,
-    branchMessageIndex,
-    fallbackMessageIndex,
-    pendingMessageIndex,
-    colors: branchColors,
-  });
-  const branchAction: ChatMessageBranchActionSpec = {
-    ...branchStyleProps,
-    renderState: branchRenderState,
-    onPress: () => {
-      if (branchRenderState.messageIndex != null) {
-        onBranchMessage?.(branchRenderState.messageIndex);
-      }
+  const actionRenderState = getChatRuntimeConversationMessageActionsMobileRenderState({
+    message: messageRenderState,
+    turnDuration: {
+      role: turnDuration.role,
+      durationMs: turnDuration.durationMs,
+      isLive: turnDuration.isLive,
+      colors: turnDuration.colors,
     },
-  };
-  const copyAction: ChatMessageCopyActionSpec = {
-    ...copy,
-    renderState: getChatMessageCopyMobileRenderState({
+    speech: {
+      role: speech.role,
+      content: speech.content,
+      ttsEnabled: speech.ttsEnabled,
+      isSpeaking: speech.isSpeaking,
+      colors: speech.colors,
+    },
+    branch: {
+      conversationId,
+      role: branchRole,
+      branchMessageIndex,
+      fallbackMessageIndex,
+      pendingMessageIndex,
+      colors: branchColors,
+    },
+    copy: {
       role: copy.role,
       content: copy.content,
       isAssistantComplete: copy.isAssistantComplete,
       isCopied: copy.isCopied,
       colors: copy.colors,
-    }),
+    },
+  });
+  const turnDurationAction: ChatMessageTurnDurationActionSpec = {
+    ...turnDuration,
+    renderState: actionRenderState.turnDuration,
+  };
+  const speechAction: ChatMessageSpeechActionSpec = {
+    ...speech,
+    renderState: actionRenderState.speech,
+    isActive: speech.isSpeaking,
+  };
+  const branchAction: ChatMessageBranchActionSpec = {
+    ...branchStyleProps,
+    renderState: actionRenderState.branch,
+    onPress: () => {
+      if (actionRenderState.branch.messageIndex != null) {
+        onBranchMessage?.(actionRenderState.branch.messageIndex);
+      }
+    },
+  };
+  const copyAction: ChatMessageCopyActionSpec = {
+    ...copy,
+    renderState: actionRenderState.copy,
     isActive: copy.isCopied,
   };
   const actionInput: Omit<ChatMessageActionComponentsInput, 'availability'> = {
@@ -7281,26 +7280,18 @@ export function createChatMessageActionSet({
     copy: copyAction,
     expansion: {
       ...expansion,
-      renderState: messageRenderState.expansion,
+      renderState: actionRenderState.expansion,
     },
   };
-  const availability = getChatMessageActionAvailabilityRenderState({
-    turnDuration: actionInput.turnDuration.renderState.shouldRender,
-    speech: actionInput.speech.renderState.canSpeak,
-    branch: actionInput.branch.renderState.canBranch,
-    copy: actionInput.copy.renderState.canCopy,
-    expansion: actionInput.expansion.renderState.canToggle,
-  });
-  const actionRenderState = createChatMessageActionSlotRenderState<ReactNode>({
-    availability,
-    renderState: contentRenderState,
-    renderers: createChatMessageActionRenderers(actionInput),
+  const components = createChatMessageActionComponents({
+    availability: actionRenderState.availability,
+    ...actionInput,
   });
 
   return {
-    entries: actionRenderState.entries,
-    shouldRenderActionSlots: actionRenderState.shouldRenderActionSlots,
-    shouldRenderStandaloneActions: actionRenderState.shouldRenderStandaloneRow,
+    entries: getChatMessageActionSlotRenderEntries(actionRenderState.layout.visibleSlots, components),
+    shouldRenderActionSlots: actionRenderState.layout.shouldRenderActionSlots,
+    shouldRenderStandaloneActions: actionRenderState.layout.shouldRenderStandaloneRow,
   };
 }
 
