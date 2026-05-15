@@ -635,6 +635,49 @@ export interface ChatRuntimeConversationContentMobileState<
   }
 }
 
+export interface ChatRuntimeConversationRetryStatusMobileStateInput<
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+> {
+  message: {
+    variant?: string
+    retryInfo?: TRetryInfo
+  }
+  colors: ChatRuntimeRetryStatusMobileRenderStateInput["colors"]
+}
+
+export interface ChatRuntimeConversationRetryStatusMobileState<
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+> {
+  isRetry: boolean
+  retryInfo?: TRetryInfo
+  colors: ChatRuntimeRetryStatusMobileRenderStateInput["colors"]
+}
+
+export interface ChatRuntimeConversationToolApprovalMobileStateInput {
+  message: {
+    variant?: string
+    toolApproval?: ChatRuntimeToolApprovalCardMobileRenderStateInput["toolApproval"]
+  }
+  expandedToolApprovals: ChatRuntimeToolApprovalCardMobileRenderStateInput["expandedToolApprovals"]
+  pendingApprovalResponseId?: ChatRuntimeToolApprovalCardMobileRenderStateInput["pendingApprovalResponseId"]
+  colors: ChatRuntimeToolApprovalCardMobileRenderStateInput["colors"]
+  onToggleArguments: (approvalId: string) => void
+  onRespondToToolApproval: (approvalId: string, approved: boolean) => void | Promise<void>
+}
+
+export interface ChatRuntimeConversationToolApprovalMobileState {
+  isApproval: boolean
+  toolApproval?: ChatRuntimeToolApprovalCardMobileRenderStateInput["toolApproval"]
+  expandedToolApprovals: ChatRuntimeToolApprovalCardMobileRenderStateInput["expandedToolApprovals"]
+  pendingApprovalResponseId?: ChatRuntimeToolApprovalCardMobileRenderStateInput["pendingApprovalResponseId"]
+  colors: ChatRuntimeToolApprovalCardMobileRenderStateInput["colors"]
+  onToggleArguments: (approvalId: string) => void
+  onDeny: (approvalId: string) => void
+  onApprove: (approvalId: string) => void
+}
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
   toolCall: ToolCall
@@ -5950,6 +5993,40 @@ export function getChatRuntimeConversationContentMobileState<
     collapsed: {
       onToggle: () => onToggleMessageExpansion(messageIndex),
     },
+  }
+}
+
+export function getChatRuntimeConversationRetryStatusMobileState<
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+>({
+  message,
+  colors,
+}: ChatRuntimeConversationRetryStatusMobileStateInput<TRetryInfo>): ChatRuntimeConversationRetryStatusMobileState<TRetryInfo> {
+  return {
+    isRetry: message.variant === "retry",
+    retryInfo: message.retryInfo,
+    colors,
+  }
+}
+
+export function getChatRuntimeConversationToolApprovalMobileState({
+  message,
+  expandedToolApprovals,
+  pendingApprovalResponseId,
+  colors,
+  onToggleArguments,
+  onRespondToToolApproval,
+}: ChatRuntimeConversationToolApprovalMobileStateInput): ChatRuntimeConversationToolApprovalMobileState {
+  return {
+    isApproval: message.variant === "approval",
+    toolApproval: message.toolApproval,
+    expandedToolApprovals,
+    pendingApprovalResponseId,
+    colors,
+    onToggleArguments,
+    onDeny: (approvalId) => { void onRespondToToolApproval(approvalId, false) },
+    onApprove: (approvalId) => { void onRespondToToolApproval(approvalId, true) },
   }
 }
 

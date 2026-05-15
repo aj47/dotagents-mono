@@ -427,7 +427,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(screenSource, /threadList: \{[\s\S]*?expandedToolApprovals,[\s\S]*?pendingApprovalResponseId: pendingToolApprovalResponseId,[\s\S]*?onToggleToolApprovalArguments: toggleToolApprovalArguments,[\s\S]*?onRespondToToolApproval: respondToToolApproval,/);
   assert.match(chatMessageChromeSource, /toolApproval: createChatMessageConversationToolApprovalInput\(\{\s+message,\s+expandedToolApprovals,\s+pendingApprovalResponseId,\s+colors,\s+onToggleArguments: onToggleToolApprovalArguments,\s+onRespondToToolApproval,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationToolApprovalInput/);
-  assert.match(chatMessageChromeSource, /isApproval: message\.variant === 'approval',\s+toolApproval: message\.toolApproval,/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationToolApprovalMobileState\(\{\s+message,\s+expandedToolApprovals,\s+pendingApprovalResponseId,\s+colors,\s+onToggleArguments,\s+onRespondToToolApproval,\s+\}\);/);
+  assert.match(sessionPresentationSource, /isApproval: message\.variant === "approval",\s+toolApproval: message\.toolApproval,/);
   assert.match(chatMessageChromeSource, /toolApproval: createChatMessageToolApprovalProps\(toolApproval\),/);
   assert.doesNotMatch(screenSource, /toolApproval: m\.variant === 'approval' && m\.toolApproval && toolApprovalRenderState \? \{/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
@@ -436,8 +437,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /return \{[\s\S]*?renderState: cardRenderState\.renderState,[\s\S]*?toolName: cardRenderState\.toolName,[\s\S]*?argumentsPreview: cardRenderState\.argumentsPreview,[\s\S]*?argumentsContent: cardRenderState\.argumentsContent,/);
   assert.match(screenSource, /onToggleToolApprovalArguments: toggleToolApprovalArguments,/);
   assert.match(screenSource, /onRespondToToolApproval: respondToToolApproval,/);
-  assert.match(chatMessageChromeSource, /onDeny: \(approvalId\) => \{ void onRespondToToolApproval\(approvalId, false\); \},/);
-  assert.match(chatMessageChromeSource, /onApprove: \(approvalId\) => \{ void onRespondToToolApproval\(approvalId, true\); \},/);
+  assert.match(sessionPresentationSource, /onDeny: \(approvalId\) => \{ void onRespondToToolApproval\(approvalId, false\) \},/);
+  assert.match(sessionPresentationSource, /onApprove: \(approvalId\) => \{ void onRespondToToolApproval\(approvalId, true\) \},/);
   assert.match(chatMessageChromeSource, /onToggleArguments: \(\) => onToggleArguments\(cardRenderState\.approvalId\),/);
   assert.match(chatMessageChromeSource, /onDeny: \(\) => onDeny\(cardRenderState\.approvalId\),/);
   assert.match(chatMessageChromeSource, /onApprove: \(\) => onApprove\(cardRenderState\.approvalId\),/);
@@ -567,7 +568,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(screenSource, /threadList: \{[\s\S]*?messages,[\s\S]*?visibleMessageCount,[\s\S]*?groupByIndex: toolActivityGroups\.groupByIndex,/);
   assert.match(chatMessageChromeSource, /retryStatus: createChatMessageConversationRetryStatusInput\(\{\s+message,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationRetryStatusInput/);
-  assert.match(chatMessageChromeSource, /isRetry: message\.variant === 'retry',\s+retryInfo: message\.retryInfo,\s+colors,/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationRetryStatusMobileState\(\{\s+message,\s+colors,\s+\}\);/);
+  assert.match(sessionPresentationSource, /isRetry: message\.variant === "retry",\s+retryInfo: message\.retryInfo,\s+colors,/);
   assert.match(chatMessageChromeSource, /retryStatus: createChatMessageRetryStatusProps\(retryStatus\),/);
   assert.doesNotMatch(screenSource, /m\.variant === 'retry' && retryStatusRenderState\.shouldRender/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);

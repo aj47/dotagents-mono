@@ -200,6 +200,8 @@ import {
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
@@ -281,9 +283,13 @@ import {
   type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
+  type ChatRuntimeConversationRetryStatusMobileState,
+  type ChatRuntimeConversationRetryStatusMobileStateInput,
   type ChatRuntimeConversationRuntimeThreadState,
   type ChatRuntimeConversationRuntimeThreadStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
+  type ChatRuntimeConversationToolApprovalMobileState,
+  type ChatRuntimeConversationToolApprovalMobileStateInput,
   type ChatRuntimeConversationToolActivityGroupRenderStateInput,
   type ChatRuntimeConversationToolActivityGroupThreadRenderState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
@@ -1925,13 +1931,11 @@ type ChatMessageRetryStatusPropsInput = {
   colors: Parameters<typeof getChatRuntimeRetryStatusMobileRenderState>[0]['colors'];
 };
 
-type ChatMessageConversationRetryStatusInput = {
-  message: {
-    variant?: string;
-    retryInfo?: AgentRetryInfo | null;
-  };
-  colors: ChatMessageRetryStatusPropsInput['colors'];
-};
+type ChatMessageConversationRetryStatusInput =
+  ChatRuntimeConversationRetryStatusMobileStateInput<AgentRetryInfo | null | undefined>;
+
+type ChatMessageConversationRetryStatusState =
+  ChatRuntimeConversationRetryStatusMobileState<AgentRetryInfo | null | undefined>;
 
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
@@ -1993,17 +1997,11 @@ type ChatMessageToolApprovalPropsInput = Omit<
   onApprove: (approvalId: string) => void;
 };
 
-type ChatMessageConversationToolApprovalInput = {
-  message: {
-    variant?: string;
-    toolApproval?: ChatMessageToolApprovalPropsInput['toolApproval'];
-  };
-  expandedToolApprovals: ChatMessageToolApprovalPropsInput['expandedToolApprovals'];
-  pendingApprovalResponseId?: ChatMessageToolApprovalPropsInput['pendingApprovalResponseId'];
-  colors: ChatMessageToolApprovalPropsInput['colors'];
-  onToggleArguments: ChatMessageToolApprovalPropsInput['onToggleArguments'];
-  onRespondToToolApproval: (approvalId: string, approved: boolean) => void | Promise<void>;
-};
+type ChatMessageConversationToolApprovalInput =
+  ChatRuntimeConversationToolApprovalMobileStateInput;
+
+type ChatMessageConversationToolApprovalState =
+  ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
   card: StyleProp<ViewStyle>;
@@ -6874,17 +6872,15 @@ export function createChatMessageConversationToolApprovalInput({
   colors,
   onToggleArguments,
   onRespondToToolApproval,
-}: ChatMessageConversationToolApprovalInput): ChatMessageToolApprovalPropsInput {
-  return {
-    isApproval: message.variant === 'approval',
-    toolApproval: message.toolApproval,
+}: ChatMessageConversationToolApprovalInput): ChatMessageConversationToolApprovalState {
+  return getChatRuntimeConversationToolApprovalMobileState({
+    message,
     expandedToolApprovals,
     pendingApprovalResponseId,
     colors,
     onToggleArguments,
-    onDeny: (approvalId) => { void onRespondToToolApproval(approvalId, false); },
-    onApprove: (approvalId) => { void onRespondToToolApproval(approvalId, true); },
-  };
+    onRespondToToolApproval,
+  });
 }
 
 export function createChatMessageConversationDelegationCardInput({
@@ -6925,12 +6921,11 @@ export function createChatMessageConversationDelegationCardInput({
 export function createChatMessageConversationRetryStatusInput({
   message,
   colors,
-}: ChatMessageConversationRetryStatusInput): ChatMessageRetryStatusPropsInput {
-  return {
-    isRetry: message.variant === 'retry',
-    retryInfo: message.retryInfo,
+}: ChatMessageConversationRetryStatusInput): ChatMessageConversationRetryStatusState {
+  return getChatRuntimeConversationRetryStatusMobileState({
+    message,
     colors,
-  };
+  });
 }
 
 export function createChatMessageConversationThreadBodyInput({

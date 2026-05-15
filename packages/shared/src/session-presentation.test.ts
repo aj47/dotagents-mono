@@ -101,6 +101,8 @@ import {
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
@@ -3161,6 +3163,65 @@ describe("session presentation semantics", () => {
     })
     contentState.collapsed.onToggle()
     expect(toggledMessageIndex).toBe(4)
+    expect(getChatRuntimeConversationRetryStatusMobileState({
+      message: {
+        variant: "retry",
+        retryInfo: {
+          attempt: 2,
+          maxAttempts: 3,
+          delaySeconds: 10,
+          reason: "rate_limit",
+        },
+      },
+      colors: {
+        warning: "#d97706",
+        mutedForeground: "#64748b",
+      },
+    })).toMatchObject({
+      isRetry: true,
+      retryInfo: {
+        attempt: 2,
+        reason: "rate_limit",
+      },
+    })
+    const approvalResponses: Array<{ approvalId: string; approved: boolean }> = []
+    const approvalState = getChatRuntimeConversationToolApprovalMobileState({
+      message: {
+        variant: "approval",
+        toolApproval: {
+          approvalId: "approval-1",
+          toolName: "write_file",
+          arguments: { path: "/tmp/file" },
+        },
+      },
+      expandedToolApprovals: {},
+      pendingApprovalResponseId: null,
+      colors: {
+        warning: "#d97706",
+        foreground: "#0f172a",
+        mutedForeground: "#64748b",
+        background: "#ffffff",
+        success: "#16a34a",
+        successForeground: "#ecfdf5",
+        destructive: "#dc2626",
+      },
+      onToggleArguments: () => {},
+      onRespondToToolApproval: (approvalId, approved) => {
+        approvalResponses.push({ approvalId, approved })
+      },
+    })
+    expect(approvalState).toMatchObject({
+      isApproval: true,
+      toolApproval: {
+        approvalId: "approval-1",
+      },
+    })
+    approvalState.onDeny("approval-1")
+    approvalState.onApprove("approval-2")
+    expect(approvalResponses).toEqual([
+      { approvalId: "approval-1", approved: false },
+      { approvalId: "approval-2", approved: true },
+    ])
     const toolActivityGroup: ToolActivityGroup = {
       startIndex: 3,
       endIndex: 4,
