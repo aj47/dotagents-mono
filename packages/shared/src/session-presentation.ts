@@ -1179,6 +1179,17 @@ export interface ChatRuntimeViewportAffordanceMobileRenderState {
   }
 }
 
+export interface ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<TMessage> {
+  messages: readonly TMessage[]
+  visibleMessageCount: number
+}
+
+export interface ChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage> {
+  firstVisibleMessageIndex: number
+  visibleMessages: readonly TMessage[]
+  hiddenMessageCount: number
+}
+
 export interface ChatRuntimeConversationChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeViewportMobileColorPalette
@@ -5884,6 +5895,19 @@ export function getChatRuntimeStreamingContentMobileRenderState({
 
 export function getChatRuntimeMessageHistoryWindowMobileState() {
   return CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryWindow
+}
+
+export function getChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage>({
+  messages,
+  visibleMessageCount,
+}: ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<TMessage>): ChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage> {
+  const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount)
+
+  return {
+    firstVisibleMessageIndex,
+    visibleMessages: messages.slice(firstVisibleMessageIndex),
+    hiddenMessageCount: firstVisibleMessageIndex,
+  }
 }
 
 export function getChatRuntimeMessageHistoryBannerMobileState() {

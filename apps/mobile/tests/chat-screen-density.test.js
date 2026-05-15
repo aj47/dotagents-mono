@@ -2793,7 +2793,13 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);/);
   assert.doesNotMatch(screenSource, /const visibleMessages = messages\.slice\(firstVisibleMessageIndex\);/);
   assert.doesNotMatch(screenSource, /const hiddenMessageCount = firstVisibleMessageIndex;/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageConversationHistoryWindowState<TMessage>\(\{[\s\S]*?const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);[\s\S]*?visibleMessages: messages\.slice\(firstVisibleMessageIndex\),[\s\S]*?hiddenMessageCount: firstVisibleMessageIndex,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileDisplayState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage>/);
+  assert.match(chatMessageChromeSource, /export function createChatMessageConversationHistoryWindowState<TMessage>\(\{[\s\S]*?return getChatRuntimeMessageHistoryWindowMobileDisplayState\(\{[\s\S]*?messages,[\s\S]*?visibleMessageCount,/);
+  assert.doesNotMatch(chatMessageChromeSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\);/);
+  assert.match(sessionPresentationSource, /const firstVisibleMessageIndex = Math\.max\(0, messages\.length - visibleMessageCount\)/);
+  assert.match(sessionPresentationSource, /visibleMessages: messages\.slice\(firstVisibleMessageIndex\)/);
+  assert.match(sessionPresentationSource, /hiddenMessageCount: firstVisibleMessageIndex/);
   assert.doesNotMatch(screenSource, /const conversationViewportAffordanceRenderState = useMemo/);
   assert.match(screenSource, /viewport: \{[\s\S]*?messageHistoryLoadIncrement,\s+latestStepSummary,\s+onLoadEarlierMessages: loadEarlierMessages,/);
   assert.doesNotMatch(screenSource, /const messageHistoryBannerRenderState = useMemo/);

@@ -233,6 +233,7 @@ import {
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeLatestStepSummary,
+  getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -277,6 +278,8 @@ import {
   type ChatRuntimeInlineActivityMobileMessageLike,
   type ChatRuntimeLoadingStateMobileRenderState,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
+  type ChatRuntimeMessageHistoryWindowMobileDisplayState,
+  type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
   type ChatRuntimeViewportAffordanceMobileRenderState,
@@ -3841,16 +3844,11 @@ type ChatMessageConversationThreadListRenderStateInput =
     copiedMessageIndex: number | null;
   };
 
-type ChatMessageConversationHistoryWindowStateInput<TMessage> = {
-  messages: readonly TMessage[];
-  visibleMessageCount: number;
-};
+type ChatMessageConversationHistoryWindowStateInput<TMessage> =
+  ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<TMessage>;
 
-type ChatMessageConversationHistoryWindowState<TMessage> = {
-  firstVisibleMessageIndex: number;
-  visibleMessages: readonly TMessage[];
-  hiddenMessageCount: number;
-};
+type ChatMessageConversationHistoryWindowState<TMessage> =
+  ChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage>;
 
 type ChatMessageRuntimeHistoryWindowStateInput = {
   messageCount: number;
@@ -4460,13 +4458,10 @@ export function createChatMessageConversationHistoryWindowState<TMessage>({
   messages,
   visibleMessageCount,
 }: ChatMessageConversationHistoryWindowStateInput<TMessage>): ChatMessageConversationHistoryWindowState<TMessage> {
-  const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
-
-  return {
-    firstVisibleMessageIndex,
-    visibleMessages: messages.slice(firstVisibleMessageIndex),
-    hiddenMessageCount: firstVisibleMessageIndex,
-  };
+  return getChatRuntimeMessageHistoryWindowMobileDisplayState({
+    messages,
+    visibleMessageCount,
+  });
 }
 
 export function createChatMessageConversationViewportAffordanceRenderState({
