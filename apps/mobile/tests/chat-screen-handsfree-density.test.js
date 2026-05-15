@@ -16,6 +16,10 @@ const chatMessageChromeSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
   'utf8'
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
 
 test('renders the extracted handsfree status chip in the mobile chat composer', () => {
   assert.doesNotMatch(screenSource, /HandsFreeStatusChip/);
@@ -34,17 +38,18 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
   assert.doesNotMatch(screenSource, /getHandsFreeComposerCopyState,/);
   assert.match(chatMessageChromeSource, /getHandsFreeComposerCopyState,/);
   assert.match(screenSource, /createChatRuntimeMobileChromeStyleState,/);
-  assert.match(chatMessageChromeSource, /getHandsFreeComposerMobileSurfaceRenderState,/);
+  assert.match(sessionPresentationSource, /getHandsFreeComposerMobileSurfaceRenderState/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerMobileSurfaceColors,/);
   assert.doesNotMatch(screenSource, /const handsFreeCopy = getChatComposerHandsFreeCopyState\(\);/);
   assert.doesNotMatch(screenSource, /getChatComposerHandsFreeCopyState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatComposerHandsFreeCopyState/);
   assert.doesNotMatch(screenSource, /getChatComposerHandsFreeDebugMessage,/);
   assert.match(chatMessageChromeSource, /export function getChatComposerHandsFreeDebugMessage/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = getHandsFreeComposerMobileSurfaceState\(\);/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurfaceRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
-  assert.match(chatMessageChromeSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface;/);
+  assert.match(sessionPresentationSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface/);
   assert.match(screenSource, /const handsFreeStyleState = composerChromeStyleState\.handsFree;/);
   assert.match(screenSource, /const handsFreeSurface = handsFreeStyleState\.surface;/);
   assert.match(screenSource, /const handsFreeSurfaceColors = handsFreeStyleState\.colors;/);
@@ -131,7 +136,8 @@ test('falls back to normal direct-send handling for stale handsfree finalization
 
 test('surfaces recent voice debug events in chat when internal diagnostics are enabled', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeDebugPanelsMobileDisplayState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeDebugPanelsMobileRenderState/);
   assert.match(screenSource, /useChatComposerRuntimeVoiceDebugResetState,/);
   assert.match(screenSource, /useChatComposerRuntimeVoiceDebugResetState\(\{\s+isVoiceDebugEnabled: handsFreeDebugEnabled,\s+clearVoiceDebug,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeVoiceDebugResetState/);
@@ -139,12 +145,13 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
   assert.match(screenSource, /voiceDebugEnabled: handsFreeDebugEnabled/);
   assert.match(screenSource, /voiceEvents,/);
   assert.doesNotMatch(screenSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
-  assert.match(chatMessageChromeSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
+  assert.match(sessionPresentationSource, /handsFreeCopy\.debug\.voiceDebugTitle/);
   assert.doesNotMatch(screenSource, /formatVoiceDebugEntry\(entry\)/);
   assert.doesNotMatch(screenSource, /clearVoiceDebug\(\);/);
-  assert.match(chatMessageChromeSource, /formatVoiceDebugEntry\(entry\)/);
+  assert.match(sessionPresentationSource, /formatVoiceDebugEntry\(entry\)/);
   assert.doesNotMatch(screenSource, /debugPanelsRenderState: mobileRuntimeDebugPanelsRenderState,/);
-  assert.match(chatMessageChromeSource, /const debugPanelsRenderState = createChatMessageRuntimeDebugPanelsRenderState\(\{/);
+  assert.match(sessionPresentationSource, /debugPanels: getChatRuntimeDebugPanelsMobileDisplayState\(\{/);
+  assert.match(chatMessageChromeSource, /debugPanels: viewportChromeRenderState\.debugPanels/);
   assert.doesNotMatch(screenSource, />Voice debug<\/Text>/);
 });
 
@@ -175,8 +182,8 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeControlRenderState\(\{[\s\S]*?micPhase: composerControlMicPhase,[\s\S]*?listening: composerControlListening,[\s\S]*?colors: composerControlColors,[\s\S]*?\}\)/);
-  assert.match(chatMessageChromeSource, /const micLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: micPhase,[\s\S]*?listening,[\s\S]*?\}\);/);
-  assert.match(chatMessageChromeSource, /micButton: getChatComposerMicMobileRenderState\(\{[\s\S]*?label: micLabel,[\s\S]*?handsFree,[\s\S]*?listening,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,[\s\S]*?\}\),/);
+  assert.match(sessionPresentationSource, /const micLabel = getHandsFreeMicButtonLabel\(\{[\s\S]*?handsFree,[\s\S]*?phase: micPhase,[\s\S]*?listening,[\s\S]*?\}\)/);
+  assert.match(sessionPresentationSource, /micButton: getChatComposerMicMobileRenderState\(\{[\s\S]*?label: micLabel,[\s\S]*?handsFree,[\s\S]*?listening,[\s\S]*?willCancel: editBeforeSendEnabled,[\s\S]*?colors,[\s\S]*?\}\),/);
   assert.doesNotMatch(screenSource, /micButtonRenderState:/);
   assert.match(chatMessageChromeSource, /renderState: controlRenderState\.micButton/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
@@ -193,8 +200,8 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(screenSource, /alignItems:\s*handsFreeSurface\.controlButton\.alignItems/);
   assert.match(screenSource, /justifyContent:\s*handsFreeSurface\.controlButton\.justifyContent/);
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
-  assert.match(chatMessageChromeSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface;/);
-  assert.match(chatMessageChromeSource, /controlPressedOpacity: handsFreeSurface\.controlButton\.pressedOpacity/);
+  assert.match(sessionPresentationSource, /const handsFreeSurface = getHandsFreeComposerMobileSurfaceRenderState\(\{\s+colors,\s+\}\)\.surface/);
+  assert.match(sessionPresentationSource, /controlPressedOpacity: handsFreeSurface\.controlButton\.pressedOpacity/);
   assert.match(chatMessageChromeSource, /activeOpacity=\{controlPressedOpacity\}/);
   assert.match(screenSource, /color:\s*handsFreeSurfaceColors\.controlButtonText\.color/);
   assert.match(screenSource, /fontWeight:\s*handsFreeSurface\.controlButtonText\.fontWeight/);
@@ -216,8 +223,10 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(chatMessageChromeSource, /formatHandsFreeSleepingDebugMessage/);
   assert.match(chatMessageChromeSource, /formatHandsFreeRecognizerErrorDebugMessage/);
   assert.doesNotMatch(screenSource, /formatChatComposerHandsFreeSleepingDebugMessage/);
-  assert.match(chatMessageChromeSource, /formatChatComposerHandsFreeSleepingDebugMessage/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function formatChatComposerHandsFreeSleepingDebugMessage/);
+  assert.match(chatMessageChromeSource, /setDebugInfo\(formatHandsFreeSleepingDebugMessage\(wakePhrase\)\)/);
   assert.doesNotMatch(screenSource, /formatChatComposerHandsFreeRecognizerErrorDebugMessage/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function formatChatComposerHandsFreeRecognizerErrorDebugMessage/);
   assert.match(screenSource, /createChatComposerHandsFreeRecognizerErrorDebugState,/);
   assert.match(screenSource, /setDebugInfo\(createChatComposerHandsFreeRecognizerErrorDebugState\(message\)\.debugInfo\)/);
   assert.match(screenSource, /mergeVoiceTextIntoComposer\(finalText\)/);
@@ -236,7 +245,7 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.match(chatMessageChromeSource, /export function createChatComposerHandsFreePermissionDeniedDebugState\(\)/);
   assert.match(chatMessageChromeSource, /return createChatComposerHandsFreeDebugInfoState\('permissionDenied'\)/);
   assert.match(chatMessageChromeSource, /export function createChatComposerHandsFreeRecognizerErrorDebugState\(message: string\)/);
-  assert.match(chatMessageChromeSource, /debugInfo: formatChatComposerHandsFreeRecognizerErrorDebugMessage\(message\)/);
+  assert.match(chatMessageChromeSource, /debugInfo: formatHandsFreeRecognizerErrorDebugMessage\(message\)/);
   assert.doesNotMatch(screenSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);
   assert.match(chatMessageChromeSource, /getChatComposerHandsFreeDebugMessage\('enabled'\)/);
   assert.match(chatMessageChromeSource, /getChatComposerHandsFreeDebugMessage\('disabled'\)/);
@@ -254,7 +263,7 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.doesNotMatch(screenSource, /getHandsFreeComposerPlaceholder/);
   assert.match(chatMessageChromeSource, /getHandsFreeComposerPlaceholder/);
   assert.doesNotMatch(screenSource, /getHandsFreeMicButtonLabel/);
-  assert.match(chatMessageChromeSource, /getHandsFreeMicButtonLabel/);
+  assert.match(sessionPresentationSource, /getHandsFreeMicButtonLabel/);
   assert.doesNotMatch(screenSource, /getHandsFreePauseResumeLabel/);
   assert.doesNotMatch(screenSource, /handsFreeCopy\.controls\.wakeLabel/);
   assert.doesNotMatch(screenSource, /handsFreeCopy\.controls\.sleepLabel/);

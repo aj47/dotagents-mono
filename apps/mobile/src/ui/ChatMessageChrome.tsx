@@ -4356,10 +4356,6 @@ export function useChatComposerRuntimeImageLibraryPickerState(
   });
 }
 
-export function getChatComposerHandsFreeCopyState(): ReturnType<typeof getHandsFreeComposerCopyState> {
-  return getHandsFreeComposerCopyState();
-}
-
 export type ChatComposerHandsFreeDebugMessageKey = Exclude<
   keyof ReturnType<typeof getHandsFreeComposerCopyState>['debug'],
   'voiceDebugTitle'
@@ -4369,12 +4365,6 @@ export function getChatComposerHandsFreeDebugMessage(
   key: ChatComposerHandsFreeDebugMessageKey,
 ): string {
   return getHandsFreeComposerCopyState().debug[key];
-}
-
-export function formatChatComposerHandsFreeRecognizerErrorDebugMessage(
-  ...args: Parameters<typeof formatHandsFreeRecognizerErrorDebugMessage>
-): ReturnType<typeof formatHandsFreeRecognizerErrorDebugMessage> {
-  return formatHandsFreeRecognizerErrorDebugMessage(...args);
 }
 
 function createChatComposerHandsFreeDebugInfoState(
@@ -4395,14 +4385,8 @@ export function createChatComposerHandsFreePermissionDeniedDebugState() {
 
 export function createChatComposerHandsFreeRecognizerErrorDebugState(message: string) {
   return {
-    debugInfo: formatChatComposerHandsFreeRecognizerErrorDebugMessage(message),
+    debugInfo: formatHandsFreeRecognizerErrorDebugMessage(message),
   };
-}
-
-export function formatChatComposerHandsFreeSleepingDebugMessage(
-  ...args: Parameters<typeof formatHandsFreeSleepingDebugMessage>
-): ReturnType<typeof formatHandsFreeSleepingDebugMessage> {
-  return formatHandsFreeSleepingDebugMessage(...args);
 }
 
 export function getChatMessageRuntimeDebugState(): ReturnType<typeof getChatRuntimeDebugState> {
@@ -7322,7 +7306,7 @@ export function useChatComposerRuntimeHandsFreeControlActionsState({
 
   const sleepHandsFreeByUser = useCallback(() => {
     sleepByUser();
-    setDebugInfo(formatChatComposerHandsFreeSleepingDebugMessage(wakePhrase));
+    setDebugInfo(formatHandsFreeSleepingDebugMessage(wakePhrase));
   }, [setDebugInfo, sleepByUser, wakePhrase]);
 
   const resumeHandsFreeByUser = useCallback(() => {
