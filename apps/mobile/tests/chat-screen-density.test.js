@@ -4709,8 +4709,9 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /const \{ handleQuickStartPress \} = useChatConversationHomeQuickStartActionsState<PredefinedPromptSummary, Loop>\(\{\s+setComposerInput: setInput,\s+focusComposerInput,\s+openAddPrompt: openAddPromptModal,\s+runPromptTask: handleRunPromptTask,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomeQuickStartActionsState/);
   assert.doesNotMatch(screenSource, /const pressIntent = getChatConversationHomeQuickStartPressIntent\(item\);/);
-  assert.match(chatMessageChromeSource, /const pressIntent = getChatConversationHomeQuickStartPressIntent\(item\);/);
-  assert.match(chatMessageChromeSource, /export function getChatConversationHomeQuickStartPressIntent/);
+  assert.doesNotMatch(chatMessageChromeSource, /const pressIntent = getChatConversationHomeQuickStartPressIntent\(item\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function getChatConversationHomeQuickStartPressIntent/);
+  assert.match(chatMessageChromeSource, /const pressIntent = getPromptLibraryShortcutPressIntent\(item\);/);
   assert.doesNotMatch(screenSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
   assert.match(chatMessageChromeSource, /if \(pressIntent\.kind === 'add-prompt'\)/);
   assert.doesNotMatch(screenSource, /if \(pressIntent\.kind === 'run-task'\)/);

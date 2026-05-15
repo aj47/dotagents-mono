@@ -152,7 +152,6 @@ import {
   type PromptLibraryLauncherShortcutSource,
   type PromptLibrarySkillLike,
   type PromptLibraryMobileShortcutRenderState,
-  type PromptLibraryShortcutPressIntent,
   type PromptLibraryShortcutItem,
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
@@ -1646,15 +1645,6 @@ export function getChatConversationHomePromptTaskRunFailedAlertState(
   };
 }
 
-export function getChatConversationHomeQuickStartPressIntent<
-  TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string },
->(
-  item: ChatConversationHomeQuickStartItem<TPrompt, TTask>,
-): PromptLibraryShortcutPressIntent<TTask> {
-  return getPromptLibraryShortcutPressIntent(item);
-}
-
 export function useChatConversationHomeQuickStartActionsState<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
@@ -1665,7 +1655,7 @@ export function useChatConversationHomeQuickStartActionsState<
   runPromptTask,
 }: ChatConversationHomeQuickStartActionsStateInput<TTask>): ChatConversationHomeQuickStartActionsState<TPrompt, TTask> {
   const handleQuickStartPress = useCallback((item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => {
-    const pressIntent = getChatConversationHomeQuickStartPressIntent(item);
+    const pressIntent = getPromptLibraryShortcutPressIntent(item);
     if (pressIntent.kind === 'add-prompt') {
       openAddPrompt();
       return;
