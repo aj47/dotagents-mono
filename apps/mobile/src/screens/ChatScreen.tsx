@@ -36,13 +36,6 @@ import {
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderChromeOptions,
-  createChatMessageRuntimeNoSessionAvailableDebugState,
-  createChatMessageRuntimeStartingRequestDebugState,
-  createChatMessageRuntimeRequestSentDebugState,
-  createChatMessageRuntimeCompletedDebugState,
-  createChatMessageRuntimeProcessingQueuedMessageDebugState,
-  createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState,
-  createChatMessageRuntimeRequestSupersededQueueFailureState,
   createChatMessageRuntimeConnectionErrorTurnState,
   createChatMessageRuntimeQueuedErrorState,
   createChatRuntimeMobileConfigState,
@@ -110,6 +103,15 @@ import type {
   Loop,
   PredefinedPromptSummary,
 } from '@dotagents/shared/api-types';
+import {
+  createChatRuntimeCompletedDebugState,
+  createChatRuntimeNoSessionAvailableDebugState,
+  createChatRuntimeProcessingQueuedMessageDebugState,
+  createChatRuntimeRequestSentDebugState,
+  createChatRuntimeRequestSupersededQueueFailureState,
+  createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
+  createChatRuntimeStartingRequestDebugState,
+} from '@dotagents/shared/session-presentation';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
@@ -713,11 +715,11 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo(createChatMessageRuntimeNoSessionAvailableDebugState().debugInfo);
+      setDebugInfo(createChatRuntimeNoSessionAvailableDebugState().debugInfo);
       return;
     }
 
-    setDebugInfo(createChatMessageRuntimeStartingRequestDebugState(config.baseUrl).debugInfo);
+    setDebugInfo(createChatRuntimeStartingRequestDebugState(config.baseUrl).debugInfo);
     // Clear any previous failed message when starting a new send
     clearLastFailedMessage();
 
@@ -791,7 +793,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
-      setDebugInfo(createChatMessageRuntimeRequestSentDebugState().debugInfo);
+      setDebugInfo(createChatRuntimeRequestSentDebugState().debugInfo);
 
       const onProgress = (update: AgentProgressUpdate) => {
         // Guard: skip update if session has changed since request started
@@ -915,7 +917,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
-        setDebugInfo(createChatMessageRuntimeCompletedDebugState().debugInfo);
+        setDebugInfo(createChatRuntimeCompletedDebugState().debugInfo);
       }
 
       // Guard: skip final updates if this request is no longer the latest one for this session
@@ -1179,7 +1181,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for processing queued message');
-      const noSessionState = createChatMessageRuntimeNoSessionAvailableDebugState();
+      const noSessionState = createChatRuntimeNoSessionAvailableDebugState();
       messageQueue.markFailed(
         currentConversationId,
         queuedMsg.id,
@@ -1189,7 +1191,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    setDebugInfo(createChatMessageRuntimeProcessingQueuedMessageDebugState().debugInfo);
+    setDebugInfo(createChatRuntimeProcessingQueuedMessageDebugState().debugInfo);
 
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
     const pendingTurnState = createChatMessageRuntimePendingTurnState<ChatMessage>(
@@ -1320,7 +1322,7 @@ export default function ChatScreen({ route, navigation }: any) {
         requestSessionId,
       })) {
         // Session changed - mark as failed so user can retry in correct session
-        const sessionChangedQueueFailureState = createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState();
+        const sessionChangedQueueFailureState = createChatRuntimeSessionChangedDuringProcessingQueueFailureState();
         messageQueue.markFailed(
           currentConversationId,
           queuedMsg.id,
@@ -1333,7 +1335,7 @@ export default function ChatScreen({ route, navigation }: any) {
         activeRequestId: activeRequestIdRef.current,
       })) {
         // Request superseded - mark as failed so user can retry
-        const requestSupersededQueueFailureState = createChatMessageRuntimeRequestSupersededQueueFailureState();
+        const requestSupersededQueueFailureState = createChatRuntimeRequestSupersededQueueFailureState();
         messageQueue.markFailed(
           currentConversationId,
           queuedMsg.id,

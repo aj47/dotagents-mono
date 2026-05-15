@@ -8,6 +8,13 @@ import {
   CHAT_SESSION_STATUS_SURFACE_PRESENTATION,
   CHAT_RUNTIME_PRESENTATION,
   TOOL_APPROVAL_SURFACE_PRESENTATION,
+  createChatRuntimeCompletedDebugState,
+  createChatRuntimeNoSessionAvailableDebugState,
+  createChatRuntimeProcessingQueuedMessageDebugState,
+  createChatRuntimeRequestSentDebugState,
+  createChatRuntimeRequestSupersededQueueFailureState,
+  createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
+  createChatRuntimeStartingRequestDebugState,
   deriveAttentionState,
   deriveLifecycleState,
   formatChatRuntimeActivityContent,
@@ -132,6 +139,7 @@ import {
   getChatComposerVoiceOverlayLabel,
   getChatRuntimeDebugPanelsMobileDisplayState,
   getChatRuntimeDebugPanelsMobileRenderState,
+  getChatRuntimeDebugMessage,
   getChatRuntimeDelegationStatusMobileColors,
   getChatRuntimeDelegationStatusMobileRenderState,
   getChatRuntimeHandsFreeAccessibilityHint,
@@ -579,6 +587,29 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_PRESENTATION.debug.requestSuperseded).toBe("Request superseded")
     expect(CHAT_RUNTIME_PRESENTATION.debug.unknownError).toBe("Unknown error")
     expect(getChatRuntimeDebugState()).toBe(CHAT_RUNTIME_PRESENTATION.debug)
+    expect(getChatRuntimeDebugMessage("noSessionAvailable")).toBe(CHAT_RUNTIME_PRESENTATION.debug.noSessionAvailable)
+    expect(createChatRuntimeNoSessionAvailableDebugState()).toEqual({
+      message: CHAT_RUNTIME_PRESENTATION.debug.noSessionAvailable,
+      debugInfo: "Error: No session available",
+    })
+    expect(createChatRuntimeStartingRequestDebugState("http://localhost:3000")).toEqual({
+      debugInfo: "Starting request to http://localhost:3000...",
+    })
+    expect(createChatRuntimeRequestSentDebugState()).toEqual({
+      debugInfo: CHAT_RUNTIME_PRESENTATION.debug.requestSent,
+    })
+    expect(createChatRuntimeCompletedDebugState()).toEqual({
+      debugInfo: CHAT_RUNTIME_PRESENTATION.debug.completed,
+    })
+    expect(createChatRuntimeProcessingQueuedMessageDebugState()).toEqual({
+      debugInfo: CHAT_RUNTIME_PRESENTATION.debug.processingQueuedMessage,
+    })
+    expect(createChatRuntimeSessionChangedDuringProcessingQueueFailureState()).toEqual({
+      message: CHAT_RUNTIME_PRESENTATION.debug.sessionChangedDuringProcessing,
+    })
+    expect(createChatRuntimeRequestSupersededQueueFailureState()).toEqual({
+      message: CHAT_RUNTIME_PRESENTATION.debug.requestSuperseded,
+    })
     expect(formatChatRuntimeDebugError(CHAT_RUNTIME_PRESENTATION.debug.noSessionAvailable)).toBe("Error: No session available")
     expect(formatChatRuntimeStartingRequestDebugMessage("http://localhost:3000")).toBe(
       "Starting request to http://localhost:3000...",

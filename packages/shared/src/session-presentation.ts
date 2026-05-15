@@ -4580,6 +4580,19 @@ export interface ChatRuntimeRecoveryStatePresentationInput {
   lastError?: string | null
 }
 
+export type ChatRuntimeDebugMessageKey = keyof typeof CHAT_RUNTIME_PRESENTATION.debug
+
+export interface ChatRuntimeDebugInfoState {
+  debugInfo: string
+}
+
+export interface ChatRuntimeQueueFailureState {
+  message: string
+}
+
+export type ChatRuntimeNoSessionAvailableDebugState =
+  ChatRuntimeDebugInfoState & ChatRuntimeQueueFailureState
+
 export function getChatRuntimeAlertMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim()
   if (typeof error === "string" && error.trim()) return error.trim()
@@ -4596,6 +4609,60 @@ export function formatChatRuntimeStartingRequestDebugMessage(baseUrl: string): s
 
 export function getChatRuntimeDebugState(): typeof CHAT_RUNTIME_PRESENTATION.debug {
   return CHAT_RUNTIME_PRESENTATION.debug
+}
+
+export function getChatRuntimeDebugMessage(key: ChatRuntimeDebugMessageKey): string {
+  return CHAT_RUNTIME_PRESENTATION.debug[key]
+}
+
+export function createChatRuntimeNoSessionAvailableDebugState(): ChatRuntimeNoSessionAvailableDebugState {
+  const message = getChatRuntimeDebugMessage("noSessionAvailable")
+  return {
+    message,
+    debugInfo: formatChatRuntimeDebugError(message),
+  }
+}
+
+function createChatRuntimeDebugInfoState(
+  key: ChatRuntimeDebugMessageKey,
+): ChatRuntimeDebugInfoState {
+  return {
+    debugInfo: getChatRuntimeDebugMessage(key),
+  }
+}
+
+function createChatRuntimeQueueFailureState(
+  key: ChatRuntimeDebugMessageKey,
+): ChatRuntimeQueueFailureState {
+  return {
+    message: getChatRuntimeDebugMessage(key),
+  }
+}
+
+export function createChatRuntimeStartingRequestDebugState(baseUrl: string): ChatRuntimeDebugInfoState {
+  return {
+    debugInfo: formatChatRuntimeStartingRequestDebugMessage(baseUrl),
+  }
+}
+
+export function createChatRuntimeRequestSentDebugState(): ChatRuntimeDebugInfoState {
+  return createChatRuntimeDebugInfoState("requestSent")
+}
+
+export function createChatRuntimeCompletedDebugState(): ChatRuntimeDebugInfoState {
+  return createChatRuntimeDebugInfoState("completed")
+}
+
+export function createChatRuntimeProcessingQueuedMessageDebugState(): ChatRuntimeDebugInfoState {
+  return createChatRuntimeDebugInfoState("processingQueuedMessage")
+}
+
+export function createChatRuntimeSessionChangedDuringProcessingQueueFailureState(): ChatRuntimeQueueFailureState {
+  return createChatRuntimeQueueFailureState("sessionChangedDuringProcessing")
+}
+
+export function createChatRuntimeRequestSupersededQueueFailureState(): ChatRuntimeQueueFailureState {
+  return createChatRuntimeQueueFailureState("requestSuperseded")
 }
 
 export function formatChatRuntimeWebConfirmMessage(title: string, message: string): string {

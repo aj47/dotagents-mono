@@ -179,7 +179,6 @@ import {
   formatChatRuntimeDelegationAccessibilityLabel,
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
-  formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
   getChatRuntimeAlertMessage,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
@@ -211,7 +210,7 @@ import {
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
-  getChatRuntimeDebugState,
+  getChatRuntimeDebugMessage,
   getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState,
   getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState,
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
@@ -4167,64 +4166,6 @@ export function createChatComposerHandsFreeRecognizerErrorDebugState(message: st
   };
 }
 
-export type ChatMessageRuntimeDebugMessageKey = keyof ReturnType<typeof getChatRuntimeDebugState>;
-
-export function getChatMessageRuntimeDebugMessage(
-  key: ChatMessageRuntimeDebugMessageKey,
-): string {
-  return getChatRuntimeDebugState()[key];
-}
-
-export function createChatMessageRuntimeNoSessionAvailableDebugState() {
-  const message = getChatMessageRuntimeDebugMessage('noSessionAvailable');
-  return {
-    message,
-    debugInfo: formatChatRuntimeDebugError(message),
-  };
-}
-
-function createChatMessageRuntimeDebugInfoState(
-  key: ChatMessageRuntimeDebugMessageKey,
-) {
-  return {
-    debugInfo: getChatMessageRuntimeDebugMessage(key),
-  };
-}
-
-function createChatMessageRuntimeQueueFailureState(
-  key: ChatMessageRuntimeDebugMessageKey,
-) {
-  return {
-    message: getChatMessageRuntimeDebugMessage(key),
-  };
-}
-
-export function createChatMessageRuntimeStartingRequestDebugState(baseUrl: string) {
-  return {
-    debugInfo: formatChatRuntimeStartingRequestDebugMessage(baseUrl),
-  };
-}
-
-export function createChatMessageRuntimeRequestSentDebugState() {
-  return createChatMessageRuntimeDebugInfoState('requestSent');
-}
-
-export function createChatMessageRuntimeCompletedDebugState() {
-  return createChatMessageRuntimeDebugInfoState('completed');
-}
-
-export function createChatMessageRuntimeProcessingQueuedMessageDebugState() {
-  return createChatMessageRuntimeDebugInfoState('processingQueuedMessage');
-}
-
-export function createChatMessageRuntimeSessionChangedDuringProcessingQueueFailureState() {
-  return createChatMessageRuntimeQueueFailureState('sessionChangedDuringProcessing');
-}
-
-export function createChatMessageRuntimeRequestSupersededQueueFailureState() {
-  return createChatMessageRuntimeQueueFailureState('requestSuperseded');
-}
-
 export type ChatMessageRuntimeAssistantTextMessage = {
   role: 'assistant';
   content: string;
@@ -4495,7 +4436,7 @@ export function createChatMessageRuntimeQueuedErrorState<
 ) {
   const message = getChatRuntimeAlertMessage(
     error,
-    getChatMessageRuntimeDebugMessage('unknownError'),
+    getChatRuntimeDebugMessage('unknownError'),
   );
   return {
     message,
