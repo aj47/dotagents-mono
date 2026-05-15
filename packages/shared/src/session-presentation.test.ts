@@ -167,6 +167,7 @@ import {
   getChatRuntimeStreamingContentMobileState,
   getChatRuntimeStreamingContentMobileIconState,
   getChatRuntimeStreamingContentTitle,
+  getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalActionMobileIconColors,
   getChatRuntimeToolApprovalActionMobileIconState,
   getChatRuntimeToolApprovalAccessibilityLabel,
@@ -1766,6 +1767,13 @@ describe("session presentation semantics", () => {
     expect(viewportChrome.affordance.stepSummary.renderState.shouldRender).toBe(true)
     expect(viewportChrome.debugPanels.requestShouldRender).toBe(true)
     expect(viewportChrome.debugPanels.voiceShouldRender).toBe(true)
+    const surfaceChrome = getChatRuntimeSurfaceChromeMobileRenderState({
+      colors: viewportChromeColors,
+      platform: "ios",
+    })
+    expect(surfaceChrome.frame.keyboardAvoidingBehavior).toBe("padding")
+    expect(surfaceChrome.promptEditor.renderState.keyboardAvoidingBehavior).toBe("padding")
+    expect(surfaceChrome.promptEditor.renderState.copy.nameLabel).toBe("Name")
     expect(getChatRuntimeDebugPanelsMobileRenderState({
       requestDebugText: "Request sent",
       voiceDebugEnabled: true,

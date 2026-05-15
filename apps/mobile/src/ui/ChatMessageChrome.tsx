@@ -151,7 +151,6 @@ import {
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
   getPromptLibraryEditorDismissActionState,
-  getPromptLibraryEditorMobileRenderState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
@@ -226,13 +225,13 @@ import {
   getChatRuntimeRetryStatusMobileRenderState,
   getChatRuntimeScrollToBottomMobileRenderState,
   getChatRuntimeStreamingContentMobileRenderState,
+  getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalMobileRenderState,
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeTurnDurationMessageMobileRenderState,
   getChatRuntimeViewportAffordanceMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeViewportContentMobileRenderState,
-  getChatRuntimeViewportMobileKeyboardAvoidingBehavior,
   getChatRuntimeBranchMobileAlertState,
   getChatRuntimeDebugState,
   getChatRuntimeKillSwitchMobileAlertState,
@@ -254,6 +253,7 @@ import {
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderStateInput,
+  type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryLike,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
@@ -2982,8 +2982,8 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
 > = {
-  platform: Parameters<typeof getChatRuntimeViewportMobileKeyboardAvoidingBehavior>[0];
-  colors: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0]['colors'];
+  platform: ChatRuntimeSurfaceChromeMobileRenderStateInput['platform'];
+  colors: ChatRuntimeSurfaceChromeMobileRenderStateInput['colors'];
   keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
   dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
   viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
@@ -6748,12 +6748,14 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   onPromptEditorSave,
   promptEditorStyles,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
-  const promptEditorRenderState = getPromptLibraryEditorMobileRenderState({ colors, platform });
-  const keyboardAvoidingBehavior = getChatRuntimeViewportMobileKeyboardAvoidingBehavior(platform);
+  const surfaceChromeRenderState = getChatRuntimeSurfaceChromeMobileRenderState({
+    colors,
+    platform,
+  });
 
   return {
     frame: {
-      keyboardAvoidingBehavior,
+      keyboardAvoidingBehavior: surfaceChromeRenderState.frame.keyboardAvoidingBehavior,
       keyboardVerticalOffset,
     },
     dock,
@@ -6764,7 +6766,7 @@ export function createChatMessageRuntimeSurfaceChromeProps<
       },
       promptEditor: {
         visible: promptEditorVisible,
-        renderState: promptEditorRenderState,
+        renderState: surfaceChromeRenderState.promptEditor.renderState,
         isEditing: promptEditorIsEditing,
         nameValue: promptEditorNameValue,
         onNameChange: onPromptEditorNameChange,

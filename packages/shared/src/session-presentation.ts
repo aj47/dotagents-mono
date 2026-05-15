@@ -19,6 +19,7 @@ import {
 import {
   buildPromptLibraryShortcutItems,
   getPromptLibraryEditorInputPaddingVertical,
+  getPromptLibraryEditorMobileRenderState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
@@ -158,6 +159,20 @@ export interface ChatRuntimeViewportMobileRenderState {
   loadingState: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState
   inlineActivity: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity
   colors: ChatRuntimeViewportMobileColors
+}
+
+export interface ChatRuntimeSurfaceChromeMobileRenderStateInput {
+  platform?: string | null
+  colors: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0]["colors"]
+}
+
+export interface ChatRuntimeSurfaceChromeMobileRenderState {
+  frame: {
+    keyboardAvoidingBehavior: ReturnType<typeof getChatRuntimeViewportMobileKeyboardAvoidingBehavior>
+  }
+  promptEditor: {
+    renderState: ReturnType<typeof getPromptLibraryEditorMobileRenderState>
+  }
 }
 
 export interface ChatRuntimeLoadingStateMobileRenderStateInput {
@@ -6328,6 +6343,23 @@ export function getChatRuntimeViewportMobileRenderState({
     loadingState: getChatRuntimeLoadingStateMobileState(),
     inlineActivity: getChatRuntimeInlineActivityMobileState(),
     colors: getChatRuntimeViewportMobileColors(colors),
+  }
+}
+
+export function getChatRuntimeSurfaceChromeMobileRenderState({
+  colors,
+  platform,
+}: ChatRuntimeSurfaceChromeMobileRenderStateInput): ChatRuntimeSurfaceChromeMobileRenderState {
+  return {
+    frame: {
+      keyboardAvoidingBehavior: getChatRuntimeViewportMobileKeyboardAvoidingBehavior(platform),
+    },
+    promptEditor: {
+      renderState: getPromptLibraryEditorMobileRenderState({
+        colors,
+        platform,
+      }),
+    },
   }
 }
 
