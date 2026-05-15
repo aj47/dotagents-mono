@@ -337,10 +337,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /current\.filter\(\(message\) => message\.toolApproval\?\.approvalId !== approvalId\)/);
   assert.doesNotMatch(screenSource, /getChatRuntimeToolApprovalMobileAlertState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileAlertState,/);
-  assert.match(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeThreadChromeMobileStyleRenderState,/);
-  assert.match(chatMessageChromeSource, /return getChatRuntimeThreadChromeMobileStyleRenderState\(\{\s+colors,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeThreadChromeMobileStyleRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeThreadChromeMobileStyleRenderState\(\{/);
+  assert.match(chatRuntimeMobileStylesSource, /const threadChromeStyleState = chatChromeStyleState\.thread;/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalCardMobileRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeToolApprovalMobileRenderState/);

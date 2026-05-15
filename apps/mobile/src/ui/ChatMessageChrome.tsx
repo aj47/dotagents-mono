@@ -209,7 +209,6 @@ import {
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalCardMobileRenderState,
-  getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeViewportAffordanceMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeViewportContentMobileRenderState,
@@ -284,8 +283,6 @@ import {
   type ChatRuntimeConversationToolActivityGroupThreadState,
   type ChatRuntimeConversationToolActivityGroupThreadStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
-  type ChatRuntimeThreadChromeMobileStyleColorPalette,
-  type ChatRuntimeThreadChromeMobileStyleRenderState,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowInput,
   type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
   type ChatRuntimeToolExecutionDetailMobileRowInput,
@@ -2470,13 +2467,6 @@ type ChatMessageRuntimeDebugPanelsRenderStateInput = {
   voiceDebugEnabled?: boolean;
   voiceEvents?: readonly VoiceDebugEntry[] | null;
 };
-
-type ChatMessageRuntimeThreadChromeStyleStateInput = {
-  colors: ChatRuntimeThreadChromeMobileStyleColorPalette;
-};
-
-export type ChatMessageRuntimeThreadChromeStyleState =
-  ChatRuntimeThreadChromeMobileStyleRenderState;
 
 type ChatMessageConversationViewportStyleSlots = {
   frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' | 'rootStyle'>;
@@ -6387,14 +6377,6 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
     totalMessageCount: messages.length,
     hiddenMessageCount,
   };
-}
-
-export function createChatMessageRuntimeThreadChromeStyleState({
-  colors,
-}: ChatMessageRuntimeThreadChromeStyleStateInput): ChatMessageRuntimeThreadChromeStyleState {
-  return getChatRuntimeThreadChromeMobileStyleRenderState({
-    colors,
-  });
 }
 
 export function createChatMessageConversationThreadBodyInput({
