@@ -194,17 +194,11 @@ import {
   getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
-  getChatRuntimeConversationActionSetMobileState,
-  getChatRuntimeConversationContentMobileState,
-  getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationRuntimeThreadState,
-  getChatRuntimeConversationRetryStatusMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
-  getChatRuntimeConversationToolExecutionStackMobileState,
-  getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
@@ -274,12 +268,7 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatComposerRuntimeChromeMobileStyleRenderState,
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
-  type ChatRuntimeConversationActionSetMobileState,
-  type ChatRuntimeConversationActionSetMobileStateInput,
-  type ChatRuntimeConversationContentMobileState,
   type ChatRuntimeConversationContentMobileStateInput,
-  type ChatRuntimeConversationDelegationCardMobileState,
-  type ChatRuntimeConversationDelegationCardMobileStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationMessageRenderContextMobileState,
@@ -289,17 +278,11 @@ import {
   type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
-  type ChatRuntimeConversationRetryStatusMobileState,
-  type ChatRuntimeConversationRetryStatusMobileStateInput,
   type ChatRuntimeConversationRuntimeThreadState,
   type ChatRuntimeConversationRuntimeThreadStateInput,
   type ChatRuntimeConversationThreadBodyMobileState,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
-  type ChatRuntimeConversationToolApprovalMobileState,
-  type ChatRuntimeConversationToolApprovalMobileStateInput,
-  type ChatRuntimeConversationToolExecutionStackMobileState,
-  type ChatRuntimeConversationToolExecutionStackMobileStateInput,
   type ChatRuntimeConversationToolActivityGroupRenderStateInput,
   type ChatRuntimeConversationToolActivityGroupThreadRenderState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
@@ -1389,24 +1372,6 @@ type ChatMessageActionStyleSlots = {
   expansion: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle'>;
 };
 
-type ChatMessageConversationActionSetInput =
-  ChatRuntimeConversationActionSetMobileStateInput<
-    ChatMessageActionStyleSlots['turnDuration'],
-    ChatMessageActionStyleSlots['speech'],
-    ChatMessageActionStyleSlots['branch'],
-    ChatMessageActionStyleSlots['copy'],
-    ChatMessageActionStyleSlots['expansion']
-  >;
-
-type ChatMessageConversationActionSetState =
-  ChatRuntimeConversationActionSetMobileState<
-    ChatMessageActionStyleSlots['turnDuration'],
-    ChatMessageActionStyleSlots['speech'],
-    ChatMessageActionStyleSlots['branch'],
-    ChatMessageActionStyleSlots['copy'],
-    ChatMessageActionStyleSlots['expansion']
-  >;
-
 type ChatRuntimeHeaderAgentSelectorStyles = {
   button: StyleProp<ViewStyle>;
   chip: StyleProp<ViewStyle>;
@@ -1937,12 +1902,6 @@ type ChatMessageRetryStatusPropsInput = {
   colors: Parameters<typeof getChatRuntimeRetryStatusMobileRenderState>[0]['colors'];
 };
 
-type ChatMessageConversationRetryStatusInput =
-  ChatRuntimeConversationRetryStatusMobileStateInput<AgentRetryInfo | null | undefined>;
-
-type ChatMessageConversationRetryStatusState =
-  ChatRuntimeConversationRetryStatusMobileState<AgentRetryInfo | null | undefined>;
-
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -2002,12 +1961,6 @@ type ChatMessageToolApprovalPropsInput = Omit<
   onDeny: (approvalId: string) => void;
   onApprove: (approvalId: string) => void;
 };
-
-type ChatMessageConversationToolApprovalInput =
-  ChatRuntimeConversationToolApprovalMobileStateInput;
-
-type ChatMessageConversationToolApprovalState =
-  ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
   card: StyleProp<ViewStyle>;
@@ -2102,12 +2055,6 @@ type ChatMessageDelegationCardPropsInput = Omit<
   onShowAllConversationPreview?: (runId: string) => void;
   onShowAllToolPreview?: (runId: string) => void;
 };
-
-type ChatMessageConversationDelegationCardInput =
-  ChatRuntimeConversationDelegationCardMobileStateInput<ACPDelegationProgress | null | undefined>;
-
-type ChatMessageConversationDelegationCardState =
-  ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;
 
 type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
 
@@ -2276,18 +2223,6 @@ type ChatMessageToolExecutionStackPropsInput = {
     onToggle?: ChatMessageToolExecutionStackProps['expanded']['onCollapsePress'];
   };
 };
-
-type ChatMessageConversationToolExecutionStackInput =
-  ChatRuntimeConversationToolExecutionStackMobileStateInput<
-    ToolExecutionDetailMobilePendingResultRenderState,
-    ToolExecutionDetailMobileEmptyStateRenderState
-  >;
-
-type ChatMessageConversationToolExecutionStackState =
-  ChatRuntimeConversationToolExecutionStackMobileState<
-    ToolExecutionDetailMobilePendingResultRenderState,
-    ToolExecutionDetailMobileEmptyStateRenderState
-  >;
 
 type ChatMessageToolExecutionCopyButtonStyles = {
   button: StyleProp<ViewStyle>;
@@ -2960,7 +2895,7 @@ type ChatMessageRuntimeChromePropsInput<
     & ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>['platform'];
   spinnerSource: ImageSourcePropType;
   styles: {
-    actionStyles: ChatMessageConversationActionSetInput['styles'];
+    actionStyles: ChatMessageActionStyleSlots;
     threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
     promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
   };
@@ -3466,13 +3401,6 @@ type ChatMessageExpandedContentPropsInput = Pick<
 };
 
 type ChatMessageConversationContentInput = ChatRuntimeConversationContentMobileStateInput<
-  ChatMessageExpandedContentPropsInput['colors'],
-  ChatMessageExpandedContentPropsInput['spinnerSource'],
-  NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
-  NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>
->;
-
-type ChatMessageConversationContentMobileState = ChatRuntimeConversationContentMobileState<
   ChatMessageExpandedContentPropsInput['colors'],
   ChatMessageExpandedContentPropsInput['spinnerSource'],
   NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
@@ -6710,120 +6638,6 @@ export function createChatMessageRuntimeThreadChromeStyleState({
   });
 }
 
-export function createChatMessageConversationActionSetInput({
-  message,
-  messageIndex,
-  visibleMessageContent,
-  turnDuration,
-  conversationId,
-  pendingBranchMessageIndex,
-  isResponding,
-  isSpeaking,
-  isCopied,
-  ttsEnabled,
-  colors,
-  styles,
-  onSpeakMessage,
-  onBranchMessage,
-  onCopyMessage,
-  onToggleMessageExpansion,
-}: ChatMessageConversationActionSetInput): ChatMessageConversationActionSetState {
-  return getChatRuntimeConversationActionSetMobileState({
-    message,
-    messageIndex,
-    visibleMessageContent,
-    turnDuration,
-    conversationId,
-    pendingBranchMessageIndex,
-    isResponding,
-    isSpeaking,
-    isCopied,
-    ttsEnabled,
-    colors,
-    styles,
-    onSpeakMessage,
-    onBranchMessage,
-    onCopyMessage,
-    onToggleMessageExpansion,
-  });
-}
-
-export function createChatMessageConversationContentInput({
-  messageIndex,
-  visibleMessageContent,
-  isStreaming,
-  colors,
-  assetBaseUrl,
-  assetAuthToken,
-  spinnerSource,
-  onToggleMessageExpansion,
-}: ChatMessageConversationContentInput): ChatMessageConversationContentMobileState {
-  return getChatRuntimeConversationContentMobileState({
-    messageIndex,
-    visibleMessageContent,
-    isStreaming,
-    colors,
-    assetBaseUrl,
-    assetAuthToken,
-    spinnerSource,
-    onToggleMessageExpansion,
-  });
-}
-
-export function createChatMessageConversationToolApprovalInput({
-  message,
-  expandedToolApprovals,
-  pendingApprovalResponseId,
-  colors,
-  onToggleArguments,
-  onRespondToToolApproval,
-}: ChatMessageConversationToolApprovalInput): ChatMessageConversationToolApprovalState {
-  return getChatRuntimeConversationToolApprovalMobileState({
-    message,
-    expandedToolApprovals,
-    pendingApprovalResponseId,
-    colors,
-    onToggleArguments,
-    onRespondToToolApproval,
-  });
-}
-
-export function createChatMessageConversationDelegationCardInput({
-  message,
-  surface,
-  toolEntries,
-  displayToolCallCount,
-  expandedDelegationConversationPreviews,
-  expandedDelegationToolPreviews,
-  roleStyles,
-  colors,
-  setExpandedDelegationConversationPreviews,
-  setExpandedDelegationToolPreviews,
-}: ChatMessageConversationDelegationCardInput): ChatMessageConversationDelegationCardState {
-  return getChatRuntimeConversationDelegationCardMobileState({
-    message,
-    surface,
-    toolEntries,
-    displayToolCallCount,
-    expandedDelegationConversationPreviews,
-    expandedDelegationToolPreviews,
-    roleStyles,
-    colors,
-    setExpandedDelegationConversationPreviews,
-    setExpandedDelegationToolPreviews,
-  });
-}
-
-export function createChatMessageConversationRetryStatusInput({
-  message,
-  colors,
-}: ChatMessageConversationRetryStatusInput): ChatMessageConversationRetryStatusState {
-  return getChatRuntimeConversationRetryStatusMobileState({
-    message,
-    colors,
-  });
-}
-
 export function createChatMessageConversationThreadBodyInput({
   message,
   isResponding,
@@ -9864,38 +9678,6 @@ export function createChatMessageToolExecutionRows({
       });
     }),
   };
-}
-
-export function createChatMessageConversationToolExecutionStackInput({
-  message,
-  messageIndex,
-  displayToolCallCount,
-  renderedToolEntries,
-  isExpanded,
-  expandedToolCalls,
-  previewNumberOfLines,
-  pendingResultRenderState,
-  emptyStateRenderState,
-  colors,
-  onToggleToolCall,
-  onCopyPayload,
-  onToggleMessageExpansion,
-}: ChatMessageConversationToolExecutionStackInput): ChatMessageConversationToolExecutionStackState {
-  return getChatRuntimeConversationToolExecutionStackMobileState({
-    message,
-    messageIndex,
-    displayToolCallCount,
-    renderedToolEntries,
-    isExpanded,
-    expandedToolCalls,
-    previewNumberOfLines,
-    pendingResultRenderState,
-    emptyStateRenderState,
-    colors,
-    onToggleToolCall,
-    onCopyPayload,
-    onToggleMessageExpansion,
-  });
 }
 
 export function createChatMessageToolExecutionStackProps({
