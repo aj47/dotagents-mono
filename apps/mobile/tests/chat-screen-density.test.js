@@ -4868,7 +4868,8 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
 });
 
 test('lets mobile edit and delete desktop saved prompts from quick-start cards', () => {
-  assert.match(screenSource, /type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;/);
+  assert.doesNotMatch(screenSource, /type QuickStartShortcut = ChatConversationHomeQuickStartItem/);
+  assert.doesNotMatch(screenSource, /ChatConversationHomeQuickStartItem,/);
   assert.match(screenSource, /useChatConversationHomePromptEditorState,/);
   assert.match(screenSource, /const \{\s+promptEditorVisible: addPromptModalVisible,\s+promptEditorEditingPrompt: editingPrompt,\s+promptEditorIsEditing,\s+promptEditorNameValue: newPromptName,\s+setPromptEditorNameValue: setNewPromptName,\s+promptEditorContentValue: newPromptContent,\s+setPromptEditorContentValue: setNewPromptContent,\s+promptEditorIsSaving: isSavingPrompt,\s+openAddPromptEditor: openAddPromptModal,\s+openEditPromptEditor: openEditPromptModal,\s+closePromptEditor: closePromptModal,\s+dismissPromptEditor,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\} = useChatConversationHomePromptEditorState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptEditorState/);

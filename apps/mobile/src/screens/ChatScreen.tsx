@@ -96,7 +96,6 @@ import {
   useChatMessageRuntimeClipboardChromeActionsState,
 } from '../ui/ChatMessageChrome';
 import type {
-  ChatConversationHomeQuickStartItem,
   ChatMessageRuntimeChromePropsInput,
 } from '../ui/ChatMessageChrome';
 import { useConnectionManager } from '../store/connectionManager';
@@ -119,8 +118,6 @@ import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatMessageRuntimeDefaultRemoteSpeechSettingsState();
-
-type QuickStartShortcut = ChatConversationHomeQuickStartItem<PredefinedPromptSummary, Loop>;
 
 export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
