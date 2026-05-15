@@ -1124,6 +1124,14 @@ export interface ChatRuntimeDelegationToolPreviewRowsMobileRenderStateInput {
   colors: ChatRuntimeToolExecutionCompactPreviewMobileRowInput["colors"]
 }
 
+export interface ChatRuntimeDelegationToolPreviewMobileVisibilityRenderStateInput {
+  displayToolCallCount?: number | null
+}
+
+export interface ChatRuntimeDelegationToolPreviewMobileVisibilityRenderState {
+  shouldRender: boolean
+}
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowState {
   key: string
   preview: string
@@ -7138,6 +7146,18 @@ export function getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
       colors,
     }),
   )
+}
+
+export function getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState({
+  displayToolCallCount,
+}: ChatRuntimeDelegationToolPreviewMobileVisibilityRenderStateInput): ChatRuntimeDelegationToolPreviewMobileVisibilityRenderState {
+  const visibility = getToolExecutionMobileVisibilityRenderState({
+    toolCallCount: displayToolCallCount,
+  })
+
+  return {
+    shouldRender: visibility.toolPreview.shouldRender,
+  }
 }
 
 export function getChatRuntimeToolExecutionResultOnlyFallbackRenderState(): ToolExecutionResultOnlyFallbackRenderState {

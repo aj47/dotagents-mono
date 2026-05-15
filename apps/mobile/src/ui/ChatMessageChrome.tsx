@@ -198,6 +198,7 @@ import {
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
+  getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState,
   getChatRuntimeDelegationToolPreviewRowsMobileRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
@@ -272,7 +273,6 @@ import {
   type ChatRuntimeToolExecutionStackMobileRenderStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
-  getToolExecutionMobileVisibilityRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -8570,8 +8570,8 @@ export function createChatMessageDelegationCardProps({
   const hiddenConversationCount = conversationPreviewState.hiddenCount;
   const toolPreviewState = cardState.toolPreview;
   const hiddenToolCount = toolPreviewState.hiddenCount;
-  const toolExecutionVisibilityRenderState = getToolExecutionMobileVisibilityRenderState({
-    toolCallCount: displayToolCallCount,
+  const toolPreviewVisibilityRenderState = getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState({
+    displayToolCallCount,
   });
 
   return {
@@ -8603,7 +8603,7 @@ export function createChatMessageDelegationCardProps({
         : undefined,
     },
     toolPreview: {
-      shouldRender: toolExecutionVisibilityRenderState.toolPreview.shouldRender,
+      shouldRender: toolPreviewVisibilityRenderState.shouldRender,
       label: formatChatRuntimeDelegationToolCallActivityLabel(displayToolCallCount),
       rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
         rows: toolPreviewState.rows,

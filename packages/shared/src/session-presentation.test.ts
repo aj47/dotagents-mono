@@ -239,6 +239,7 @@ import {
   getChatRuntimeToolApprovalSpinnerMobileColors,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getChatRuntimeThreadChromeMobileStyleRenderState,
+  getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
   getChatRuntimeToolExecutionDetailMobileRowState,
   getChatRuntimeToolExecutionResultOnlyFallbackLabel,
@@ -3969,6 +3970,16 @@ describe("session presentation semantics", () => {
     })
     expect(delegationToolPreviewRows[0].key).toBe("execute_command-0")
     expect(delegationToolPreviewRows[0].renderState.state).toBe("pending")
+    expect(getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState({
+      displayToolCallCount: 1,
+    })).toEqual({
+      shouldRender: true,
+    })
+    expect(getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState({
+      displayToolCallCount: 0,
+    })).toEqual({
+      shouldRender: false,
+    })
     expect(getChatRuntimeToolExecutionResultOnlyFallbackRenderState()).toEqual({
       label: "Tool result",
     })
