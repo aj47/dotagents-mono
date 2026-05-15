@@ -186,7 +186,6 @@ import {
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeSurfaceChromeMobileRenderState,
-  getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationCardMobilePresentationState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
@@ -252,6 +251,7 @@ import {
   type ChatRuntimeConversationThreadBodyMobileState,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
+  type ChatRuntimeConversationToolApprovalMobileState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeRetryStatusMobileRenderState,
@@ -1631,30 +1631,7 @@ type ChatMessageToolApprovalProps = {
   styles: ChatMessageToolApprovalStyles;
 };
 
-type ChatMessageToolApprovalPropsInput = Omit<
-  ChatMessageToolApprovalProps,
-  | 'renderState'
-  | 'toolName'
-  | 'argumentsPreview'
-  | 'argumentsContent'
-  | 'onToggleArguments'
-  | 'onDeny'
-  | 'onApprove'
-  | 'styles'
-> & {
-  isApproval: boolean;
-  toolApproval?: {
-    approvalId: string;
-    toolName: string;
-    arguments?: unknown;
-  } | null;
-  expandedToolApprovals: ChatDisplayExpansionStateMap<string>;
-  pendingApprovalResponseId?: string | null;
-  colors: Parameters<typeof getChatRuntimeToolApprovalCardMobileRenderState>[0]['colors'];
-  onToggleArguments: (approvalId: string) => void;
-  onDeny: (approvalId: string) => void;
-  onApprove: (approvalId: string) => void;
-};
+type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
   card: StyleProp<ViewStyle>;
@@ -8472,32 +8449,18 @@ export function createChatMessageDelegationCardProps(
 }
 
 export function createChatMessageToolApprovalProps({
-  isApproval,
-  toolApproval,
-  expandedToolApprovals,
-  pendingApprovalResponseId,
-  colors,
-  onToggleArguments,
-  onDeny,
-  onApprove,
+  cardState,
 }: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
-  const cardRenderState = getChatRuntimeToolApprovalCardMobileRenderState({
-    isApproval,
-    toolApproval,
-    expandedToolApprovals,
-    pendingApprovalResponseId,
-    colors,
-  });
-  if (!cardRenderState) return null;
+  if (!cardState) return null;
 
   return {
-    renderState: cardRenderState.renderState,
-    toolName: cardRenderState.toolName,
-    argumentsPreview: cardRenderState.argumentsPreview,
-    argumentsContent: cardRenderState.argumentsContent,
-    onToggleArguments: () => onToggleArguments(cardRenderState.approvalId),
-    onDeny: () => onDeny(cardRenderState.approvalId),
-    onApprove: () => onApprove(cardRenderState.approvalId),
+    renderState: cardState.renderState,
+    toolName: cardState.toolName,
+    argumentsPreview: cardState.argumentsPreview,
+    argumentsContent: cardState.argumentsContent,
+    onToggleArguments: cardState.onToggleArguments,
+    onDeny: cardState.onDeny,
+    onApprove: cardState.onApprove,
   };
 }
 

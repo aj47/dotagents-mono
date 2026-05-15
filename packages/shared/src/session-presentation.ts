@@ -701,15 +701,15 @@ export interface ChatRuntimeConversationToolApprovalMobileStateInput {
   onRespondToToolApproval: (approvalId: string, approved: boolean) => void | Promise<void>
 }
 
+export interface ChatRuntimeConversationToolApprovalMobileCardState
+  extends ChatRuntimeToolApprovalCardMobileRenderState {
+  onToggleArguments: () => void
+  onDeny: () => void
+  onApprove: () => void
+}
+
 export interface ChatRuntimeConversationToolApprovalMobileState {
-  isApproval: boolean
-  toolApproval?: ChatRuntimeToolApprovalCardMobileRenderStateInput["toolApproval"]
-  expandedToolApprovals: ChatRuntimeToolApprovalCardMobileRenderStateInput["expandedToolApprovals"]
-  pendingApprovalResponseId?: ChatRuntimeToolApprovalCardMobileRenderStateInput["pendingApprovalResponseId"]
-  colors: ChatRuntimeToolApprovalCardMobileRenderStateInput["colors"]
-  onToggleArguments: (approvalId: string) => void
-  onDeny: (approvalId: string) => void
-  onApprove: (approvalId: string) => void
+  cardState: ChatRuntimeConversationToolApprovalMobileCardState | null
 }
 
 export type ChatRuntimeConversationDelegationExpansionSetter = (
@@ -6806,15 +6806,26 @@ export function getChatRuntimeConversationToolApprovalMobileState({
   onToggleArguments,
   onRespondToToolApproval,
 }: ChatRuntimeConversationToolApprovalMobileStateInput): ChatRuntimeConversationToolApprovalMobileState {
-  return {
+  const cardState = getChatRuntimeToolApprovalCardMobileRenderState({
     isApproval: message.variant === "approval",
     toolApproval: message.toolApproval,
     expandedToolApprovals,
     pendingApprovalResponseId,
     colors,
-    onToggleArguments,
-    onDeny: (approvalId) => { void onRespondToToolApproval(approvalId, false) },
-    onApprove: (approvalId) => { void onRespondToToolApproval(approvalId, true) },
+  })
+  if (!cardState) {
+    return {
+      cardState: null,
+    }
+  }
+
+  return {
+    cardState: {
+      ...cardState,
+      onToggleArguments: () => onToggleArguments(cardState.approvalId),
+      onDeny: () => { void onRespondToToolApproval(cardState.approvalId, false) },
+      onApprove: () => { void onRespondToToolApproval(cardState.approvalId, true) },
+    },
   }
 }
 

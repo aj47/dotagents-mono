@@ -3462,16 +3462,16 @@ describe("session presentation semantics", () => {
       },
     })
     expect(approvalState).toMatchObject({
-      isApproval: true,
-      toolApproval: {
+      cardState: {
         approvalId: "approval-1",
+        toolName: "write_file",
       },
     })
-    approvalState.onDeny("approval-1")
-    approvalState.onApprove("approval-2")
+    approvalState.cardState?.onDeny()
+    approvalState.cardState?.onApprove()
     expect(approvalResponses).toEqual([
       { approvalId: "approval-1", approved: false },
-      { approvalId: "approval-2", approved: true },
+      { approvalId: "approval-1", approved: true },
     ])
     let expandedDelegationConversationPreviews: Record<string, boolean> = {}
     let expandedDelegationToolPreviews: Record<string, boolean> = {}
@@ -3816,7 +3816,7 @@ describe("session presentation semantics", () => {
         displayToolCallCount: 1,
       },
       toolApproval: {
-        isApproval: false,
+        cardState: null,
       },
       inlineActivity: { state: "inline" },
       conversation: {
