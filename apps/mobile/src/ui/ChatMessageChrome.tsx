@@ -202,6 +202,7 @@ import {
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationRuntimeThreadState,
   getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeConversationToolExecutionStackMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
@@ -293,6 +294,8 @@ import {
   type ChatRuntimeConversationRetryStatusMobileStateInput,
   type ChatRuntimeConversationRuntimeThreadState,
   type ChatRuntimeConversationRuntimeThreadStateInput,
+  type ChatRuntimeConversationThreadBodyMobileState,
+  type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationToolApprovalMobileState,
   type ChatRuntimeConversationToolApprovalMobileStateInput,
@@ -3520,60 +3523,40 @@ type ChatMessageConversationThreadPresentationStateInput = {
 type ChatMessageConversationThreadPresentationState =
   ChatRuntimeMessageThreadPresentationMobileRenderState;
 
-type ChatMessageConversationTurnDurationInput = {
-  message: {
-    timestamp?: number;
-  };
-  byUserTimestamp: {
-    get(timestamp: number): ChatMessageConversationActionSetInput['turnDuration'];
-  };
-};
+type ChatMessageConversationThreadBodySharedInput =
+  ChatRuntimeConversationThreadBodyMobileStateInput<
+    ChatMessageThreadBodyPropsInput['inlineActivity'],
+    ChatMessageActionStyleSlots['turnDuration'],
+    ChatMessageActionStyleSlots['speech'],
+    ChatMessageActionStyleSlots['branch'],
+    ChatMessageActionStyleSlots['copy'],
+    ChatMessageActionStyleSlots['expansion'],
+    ChatMessageConversationContentInput['colors'],
+    ChatMessageConversationContentInput['spinnerSource'],
+    NonNullable<ChatMessageConversationContentInput['assetBaseUrl']>,
+    NonNullable<ChatMessageConversationContentInput['assetAuthToken']>,
+    AgentRetryInfo | null | undefined,
+    ACPDelegationProgress | null | undefined
+  >;
 
-type ChatMessageConversationThreadBodyInput = {
-  message: ChatMessageConversationRenderContextInput['message']
-    & ChatMessageConversationActionSetInput['message']
-    & ChatMessageConversationRetryStatusInput['message']
-    & ChatMessageConversationDelegationCardInput['message']
-    & ChatMessageConversationToolApprovalInput['message']
-    & ChatMessageConversationToolExecutionStackInput['message']
-    & ChatMessageInlineActivityPropsInput['message']
-    & ChatMessageConversationTurnDurationInput['message'];
-  messageIndex: number;
-  renderContext: ChatMessageConversationRenderContext;
-  turnDurationsByUserTimestamp: ChatMessageConversationTurnDurationInput['byUserTimestamp'];
-  conversationId?: ChatMessageConversationActionSetInput['conversationId'];
-  pendingBranchMessageIndex?: ChatMessageConversationActionSetInput['pendingBranchMessageIndex'];
-  isResponding: ChatMessageConversationActionSetInput['isResponding'];
-  isSpeaking: ChatMessageConversationActionSetInput['isSpeaking'];
-  isCopied: ChatMessageConversationActionSetInput['isCopied'];
-  ttsEnabled: ChatMessageConversationActionSetInput['ttsEnabled'];
-  colors: ChatMessageConversationActionSetInput['colors']
-    & ChatMessageConversationRetryStatusInput['colors']
-    & ChatMessageConversationDelegationCardInput['colors']
-    & ChatMessageConversationToolApprovalInput['colors']
-    & ChatMessageConversationContentInput['colors']
-    & ChatMessageConversationToolExecutionStackInput['colors'];
-  actionStyles: ChatMessageConversationActionSetInput['styles'];
-  assetBaseUrl?: ChatMessageConversationContentInput['assetBaseUrl'];
-  assetAuthToken?: ChatMessageConversationContentInput['assetAuthToken'];
-  spinnerSource: ChatMessageConversationContentInput['spinnerSource'];
-  presentation: ChatMessageConversationThreadPresentationState;
-  expandedDelegationConversationPreviews: ChatMessageConversationDelegationCardInput['expandedDelegationConversationPreviews'];
-  expandedDelegationToolPreviews: ChatMessageConversationDelegationCardInput['expandedDelegationToolPreviews'];
-  setExpandedDelegationConversationPreviews: ChatMessageConversationDelegationCardInput['setExpandedDelegationConversationPreviews'];
-  setExpandedDelegationToolPreviews: ChatMessageConversationDelegationCardInput['setExpandedDelegationToolPreviews'];
-  expandedToolApprovals: ChatMessageConversationToolApprovalInput['expandedToolApprovals'];
-  pendingApprovalResponseId?: ChatMessageConversationToolApprovalInput['pendingApprovalResponseId'];
-  onToggleToolApprovalArguments: ChatMessageConversationToolApprovalInput['onToggleArguments'];
-  onRespondToToolApproval: ChatMessageConversationToolApprovalInput['onRespondToToolApproval'];
-  expandedToolCalls: ChatMessageConversationToolExecutionStackInput['expandedToolCalls'];
-  onToggleToolCall: ChatMessageConversationToolExecutionStackInput['onToggleToolCall'];
-  onCopyToolPayload: ChatMessageConversationToolExecutionStackInput['onCopyPayload'];
-  onSpeakMessage: ChatMessageConversationActionSetInput['onSpeakMessage'];
-  onBranchMessage?: ChatMessageConversationActionSetInput['onBranchMessage'];
-  onCopyMessage: ChatMessageConversationActionSetInput['onCopyMessage'];
-  onToggleMessageExpansion: ChatMessageConversationActionSetInput['onToggleMessageExpansion'];
-};
+type ChatMessageConversationThreadBodyInput =
+  Omit<ChatMessageConversationThreadBodySharedInput, 'inlineActivity'>;
+
+type ChatMessageConversationThreadBodyState =
+  ChatRuntimeConversationThreadBodyMobileState<
+    ChatMessageThreadBodyPropsInput['inlineActivity'],
+    ChatMessageActionStyleSlots['turnDuration'],
+    ChatMessageActionStyleSlots['speech'],
+    ChatMessageActionStyleSlots['branch'],
+    ChatMessageActionStyleSlots['copy'],
+    ChatMessageActionStyleSlots['expansion'],
+    ChatMessageConversationContentInput['colors'],
+    ChatMessageConversationContentInput['spinnerSource'],
+    NonNullable<ChatMessageConversationContentInput['assetBaseUrl']>,
+    NonNullable<ChatMessageConversationContentInput['assetAuthToken']>,
+    AgentRetryInfo | null | undefined,
+    ACPDelegationProgress | null | undefined
+  >;
 
 type ChatMessageRuntimeThreadStyleSlots = {
   surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
@@ -6760,15 +6743,6 @@ export function createChatMessageRuntimeThreadChromeStyleState({
   });
 }
 
-export function getChatMessageConversationTurnDuration({
-  message,
-  byUserTimestamp,
-}: ChatMessageConversationTurnDurationInput): ChatMessageConversationActionSetInput['turnDuration'] {
-  return typeof message.timestamp === 'number'
-    ? byUserTimestamp.get(message.timestamp)
-    : undefined;
-}
-
 export function createChatMessageConversationActionSetInput({
   message,
   messageIndex,
@@ -6885,127 +6859,21 @@ export function createChatMessageConversationRetryStatusInput({
 
 export function createChatMessageConversationThreadBodyInput({
   message,
-  messageIndex,
-  renderContext,
-  turnDurationsByUserTimestamp,
-  conversationId,
-  pendingBranchMessageIndex,
   isResponding,
-  isSpeaking,
-  isCopied,
-  ttsEnabled,
-  colors,
-  actionStyles,
-  assetBaseUrl,
-  assetAuthToken,
   spinnerSource,
-  presentation,
-  expandedDelegationConversationPreviews,
-  expandedDelegationToolPreviews,
-  setExpandedDelegationConversationPreviews,
-  setExpandedDelegationToolPreviews,
-  expandedToolApprovals,
-  pendingApprovalResponseId,
-  onToggleToolApprovalArguments,
-  onRespondToToolApproval,
-  expandedToolCalls,
-  onToggleToolCall,
-  onCopyToolPayload,
-  onSpeakMessage,
-  onBranchMessage,
-  onCopyMessage,
-  onToggleMessageExpansion,
-}: ChatMessageConversationThreadBodyInput): ChatMessageThreadBodyPropsInput {
-  const {
-    visibleMessageContent,
-    renderedToolEntries,
-    displayToolCallCount,
-    isExpanded,
-    isLiveStreamingAssistantMessage,
-    messageRenderState,
-  } = renderContext;
-  const turnDuration = getChatMessageConversationTurnDuration({
+  ...input
+}: ChatMessageConversationThreadBodyInput): ChatMessageConversationThreadBodyState {
+  return getChatRuntimeConversationThreadBodyMobileState({
     message,
-    byUserTimestamp: turnDurationsByUserTimestamp,
-  });
-
-  return {
-    retryStatus: createChatMessageConversationRetryStatusInput({
-      message,
-      colors,
-    }),
-    delegationCard: createChatMessageConversationDelegationCardInput({
-      message,
-      surface: presentation.delegationSurface,
-      toolEntries: renderedToolEntries,
-      displayToolCallCount,
-      expandedDelegationConversationPreviews,
-      expandedDelegationToolPreviews,
-      roleStyles: presentation.delegationRoleStyles,
-      colors,
-      setExpandedDelegationConversationPreviews,
-      setExpandedDelegationToolPreviews,
-    }),
-    toolApproval: createChatMessageConversationToolApprovalInput({
-      message,
-      expandedToolApprovals,
-      pendingApprovalResponseId,
-      colors,
-      onToggleArguments: onToggleToolApprovalArguments,
-      onRespondToToolApproval,
-    }),
+    isResponding,
+    spinnerSource,
+    ...input,
     inlineActivity: createChatMessageInlineActivityProps({
       message,
       isResponding,
       spinnerSource,
     }),
-    conversation: {
-      messageRenderState,
-      actionSet: createChatMessageConversationActionSetInput({
-        message,
-        messageIndex,
-        visibleMessageContent,
-        turnDuration,
-        conversationId,
-        pendingBranchMessageIndex,
-        isResponding,
-        isSpeaking,
-        isCopied,
-        ttsEnabled,
-        colors,
-        styles: actionStyles,
-        onSpeakMessage,
-        onBranchMessage,
-        onCopyMessage,
-        onToggleMessageExpansion,
-      }),
-      ...createChatMessageConversationContentInput({
-        messageIndex,
-        visibleMessageContent,
-        isStreaming: isLiveStreamingAssistantMessage,
-        colors,
-        assetBaseUrl,
-        assetAuthToken,
-        spinnerSource,
-        onToggleMessageExpansion,
-      }),
-      toolExecutionStack: createChatMessageConversationToolExecutionStackInput({
-        message,
-        messageIndex,
-        displayToolCallCount,
-        renderedToolEntries,
-        isExpanded,
-        expandedToolCalls,
-        previewNumberOfLines: presentation.toolPayloadPreviewNumberOfLines,
-        pendingResultRenderState: presentation.pendingToolResultRenderState,
-        emptyStateRenderState: presentation.toolExecutionEmptyStateRenderState,
-        colors,
-        onToggleToolCall,
-        onCopyPayload: onCopyToolPayload,
-        onToggleMessageExpansion,
-      }),
-    },
-  };
+  });
 }
 
 function createChatMessageActionRenderers({

@@ -104,8 +104,10 @@ import {
   getChatRuntimeConversationRuntimeThreadState,
   getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolExecutionStackMobileState,
+  getChatRuntimeConversationTurnDurationMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
@@ -3404,6 +3406,177 @@ describe("session presentation semantics", () => {
       "copy-payload:payload",
       "toggle-message:4",
       "toggle-message:4",
+    ])
+    const turnDurationsByUserTimestamp = new Map([
+      [10, { durationMs: 12000, isLive: true }],
+    ])
+    expect(getChatRuntimeConversationTurnDurationMobileState({
+      message: {
+        timestamp: 10,
+      },
+      byUserTimestamp: turnDurationsByUserTimestamp,
+    })).toEqual({ durationMs: 12000, isLive: true })
+    expect(getChatRuntimeConversationTurnDurationMobileState({
+      message: {},
+      byUserTimestamp: turnDurationsByUserTimestamp,
+    })).toBeUndefined()
+    let bodyExpandedDelegationConversationPreviews: Record<string, boolean> = {}
+    let bodyExpandedDelegationToolPreviews: Record<string, boolean> = {}
+    const bodyEvents: string[] = []
+    const threadBodyColors = {
+      ...messageThreadStyleColors,
+      background: "#ffffff",
+      destructive: "#dc2626",
+      successForeground: "#ecfdf5",
+    }
+    const threadBodyPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
+      colors: threadBodyColors,
+    })
+    const threadBodyState = getChatRuntimeConversationThreadBodyMobileState({
+      message: {
+        id: "message-1",
+        role: "assistant",
+        content: "Working",
+        timestamp: 10,
+        branchMessageIndex: 3,
+      },
+      messageIndex: 4,
+      renderContext: {
+        visibleMessageContent: "Working",
+        renderedToolEntries: [{
+          toolCall: {
+            name: "read_file",
+            arguments: { path: "/tmp/file" },
+          },
+          label: "read_file",
+          origIdx: 2,
+          result: null,
+        }],
+        displayToolCallCount: 1,
+        isExpanded: false,
+        isLiveStreamingAssistantMessage: false,
+        messageRenderState: successfulConversationMessage,
+        shouldRenderSurface: true,
+      },
+      turnDurationsByUserTimestamp,
+      conversationId: "conversation-1",
+      pendingBranchMessageIndex: null,
+      isResponding: false,
+      isSpeaking: false,
+      isCopied: false,
+      ttsEnabled: true,
+      colors: threadBodyColors,
+      actionStyles: {
+        turnDuration: { styleId: "duration" },
+        speech: { styleId: "speech" },
+        branch: { styleId: "branch" },
+        copy: { styleId: "copy" },
+        expansion: { styleId: "expansion" },
+      },
+      assetBaseUrl: "https://assets.local",
+      assetAuthToken: "asset-token",
+      spinnerSource: "spinner",
+      inlineActivity: { state: "inline" },
+      presentation: threadBodyPresentation,
+      expandedDelegationConversationPreviews: bodyExpandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews: bodyExpandedDelegationToolPreviews,
+      setExpandedDelegationConversationPreviews: (updater) => {
+        bodyExpandedDelegationConversationPreviews = updater(bodyExpandedDelegationConversationPreviews)
+      },
+      setExpandedDelegationToolPreviews: (updater) => {
+        bodyExpandedDelegationToolPreviews = updater(bodyExpandedDelegationToolPreviews)
+      },
+      expandedToolApprovals: {},
+      pendingApprovalResponseId: null,
+      onToggleToolApprovalArguments: (approvalId) => {
+        bodyEvents.push(`approval:${approvalId}`)
+      },
+      onRespondToToolApproval: (approvalId, approved) => {
+        bodyEvents.push(`approval-response:${approvalId}:${approved}`)
+      },
+      expandedToolCalls: {},
+      onToggleToolCall: (stableMessageKey, toolEntryIndex) => {
+        bodyEvents.push(`tool:${stableMessageKey}:${toolEntryIndex}`)
+      },
+      onCopyToolPayload: (content) => {
+        bodyEvents.push(`payload:${content}`)
+      },
+      onSpeakMessage: (messageIndex, content) => {
+        bodyEvents.push(`speak:${messageIndex}:${content}`)
+      },
+      onBranchMessage: (messageIndex) => {
+        bodyEvents.push(`branch:${messageIndex}`)
+      },
+      onCopyMessage: (messageIndex, content) => {
+        bodyEvents.push(`copy:${messageIndex}:${content}`)
+      },
+      onToggleMessageExpansion: (messageIndex) => {
+        bodyEvents.push(`expand:${messageIndex}`)
+      },
+    })
+    expect(threadBodyState).toMatchObject({
+      retryStatus: {
+        isRetry: false,
+      },
+      delegationCard: {
+        isDelegation: false,
+        displayToolCallCount: 1,
+      },
+      toolApproval: {
+        isApproval: false,
+      },
+      inlineActivity: { state: "inline" },
+      conversation: {
+        messageRenderState: successfulConversationMessage,
+        actionSet: {
+          turnDuration: {
+            durationMs: 12000,
+            isLive: true,
+            styleId: "duration",
+          },
+          speech: {
+            content: "Working",
+            styleId: "speech",
+          },
+          branch: {
+            branchMessageIndex: 3,
+            fallbackMessageIndex: 4,
+            styleId: "branch",
+          },
+          copy: {
+            content: "Working",
+            styleId: "copy",
+          },
+        },
+        expanded: {
+          markdownContent: "Working",
+          assetBaseUrl: "https://assets.local",
+          assetAuthToken: "asset-token",
+          spinnerSource: "spinner",
+        },
+        toolExecutionStack: {
+          displayToolCallCount: 1,
+          rows: {
+            stableMessageKey: "message-1",
+          },
+        },
+      },
+    })
+    threadBodyState.conversation.actionSet.speech.onPress()
+    threadBodyState.conversation.actionSet.branch.onBranchMessage?.(3)
+    threadBodyState.conversation.actionSet.copy.onPress()
+    threadBodyState.conversation.collapsed.onToggle()
+    threadBodyState.conversation.toolExecutionStack.rows.onToggleToolCall("message-1", 2)
+    threadBodyState.conversation.toolExecutionStack.rows.onCopyPayload("payload")
+    threadBodyState.conversation.toolExecutionStack.expanded.onToggle()
+    expect(bodyEvents).toEqual([
+      "speak:4:Working",
+      "branch:3",
+      "copy:4:Working",
+      "expand:4",
+      "tool:message-1:2",
+      "payload:payload",
+      "expand:4",
     ])
     const toolActivityGroup: ToolActivityGroup = {
       startIndex: 3,

@@ -838,6 +838,247 @@ export interface ChatRuntimeConversationToolExecutionStackMobileState<
   }
 }
 
+export type ChatRuntimeConversationTurnDurationMobileState =
+  Pick<ChatRuntimeTurnDurationMessageMobileRenderStateInput, "durationMs" | "isLive">
+
+export interface ChatRuntimeConversationTurnDurationMobileStateInput<
+  TTurnDuration extends ChatRuntimeConversationTurnDurationMobileState | undefined =
+    ChatRuntimeConversationTurnDurationMobileState | undefined,
+> {
+  message: {
+    timestamp?: number
+  }
+  byUserTimestamp: {
+    get(timestamp: number): TTurnDuration | undefined
+  }
+}
+
+export type ChatRuntimeConversationThreadBodyMobileMessageLike<
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+> =
+  & ChatRuntimeConversationMessageRenderContextMobileStateInput["message"]
+  & ChatRuntimeConversationRetryStatusMobileStateInput<TRetryInfo>["message"]
+  & ChatRuntimeConversationDelegationCardMobileStateInput<TDelegation>["message"]
+  & ChatRuntimeConversationToolApprovalMobileStateInput["message"]
+  & ChatRuntimeConversationToolExecutionStackMobileStateInput["message"]
+  & ChatRuntimeConversationActionSetMobileStateInput["message"]
+  & ChatRuntimeInlineActivityMobileMessageLike
+  & {
+    timestamp?: number
+  }
+
+export interface ChatRuntimeConversationThreadBodyMobileStateInput<
+  TInlineActivity,
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+> {
+  message: ChatRuntimeConversationThreadBodyMobileMessageLike<TRetryInfo, TDelegation>
+  messageIndex: number
+  renderContext: ChatRuntimeConversationMessageRenderContextMobileState
+  turnDurationsByUserTimestamp: ChatRuntimeConversationTurnDurationMobileStateInput<
+    ChatRuntimeConversationActionSetMobileStateInput<
+      TTurnDurationStyle,
+      TSpeechStyle,
+      TBranchStyle,
+      TCopyStyle,
+      TExpansionStyle
+    >["turnDuration"]
+  >["byUserTimestamp"]
+  conversationId?: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["conversationId"]
+  pendingBranchMessageIndex?: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["pendingBranchMessageIndex"]
+  isResponding: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["isResponding"]
+  isSpeaking: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["isSpeaking"]
+  isCopied: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["isCopied"]
+  ttsEnabled: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["ttsEnabled"]
+  colors:
+    & ChatRuntimeConversationActionSetMobileStateInput<
+      TTurnDurationStyle,
+      TSpeechStyle,
+      TBranchStyle,
+      TCopyStyle,
+      TExpansionStyle
+    >["colors"]
+    & ChatRuntimeConversationRetryStatusMobileStateInput<TRetryInfo>["colors"]
+    & ChatRuntimeConversationDelegationCardMobileStateInput<TDelegation>["colors"]
+    & ChatRuntimeConversationToolApprovalMobileStateInput["colors"]
+    & ChatRuntimeConversationContentMobileStateInput<
+      TContentColors,
+      TSpinnerSource,
+      TAssetBaseUrl,
+      TAssetAuthToken
+    >["colors"]
+    & ChatRuntimeConversationToolExecutionStackMobileStateInput<
+      ChatRuntimeMessageThreadPresentationMobileRenderState["pendingToolResultRenderState"],
+      ChatRuntimeMessageThreadPresentationMobileRenderState["toolExecutionEmptyStateRenderState"]
+    >["colors"]
+  actionStyles: ChatRuntimeConversationActionSetMobileStyleSlots<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >
+  assetBaseUrl?: ChatRuntimeConversationContentMobileStateInput<
+    TContentColors,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken
+  >["assetBaseUrl"]
+  assetAuthToken?: ChatRuntimeConversationContentMobileStateInput<
+    TContentColors,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken
+  >["assetAuthToken"]
+  spinnerSource: TSpinnerSource
+  inlineActivity: TInlineActivity
+  presentation: ChatRuntimeMessageThreadPresentationMobileRenderState
+  expandedDelegationConversationPreviews: ChatRuntimeConversationDelegationCardMobileStateInput<
+    TDelegation
+  >["expandedDelegationConversationPreviews"]
+  expandedDelegationToolPreviews: ChatRuntimeConversationDelegationCardMobileStateInput<
+    TDelegation
+  >["expandedDelegationToolPreviews"]
+  setExpandedDelegationConversationPreviews: ChatRuntimeConversationDelegationCardMobileStateInput<
+    TDelegation
+  >["setExpandedDelegationConversationPreviews"]
+  setExpandedDelegationToolPreviews: ChatRuntimeConversationDelegationCardMobileStateInput<
+    TDelegation
+  >["setExpandedDelegationToolPreviews"]
+  expandedToolApprovals: ChatRuntimeConversationToolApprovalMobileStateInput["expandedToolApprovals"]
+  pendingApprovalResponseId?: ChatRuntimeConversationToolApprovalMobileStateInput["pendingApprovalResponseId"]
+  onToggleToolApprovalArguments: ChatRuntimeConversationToolApprovalMobileStateInput["onToggleArguments"]
+  onRespondToToolApproval: ChatRuntimeConversationToolApprovalMobileStateInput["onRespondToToolApproval"]
+  expandedToolCalls: ChatRuntimeConversationToolExecutionStackMobileStateInput<
+    ChatRuntimeMessageThreadPresentationMobileRenderState["pendingToolResultRenderState"],
+    ChatRuntimeMessageThreadPresentationMobileRenderState["toolExecutionEmptyStateRenderState"]
+  >["expandedToolCalls"]
+  onToggleToolCall: ChatRuntimeConversationToolExecutionStackMobileStateInput<
+    ChatRuntimeMessageThreadPresentationMobileRenderState["pendingToolResultRenderState"],
+    ChatRuntimeMessageThreadPresentationMobileRenderState["toolExecutionEmptyStateRenderState"]
+  >["onToggleToolCall"]
+  onCopyToolPayload: ChatRuntimeConversationToolExecutionStackMobileStateInput<
+    ChatRuntimeMessageThreadPresentationMobileRenderState["pendingToolResultRenderState"],
+    ChatRuntimeMessageThreadPresentationMobileRenderState["toolExecutionEmptyStateRenderState"]
+  >["onCopyPayload"]
+  onSpeakMessage: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["onSpeakMessage"]
+  onBranchMessage?: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["onBranchMessage"]
+  onCopyMessage: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["onCopyMessage"]
+  onToggleMessageExpansion: ChatRuntimeConversationActionSetMobileStateInput<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle
+  >["onToggleMessageExpansion"]
+}
+
+export interface ChatRuntimeConversationThreadBodyMobileState<
+  TInlineActivity,
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+> {
+  retryStatus: ChatRuntimeConversationRetryStatusMobileState<TRetryInfo>
+  delegationCard: ChatRuntimeConversationDelegationCardMobileState<TDelegation>
+  toolApproval: ChatRuntimeConversationToolApprovalMobileState
+  inlineActivity: TInlineActivity
+  conversation: ChatRuntimeConversationContentMobileState<
+    TContentColors,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken
+  > & {
+    messageRenderState: ChatRuntimeConversationMessageMobileRenderState
+    actionSet: ChatRuntimeConversationActionSetMobileState<
+      TTurnDurationStyle,
+      TSpeechStyle,
+      TBranchStyle,
+      TCopyStyle,
+      TExpansionStyle
+    >
+    toolExecutionStack: ChatRuntimeConversationToolExecutionStackMobileState<
+      ChatRuntimeMessageThreadPresentationMobileRenderState["pendingToolResultRenderState"],
+      ChatRuntimeMessageThreadPresentationMobileRenderState["toolExecutionEmptyStateRenderState"]
+    >
+  }
+}
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
   toolCall: ToolCall
@@ -6351,6 +6592,180 @@ export function getChatRuntimeConversationToolExecutionStackMobileState<
     expanded: {
       onToggle: () => onToggleMessageExpansion(messageIndex),
       emptyStateRenderState,
+    },
+  }
+}
+
+export function getChatRuntimeConversationTurnDurationMobileState<
+  TTurnDuration extends ChatRuntimeConversationTurnDurationMobileState | undefined =
+    ChatRuntimeConversationTurnDurationMobileState | undefined,
+>({
+  message,
+  byUserTimestamp,
+}: ChatRuntimeConversationTurnDurationMobileStateInput<TTurnDuration>): TTurnDuration | undefined {
+  return typeof message.timestamp === "number"
+    ? byUserTimestamp.get(message.timestamp)
+    : undefined
+}
+
+export function getChatRuntimeConversationThreadBodyMobileState<
+  TInlineActivity,
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+>({
+  message,
+  messageIndex,
+  renderContext,
+  turnDurationsByUserTimestamp,
+  conversationId,
+  pendingBranchMessageIndex,
+  isResponding,
+  isSpeaking,
+  isCopied,
+  ttsEnabled,
+  colors,
+  actionStyles,
+  assetBaseUrl,
+  assetAuthToken,
+  spinnerSource,
+  inlineActivity,
+  presentation,
+  expandedDelegationConversationPreviews,
+  expandedDelegationToolPreviews,
+  setExpandedDelegationConversationPreviews,
+  setExpandedDelegationToolPreviews,
+  expandedToolApprovals,
+  pendingApprovalResponseId,
+  onToggleToolApprovalArguments,
+  onRespondToToolApproval,
+  expandedToolCalls,
+  onToggleToolCall,
+  onCopyToolPayload,
+  onSpeakMessage,
+  onBranchMessage,
+  onCopyMessage,
+  onToggleMessageExpansion,
+}: ChatRuntimeConversationThreadBodyMobileStateInput<
+  TInlineActivity,
+  TTurnDurationStyle,
+  TSpeechStyle,
+  TBranchStyle,
+  TCopyStyle,
+  TExpansionStyle,
+  TContentColors,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TRetryInfo,
+  TDelegation
+>): ChatRuntimeConversationThreadBodyMobileState<
+  TInlineActivity,
+  TTurnDurationStyle,
+  TSpeechStyle,
+  TBranchStyle,
+  TCopyStyle,
+  TExpansionStyle,
+  TContentColors,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TRetryInfo,
+  TDelegation
+> {
+  const {
+    visibleMessageContent,
+    renderedToolEntries,
+    displayToolCallCount,
+    isExpanded,
+    isLiveStreamingAssistantMessage,
+    messageRenderState,
+  } = renderContext
+  const turnDuration = getChatRuntimeConversationTurnDurationMobileState({
+    message,
+    byUserTimestamp: turnDurationsByUserTimestamp,
+  })
+
+  return {
+    retryStatus: getChatRuntimeConversationRetryStatusMobileState({
+      message,
+      colors,
+    }),
+    delegationCard: getChatRuntimeConversationDelegationCardMobileState({
+      message,
+      surface: presentation.delegationSurface,
+      toolEntries: renderedToolEntries,
+      displayToolCallCount,
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      roleStyles: presentation.delegationRoleStyles,
+      colors,
+      setExpandedDelegationConversationPreviews,
+      setExpandedDelegationToolPreviews,
+    }),
+    toolApproval: getChatRuntimeConversationToolApprovalMobileState({
+      message,
+      expandedToolApprovals,
+      pendingApprovalResponseId,
+      colors,
+      onToggleArguments: onToggleToolApprovalArguments,
+      onRespondToToolApproval,
+    }),
+    inlineActivity,
+    conversation: {
+      messageRenderState,
+      actionSet: getChatRuntimeConversationActionSetMobileState({
+        message,
+        messageIndex,
+        visibleMessageContent,
+        turnDuration,
+        conversationId,
+        pendingBranchMessageIndex,
+        isResponding,
+        isSpeaking,
+        isCopied,
+        ttsEnabled,
+        colors,
+        styles: actionStyles,
+        onSpeakMessage,
+        onBranchMessage,
+        onCopyMessage,
+        onToggleMessageExpansion,
+      }),
+      ...getChatRuntimeConversationContentMobileState({
+        messageIndex,
+        visibleMessageContent,
+        isStreaming: isLiveStreamingAssistantMessage,
+        colors,
+        assetBaseUrl,
+        assetAuthToken,
+        spinnerSource,
+        onToggleMessageExpansion,
+      }),
+      toolExecutionStack: getChatRuntimeConversationToolExecutionStackMobileState({
+        message,
+        messageIndex,
+        displayToolCallCount,
+        renderedToolEntries,
+        isExpanded,
+        expandedToolCalls,
+        previewNumberOfLines: presentation.toolPayloadPreviewNumberOfLines,
+        pendingResultRenderState: presentation.pendingToolResultRenderState,
+        emptyStateRenderState: presentation.toolExecutionEmptyStateRenderState,
+        colors,
+        onToggleToolCall,
+        onCopyPayload: onCopyToolPayload,
+        onToggleMessageExpansion,
+      }),
     },
   }
 }
