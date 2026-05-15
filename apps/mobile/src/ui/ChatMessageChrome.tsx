@@ -242,7 +242,6 @@ import {
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
-  type ChatRuntimeStepSummaryLike,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
@@ -3477,7 +3476,7 @@ type ChatMessageRuntimeHistoryWindowStateInput = {
   sessionId?: string | null;
 };
 
-type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatMessageRuntimeHistoryWindowState> & {
+type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> & {
   visibleMessageCount: number;
   loadEarlierMessages: () => void;
 };
@@ -4031,15 +4030,11 @@ export function createChatMessageRuntimeDebugPanelsRenderState({
   });
 }
 
-export function getChatMessageRuntimeHistoryWindowState(): ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> {
-  return getChatRuntimeMessageHistoryWindowMobileState();
-}
-
 export function useChatMessageRuntimeHistoryWindowState({
   messageCount,
   sessionId,
 }: ChatMessageRuntimeHistoryWindowStateInput): ChatMessageRuntimeHistoryWindowState {
-  const historyWindow = useMemo(() => getChatMessageRuntimeHistoryWindowState(), []);
+  const historyWindow = useMemo(() => getChatRuntimeMessageHistoryWindowMobileState(), []);
   const [visibleMessageCount, setVisibleMessageCount] = useState<number>(
     historyWindow.initialVisibleCount,
   );
@@ -5181,8 +5176,8 @@ export function createChatMessageRuntimeProgressTurnState<
   const progressMessages = createChatMessageRuntimeProgressMessages<TMessage>(update);
 
   return {
-    conversationState: resolveChatMessageRuntimeConversationStateFromProgress(update, lifecycleState),
-    latestStepSummary: getChatMessageRuntimeLatestStepSummary(update),
+    conversationState: resolveAgentProgressConversationState(update, lifecycleState),
+    latestStepSummary: getChatRuntimeLatestStepSummary(update),
     progressMessages,
     updateMessages: (
       messages: readonly TMessage[],
@@ -5935,19 +5930,6 @@ export function removeChatMessageRuntimeToolApprovalMessage<
   approvalId: string,
 ): TMessage[] {
   return messages.filter((message) => message.toolApproval?.approvalId !== approvalId);
-}
-
-export function getChatMessageRuntimeLatestStepSummary<T extends ChatRuntimeStepSummaryLike>(
-  input: { latestSummary?: T | null; stepSummaries?: T[] | null },
-): T | null {
-  return getChatRuntimeLatestStepSummary(input);
-}
-
-export function resolveChatMessageRuntimeConversationStateFromProgress(
-  update: Parameters<typeof resolveAgentProgressConversationState>[0],
-  lifecycleState?: AgentConversationState,
-): AgentConversationState {
-  return resolveAgentProgressConversationState(update, lifecycleState);
 }
 
 export function getChatMessageRuntimeKillSwitchConfirmationAlertState(
@@ -7068,7 +7050,7 @@ export function useChatComposerRuntimeSubmissionActionsState({
 
     queue.enqueue(currentConversationId, composedMessage, currentConversationId);
     clearComposerDraft();
-    setDebugInfo(getChatComposerRuntimeQueueDebugMessage());
+    setDebugInfo(getChatComposerQueueMobileActionState().debugMessage);
   }, [clearComposerDraft, currentConversationId, input, pendingImages, queue, setDebugInfo]);
 
   return {
@@ -10019,10 +10001,6 @@ export function createChatComposerRuntimeControlRenderState({
     messageQueueEnabled,
     colors,
   });
-}
-
-export function getChatComposerRuntimeQueueDebugMessage(): string {
-  return getChatComposerQueueMobileActionState().debugMessage;
 }
 
 export function resolveChatRuntimeMobileFontFamily(
