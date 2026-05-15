@@ -95,6 +95,7 @@ import {
   getChatRuntimeConnectionBannerMobileState,
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
+  getChatRuntimeConversationContentMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationMessageRenderContextMobileState,
@@ -3138,6 +3139,28 @@ describe("session presentation semantics", () => {
     expect(liveConversationMessageContext.isLiveStreamingAssistantMessage).toBe(true)
     expect(liveConversationMessageContext.messageRenderState.content.shouldRenderExpandedContent).toBe(true)
     expect(liveConversationMessageContext.shouldRenderSurface).toBe(true)
+    let toggledMessageIndex: number | null = null
+    const contentState = getChatRuntimeConversationContentMobileState({
+      messageIndex: 4,
+      visibleMessageContent: "Working",
+      isStreaming: true,
+      colors: messageThreadStyleColors,
+      assetBaseUrl: "http://localhost:3000/assets",
+      assetAuthToken: "token",
+      spinnerSource: "spinner.gif",
+      onToggleMessageExpansion: (messageIndex) => {
+        toggledMessageIndex = messageIndex
+      },
+    })
+    expect(contentState.expanded).toMatchObject({
+      isStreaming: true,
+      markdownContent: "Working",
+      assetBaseUrl: "http://localhost:3000/assets",
+      assetAuthToken: "token",
+      spinnerSource: "spinner.gif",
+    })
+    contentState.collapsed.onToggle()
+    expect(toggledMessageIndex).toBe(4)
     const toolActivityGroup: ToolActivityGroup = {
       startIndex: 3,
       endIndex: 4,

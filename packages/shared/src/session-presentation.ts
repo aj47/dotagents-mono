@@ -600,6 +600,41 @@ export interface ChatRuntimeConversationMessageRuntimeThreadStateInput<
 export type ChatRuntimeConversationMessageRuntimeThreadState<TBody extends { inlineActivity?: unknown | null }> =
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
 
+export interface ChatRuntimeConversationContentMobileStateInput<
+  TColors,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+> {
+  messageIndex: number
+  visibleMessageContent: string
+  isStreaming: boolean
+  colors: TColors
+  assetBaseUrl?: TAssetBaseUrl
+  assetAuthToken?: TAssetAuthToken
+  spinnerSource: TSpinnerSource
+  onToggleMessageExpansion: (messageIndex: number) => void
+}
+
+export interface ChatRuntimeConversationContentMobileState<
+  TColors,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+> {
+  expanded: {
+    isStreaming: boolean
+    markdownContent: string
+    colors: TColors
+    assetBaseUrl?: TAssetBaseUrl
+    assetAuthToken?: TAssetAuthToken
+    spinnerSource: TSpinnerSource
+  }
+  collapsed: {
+    onToggle: () => void
+  }
+}
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
   toolCall: ToolCall
@@ -5875,6 +5910,46 @@ export function getChatRuntimeConversationMessageRuntimeThreadState<
       renderContext,
       body: runtimeThreadInput.body,
     }),
+  }
+}
+
+export function getChatRuntimeConversationContentMobileState<
+  TColors,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+>({
+  messageIndex,
+  visibleMessageContent,
+  isStreaming,
+  colors,
+  assetBaseUrl,
+  assetAuthToken,
+  spinnerSource,
+  onToggleMessageExpansion,
+}: ChatRuntimeConversationContentMobileStateInput<
+  TColors,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken
+>): ChatRuntimeConversationContentMobileState<
+  TColors,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken
+> {
+  return {
+    expanded: {
+      isStreaming,
+      markdownContent: visibleMessageContent,
+      colors,
+      assetBaseUrl,
+      assetAuthToken,
+      spinnerSource,
+    },
+    collapsed: {
+      onToggle: () => onToggleMessageExpansion(messageIndex),
+    },
   }
 }
 

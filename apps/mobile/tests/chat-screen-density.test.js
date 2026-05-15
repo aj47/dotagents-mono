@@ -3068,7 +3068,10 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(screenSource, /spinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(chatMessageChromeSource, /\.\.\.createChatMessageConversationContentInput\(\{\s+messageIndex,\s+visibleMessageContent,\s+isStreaming: isLiveStreamingAssistantMessage,\s+colors,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+onToggleMessageExpansion,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationContentInput/);
-  assert.match(chatMessageChromeSource, /expanded: \{\s+isStreaming,\s+markdownContent: visibleMessageContent,\s+colors,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+\},/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationContentMobileState\(\{\s+messageIndex,\s+visibleMessageContent,\s+isStreaming,\s+colors,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+onToggleMessageExpansion,\s+\}\);/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeConversationContentMobileState/);
+  assert.match(sessionPresentationSource, /markdownContent: visibleMessageContent,/);
+  assert.match(sessionPresentationSource, /onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
   assert.match(chatMessageChromeSource, /expanded: createChatMessageExpandedContentProps\(expanded\),/);
@@ -4165,7 +4168,8 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.doesNotMatch(screenSource, /messageSurface\.contentBody\.(flex|minWidth)/);
   assert.doesNotMatch(screenSource, /const messageCollapsedPreviewActionState = messageRenderState\.collapsedPreviewAction;/);
   assert.match(screenSource, /onToggleMessageExpansion: toggleMessageExpansion,/);
-  assert.match(chatMessageChromeSource, /collapsed: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},/);
+  assert.doesNotMatch(chatMessageChromeSource, /collapsed: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},/);
+  assert.match(sessionPresentationSource, /collapsed: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},/);
   assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(\{\s+renderState: messageRenderState\.collapsedPreview,\s+actionState: messageRenderState\.collapsedPreviewAction,\s+\.\.\.collapsed,\s+\}\),/);
   assert.match(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps\(\{[\s\S]*?onPress: actionState\.canToggle \? onToggle : undefined,/);
   assert.doesNotMatch(screenSource, /onPress: messageActionAvailabilityRenderState\.expansion\.canRender/);

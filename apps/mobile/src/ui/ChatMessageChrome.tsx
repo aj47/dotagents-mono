@@ -195,6 +195,7 @@ import {
   getChatRuntimeHomeQuickStartItemsMobileState,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeConversationContentMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
@@ -269,6 +270,8 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatComposerRuntimeChromeMobileStyleRenderState,
   type ChatComposerRuntimeChromeMobileStyleRenderStateInput,
+  type ChatRuntimeConversationContentMobileState,
+  type ChatRuntimeConversationContentMobileStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationMessageRenderContextMobileState,
@@ -3476,16 +3479,19 @@ type ChatMessageExpandedContentPropsInput = Pick<
   colors: Parameters<typeof getChatRuntimeStreamingContentMobileRenderState>[0]['colors'];
 };
 
-type ChatMessageConversationContentInput = {
-  messageIndex: number;
-  visibleMessageContent: string;
-  isStreaming: ChatMessageExpandedContentPropsInput['isStreaming'];
-  colors: ChatMessageExpandedContentPropsInput['colors'];
-  assetBaseUrl?: ChatMessageExpandedContentPropsInput['assetBaseUrl'];
-  assetAuthToken?: ChatMessageExpandedContentPropsInput['assetAuthToken'];
-  spinnerSource: ChatMessageExpandedContentPropsInput['spinnerSource'];
-  onToggleMessageExpansion: (messageIndex: number) => void;
-};
+type ChatMessageConversationContentInput = ChatRuntimeConversationContentMobileStateInput<
+  ChatMessageExpandedContentPropsInput['colors'],
+  ChatMessageExpandedContentPropsInput['spinnerSource'],
+  NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
+  NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>
+>;
+
+type ChatMessageConversationContentMobileState = ChatRuntimeConversationContentMobileState<
+  ChatMessageExpandedContentPropsInput['colors'],
+  ChatMessageExpandedContentPropsInput['spinnerSource'],
+  NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
+  NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>
+>;
 
 type ChatMessageThreadBodyProps = {
   styles: ChatMessageThreadBodyStyleSlots;
@@ -6848,20 +6854,17 @@ export function createChatMessageConversationContentInput({
   assetAuthToken,
   spinnerSource,
   onToggleMessageExpansion,
-}: ChatMessageConversationContentInput): Pick<ChatMessageConversationBodyPropsInput, 'expanded' | 'collapsed'> {
-  return {
-    expanded: {
-      isStreaming,
-      markdownContent: visibleMessageContent,
-      colors,
-      assetBaseUrl,
-      assetAuthToken,
-      spinnerSource,
-    },
-    collapsed: {
-      onToggle: () => onToggleMessageExpansion(messageIndex),
-    },
-  };
+}: ChatMessageConversationContentInput): ChatMessageConversationContentMobileState {
+  return getChatRuntimeConversationContentMobileState({
+    messageIndex,
+    visibleMessageContent,
+    isStreaming,
+    colors,
+    assetBaseUrl,
+    assetAuthToken,
+    spinnerSource,
+    onToggleMessageExpansion,
+  });
 }
 
 export function createChatMessageConversationToolApprovalInput({
