@@ -1653,35 +1653,6 @@ export function useChatConversationHomeQuickStartActionsState<
   };
 }
 
-export function sortChatConversationHomePromptsByUpdatedAt(
-  prompts: readonly PredefinedPromptSummary[],
-): PredefinedPromptSummary[] {
-  return sortPredefinedPromptsByUpdatedAt(prompts);
-}
-
-export function createChatConversationHomePromptRecord(
-  draft: PredefinedPromptDraft,
-  now: number = Date.now(),
-): PredefinedPromptSummary {
-  return createPredefinedPromptRecord(draft, now);
-}
-
-export function updateChatConversationHomePromptList(
-  prompts: readonly PredefinedPromptSummary[],
-  promptId: string,
-  draft: PredefinedPromptDraft,
-  now: number = Date.now(),
-): PredefinedPromptSummary[] {
-  return updatePredefinedPromptList(prompts, promptId, draft, now);
-}
-
-export function deleteChatConversationHomePromptFromList(
-  prompts: readonly PredefinedPromptSummary[],
-  promptId: string,
-): PredefinedPromptSummary[] {
-  return deletePredefinedPromptFromList(prompts, promptId);
-}
-
 type ChatConversationHomeQuickStartsStyles = {
   card: StyleProp<ViewStyle>;
   emptyText: StyleProp<TextStyle>;
@@ -6749,14 +6720,14 @@ export function useChatConversationHomePromptEditorSaveActionsState<
     try {
       const now = Date.now();
       const updatedPrompts = editingPrompt
-        ? updateChatConversationHomePromptList(predefinedPrompts, editingPrompt.id, draft, now)
+        ? updatePredefinedPromptList(predefinedPrompts, editingPrompt.id, draft, now)
         : [
-          createChatConversationHomePromptRecord(draft, now),
+          createPredefinedPromptRecord(draft, now),
           ...predefinedPrompts,
         ];
 
       await promptClient.updateSettings({ predefinedPrompts: updatedPrompts });
-      setPredefinedPrompts(sortChatConversationHomePromptsByUpdatedAt(updatedPrompts));
+      setPredefinedPrompts(sortPredefinedPromptsByUpdatedAt(updatedPrompts));
       dismissPromptEditor();
       const successAlert = getChatConversationHomePromptSaveSuccessAlertState(wasEditingPrompt);
       showAlert(successAlert.title, successAlert.message);
@@ -6816,7 +6787,7 @@ export function useChatConversationHomePromptEditorDeleteActionsState<
     const deletePrompt = async () => {
       beginPromptEditorSave();
       try {
-        const updatedPrompts = deleteChatConversationHomePromptFromList(predefinedPrompts, prompt.id);
+        const updatedPrompts = deletePredefinedPromptFromList(predefinedPrompts, prompt.id);
         await promptClient.updateSettings({ predefinedPrompts: updatedPrompts });
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {
@@ -7015,7 +6986,7 @@ export function useChatConversationHomeQuickStartCatalogLoadState<
 
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
-          const nextPrompts = sortChatConversationHomePromptsByUpdatedAt(settings.predefinedPrompts || []);
+          const nextPrompts = sortPredefinedPromptsByUpdatedAt(settings.predefinedPrompts || []);
           const remoteSpeechSettings = createChatMessageRuntimeRemoteSpeechSettingsState(settings);
           setPredefinedPrompts(nextPrompts);
           applyRemoteSpeechSettings(remoteSpeechSettings);
