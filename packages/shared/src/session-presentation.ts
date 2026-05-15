@@ -28,12 +28,17 @@ import {
   formatPromptLibraryDeletePromptWebConfirmMessage,
   formatPromptLibraryTaskStartedMessage,
   getPromptLibraryCopyState,
+  getPromptLibraryEditorDismissActionState,
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
+  getPromptLibraryEditorSaveActionState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
   getPromptLibrarySaveSuccessMessage,
+  type PredefinedPromptDraft,
+  type PromptLibraryEditorDismissActionState,
+  type PromptLibraryEditorSaveActionState,
   type PromptLibraryShortcutItem,
   type PromptLibrarySkillLike,
   type PromptLibraryMobileSurfaceColorPalette,
@@ -1220,6 +1225,12 @@ export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatR
   cancelLabel: string
   deleteLabel: string
   webMessage: string
+}
+
+export interface ChatConversationHomePromptEditorSaveActionInput {
+  draft: PredefinedPromptDraft
+  isEditing: boolean
+  isSaving: boolean
 }
 
 export interface ChatRuntimeBranchMobileAlertState {
@@ -4680,6 +4691,24 @@ export function getChatConversationHomePromptTaskRunFailedAlertState(
     title: copy.feedback.errorTitle,
     message: getChatRuntimeAlertMessage(error, copy.feedback.taskRunFailed),
   }
+}
+
+export function getChatConversationHomePromptEditorDismissActionState(
+  isSaving = false,
+): PromptLibraryEditorDismissActionState {
+  return getPromptLibraryEditorDismissActionState(isSaving)
+}
+
+export function createChatConversationHomePromptEditorSaveActionState({
+  draft,
+  isEditing,
+  isSaving,
+}: ChatConversationHomePromptEditorSaveActionInput): PromptLibraryEditorSaveActionState {
+  return getPromptLibraryEditorSaveActionState(
+    draft,
+    isEditing,
+    isSaving,
+  )
 }
 
 export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState {

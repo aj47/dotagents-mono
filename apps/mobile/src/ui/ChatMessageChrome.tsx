@@ -126,15 +126,12 @@ import {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
-  getPromptLibraryEditorDismissActionState,
-  getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
   getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
-  type PredefinedPromptDraft,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibrarySkillLike,
@@ -170,8 +167,10 @@ import {
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
+  createChatConversationHomePromptEditorSaveActionState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
+  getChatConversationHomePromptEditorDismissActionState,
   getChatConversationHomePromptSaveFailedAlertState,
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
@@ -1540,12 +1539,6 @@ type ChatConversationHomePromptEditorModalStyles = {
   saveButton: StyleProp<ViewStyle>;
   saveButtonDisabled: StyleProp<ViewStyle>;
   saveButtonText: StyleProp<TextStyle>;
-};
-
-type ChatConversationHomePromptEditorSaveActionInput = {
-  draft: Parameters<typeof getPromptLibraryEditorSaveActionState>[0];
-  isEditing: boolean;
-  isSaving: boolean;
 };
 
 type ChatConversationHomePromptEditorModalProps = {
@@ -10200,7 +10193,7 @@ export function ChatConversationHomePromptEditorModal({
   renderState,
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
-  const editorDismissActionState = getPromptLibraryEditorDismissActionState(isSaving);
+  const editorDismissActionState = getChatConversationHomePromptEditorDismissActionState(isSaving);
   const editorSaveActionState = createChatConversationHomePromptEditorSaveActionState({
     draft: { name: nameValue, content: contentValue },
     isEditing,
@@ -10300,18 +10293,6 @@ export function ChatConversationHomePromptEditorModal({
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  );
-}
-
-export function createChatConversationHomePromptEditorSaveActionState({
-  draft,
-  isEditing,
-  isSaving,
-}: ChatConversationHomePromptEditorSaveActionInput): ReturnType<typeof getPromptLibraryEditorSaveActionState> {
-  return getPromptLibraryEditorSaveActionState(
-    draft,
-    isEditing,
-    isSaving,
   );
 }
 

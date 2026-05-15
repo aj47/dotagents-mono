@@ -84,8 +84,10 @@ import {
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageCopyFeedbackState,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
+  createChatConversationHomePromptEditorSaveActionState,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
+  getChatConversationHomePromptEditorDismissActionState,
   getChatConversationHomePromptSaveFailedAlertState,
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
@@ -2722,6 +2724,34 @@ describe("session presentation semantics", () => {
     expect(getChatConversationHomePromptTaskRunFailedAlertState(null)).toEqual({
       title: "Error",
       message: "Failed to run task.",
+    })
+    expect(getChatConversationHomePromptEditorDismissActionState(false)).toEqual({
+      isDisabled: false,
+      accessibilityState: undefined,
+    })
+    expect(getChatConversationHomePromptEditorDismissActionState(true)).toEqual({
+      isDisabled: true,
+      accessibilityState: { disabled: true },
+    })
+    expect(createChatConversationHomePromptEditorSaveActionState({
+      draft: { name: "", content: "" },
+      isEditing: false,
+      isSaving: false,
+    })).toEqual({
+      isDisabled: true,
+      label: "Add Prompt",
+      accessibilityLabel: "Add Prompt button",
+      accessibilityState: { disabled: true },
+    })
+    expect(createChatConversationHomePromptEditorSaveActionState({
+      draft: { name: "Review", content: "Summarize this." },
+      isEditing: true,
+      isSaving: true,
+    })).toEqual({
+      isDisabled: true,
+      label: "Saving...",
+      accessibilityLabel: "Saving... button",
+      accessibilityState: { disabled: true },
     })
     expect(formatChatRuntimeToolApprovalFailureMessage("approve", new Error("Nope"))).toBe(
       "Failed to approve tool call. Nope",
