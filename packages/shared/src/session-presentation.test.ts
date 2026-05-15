@@ -96,8 +96,12 @@ import {
   getChatRuntimeConnectionBannerMobileRenderState,
   getChatRuntimeConnectionBannerFailedMobileIconState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
+  getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
+  getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupThreadState,
   getChatRuntimeConversationChromeMobileStyleRenderState,
   getChatRuntimeDelegationCardMobileColors,
   getChatRuntimeDelegationCardMobileRenderState,
@@ -220,6 +224,7 @@ import {
   getSessionStatusMobileSurfaceState,
   getSessionPresentation,
   getSidebarStatusPresentation,
+  shouldRenderChatRuntimeConversationThread,
   shouldRenderChatRuntimeActivityStep,
 } from "./session-presentation"
 import { HANDS_FREE_COMPOSER_PRESENTATION } from "./hands-free-controller"
@@ -228,6 +233,10 @@ import {
   getChatMessageActionMobileTurnDurationBadgeColors,
   getChatMessageActionMobileTurnDurationBadgeState,
 } from "./message-display-utils"
+import type {
+  ToolActivityGroup,
+  ToolActivityGroupMobileRenderState,
+} from "./tool-activity-grouping"
 
 describe("session presentation semantics", () => {
   it("keeps snoozed repeat tasks running and labels them as background work", () => {
@@ -3127,6 +3136,68 @@ describe("session presentation semantics", () => {
     expect(liveConversationMessageContext.isLiveStreamingAssistantMessage).toBe(true)
     expect(liveConversationMessageContext.messageRenderState.content.shouldRenderExpandedContent).toBe(true)
     expect(liveConversationMessageContext.shouldRenderSurface).toBe(true)
+    const toolActivityGroup: ToolActivityGroup = {
+      startIndex: 3,
+      endIndex: 4,
+      count: 2,
+      toolCallCount: 2,
+      previewLines: ["read_file"],
+    }
+    const collapsedGroupRenderState = {
+      groupKey: "tools-3",
+      shouldSkipCollapsedItem: false,
+      shouldRenderCollapsedHeader: true,
+    } as ToolActivityGroupMobileRenderState
+    let toggledGroup: ToolActivityGroup | null = null
+    const collapsedGroupThreadState = getChatRuntimeConversationToolActivityGroupThreadState({
+      group: toolActivityGroup,
+      groupRenderState: collapsedGroupRenderState,
+      itemKey: 3,
+      onToggleGroup: (group) => {
+        toggledGroup = group
+      },
+    })
+    expect(collapsedGroupThreadState.groupOnlyThreadKey).toBe("group-tools-3")
+    expect(collapsedGroupThreadState.shouldRenderGroupOnlyThread).toBe(true)
+    collapsedGroupThreadState.onToggleGroup?.()
+    expect(toggledGroup).toBe(toolActivityGroup)
+    expect(getChatRuntimeConversationRuntimeThreadState({
+      itemKey: 3,
+      groupRenderState: collapsedGroupRenderState,
+      groupThreadState: collapsedGroupThreadState,
+      body: { inlineActivity: null, conversation: "body" },
+    })).toMatchObject({
+      threadKey: "group-tools-3",
+      body: null,
+    })
+    expect(getChatRuntimeConversationToolActivityGroupRuntimeThreadState({
+      itemKey: 3,
+      groupRenderState: collapsedGroupRenderState,
+      groupThreadState: collapsedGroupThreadState,
+    })).toMatchObject({
+      threadKey: "group-tools-3",
+      body: null,
+      shouldRenderThread: true,
+    })
+    expect(shouldRenderChatRuntimeConversationThread({
+      renderContext: { shouldRenderSurface: false },
+      body: { inlineActivity: { renderState: "thinking" } },
+    })).toBe(true)
+    expect(getChatRuntimeConversationMessageRuntimeThreadState({
+      itemKey: 5,
+      groupRenderState: null,
+      groupThreadState: getChatRuntimeConversationToolActivityGroupThreadState({
+        group: null,
+        groupRenderState: null,
+        itemKey: 5,
+        onToggleGroup: () => {},
+      }),
+      renderContext: { shouldRenderSurface: false },
+      body: { inlineActivity: { renderState: "thinking" } },
+    })).toMatchObject({
+      threadKey: 5,
+      shouldRenderThread: true,
+    })
     const messageThreadPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: {
         ...messageThreadStyleColors,

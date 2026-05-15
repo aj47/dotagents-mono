@@ -199,6 +199,10 @@ import {
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRenderContextMobileState,
+  getChatRuntimeConversationMessageRuntimeThreadState,
+  getChatRuntimeConversationRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
+  getChatRuntimeConversationToolActivityGroupThreadState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
@@ -223,6 +227,7 @@ import {
   getChatRuntimeNavigationHeaderMobileRenderState,
   getChatRuntimeToolApprovalMobileAlertState,
   getFollowUpInputPresentation,
+  shouldRenderChatRuntimeConversationThread,
   shouldRenderChatRuntimeActivityStep,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
@@ -270,6 +275,16 @@ import {
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
+  type ChatRuntimeConversationMessageRuntimeThreadState,
+  type ChatRuntimeConversationMessageRuntimeThreadStateInput,
+  type ChatRuntimeConversationRenderableRuntimeThreadState,
+  type ChatRuntimeConversationRuntimeThreadState,
+  type ChatRuntimeConversationRuntimeThreadStateInput,
+  type ChatRuntimeConversationThreadVisibilityInput,
+  type ChatRuntimeConversationToolActivityGroupRuntimeThreadState,
+  type ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput,
+  type ChatRuntimeConversationToolActivityGroupThreadState,
+  type ChatRuntimeConversationToolActivityGroupThreadStateInput,
   type ChatRuntimeMessageThreadPresentationMobileColorPalette,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMobileChromeStyleRenderState,
@@ -3504,10 +3519,8 @@ export type ChatMessageThreadBodyPropsInput =
     conversation: ChatMessageConversationBodyPropsInput;
   };
 
-type ChatMessageConversationThreadVisibilityInput = {
-  renderContext: Pick<ChatMessageConversationRenderContext, 'shouldRenderSurface'>;
-  body: Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>;
-};
+type ChatMessageConversationThreadVisibilityInput =
+  ChatRuntimeConversationThreadVisibilityInput<Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>>;
 
 type ChatMessageConversationThreadPresentationStateInput = {
   colors: ChatRuntimeMessageThreadPresentationMobileColorPalette;
@@ -3589,18 +3602,11 @@ type ChatMessageRuntimeThreadProps = Omit<
   styles: ChatMessageRuntimeThreadStyleSlots;
 };
 
-type ChatMessageConversationToolActivityGroupThreadStateInput = {
-  group?: ToolActivityGroup | null;
-  groupRenderState?: ToolActivityGroupMobileRenderState | null;
-  itemKey: string | number;
-  onToggleGroup: (group: ToolActivityGroup) => void;
-};
+type ChatMessageConversationToolActivityGroupThreadStateInput =
+  ChatRuntimeConversationToolActivityGroupThreadStateInput;
 
-type ChatMessageConversationToolActivityGroupThreadState = {
-  groupOnlyThreadKey: string | number;
-  shouldRenderGroupOnlyThread: boolean;
-  onToggleGroup?: ChatMessageRuntimeThreadProps['onToggleGroup'];
-};
+type ChatMessageConversationToolActivityGroupThreadState =
+  ChatRuntimeConversationToolActivityGroupThreadState;
 
 type ChatMessageConversationToolActivityGroupThreadRenderStateInput =
   ChatMessageConversationToolActivityGroupRenderStateInput
@@ -3612,24 +3618,14 @@ type ChatMessageConversationToolActivityGroupThreadRenderState = {
   groupOnlyThreadState: ChatMessageConversationToolActivityGroupRuntimeThreadState;
 };
 
-type ChatMessageConversationRuntimeThreadStateInput = {
-  itemKey: string | number;
-  groupRenderState: ToolActivityGroupMobileRenderState | null;
-  groupThreadState: ChatMessageConversationToolActivityGroupThreadState;
-  body: ChatMessageThreadBodyPropsInput | null;
-};
+type ChatMessageConversationRuntimeThreadStateInput =
+  ChatRuntimeConversationRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
 
 type ChatMessageConversationRuntimeThreadState =
-  Pick<ChatMessageRuntimeThreadProps, 'groupRenderState' | 'onToggleGroup' | 'body'>
-  & {
-    threadKey: string | number;
-  };
+  ChatRuntimeConversationRuntimeThreadState<ChatMessageThreadBodyPropsInput>;
 
 type ChatMessageConversationRenderableRuntimeThreadState =
-  ChatMessageConversationRuntimeThreadState
-  & {
-    shouldRenderThread: boolean;
-  };
+  ChatRuntimeConversationRenderableRuntimeThreadState<ChatMessageThreadBodyPropsInput | null>;
 
 type ChatMessageConversationRuntimeThreadProps = {
   threadState: ChatMessageConversationRenderableRuntimeThreadState;
@@ -3637,18 +3633,16 @@ type ChatMessageConversationRuntimeThreadProps = {
 };
 
 type ChatMessageConversationToolActivityGroupRuntimeThreadStateInput =
-  Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>;
+  ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput;
 
-type ChatMessageConversationToolActivityGroupRuntimeThreadState = ChatMessageConversationRenderableRuntimeThreadState;
+type ChatMessageConversationToolActivityGroupRuntimeThreadState =
+  ChatRuntimeConversationToolActivityGroupRuntimeThreadState;
 
 type ChatMessageConversationMessageRuntimeThreadStateInput =
-  Omit<ChatMessageConversationRuntimeThreadStateInput, 'body'>
-  & {
-    renderContext: ChatMessageConversationThreadVisibilityInput['renderContext'];
-    body: ChatMessageThreadBodyPropsInput;
-  };
+  ChatRuntimeConversationMessageRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
 
-type ChatMessageConversationMessageRuntimeThreadState = ChatMessageConversationRenderableRuntimeThreadState;
+type ChatMessageConversationMessageRuntimeThreadState =
+  ChatRuntimeConversationMessageRuntimeThreadState<ChatMessageThreadBodyPropsInput>;
 
 type ChatMessageConversationMessageThreadRenderStateInput =
   Omit<ChatMessageConversationThreadBodyInput, 'renderContext'>
@@ -4088,14 +4082,12 @@ export function createChatMessageConversationToolActivityGroupThreadState({
   itemKey,
   onToggleGroup,
 }: ChatMessageConversationToolActivityGroupThreadStateInput): ChatMessageConversationToolActivityGroupThreadState {
-  return {
-    groupOnlyThreadKey: groupRenderState?.shouldRenderCollapsedHeader
-      ? `group-${groupRenderState.groupKey}`
-      : itemKey,
-    shouldRenderGroupOnlyThread: !!groupRenderState
-      && (groupRenderState.shouldSkipCollapsedItem || groupRenderState.shouldRenderCollapsedHeader),
-    onToggleGroup: group ? () => onToggleGroup(group) : undefined,
-  };
+  return getChatRuntimeConversationToolActivityGroupThreadState({
+    group,
+    groupRenderState,
+    itemKey,
+    onToggleGroup,
+  });
 }
 
 export function createChatMessageConversationToolActivityGroupThreadRenderState({
@@ -4132,46 +4124,35 @@ export function createChatMessageConversationRuntimeThreadState({
   groupThreadState,
   body,
 }: ChatMessageConversationRuntimeThreadStateInput): ChatMessageConversationRuntimeThreadState {
-  const isGroupOnlyThread = groupThreadState.shouldRenderGroupOnlyThread;
-
-  return {
-    threadKey: isGroupOnlyThread ? groupThreadState.groupOnlyThreadKey : itemKey,
+  return getChatRuntimeConversationRuntimeThreadState({
+    itemKey,
     groupRenderState,
-    onToggleGroup: groupThreadState.onToggleGroup,
-    body: isGroupOnlyThread ? null : body,
-  };
+    groupThreadState,
+    body,
+  });
 }
 
 export function createChatMessageConversationToolActivityGroupRuntimeThreadState(
   runtimeThreadInput: ChatMessageConversationToolActivityGroupRuntimeThreadStateInput,
 ): ChatMessageConversationToolActivityGroupRuntimeThreadState {
-  return {
-    ...createChatMessageConversationRuntimeThreadState({
-      ...runtimeThreadInput,
-      body: null,
-    }),
-    shouldRenderThread: runtimeThreadInput.groupThreadState.shouldRenderGroupOnlyThread,
-  };
+  return getChatRuntimeConversationToolActivityGroupRuntimeThreadState(runtimeThreadInput);
 }
 
 export function shouldRenderChatMessageConversationThread({
   renderContext,
   body,
 }: ChatMessageConversationThreadVisibilityInput): boolean {
-  return renderContext.shouldRenderSurface || !!body.inlineActivity;
+  return shouldRenderChatRuntimeConversationThread({ renderContext, body });
 }
 
 export function createChatMessageConversationMessageRuntimeThreadState({
   renderContext,
   ...runtimeThreadInput
 }: ChatMessageConversationMessageRuntimeThreadStateInput): ChatMessageConversationMessageRuntimeThreadState {
-  return {
-    ...createChatMessageConversationRuntimeThreadState(runtimeThreadInput),
-    shouldRenderThread: shouldRenderChatMessageConversationThread({
-      renderContext,
-      body: runtimeThreadInput.body,
-    }),
-  };
+  return getChatRuntimeConversationMessageRuntimeThreadState({
+    renderContext,
+    ...runtimeThreadInput,
+  });
 }
 
 export function createChatMessageConversationMessageThreadRenderState({
