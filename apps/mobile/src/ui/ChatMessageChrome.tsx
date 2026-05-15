@@ -2976,7 +2976,7 @@ export type ChatMessageConversationBodyPropsInput = {
   contentState: ChatMessageConversationContentState;
   actionSet: ChatMessageActionSetInput;
   expanded: ChatMessageExpandedContentPropsInput;
-  collapsed: Pick<ChatMessageCollapsedPreviewPropsInput, 'onPress'>;
+  collapsed: ChatMessageCollapsedPreviewPropsInput;
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
 };
 
@@ -8277,11 +8277,7 @@ export function createChatMessageConversationBodyProps({
       shouldRenderActionSlots: actionSet.shouldRenderActionSlots,
       entries: actionSet.entries,
       expanded: createChatMessageExpandedContentProps(expanded),
-      collapsed: createChatMessageCollapsedPreviewProps({
-        renderState: messageRenderState.collapsedPreview,
-        actionState: messageRenderState.collapsedPreviewAction,
-        ...collapsed,
-      }),
+      collapsed: createChatMessageCollapsedPreviewProps(collapsed),
     },
     toolExecutionStack: createChatMessageToolExecutionStackProps(toolExecutionStack),
     standaloneActions: {

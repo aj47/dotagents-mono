@@ -3399,12 +3399,25 @@ describe("session presentation semantics", () => {
     expect(liveConversationMessageContext.messageRenderState.content.shouldRenderExpandedContent).toBe(true)
     expect(liveConversationMessageContext.shouldRenderSurface).toBe(true)
     let toggledMessageIndex: number | null = null
+    const toggleableMessageRenderState = getChatRuntimeConversationMessageMobileRenderState({
+      role: "assistant",
+      isComplete: false,
+      isLast: true,
+      toolResults: [],
+      content: "Working",
+      isExpanded: true,
+      shouldCollapse: true,
+      isToolOnly: false,
+      isLiveStreaming: true,
+      colors: messageThreadStyleColors,
+    })
     const contentState = getChatRuntimeConversationContentMobileState({
       messageIndex: 4,
       visibleMessageContent: "Working",
       isStreaming: true,
-      canToggleCollapsedPreview: true,
       contentState: liveConversationMessageContext.messageRenderState.content,
+      collapsedPreview: toggleableMessageRenderState.collapsedPreview,
+      collapsedPreviewAction: toggleableMessageRenderState.collapsedPreviewAction,
       colors: messageThreadStyleColors,
       assetBaseUrl: "http://localhost:3000/assets",
       assetAuthToken: "token",
@@ -3416,6 +3429,10 @@ describe("session presentation semantics", () => {
     expect(contentState.contentState).toMatchObject({
       shouldRenderExpandedContent: true,
       shouldRenderCollapsedTextPreview: false,
+    })
+    expect(contentState.collapsed).toMatchObject({
+      renderState: toggleableMessageRenderState.collapsedPreview,
+      actionState: toggleableMessageRenderState.collapsedPreviewAction,
     })
     expect(contentState.expanded).toMatchObject({
       streamingRenderState: {

@@ -645,6 +645,12 @@ export type ChatRuntimeConversationContentMobileRenderState = Pick<
   "shouldRenderExpandedContent" | "shouldRenderCollapsedTextPreview"
 >
 
+export type ChatRuntimeConversationCollapsedPreviewMobileRenderState =
+  ChatRuntimeConversationMessageMobileRenderState["collapsedPreview"]
+
+export type ChatRuntimeConversationCollapsedPreviewMobileActionState =
+  ChatRuntimeConversationMessageMobileRenderState["collapsedPreviewAction"]
+
 export interface ChatRuntimeConversationContentMobileStateInput<
   TColors extends ChatRuntimeStreamingContentMobileRenderStateInput["colors"],
   TSpinnerSource,
@@ -654,8 +660,9 @@ export interface ChatRuntimeConversationContentMobileStateInput<
   messageIndex: number
   visibleMessageContent: string
   isStreaming: boolean
-  canToggleCollapsedPreview: boolean
   contentState: ChatRuntimeConversationContentMobileRenderState
+  collapsedPreview: ChatRuntimeConversationCollapsedPreviewMobileRenderState
+  collapsedPreviewAction: ChatRuntimeConversationCollapsedPreviewMobileActionState
   colors: TColors
   assetBaseUrl?: TAssetBaseUrl
   assetAuthToken?: TAssetAuthToken
@@ -677,6 +684,8 @@ export interface ChatRuntimeConversationContentMobileState<
     spinnerSource: TSpinnerSource
   }
   collapsed: {
+    renderState: ChatRuntimeConversationCollapsedPreviewMobileRenderState
+    actionState: ChatRuntimeConversationCollapsedPreviewMobileActionState
     onPress?: () => void
   }
 }
@@ -6758,8 +6767,9 @@ export function getChatRuntimeConversationContentMobileState<
   messageIndex,
   visibleMessageContent,
   isStreaming,
-  canToggleCollapsedPreview,
   contentState,
+  collapsedPreview,
+  collapsedPreviewAction,
   colors,
   assetBaseUrl,
   assetAuthToken,
@@ -6789,7 +6799,9 @@ export function getChatRuntimeConversationContentMobileState<
       spinnerSource,
     },
     collapsed: {
-      onPress: canToggleCollapsedPreview
+      renderState: collapsedPreview,
+      actionState: collapsedPreviewAction,
+      onPress: collapsedPreviewAction.canToggle
         ? () => onToggleMessageExpansion(messageIndex)
         : undefined,
     },
@@ -7321,8 +7333,9 @@ export function getChatRuntimeConversationThreadBodyMobileState<
         messageIndex,
         visibleMessageContent,
         isStreaming: isLiveStreamingAssistantMessage,
-        canToggleCollapsedPreview: messageRenderState.collapsedPreviewAction.canToggle,
         contentState: messageRenderState.content,
+        collapsedPreview: messageRenderState.collapsedPreview,
+        collapsedPreviewAction: messageRenderState.collapsedPreviewAction,
         colors,
         assetBaseUrl,
         assetAuthToken,
