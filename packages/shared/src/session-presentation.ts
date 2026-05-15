@@ -648,6 +648,7 @@ export interface ChatRuntimeConversationContentMobileStateInput<
   messageIndex: number
   visibleMessageContent: string
   isStreaming: boolean
+  canToggleCollapsedPreview: boolean
   colors: TColors
   assetBaseUrl?: TAssetBaseUrl
   assetAuthToken?: TAssetAuthToken
@@ -668,7 +669,7 @@ export interface ChatRuntimeConversationContentMobileState<
     spinnerSource: TSpinnerSource
   }
   collapsed: {
-    onToggle: () => void
+    onPress?: () => void
   }
 }
 
@@ -6747,6 +6748,7 @@ export function getChatRuntimeConversationContentMobileState<
   messageIndex,
   visibleMessageContent,
   isStreaming,
+  canToggleCollapsedPreview,
   colors,
   assetBaseUrl,
   assetAuthToken,
@@ -6775,7 +6777,9 @@ export function getChatRuntimeConversationContentMobileState<
       spinnerSource,
     },
     collapsed: {
-      onToggle: () => onToggleMessageExpansion(messageIndex),
+      onPress: canToggleCollapsedPreview
+        ? () => onToggleMessageExpansion(messageIndex)
+        : undefined,
     },
   }
 }
@@ -7265,6 +7269,7 @@ export function getChatRuntimeConversationThreadBodyMobileState<
         messageIndex,
         visibleMessageContent,
         isStreaming: isLiveStreamingAssistantMessage,
+        canToggleCollapsedPreview: messageRenderState.collapsedPreviewAction.canToggle,
         colors,
         assetBaseUrl,
         assetAuthToken,

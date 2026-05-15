@@ -2808,10 +2808,8 @@ type ChatMessageCollapsedPreviewProps = {
 
 type ChatMessageCollapsedPreviewPropsInput = Pick<
   ChatMessageCollapsedPreviewProps,
-  'renderState' | 'actionState'
-> & {
-  onToggle?: ChatMessageCollapsedPreviewProps['onPress'];
-};
+  'renderState' | 'actionState' | 'onPress'
+>;
 
 type ChatMessageConversationContentProps = {
   contentState: ChatMessageConversationContentState;
@@ -2984,7 +2982,7 @@ export type ChatMessageConversationBodyPropsInput = {
   messageRenderState: ChatMessageMobileRenderState;
   actionSet: Omit<ChatMessageActionSetInput, 'messageRenderState'>;
   expanded: ChatMessageExpandedContentPropsInput;
-  collapsed: Pick<ChatMessageCollapsedPreviewPropsInput, 'onToggle'>;
+  collapsed: Pick<ChatMessageCollapsedPreviewPropsInput, 'onPress'>;
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
 };
 
@@ -8432,12 +8430,12 @@ export function createChatMessageExpandedContentProps({
 export function createChatMessageCollapsedPreviewProps({
   renderState,
   actionState,
-  onToggle,
+  onPress,
 }: ChatMessageCollapsedPreviewPropsInput): ChatMessageThreadBodyContentProps['collapsed'] {
   return {
     renderState,
     actionState,
-    onPress: actionState.canToggle ? onToggle : undefined,
+    onPress,
   };
 }
 

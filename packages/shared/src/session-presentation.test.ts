@@ -3403,6 +3403,7 @@ describe("session presentation semantics", () => {
       messageIndex: 4,
       visibleMessageContent: "Working",
       isStreaming: true,
+      canToggleCollapsedPreview: true,
       colors: messageThreadStyleColors,
       assetBaseUrl: "http://localhost:3000/assets",
       assetAuthToken: "token",
@@ -3421,7 +3422,7 @@ describe("session presentation semantics", () => {
       assetAuthToken: "token",
       spinnerSource: "spinner.gif",
     })
-    contentState.collapsed.onToggle()
+    contentState.collapsed.onPress?.()
     expect(toggledMessageIndex).toBe(4)
     expect(getChatRuntimeConversationRetryStatusMobileState({
       message: {
@@ -3868,7 +3869,8 @@ describe("session presentation semantics", () => {
     threadBodyState.conversation.actionSet.speech.onPress()
     threadBodyState.conversation.actionSet.branch.onBranchMessage?.(3)
     threadBodyState.conversation.actionSet.copy.onPress()
-    threadBodyState.conversation.collapsed.onToggle()
+    expect(threadBodyState.conversation.collapsed.onPress).toBeUndefined()
+    threadBodyState.conversation.collapsed.onPress?.()
     threadBodyState.conversation.toolExecutionStack.detailRows[0].onHeaderPress()
     threadBodyState.conversation.toolExecutionStack.detailRows[0].input?.onCopyPress()
     threadBodyState.conversation.toolExecutionStack.expanded.onToggle()
@@ -3876,7 +3878,6 @@ describe("session presentation semantics", () => {
       "speak:4:Working",
       "branch:3",
       "copy:4:Working",
-      "expand:4",
       "tool:message-1:2",
       "payload:{\n  \"path\": \"/tmp/file\"\n}",
       "expand:4",
