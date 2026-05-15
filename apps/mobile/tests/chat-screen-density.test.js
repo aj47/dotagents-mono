@@ -2425,8 +2425,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /threadList: \{[\s\S]*?messages,[\s\S]*?visibleMessageCount,/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageConversationToolExecutionStackInput\(\{\s+message,\s+messageIndex,\s+displayToolCallCount,\s+renderedToolEntries,\s+isExpanded,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationToolExecutionStackInput/);
-  assert.match(chatMessageChromeSource, /rows: \{\s+entries: renderedToolEntries,\s+stableMessageKey: message\.id \?\? String\(messageIndex\),\s+expandedToolCalls,\s+previewNumberOfLines,\s+pendingResultRenderState,\s+onToggleToolCall,/);
-  assert.match(chatMessageChromeSource, /compact: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},\s+expanded: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+emptyStateRenderState,\s+\},/);
+  assert.match(chatMessageChromeSource, /return getChatRuntimeConversationToolExecutionStackMobileState\(\{\s+message,\s+messageIndex,\s+displayToolCallCount,\s+renderedToolEntries,\s+isExpanded,\s+expandedToolCalls,\s+previewNumberOfLines,\s+pendingResultRenderState,\s+emptyStateRenderState,\s+colors,\s+onToggleToolCall,\s+onCopyPayload,\s+onToggleMessageExpansion,\s+\}\);/);
+  assert.match(sessionPresentationSource, /rows: \{\s+entries: renderedToolEntries,\s+stableMessageKey,\s+expandedToolCalls,\s+previewNumberOfLines,\s+pendingResultRenderState,\s+onToggleToolCall,/);
+  assert.match(sessionPresentationSource, /compact: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},\s+expanded: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+emptyStateRenderState,\s+\},/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /const stackRenderState = getChatRuntimeToolExecutionStackMobileRenderState\(\{[\s\S]*?displayToolCallCount,[\s\S]*?results: rowInput\.entries\.map\(entry => entry\.result\),[\s\S]*?colors,[\s\S]*?emptyStateRenderState,/);
@@ -2499,7 +2500,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /toolExecutionError:\s*toolExecutionDetailColorsByState\.error/);
   assert.doesNotMatch(screenSource, /toolExecutionEmptyStateRenderState: toolExecutionDetailEmptyState,/);
   assert.match(chatMessageChromeSource, /emptyStateRenderState: presentation\.toolExecutionEmptyStateRenderState,/);
-  assert.match(chatMessageChromeSource, /expanded: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+emptyStateRenderState,/);
+  assert.match(sessionPresentationSource, /expanded: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+emptyStateRenderState,/);
   assert.doesNotMatch(screenSource, /expanded: \{\s+onToggle: \(\) => toggleMessageExpansion\(i\),\s+isPending,\s+allSuccess,\s+hasErrors,/);
   assert.doesNotMatch(chatMessageChromeSource, /emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,\s+\}/);
   assert.match(sessionPresentationSource, /emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,\s+\}/);
@@ -2796,7 +2797,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const handleCopyToolPayload = useCallback\(async \(content: string\) => \{/);
   assert.match(chatMessageChromeSource, /const handleCopyToolPayload = useCallback\(async \(content: string\) => \{/);
   assert.match(screenSource, /onCopyToolPayload: handleCopyToolPayload,/);
-  assert.match(chatMessageChromeSource, /onCopyPayload: \(content\) => \{ void onCopyPayload\(content\); \},/);
+  assert.match(sessionPresentationSource, /onCopyPayload: \(content\) => \{ void onCopyPayload\(content\) \},/);
   assert.match(chatMessageChromeSource, /onCopyPress: \(\) => onCopyPayload\(input\.content\),/);
   assert.match(chatMessageChromeSource, /onCopyPress: \(\) => onCopyPayload\(resultSection\.resultContent\),/);
   assert.match(chatMessageChromeSource, /onErrorCopyPress: \(\) => onCopyPayload\(resultSection\.error \?\? ''\),/);

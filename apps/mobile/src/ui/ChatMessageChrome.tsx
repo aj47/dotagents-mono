@@ -202,6 +202,7 @@ import {
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationRuntimeThreadState,
   getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationToolExecutionStackMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
@@ -295,6 +296,8 @@ import {
   type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationToolApprovalMobileState,
   type ChatRuntimeConversationToolApprovalMobileStateInput,
+  type ChatRuntimeConversationToolExecutionStackMobileState,
+  type ChatRuntimeConversationToolExecutionStackMobileStateInput,
   type ChatRuntimeConversationToolActivityGroupRenderStateInput,
   type ChatRuntimeConversationToolActivityGroupThreadRenderState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
@@ -2273,23 +2276,17 @@ type ChatMessageToolExecutionStackPropsInput = {
   };
 };
 
-type ChatMessageConversationToolExecutionStackInput = {
-  message: {
-    id?: string | null;
-  };
-  messageIndex: number;
-  displayToolCallCount: number;
-  renderedToolEntries: readonly ChatMessageDisplayToolEntry[];
-  isExpanded: ChatMessageToolExecutionStackPropsInput['isExpanded'];
-  expandedToolCalls: ChatDisplayExpansionStateMap<string>;
-  previewNumberOfLines: ChatMessageToolExecutionRowsInput['previewNumberOfLines'];
-  pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState;
-  emptyStateRenderState: ToolExecutionDetailMobileEmptyStateRenderState;
-  colors: ChatMessageToolExecutionStackPropsInput['colors'];
-  onToggleToolCall: ChatMessageToolExecutionRowsInput['onToggleToolCall'];
-  onCopyPayload: (content: string) => void | Promise<void>;
-  onToggleMessageExpansion: (messageIndex: number) => void;
-};
+type ChatMessageConversationToolExecutionStackInput =
+  ChatRuntimeConversationToolExecutionStackMobileStateInput<
+    ToolExecutionDetailMobilePendingResultRenderState,
+    ToolExecutionDetailMobileEmptyStateRenderState
+  >;
+
+type ChatMessageConversationToolExecutionStackState =
+  ChatRuntimeConversationToolExecutionStackMobileState<
+    ToolExecutionDetailMobilePendingResultRenderState,
+    ToolExecutionDetailMobileEmptyStateRenderState
+  >;
 
 type ChatMessageToolExecutionCopyButtonStyles = {
   button: StyleProp<ViewStyle>;
@@ -10048,28 +10045,22 @@ export function createChatMessageConversationToolExecutionStackInput({
   onToggleToolCall,
   onCopyPayload,
   onToggleMessageExpansion,
-}: ChatMessageConversationToolExecutionStackInput): ChatMessageToolExecutionStackPropsInput {
-  return {
+}: ChatMessageConversationToolExecutionStackInput): ChatMessageConversationToolExecutionStackState {
+  return getChatRuntimeConversationToolExecutionStackMobileState({
+    message,
+    messageIndex,
     displayToolCallCount,
-    colors,
+    renderedToolEntries,
     isExpanded,
-    rows: {
-      entries: renderedToolEntries,
-      stableMessageKey: message.id ?? String(messageIndex),
-      expandedToolCalls,
-      previewNumberOfLines,
-      pendingResultRenderState,
-      onToggleToolCall,
-      onCopyPayload: (content) => { void onCopyPayload(content); },
-    },
-    compact: {
-      onToggle: () => onToggleMessageExpansion(messageIndex),
-    },
-    expanded: {
-      onToggle: () => onToggleMessageExpansion(messageIndex),
-      emptyStateRenderState,
-    },
-  };
+    expandedToolCalls,
+    previewNumberOfLines,
+    pendingResultRenderState,
+    emptyStateRenderState,
+    colors,
+    onToggleToolCall,
+    onCopyPayload,
+    onToggleMessageExpansion,
+  });
 }
 
 export function createChatMessageToolExecutionStackProps({

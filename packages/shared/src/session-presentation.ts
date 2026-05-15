@@ -792,6 +792,52 @@ export interface ChatRuntimeConversationActionSetMobileState<
   } & TExpansionStyle
 }
 
+export interface ChatRuntimeConversationToolExecutionStackMobileStateInput<
+  TPendingResultRenderState = unknown,
+  TEmptyStateRenderState = unknown,
+> {
+  message: {
+    id?: string | null
+  }
+  messageIndex: number
+  displayToolCallCount: number
+  renderedToolEntries: readonly ChatMessageDisplayToolEntry[]
+  isExpanded: boolean
+  expandedToolCalls: ChatDisplayExpansionStateMap<string>
+  previewNumberOfLines: number
+  pendingResultRenderState: TPendingResultRenderState
+  emptyStateRenderState: TEmptyStateRenderState
+  colors: ChatRuntimeToolExecutionStackMobileRenderStateInput["colors"]
+  onToggleToolCall: (stableMessageKey: string, toolEntryIndex: number) => void
+  onCopyPayload: (content: string) => void | Promise<void>
+  onToggleMessageExpansion: (messageIndex: number) => void
+}
+
+export interface ChatRuntimeConversationToolExecutionStackMobileState<
+  TPendingResultRenderState = unknown,
+  TEmptyStateRenderState = unknown,
+> {
+  displayToolCallCount: number
+  colors: ChatRuntimeToolExecutionStackMobileRenderStateInput["colors"]
+  isExpanded: boolean
+  rows: {
+    entries: readonly ChatMessageDisplayToolEntry[]
+    stableMessageKey: string
+    expandedToolCalls: ChatDisplayExpansionStateMap<string>
+    previewNumberOfLines: number
+    pendingResultRenderState: TPendingResultRenderState
+    onToggleToolCall: (stableMessageKey: string, toolEntryIndex: number) => void
+    onCopyPayload: (content: string) => void
+  }
+  compact: {
+    onToggle: () => void
+  }
+  expanded: {
+    onToggle: () => void
+    emptyStateRenderState: TEmptyStateRenderState
+  }
+}
+
 export interface ChatRuntimeToolExecutionCompactPreviewMobileRowInput {
   key: string
   toolCall: ToolCall
@@ -6256,6 +6302,55 @@ export function getChatRuntimeConversationActionSetMobileState<
     expansion: {
       onPress: () => onToggleMessageExpansion(messageIndex),
       ...styles.expansion,
+    },
+  }
+}
+
+export function getChatRuntimeConversationToolExecutionStackMobileState<
+  TPendingResultRenderState = unknown,
+  TEmptyStateRenderState = unknown,
+>({
+  message,
+  messageIndex,
+  displayToolCallCount,
+  renderedToolEntries,
+  isExpanded,
+  expandedToolCalls,
+  previewNumberOfLines,
+  pendingResultRenderState,
+  emptyStateRenderState,
+  colors,
+  onToggleToolCall,
+  onCopyPayload,
+  onToggleMessageExpansion,
+}: ChatRuntimeConversationToolExecutionStackMobileStateInput<
+  TPendingResultRenderState,
+  TEmptyStateRenderState
+>): ChatRuntimeConversationToolExecutionStackMobileState<
+  TPendingResultRenderState,
+  TEmptyStateRenderState
+> {
+  const stableMessageKey = message.id ?? String(messageIndex)
+
+  return {
+    displayToolCallCount,
+    colors,
+    isExpanded,
+    rows: {
+      entries: renderedToolEntries,
+      stableMessageKey,
+      expandedToolCalls,
+      previewNumberOfLines,
+      pendingResultRenderState,
+      onToggleToolCall,
+      onCopyPayload: (content) => { void onCopyPayload(content) },
+    },
+    compact: {
+      onToggle: () => onToggleMessageExpansion(messageIndex),
+    },
+    expanded: {
+      onToggle: () => onToggleMessageExpansion(messageIndex),
+      emptyStateRenderState,
     },
   }
 }

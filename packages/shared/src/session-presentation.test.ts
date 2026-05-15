@@ -105,6 +105,7 @@ import {
   getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationRetryStatusMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
+  getChatRuntimeConversationToolExecutionStackMobileState,
   getChatRuntimeConversationToolActivityGroupRenderState,
   getChatRuntimeConversationToolActivityGroupRuntimeThreadState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
@@ -3343,6 +3344,66 @@ describe("session presentation semantics", () => {
       "branch:3",
       "copy:4:Working",
       "expand:4",
+    ])
+    const toolExecutionStackEvents: string[] = []
+    const conversationToolExecutionStackState = getChatRuntimeConversationToolExecutionStackMobileState({
+      message: {
+        id: null,
+      },
+      messageIndex: 4,
+      displayToolCallCount: 1,
+      renderedToolEntries: [{
+        toolCall: {
+          name: "read_file",
+          arguments: { path: "/tmp/file" },
+        },
+        label: "read_file",
+        origIdx: 2,
+        result: null,
+      }],
+      isExpanded: false,
+      expandedToolCalls: { "4-2": true },
+      previewNumberOfLines: 2,
+      pendingResultRenderState: { label: "Waiting" },
+      emptyStateRenderState: { label: "No tool calls" },
+      colors: {
+        info: "#0ea5e9",
+        success: "#16a34a",
+        destructive: "#dc2626",
+        mutedForeground: "#64748b",
+      },
+      onToggleToolCall: (stableMessageKey, toolEntryIndex) => {
+        toolExecutionStackEvents.push(`tool:${stableMessageKey}:${toolEntryIndex}`)
+      },
+      onCopyPayload: (content) => {
+        toolExecutionStackEvents.push(`copy-payload:${content}`)
+      },
+      onToggleMessageExpansion: (messageIndex) => {
+        toolExecutionStackEvents.push(`toggle-message:${messageIndex}`)
+      },
+    })
+    expect(conversationToolExecutionStackState).toMatchObject({
+      displayToolCallCount: 1,
+      isExpanded: false,
+      rows: {
+        stableMessageKey: "4",
+        previewNumberOfLines: 2,
+        pendingResultRenderState: { label: "Waiting" },
+      },
+      expanded: {
+        emptyStateRenderState: { label: "No tool calls" },
+      },
+    })
+    expect(conversationToolExecutionStackState.rows.entries).toHaveLength(1)
+    conversationToolExecutionStackState.rows.onToggleToolCall("4", 2)
+    conversationToolExecutionStackState.rows.onCopyPayload("payload")
+    conversationToolExecutionStackState.compact.onToggle()
+    conversationToolExecutionStackState.expanded.onToggle()
+    expect(toolExecutionStackEvents).toEqual([
+      "tool:4:2",
+      "copy-payload:payload",
+      "toggle-message:4",
+      "toggle-message:4",
     ])
     const toolActivityGroup: ToolActivityGroup = {
       startIndex: 3,
