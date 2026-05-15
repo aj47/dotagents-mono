@@ -189,6 +189,7 @@ import {
   getChatRuntimeToolApprovalSpinnerMobileColors,
   getChatRuntimeThreadChromeMobileStyleRenderState,
   getChatRuntimeToolExecutionCompactPreviewMobileRowState,
+  getChatRuntimeToolExecutionDetailMobileRowState,
   getChatRuntimeTurnDurationBadgeState,
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
@@ -3094,6 +3095,42 @@ describe("session presentation semantics", () => {
     })
     expect(delegationToolPreviewRows[0].key).toBe("execute_command-0")
     expect(delegationToolPreviewRows[0].renderState.state).toBe("pending")
+    const toolDetailRow = getChatRuntimeToolExecutionDetailMobileRowState({
+      key: "tool-detail-0",
+      toolCall: { name: "read_file", arguments: { path: "/test" } },
+      result: { success: false, content: "failed output", error: "Nope" },
+      isExpanded: true,
+      colors: compactToolPreviewColors,
+      previewNumberOfLines: 2,
+      pendingResultRenderState: messageThreadPresentation.pendingToolResultRenderState,
+    })
+    expect(toolDetailRow.key).toBe("tool-detail-0")
+    expect(toolDetailRow.toolName).toBe("read_file")
+    expect(toolDetailRow.renderState.resultBadge.state).toBe("error")
+    expect(toolDetailRow.input?.payloadRenderState.kind).toBe("input")
+    expect(toolDetailRow.input?.content).toBe('{\n  "path": "/test"\n}')
+    expect(toolDetailRow.input?.copyButtonRenderState.kind).toBe("input")
+    expect(toolDetailRow.result?.payloadRenderState.kind).toBe("output")
+    expect(toolDetailRow.result?.resultBadge.state).toBe("error")
+    expect(toolDetailRow.result?.resultContent).toBe("failed output")
+    expect(toolDetailRow.result?.copyButtonRenderState.kind).toBe("output")
+    expect(toolDetailRow.result?.errorRenderState.kind).toBe("error")
+    expect(toolDetailRow.result?.error).toBe("Nope")
+    expect(toolDetailRow.result?.errorCopyButtonRenderState.kind).toBe("error")
+    expect(toolDetailRow.pendingResult).toBeNull()
+    const pendingToolDetailRow = getChatRuntimeToolExecutionDetailMobileRowState({
+      key: "tool-detail-pending",
+      toolCall: { name: "execute_command", arguments: { cmd: "pwd" } },
+      result: null,
+      isExpanded: false,
+      colors: compactToolPreviewColors,
+      previewNumberOfLines: 2,
+      pendingResultRenderState: messageThreadPresentation.pendingToolResultRenderState,
+    })
+    expect(pendingToolDetailRow.result).toBeNull()
+    expect(pendingToolDetailRow.pendingResult).toEqual({
+      renderState: messageThreadPresentation.pendingToolResultRenderState,
+    })
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")

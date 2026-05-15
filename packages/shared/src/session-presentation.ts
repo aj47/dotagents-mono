@@ -60,12 +60,20 @@ import {
   getToolExecutionCallDisplayState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailMobileCopyButtonRenderState,
   getToolExecutionCompactMobileStyleRenderState,
   getToolExecutionDetailMobileEmptyStateRenderState,
+  getToolExecutionDetailMobileHeaderRenderState,
   getToolExecutionDetailMobilePendingResultRenderState,
+  getToolExecutionDetailMobileSectionHeaderRenderState,
   getToolExecutionDetailMobileStyleRenderState,
+  getToolExecutionDetailResultState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
+  type ToolExecutionDetailMobileCopyButtonRenderState,
+  type ToolExecutionDetailMobileHeaderRenderState,
+  type ToolExecutionDetailMobilePendingResultRenderState,
+  type ToolExecutionDetailMobileSectionHeaderRenderState,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 import {
@@ -464,6 +472,51 @@ export interface ChatRuntimeToolExecutionCompactPreviewMobileRowState {
   key: string
   preview: string
   renderState: ToolExecutionCompactMobileRenderState
+}
+
+export interface ChatRuntimeToolExecutionDetailMobileRowInput {
+  key: string
+  toolCall: ToolCall
+  label?: string
+  result?: ToolResult | null
+  isExpanded: boolean
+  colors: Parameters<typeof getToolExecutionDetailMobileHeaderRenderState>[0]["colors"]
+  previewNumberOfLines: number
+  pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState
+}
+
+export interface ChatRuntimeToolExecutionDetailMobileRowInputSectionState {
+  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState
+  compactText?: string | null
+  content: string
+  isExpanded: boolean
+  previewNumberOfLines: number
+  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState
+}
+
+export interface ChatRuntimeToolExecutionDetailMobileRowResultSectionState {
+  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState
+  resultBadge: ToolExecutionDetailMobileHeaderRenderState["resultBadge"]
+  characterCountLabel: string
+  resultCompactText?: string | null
+  resultContent: string
+  isExpanded: boolean
+  previewNumberOfLines: number
+  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState
+  errorRenderState: ToolExecutionDetailMobileSectionHeaderRenderState
+  error?: string | null
+  errorCopyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState
+}
+
+export interface ChatRuntimeToolExecutionDetailMobileRowState {
+  key: string
+  renderState: ToolExecutionDetailMobileHeaderRenderState
+  toolName: string
+  input: ChatRuntimeToolExecutionDetailMobileRowInputSectionState | null
+  result: ChatRuntimeToolExecutionDetailMobileRowResultSectionState | null
+  pendingResult: {
+    renderState: ToolExecutionDetailMobilePendingResultRenderState
+  } | null
 }
 
 export interface ChatRuntimeBranchActionInput {
@@ -5475,6 +5528,87 @@ export function getChatRuntimeDelegationToolPreviewRowsMobileRenderState({
       colors,
     }),
   )
+}
+
+export function getChatRuntimeToolExecutionDetailMobileRowState({
+  key,
+  toolCall,
+  label,
+  result,
+  isExpanded,
+  colors,
+  previewNumberOfLines,
+  pendingResultRenderState,
+}: ChatRuntimeToolExecutionDetailMobileRowInput): ChatRuntimeToolExecutionDetailMobileRowState {
+  const toolName = label ?? toolCall.name
+  const argumentsDetail = getToolExecutionDetailArgumentsState(toolCall.arguments)
+  const argumentsPayload = argumentsDetail.payload
+  const inputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+    kind: "input",
+    payload: argumentsPayload,
+  })
+  const resultDetail = getToolExecutionDetailResultState(result)
+  const resultContent = resultDetail.content
+  const resultPayload = resultDetail.payload
+  const resultState = resultDetail.state
+  const outputHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+    kind: "output",
+    payload: resultPayload,
+  })
+  const errorHeaderState = getToolExecutionDetailMobileSectionHeaderRenderState({
+    kind: "error",
+  })
+  const renderState = getToolExecutionDetailMobileHeaderRenderState({
+    toolName,
+    isExpanded,
+    resultState,
+    colors,
+  })
+  const inputCopyButtonRenderState = getToolExecutionDetailMobileCopyButtonRenderState({
+    kind: "input",
+    toolName,
+    colors,
+  })
+  const outputCopyButtonRenderState = getToolExecutionDetailMobileCopyButtonRenderState({
+    kind: "output",
+    toolName,
+    colors,
+  })
+  const errorCopyButtonRenderState = getToolExecutionDetailMobileCopyButtonRenderState({
+    kind: "error",
+    toolName,
+    colors,
+  })
+
+  return {
+    key,
+    renderState,
+    toolName,
+    input: argumentsDetail.hasArguments ? {
+      payloadRenderState: inputHeaderState,
+      compactText: argumentsPayload?.compactText,
+      content: argumentsDetail.content,
+      isExpanded,
+      previewNumberOfLines,
+      copyButtonRenderState: inputCopyButtonRenderState,
+    } : null,
+    result: result ? {
+      payloadRenderState: outputHeaderState,
+      resultBadge: renderState.resultBadge,
+      characterCountLabel: resultDetail.characterCountLabel,
+      resultCompactText: resultPayload?.compactText,
+      resultContent,
+      isExpanded,
+      previewNumberOfLines,
+      copyButtonRenderState: outputCopyButtonRenderState,
+      errorRenderState: errorHeaderState,
+      error: resultDetail.error,
+      errorCopyButtonRenderState,
+    } : null,
+    pendingResult: !result && resultDetail.isPending ? {
+      renderState: pendingResultRenderState,
+    } : null,
+  }
 }
 
 export function formatChatRuntimeActivityContent(step?: ChatRuntimeActivityStepLike | null): string {
