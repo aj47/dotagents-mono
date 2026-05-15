@@ -173,7 +173,6 @@ import {
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
-  getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationThreadBodyMobileState,
@@ -1189,7 +1188,7 @@ type ChatMessageActionSetInput = Omit<
   ChatMessageActionComponentsInput,
   'availability' | 'turnDuration' | 'speech' | 'branch' | 'copy' | 'expansion'
 > & {
-  messageRenderState: ChatMessageMobileRenderState;
+  renderState: ChatRuntimeConversationMessageActionsMobileRenderState;
   turnDuration: ChatMessageTurnDurationActionSpecInput;
   speech: ChatMessageSpeechActionSpecInput;
   branch: ChatMessageBranchActionSpecInput;
@@ -2980,7 +2979,7 @@ export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conve
 
 export type ChatMessageConversationBodyPropsInput = {
   messageRenderState: ChatMessageMobileRenderState;
-  actionSet: Omit<ChatMessageActionSetInput, 'messageRenderState'>;
+  actionSet: ChatMessageActionSetInput;
   expanded: ChatMessageExpandedContentPropsInput;
   collapsed: Pick<ChatMessageCollapsedPreviewPropsInput, 'onPress'>;
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
@@ -5709,7 +5708,7 @@ export function createChatMessageActionComponents({
 }
 
 export function createChatMessageActionSet({
-  messageRenderState,
+  renderState: actionRenderState,
   turnDuration,
   speech,
   branch,
@@ -5717,47 +5716,6 @@ export function createChatMessageActionSet({
   expansion,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
-  const {
-    onBranchMessage,
-    conversationId,
-    role: branchRole,
-    branchMessageIndex,
-    fallbackMessageIndex,
-    pendingMessageIndex,
-    colors: branchColors,
-    ...branchStyleProps
-  } = branch;
-  const actionRenderState = getChatRuntimeConversationMessageActionsMobileRenderState({
-    message: messageRenderState,
-    turnDuration: {
-      role: turnDuration.role,
-      durationMs: turnDuration.durationMs,
-      isLive: turnDuration.isLive,
-      colors: turnDuration.colors,
-    },
-    speech: {
-      role: speech.role,
-      content: speech.content,
-      ttsEnabled: speech.ttsEnabled,
-      isSpeaking: speech.isSpeaking,
-      colors: speech.colors,
-    },
-    branch: {
-      conversationId,
-      role: branchRole,
-      branchMessageIndex,
-      fallbackMessageIndex,
-      pendingMessageIndex,
-      colors: branchColors,
-    },
-    copy: {
-      role: copy.role,
-      content: copy.content,
-      isAssistantComplete: copy.isAssistantComplete,
-      isCopied: copy.isCopied,
-      colors: copy.colors,
-    },
-  });
   const turnDurationAction: ChatMessageTurnDurationActionSpec = {
     ...turnDuration,
     renderState: actionRenderState.turnDuration,
@@ -5768,11 +5726,11 @@ export function createChatMessageActionSet({
     isActive: speech.isSpeaking,
   };
   const branchAction: ChatMessageBranchActionSpec = {
-    ...branchStyleProps,
+    ...branch,
     renderState: actionRenderState.branch,
     onPress: () => {
       if (actionRenderState.branch.messageIndex != null) {
-        onBranchMessage?.(actionRenderState.branch.messageIndex);
+        branch.onBranchMessage?.(actionRenderState.branch.messageIndex);
       }
     },
   };
@@ -8321,10 +8279,7 @@ export function createChatMessageConversationBodyProps({
   toolExecutionStack,
 }: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
   const contentState = messageRenderState.content;
-  const actionSet = createChatMessageActionSet({
-    messageRenderState,
-    ...actionSetInput,
-  });
+  const actionSet = createChatMessageActionSet(actionSetInput);
 
   return {
     content: {

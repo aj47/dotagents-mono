@@ -3572,11 +3572,24 @@ describe("session presentation semantics", () => {
     expect(expandedDelegationConversationPreviews).toEqual({ "run-1": true })
     expect(expandedDelegationToolPreviews).toEqual({ "run-2": true })
     const actionEvents: string[] = []
+    const actionMessageRenderState = getChatRuntimeConversationMessageMobileRenderState({
+      role: "assistant",
+      isComplete: true,
+      isLast: true,
+      content: "Working",
+      isExpanded: false,
+      shouldCollapse: false,
+      isToolOnly: false,
+      isLiveStreaming: false,
+      toolResults: [],
+      colors: messageThreadStyleColors,
+    })
     const actionSetState = getChatRuntimeConversationActionSetMobileState({
       message: {
         role: "assistant",
         branchMessageIndex: 3,
       },
+      messageRenderState: actionMessageRenderState,
       messageIndex: 4,
       visibleMessageContent: "Working",
       turnDuration: {
@@ -3611,6 +3624,20 @@ describe("session presentation semantics", () => {
       },
     })
     expect(actionSetState).toMatchObject({
+      renderState: {
+        speech: {
+          canSpeak: true,
+        },
+        branch: {
+          messageIndex: 3,
+        },
+        copy: {
+          canCopy: true,
+        },
+        layout: {
+          visibleSlots: ["speech", "branch", "copy"],
+        },
+      },
       turnDuration: {
         role: "assistant",
         durationMs: 12000,

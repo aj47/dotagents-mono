@@ -814,6 +814,7 @@ export interface ChatRuntimeConversationActionSetMobileStateInput<
   message: Pick<ChatMessageDisplayStateMessageLike, "role"> & {
     branchMessageIndex?: number | null
   }
+  messageRenderState: ChatRuntimeConversationMessageMobileRenderState
   messageIndex: number
   visibleMessageContent: string
   turnDuration?: Pick<ChatRuntimeTurnDurationMessageMobileRenderStateInput, "durationMs" | "isLive">
@@ -844,6 +845,7 @@ export interface ChatRuntimeConversationActionSetMobileState<
   TCopyStyle extends object = Record<string, never>,
   TExpansionStyle extends object = Record<string, never>,
 > {
+  renderState: ChatRuntimeConversationMessageActionsMobileRenderState
   turnDuration: ChatRuntimeTurnDurationMessageMobileRenderStateInput & TTurnDurationStyle
   speech: Omit<ChatMessageSpeechMobileRenderStateInput, "isVisible"> & {
     onPress: () => void
@@ -6965,6 +6967,7 @@ export function getChatRuntimeConversationActionSetMobileState<
   TExpansionStyle extends object = Record<string, never>,
 >({
   message,
+  messageRenderState,
   messageIndex,
   visibleMessageContent,
   turnDuration,
@@ -6993,7 +6996,40 @@ export function getChatRuntimeConversationActionSetMobileState<
   TCopyStyle,
   TExpansionStyle
 > {
+  const renderState = getChatRuntimeConversationMessageActionsMobileRenderState({
+    message: messageRenderState,
+    turnDuration: {
+      role: message.role,
+      durationMs: turnDuration?.durationMs,
+      isLive: turnDuration?.isLive,
+      colors,
+    },
+    speech: {
+      role: message.role,
+      content: visibleMessageContent,
+      ttsEnabled,
+      isSpeaking,
+      colors,
+    },
+    branch: {
+      conversationId,
+      role: message.role,
+      branchMessageIndex: message.branchMessageIndex,
+      fallbackMessageIndex: messageIndex,
+      pendingMessageIndex: pendingBranchMessageIndex,
+      colors,
+    },
+    copy: {
+      role: message.role,
+      content: visibleMessageContent,
+      isAssistantComplete: !isResponding,
+      isCopied,
+      colors,
+    },
+  })
+
   return {
+    renderState,
     turnDuration: {
       role: message.role,
       durationMs: turnDuration?.durationMs,
@@ -7250,6 +7286,7 @@ export function getChatRuntimeConversationThreadBodyMobileState<
       actionSet: getChatRuntimeConversationActionSetMobileState({
         message,
         messageIndex,
+        messageRenderState,
         visibleMessageContent,
         turnDuration,
         conversationId,
