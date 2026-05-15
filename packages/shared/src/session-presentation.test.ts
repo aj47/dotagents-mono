@@ -80,6 +80,12 @@ import {
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileIconState,
   getChatComposerTextToSpeechMobileRenderState,
+  getChatConversationHomePromptDeleteConfirmAlertState,
+  getChatConversationHomePromptDeleteFailedAlertState,
+  getChatConversationHomePromptSaveFailedAlertState,
+  getChatConversationHomePromptSaveSuccessAlertState,
+  getChatConversationHomePromptTaskRunFailedAlertState,
+  getChatConversationHomePromptTaskStartedAlertState,
   getChatRuntimeCopyState,
   getChatRuntimeCurrentAgentLabel,
   getChatRuntimeAgentSelectorMobileActionState,
@@ -2664,6 +2670,37 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeWebConfirmMessage("Title", "Body")).toBe("Title\n\nBody")
     expect(getChatRuntimeAlertMessage(new Error("Network"), "Fallback")).toBe("Network")
     expect(getChatRuntimeAlertMessage("", "Fallback")).toBe("Fallback")
+    expect(getChatConversationHomePromptSaveSuccessAlertState(false)).toEqual({
+      title: "Success",
+      message: "Prompt saved to your desktop prompt library.",
+    })
+    expect(getChatConversationHomePromptSaveSuccessAlertState(true)).toEqual({
+      title: "Success",
+      message: "Prompt updated in your desktop prompt library.",
+    })
+    expect(getChatConversationHomePromptSaveFailedAlertState(new Error("No desktop"))).toEqual({
+      title: "Error",
+      message: "No desktop",
+    })
+    expect(getChatConversationHomePromptDeleteConfirmAlertState("Review")).toEqual({
+      title: "Delete Prompt",
+      message: 'Delete "Review" from your desktop prompt library?',
+      cancelLabel: "Cancel",
+      deleteLabel: "Delete",
+      webMessage: 'Delete prompt "Review"?',
+    })
+    expect(getChatConversationHomePromptDeleteFailedAlertState("No desktop")).toEqual({
+      title: "Error",
+      message: "No desktop",
+    })
+    expect(getChatConversationHomePromptTaskStartedAlertState("Daily")).toEqual({
+      title: "Task started",
+      message: 'Running "Daily" on desktop.',
+    })
+    expect(getChatConversationHomePromptTaskRunFailedAlertState(null)).toEqual({
+      title: "Error",
+      message: "Failed to run task.",
+    })
     expect(formatChatRuntimeToolApprovalFailureMessage("approve", new Error("Nope"))).toBe(
       "Failed to approve tool call. Nope",
     )

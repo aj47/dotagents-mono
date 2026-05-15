@@ -127,16 +127,11 @@ import {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
-  formatPromptLibraryDeletePromptConfirmMessage,
-  formatPromptLibraryDeletePromptWebConfirmMessage,
-  formatPromptLibraryTaskStartedMessage,
-  getPromptLibraryCopyState,
   getPromptLibraryEditorDismissActionState,
   getPromptLibraryEditorSaveActionState,
   getPromptLibraryEditorTitle,
   getPromptLibraryMobileShortcutEmptyRenderState,
   getPromptLibraryMobileShortcutItemRenderState,
-  getPromptLibrarySaveSuccessMessage,
   getPromptLibraryShortcutPressIntent,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
@@ -173,6 +168,12 @@ import {
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationToolCallActivityLabel,
   formatChatRuntimeToolApprovalRequiredContent,
+  getChatConversationHomePromptDeleteConfirmAlertState,
+  getChatConversationHomePromptDeleteFailedAlertState,
+  getChatConversationHomePromptSaveFailedAlertState,
+  getChatConversationHomePromptSaveSuccessAlertState,
+  getChatConversationHomePromptTaskRunFailedAlertState,
+  getChatConversationHomePromptTaskStartedAlertState,
   getChatRuntimeAlertMessage,
   getChatRuntimeDelegationConversationPreviewMoreActionState,
   getChatRuntimeDelegationStatusMobileRenderState,
@@ -214,9 +215,11 @@ import {
   getFollowUpInputPresentation,
   shouldRenderChatRuntimeConversationThread,
   shouldRenderChatRuntimeActivityStep,
+  type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
   type ChatRuntimeDelegationMorePreviewActionState,
   type ChatRuntimeAgentSelectorMobileRenderState,
+  type ChatRuntimeResolvedAlertState,
   type ChatRuntimeActivityStepLike,
   type ChatRuntimeBackMobileRenderState,
   type ChatRuntimeBranchMobileRenderState,
@@ -304,11 +307,6 @@ export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS = {
   maxTotalEmbeddedBytes: MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
 } as const;
 
-export interface ChatMessageRuntimeResolvedAlertState {
-  title: string;
-  message: string;
-}
-
 export interface ChatMessageRuntimeLogMeta {
   length: number;
   inlineImageCount: number;
@@ -325,12 +323,6 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   setRemoteTtsRate: Dispatch<SetStateAction<number>>;
   applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
-
-export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatMessageRuntimeResolvedAlertState {
-  cancelLabel: string;
-  deleteLabel: string;
-  webMessage: string;
-}
 
 type ChatConversationHomePromptEditorSaveClient = {
   updateSettings: (settings: { predefinedPrompts: PredefinedPromptSummary[] }) => Promise<unknown>;
@@ -1438,39 +1430,6 @@ type ChatConversationHomeQuickStartActionsState<
   handleQuickStartPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
 };
 
-export function getChatConversationHomePromptSaveSuccessAlertState(
-  isEditing: boolean,
-): ChatMessageRuntimeResolvedAlertState {
-  const copy = getPromptLibraryCopyState();
-  return {
-    title: copy.feedback.successTitle,
-    message: getPromptLibrarySaveSuccessMessage(isEditing),
-  };
-}
-
-export function getChatConversationHomePromptSaveFailedAlertState(
-  error: unknown,
-): ChatMessageRuntimeResolvedAlertState {
-  const copy = getPromptLibraryCopyState();
-  return {
-    title: copy.feedback.errorTitle,
-    message: getChatRuntimeAlertMessage(error, copy.feedback.promptSaveFailed),
-  };
-}
-
-export function getChatConversationHomePromptDeleteConfirmAlertState(
-  promptName: string,
-): ChatConversationHomePromptDeleteConfirmAlertState {
-  const copy = getPromptLibraryCopyState();
-  return {
-    title: copy.feedback.deletePromptTitle,
-    message: formatPromptLibraryDeletePromptConfirmMessage(promptName),
-    cancelLabel: copy.actions.cancel,
-    deleteLabel: copy.actions.delete,
-    webMessage: formatPromptLibraryDeletePromptWebConfirmMessage(promptName),
-  };
-}
-
 export function showChatConversationHomePromptDeleteNativeConfirmAlert(
   input: ChatConversationHomePromptEditorDeleteNativeConfirmInput,
   showAlert: ChatRuntimeNativeConfirmAlertPresenter,
@@ -1493,36 +1452,6 @@ export function confirmChatRuntimeWebDialog(message: string): boolean {
 
 export function showChatRuntimeWebAlert(message: string): void {
   (globalThis as { alert?: (message?: string) => void }).alert?.(message);
-}
-
-export function getChatConversationHomePromptDeleteFailedAlertState(
-  error: unknown,
-): ChatMessageRuntimeResolvedAlertState {
-  const copy = getPromptLibraryCopyState();
-  return {
-    title: copy.feedback.errorTitle,
-    message: getChatRuntimeAlertMessage(error, copy.feedback.promptDeleteFailed),
-  };
-}
-
-export function getChatConversationHomePromptTaskStartedAlertState(
-  taskName: string,
-): ChatMessageRuntimeResolvedAlertState {
-  const copy = getPromptLibraryCopyState();
-  return {
-    title: copy.feedback.taskStartedTitle,
-    message: formatPromptLibraryTaskStartedMessage(taskName),
-  };
-}
-
-export function getChatConversationHomePromptTaskRunFailedAlertState(
-  error: unknown,
-): ChatMessageRuntimeResolvedAlertState {
-  const copy = getPromptLibraryCopyState();
-  return {
-    title: copy.feedback.errorTitle,
-    message: getChatRuntimeAlertMessage(error, copy.feedback.taskRunFailed),
-  };
 }
 
 export function useChatConversationHomeQuickStartActionsState<
@@ -8516,7 +8445,7 @@ export function useChatMessageCopyFeedbackState(
 export function getChatMessageCopyFailureAlertState(
   error: unknown,
   feedbackState: ChatMessageCopyFeedbackState = getChatMessageCopyFeedbackState(),
-): ChatMessageRuntimeResolvedAlertState {
+): ChatRuntimeResolvedAlertState {
   return {
     title: feedbackState.failedTitle,
     message: getChatRuntimeAlertMessage(error, feedbackState.failedMessage),
@@ -8526,7 +8455,7 @@ export function getChatMessageCopyFailureAlertState(
 export function getChatMessageToolExecutionCopyFailureResolvedAlertState(
   error: unknown,
   alertState: ReturnType<typeof getToolExecutionDetailCopyFailureAlertState> = getToolExecutionDetailCopyFailureAlertState(),
-): ChatMessageRuntimeResolvedAlertState {
+): ChatRuntimeResolvedAlertState {
   return {
     title: alertState.title,
     message: getChatRuntimeAlertMessage(error, alertState.fallbackMessage),

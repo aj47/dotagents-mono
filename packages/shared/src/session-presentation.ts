@@ -24,11 +24,16 @@ import {
 } from "./conversation-media-assets"
 import {
   buildPromptLibraryShortcutItems,
+  formatPromptLibraryDeletePromptConfirmMessage,
+  formatPromptLibraryDeletePromptWebConfirmMessage,
+  formatPromptLibraryTaskStartedMessage,
+  getPromptLibraryCopyState,
   getPromptLibraryEditorInputPaddingVertical,
   getPromptLibraryEditorMobileRenderState,
   getPromptLibraryMobileCopyState,
   getPromptLibraryMobileShortcutRenderState,
   getPromptLibraryMobileSurfaceRenderState,
+  getPromptLibrarySaveSuccessMessage,
   type PromptLibraryShortcutItem,
   type PromptLibrarySkillLike,
   type PromptLibraryMobileSurfaceColorPalette,
@@ -1200,6 +1205,12 @@ export interface ChatRuntimeBranchActionState {
 export interface ChatRuntimeResolvedAlertState {
   title: string
   message: string
+}
+
+export interface ChatConversationHomePromptDeleteConfirmAlertState extends ChatRuntimeResolvedAlertState {
+  cancelLabel: string
+  deleteLabel: string
+  webMessage: string
 }
 
 export interface ChatRuntimeBranchMobileAlertState {
@@ -4597,6 +4608,69 @@ export function getChatRuntimeAlertMessage(error: unknown, fallback: string): st
   if (error instanceof Error && error.message.trim()) return error.message.trim()
   if (typeof error === "string" && error.trim()) return error.trim()
   return fallback
+}
+
+export function getChatConversationHomePromptSaveSuccessAlertState(
+  isEditing: boolean,
+): ChatRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState()
+  return {
+    title: copy.feedback.successTitle,
+    message: getPromptLibrarySaveSuccessMessage(isEditing),
+  }
+}
+
+export function getChatConversationHomePromptSaveFailedAlertState(
+  error: unknown,
+): ChatRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState()
+  return {
+    title: copy.feedback.errorTitle,
+    message: getChatRuntimeAlertMessage(error, copy.feedback.promptSaveFailed),
+  }
+}
+
+export function getChatConversationHomePromptDeleteConfirmAlertState(
+  promptName: string,
+): ChatConversationHomePromptDeleteConfirmAlertState {
+  const copy = getPromptLibraryCopyState()
+  return {
+    title: copy.feedback.deletePromptTitle,
+    message: formatPromptLibraryDeletePromptConfirmMessage(promptName),
+    cancelLabel: copy.actions.cancel,
+    deleteLabel: copy.actions.delete,
+    webMessage: formatPromptLibraryDeletePromptWebConfirmMessage(promptName),
+  }
+}
+
+export function getChatConversationHomePromptDeleteFailedAlertState(
+  error: unknown,
+): ChatRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState()
+  return {
+    title: copy.feedback.errorTitle,
+    message: getChatRuntimeAlertMessage(error, copy.feedback.promptDeleteFailed),
+  }
+}
+
+export function getChatConversationHomePromptTaskStartedAlertState(
+  taskName: string,
+): ChatRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState()
+  return {
+    title: copy.feedback.taskStartedTitle,
+    message: formatPromptLibraryTaskStartedMessage(taskName),
+  }
+}
+
+export function getChatConversationHomePromptTaskRunFailedAlertState(
+  error: unknown,
+): ChatRuntimeResolvedAlertState {
+  const copy = getPromptLibraryCopyState()
+  return {
+    title: copy.feedback.errorTitle,
+    message: getChatRuntimeAlertMessage(error, copy.feedback.taskRunFailed),
+  }
 }
 
 export function formatChatRuntimeDebugError(message: string): string {
