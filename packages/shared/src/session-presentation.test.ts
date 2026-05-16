@@ -57,7 +57,9 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatMessageActionStyleSlots,
   createChatComposerStyleSlots,
+  getChatMessageActionMobileButtonStatesBySlot,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageConnectionBannerStyleSlots,
@@ -6455,6 +6457,44 @@ describe("session presentation semantics", () => {
     )
     expect(expansionButtonStyleSlots.disabled.opacity).toBe(
       messageThreadStyle.action.slotButtons.expansion.button.disabledOpacity,
+    )
+    const actionStyleSlots = createChatMessageActionStyleSlots({
+      turnDurationStyles: "turn-duration",
+      speechStyles: {
+        style: "speech-button",
+        activeStyle: "speech-active",
+        pressedStyle: "speech-pressed",
+      },
+      branchStyles: {
+        style: "branch-button",
+        pressedStyle: "branch-pressed",
+        disabledStyle: "branch-disabled",
+      },
+      copyStyles: {
+        style: "copy-button",
+        activeStyle: "copy-active",
+        pressedStyle: "copy-pressed",
+      },
+      expansionStyles: {
+        style: "expansion-button",
+        pressedStyle: "expansion-pressed",
+      },
+    })
+    expect(actionStyleSlots.turnDuration).toBe("turn-duration")
+    expect(actionStyleSlots.speech).toEqual({
+      hitSlop: getChatMessageActionMobileButtonStatesBySlot().speech.hitSlop,
+      style: "speech-button",
+      activeStyle: "speech-active",
+      pressedStyle: "speech-pressed",
+    })
+    expect(actionStyleSlots.branch.hitSlop).toEqual(
+      getChatMessageActionMobileButtonStatesBySlot().branch.hitSlop,
+    )
+    expect(actionStyleSlots.copy.hitSlop).toEqual(
+      getChatMessageActionMobileButtonStatesBySlot().copy.hitSlop,
+    )
+    expect(actionStyleSlots.expansion.hitSlop).toEqual(
+      getChatMessageActionMobileButtonStatesBySlot().expansion.hitSlop,
     )
     const threadBodyColors = {
       ...messageThreadStyleColors,

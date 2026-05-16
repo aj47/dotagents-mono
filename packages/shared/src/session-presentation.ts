@@ -221,6 +221,7 @@ import {
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionLayoutRenderState,
+  getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageActionMobileIconColors,
   getChatMessageActionMobileStyleRenderState,
   getChatMessageActionMobileTurnDurationBadgeColors,
@@ -14888,6 +14889,62 @@ export function createChatMessageRuntimeChromeStyleSlots<
     actionStyles: conversationThreadStyles.actionSet,
     threadStyles: conversationThreadStyles.runtimeThread,
     promptEditorStyles,
+  }
+}
+
+export function createChatMessageActionStyleSlots<
+  TTurnDurationStyles,
+  TSpeechStyles,
+  TBranchStyles,
+  TCopyStyles,
+  TExpansionStyles,
+>({
+  turnDurationStyles,
+  speechStyles,
+  branchStyles,
+  copyStyles,
+  expansionStyles,
+}: {
+  turnDurationStyles: TTurnDurationStyles
+  speechStyles: TSpeechStyles
+  branchStyles: TBranchStyles
+  copyStyles: TCopyStyles
+  expansionStyles: TExpansionStyles
+}): {
+  turnDuration: TTurnDurationStyles
+  speech: TSpeechStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["speech"]["hitSlop"]
+  }
+  branch: TBranchStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["branch"]["hitSlop"]
+  }
+  copy: TCopyStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["copy"]["hitSlop"]
+  }
+  expansion: TExpansionStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["expansion"]["hitSlop"]
+  }
+} {
+  const actionButtons = getChatMessageActionMobileButtonStatesBySlot()
+
+  return {
+    turnDuration: turnDurationStyles,
+    speech: {
+      hitSlop: actionButtons.speech.hitSlop,
+      ...speechStyles,
+    },
+    branch: {
+      hitSlop: actionButtons.branch.hitSlop,
+      ...branchStyles,
+    },
+    copy: {
+      hitSlop: actionButtons.copy.hitSlop,
+      ...copyStyles,
+    },
+    expansion: {
+      hitSlop: actionButtons.expansion.hitSlop,
+      ...expansionStyles,
+    },
   }
 }
 

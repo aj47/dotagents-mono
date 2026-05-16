@@ -21,6 +21,7 @@ import {
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatMessageRuntimeViewportStyleSlots,
+  createChatMessageActionStyleSlots,
   createChatRuntimeChromeSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
@@ -58,7 +59,6 @@ import {
 } from '@dotagents/shared/session-presentation';
 import {
   createChatConversationHomePromptEditorModalStyleSlots,
-  createChatMessageActionStyleSlots,
   createChatMessageThreadBodyStyleSlots,
   createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
 } from './ChatMessageChrome';
@@ -1090,7 +1090,33 @@ export function useChatRuntimeMobileStyleSlots() {
     () => createChatMessageConversationThreadStyleSlots({
       threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles),
       threadBodyStyles: createChatMessageThreadBodyStyleSlots(styles),
-      actionStyles: createChatMessageActionStyleSlots(styles),
+      actionStyles: createChatMessageActionStyleSlots({
+        turnDurationStyles: {
+          style: styles.messageTurnDurationBadge,
+          liveStyle: styles.messageTurnDurationBadgeLive,
+          textStyle: styles.messageTurnDurationText,
+          liveTextStyle: styles.messageTurnDurationTextLive,
+        },
+        speechStyles: {
+          style: styles.speakButton,
+          activeStyle: styles.speakButtonActive,
+          pressedStyle: styles.speakButtonPressed,
+        },
+        branchStyles: {
+          style: styles.messageBranchButton,
+          pressedStyle: styles.messageBranchButtonPressed,
+          disabledStyle: styles.messageBranchButtonDisabled,
+        },
+        copyStyles: {
+          style: styles.messageCopyButton,
+          activeStyle: styles.messageCopyButtonCopied,
+          pressedStyle: styles.messageCopyButtonPressed,
+        },
+        expansionStyles: {
+          style: styles.messageExpandButton,
+          pressedStyle: styles.messageExpandButtonPressed,
+        },
+      }),
     }),
     [styles],
   );

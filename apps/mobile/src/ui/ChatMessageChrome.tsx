@@ -49,7 +49,6 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   getChatMessageRuntimeNextResponseEventOrdinal,
   createChatMessageActionSlotRenderMap,
-  getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
@@ -6468,44 +6467,6 @@ function createChatMessageThreadBodyProps({
       toolExecutionStack,
     }),
   });
-}
-
-export function createChatMessageActionStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatMessageActionStyleSlots {
-  const actionButtons = getChatMessageActionMobileButtonStatesBySlot();
-
-  return {
-    turnDuration: {
-      style: styles.messageTurnDurationBadge,
-      liveStyle: styles.messageTurnDurationBadgeLive,
-      textStyle: styles.messageTurnDurationText,
-      liveTextStyle: styles.messageTurnDurationTextLive,
-    },
-    speech: {
-      hitSlop: actionButtons.speech.hitSlop,
-      style: styles.speakButton,
-      activeStyle: styles.speakButtonActive,
-      pressedStyle: styles.speakButtonPressed,
-    },
-    branch: {
-      hitSlop: actionButtons.branch.hitSlop,
-      style: styles.messageBranchButton,
-      pressedStyle: styles.messageBranchButtonPressed,
-      disabledStyle: styles.messageBranchButtonDisabled,
-    },
-    copy: {
-      hitSlop: actionButtons.copy.hitSlop,
-      style: styles.messageCopyButton,
-      activeStyle: styles.messageCopyButtonCopied,
-      pressedStyle: styles.messageCopyButtonPressed,
-    },
-    expansion: {
-      hitSlop: actionButtons.expansion.hitSlop,
-      style: styles.messageExpandButton,
-      pressedStyle: styles.messageExpandButtonPressed,
-    },
-  } as ChatMessageActionStyleSlots;
 }
 
 export function useChatRuntimeNavigationHeaderRenderState({
