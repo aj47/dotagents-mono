@@ -1955,6 +1955,59 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsPartsInput<
+  TGroupRenderState extends {
+    shouldRenderExpandedHeader?: boolean
+    shouldRenderExpandedFooter?: boolean
+  } = {
+    shouldRenderExpandedHeader?: boolean
+    shouldRenderExpandedFooter?: boolean
+  },
+  TOnToggleGroup = unknown,
+  TSurfaceStyle = unknown,
+  TSurfaceToneStyle = unknown,
+  TBoundaryStyles = unknown,
+> {
+  groupRenderState?: TGroupRenderState | null
+  onToggleGroup?: TOnToggleGroup
+  surfaceToneStyle?: TSurfaceToneStyle
+  styles: {
+    surfaceStyle: TSurfaceStyle
+    boundary: TBoundaryStyles
+  }
+}
+
+export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
+  TGroupRenderState extends {
+    shouldRenderExpandedHeader?: boolean
+    shouldRenderExpandedFooter?: boolean
+  } = {
+    shouldRenderExpandedHeader?: boolean
+    shouldRenderExpandedFooter?: boolean
+  },
+  TOnToggleGroup = unknown,
+  TSurfaceStyle = unknown,
+  TSurfaceToneStyle = unknown,
+  TBoundaryStyles = unknown,
+> {
+  surface: {
+    surfaceStyle: TSurfaceStyle
+    surfaceToneStyle: TSurfaceToneStyle | undefined
+  }
+  leadingBoundary: ({
+    renderState: TGroupRenderState
+    kind: "expanded"
+    onPress: TOnToggleGroup | undefined
+    styles: TBoundaryStyles
+  }) | null
+  trailingBoundary: ({
+    renderState: TGroupRenderState
+    kind: "footer"
+    onPress: TOnToggleGroup | undefined
+    styles: TBoundaryStyles
+  }) | null
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13554,6 +13607,53 @@ export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsPar
       ...inlineActivity,
       style: styles.inlineActivity.style,
       spinnerStyle: styles.inlineActivity.spinnerStyle,
+    } : null,
+  }
+}
+
+export function createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
+  TGroupRenderState extends {
+    shouldRenderExpandedHeader?: boolean
+    shouldRenderExpandedFooter?: boolean
+  },
+  TOnToggleGroup,
+  TSurfaceStyle,
+  TSurfaceToneStyle,
+  TBoundaryStyles,
+>({
+  groupRenderState,
+  onToggleGroup,
+  surfaceToneStyle,
+  styles,
+}: ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsPartsInput<
+  TGroupRenderState,
+  TOnToggleGroup,
+  TSurfaceStyle,
+  TSurfaceToneStyle,
+  TBoundaryStyles
+>): ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
+  TGroupRenderState,
+  TOnToggleGroup,
+  TSurfaceStyle,
+  TSurfaceToneStyle,
+  TBoundaryStyles
+> {
+  return {
+    surface: {
+      surfaceStyle: styles.surfaceStyle,
+      surfaceToneStyle,
+    },
+    leadingBoundary: groupRenderState?.shouldRenderExpandedHeader ? {
+      renderState: groupRenderState,
+      kind: "expanded",
+      onPress: onToggleGroup,
+      styles: styles.boundary,
+    } : null,
+    trailingBoundary: groupRenderState?.shouldRenderExpandedFooter ? {
+      renderState: groupRenderState,
+      kind: "footer",
+      onPress: onToggleGroup,
+      styles: styles.boundary,
     } : null,
   }
 }

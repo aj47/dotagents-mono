@@ -82,6 +82,7 @@ import {
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -7280,24 +7281,24 @@ export function ChatMessageToolActivityGroupThreadSurface({
   styles,
   surfaceToneStyle,
 }: ChatMessageToolActivityGroupThreadSurfaceProps) {
+  const surfaceParts = createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
+    groupRenderState,
+    onToggleGroup,
+    surfaceToneStyle,
+    styles,
+  });
+
   return (
     <ChatMessageThreadSurface
-      surfaceStyle={styles.surfaceStyle}
-      surfaceToneStyle={surfaceToneStyle}
-      leadingActivity={groupRenderState?.shouldRenderExpandedHeader ? (
+      {...surfaceParts.surface}
+      leadingActivity={surfaceParts.leadingBoundary ? (
         <ChatMessageToolActivityGroupBoundary
-          renderState={groupRenderState}
-          kind="expanded"
-          onPress={onToggleGroup}
-          styles={styles.boundary}
+          {...surfaceParts.leadingBoundary}
         />
       ) : null}
-      trailingActivity={groupRenderState?.shouldRenderExpandedFooter ? (
+      trailingActivity={surfaceParts.trailingBoundary ? (
         <ChatMessageToolActivityGroupBoundary
-          renderState={groupRenderState}
-          kind="footer"
-          onPress={onToggleGroup}
-          styles={styles.boundary}
+          {...surfaceParts.trailingBoundary}
         />
       ) : null}
     >

@@ -92,6 +92,7 @@ import {
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -6876,6 +6877,59 @@ describe("session presentation semantics", () => {
       threadBodyStyleSlots.toolExecutionStack.callDetail.resultSection.header.badge.textError,
     ).toBe("toolResultBadgeTextError")
     expect(threadBodyStyleSlots.standaloneActions.rowStyle).toBe("messageActionsRow")
+    const threadSurfaceParts = createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
+      groupRenderState: {
+        groupKey: "group-1",
+        shouldRenderExpandedHeader: true,
+        shouldRenderExpandedFooter: true,
+      },
+      onToggleGroup: "toggle-group",
+      surfaceToneStyle: "assistant-surface-tone",
+      styles: {
+        surfaceStyle: "thread-surface",
+        boundary: "activity-boundary",
+      },
+    })
+    expect(threadSurfaceParts).toEqual({
+      surface: {
+        surfaceStyle: "thread-surface",
+        surfaceToneStyle: "assistant-surface-tone",
+      },
+      leadingBoundary: {
+        renderState: {
+          groupKey: "group-1",
+          shouldRenderExpandedHeader: true,
+          shouldRenderExpandedFooter: true,
+        },
+        kind: "expanded",
+        onPress: "toggle-group",
+        styles: "activity-boundary",
+      },
+      trailingBoundary: {
+        renderState: {
+          groupKey: "group-1",
+          shouldRenderExpandedHeader: true,
+          shouldRenderExpandedFooter: true,
+        },
+        kind: "footer",
+        onPress: "toggle-group",
+        styles: "activity-boundary",
+      },
+    })
+    expect(createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
+      groupRenderState: null,
+      styles: {
+        surfaceStyle: "thread-surface",
+        boundary: "activity-boundary",
+      },
+    })).toEqual({
+      surface: {
+        surfaceStyle: "thread-surface",
+        surfaceToneStyle: undefined,
+      },
+      leadingBoundary: null,
+      trailingBoundary: null,
+    })
     const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
       retryStatus: {
         renderState: "retry-render-state",
