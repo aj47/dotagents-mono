@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  createQueuedMessageActionButtonMobileStyleSlots,
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
@@ -83,6 +84,10 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const statusColor = queuedMessageRenderState.statusColor;
   const statusMetaColor = queuedMessageRenderState.statusMetaColor;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
+  const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots({
+    surface: actionSurface,
+    colors: actionColors,
+  });
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -171,33 +176,16 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       marginTop: actionSurface.marginTop,
     },
     actionButton: {
-      alignSelf: actionSurface.buttonAlignSelf,
-      minHeight: actionSurface.buttonMinHeight,
-      flexDirection: actionSurface.buttonFlexDirection,
-      alignItems: actionSurface.buttonAlignItems,
-      paddingHorizontal: actionSurface.buttonPaddingHorizontal,
-      paddingVertical: actionSurface.buttonPaddingVertical,
-      gap: actionSurface.buttonGap,
-      borderRadius: actionSurface.buttonBorderRadius,
-      borderWidth: actionSurface.buttonBorderWidth,
-      borderColor: actionColors.buttonBorderColor,
-      backgroundColor: actionColors.buttonBackgroundColor,
-      justifyContent: actionSurface.buttonJustifyContent,
+      ...actionButtonStyleSlots.button,
     },
     retryActionText: {
-      color: actionColors.retryTextColor,
-      fontSize: actionSurface.textFontSize,
-      fontWeight: actionSurface.textFontWeight,
+      ...actionButtonStyleSlots.retryText,
     },
     editActionText: {
-      color: actionColors.editTextColor,
-      fontSize: actionSurface.textFontSize,
-      fontWeight: actionSurface.textFontWeight,
+      ...actionButtonStyleSlots.editText,
     },
     removeActionText: {
-      color: actionColors.removeTextColor,
-      fontSize: actionSurface.textFontSize,
-      fontWeight: actionSurface.textFontWeight,
+      ...actionButtonStyleSlots.removeText,
     },
     editContainer: {
       gap: editSurface.containerGap,

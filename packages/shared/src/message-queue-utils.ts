@@ -942,6 +942,42 @@ export interface QueuedMessageItemMobileRenderState {
   statusMetaColor: string;
 }
 
+type QueuedMessageMobileActionSurface =
+  MessageQueuePanelMobileSurfaceRenderState['surface']['actions'];
+
+export interface QueuedMessageActionButtonMobileStyleSlotsInput {
+  surface: QueuedMessageMobileActionSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['actions'];
+}
+
+export interface QueuedMessageActionButtonMobileStyleSlot {
+  alignSelf: QueuedMessageMobileActionSurface['buttonAlignSelf'];
+  minHeight: number;
+  flexDirection: QueuedMessageMobileActionSurface['buttonFlexDirection'];
+  alignItems: QueuedMessageMobileActionSurface['buttonAlignItems'];
+  paddingHorizontal: number;
+  paddingVertical: number;
+  gap: number;
+  borderRadius: number;
+  borderWidth: number;
+  borderColor: string;
+  backgroundColor: string;
+  justifyContent: QueuedMessageMobileActionSurface['buttonJustifyContent'];
+}
+
+export interface QueuedMessageActionTextMobileStyleSlot {
+  color: string;
+  fontSize: number;
+  fontWeight: QueuedMessageMobileActionSurface['textFontWeight'];
+}
+
+export interface QueuedMessageActionButtonMobileStyleSlots {
+  button: QueuedMessageActionButtonMobileStyleSlot;
+  retryText: QueuedMessageActionTextMobileStyleSlot;
+  editText: QueuedMessageActionTextMobileStyleSlot;
+  removeText: QueuedMessageActionTextMobileStyleSlot;
+}
+
 export interface QueuedMessageItemDesktopRenderStateInput {
   message: Pick<QueuedMessage, 'status' | 'addedToHistory' | 'text' | 'errorMessage'>;
   isExpanded: boolean;
@@ -1035,6 +1071,37 @@ export function getQueuedMessageItemMobileRenderState({
       : presentation.isProcessing
         ? itemColors.processingMetaColor
         : itemColors.metaColor,
+  };
+}
+
+export function createQueuedMessageActionButtonMobileStyleSlots({
+  surface,
+  colors,
+}: QueuedMessageActionButtonMobileStyleSlotsInput): QueuedMessageActionButtonMobileStyleSlots {
+  const createTextStyle = (color: string): QueuedMessageActionTextMobileStyleSlot => ({
+    color,
+    fontSize: surface.textFontSize,
+    fontWeight: surface.textFontWeight,
+  });
+
+  return {
+    button: {
+      alignSelf: surface.buttonAlignSelf,
+      minHeight: surface.buttonMinHeight,
+      flexDirection: surface.buttonFlexDirection,
+      alignItems: surface.buttonAlignItems,
+      paddingHorizontal: surface.buttonPaddingHorizontal,
+      paddingVertical: surface.buttonPaddingVertical,
+      gap: surface.buttonGap,
+      borderRadius: surface.buttonBorderRadius,
+      borderWidth: surface.buttonBorderWidth,
+      borderColor: colors.buttonBorderColor,
+      backgroundColor: colors.buttonBackgroundColor,
+      justifyContent: surface.buttonJustifyContent,
+    },
+    retryText: createTextStyle(colors.retryTextColor),
+    editText: createTextStyle(colors.editTextColor),
+    removeText: createTextStyle(colors.removeTextColor),
   };
 }
 

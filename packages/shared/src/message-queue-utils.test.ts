@@ -7,6 +7,7 @@ import {
   buildOperatorMessageQueuesResponse,
   clearOperatorMessageQueueSummary,
   clearQueuedMessages,
+  createQueuedMessageActionButtonMobileStyleSlots,
   enqueueQueuedMessage,
   canEditQueuedMessage,
   canMutateQueuedMessage,
@@ -490,6 +491,43 @@ describe('message-queue-utils', () => {
             },
           },
         },
+      },
+    });
+    const mobileQueueSurfaceRenderState = getMessageQueuePanelMobileSurfaceRenderState({
+      colors: mobileMessageQueuePalette,
+    });
+    expect(createQueuedMessageActionButtonMobileStyleSlots({
+      surface: mobileQueueSurfaceRenderState.surface.actions,
+      colors: mobileQueueSurfaceRenderState.colors.actions,
+    })).toEqual({
+      button: {
+        alignSelf: 'flex-start',
+        minHeight: 28,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        gap: 4,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#d4d4d4',
+        backgroundColor: '#ffffff',
+        justifyContent: 'center',
+      },
+      retryText: {
+        color: '#2563eb',
+        fontSize: 12,
+        fontWeight: '500',
+      },
+      editText: {
+        color: '#171717',
+        fontSize: 12,
+        fontWeight: '500',
+      },
+      removeText: {
+        color: '#dc2626',
+        fontSize: 12,
+        fontWeight: '500',
       },
     });
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.containerBaseClassName).toContain('transition-colors');
