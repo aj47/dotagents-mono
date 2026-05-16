@@ -84,6 +84,7 @@ import {
 import type { PredefinedPromptSummary } from "./api-types"
 import type { ToolCall, ToolResult } from "./types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
+import { mergeVoiceText } from "./voice-text-utils"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
   applyChatDisplayGroupedExpansionInheritance,
@@ -2716,6 +2717,13 @@ export interface ChatRuntimeThemeSpinnerSourceInput<TSpinnerSource> {
   darkSource: TSpinnerSource
   lightSource: TSpinnerSource
 }
+
+export type ChatRuntimeMobileFontFamilyByPlatform = Readonly<{
+  ios: string
+  default: string
+}>
+
+export type ChatRuntimeMobileFontPlatform = string
 
 export type ChatComposerMobileIconName =
   | typeof CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon.name
@@ -6600,6 +6608,20 @@ export function getChatComposerRuntimeDraftMessageState({
     content,
     hasContent: content.trim().length > 0,
   }
+}
+
+export function mergeChatComposerRuntimeVoiceText(
+  currentText?: string | null,
+  finalizedText?: string | null,
+): string {
+  return mergeVoiceText(currentText, finalizedText)
+}
+
+export function resolveChatRuntimeMobileFontFamily(
+  fontFamilyByPlatform: ChatRuntimeMobileFontFamilyByPlatform,
+  platform: ChatRuntimeMobileFontPlatform,
+): string {
+  return platform === "ios" ? fontFamilyByPlatform.ios : fontFamilyByPlatform.default
 }
 
 export function createChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes>({

@@ -333,11 +333,13 @@ import {
   isLastChatMessageRuntimeConversationContent,
   isChatMessageRuntimeActiveRequest,
   isChatMessageRuntimeLatestSessionRequest,
+  mergeChatComposerRuntimeVoiceText,
   mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
   mergeChatMessageRuntimeToolResultsIntoLastMessage,
   preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
+  resolveChatRuntimeMobileFontFamily,
   sortChatMessageRuntimeResponseEvents,
   toggleChatMessageRuntimeMessageExpansionState,
   toggleChatMessageRuntimeToolActivityGroupExpansionState,
@@ -1116,6 +1118,15 @@ describe("session presentation semantics", () => {
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "needs_input" })).toBe(true)
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete", isResponding: true })).toBe(true)
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete" })).toBe(false)
+    expect(mergeChatComposerRuntimeVoiceText("summarize my", "latest emails")).toBe("summarize my latest emails")
+    expect(resolveChatRuntimeMobileFontFamily({
+      ios: "Menlo",
+      default: "monospace",
+    }, "ios")).toBe("Menlo")
+    expect(resolveChatRuntimeMobileFontFamily({
+      ios: "Menlo",
+      default: "monospace",
+    }, "android")).toBe("monospace")
     expect(createChatMessageRuntimeLogMeta("hello")).toEqual({
       length: 5,
       inlineImageCount: 0,

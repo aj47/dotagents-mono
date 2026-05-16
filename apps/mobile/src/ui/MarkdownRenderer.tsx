@@ -36,8 +36,8 @@ import {
   type MarkdownThinkSectionControlOptions,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/markdown-render-parts';
+import { resolveChatRuntimeMobileFontFamily } from '@dotagents/shared/session-presentation';
 import { SettingsApiClient } from '../lib/settingsApi';
-import { resolveMobileFontFamily } from './mobileTypography';
 
 interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   content: string;
@@ -416,7 +416,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     code_inline: {
       backgroundColor: markdownContentColors.inlineCode.backgroundColor,
       color: markdownContentColors.inlineCode.color,
-      fontFamily: resolveMobileFontFamily(markdownContentSurface.inlineCode.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        markdownContentSurface.inlineCode.fontFamilyByPlatform,
+        Platform.OS,
+      ),
       fontSize: markdownContentSurface.inlineCode.fontSize,
       paddingHorizontal: markdownContentSurface.inlineCode.paddingHorizontal,
       paddingVertical: markdownContentSurface.inlineCode.paddingVertical,
@@ -425,7 +428,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     code_block: {
       backgroundColor: markdownContentColors.codeBlock.backgroundColor,
       color: markdownContentColors.codeBlock.color,
-      fontFamily: resolveMobileFontFamily(markdownContentSurface.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        markdownContentSurface.codeBlock.fontFamilyByPlatform,
+        Platform.OS,
+      ),
       fontSize: markdownContentSurface.codeBlock.fontSize,
       padding: spacing[markdownContentSurface.codeBlock.padding],
       borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
@@ -435,7 +441,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     fence: {
       backgroundColor: markdownContentColors.codeBlock.backgroundColor,
       color: markdownContentColors.codeBlock.color,
-      fontFamily: resolveMobileFontFamily(markdownContentSurface.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        markdownContentSurface.codeBlock.fontFamilyByPlatform,
+        Platform.OS,
+      ),
       fontSize: markdownContentSurface.codeBlock.fontSize,
       padding: spacing[markdownContentSurface.codeBlock.padding],
       borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
@@ -449,7 +458,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     codeBlockCopyText: {
       backgroundColor: markdownContentColors.codeBlock.backgroundColor,
       color: markdownContentColors.codeBlock.color,
-      fontFamily: resolveMobileFontFamily(markdownContentSurface.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        markdownContentSurface.codeBlock.fontFamilyByPlatform,
+        Platform.OS,
+      ),
       fontSize: markdownContentSurface.codeBlock.fontSize,
       padding: spacing[markdownContentSurface.codeBlock.padding],
       paddingRight: markdownContentSurface.codeBlock.copyPaddingRight,

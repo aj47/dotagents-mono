@@ -74,7 +74,6 @@ import {
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
 } from '@dotagents/shared/tts-preprocessing';
-import { mergeVoiceText } from '@dotagents/shared/voice-text-utils';
 import {
   createChatComposerAccessibilityHint,
   createVoiceInputLiveRegionAnnouncement,
@@ -179,6 +178,7 @@ import {
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getFollowUpInputPresentation,
+  mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
@@ -263,7 +263,6 @@ import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageQueuePanel } from './MessageQueuePanel';
-import { resolveMobileFontFamily } from './mobileTypography';
 import { ResponseHistoryPanel } from './ResponseHistoryPanel';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -7389,19 +7388,6 @@ export function createChatComposerRuntimeDockChromeProps({
       webPressedStyle: dockRenderState.micButton.webPressedStyle as ChatComposerMicButtonProps['webPressedStyle'],
     },
   };
-}
-
-export function mergeChatComposerRuntimeVoiceText(
-  currentText?: string | null,
-  finalizedText?: string | null,
-): string {
-  return mergeVoiceText(currentText, finalizedText);
-}
-
-export function resolveChatRuntimeMobileFontFamily(
-  ...args: Parameters<typeof resolveMobileFontFamily>
-): ReturnType<typeof resolveMobileFontFamily> {
-  return resolveMobileFontFamily(...args);
 }
 
 export function createChatComposerRuntimeDockProps({

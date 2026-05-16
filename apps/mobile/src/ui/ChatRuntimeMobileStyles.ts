@@ -10,6 +10,7 @@ import {
   createChatRuntimeThemeSpinnerSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
+  resolveChatRuntimeMobileFontFamily,
 } from '@dotagents/shared/session-presentation';
 import {
   createChatComposerRuntimeDockStyleSlots,
@@ -24,7 +25,6 @@ import {
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  resolveChatRuntimeMobileFontFamily,
 } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
@@ -46,6 +46,7 @@ export function createChatRuntimeMobileChromeEnvironment(theme: Theme): ChatRunt
 
 export function createChatRuntimeMobileStyles(theme: Theme) {
   const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment(theme);
+  const mobilePlatform = chatRuntimeChromeEnvironment.platform;
   const chatChromeStyleState = getChatRuntimeMobileChromeStyleRenderState(chatRuntimeChromeEnvironment);
   const headerChromeStyleState = chatChromeStyleState.header;
   const headerStyleState = headerChromeStyleState.header;
@@ -185,7 +186,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     badge: typeof headerTurnDurationBadge,
     colors: typeof headerTurnDurationColors,
   ) => ({
-    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform),
+    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform, mobilePlatform),
     fontSize: badge.fontSize,
     lineHeight: badge.lineHeight,
     fontWeight: badge.fontWeight,
@@ -265,7 +266,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     badge: typeof mobileMessageTurnDurationBadge,
     colors: typeof mobileMessageTurnDurationBadgeColors,
   ) => ({
-    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform),
+    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform, mobilePlatform),
     fontSize: badge.fontSize,
     lineHeight: badge.lineHeight,
     fontWeight: badge.fontWeight,
@@ -1155,7 +1156,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     debugText: {
       fontSize: handsFreeSurface.debugText.fontSize,
       color: handsFreeSurfaceColors.debugText.color,
-      fontFamily: resolveChatRuntimeMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform, mobilePlatform),
     },
     connectionBanner: {
       paddingHorizontal: spacing[connectionBannerSurface.paddingHorizontal],
@@ -1291,13 +1292,13 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       color: toolApprovalSurfaceColors.toolLabel.color,
     },
     toolApprovalTool: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.toolName.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.toolName.fontFamilyByPlatform, mobilePlatform),
       fontSize: toolApprovalSurface.toolName.fontSize,
       color: toolApprovalSurfaceColors.toolName.color,
       flexShrink: toolApprovalSurface.toolName.flexShrink,
     },
     toolApprovalArgumentsPreview: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.argumentsPreview.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.argumentsPreview.fontFamilyByPlatform, mobilePlatform),
       fontSize: toolApprovalSurface.argumentsPreview.fontSize,
       lineHeight: toolApprovalSurface.argumentsPreview.lineHeight,
       borderWidth: toolApprovalSurface.argumentsPreview.borderWidth,
@@ -1331,7 +1332,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       backgroundColor: toolApprovalSurfaceColors.fullArguments.backgroundColor,
     },
     toolApprovalArgumentsFull: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.fullArguments.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.fullArguments.fontFamilyByPlatform, mobilePlatform),
       fontSize: toolApprovalSurface.fullArguments.fontSize,
       lineHeight: toolApprovalSurface.fullArguments.lineHeight,
       padding: toolApprovalSurface.fullArguments.padding,
@@ -1420,7 +1421,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       opacity: compactToolExecution.pressedOpacity,
     },
     toolCallCompactName: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(compactToolExecution.name.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(compactToolExecution.name.fontFamilyByPlatform, mobilePlatform),
       fontSize: compactToolExecution.name.fontSize,
       fontWeight: compactToolExecution.name.fontWeight,
       flexShrink: compactToolExecution.name.flexShrink,
@@ -1488,13 +1489,13 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       backgroundColor: toolActivityGroupSurfaceColors.countBadge.backgroundColor,
     },
     toolActivityGroupCountBadgeText: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.countBadge.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.countBadge.fontFamilyByPlatform, mobilePlatform),
       fontSize: toolActivityGroupSurface.countBadge.fontSize,
       fontWeight: toolActivityGroupSurface.countBadge.fontWeight,
       color: toolActivityGroupSurfaceColors.countBadge.color,
     },
     toolActivityGroupPreviewLine: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.preview.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.preview.fontFamilyByPlatform, mobilePlatform),
       fontSize: toolActivityGroupSurface.preview.fontSize,
       color: toolActivityGroupSurfaceColors.preview.color,
       flexShrink: toolActivityGroupSurface.preview.flexShrink,
@@ -1527,7 +1528,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       borderBottomColor: toolExecutionDetailContentColors.section.borderBottomColor,
     },
     toolName: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.toolName.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.toolName.fontFamilyByPlatform, mobilePlatform),
       fontWeight: detailedToolExecution.toolName.fontWeight,
       color: toolExecutionDetailContentColors.toolName.color,
       fontSize: detailedToolExecution.toolName.fontSize,
@@ -1583,7 +1584,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       color: toolExecutionDetailContentColors.payloadType.color,
     },
     toolPayloadPreview: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.payloadPreview.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.payloadPreview.fontFamilyByPlatform, mobilePlatform),
       fontSize: detailedToolExecution.payloadPreview.fontSize,
       lineHeight: detailedToolExecution.payloadPreview.lineHeight,
       paddingHorizontal: detailedToolExecution.payloadPreview.paddingHorizontal,
@@ -1624,7 +1625,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       overflow: detailedToolExecution.scroll.overflow,
     },
     toolParamsCode: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform, mobilePlatform),
       fontSize: detailedToolExecution.codeBlock.fontSize,
       color: toolExecutionDetailContentColors.codeBlock.color,
       backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
@@ -1664,7 +1665,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     toolResultCharCount: {
       fontSize: detailedToolExecution.characterCount.fontSize,
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.characterCount.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.characterCount.fontFamilyByPlatform, mobilePlatform),
       color: toolExecutionDetailContentColors.characterCount.color,
       opacity: detailedToolExecution.characterCount.opacity,
     },
@@ -1703,7 +1704,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       overflow: detailedToolExecution.scroll.overflow,
     },
     toolResultCode: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform, mobilePlatform),
       fontSize: detailedToolExecution.codeBlock.fontSize,
       color: toolExecutionDetailContentColors.codeBlock.color,
       backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
@@ -1720,7 +1721,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       marginBottom: detailedToolExecution.error.labelMarginBottom,
     },
     toolResultErrorText: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform),
+      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform, mobilePlatform),
       fontSize: detailedToolExecution.codeBlock.fontSize,
       color: toolResultErrorColors.color,
       backgroundColor: toolResultErrorColors.backgroundColor,

@@ -7,10 +7,6 @@ const rendererSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MarkdownRenderer.tsx'),
   'utf8',
 );
-const mobileTypographySource = fs.readFileSync(
-  path.join(__dirname, '..', 'src', 'ui', 'mobileTypography.ts'),
-  'utf8',
-);
 
 test('markdown renderer loads conversation image assets through authenticated remote API', () => {
   assert.match(rendererSource, /parseConversationImageAssetUrl/);
@@ -115,13 +111,13 @@ test('markdown renderer uses shared compact markdown content surface tokens', ()
   assert.match(rendererSource, /const markdownContentRenderState = React\.useMemo\([\s\S]*?getMarkdownContentMobileSurfaceRenderState\(\{[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?\}\)/);
   assert.match(rendererSource, /const markdownContentSurface = markdownContentRenderState\.surface;/);
   assert.match(rendererSource, /const markdownContentColors = markdownContentRenderState\.colors;/);
-  assert.match(rendererSource, /import \{ resolveMobileFontFamily \} from '\.\/mobileTypography';/);
-  assert.match(mobileTypographySource, /export const resolveMobileFontFamily = \(fontFamilyByPlatform: MobileFontFamilyByPlatform\) =>/);
+  assert.match(rendererSource, /import \{ resolveChatRuntimeMobileFontFamily \} from '@dotagents\/shared\/session-presentation';/);
+  assert.doesNotMatch(rendererSource, /from '\.\/mobileTypography'/);
   assert.match(rendererSource, /fontSize:\s*markdownContentSurface\.body\.fontSize/);
   assert.match(rendererSource, /lineHeight:\s*markdownContentSurface\.body\.lineHeight/);
   assert.match(rendererSource, /color:\s*markdownContentColors\.body\.color/);
-  assert.match(rendererSource, /fontFamily:\s*resolveMobileFontFamily\(markdownContentSurface\.inlineCode\.fontFamilyByPlatform\)/);
-  assert.match(rendererSource, /fontFamily:\s*resolveMobileFontFamily\(markdownContentSurface\.codeBlock\.fontFamilyByPlatform\)/);
+  assert.match(rendererSource, /fontFamily:\s*resolveChatRuntimeMobileFontFamily\(\s*markdownContentSurface\.inlineCode\.fontFamilyByPlatform,\s*Platform\.OS,\s*\)/);
+  assert.match(rendererSource, /fontFamily:\s*resolveChatRuntimeMobileFontFamily\(\s*markdownContentSurface\.codeBlock\.fontFamilyByPlatform,\s*Platform\.OS,\s*\)/);
   assert.match(rendererSource, /borderRadius:\s*radius\[markdownContentSurface\.codeBlock\.borderRadius\]/);
   assert.match(rendererSource, /import \* as Clipboard from 'expo-clipboard';/);
   assert.match(rendererSource, /Ionicons/);

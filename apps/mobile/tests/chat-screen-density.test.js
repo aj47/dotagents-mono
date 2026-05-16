@@ -12,10 +12,6 @@ const chatRuntimeMobileStylesSource = fs.readFileSync(
   'utf8'
 );
 const screenSource = `${chatScreenSource}\n${chatRuntimeMobileStylesSource}`;
-const mobileTypographySource = fs.readFileSync(
-  path.join(__dirname, '..', 'src', 'ui', 'mobileTypography.ts'),
-  'utf8'
-);
 const chatMessageChromeSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
   'utf8'
@@ -77,25 +73,26 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
 test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.doesNotMatch(screenSource, /from '\.\.\/ui\/mobileTypography'/);
   assert.match(screenSource, /resolveChatRuntimeMobileFontFamily,/);
-  assert.match(chatMessageChromeSource, /import \{ resolveMobileFontFamily \} from '\.\/mobileTypography';/);
-  assert.match(chatMessageChromeSource, /export function resolveChatRuntimeMobileFontFamily/);
-  assert.match(mobileTypographySource, /export type MobileFontFamilyByPlatform = Readonly<\{/);
-  assert.match(mobileTypographySource, /export const resolveMobileFontFamily = \(fontFamilyByPlatform: MobileFontFamilyByPlatform\) =>\s+Platform\.OS === 'ios' \? fontFamilyByPlatform\.ios : fontFamilyByPlatform\.default;/);
-  assert.match(screenSource, /const createChatRuntimeMobileHeaderDurationTextStyle = \(\s+badge: typeof headerTurnDurationBadge,[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationTextStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /debugText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolApprovalTool:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.toolName\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolApprovalArgumentsPreview:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.argumentsPreview\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolApprovalArgumentsFull:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.fullArguments\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolCallCompactName:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(compactToolExecution\.name\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolActivityGroupCountBadgeText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolActivityGroupSurface\.countBadge\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolActivityGroupPreviewLine:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolActivityGroupSurface\.preview\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolName:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.toolName\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolPayloadPreview:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.payloadPreview\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolParamsCode:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.codeBlock\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolResultCharCount:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.characterCount\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolResultCode:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.codeBlock\.fontFamilyByPlatform\)/);
-  assert.match(screenSource, /toolResultErrorText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.codeBlock\.fontFamilyByPlatform\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /import \{ resolveMobileFontFamily \} from '\.\/mobileTypography';/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function resolveChatRuntimeMobileFontFamily/);
+  assert.match(sessionPresentationSource, /export type ChatRuntimeMobileFontFamilyByPlatform = Readonly<\{/);
+  assert.match(sessionPresentationSource, /export function resolveChatRuntimeMobileFontFamily\(\s+fontFamilyByPlatform: ChatRuntimeMobileFontFamilyByPlatform,\s+platform: ChatRuntimeMobileFontPlatform,/);
+  assert.match(chatRuntimeMobileStylesSource, /const mobilePlatform = chatRuntimeChromeEnvironment\.platform;/);
+  assert.match(screenSource, /const createChatRuntimeMobileHeaderDurationTextStyle = \(\s+badge: typeof headerTurnDurationBadge,[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationTextStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /debugText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolApprovalTool:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.toolName\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolApprovalArgumentsPreview:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.argumentsPreview\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolApprovalArgumentsFull:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolApprovalSurface\.fullArguments\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolCallCompactName:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(compactToolExecution\.name\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolActivityGroupCountBadgeText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolActivityGroupSurface\.countBadge\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolActivityGroupPreviewLine:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(toolActivityGroupSurface\.preview\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolName:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.toolName\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolPayloadPreview:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.payloadPreview\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolParamsCode:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.codeBlock\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolResultCharCount:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.characterCount\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolResultCode:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.codeBlock\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(screenSource, /toolResultErrorText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(detailedToolExecution\.codeBlock\.fontFamilyByPlatform,\s*mobilePlatform\)/);
   assert.doesNotMatch(screenSource, /type MobileFontFamilyByPlatform = Readonly<\{/);
   assert.doesNotMatch(screenSource, /const resolveMobileFontFamily = \(fontFamilyByPlatform: MobileFontFamilyByPlatform\) =>/);
   assert.doesNotMatch(screenSource, /Platform\.OS === 'ios' \? 'Menlo' : 'monospace'/);
@@ -303,7 +300,7 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(screenSource, /const createChatRuntimeMobileHeaderDurationChipStyle = \(\s+badge: typeof headerTurnDurationBadge,\s+colors: typeof headerTurnDurationColors,/);
   assert.match(screenSource, /backgroundColor: colors\.chip\.backgroundColor,[\s\S]*?marginHorizontal: badge\.marginHorizontal,[\s\S]*?flexShrink: badge\.flexShrink,[\s\S]*?opacity: badge\.opacity/);
   assert.match(screenSource, /const createChatRuntimeMobileHeaderDurationTextStyle = \(\s+badge: typeof headerTurnDurationBadge,\s+colors: typeof headerTurnDurationColors,/);
-  assert.match(screenSource, /fontFamily: resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform\),[\s\S]*?color: colors\.text\.color/);
+  assert.match(screenSource, /fontFamily: resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform,\s*mobilePlatform\),[\s\S]*?color: colors\.text\.color/);
   assert.match(screenSource, /headerDurationChip:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderDurationChipStyle\(\s+headerTurnDurationBadge,\s+headerTurnDurationColors,\s+\)/);
   assert.match(screenSource, /headerDurationChipLive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderDurationChipStyle\(\s+headerTurnDurationLiveBadge,\s+headerTurnDurationLiveColors,\s+\)/);
   assert.match(screenSource, /headerDurationChipText:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderDurationTextStyle\(\s+headerTurnDurationBadge,\s+headerTurnDurationColors,\s+\)/);
@@ -1737,6 +1734,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /const \[pendingImages, setPendingImages\] = useState<ChatComposerRuntimeImageAttachment\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const inputRef = useRef<ChatComposerTextEntryRef>\(null\);/);
   assert.match(chatMessageChromeSource, /const mergeVoiceTextIntoComposer = useCallback\(\(text: string\) => \{[\s\S]*?setInput\(\(current\) => mergeChatComposerRuntimeVoiceText\(current, text\)\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /import \{ mergeVoiceText \} from '@dotagents\/shared\/voice-text-utils';/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function mergeChatComposerRuntimeVoiceText/);
+  assert.match(sessionPresentationSource, /export function mergeChatComposerRuntimeVoiceText/);
   assert.match(chatMessageChromeSource, /const removePendingImage = useCallback\(\(attachmentId: string\) => \{[\s\S]*?setPendingImages\(\(current\) => current\.filter\(\(image\) => image\.id !== attachmentId\)\);/);
   assert.doesNotMatch(screenSource, /const \[input, setInput\] = useState\(''\);/);
   assert.doesNotMatch(screenSource, /const \[pendingImages, setPendingImages\] = useState<PendingImageAttachment\[\]>\(\[\]\);/);
@@ -4338,7 +4338,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationBadgeStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,\s+colors: typeof mobileMessageTurnDurationBadgeColors,/);
   assert.match(screenSource, /backgroundColor: colors\.backgroundColor,[\s\S]*?alignItems: badge\.alignItems,[\s\S]*?justifyContent: badge\.justifyContent,[\s\S]*?gap: badge\.gap,[\s\S]*?flexShrink: badge\.flexShrink,[\s\S]*?opacity: badge\.opacity/);
   assert.match(screenSource, /const createChatRuntimeMobileMessageTurnDurationTextStyle = \(\s+badge: typeof mobileMessageTurnDurationBadge,\s+colors: typeof mobileMessageTurnDurationBadgeColors,/);
-  assert.match(screenSource, /fontFamily: resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform\),[\s\S]*?fontSize: badge\.fontSize[\s\S]*?color: colors\.color/);
+  assert.match(screenSource, /fontFamily: resolveChatRuntimeMobileFontFamily\(badge\.fontFamilyByPlatform,\s*mobilePlatform\),[\s\S]*?fontSize: badge\.fontSize[\s\S]*?color: colors\.color/);
   assert.match(screenSource, /messageTurnDurationBadge:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationBadgeStyle\(\s+mobileMessageTurnDurationBadge,\s+mobileMessageTurnDurationBadgeColors,\s+\)/);
   assert.match(screenSource, /messageTurnDurationBadgeLive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationBadgeStyle\(\s+mobileMessageTurnDurationLiveBadge,\s+mobileMessageTurnDurationLiveBadgeColors,\s+\)/);
   assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileMessageTurnDurationTextStyle\(\s+mobileMessageTurnDurationBadge,\s+mobileMessageTurnDurationBadgeColors,\s+\)/);
