@@ -14834,6 +14834,72 @@ export function createChatConversationHomePromptEditorModalStyleSlots<
   }
 }
 
+type ChatConversationHomePromptEditorModalStyleSourceKey =
+  | "modalKeyboardAvoidingView"
+  | "modalOverlay"
+  | "modalContent"
+  | "modalHeader"
+  | "modalTitle"
+  | "modalCloseButton"
+  | "modalLabel"
+  | "modalInput"
+  | "modalInputMultiline"
+  | "modalActions"
+  | "modalCancelButton"
+  | "modalCancelButtonText"
+  | "modalSaveButton"
+  | "modalSaveButtonDisabled"
+  | "modalSaveButtonText"
+
+type ChatConversationHomePromptEditorModalStyleSource =
+  Record<ChatConversationHomePromptEditorModalStyleSourceKey, unknown>
+
+type ChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<
+  TStyles extends ChatConversationHomePromptEditorModalStyleSource,
+> = {
+  keyboardAvoidingView: TStyles["modalKeyboardAvoidingView"]
+  overlay: TStyles["modalOverlay"]
+  content: TStyles["modalContent"]
+  header: TStyles["modalHeader"]
+  title: TStyles["modalTitle"]
+  closeButton: TStyles["modalCloseButton"]
+  label: TStyles["modalLabel"]
+  input: TStyles["modalInput"]
+  inputMultiline: TStyles["modalInputMultiline"]
+  actions: TStyles["modalActions"]
+  cancelButton: TStyles["modalCancelButton"]
+  cancelButtonText: TStyles["modalCancelButtonText"]
+  saveButton: TStyles["modalSaveButton"]
+  saveButtonDisabled: TStyles["modalSaveButtonDisabled"]
+  saveButtonText: TStyles["modalSaveButtonText"]
+}
+
+export function createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<
+  TStyles extends ChatConversationHomePromptEditorModalStyleSource,
+>({
+  styles,
+}: {
+  styles: TStyles
+}): ChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<TStyles> {
+  return createChatConversationHomePromptEditorModalStyleSlots({
+    keyboardAvoidingViewStyle: styles.modalKeyboardAvoidingView,
+    overlayStyle: styles.modalOverlay,
+    contentStyle: styles.modalContent,
+    headerStyle: styles.modalHeader,
+    titleStyle: styles.modalTitle,
+    closeButtonStyle: styles.modalCloseButton,
+    labelStyle: styles.modalLabel,
+    inputStyle: styles.modalInput,
+    inputMultilineStyle: styles.modalInputMultiline,
+    actionsStyle: styles.modalActions,
+    cancelButtonStyle: styles.modalCancelButton,
+    cancelButtonTextStyle: styles.modalCancelButtonText,
+    saveButtonStyle: styles.modalSaveButton,
+    saveButtonDisabledStyle: styles.modalSaveButtonDisabled,
+    saveButtonTextStyle: styles.modalSaveButtonText,
+  })
+}
+
 export function createChatMessageConnectionBannerStyleSlots<
   TBannerStyle,
   TReconnectingStyle,

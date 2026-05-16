@@ -52,7 +52,7 @@ import {
   createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createChatComposerStyleSlotsFromStyleSource,
-  createChatConversationHomePromptEditorModalStyleSlots,
+  createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
@@ -1122,22 +1122,8 @@ export function useChatRuntimeMobileStyleSlots() {
     [styles],
   );
   const promptEditorModalStyles = useMemo(
-    () => createChatConversationHomePromptEditorModalStyleSlots({
-      keyboardAvoidingViewStyle: styles.modalKeyboardAvoidingView,
-      overlayStyle: styles.modalOverlay,
-      contentStyle: styles.modalContent,
-      headerStyle: styles.modalHeader,
-      titleStyle: styles.modalTitle,
-      closeButtonStyle: styles.modalCloseButton,
-      labelStyle: styles.modalLabel,
-      inputStyle: styles.modalInput,
-      inputMultilineStyle: styles.modalInputMultiline,
-      actionsStyle: styles.modalActions,
-      cancelButtonStyle: styles.modalCancelButton,
-      cancelButtonTextStyle: styles.modalCancelButtonText,
-      saveButtonStyle: styles.modalSaveButton,
-      saveButtonDisabledStyle: styles.modalSaveButtonDisabled,
-      saveButtonTextStyle: styles.modalSaveButtonText,
+    () => createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource({
+      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
     }),
     [styles],
   );

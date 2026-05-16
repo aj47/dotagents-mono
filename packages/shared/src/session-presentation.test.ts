@@ -197,6 +197,7 @@ import {
   createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
   createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
   createChatConversationHomePromptEditorModalStyleSlots,
+  createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource,
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
@@ -2585,6 +2586,40 @@ describe("session presentation semantics", () => {
       saveButtonDisabled: "save-button-disabled",
       saveButtonText: "save-button-text",
     })
+    const promptEditorModalStyleSlots = createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource({
+      styles: {
+        modalKeyboardAvoidingView: "source-keyboard-view",
+        modalOverlay: "source-overlay",
+        modalContent: "source-content",
+        modalHeader: "source-header",
+        modalTitle: "source-title",
+        modalCloseButton: "source-close-button",
+        modalLabel: "source-label",
+        modalInput: "source-input",
+        modalInputMultiline: "source-input-multiline",
+        modalActions: "source-actions",
+        modalCancelButton: "source-cancel-button",
+        modalCancelButtonText: "source-cancel-button-text",
+        modalSaveButton: "source-save-button",
+        modalSaveButtonDisabled: "source-save-button-disabled",
+        modalSaveButtonText: "source-save-button-text",
+      },
+    })
+    expect(promptEditorModalStyleSlots.keyboardAvoidingView).toBe("source-keyboard-view")
+    expect(promptEditorModalStyleSlots.overlay).toBe("source-overlay")
+    expect(promptEditorModalStyleSlots.content).toBe("source-content")
+    expect(promptEditorModalStyleSlots.header).toBe("source-header")
+    expect(promptEditorModalStyleSlots.title).toBe("source-title")
+    expect(promptEditorModalStyleSlots.closeButton).toBe("source-close-button")
+    expect(promptEditorModalStyleSlots.label).toBe("source-label")
+    expect(promptEditorModalStyleSlots.input).toBe("source-input")
+    expect(promptEditorModalStyleSlots.inputMultiline).toBe("source-input-multiline")
+    expect(promptEditorModalStyleSlots.actions).toBe("source-actions")
+    expect(promptEditorModalStyleSlots.cancelButton).toBe("source-cancel-button")
+    expect(promptEditorModalStyleSlots.cancelButtonText).toBe("source-cancel-button-text")
+    expect(promptEditorModalStyleSlots.saveButton).toBe("source-save-button")
+    expect(promptEditorModalStyleSlots.saveButtonDisabled).toBe("source-save-button-disabled")
+    expect(promptEditorModalStyleSlots.saveButtonText).toBe("source-save-button-text")
     expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
     expect(createChatComposerHandsFreeMobileStyleSlots({
       renderState: composerChromeStyle.handsFree,
