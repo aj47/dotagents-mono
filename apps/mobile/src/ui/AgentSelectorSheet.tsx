@@ -26,12 +26,7 @@ import {
   buildSelectorProfiles,
   formatAgentSelectorSelectAccessibilityLabel,
   getAgentSelectorMobileFallbackAvatarBackgroundColor,
-  getAgentSelectorMobileCloseIconState,
-  getAgentSelectorMobileSurfaceColors,
-  getAgentSelectorMobileSurfaceState,
-  getAgentSelectorSheetCopyState,
-  getAgentSelectorSheetEmptyLabel,
-  getAgentSelectorSheetTitle,
+  getAgentSelectorMobileRenderState,
   type AgentSelectorMobileSurfaceColors,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/agent-selector-options';
@@ -42,28 +37,31 @@ interface AgentSelectorSheetProps {
   onClose: () => void;
 }
 
-const agentSelectorCopy = getAgentSelectorSheetCopyState();
-const agentSelectorSurface = getAgentSelectorMobileSurfaceState();
-const agentSelectorCloseIcon = getAgentSelectorMobileCloseIconState();
-
 export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
   const { currentProfile, setCurrentProfile } = useProfile();
-  const agentSelectorColors = React.useMemo(
-    () => getAgentSelectorMobileSurfaceColors(theme.colors),
-    [theme.colors],
-  );
-  const styles = React.useMemo(() => createStyles(agentSelectorColors), [agentSelectorColors]);
-  const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
-  const missingConfigError = agentSelectorCopy.missingConfigError;
 
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectorMode, setSelectorMode] = useState<'profile' | 'acpx'>('profile');
+  const agentSelectorRenderState = React.useMemo(
+    () => getAgentSelectorMobileRenderState({
+      selectorMode,
+      colors: theme.colors,
+    }),
+    [selectorMode, theme.colors],
+  );
+  const agentSelectorCopy = agentSelectorRenderState.copy;
+  const agentSelectorSurface = agentSelectorRenderState.surface;
+  const agentSelectorColors = agentSelectorRenderState.colors;
+  const agentSelectorCloseButton = agentSelectorRenderState.closeButton;
+  const styles = React.useMemo(() => createStyles(agentSelectorColors), [agentSelectorColors]);
+  const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
+  const missingConfigError = agentSelectorCopy.missingConfigError;
 
   const fetchProfiles = useCallback(async () => {
     if (!hasApiConfig) {
@@ -207,19 +205,19 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={agentSelectorSurface.title.numberOfLines}>
-            {getAgentSelectorSheetTitle(selectorMode)}
+            {agentSelectorRenderState.title}
           </Text>
           <TouchableOpacity
             style={styles.headerCloseButton}
             onPress={onClose}
-            activeOpacity={agentSelectorSurface.headerCloseButton.pressedOpacity}
-            accessibilityRole={agentSelectorSurface.headerCloseButton.accessibilityRole}
-            accessibilityLabel={agentSelectorCopy.closeAccessibilityLabel}
+            activeOpacity={agentSelectorCloseButton.activeOpacity}
+            accessibilityRole={agentSelectorCloseButton.accessibilityRole}
+            accessibilityLabel={agentSelectorCloseButton.accessibilityLabel}
           >
             <Ionicons
-              name={agentSelectorCloseIcon.name}
-              size={agentSelectorCloseIcon.size}
-              color={agentSelectorColors.headerCloseIcon.color}
+              name={agentSelectorCloseButton.icon.name}
+              size={agentSelectorCloseButton.icon.size}
+              color={agentSelectorCloseButton.icon.color}
             />
           </TouchableOpacity>
         </View>
@@ -238,7 +236,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           </View>
         ) : profiles.length === 0 ? (
           <Text style={styles.emptyText}>
-            {getAgentSelectorSheetEmptyLabel(selectorMode)}
+            {agentSelectorRenderState.emptyLabel}
           </Text>
         ) : (
           <FlatList

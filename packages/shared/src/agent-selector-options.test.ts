@@ -13,6 +13,7 @@ import {
   getAgentSelectorDesktopSurfaceState,
   getAgentSelectorMobileFallbackAvatarBackgroundColor,
   getAgentSelectorMobileCloseIconState,
+  getAgentSelectorMobileRenderState,
   getAgentSelectorMobileSurfaceColors,
   getAgentSelectorMobileSurfaceState,
   getAgentSelectorSheetCopyState,
@@ -199,14 +200,15 @@ describe("agent selector option helpers", () => {
       size: 20,
       colorToken: "mutedForeground",
     })
-    expect(getAgentSelectorMobileSurfaceColors({
+    const agentSelectorPalette = {
       card: "#fafafa",
       border: "#d4d4d4",
       destructive: "#dc2626",
       foreground: "#171717",
       mutedForeground: "#737373",
       primary: "#2563eb",
-    })).toEqual({
+    }
+    const agentSelectorSurfaceColors = {
       backdrop: {
         backgroundColor: "rgba(0, 0, 0, 0.4)",
       },
@@ -253,6 +255,34 @@ describe("agent selector option helpers", () => {
       activityIndicator: {
         color: "#2563eb",
       },
+    }
+    expect(getAgentSelectorMobileSurfaceColors(agentSelectorPalette)).toEqual(agentSelectorSurfaceColors)
+    expect(getAgentSelectorMobileRenderState({
+      selectorMode: "profile",
+      colors: agentSelectorPalette,
+    })).toEqual({
+      copy: AGENT_SELECTOR_PRESENTATION.sheet,
+      surface: AGENT_SELECTOR_PRESENTATION.mobile,
+      colors: agentSelectorSurfaceColors,
+      title: "Select Agent",
+      emptyLabel: "No agents available",
+      closeButton: {
+        activeOpacity: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.pressedOpacity,
+        accessibilityRole: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.accessibilityRole,
+        accessibilityLabel: AGENT_SELECTOR_PRESENTATION.sheet.closeAccessibilityLabel,
+        icon: {
+          name: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.name,
+          size: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.size,
+          color: "#737373",
+        },
+      },
+    })
+    expect(getAgentSelectorMobileRenderState({
+      selectorMode: "acpx",
+      colors: agentSelectorPalette,
+    })).toMatchObject({
+      title: "Select Main Agent",
+      emptyLabel: "No acpx agents available",
     })
     expect(getAgentSelectorMobileFallbackAvatarBackgroundColor("#0f172a")).toBe(
       "rgba(15, 23, 42, 0.14)",

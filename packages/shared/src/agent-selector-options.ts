@@ -233,6 +233,29 @@ export interface AgentSelectorMobileCloseIconState {
   colorToken: typeof AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.colorToken
 }
 
+export interface AgentSelectorMobileRenderStateInput {
+  selectorMode: AgentSelectorMode
+  colors: AgentSelectorMobileSurfaceColorPalette
+}
+
+export interface AgentSelectorMobileRenderState {
+  copy: typeof AGENT_SELECTOR_PRESENTATION.sheet
+  surface: typeof AGENT_SELECTOR_PRESENTATION.mobile
+  colors: AgentSelectorMobileSurfaceColors
+  title: string
+  emptyLabel: string
+  closeButton: {
+    activeOpacity: typeof AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.pressedOpacity
+    accessibilityRole: typeof AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.accessibilityRole
+    accessibilityLabel: typeof AGENT_SELECTOR_PRESENTATION.sheet.closeAccessibilityLabel
+    icon: {
+      name: AgentSelectorMobileCloseIconState["name"]
+      size: number
+      color: string
+    }
+  }
+}
+
 export type AgentSelectorMobileSurfaceColorToken =
   | typeof AGENT_SELECTOR_PRESENTATION.mobile.sheet.backgroundColorToken
   | typeof AGENT_SELECTOR_PRESENTATION.mobile.handle.backgroundColorToken
@@ -387,6 +410,34 @@ export function getAgentSelectorMobileCloseIconState(): AgentSelectorMobileClose
     name: closeIcon.name,
     size: closeIcon.size,
     colorToken: closeIcon.colorToken,
+  }
+}
+
+export function getAgentSelectorMobileRenderState({
+  selectorMode,
+  colors,
+}: AgentSelectorMobileRenderStateInput): AgentSelectorMobileRenderState {
+  const copy = getAgentSelectorSheetCopyState()
+  const surface = getAgentSelectorMobileSurfaceState()
+  const surfaceColors = getAgentSelectorMobileSurfaceColors(colors)
+  const closeIcon = getAgentSelectorMobileCloseIconState()
+
+  return {
+    copy,
+    surface,
+    colors: surfaceColors,
+    title: getAgentSelectorSheetTitle(selectorMode),
+    emptyLabel: getAgentSelectorSheetEmptyLabel(selectorMode),
+    closeButton: {
+      activeOpacity: surface.headerCloseButton.pressedOpacity,
+      accessibilityRole: surface.headerCloseButton.accessibilityRole,
+      accessibilityLabel: copy.closeAccessibilityLabel,
+      icon: {
+        name: closeIcon.name,
+        size: closeIcon.size,
+        color: surfaceColors.headerCloseIcon.color,
+      },
+    },
   }
 }
 

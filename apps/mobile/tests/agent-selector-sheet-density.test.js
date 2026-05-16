@@ -10,14 +10,14 @@ const sheetSource = fs.readFileSync(
 
 test('keeps the mobile agent selector close affordance in a compact header instead of a footer band', () => {
   assert.match(sheetSource, /<View style=\{styles\.header\}>/);
-  assert.match(sheetSource, /getAgentSelectorMobileCloseIconState/);
-  assert.match(sheetSource, /const agentSelectorCloseIcon = getAgentSelectorMobileCloseIconState\(\);/);
-  assert.match(sheetSource, /accessibilityLabel=\{agentSelectorCopy\.closeAccessibilityLabel\}/);
-  assert.match(sheetSource, /activeOpacity=\{agentSelectorSurface\.headerCloseButton\.pressedOpacity\}/);
-  assert.match(sheetSource, /accessibilityRole=\{agentSelectorSurface\.headerCloseButton\.accessibilityRole\}/);
-  assert.match(sheetSource, /name=\{agentSelectorCloseIcon\.name\}/);
-  assert.match(sheetSource, /size=\{agentSelectorCloseIcon\.size\}/);
-  assert.match(sheetSource, /color=\{agentSelectorColors\.headerCloseIcon\.color\}/);
+  assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
+  assert.match(sheetSource, /const agentSelectorCloseButton = agentSelectorRenderState\.closeButton;/);
+  assert.match(sheetSource, /accessibilityLabel=\{agentSelectorCloseButton\.accessibilityLabel\}/);
+  assert.match(sheetSource, /activeOpacity=\{agentSelectorCloseButton\.activeOpacity\}/);
+  assert.match(sheetSource, /accessibilityRole=\{agentSelectorCloseButton\.accessibilityRole\}/);
+  assert.match(sheetSource, /name=\{agentSelectorCloseButton\.icon\.name\}/);
+  assert.match(sheetSource, /size=\{agentSelectorCloseButton\.icon\.size\}/);
+  assert.match(sheetSource, /color=\{agentSelectorCloseButton\.icon\.color\}/);
   assert.match(sheetSource, /<View style=\{styles\.backdropSpacer\} \/>/);
   assert.match(sheetSource, /backdropSpacer:\s*\{[\s\S]*?flex:\s*agentSelectorSurface\.backdropSpacer\.flex/);
   assert.match(sheetSource, /headerCloseButton:\s*\{[\s\S]*?width:\s*agentSelectorSurface\.headerCloseButton\.width,[\s\S]*?height:\s*agentSelectorSurface\.headerCloseButton\.height,[\s\S]*?alignItems:\s*agentSelectorSurface\.headerCloseButton\.alignItems,[\s\S]*?justifyContent:\s*agentSelectorSurface\.headerCloseButton\.justifyContent/);
@@ -38,15 +38,14 @@ test('keeps the mobile agent selector title shrink-safe beside the header close 
 });
 
 test('uses shared selector presentation tokens and desktop-like avatar rows', () => {
-  assert.match(sheetSource, /getAgentSelectorSheetCopyState/);
-  assert.match(sheetSource, /getAgentSelectorMobileSurfaceColors/);
+  assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
   assert.match(sheetSource, /getAgentSelectorMobileFallbackAvatarBackgroundColor/);
-  assert.match(sheetSource, /getAgentSelectorMobileSurfaceState/);
-  assert.match(sheetSource, /const agentSelectorCopy = getAgentSelectorSheetCopyState\(\)/);
-  assert.match(sheetSource, /const agentSelectorSurface = getAgentSelectorMobileSurfaceState\(\)/);
-  assert.match(sheetSource, /const agentSelectorColors = React\.useMemo\([\s\S]*?getAgentSelectorMobileSurfaceColors\(theme\.colors\)/);
-  assert.match(sheetSource, /getAgentSelectorSheetTitle\(selectorMode\)/);
-  assert.match(sheetSource, /getAgentSelectorSheetEmptyLabel\(selectorMode\)/);
+  assert.match(sheetSource, /const agentSelectorRenderState = React\.useMemo\([\s\S]*?getAgentSelectorMobileRenderState\(\{[\s\S]*?selectorMode,[\s\S]*?colors: theme\.colors,/);
+  assert.match(sheetSource, /const agentSelectorCopy = agentSelectorRenderState\.copy;/);
+  assert.match(sheetSource, /const agentSelectorSurface = agentSelectorRenderState\.surface;/);
+  assert.match(sheetSource, /const agentSelectorColors = agentSelectorRenderState\.colors;/);
+  assert.match(sheetSource, /\{agentSelectorRenderState\.title\}/);
+  assert.match(sheetSource, /\{agentSelectorRenderState\.emptyLabel\}/);
   assert.match(sheetSource, /formatAgentSelectorSelectAccessibilityLabel\(item\.name\)/);
   assert.match(sheetSource, /activeOpacity=\{agentSelectorSurface\.profileItem\.pressedOpacity\}/);
   assert.match(sheetSource, /accessibilityRole=\{agentSelectorSurface\.profileItem\.accessibilityRole\}/);
@@ -85,5 +84,11 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.doesNotMatch(sheetSource, /backgroundColor:\s*'rgba\(0, 0, 0, 0\.4\)'/);
   assert.doesNotMatch(sheetSource, /accessibilityRole="button"/);
   assert.doesNotMatch(sheetSource, /accessibilityLabel=\{`Select \$\{item\.name\} agent`\}/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorSheetCopyState/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorMobileSurfaceColors/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorMobileSurfaceState/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorMobileCloseIconState/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorSheetTitle\(selectorMode\)/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorSheetEmptyLabel\(selectorMode\)/);
   assert.doesNotMatch(sheetSource, /agentSelectorSurface\.headerCloseIcon\.(name|size|colorToken)/);
 });
