@@ -503,6 +503,35 @@ export interface ChatRuntimeViewportMobileRenderState {
   colors: ChatRuntimeViewportMobileColors
 }
 
+export type ChatRuntimeViewportMobileStyleSpacingToken =
+  | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport.paddingHorizontal
+  | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport.paddingVertical
+  | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport.contentGap
+
+export interface ChatRuntimeViewportMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeViewportMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeViewportMobileStyleSpacingToken, number>>
+}
+
+export interface ChatRuntimeViewportMobileStyleSlots {
+  keyboardAvoidingContainer: {
+    flex: number
+    backgroundColor: string
+  }
+  root: {
+    flex: number
+  }
+  scroll: {
+    flex: number
+    paddingHorizontal: number
+    paddingVertical: number
+    backgroundColor: string
+  }
+  scrollContent: {
+    gap: number
+  }
+}
+
 type ChatRuntimeLoadingStateMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState
 type ChatRuntimeInlineActivityMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity
 
@@ -14216,6 +14245,33 @@ export function getChatRuntimeViewportMobileRenderState({
     loadingState: getChatRuntimeLoadingStateMobileState(),
     inlineActivity: getChatRuntimeInlineActivityMobileState(),
     colors: getChatRuntimeViewportMobileColors(colors),
+  }
+}
+
+export function createChatRuntimeViewportMobileStyleSlots({
+  renderState,
+  spacing,
+}: ChatRuntimeViewportMobileStyleSlotsInput): ChatRuntimeViewportMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    keyboardAvoidingContainer: {
+      flex: surface.flex,
+      backgroundColor: colors.backgroundColor,
+    },
+    root: {
+      flex: surface.flex,
+    },
+    scroll: {
+      flex: surface.flex,
+      paddingHorizontal: spacing[surface.paddingHorizontal],
+      paddingVertical: spacing[surface.paddingVertical],
+      backgroundColor: colors.backgroundColor,
+    },
+    scrollContent: {
+      gap: spacing[surface.contentGap],
+    },
   }
 }
 

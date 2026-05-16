@@ -78,6 +78,7 @@ import {
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
+  createChatRuntimeViewportMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerImageAttachmentMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -3481,6 +3482,34 @@ describe("session presentation semantics", () => {
       colors: getChatRuntimeViewportMobileColors({
         background: "#ffffff",
       }),
+    })
+    expect(createChatRuntimeViewportMobileStyleSlots({
+      renderState: getChatRuntimeViewportMobileRenderState({
+        colors: {
+          background: "#ffffff",
+        },
+      }),
+      spacing: {
+        sm: 8,
+        xs: 4,
+      },
+    })).toEqual({
+      keyboardAvoidingContainer: {
+        flex: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport.flex,
+        backgroundColor: "#ffffff",
+      },
+      root: {
+        flex: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport.flex,
+      },
+      scroll: {
+        flex: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.viewport.flex,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: "#ffffff",
+      },
+      scrollContent: {
+        gap: 4,
+      },
     })
     expect(createChatRuntimeViewportActivityMobileStyleSlots({
       renderState: getChatRuntimeViewportMobileRenderState({

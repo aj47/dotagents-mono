@@ -31,6 +31,7 @@ import {
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   createChatRuntimeViewportActivityMobileStyleSlots,
+  createChatRuntimeViewportMobileStyleSlots,
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
@@ -89,7 +90,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerKillSwitchButtonColors = headerStyleState.killSwitchButton;
   const conversationChromeStyleState = chatChromeStyleState.conversation;
   const viewportStyleState = conversationChromeStyleState.viewport;
-  const viewportSurface = viewportStyleState.surface;
+  const viewportStyleSlots = createChatRuntimeViewportMobileStyleSlots({
+    renderState: viewportStyleState,
+    spacing,
+  });
   const viewportActivityStyleSlots = createChatRuntimeViewportActivityMobileStyleSlots({
     renderState: viewportStyleState,
   });
@@ -194,7 +198,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
     platform: mobilePlatform,
   });
-  const viewportSurfaceColors = viewportStyleState.colors;
   const toolActivityGroupStyleState = threadChromeStyleState.toolActivityGroup;
   const toolActivityGroupStyleSlots = createChatRuntimeToolActivityGroupMobileStyleSlots({
     renderState: toolActivityGroupStyleState,
@@ -271,20 +274,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   return StyleSheet.create({
     keyboardAvoidingContainer: {
-      flex: viewportSurface.flex,
-      backgroundColor: viewportSurfaceColors.backgroundColor,
+      ...viewportStyleSlots.keyboardAvoidingContainer,
     },
     chatRoot: {
-      flex: viewportSurface.flex,
+      ...viewportStyleSlots.root,
     },
     chatScroll: {
-      flex: viewportSurface.flex,
-      paddingHorizontal: spacing[viewportSurface.paddingHorizontal],
-      paddingVertical: spacing[viewportSurface.paddingVertical],
-      backgroundColor: viewportSurfaceColors.backgroundColor,
+      ...viewportStyleSlots.scroll,
     },
     chatScrollContent: {
-      gap: spacing[viewportSurface.contentGap],
+      ...viewportStyleSlots.scrollContent,
     },
     loadingState: {
       ...viewportActivityStyleSlots.loadingState,
