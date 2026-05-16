@@ -3998,6 +3998,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /function createChatMessageActionRenderers\(\{/);
   assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(\s+availability,\s+createChatMessageActionRenderers\(input\),\s+\);/);
+  assert.match(sessionPresentationSource, /export \{\s+createChatMessageActionSlotRenderMap,\s+getChatMessageActionMobileButtonStatesBySlot,\s+getChatMessageActionSlotRenderEntries,\s+type ChatMessageActionSlotRenderEntry,\s+type ChatMessageActionSlotRenderMap,\s+\} from "\.\/message-display-utils"/);
+  assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderMap,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;/);
   assert.match(chatMessageChromeSource, /entries: ChatMessageActionEntry\[\];/);
@@ -4067,6 +4069,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.match(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
   assert.match(chatMessageChromeSource, /const content = entries\.map\(\(\{ slot, item \}\) => \(/);
   assert.equal((screenSource.match(/visibleMessageActionSlots\.map\(\(actionSlot\) => \(/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<Fragment key=\{actionSlot\}>/g) ?? []).length, 0);
@@ -4121,6 +4124,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /const mobileMessageSpeechActiveButton = getChatMessageActionMobileButtonState\('speechActive'\);/);
   assert.doesNotMatch(screenSource, /const mobileMessageActionStyleState = useMemo\(\s+\(\) => getChatMessageActionMobileStyleRenderState\(\{ colors: theme\.colors \}\),\s+\[theme\.colors\],\s+\);/);
   assert.match(chatMessageChromeSource, /getChatMessageActionMobileButtonStatesBySlot,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionMobileButtonStatesBySlot,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileStyleRenderState,/);
   assert.match(sessionPresentationSource, /action: getChatMessageActionMobileStyleRenderState\(\{\s+colors,\s+\}\),/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonRenderState,/);

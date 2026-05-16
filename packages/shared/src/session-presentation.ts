@@ -130,6 +130,13 @@ import {
   type ChatMessageSpeechMobileRenderStateInput,
   type MessageContentForModelLike,
 } from "./message-display-utils"
+export {
+  createChatMessageActionSlotRenderMap,
+  getChatMessageActionMobileButtonStatesBySlot,
+  getChatMessageActionSlotRenderEntries,
+  type ChatMessageActionSlotRenderEntry,
+  type ChatMessageActionSlotRenderMap,
+} from "./message-display-utils"
 import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,

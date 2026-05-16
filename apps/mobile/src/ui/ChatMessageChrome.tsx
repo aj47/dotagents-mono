@@ -30,12 +30,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
-  createChatMessageActionSlotRenderMap,
-  getChatMessageActionSlotRenderEntries,
-  getChatMessageActionMobileButtonStatesBySlot,
   type ChatDisplayExpansionStateMap,
-  type ChatMessageActionSlotRenderEntry,
-  type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
 } from '@dotagents/shared/message-display-utils';
@@ -114,6 +109,9 @@ import {
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeTurnDurationMessages,
   getChatMessageRuntimeNextResponseEventOrdinal,
+  createChatMessageActionSlotRenderMap,
+  getChatMessageActionMobileButtonStatesBySlot,
+  getChatMessageActionSlotRenderEntries,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
@@ -237,6 +235,8 @@ import {
   type ChatMessageRuntimeMessageExpansionState,
   type ChatMessageRuntimeResponseHistorySourceMessage,
   type ChatMessageRuntimeSessionMessageLike,
+  type ChatMessageActionSlotRenderEntry,
+  type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
   type ChatMessageRuntimeToolActivityGroup,
   type ChatMessageRuntimeToolActivityGroups,
