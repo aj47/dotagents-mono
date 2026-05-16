@@ -4770,6 +4770,7 @@ export const TOOL_APPROVAL_SURFACE_PRESENTATION = {
     titleClassName: "min-w-0 flex-1 text-xs font-medium text-amber-800 dark:text-amber-200",
     spinnerClassName: "ml-auto h-3 w-3 shrink-0 animate-spin text-amber-600 dark:text-amber-400",
     contentClassName: "min-w-0 px-3 py-2",
+    contentDisabledClassName: "opacity-60",
     toolRowClassName: "mb-2 flex flex-wrap items-center gap-2",
     toolLabelClassName: "shrink-0 text-xs text-amber-700 dark:text-amber-300",
     toolNameClassName: "max-w-full min-w-0 truncate rounded bg-amber-100 px-1.5 py-0.5 text-xs font-mono font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100",

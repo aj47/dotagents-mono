@@ -2063,6 +2063,7 @@ const ToolApprovalBubble: React.FC<{
   })
   const approvalCopy = approvalInteraction.copy
   const approvalSurface = getChatRuntimeToolApprovalDesktopSurfaceState()
+  const approvalResponding = approvalInteraction.approveButton.isDisabled
 
   return (
     <div className={approvalSurface.containerClassName}>
@@ -2072,13 +2073,19 @@ const ToolApprovalBubble: React.FC<{
         <span className={approvalSurface.titleClassName}>
           {approvalInteraction.title}
         </span>
-        {isResponding && (
+        {approvalResponding && (
           <Loader2 className={approvalSurface.spinnerClassName} />
         )}
       </div>
 
       {/* Content */}
-      <div ref={containerRef} className={cn(approvalSurface.contentClassName, isResponding && "opacity-60")}>
+      <div
+        ref={containerRef}
+        className={cn(
+          approvalSurface.contentClassName,
+          approvalResponding && approvalSurface.contentDisabledClassName,
+        )}
+      >
         <div className={approvalSurface.toolRowClassName}>
           <span className={approvalSurface.toolLabelClassName}>{approvalCopy.toolLabel}:</span>
           <code className={approvalSurface.toolNameClassName}>
@@ -2157,7 +2164,7 @@ const ToolApprovalBubble: React.FC<{
               )}
             </Button>
           </div>
-          {!approvalInteraction.approveButton.isDisabled && (
+          {!approvalResponding && (
             <div className={approvalSurface.hotkeysRowClassName}>
               <span className={approvalSurface.hotkeysLabelClassName}>{approvalCopy.hotkeysLabel}</span>
               <div className="flex flex-wrap items-center gap-1">

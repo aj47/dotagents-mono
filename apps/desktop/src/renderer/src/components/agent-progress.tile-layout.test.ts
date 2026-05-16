@@ -798,7 +798,8 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('{approvalInteraction.approveButton.label}')
     expect(agentProgressSource).toContain('disabled={approvalInteraction.denyButton.isDisabled}')
     expect(agentProgressSource).toContain('aria-label={approvalInteraction.denyButton.accessibilityLabel}')
-    expect(agentProgressSource).toContain('!approvalInteraction.approveButton.isDisabled')
+    expect(agentProgressSource).toContain('const approvalResponding = approvalInteraction.approveButton.isDisabled')
+    expect(agentProgressSource).toContain('!approvalResponding')
     expect(agentProgressSource).toContain('className={approvalSurface.actionStackClassName}')
     expect(agentProgressSource).toContain('className={approvalSurface.hotkeysRowClassName}')
     expect(agentProgressSource).not.toContain('getChatRuntimeToolApprovalArgumentsAccessibilityLabel')
@@ -855,7 +856,7 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain(
       'className={approvalSurface.headerClassName}'
     )
-    expect(agentProgressSource).toContain('className={cn(approvalSurface.contentClassName, isResponding && "opacity-60")}')
+    expect(agentProgressSource).toContain('approvalResponding && approvalSurface.contentDisabledClassName')
     expect(agentProgressSource).toContain('className={desktopRetryStatusSurface.metaRowClassName}')
     expect(messageQueuePanelSource).toContain('desktopMessageQueueCompactSurface.containerBaseClassName')
     expect(messageQueuePanelSource).toContain('desktopMessageQueueCompactSurface.labelBaseClassName')

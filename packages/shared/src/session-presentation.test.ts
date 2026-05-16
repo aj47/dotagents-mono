@@ -3835,6 +3835,7 @@ describe("session presentation semantics", () => {
       },
     })
     expect(getChatRuntimeToolApprovalDesktopSurfaceState()).toBe(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop)
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop.contentDisabledClassName).toBe("opacity-60")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsToggle.flexDirection).toBe("row")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsToggleIcon).toMatchObject({
       collapsedName: "chevron-forward",
