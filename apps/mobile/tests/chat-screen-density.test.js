@@ -4303,7 +4303,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationMessageRenderContextMobileState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationRenderContext/);
   assert.match(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
+  assert.match(chatMessageChromeSource, /function createChatMessageThreadBodyProps\(\{/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationThreadBodyMobileProps/);
   assert.match(chatMessageChromeSource, /return createChatRuntimeConversationThreadBodyMobileProps\(\{/);
   assert.match(sessionPresentationSource, /retryStatus: createChatRuntimeConversationRetryStatusMobileProps\(retryStatus\),/);

@@ -2813,9 +2813,9 @@ type ChatMessageThreadBodyProps = {
   };
 };
 
-export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
+type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
-export type ChatMessageConversationBodyPropsInput = {
+type ChatMessageConversationBodyPropsInput = {
   surfaceToneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot;
   contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;
   actionSet: ChatMessageActionSetInput;
@@ -2824,7 +2824,7 @@ export type ChatMessageConversationBodyPropsInput = {
   toolExecutionStack: ChatMessageToolExecutionStackPropsInput;
 };
 
-export type ChatMessageThreadBodyPropsInput =
+type ChatMessageThreadBodyPropsInput =
   Pick<ChatMessageThreadBodyProps, 'bodyDisplayMode' | 'inlineActivity'>
   & {
     retryStatus: ChatMessageRetryStatusPropsInput;
@@ -6448,7 +6448,7 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
   });
 }
 
-export function createChatMessageThreadBodyProps({
+function createChatMessageThreadBodyProps({
   bodyDisplayMode,
   retryStatus,
   delegationCard,
