@@ -3251,6 +3251,68 @@ export interface ChatRuntimeMobileSafeAreaStyleSlots {
   }
 }
 
+export type ChatRuntimeSafeAreaStylePair<TBaseStyle, TSafeAreaStyle> = [
+  TBaseStyle,
+  TSafeAreaStyle,
+]
+
+export type ChatRuntimeSafeAreaMergedOverlayStyleSlots<
+  TOverlayStyleSlots extends { overlay: unknown },
+> = Omit<TOverlayStyleSlots, "overlay"> & {
+  overlay: ChatRuntimeSafeAreaStylePair<
+    TOverlayStyleSlots["overlay"],
+    ChatRuntimeMobileSafeAreaStyleSlots["voiceOverlay"]
+  >
+}
+
+export type ChatRuntimeSafeAreaMergedInputDockStyleSlots<
+  TInputDockStyleSlots extends { area: unknown },
+> = Omit<TInputDockStyleSlots, "area"> & {
+  area: ChatRuntimeSafeAreaStylePair<
+    TInputDockStyleSlots["area"],
+    ChatRuntimeMobileSafeAreaStyleSlots["inputArea"]
+  >
+}
+
+export interface ChatRuntimeSafeAreaMergedStyleSlots<
+  TScrollToBottomButtonStyle,
+  TScrollViewportContentContainerStyle,
+  TVoiceOverlayStyleSlots extends { overlay: unknown },
+  TInputDockStyleSlots extends { area: unknown },
+> {
+  scrollToBottomButtonStyle: ChatRuntimeSafeAreaStylePair<
+    TScrollToBottomButtonStyle,
+    ChatRuntimeMobileSafeAreaStyleSlots["scrollToBottomButton"]
+  >
+  scrollViewportContentContainerStyle: ChatRuntimeSafeAreaStylePair<
+    TScrollViewportContentContainerStyle,
+    ChatRuntimeMobileSafeAreaStyleSlots["chatScrollContent"]
+  >
+  voiceOverlay: ChatRuntimeSafeAreaMergedOverlayStyleSlots<TVoiceOverlayStyleSlots>
+  inputDock: ChatRuntimeSafeAreaMergedInputDockStyleSlots<TInputDockStyleSlots>
+}
+
+export interface ChatRuntimeSafeAreaMergedStyleSlotsInput<
+  TScrollToBottomButtonStyle,
+  TScrollViewportContentContainerStyle,
+  TVoiceOverlayStyleSlots extends { overlay: unknown },
+  TInputDockStyleSlots extends { area: unknown },
+> {
+  chatComposerStyles: {
+    voiceOverlay: TVoiceOverlayStyleSlots
+    inputDock: TInputDockStyleSlots
+  }
+  conversationDockStyles: {
+    scrollToBottomButtonStyle: TScrollToBottomButtonStyle
+  }
+  conversationViewportStyles: {
+    scrollViewport: {
+      contentContainerStyle: TScrollViewportContentContainerStyle
+    }
+  }
+  safeAreaStyles: ChatRuntimeMobileSafeAreaStyleSlots
+}
+
 export interface ChatRuntimeConnectionBannerFailedMobileIconState {
   name: typeof CHAT_RUNTIME_PRESENTATION.connectionBanner.mobileIcon.failedName
   size: number
@@ -13646,6 +13708,53 @@ export function createChatRuntimeMobileSafeAreaStyleSlots(
     },
     inputArea: {
       paddingBottom: layout.inputArea.paddingBottom,
+    },
+  }
+}
+
+export function createChatRuntimeSafeAreaMergedStyleSlots<
+  TScrollToBottomButtonStyle,
+  TScrollViewportContentContainerStyle,
+  TVoiceOverlayStyleSlots extends { overlay: unknown },
+  TInputDockStyleSlots extends { area: unknown },
+>({
+  chatComposerStyles,
+  conversationDockStyles,
+  conversationViewportStyles,
+  safeAreaStyles,
+}: ChatRuntimeSafeAreaMergedStyleSlotsInput<
+  TScrollToBottomButtonStyle,
+  TScrollViewportContentContainerStyle,
+  TVoiceOverlayStyleSlots,
+  TInputDockStyleSlots
+>): ChatRuntimeSafeAreaMergedStyleSlots<
+  TScrollToBottomButtonStyle,
+  TScrollViewportContentContainerStyle,
+  TVoiceOverlayStyleSlots,
+  TInputDockStyleSlots
+> {
+  return {
+    scrollToBottomButtonStyle: [
+      conversationDockStyles.scrollToBottomButtonStyle,
+      safeAreaStyles.scrollToBottomButton,
+    ],
+    scrollViewportContentContainerStyle: [
+      conversationViewportStyles.scrollViewport.contentContainerStyle,
+      safeAreaStyles.chatScrollContent,
+    ],
+    voiceOverlay: {
+      ...chatComposerStyles.voiceOverlay,
+      overlay: [
+        chatComposerStyles.voiceOverlay.overlay,
+        safeAreaStyles.voiceOverlay,
+      ],
+    },
+    inputDock: {
+      ...chatComposerStyles.inputDock,
+      area: [
+        chatComposerStyles.inputDock.area,
+        safeAreaStyles.inputArea,
+      ],
     },
   }
 }

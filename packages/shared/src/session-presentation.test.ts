@@ -64,6 +64,7 @@ import {
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
+  createChatRuntimeSafeAreaMergedStyleSlots,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlots,
   createChatRuntimeNoSessionAvailableDebugState,
@@ -2964,6 +2965,58 @@ describe("session presentation semantics", () => {
       },
       inputArea: {
         paddingBottom: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.bottomInsetOffset + 21,
+      },
+    })
+    expect(createChatRuntimeSafeAreaMergedStyleSlots({
+      chatComposerStyles: {
+        voiceOverlay: {
+          overlay: "voice-overlay-base",
+          card: "voice-card",
+        },
+        inputDock: {
+          area: "input-area-base",
+          row: "input-row",
+        },
+      },
+      conversationDockStyles: {
+        scrollToBottomButtonStyle: "scroll-button-base",
+      },
+      conversationViewportStyles: {
+        scrollViewport: {
+          contentContainerStyle: "scroll-content-base",
+        },
+      },
+      safeAreaStyles: createChatRuntimeMobileSafeAreaStyleSlots(getChatRuntimeMobileSafeAreaLayoutState(21)),
+    })).toEqual({
+      scrollToBottomButtonStyle: [
+        "scroll-button-base",
+        {
+          bottom: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.bottomOffset + 21,
+        },
+      ],
+      scrollViewportContentContainerStyle: [
+        "scroll-content-base",
+        {
+          paddingBottom: 21,
+        },
+      ],
+      voiceOverlay: {
+        overlay: [
+          "voice-overlay-base",
+          {
+            bottom: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.bottomOffset + 21,
+          },
+        ],
+        card: "voice-card",
+      },
+      inputDock: {
+        area: [
+          "input-area-base",
+          {
+            paddingBottom: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.bottomInsetOffset + 21,
+          },
+        ],
+        row: "input-row",
       },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.alignItems).toBe("center")

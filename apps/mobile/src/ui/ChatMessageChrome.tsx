@@ -175,9 +175,9 @@ import {
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
-  type ChatRuntimeMobileSafeAreaStyleSlots,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
+  type ChatRuntimeSafeAreaMergedStyleSlots as SharedChatRuntimeSafeAreaMergedStyleSlots,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
@@ -2401,12 +2401,12 @@ export type ChatMessageRuntimeChromeSurfaceProps<
   surfaceStyles: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['styles'];
 };
 
-type ChatRuntimeSafeAreaMergedStyleSlots = {
-  scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps['style'];
-  scrollViewportContentContainerStyle: ChatMessageScrollViewportProps['contentContainerStyle'];
-  voiceOverlay: ChatComposerVoiceOverlayStyles;
-  inputDock: ChatComposerInputDockStyles;
-};
+type ChatRuntimeSafeAreaMergedStyleSlots = SharedChatRuntimeSafeAreaMergedStyleSlots<
+  ChatMessageScrollToBottomButtonProps['style'],
+  ChatMessageScrollViewportProps['contentContainerStyle'],
+  ChatComposerVoiceOverlayStyles,
+  ChatComposerInputDockStyles
+>;
 
 type ChatComposerSpeechPreviewStyles = {
   box: StyleProp<ViewStyle>;
@@ -7534,43 +7534,6 @@ export function createChatMessageRuntimeDockStyleSlots({
     connectionBanner: conversationDockStyles.connectionBanner,
     composer: composerStyles,
   } as ChatMessageRuntimeDockStyleSlots;
-}
-
-export function createChatRuntimeSafeAreaMergedStyleSlots({
-  chatComposerStyles,
-  conversationDockStyles,
-  conversationViewportStyles,
-  safeAreaStyles,
-}: {
-  chatComposerStyles: Pick<ChatComposerStyleSlots, 'voiceOverlay' | 'inputDock'>;
-  conversationDockStyles: Pick<ChatMessageConversationDockStyleSlots, 'scrollToBottomButtonStyle'>;
-  conversationViewportStyles: Pick<ChatMessageConversationViewportStyleSlots, 'scrollViewport'>;
-  safeAreaStyles: ChatRuntimeMobileSafeAreaStyleSlots;
-}): ChatRuntimeSafeAreaMergedStyleSlots {
-  return {
-    scrollToBottomButtonStyle: [
-      conversationDockStyles.scrollToBottomButtonStyle,
-      safeAreaStyles.scrollToBottomButton,
-    ],
-    scrollViewportContentContainerStyle: [
-      conversationViewportStyles.scrollViewport.contentContainerStyle,
-      safeAreaStyles.chatScrollContent,
-    ],
-    voiceOverlay: {
-      ...chatComposerStyles.voiceOverlay,
-      overlay: [
-        chatComposerStyles.voiceOverlay.overlay,
-        safeAreaStyles.voiceOverlay,
-      ],
-    },
-    inputDock: {
-      ...chatComposerStyles.inputDock,
-      area: [
-        chatComposerStyles.inputDock.area,
-        safeAreaStyles.inputArea,
-      ],
-    },
-  } as ChatRuntimeSafeAreaMergedStyleSlots;
 }
 
 export function createChatMessageToolActivityGroupBoundaryStyles(
