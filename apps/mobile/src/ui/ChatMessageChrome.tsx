@@ -30,10 +30,6 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
-  type ChatDisplayMessageLike,
-  type ChatMessageDisplayStateMessageLike,
-} from '@dotagents/shared/chat-utils';
-import {
   type ACPDelegationProgress,
   type AgentRetryInfo,
   type AgentStepSummary,
@@ -77,9 +73,6 @@ import {
   type PromptLibraryTaskLike,
 } from '@dotagents/shared/predefined-prompts';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
-import {
-  type ToolActivityGroupMobileRenderState,
-} from '@dotagents/shared/tool-activity-grouping';
 import {
   formatConnectionStatus,
   type RecoveryState,
@@ -204,6 +197,8 @@ import {
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationDelegationExpansionState,
+  type ChatDisplayMessageLike,
+  type ChatMessageDisplayStateMessageLike,
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
@@ -243,8 +238,7 @@ import {
   type ChatMessageRuntimeToolApprovalStateMessageLike,
   type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurationStateInput,
-} from '@dotagents/shared/session-presentation';
-import {
+  type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
@@ -253,7 +247,7 @@ import {
   type ToolExecutionDetailMobileHeaderRenderState,
   type ToolExecutionDetailMobilePendingResultRenderState,
   type ToolExecutionDetailMobileSectionHeaderRenderState,
-} from '@dotagents/shared/tool-execution-display';
+} from '@dotagents/shared/session-presentation';
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
 import { MarkdownRenderer } from './MarkdownRenderer';

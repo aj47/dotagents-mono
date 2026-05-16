@@ -2396,6 +2396,8 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 });
 
 test('uses shared media sanitization for collapsed mobile message previews', () => {
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/chat-utils';/);
+  assert.match(sessionPresentationSource, /export type \{\s+ChatDisplayMessageLike,\s+ChatMessageDisplayStateMessageLike,\s+\} from "\.\/chat-utils"/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageMobileRenderState,/);
   assert.match(sessionPresentationSource, /getChatMessageMobileRenderState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageThreadMobileStyleRenderState,/);
@@ -2421,6 +2423,8 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
 });
 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/tool-execution-display';/);
+  assert.match(sessionPresentationSource, /export type \{\s+ToolExecutionCompactMobileRenderState,\s+ToolExecutionDetailMobileCollapseControlRenderState,\s+ToolExecutionDetailMobileCopyButtonRenderState,\s+ToolExecutionDetailMobileEmptyStateRenderState,\s+ToolExecutionDetailMobileExpandControlRenderState,\s+ToolExecutionDetailMobileHeaderRenderState,\s+ToolExecutionDetailMobilePendingResultRenderState,\s+ToolExecutionDetailMobileSectionHeaderRenderState,\s+\} from "\.\/tool-execution-display"/);
   assert.doesNotMatch(screenSource, /formatToolExecutionCount,/);
   assert.doesNotMatch(chatMessageChromeSource, /getToolExecutionDetailArgumentsState,/);
   assert.match(sessionPresentationSource, /getToolExecutionDetailArgumentsState,/);
@@ -3524,6 +3528,8 @@ test('colors compact tool call labels by result status', () => {
 });
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/tool-activity-grouping';/);
+  assert.match(sessionPresentationSource, /export type \{\s+ToolActivityGroupMobileRenderState,\s+\} from "\.\/tool-activity-grouping"/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupExpansionInheritanceItems,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolActivityGroups,/);
   assert.doesNotMatch(screenSource, /applyChatMessageRuntimeToolActivityGroupExpansionInheritance,/);

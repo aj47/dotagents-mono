@@ -17,6 +17,10 @@ import {
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from "./chat-utils"
+export type {
+  ChatDisplayMessageLike,
+  ChatMessageDisplayStateMessageLike,
+} from "./chat-utils"
 import {
   createAgentDelegationProgressMessages,
   getAgentDelegationCardState,
@@ -178,6 +182,16 @@ import {
   type ToolExecutionResultOnlyFallbackRenderState,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
+export type {
+  ToolExecutionCompactMobileRenderState,
+  ToolExecutionDetailMobileCollapseControlRenderState,
+  ToolExecutionDetailMobileCopyButtonRenderState,
+  ToolExecutionDetailMobileEmptyStateRenderState,
+  ToolExecutionDetailMobileExpandControlRenderState,
+  ToolExecutionDetailMobileHeaderRenderState,
+  ToolExecutionDetailMobilePendingResultRenderState,
+  ToolExecutionDetailMobileSectionHeaderRenderState,
+} from "./tool-execution-display"
 import {
   getToolActivityGroupExpansionInheritanceItems,
   getToolActivityGroupMobileRenderState,
@@ -188,6 +202,9 @@ import {
   type ToolActivityGroupMobileColorPalette,
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
+} from "./tool-activity-grouping"
+export type {
+  ToolActivityGroupMobileRenderState,
 } from "./tool-activity-grouping"
 import {
   getMessageQueuePanelMobileDockRenderState,
