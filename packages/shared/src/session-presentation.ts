@@ -2102,6 +2102,29 @@ export interface ChatRuntimeHeaderMobileStyleRenderState {
   killSwitchButton: ChatRuntimeKillSwitchMobileColors
 }
 
+export interface ChatRuntimeHeaderIconContainerMobileStyleSlotInput<
+  TAlignItems extends string = string,
+  TJustifyContent extends string = string,
+> {
+  size: number
+  borderRadius?: number | null
+  backgroundColor?: string | null
+  alignItems: TAlignItems
+  justifyContent: TJustifyContent
+}
+
+export interface ChatRuntimeHeaderIconContainerMobileStyleSlot<
+  TAlignItems extends string = string,
+  TJustifyContent extends string = string,
+> {
+  width: number
+  height: number
+  borderRadius?: number
+  backgroundColor?: string
+  alignItems: TAlignItems
+  justifyContent: TJustifyContent
+}
+
 export interface ChatRuntimeHeaderChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeHeaderMobileStyleColorPalette
@@ -10451,6 +10474,29 @@ export function getChatRuntimeAgentSelectorMobileRenderState(
 
 export function getChatRuntimeHeaderMobileSurfaceState() {
   return CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile
+}
+
+export function createChatRuntimeHeaderIconContainerMobileStyleSlot<
+  TAlignItems extends string,
+  TJustifyContent extends string,
+>({
+  size,
+  borderRadius,
+  backgroundColor,
+  alignItems,
+  justifyContent,
+}: ChatRuntimeHeaderIconContainerMobileStyleSlotInput<TAlignItems, TJustifyContent>): ChatRuntimeHeaderIconContainerMobileStyleSlot<
+  TAlignItems,
+  TJustifyContent
+> {
+  return {
+    width: size,
+    height: size,
+    ...(borderRadius == null ? {} : { borderRadius }),
+    ...(backgroundColor == null ? {} : { backgroundColor }),
+    alignItems,
+    justifyContent,
+  }
 }
 
 export function getChatRuntimeHeaderMobileStyleRenderState({

@@ -56,6 +56,7 @@ import {
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatRuntimeCompletedDebugState,
+  createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
   createChatRuntimeRequestSentDebugState,
@@ -2519,6 +2520,21 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.iconColor).toBe("#FFFFFF")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.justifyContent).toBe("center")
+    const killSwitchIconContainerStyle = createChatRuntimeHeaderIconContainerMobileStyleSlot({
+      size: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.size,
+      borderRadius: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.borderRadius,
+      backgroundColor: getChatRuntimeKillSwitchMobileColors(headerMobileStyleColors).button.backgroundColor,
+      alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.alignItems,
+      justifyContent: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.justifyContent,
+    })
+    expect(killSwitchIconContainerStyle).toEqual({
+      width: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.size,
+      height: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.size,
+      borderRadius: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.borderRadius,
+      backgroundColor: "#dc2626",
+      alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.alignItems,
+      justifyContent: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.justifyContent,
+    })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.accessibilityRole).toBe("switch")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.pressedOpacity).toBe(0.78)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.size).toBe(24)
@@ -2526,6 +2542,17 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.activeIconColorToken).toBe("primary")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.justifyContent).toBe("center")
+    const handsFreeIconContainerStyle = createChatRuntimeHeaderIconContainerMobileStyleSlot({
+      size: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.size,
+      alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.alignItems,
+      justifyContent: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.justifyContent,
+    })
+    expect(handsFreeIconContainerStyle).toEqual({
+      width: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.size,
+      height: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.size,
+      alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.alignItems,
+      justifyContent: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.justifyContent,
+    })
     expect(getChatRuntimeHeaderMobileSurfaceState()).toBe(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile)
     expect(CHAT_RUNTIME_PRESENTATION.connectionBanner.failedTitle).toBe("Message failed to send")
     expect(CHAT_RUNTIME_PRESENTATION.connectionBanner.mobileIcon).toMatchObject({

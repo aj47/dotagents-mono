@@ -2,11 +2,11 @@ import { useMemo } from 'react';
 import {
   Platform,
   StyleSheet,
-  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
@@ -191,26 +191,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     borderColor: colors.button.borderColor,
     backgroundColor: colors.button.backgroundColor,
   } as const);
-  const createChatRuntimeMobileHeaderIconContainerStyle = ({
-    size,
-    borderRadius: containerBorderRadius,
-    backgroundColor,
-    alignItems,
-    justifyContent,
-  }: {
-    size: number
-    borderRadius?: number
-    backgroundColor?: string
-    alignItems: ViewStyle["alignItems"]
-    justifyContent: ViewStyle["justifyContent"]
-  }) => ({
-    width: size,
-    height: size,
-    ...(containerBorderRadius == null ? {} : { borderRadius: containerBorderRadius }),
-    ...(backgroundColor == null ? {} : { backgroundColor }),
-    alignItems,
-    justifyContent,
-  } as const);
   return StyleSheet.create({
     keyboardAvoidingContainer: {
       flex: viewportSurface.flex,
@@ -364,7 +344,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...createChatRuntimeMobileHeaderPinButtonStyle(activeHeaderPinButtonColors),
     },
     headerKillSwitchIconContainer: {
-      ...createChatRuntimeMobileHeaderIconContainerStyle({
+      ...createChatRuntimeHeaderIconContainerMobileStyleSlot({
         size: headerSurface.killSwitchButton.size,
         borderRadius: headerSurface.killSwitchButton.borderRadius,
         backgroundColor: headerKillSwitchButtonColors.button.backgroundColor,
@@ -373,7 +353,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       }),
     },
     headerHandsFreeIconContainer: {
-      ...createChatRuntimeMobileHeaderIconContainerStyle({
+      ...createChatRuntimeHeaderIconContainerMobileStyleSlot({
         size: headerSurface.handsFreeButton.size,
         alignItems: headerSurface.handsFreeButton.alignItems,
         justifyContent: headerSurface.handsFreeButton.justifyContent,
