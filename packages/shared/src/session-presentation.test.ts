@@ -25,11 +25,19 @@ import {
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeConnectionErrorTurnState,
   computeChatMessageRuntimeTurnDurations,
+  createChatMessageRuntimeFinalHistoryTurnMessages,
+  createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimeFinalResponseTextState,
+  createChatMessageRuntimeHistoryDisplayMessage,
+  createChatMessageRuntimeHistoryDisplayMessages,
   createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimePendingTurnStatusState,
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeQueuedErrorState,
+  createChatMessageRuntimeRecoveredHistoryMessages,
+  createChatMessageRuntimeRecoverableHistoryMessages,
+  createChatMessageRuntimeResponseHistoryEvents,
+  createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeStreamingText,
   createChatMessageRuntimeStreamingTurnState,
   createChatMessageRuntimeTurnDurationMessages,
@@ -305,15 +313,22 @@ import {
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
   getChatMessageRuntimeNextResponseEventOrdinal,
+  findChatMessageRuntimeLastUserMessageIndex,
+  hasChatMessageRuntimeAssistantContentAfter,
   hasChatMessageRuntimeLiveAgentTurn,
+  hasChatMessageRuntimeMessagesAfter,
   hasChatMessageRuntimeRequestSessionChanged,
   isLastChatMessageRuntimeConversationContent,
   isChatMessageRuntimeActiveRequest,
   isChatMessageRuntimeLatestSessionRequest,
+  mergeChatMessageRuntimeFinalTurnMessagesWithProgress,
+  mergeChatMessageRuntimeToolResultsIntoLastMessage,
   preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
   sortChatMessageRuntimeResponseEvents,
+  replaceChatMessageRuntimeFinalTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
+  shouldSkipChatMessageRuntimeSyntheticToolSummary,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
   getChatSessionStatusMobileStyleState,
@@ -1084,6 +1099,157 @@ describe("session presentation semantics", () => {
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "needs_input" })).toBe(true)
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete", isResponding: true })).toBe(true)
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete" })).toBe(false)
+    type RuntimeTestMessage = {
+      id?: string
+      role: "user" | "assistant" | "tool"
+      content?: string
+      displayContent?: string
+      timestamp?: number
+      toolCalls?: Array<{ name: string; arguments?: unknown }>
+      toolResults?: Array<{ id: string }>
+      branchMessageIndex?: number
+    }
+    const historyMessages: RuntimeTestMessage[] = [
+      { id: "u1", role: "user", content: "Question", timestamp: 1 },
+      {
+        id: "a1",
+        role: "assistant",
+        content: "Thinking",
+        timestamp: 2,
+        toolCalls: [{ name: "search" }],
+        branchMessageIndex: 4,
+      },
+      { role: "tool", content: "raw", timestamp: 3, toolResults: [{ id: "result-1" }] },
+      { role: "tool", content: "synthetic", timestamp: 4 },
+      { id: "a2", role: "assistant", content: "Final", displayContent: "Visible final", timestamp: 5 },
+    ]
+    expect(findChatMessageRuntimeLastUserMessageIndex(historyMessages, -1)).toBe(0)
+    expect(findChatMessageRuntimeLastUserMessageIndex([{ role: "assistant", content: "Only" }], -1)).toBe(-1)
+    expect(hasChatMessageRuntimeMessagesAfter(historyMessages, 0)).toBe(true)
+    expect(hasChatMessageRuntimeAssistantContentAfter(historyMessages, 0)).toBe(true)
+    expect(hasChatMessageRuntimeAssistantContentAfter(historyMessages, 4)).toBe(false)
+    const displayMessages = createChatMessageRuntimeHistoryDisplayMessages(historyMessages, { includeId: true })
+    expect(displayMessages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+    }))).toEqual([
+      { id: "u1", role: "user", content: "Question" },
+      { id: "a1", role: "assistant", content: "Thinking" },
+      { id: "a2", role: "assistant", content: "Final" },
+    ])
+    expect(displayMessages[1]?.toolResults).toEqual([{ id: "result-1" }])
+    expect(createChatMessageRuntimeHistoryDisplayMessage(
+      { role: "tool", content: "Tool content" },
+    )).toMatchObject({
+      role: "assistant",
+      content: "Tool content",
+    })
+    const mergeMessages = [{
+      role: "assistant" as const,
+      toolCalls: [{ name: "search" }],
+      toolResults: [] as Array<{ id: string }>,
+    }]
+    expect(mergeChatMessageRuntimeToolResultsIntoLastMessage(
+      mergeMessages,
+      { role: "tool", toolResults: [{ id: "merged-result" }] },
+    )).toBe(true)
+    expect(mergeMessages[0]?.toolResults).toEqual([{ id: "merged-result" }])
+    expect(shouldSkipChatMessageRuntimeSyntheticToolSummary({ role: "tool" })).toBe(true)
+    expect(createChatMessageRuntimeFinalHistoryTurnMessages<RuntimeTestMessage>(
+      historyMessages,
+      { userResponse: "Spoken final" },
+    ).map((message) => message.content)).toEqual(["Thinking", "Spoken final"])
+    const historyTurnState = createChatMessageRuntimeFinalResponseTurnState<RuntimeTestMessage>({
+      conversationHistory: historyMessages,
+      userResponseText: "Spoken final",
+    })
+    expect(historyTurnState.kind).toBe("history")
+    if (historyTurnState.kind === "history") {
+      expect(historyTurnState.finalTurnMessages.map((message) => message.content)).toEqual([
+        "Thinking",
+        "Spoken final",
+      ])
+      expect(historyTurnState.updateMessages(
+        [
+          { role: "assistant", content: "Ready" },
+          { role: "user", content: "Question" },
+          { role: "assistant", content: "" },
+        ],
+        1,
+        [{ role: "assistant", content: "Progress", displayContent: "Preview" }],
+      ).map((message) => message.content)).toEqual(["Ready", "Question", "Thinking", "Spoken final"])
+    }
+    const textTurnState = createChatMessageRuntimeFinalResponseTurnState<RuntimeTestMessage>({
+      finalDisplayText: "Only final",
+    })
+    expect(textTurnState.kind).toBe("text")
+    if (textTurnState.kind === "text") {
+      expect(textTurnState.updateMessages([{ role: "assistant", content: "Old" }])).toEqual([
+        { role: "assistant", content: "Only final" },
+      ])
+      expect(textTurnState.createCompletedMessages(
+        [{ role: "assistant", content: "Ready" }],
+        1,
+        { role: "user", content: "Question" },
+      )).toEqual([
+        { role: "assistant", content: "Ready" },
+        { role: "user", content: "Question" },
+        { role: "assistant", content: "Only final" },
+      ])
+    }
+    expect(replaceChatMessageRuntimeFinalTurnMessages(
+      [
+        { role: "assistant", content: "Ready" },
+        { role: "user", content: "Question" },
+        { role: "assistant", content: "" },
+      ],
+      1,
+      [{ role: "assistant", content: "Final" }],
+    )).toEqual([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Final" },
+    ])
+    expect(mergeChatMessageRuntimeFinalTurnMessagesWithProgress(
+      [{ role: "assistant", content: "Final" }],
+      [
+        { role: "assistant", content: "Progress 1" },
+        { role: "assistant", content: "Progress 2", displayContent: "Preview" },
+      ],
+    )).toEqual([
+      { role: "assistant", content: "Progress 1" },
+      { role: "assistant", content: "Final", displayContent: "Preview" },
+    ])
+    expect(createChatMessageRuntimeSessionDisplayMessages(historyMessages, { includeId: true })[0]).toMatchObject({
+      id: "u1",
+      role: "user",
+      content: "Question",
+      timestamp: 1,
+    })
+    expect(createChatMessageRuntimeResponseHistoryEvents([
+      {
+        role: "assistant",
+        timestamp: 9,
+        toolCalls: [{ name: "respond_to_user", arguments: { text: "Hello user" } }],
+      },
+    ])).toMatchObject([{
+      id: "mobile-history-0-0-1",
+      sessionId: "history",
+      ordinal: 1,
+      text: "Hello user",
+      timestamp: 9,
+    }])
+    expect(createChatMessageRuntimeRecoveredHistoryMessages<RuntimeTestMessage>(
+      historyMessages,
+    ).map((message) => message.role)).toEqual(["user", "assistant", "assistant"])
+    expect(createChatMessageRuntimeRecoverableHistoryMessages<RuntimeTestMessage>(
+      historyMessages,
+    )?.map((message) => message.content)).toEqual(["Question", "Thinking", "Final"])
+    expect(createChatMessageRuntimeRecoverableHistoryMessages<RuntimeTestMessage>([
+      { role: "assistant", content: "Old" },
+      { role: "user", content: "Next" },
+    ])).toBeNull()
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.buttonGlyph).toBe("⏹")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.mobileIcon).toMatchObject({
       name: "stop-circle-outline",

@@ -45,7 +45,6 @@ import {
 } from '@dotagents/shared/message-display-utils';
 import {
   applyChatMessageAutoExpansionState,
-  extractRespondToUserResponseEvents,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
 } from '@dotagents/shared/chat-utils';
@@ -133,10 +132,13 @@ import {
   inferChatComposerRuntimeImageMimeType,
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeAssistantTextMessage,
-  createChatMessageRuntimeCompletedTurnMessages,
-  createChatMessageRuntimeCompletedTextTurnMessages,
+  createChatMessageRuntimeHistoryDisplayMessages,
+  createChatMessageRuntimeRecoverableHistoryMessages,
+  createChatMessageRuntimeResponseHistoryEvents,
+  createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
+  findChatMessageRuntimeLastUserMessageIndex,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeToolApprovalRequiredContent,
@@ -182,12 +184,11 @@ import {
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   hasChatMessageRuntimeLiveAgentTurn,
+  hasChatMessageRuntimeMessagesAfter,
   isLastChatMessageRuntimeConversationContent,
-  preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   sortChatMessageRuntimeResponseEvents,
-  updateLastChatMessageRuntimeConversationContent,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
@@ -249,8 +250,10 @@ import {
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
   type ChatMessageRuntimeAssistantTextMessage,
-  type ChatMessageRuntimeConversationContentUpdateMessage,
-  type ChatMessageRuntimePendingTurnMessage,
+  type ChatMessageRuntimeHistoryMessageLike,
+  type ChatMessageRuntimeResponseHistorySourceMessage,
+  type ChatMessageRuntimeSessionMessageLike,
+  type ChatMessageRuntimeSessionDisplayMessagesOptions,
   type ChatMessageRuntimeTurnDurationStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -3836,25 +3839,6 @@ export function createChatMessageRuntimeActivityMessage(
   };
 }
 
-export function replaceChatMessageRuntimeFinalTurnMessages<
-  TMessage extends ChatDisplayMessageLike,
->(
-  messages: readonly TMessage[],
-  messageCountBeforeTurn: number,
-  finalTurnMessages: readonly TMessage[],
-  progressMessages: readonly ChatDisplayMessageLike[] = [],
-): TMessage[] {
-  const mergedMessages = mergeChatMessageRuntimeFinalTurnMessagesWithProgress(
-    finalTurnMessages,
-    progressMessages,
-  );
-  return replaceChatMessageRuntimeTurnMessages(
-    messages,
-    messageCountBeforeTurn,
-    mergedMessages,
-  );
-}
-
 export function createChatMessageRuntimeProgressMessages<
   TMessage extends ChatDisplayMessageLike,
 >(
@@ -3951,150 +3935,6 @@ export function createChatMessageRuntimeProgressMessages<
   return [...messagesWithUserResponse, ...delegationMessages];
 }
 
-export type ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> = {
-  id?: string;
-  role: 'user' | 'assistant' | 'tool';
-  content?: string;
-  displayContent?: string;
-  toolCalls?: TToolCall[];
-  toolResults?: TToolResult[];
-  branchMessageIndex?: number;
-};
-
-export type ChatMessageRuntimeHistoryTurnMessageLike = {
-  role: 'user' | 'assistant' | 'tool';
-  content?: string | null;
-};
-
-export type ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult> = {
-  id?: string;
-  role: 'user' | 'assistant';
-  content: string;
-  displayContent?: string;
-  toolCalls?: TToolCall[];
-  toolResults?: TToolResult[];
-  branchMessageIndex?: number;
-};
-
-export type ChatMessageRuntimeToolResultMergeMessage<TToolCall, TToolResult> = {
-  role: 'user' | 'assistant' | 'tool';
-  toolCalls?: TToolCall[];
-  toolResults?: TToolResult[];
-};
-
-type ChatMessageRuntimeHistoryDisplayMessageOptions = {
-  includeId?: boolean;
-};
-
-export type ChatMessageRuntimeHistoryDisplayMessagesOptions = ChatMessageRuntimeHistoryDisplayMessageOptions & {
-  includeToolMessages?: boolean;
-  mergeToolResults?: boolean;
-  skipUserMessages?: boolean;
-  startIndex?: number;
-};
-
-export type ChatMessageRuntimeFinalHistoryTurnMessagesOptions =
-  ChatMessageRuntimeHistoryDisplayMessagesOptions & {
-    userResponse?: string;
-  };
-
-export type ChatMessageRuntimeFinalResponseTurnState<
-  TMessage extends ChatDisplayMessageLike &
-    ChatMessageRuntimeConversationContentUpdateMessage &
-    ChatMessageRuntimePendingTurnMessage,
-> =
-  | {
-      kind: 'history';
-      finalTurnMessages: TMessage[];
-      updateMessages: (
-        messages: readonly TMessage[],
-        messageCountBeforeTurn: number,
-        progressMessages?: readonly TMessage[],
-      ) => TMessage[];
-      createCompletedMessages: (
-        messages: readonly TMessage[],
-        messageCountBeforeTurn: number,
-        userMessage: TMessage,
-      ) => TMessage[];
-    }
-  | {
-      kind: 'text';
-      finalDisplayText: string;
-      updateMessages: (messages: readonly TMessage[]) => TMessage[];
-      createCompletedMessages: (
-        messages: readonly TMessage[],
-        messageCountBeforeTurn: number,
-        userMessage: TMessage,
-      ) => TMessage[];
-    }
-  | {
-      kind: 'empty';
-    };
-
-type ChatMessageRuntimeFinalResponseTurnStateInput<TToolCall, TToolResult> = {
-  conversationHistory?: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[] | null;
-  finalDisplayText?: string | null;
-  historyOptions?: Omit<ChatMessageRuntimeFinalHistoryTurnMessagesOptions, 'userResponse'>;
-  userResponseText?: string;
-};
-
-export type ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult> = {
-  id?: string;
-  role: 'user' | 'assistant' | 'tool';
-  content?: string;
-  displayContent?: string;
-  timestamp?: number;
-  toolCalls?: TToolCall[];
-  toolResults?: TToolResult[];
-};
-
-export type ChatMessageRuntimeResponseHistorySourceMessage = {
-  role: 'user' | 'assistant' | 'tool';
-  timestamp?: number;
-  toolCalls?: Array<{ name: string; arguments: unknown }>;
-};
-
-type ChatMessageRuntimeSessionDisplayMessagesOptions = {
-  includeId?: boolean;
-};
-
-const hasChatMessageRuntimeEntries = <TEntry,>(
-  entries?: readonly TEntry[] | null,
-): boolean => !!entries && entries.length > 0;
-
-export function findChatMessageRuntimeLastUserMessageIndex(
-  historyMessages: readonly ChatMessageRuntimeHistoryTurnMessageLike[],
-  fallbackIndex = 0,
-): number {
-  for (let i = historyMessages.length - 1; i >= 0; i--) {
-    if (historyMessages[i].role === 'user') {
-      return i;
-    }
-  }
-  return fallbackIndex;
-}
-
-export function hasChatMessageRuntimeMessagesAfter(
-  historyMessages: readonly ChatMessageRuntimeHistoryTurnMessageLike[],
-  startIndex: number,
-): boolean {
-  return startIndex + 1 < historyMessages.length;
-}
-
-export function hasChatMessageRuntimeAssistantContentAfter(
-  historyMessages: readonly ChatMessageRuntimeHistoryTurnMessageLike[],
-  startIndex: number,
-): boolean {
-  if (startIndex < 0) return false;
-  for (let i = startIndex + 1; i < historyMessages.length; i++) {
-    const historyMessage = historyMessages[i];
-    if (historyMessage.role === 'assistant' && historyMessage.content) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export function createChatMessageRuntimeProgressTurnState<
   TMessage extends ChatDisplayMessageLike,
 >(
@@ -4127,33 +3967,6 @@ export function applyChatMessageRuntimeProgressTurnStatusState(
 ): void {
   statusSetters.setConversationState(progressTurnState.conversationState);
   statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary ?? null);
-}
-
-export function createChatMessageRuntimeSessionDisplayMessages<
-  TMessage extends ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult>,
-  TToolCall = unknown,
-  TToolResult = unknown,
->(
-  sessionMessages: readonly ChatMessageRuntimeSessionMessageLike<TToolCall, TToolResult>[],
-  {
-    includeId = false,
-  }: ChatMessageRuntimeSessionDisplayMessagesOptions = {},
-): TMessage[] {
-  return sessionMessages.map((message) => ({
-    ...(includeId ? { id: message.id } : {}),
-    role: message.role,
-    content: message.content,
-    displayContent: message.displayContent,
-    timestamp: message.timestamp,
-    toolCalls: message.toolCalls,
-    toolResults: message.toolResults,
-  }) as TMessage);
-}
-
-export function createChatMessageRuntimeResponseHistoryEvents(
-  messages: ChatMessageRuntimeResponseHistorySourceMessage[],
-): AgentUserResponseEvent[] {
-  return extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
 }
 
 export function useChatMessageRuntimeTurnDurations({
@@ -4387,255 +4200,6 @@ export function useChatMessageRuntimeThreadExpansionState<TMessage extends ChatM
     toggleToolApprovalArguments,
     resetThreadExpansionState,
   };
-}
-
-export function mergeChatMessageRuntimeToolResultsIntoLastMessage<
-  TMessage extends ChatMessageRuntimeToolResultMergeMessage<TToolCall, TToolResult>,
-  TToolCall,
-  TToolResult,
->(
-  messages: TMessage[],
-  historyMessage: ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>,
-): boolean {
-  const lastMessage = messages[messages.length - 1];
-  if (
-    historyMessage.role !== 'tool' ||
-    !lastMessage ||
-    lastMessage.role !== 'assistant' ||
-    !hasChatMessageRuntimeEntries(lastMessage.toolCalls) ||
-    !hasChatMessageRuntimeEntries(historyMessage.toolResults)
-  ) {
-    return false;
-  }
-
-  lastMessage.toolResults = [
-    ...(lastMessage.toolResults || []),
-    ...(historyMessage.toolResults || []),
-  ] as TMessage['toolResults'];
-  return true;
-}
-
-export function shouldSkipChatMessageRuntimeSyntheticToolSummary<TToolCall, TToolResult>(
-  historyMessage: ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>,
-): boolean {
-  return (
-    historyMessage.role === 'tool' &&
-    !hasChatMessageRuntimeEntries(historyMessage.toolResults) &&
-    !hasChatMessageRuntimeEntries(historyMessage.toolCalls)
-  );
-}
-
-export function createChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>(
-  historyMessage: ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>,
-  options: ChatMessageRuntimeHistoryDisplayMessageOptions = {},
-): ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult> {
-  return {
-    ...(options.includeId ? { id: historyMessage.id } : {}),
-    role: historyMessage.role === 'tool' ? 'assistant' : historyMessage.role,
-    content: historyMessage.content || '',
-    displayContent: historyMessage.displayContent,
-    toolCalls: historyMessage.toolCalls,
-    toolResults: historyMessage.toolResults,
-    branchMessageIndex: historyMessage.branchMessageIndex,
-  };
-}
-
-export function createChatMessageRuntimeHistoryDisplayMessages<TToolCall, TToolResult>(
-  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
-  {
-    includeId = false,
-    includeToolMessages = true,
-    mergeToolResults = true,
-    skipUserMessages = false,
-    startIndex = 0,
-  }: ChatMessageRuntimeHistoryDisplayMessagesOptions = {},
-): ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>[] {
-  const messages: ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>[] = [];
-  for (let i = startIndex; i < historyMessages.length; i++) {
-    const historyMessage = historyMessages[i];
-    if (skipUserMessages && historyMessage.role === 'user') {
-      continue;
-    }
-    if (
-      mergeToolResults &&
-      mergeChatMessageRuntimeToolResultsIntoLastMessage(messages, historyMessage)
-    ) {
-      continue;
-    }
-    if (historyMessage.role === 'tool' && !includeToolMessages) {
-      continue;
-    }
-    if (shouldSkipChatMessageRuntimeSyntheticToolSummary(historyMessage)) {
-      continue;
-    }
-    messages.push(createChatMessageRuntimeHistoryDisplayMessage(historyMessage, { includeId }));
-  }
-  return messages;
-}
-
-export function createChatMessageRuntimeFinalHistoryTurnMessages<
-  TMessage extends ChatDisplayMessageLike,
-  TToolCall = unknown,
-  TToolResult = unknown,
->(
-  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
-  options: ChatMessageRuntimeFinalHistoryTurnMessagesOptions = {},
-): TMessage[] {
-  const {
-    userResponse,
-    skipUserMessages = true,
-    startIndex,
-    ...displayOptions
-  } = options;
-  const currentTurnStartIndex =
-    startIndex ?? findChatMessageRuntimeLastUserMessageIndex(historyMessages);
-  const messages = createChatMessageRuntimeHistoryDisplayMessages(
-    historyMessages,
-    {
-      ...displayOptions,
-      skipUserMessages,
-      startIndex: currentTurnStartIndex,
-    },
-  ) as unknown as TMessage[];
-
-  return createChatMessageRuntimeUserResponseMessages(messages, userResponse);
-}
-
-export function createChatMessageRuntimeFinalResponseTurnState<
-  TMessage extends ChatDisplayMessageLike &
-    ChatMessageRuntimeConversationContentUpdateMessage &
-    ChatMessageRuntimePendingTurnMessage,
-  TToolCall = unknown,
-  TToolResult = unknown,
->({
-  conversationHistory,
-  finalDisplayText,
-  historyOptions,
-  userResponseText,
-}: ChatMessageRuntimeFinalResponseTurnStateInput<
-  TToolCall,
-  TToolResult
->): ChatMessageRuntimeFinalResponseTurnState<TMessage> {
-  if (conversationHistory && conversationHistory.length > 0) {
-    const finalTurnMessages = createChatMessageRuntimeFinalHistoryTurnMessages<
-      TMessage,
-      TToolCall,
-      TToolResult
-    >(
-      conversationHistory,
-      {
-        ...historyOptions,
-        userResponse: userResponseText,
-      },
-    );
-
-    return {
-      kind: 'history',
-      finalTurnMessages,
-      updateMessages: (
-        messages,
-        messageCountBeforeTurn,
-        progressMessages,
-      ) => replaceChatMessageRuntimeFinalTurnMessages(
-        messages,
-        messageCountBeforeTurn,
-        finalTurnMessages,
-        progressMessages,
-      ),
-      createCompletedMessages: (
-        messages,
-        messageCountBeforeTurn,
-        userMessage,
-      ) => createChatMessageRuntimeCompletedTurnMessages(
-        messages,
-        messageCountBeforeTurn,
-        userMessage,
-        finalTurnMessages,
-      ),
-    };
-  }
-
-  if (finalDisplayText) {
-    return {
-      kind: 'text',
-      finalDisplayText,
-      updateMessages: (messages) => updateLastChatMessageRuntimeConversationContent(messages, finalDisplayText),
-      createCompletedMessages: (
-        messages,
-        messageCountBeforeTurn,
-        userMessage,
-      ) => createChatMessageRuntimeCompletedTextTurnMessages(
-        messages,
-        messageCountBeforeTurn,
-        userMessage,
-        finalDisplayText,
-      ),
-    };
-  }
-
-  return {
-    kind: 'empty',
-  };
-}
-
-export function mergeChatMessageRuntimeFinalTurnMessagesWithProgress<
-  TMessage extends ChatDisplayMessageLike,
->(
-  finalTurnMessages: readonly TMessage[],
-  progressMessages: readonly ChatDisplayMessageLike[],
-): TMessage[] {
-  if (progressMessages.length > 0 && finalTurnMessages.length === 0) {
-    return [...progressMessages] as unknown as TMessage[];
-  }
-
-  if (progressMessages.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
-    const mergedMessages = [...progressMessages] as unknown as TMessage[];
-    mergedMessages[mergedMessages.length - 1] = preserveChatMessageRuntimeDisplayContentFromProgress(
-      [finalTurnMessages[finalTurnMessages.length - 1]],
-      [mergedMessages[mergedMessages.length - 1]],
-    )[0];
-    return mergedMessages;
-  }
-
-  return preserveChatMessageRuntimeDisplayContentFromProgress(finalTurnMessages, progressMessages);
-}
-
-export function createChatMessageRuntimeRecoveredHistoryMessages<
-  TMessage extends ChatDisplayMessageLike,
-  TToolCall = unknown,
-  TToolResult = unknown,
->(
-  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
-): TMessage[] {
-  return createChatMessageRuntimeHistoryDisplayMessages(
-    historyMessages,
-    {
-      includeId: true,
-      includeToolMessages: false,
-    },
-  ) as unknown as TMessage[];
-}
-
-export function createChatMessageRuntimeRecoverableHistoryMessages<
-  TMessage extends ChatDisplayMessageLike,
-  TToolCall = unknown,
-  TToolResult = unknown,
->(
-  historyMessages: readonly ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult>[],
-): TMessage[] | null {
-  const lastUserMessageIndex = findChatMessageRuntimeLastUserMessageIndex(historyMessages, -1);
-  const hasAssistantResponse = hasChatMessageRuntimeAssistantContentAfter(
-    historyMessages,
-    lastUserMessageIndex,
-  );
-
-  if (!hasAssistantResponse) {
-    return null;
-  }
-
-  return createChatMessageRuntimeRecoveredHistoryMessages<TMessage, TToolCall, TToolResult>(
-    historyMessages,
-  );
 }
 
 export type ChatMessageRuntimeToolApprovalLike = {
