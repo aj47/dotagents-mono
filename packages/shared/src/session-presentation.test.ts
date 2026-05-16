@@ -66,6 +66,7 @@ import {
   createChatRuntimeChromeSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
+  createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
@@ -4067,6 +4068,60 @@ describe("session presentation semantics", () => {
     expect(dockChrome.voiceOverlay.label).toBe("Release to edit")
     expect(dockChrome.queuePanel.shouldRender).toBe(true)
     expect(dockChrome.connectionBanner.reconnecting.shouldRender).toBe(true)
+    const dockChromeProps = createChatRuntimeDockChromeMobileProps({
+      responseHistoryResponses: ["response-1"],
+      responseHistoryTtsProvider: "openai",
+      responseHistoryRemoteTtsVoice: "voice-1",
+      responseHistoryRemoteTtsModel: "model-1",
+      responseHistoryTtsRate: 1,
+      responseHistoryTtsPitch: 1,
+      responseHistoryTtsVoiceId: "native-voice",
+      responseHistoryRemoteBaseUrl: "https://example.test",
+      responseHistoryRemoteApiKey: "api-key",
+      speakNative: "speak-native",
+      stopNativeSpeech: "stop-native",
+      speakRemote: "speak-remote",
+      stopRemoteSpeech: "stop-remote",
+      scrollToBottomVisible: true,
+      onScrollToBottom: "scroll-bottom",
+      voiceOverlayListening: true,
+      voiceOverlayHandsFree: false,
+      voiceOverlayWillCancel: true,
+      voiceOverlayTranscript: "draft transcript",
+      queuePanelEnabled: true,
+      queuePanelConversationId: "conversation-1",
+      queuedMessages: ["queued-message-1", "queued-message-2"],
+      onRemoveQueuedMessage: "remove-queued",
+      onUpdateQueuedMessage: "update-queued",
+      onRetryQueuedMessage: "retry-queued",
+      onProcessNextQueuedMessage: "process-next",
+      canProcessNextQueuedMessage: true,
+      onClearQueuedMessages: "clear-queued",
+      isMessageQueuePaused: false,
+      onPauseMessageQueue: "pause-queue",
+      onResumeMessageQueue: "resume-queue",
+      connectionState: {
+        status: "reconnecting",
+        retryCount: 1,
+        lastError: "Network offline",
+        isAppActive: true,
+      },
+      lastFailedMessage: "Retry this later",
+      isResponding: true,
+      colors: viewportChromeColors,
+      onConnectionBannerRetry: "retry-connection",
+      composer: "runtime-composer",
+    })
+    expect(dockChromeProps.responseHistoryPanel.responses).toEqual(["response-1"])
+    expect(dockChromeProps.responseHistoryPanel.speakRemote).toBe("speak-remote")
+    expect(dockChromeProps.scrollToBottomButton.renderState.shouldRender).toBe(true)
+    expect(dockChromeProps.scrollToBottomButton.onPress).toBe("scroll-bottom")
+    expect(dockChromeProps.voiceOverlay.label).toBe("Release to edit")
+    expect(dockChromeProps.voiceOverlay.transcript).toBe("draft transcript")
+    expect(dockChromeProps.queuePanel.shouldRender).toBe(true)
+    expect(dockChromeProps.queuePanel.panel.messages).toEqual(["queued-message-1", "queued-message-2"])
+    expect(dockChromeProps.connectionBanner.onRetry).toBe("retry-connection")
+    expect(dockChromeProps.composer).toBe("runtime-composer")
     expect(getChatRuntimeDebugPanelsMobileRenderState({
       requestDebugText: "Request sent",
       voiceDebugEnabled: true,

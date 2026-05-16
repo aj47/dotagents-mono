@@ -14979,6 +14979,199 @@ export function getChatRuntimeDockChromeMobileRenderState({
   }
 }
 
+export function createChatRuntimeDockChromeMobileProps<
+  TInput extends {
+    responseHistoryResponses: unknown
+    responseHistoryTtsProvider: unknown
+    responseHistoryRemoteTtsVoice: unknown
+    responseHistoryRemoteTtsModel: unknown
+    responseHistoryTtsRate: unknown
+    responseHistoryTtsPitch: unknown
+    responseHistoryTtsVoiceId: unknown
+    responseHistoryRemoteBaseUrl: unknown
+    responseHistoryRemoteApiKey: unknown
+    speakNative: unknown
+    stopNativeSpeech: unknown
+    speakRemote: unknown
+    stopRemoteSpeech: unknown
+    scrollToBottomVisible: ChatRuntimeDockChromeMobileRenderStateInput["scrollToBottomVisible"]
+    onScrollToBottom?: unknown
+    voiceOverlayListening: ChatRuntimeDockChromeMobileRenderStateInput["voiceOverlayListening"]
+    voiceOverlayHandsFree: ChatRuntimeDockChromeMobileRenderStateInput["voiceOverlayHandsFree"]
+    voiceOverlayWillCancel: ChatRuntimeDockChromeMobileRenderStateInput["voiceOverlayWillCancel"]
+    voiceOverlayTranscript: unknown
+    queuePanelEnabled: ChatRuntimeDockChromeMobileRenderStateInput["queuePanelEnabled"]
+    queuePanelConversationId: unknown
+    queuedMessages: { readonly length: number }
+    onRemoveQueuedMessage: unknown
+    onUpdateQueuedMessage: unknown
+    onRetryQueuedMessage: unknown
+    onProcessNextQueuedMessage: unknown
+    canProcessNextQueuedMessage: unknown
+    onClearQueuedMessages: unknown
+    isMessageQueuePaused: unknown
+    onPauseMessageQueue: unknown
+    onResumeMessageQueue: unknown
+    connectionState: ChatRuntimeDockChromeMobileRenderStateInput["connectionState"]
+    lastFailedMessage: ChatRuntimeDockChromeMobileRenderStateInput["lastFailedMessage"]
+    isResponding: ChatRuntimeDockChromeMobileRenderStateInput["isResponding"]
+    colors: ChatRuntimeDockChromeMobileRenderStateInput["colors"]
+    onConnectionBannerRetry?: unknown
+    composer: unknown
+  },
+>({
+  responseHistoryResponses,
+  responseHistoryTtsProvider,
+  responseHistoryRemoteTtsVoice,
+  responseHistoryRemoteTtsModel,
+  responseHistoryTtsRate,
+  responseHistoryTtsPitch,
+  responseHistoryTtsVoiceId,
+  responseHistoryRemoteBaseUrl,
+  responseHistoryRemoteApiKey,
+  speakNative,
+  stopNativeSpeech,
+  speakRemote,
+  stopRemoteSpeech,
+  scrollToBottomVisible,
+  onScrollToBottom,
+  voiceOverlayListening,
+  voiceOverlayHandsFree,
+  voiceOverlayWillCancel,
+  voiceOverlayTranscript,
+  queuePanelEnabled,
+  queuePanelConversationId,
+  queuedMessages,
+  onRemoveQueuedMessage,
+  onUpdateQueuedMessage,
+  onRetryQueuedMessage,
+  onProcessNextQueuedMessage,
+  canProcessNextQueuedMessage,
+  onClearQueuedMessages,
+  isMessageQueuePaused,
+  onPauseMessageQueue,
+  onResumeMessageQueue,
+  connectionState,
+  lastFailedMessage,
+  isResponding,
+  colors,
+  onConnectionBannerRetry,
+  composer,
+}: TInput): {
+  responseHistoryPanel: {
+    responses: TInput["responseHistoryResponses"]
+    colors: TInput["colors"]
+    ttsProvider: TInput["responseHistoryTtsProvider"]
+    remoteTtsVoice: TInput["responseHistoryRemoteTtsVoice"]
+    remoteTtsModel: TInput["responseHistoryRemoteTtsModel"]
+    ttsRate: TInput["responseHistoryTtsRate"]
+    ttsPitch: TInput["responseHistoryTtsPitch"]
+    ttsVoiceId: TInput["responseHistoryTtsVoiceId"]
+    remoteBaseUrl: TInput["responseHistoryRemoteBaseUrl"]
+    remoteApiKey: TInput["responseHistoryRemoteApiKey"]
+    speakNative: TInput["speakNative"]
+    stopNativeSpeech: TInput["stopNativeSpeech"]
+    speakRemote: TInput["speakRemote"]
+    stopRemoteSpeech: TInput["stopRemoteSpeech"]
+  }
+  scrollToBottomButton: {
+    renderState: ChatRuntimeDockChromeMobileRenderState["scrollToBottom"]
+    onPress: TInput["onScrollToBottom"]
+  }
+  voiceOverlay: {
+    isVisible: ChatRuntimeDockChromeMobileRenderState["voiceOverlay"]["isVisible"]
+    label: ChatRuntimeDockChromeMobileRenderState["voiceOverlay"]["label"]
+    transcript: TInput["voiceOverlayTranscript"]
+    transcriptNumberOfLines: ChatRuntimeDockChromeMobileRenderState["voiceOverlay"]["transcriptNumberOfLines"]
+  }
+  queuePanel: {
+    shouldRender: ChatRuntimeDockChromeMobileRenderState["queuePanel"]["shouldRender"]
+    panel: {
+      conversationId: TInput["queuePanelConversationId"]
+      messages: TInput["queuedMessages"]
+      colors: TInput["colors"]
+      onRemove: TInput["onRemoveQueuedMessage"]
+      onUpdate: TInput["onUpdateQueuedMessage"]
+      onRetry: TInput["onRetryQueuedMessage"]
+      onProcessNext: TInput["onProcessNextQueuedMessage"]
+      canProcessNext: TInput["canProcessNextQueuedMessage"]
+      onClear: TInput["onClearQueuedMessages"]
+      isPaused: TInput["isMessageQueuePaused"]
+      onPause: TInput["onPauseMessageQueue"]
+      onResume: TInput["onResumeMessageQueue"]
+    }
+  }
+  connectionBanner: {
+    renderState: ChatRuntimeDockChromeMobileRenderState["connectionBanner"]
+    onRetry: TInput["onConnectionBannerRetry"]
+  }
+  composer: TInput["composer"]
+} {
+  const dockChromeRenderState = getChatRuntimeDockChromeMobileRenderState({
+    scrollToBottomVisible,
+    voiceOverlayListening,
+    voiceOverlayHandsFree,
+    voiceOverlayWillCancel,
+    queuePanelEnabled,
+    queuePanelMessageCount: queuedMessages.length,
+    connectionState,
+    lastFailedMessage,
+    isResponding,
+    colors,
+  })
+
+  return {
+    responseHistoryPanel: {
+      responses: responseHistoryResponses,
+      colors,
+      ttsProvider: responseHistoryTtsProvider,
+      remoteTtsVoice: responseHistoryRemoteTtsVoice,
+      remoteTtsModel: responseHistoryRemoteTtsModel,
+      ttsRate: responseHistoryTtsRate,
+      ttsPitch: responseHistoryTtsPitch,
+      ttsVoiceId: responseHistoryTtsVoiceId,
+      remoteBaseUrl: responseHistoryRemoteBaseUrl,
+      remoteApiKey: responseHistoryRemoteApiKey,
+      speakNative,
+      stopNativeSpeech,
+      speakRemote,
+      stopRemoteSpeech,
+    },
+    scrollToBottomButton: {
+      renderState: dockChromeRenderState.scrollToBottom,
+      onPress: onScrollToBottom,
+    },
+    voiceOverlay: {
+      isVisible: dockChromeRenderState.voiceOverlay.isVisible,
+      label: dockChromeRenderState.voiceOverlay.label,
+      transcript: voiceOverlayTranscript,
+      transcriptNumberOfLines: dockChromeRenderState.voiceOverlay.transcriptNumberOfLines,
+    },
+    queuePanel: {
+      shouldRender: dockChromeRenderState.queuePanel.shouldRender,
+      panel: {
+        conversationId: queuePanelConversationId,
+        messages: queuedMessages,
+        colors,
+        onRemove: onRemoveQueuedMessage,
+        onUpdate: onUpdateQueuedMessage,
+        onRetry: onRetryQueuedMessage,
+        onProcessNext: onProcessNextQueuedMessage,
+        canProcessNext: canProcessNextQueuedMessage,
+        onClear: onClearQueuedMessages,
+        isPaused: isMessageQueuePaused,
+        onPause: onPauseMessageQueue,
+        onResume: onResumeMessageQueue,
+      },
+    },
+    connectionBanner: {
+      renderState: dockChromeRenderState.connectionBanner,
+      onRetry: onConnectionBannerRetry,
+    },
+    composer,
+  }
+}
+
 export function getChatRuntimeConversationChromeMobileStyleRenderState({
   colors,
 }: ChatRuntimeConversationChromeMobileStyleRenderStateInput): ChatRuntimeConversationChromeMobileStyleRenderState {
