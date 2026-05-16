@@ -3456,6 +3456,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
+  assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?formatQueuedMessageMetaLabel,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);

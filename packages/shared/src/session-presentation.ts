@@ -265,6 +265,13 @@ import {
   type MessageQueuePanelMobileDockRenderState,
   type MessageQueuePanelMobileDockRenderStateInput,
 } from "./message-queue-utils"
+export {
+  formatQueuedMessageMetaLabel,
+  getMessageQueuePanelMobileRenderState,
+  getQueuedMessageEditDraftState,
+  getQueuedMessageItemMobileRenderState,
+  type QueuedMessage,
+} from "./message-queue-utils"
 import {
   computeTurnDurations,
   createTurnDurationMessages,

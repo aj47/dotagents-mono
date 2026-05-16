@@ -21,7 +21,7 @@ import {
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
-} from '@dotagents/shared/message-queue-utils';
+} from '@dotagents/shared/session-presentation';
 
 type MessageQueuePanelColors =
   Parameters<typeof getMessageQueuePanelMobileRenderState>[0]['colors']
