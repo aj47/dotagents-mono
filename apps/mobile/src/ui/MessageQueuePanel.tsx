@@ -18,8 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
-  getQueuedMessageEditSaveActionState,
-  getQueuedMessageEditSubmitState,
+  getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
@@ -83,7 +82,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const queuePanelCopy = queuedMessageRenderState.copy;
   const statusColor = queuedMessageRenderState.statusColor;
   const statusMetaColor = queuedMessageRenderState.statusMetaColor;
-  const editSaveActionState = getQueuedMessageEditSaveActionState(editText);
+  const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -101,7 +100,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   }, [isProcessing, message.text]);
 
   const handleSaveEdit = () => {
-    const editSubmitState = getQueuedMessageEditSubmitState(editText, message.text);
+    const editSubmitState = editDraftState.submitState;
     if (editSubmitState.shouldSubmit) {
       onUpdate(editSubmitState.trimmedText);
     }
@@ -265,11 +264,11 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             <TouchableOpacity
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
-              disabled={editSaveActionState.isDisabled}
+              disabled={editDraftState.saveActionState.isDisabled}
               activeOpacity={editSurface.buttonPressedOpacity}
               accessibilityRole={editSurface.buttonAccessibilityRole}
               accessibilityLabel={queuePanelCopy.actions.saveAccessibilityLabel}
-              accessibilityState={editSaveActionState.accessibilityState}
+              accessibilityState={editDraftState.saveActionState.accessibilityState}
             >
               <Text style={styles.saveButtonText}>{queuePanelCopy.actions.saveLabel}</Text>
             </TouchableOpacity>

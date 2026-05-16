@@ -31,6 +31,7 @@ import {
   getMessageQueuePanelRenderItems,
   getMessageQueuePanelState,
   getOperatorMessageQueueTotalMessageCount,
+  getQueuedMessageEditDraftState,
   getQueuedMessageEditSubmitState,
   getQueuedMessageItemPresentation,
   getQueuedMessageItemMobileRenderState,
@@ -262,6 +263,17 @@ describe('message-queue-utils', () => {
       trimmedText: 'old text',
       shouldSubmit: false,
       shouldRestoreOriginalText: true,
+    });
+    expect(getQueuedMessageEditDraftState('  retry text  ', 'old text')).toEqual({
+      saveActionState: {
+        isDisabled: false,
+        accessibilityState: { disabled: false },
+      },
+      submitState: {
+        trimmedText: 'retry text',
+        shouldSubmit: true,
+        shouldRestoreOriginalText: false,
+      },
     });
     expect(getMessageQueuePanelActionState(false)).toEqual({
       isDisabled: true,

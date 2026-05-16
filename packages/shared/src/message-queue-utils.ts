@@ -725,6 +725,11 @@ export interface QueuedMessageEditSubmitState {
   shouldRestoreOriginalText: boolean;
 }
 
+export interface QueuedMessageEditDraftState {
+  saveActionState: QueuedMessageEditSaveActionState;
+  submitState: QueuedMessageEditSubmitState;
+}
+
 export interface MessageQueuePanelListToggleAccessibilityState {
   expanded: boolean;
 }
@@ -920,6 +925,16 @@ export function getQueuedMessageEditSubmitState(
     trimmedText,
     shouldSubmit,
     shouldRestoreOriginalText: !shouldSubmit,
+  };
+}
+
+export function getQueuedMessageEditDraftState(
+  draftText: string,
+  currentText: string,
+): QueuedMessageEditDraftState {
+  return {
+    saveActionState: getQueuedMessageEditSaveActionState(draftText),
+    submitState: getQueuedMessageEditSubmitState(draftText, currentText),
   };
 }
 

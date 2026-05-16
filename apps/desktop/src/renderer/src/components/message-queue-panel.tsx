@@ -6,8 +6,7 @@ import {
   getMessageQueuePanelCopyState,
   getMessageQueuePanelDesktopSurfaceState,
   getMessageQueuePanelState,
-  getQueuedMessageEditSaveActionState,
-  getQueuedMessageEditSubmitState,
+  getQueuedMessageEditDraftState,
   getQueuedMessageItemPresentation,
   type QueuedMessage,
 } from "@dotagents/shared/message-queue-utils"
@@ -51,7 +50,7 @@ function QueuedMessageItem({
     expansionLabel,
     errorText,
   } = messagePresentation
-  const editSaveActionState = getQueuedMessageEditSaveActionState(editText)
+  const editDraftState = getQueuedMessageEditDraftState(editText, message.text)
 
   // Sync editText with message.text when it changes via IPC (only when not editing)
   useEffect(() => {
@@ -93,7 +92,7 @@ function QueuedMessageItem({
   })
 
   const handleSaveEdit = () => {
-    const editSubmitState = getQueuedMessageEditSubmitState(editText, message.text)
+    const editSubmitState = editDraftState.submitState
     if (editSubmitState.shouldSubmit) {
       updateMutation.mutate(editSubmitState.trimmedText)
     } else {
@@ -158,7 +157,7 @@ function QueuedMessageItem({
               size="sm"
               className={desktopMessageQueueItemSurface.editButtonClassName}
               onClick={handleSaveEdit}
-              disabled={updateMutation.isPending || editSaveActionState.isDisabled}
+              disabled={updateMutation.isPending || editDraftState.saveActionState.isDisabled}
             >
               <Check className={desktopMessageQueueItemSurface.saveIconClassName} />
               {desktopMessageQueuePanelCopy.actions.saveLabel}

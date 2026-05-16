@@ -3461,6 +3461,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(chatMessageChromeSource, /<MessageQueuePanel \{\.\.\.panel\} \/>/);
   assert.match(messageQueuePanelSource, /if \(!queuePanelRenderState\.shouldRender\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(messageQueuePanelSource, /if \(messages\.length === 0\) \{\s+return null;\s+\}/);
+  assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);
+  assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
+  assert.match(messageQueuePanelSource, /disabled=\{editDraftState\.saveActionState\.isDisabled\}/);
+  assert.match(messageQueuePanelSource, /accessibilityState=\{editDraftState\.saveActionState\.accessibilityState\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSaveActionState\(editText\)/);
+  assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /actionButton:\s*\{[\s\S]*?flexDirection:\s*actionSurface\.buttonFlexDirection,[\s\S]*?alignItems:\s*actionSurface\.buttonAlignItems,[\s\S]*?gap:\s*actionSurface\.buttonGap/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);
