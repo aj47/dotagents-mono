@@ -1528,9 +1528,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /scrollViewportContentContainerStyle: \[\s+conversationViewportStyles\.scrollViewport\.contentContainerStyle,\s+safeAreaStyles\.chatScrollContent,\s+\]/);
   assert.doesNotMatch(screenSource, /keyboardShouldPersistTaps: mobileRuntimeViewport\.keyboardShouldPersistTaps/);
   assert.doesNotMatch(screenSource, /contentInsetAdjustmentBehavior: mobileRuntimeViewport\.contentInsetAdjustmentBehavior/);
-  assert.match(chatMessageChromeSource, /const viewportChromeRenderState = getChatRuntimeViewportChromeMobileRenderState\(\{/);
-  assert.match(chatMessageChromeSource, /keyboardShouldPersistTaps: viewportChromeRenderState\.viewport\.surface\.keyboardShouldPersistTaps/);
-  assert.match(chatMessageChromeSource, /contentInsetAdjustmentBehavior: viewportChromeRenderState\.viewport\.surface\.contentInsetAdjustmentBehavior/);
+  assert.match(sessionPresentationSource, /const viewportChromeRenderState = getChatRuntimeViewportChromeMobileRenderState\(\{/);
+  assert.match(sessionPresentationSource, /keyboardShouldPersistTaps: viewportChromeRenderState\.viewport\.surface\.keyboardShouldPersistTaps/);
+  assert.match(sessionPresentationSource, /contentInsetAdjustmentBehavior: viewportChromeRenderState\.viewport\.surface\.contentInsetAdjustmentBehavior/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewport/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollViewport \{\.\.\.scrollViewportProps\}>[\s\S]*?<ChatMessageConversationViewportContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewport/);
@@ -1556,10 +1556,14 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /visibleMessageCount: conversationThreadListState\.visibleMessageCount,\s+totalMessageCount: conversationThreadListState\.totalMessageCount,\s+hiddenMessageCount: conversationThreadListState\.hiddenMessageCount,/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeViewportChromeProps/);
-  assert.match(chatMessageChromeSource, /loadingState: \{\s+renderState: viewportChromeRenderState\.content\.loading,\s+spinnerSource: loadingSpinnerSource,\s+\}/);
-  assert.match(chatMessageChromeSource, /homeQuickStarts: \{\s+shouldRender: viewportChromeRenderState\.content\.homeQuickStarts\.shouldRender,\s+items: viewportChromeRenderState\.quickStartItems,[\s\S]*?onPress: onQuickStartPress,/);
-  assert.match(chatMessageChromeSource, /historyBanner: \{\s+\.\.\.viewportChromeRenderState\.affordance\.historyBanner,\s+onLoadEarlier: onLoadEarlierMessages,/);
-  assert.match(chatMessageChromeSource, /stepSummary: viewportChromeRenderState\.affordance\.stepSummary,\s+debugPanels: viewportChromeRenderState\.debugPanels,/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeViewportChromeMobileProps,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeViewportChromeMobileProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportChromeMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeViewportChromeMobileProps<[\s\S]*?>\(\{\s+viewportContentIsLoadingMessages,\s+viewportContentMessageCount,\s+loadingSpinnerSource,\s+quickStartPrompts,\s+quickStartSkills,\s+quickStartTasks,\s+quickStartCanAddPrompt,\s+isLoadingQuickStartPrompts,\s+runningPromptTaskId,\s+onQuickStartPress,\s+onEditPrompt,\s+onDeletePrompt,\s+visibleMessageCount,\s+totalMessageCount,\s+hiddenMessageCount,\s+messageHistoryLoadIncrement,\s+latestStepSummary,\s+requestDebugText,\s+voiceDebugEnabled,\s+voiceEvents,\s+colors,\s+onLoadEarlierMessages,\s+\.\.\.scrollViewportProps,\s+\}\);/);
+  assert.match(sessionPresentationSource, /loadingState: \{\s+renderState: viewportChromeRenderState\.content\.loading,\s+spinnerSource: loadingSpinnerSource,\s+\}/);
+  assert.match(sessionPresentationSource, /homeQuickStarts: \{\s+shouldRender: viewportChromeRenderState\.content\.homeQuickStarts\.shouldRender,\s+items: viewportChromeRenderState\.quickStartItems,[\s\S]*?onPress: onQuickStartPress,/);
+  assert.match(sessionPresentationSource, /historyBanner: \{\s+\.\.\.viewportChromeRenderState\.affordance\.historyBanner,\s+onLoadEarlier: onLoadEarlierMessages,/);
+  assert.match(sessionPresentationSource, /stepSummary: viewportChromeRenderState\.affordance\.stepSummary,\s+debugPanels: viewportChromeRenderState\.debugPanels,/);
   assert.doesNotMatch(screenSource, /homeState=\{\(\s*<ChatConversationHomeQuickStarts/);
   assert.doesNotMatch(screenSource, /historyBanner=\{\(\s*<ChatMessageHistoryBanner/);
   assert.doesNotMatch(screenSource, /stepSummary=\{\(\s*<ChatMessageStepSummaryCard/);
@@ -1599,7 +1603,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function getChatRuntimeViewportContentMobileRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeViewportContentRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportContentMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /isLoadingMessages: viewportContentIsLoadingMessages,\s+messageCount: viewportContentMessageCount,/);
+  assert.match(sessionPresentationSource, /isLoadingMessages: viewportContentIsLoadingMessages,\s+messageCount: viewportContentMessageCount,/);
   assert.match(chatMessageChromeSource, /const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps\(\{\s+\.\.\.viewport,\s+colors,\s+loadingSpinnerSource: spinnerSource,/);
   assert.doesNotMatch(screenSource, /loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.doesNotMatch(screenSource, /<ChatMessageLoadingState\s+shouldRender=\{sessionStore\.isLoadingMessages && messages\.length === 0\}/);
@@ -3209,7 +3213,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileState,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeViewportContentRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportContentMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeViewportChromeMobileRenderState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeViewportChromeMobileRenderState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeInlineActivityMobileRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeInlineActivityMobileIndicatorState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeInlineActivityMobileIndicatorState/);
@@ -3265,7 +3269,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /const messageHistoryBannerRenderState = useMemo/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationViewportAffordanceRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportAffordanceMobileRenderState,/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeViewportChromeMobileRenderState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeViewportChromeMobileRenderState/);
   assert.doesNotMatch(screenSource, /const handleLoadEarlierMessages = \(\) => \{/);
   assert.doesNotMatch(screenSource, /Math\.min\(messages\.length, current \+ CHAT_MESSAGE_HISTORY_WINDOW\.loadIncrement\)/);
   assert.match(screenSource, /onLoadEarlierMessages: loadEarlierMessages,/);
@@ -3582,7 +3586,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.doesNotMatch(screenSource, /const latestStepSummaryRenderState = useMemo/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeViewportAffordanceMobileRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /return getChatRuntimeViewportAffordanceMobileRenderState\(\{/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeViewportChromeMobileRenderState\(\{[\s\S]*?visibleMessageCount,[\s\S]*?totalMessageCount,[\s\S]*?hiddenMessageCount,[\s\S]*?messageHistoryLoadIncrement,[\s\S]*?latestStepSummary,/);
+  assert.match(sessionPresentationSource, /getChatRuntimeViewportChromeMobileRenderState\(\{[\s\S]*?visibleMessageCount,[\s\S]*?totalMessageCount,[\s\S]*?hiddenMessageCount,[\s\S]*?messageHistoryLoadIncrement,[\s\S]*?latestStepSummary,/);
   assert.match(screenSource, /latestStepSummary,\s+onLoadEarlierMessages: loadEarlierMessages,/);
   assert.match(chatMessageChromeSource, /<ChatMessageStepSummaryCard\s+\{\.\.\.stepSummary\}\s+styles=\{styles\.stepSummary\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageStepSummaryCard\s+renderState=\{latestStepSummaryRenderState\}/);
@@ -5271,7 +5275,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /clearPromptTaskRun\(\);/);
   assert.doesNotMatch(screenSource, /const \[runningPromptTaskId, setRunningPromptTaskId\] = useState<string \| null>\(null\);/);
   assert.match(screenSource, /runningPromptTaskId,/);
-  assert.match(chatMessageChromeSource, /runningTaskId: runningPromptTaskId,/);
+  assert.match(sessionPresentationSource, /runningTaskId: runningPromptTaskId,/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.homeQuickStarts\}\s+styles=\{styles\.homeQuickStarts\}/);
   assert.doesNotMatch(screenSource, /<ChatConversationHomeQuickStarts\s+shouldRender=\{!sessionStore\.isLoadingMessages && messages\.length === 0\}/);
   assert.doesNotMatch(screenSource, /shouldRender: !sessionStore\.isLoadingMessages && messages\.length === 0/);

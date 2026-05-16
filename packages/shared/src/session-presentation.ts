@@ -714,6 +714,30 @@ export interface ChatRuntimeViewportChromeMobileRenderState<
   debugPanels: ChatRuntimeDebugPanelsMobileRenderState
 }
 
+type ChatRuntimeViewportChromeMobilePropsInputKey =
+  | "viewportContentIsLoadingMessages"
+  | "viewportContentMessageCount"
+  | "loadingSpinnerSource"
+  | "quickStartPrompts"
+  | "quickStartSkills"
+  | "quickStartTasks"
+  | "quickStartCanAddPrompt"
+  | "isLoadingQuickStartPrompts"
+  | "runningPromptTaskId"
+  | "onQuickStartPress"
+  | "onEditPrompt"
+  | "onDeletePrompt"
+  | "visibleMessageCount"
+  | "totalMessageCount"
+  | "hiddenMessageCount"
+  | "messageHistoryLoadIncrement"
+  | "latestStepSummary"
+  | "colors"
+  | "onLoadEarlierMessages"
+  | "requestDebugText"
+  | "voiceDebugEnabled"
+  | "voiceEvents"
+
 export interface ChatRuntimeInlineActivityMobileMessageLike {
   role?: string | null
   content?: string | null
@@ -15165,6 +15189,146 @@ export function getChatRuntimeViewportChromeMobileRenderState<
       voiceDebugEnabled,
       voiceEvents,
     }),
+  }
+}
+
+export function createChatRuntimeViewportChromeMobileProps<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+  TInput extends {
+    viewportContentIsLoadingMessages: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      TSkill,
+      TTask
+    >["isLoadingMessages"]
+    viewportContentMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      TSkill,
+      TTask
+    >["messageCount"]
+    loadingSpinnerSource: unknown
+    quickStartPrompts: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["quickStartPrompts"]
+    quickStartSkills: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["quickStartSkills"]
+    quickStartTasks: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["quickStartTasks"]
+    quickStartCanAddPrompt: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      TSkill,
+      TTask
+    >["quickStartCanAddPrompt"]
+    isLoadingQuickStartPrompts: unknown
+    runningPromptTaskId?: unknown
+    onQuickStartPress: unknown
+    onEditPrompt: unknown
+    onDeletePrompt: unknown
+    visibleMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["visibleMessageCount"]
+    totalMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["totalMessageCount"]
+    hiddenMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["hiddenMessageCount"]
+    messageHistoryLoadIncrement: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      TSkill,
+      TTask
+    >["messageHistoryLoadIncrement"]
+    latestStepSummary: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["latestStepSummary"]
+    colors: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["colors"]
+    onLoadEarlierMessages?: unknown
+    requestDebugText?: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["requestDebugText"]
+    voiceDebugEnabled?: ChatRuntimeViewportChromeMobileRenderStateInput<
+      TPrompt,
+      TSkill,
+      TTask
+    >["voiceDebugEnabled"]
+    voiceEvents?: ChatRuntimeViewportChromeMobileRenderStateInput<TPrompt, TSkill, TTask>["voiceEvents"]
+  },
+>({
+  viewportContentIsLoadingMessages,
+  viewportContentMessageCount,
+  loadingSpinnerSource,
+  quickStartPrompts,
+  quickStartSkills,
+  quickStartTasks,
+  quickStartCanAddPrompt,
+  isLoadingQuickStartPrompts,
+  runningPromptTaskId,
+  onQuickStartPress,
+  onEditPrompt,
+  onDeletePrompt,
+  visibleMessageCount,
+  totalMessageCount,
+  hiddenMessageCount,
+  messageHistoryLoadIncrement,
+  latestStepSummary,
+  colors,
+  onLoadEarlierMessages,
+  requestDebugText,
+  voiceDebugEnabled,
+  voiceEvents,
+  ...scrollViewportProps
+}: TInput): Omit<TInput, ChatRuntimeViewportChromeMobilePropsInputKey> & {
+  keyboardShouldPersistTaps: ChatRuntimeViewportChromeMobileRenderState["viewport"]["surface"]["keyboardShouldPersistTaps"]
+  contentInsetAdjustmentBehavior: ChatRuntimeViewportChromeMobileRenderState["viewport"]["surface"]["contentInsetAdjustmentBehavior"]
+  loadingState: {
+    renderState: ChatRuntimeViewportChromeMobileRenderState["content"]["loading"]
+    spinnerSource: TInput["loadingSpinnerSource"]
+  }
+  homeQuickStarts: {
+    shouldRender: ChatRuntimeViewportChromeMobileRenderState["content"]["homeQuickStarts"]["shouldRender"]
+    items: ChatRuntimeViewportChromeMobileRenderState<TPrompt, TTask>["quickStartItems"]
+    isLoading: TInput["isLoadingQuickStartPrompts"]
+    runningTaskId: TInput["runningPromptTaskId"]
+    onPress: TInput["onQuickStartPress"]
+    onEditPrompt: TInput["onEditPrompt"]
+    onDeletePrompt: TInput["onDeletePrompt"]
+    shortcutRenderState: ChatRuntimeViewportChromeMobileRenderState<TPrompt, TTask>["shortcutRenderState"]
+  }
+  historyBanner: ChatRuntimeViewportChromeMobileRenderState["affordance"]["historyBanner"] & {
+    onLoadEarlier: TInput["onLoadEarlierMessages"]
+  }
+  stepSummary: ChatRuntimeViewportChromeMobileRenderState["affordance"]["stepSummary"]
+  debugPanels: ChatRuntimeViewportChromeMobileRenderState["debugPanels"]
+} {
+  const viewportChromeRenderState = getChatRuntimeViewportChromeMobileRenderState({
+    isLoadingMessages: viewportContentIsLoadingMessages,
+    messageCount: viewportContentMessageCount,
+    quickStartPrompts,
+    quickStartSkills,
+    quickStartTasks,
+    quickStartCanAddPrompt,
+    visibleMessageCount,
+    totalMessageCount,
+    hiddenMessageCount,
+    messageHistoryLoadIncrement,
+    latestStepSummary,
+    requestDebugText,
+    voiceDebugEnabled,
+    voiceEvents,
+    colors,
+  })
+
+  return {
+    ...scrollViewportProps,
+    keyboardShouldPersistTaps: viewportChromeRenderState.viewport.surface.keyboardShouldPersistTaps,
+    contentInsetAdjustmentBehavior: viewportChromeRenderState.viewport.surface.contentInsetAdjustmentBehavior,
+    loadingState: {
+      renderState: viewportChromeRenderState.content.loading,
+      spinnerSource: loadingSpinnerSource,
+    },
+    homeQuickStarts: {
+      shouldRender: viewportChromeRenderState.content.homeQuickStarts.shouldRender,
+      items: viewportChromeRenderState.quickStartItems,
+      isLoading: isLoadingQuickStartPrompts,
+      runningTaskId: runningPromptTaskId,
+      onPress: onQuickStartPress,
+      onEditPrompt,
+      onDeletePrompt,
+      shortcutRenderState: viewportChromeRenderState.shortcutRenderState,
+    },
+    historyBanner: {
+      ...viewportChromeRenderState.affordance.historyBanner,
+      onLoadEarlier: onLoadEarlierMessages,
+    },
+    stepSummary: viewportChromeRenderState.affordance.stepSummary,
+    debugPanels: viewportChromeRenderState.debugPanels,
   }
 }
 

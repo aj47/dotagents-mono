@@ -82,7 +82,7 @@ import {
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
-  getChatRuntimeViewportChromeMobileRenderState,
+  createChatRuntimeViewportChromeMobileProps,
   getChatRuntimeDelegationCardMobilePresentationState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
@@ -3867,13 +3867,24 @@ export function createChatMessageRuntimeViewportChromeProps<
   voiceEvents,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
-  const viewportChromeRenderState = getChatRuntimeViewportChromeMobileRenderState({
-    isLoadingMessages: viewportContentIsLoadingMessages,
-    messageCount: viewportContentMessageCount,
+  return createChatRuntimeViewportChromeMobileProps<
+    TPrompt,
+    PromptLibrarySkillLike & { id: string },
+    TTask,
+    ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>
+  >({
+    viewportContentIsLoadingMessages,
+    viewportContentMessageCount,
+    loadingSpinnerSource,
     quickStartPrompts,
     quickStartSkills,
     quickStartTasks,
     quickStartCanAddPrompt,
+    isLoadingQuickStartPrompts,
+    runningPromptTaskId,
+    onQuickStartPress,
+    onEditPrompt,
+    onDeletePrompt,
     visibleMessageCount,
     totalMessageCount,
     hiddenMessageCount,
@@ -3883,33 +3894,9 @@ export function createChatMessageRuntimeViewportChromeProps<
     voiceDebugEnabled,
     voiceEvents,
     colors,
-  });
-
-  return {
+    onLoadEarlierMessages,
     ...scrollViewportProps,
-    keyboardShouldPersistTaps: viewportChromeRenderState.viewport.surface.keyboardShouldPersistTaps,
-    contentInsetAdjustmentBehavior: viewportChromeRenderState.viewport.surface.contentInsetAdjustmentBehavior,
-    loadingState: {
-      renderState: viewportChromeRenderState.content.loading,
-      spinnerSource: loadingSpinnerSource,
-    },
-    homeQuickStarts: {
-      shouldRender: viewportChromeRenderState.content.homeQuickStarts.shouldRender,
-      items: viewportChromeRenderState.quickStartItems,
-      isLoading: isLoadingQuickStartPrompts,
-      runningTaskId: runningPromptTaskId,
-      onPress: onQuickStartPress,
-      onEditPrompt,
-      onDeletePrompt,
-      shortcutRenderState: viewportChromeRenderState.shortcutRenderState,
-    },
-    historyBanner: {
-      ...viewportChromeRenderState.affordance.historyBanner,
-      onLoadEarlier: onLoadEarlierMessages,
-    },
-    stepSummary: viewportChromeRenderState.affordance.stepSummary,
-    debugPanels: viewportChromeRenderState.debugPanels,
-  };
+  });
 }
 
 export function createChatMessageRuntimeDockChromeProps({

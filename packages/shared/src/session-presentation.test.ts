@@ -91,6 +91,7 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
+  createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatRuntimeViewportMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
@@ -3962,6 +3963,48 @@ describe("session presentation semantics", () => {
     expect(viewportChrome.affordance.stepSummary.renderState.shouldRender).toBe(true)
     expect(viewportChrome.debugPanels.requestShouldRender).toBe(true)
     expect(viewportChrome.debugPanels.voiceShouldRender).toBe(true)
+    const viewportChromeProps = createChatRuntimeViewportChromeMobileProps({
+      viewportContentIsLoadingMessages: false,
+      viewportContentMessageCount: 0,
+      loadingSpinnerSource: "spinner-source",
+      quickStartPrompts: [quickStartPrompt],
+      quickStartSkills: undefined,
+      quickStartTasks: undefined,
+      quickStartCanAddPrompt: true,
+      isLoadingQuickStartPrompts: false,
+      runningPromptTaskId: null,
+      onQuickStartPress: "quick-start-press",
+      onEditPrompt: "edit-prompt",
+      onDeletePrompt: "delete-prompt",
+      visibleMessageCount: 1,
+      totalMessageCount: 3,
+      hiddenMessageCount: 2,
+      messageHistoryLoadIncrement: 20,
+      latestStepSummary: {
+        stepNumber: 2,
+        actionSummary: "Reviewed shared state",
+      },
+      colors: viewportChromeColors,
+      onLoadEarlierMessages: "load-earlier",
+      requestDebugText: "Request sent",
+      voiceDebugEnabled: true,
+      voiceEvents: [{
+        id: "voice-1",
+        at: 0,
+        type: "recognizer-start",
+        summary: "Recognizer started",
+      }],
+      scrollEnabled: true,
+    })
+    expect(viewportChromeProps.scrollEnabled).toBe(true)
+    expect(viewportChromeProps.keyboardShouldPersistTaps).toBe("handled")
+    expect(viewportChromeProps.contentInsetAdjustmentBehavior).toBe("automatic")
+    expect(viewportChromeProps.loadingState.spinnerSource).toBe("spinner-source")
+    expect(viewportChromeProps.homeQuickStarts.items.map((item) => item.id)).toEqual(["prompt-1", "action-add-prompt"])
+    expect(viewportChromeProps.homeQuickStarts.onPress).toBe("quick-start-press")
+    expect(viewportChromeProps.historyBanner.onLoadEarlier).toBe("load-earlier")
+    expect(viewportChromeProps.stepSummary.renderState.shouldRender).toBe(true)
+    expect(viewportChromeProps.debugPanels.requestShouldRender).toBe(true)
     const surfaceChrome = getChatRuntimeSurfaceChromeMobileRenderState({
       colors: viewportChromeColors,
       platform: "ios",
