@@ -385,6 +385,7 @@ import {
   type MessageQueuePanelMobileDockRenderStateInput,
 } from "./message-queue-utils"
 export {
+  createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,

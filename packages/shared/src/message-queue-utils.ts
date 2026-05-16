@@ -795,6 +795,117 @@ export interface MessageQueuePanelDesktopRenderState<T extends Pick<QueuedMessag
   copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
 }
 
+type MessageQueuePanelMobilePanelSurface =
+  MessageQueuePanelMobileSurfaceRenderState['surface']['panel'];
+
+export interface MessageQueuePanelMobileStyleSlotsInput<T extends Pick<QueuedMessage, 'id' | 'status'>> {
+  surface: MessageQueuePanelMobilePanelSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['panel'];
+  panel: Pick<MessageQueuePanelState<T>, 'statusKey' | 'hasProcessingMessage' | 'isPaused' | 'canProcessNext'>;
+}
+
+export interface MessageQueuePanelMobileStyleSlots {
+  container: {
+    borderRadius: number;
+    borderWidth: number;
+    borderColor: string;
+    backgroundColor: string;
+    overflow: MessageQueuePanelMobilePanelSurface['overflow'];
+  };
+  header: {
+    flexDirection: MessageQueuePanelMobilePanelSurface['headerFlexDirection'];
+    alignItems: MessageQueuePanelMobilePanelSurface['headerAlignItems'];
+    justifyContent: MessageQueuePanelMobilePanelSurface['headerJustifyContent'];
+    paddingHorizontal: number;
+    paddingVertical: number;
+    borderBottomWidth: number;
+    borderBottomColor: string;
+    backgroundColor: string;
+  };
+  headerCollapsed: {
+    borderBottomWidth: number;
+  };
+  headerLeft: {
+    flexDirection: MessageQueuePanelMobilePanelSurface['headerLeftFlexDirection'];
+    alignItems: MessageQueuePanelMobilePanelSurface['headerLeftAlignItems'];
+    gap: number;
+  };
+  headerActions: {
+    flexDirection: MessageQueuePanelMobilePanelSurface['headerActionsFlexDirection'];
+    alignItems: MessageQueuePanelMobilePanelSurface['headerActionsAlignItems'];
+    gap: number;
+  };
+  headerTitle: {
+    fontSize: number;
+    fontWeight: MessageQueuePanelMobilePanelSurface['titleFontWeight'];
+    color: string;
+  };
+  clearButton: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+  };
+  clearButtonText: {
+    fontSize: number;
+    color: string;
+  };
+  queueControlText: {
+    fontSize: number;
+    color: string;
+    fontWeight: MessageQueuePanelMobilePanelSurface['processFontWeight'];
+  };
+  queueControlTextDisabled: {
+    color: string;
+  };
+  processButton: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+  };
+  processButtonText: {
+    fontSize: number;
+    color: string;
+    fontWeight: MessageQueuePanelMobilePanelSurface['processFontWeight'];
+  };
+  list: {
+    maxHeight: number;
+  };
+  separator: {
+    height: number;
+    backgroundColor: string;
+  };
+  pausedNotice: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+    backgroundColor: string;
+    borderBottomWidth: number;
+    borderBottomColor: string;
+  };
+  pausedNoticeText: {
+    color: string;
+    fontSize: number;
+    lineHeight: number;
+  };
+  compactContainer: {
+    flexDirection: MessageQueuePanelMobilePanelSurface['compactFlexDirection'];
+    alignItems: MessageQueuePanelMobilePanelSurface['compactAlignItems'];
+    paddingHorizontal: number;
+    paddingVertical: number;
+    gap: number;
+    borderWidth: number;
+    borderColor: string;
+    borderRadius: number;
+    backgroundColor: string;
+  };
+  compactText: {
+    flex: number;
+    fontSize: number;
+    color: string;
+  };
+  compactAction: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+  };
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -903,6 +1014,111 @@ export function getMessageQueuePanelDesktopRenderState<T extends Pick<QueuedMess
     panel,
     surface: getMessageQueuePanelDesktopSurfaceState(),
     copy: getMessageQueuePanelCopyState(),
+  };
+}
+
+export function createMessageQueuePanelMobileStyleSlots<T extends Pick<QueuedMessage, 'id' | 'status'>>({
+  surface,
+  colors,
+  panel,
+}: MessageQueuePanelMobileStyleSlotsInput<T>): MessageQueuePanelMobileStyleSlots {
+  const statusColors = colors.status[panel.statusKey];
+  const actionButtonStyle = {
+    paddingHorizontal: surface.actionPaddingHorizontal,
+    paddingVertical: surface.actionPaddingVertical,
+  };
+
+  return {
+    container: {
+      borderRadius: surface.borderRadius,
+      borderWidth: surface.borderWidth,
+      borderColor: statusColors.borderColor,
+      backgroundColor: statusColors.backgroundColor,
+      overflow: surface.overflow,
+    },
+    header: {
+      flexDirection: surface.headerFlexDirection,
+      alignItems: surface.headerAlignItems,
+      justifyContent: surface.headerJustifyContent,
+      paddingHorizontal: surface.headerPaddingHorizontal,
+      paddingVertical: surface.headerPaddingVertical,
+      borderBottomWidth: surface.headerBorderBottomWidth,
+      borderBottomColor: statusColors.headerBorderBottomColor,
+      backgroundColor: statusColors.headerBackgroundColor,
+    },
+    headerCollapsed: {
+      borderBottomWidth: surface.headerCollapsedBorderBottomWidth,
+    },
+    headerLeft: {
+      flexDirection: surface.headerLeftFlexDirection,
+      alignItems: surface.headerLeftAlignItems,
+      gap: surface.headerGap,
+    },
+    headerActions: {
+      flexDirection: surface.headerActionsFlexDirection,
+      alignItems: surface.headerActionsAlignItems,
+      gap: surface.headerActionGap,
+    },
+    headerTitle: {
+      fontSize: surface.titleFontSize,
+      fontWeight: surface.titleFontWeight,
+      color: colors.titleColor,
+    },
+    clearButton: actionButtonStyle,
+    clearButtonText: {
+      fontSize: surface.actionFontSize,
+      color: panel.hasProcessingMessage ? colors.disabledActionColor : statusColors.color,
+    },
+    queueControlText: {
+      fontSize: surface.actionFontSize,
+      color: panel.isPaused ? colors.resumeActionColor : statusColors.color,
+      fontWeight: surface.processFontWeight,
+    },
+    queueControlTextDisabled: {
+      color: colors.disabledActionColor,
+    },
+    processButton: actionButtonStyle,
+    processButtonText: {
+      fontSize: surface.actionFontSize,
+      color: panel.canProcessNext ? colors.processReadyColor : colors.disabledActionColor,
+      fontWeight: surface.processFontWeight,
+    },
+    list: {
+      maxHeight: surface.listMaxHeight,
+    },
+    separator: {
+      height: surface.separatorHeight,
+      backgroundColor: statusColors.separatorColor,
+    },
+    pausedNotice: {
+      paddingHorizontal: surface.pausedNoticePaddingHorizontal,
+      paddingVertical: surface.pausedNoticePaddingVertical,
+      backgroundColor: statusColors.pausedNoticeBackgroundColor,
+      borderBottomWidth: surface.separatorHeight,
+      borderBottomColor: statusColors.pausedNoticeBorderBottomColor,
+    },
+    pausedNoticeText: {
+      color: statusColors.pausedNoticeTextColor,
+      fontSize: surface.pausedNoticeFontSize,
+      lineHeight: surface.pausedNoticeLineHeight,
+    },
+    compactContainer: {
+      flexDirection: surface.compactFlexDirection,
+      alignItems: surface.compactAlignItems,
+      paddingHorizontal: surface.compactPaddingHorizontal,
+      paddingVertical: surface.compactPaddingVertical,
+      gap: surface.compactGap,
+      borderWidth: surface.borderWidth,
+      borderColor: statusColors.borderColor,
+      borderRadius: surface.borderRadius,
+      backgroundColor: statusColors.backgroundColor,
+    },
+    compactText: {
+      flex: surface.compactTextFlex,
+      fontSize: surface.compactFontSize,
+      color: statusColors.color,
+    },
+    compactAction: actionButtonStyle,
   };
 }
 

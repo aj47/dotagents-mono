@@ -7,6 +7,7 @@ import {
   buildOperatorMessageQueuesResponse,
   clearOperatorMessageQueueSummary,
   clearQueuedMessages,
+  createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
@@ -497,6 +498,64 @@ describe('message-queue-utils', () => {
     });
     const mobileQueueSurfaceRenderState = getMessageQueuePanelMobileSurfaceRenderState({
       colors: mobileMessageQueuePalette,
+    });
+    expect(createMessageQueuePanelMobileStyleSlots({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      panel: getMessageQueuePanelState([makeMessage('panel-message')], {
+        canProcessNext: true,
+      }),
+    })).toMatchObject({
+      container: {
+        borderRadius: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.borderRadius,
+        borderWidth: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.borderWidth,
+        borderColor: 'rgba(245, 158, 11, 0.27)',
+        backgroundColor: 'rgba(245, 158, 11, 0.07)',
+        overflow: 'hidden',
+      },
+      header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'rgba(245, 158, 11, 0.09)',
+      },
+      headerTitle: {
+        fontSize: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.titleFontSize,
+        fontWeight: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.titleFontWeight,
+        color: '#171717',
+      },
+      clearButton: {
+        paddingHorizontal: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingHorizontal,
+        paddingVertical: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingVertical,
+      },
+      clearButtonText: {
+        color: '#f59e0b',
+      },
+      queueControlText: {
+        color: '#f59e0b',
+        fontWeight: '600',
+      },
+      processButtonText: {
+        color: '#2563eb',
+        fontWeight: '600',
+      },
+      pausedNotice: {
+        backgroundColor: 'rgba(245, 158, 11, 0.09)',
+        borderBottomColor: 'rgba(245, 158, 11, 0.38)',
+      },
+      compactContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderColor: 'rgba(245, 158, 11, 0.27)',
+      },
+      compactText: {
+        flex: 1,
+        color: '#f59e0b',
+      },
+      compactAction: {
+        paddingHorizontal: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingHorizontal,
+        paddingVertical: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingVertical,
+      },
     });
     expect(createQueuedMessageItemMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.item,

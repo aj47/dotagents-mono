@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
@@ -379,6 +380,11 @@ export function MessageQueuePanel({
   const panelStatusColors = panelColors.status[queuePanelState.statusKey];
   const queuePanelIcons = queuePanelRenderState.icons;
   const queuePanelCopy = queuePanelRenderState.copy;
+  const panelStyleSlots = createMessageQueuePanelMobileStyleSlots({
+    surface: panelSurface,
+    colors: panelColors,
+    panel: queuePanelState,
+  });
 
   if (!queuePanelRenderState.shouldRender) {
     return null;
@@ -386,105 +392,61 @@ export function MessageQueuePanel({
 
   const styles = StyleSheet.create({
     container: {
-      borderRadius: panelSurface.borderRadius,
-      borderWidth: panelSurface.borderWidth,
-      borderColor: panelStatusColors.borderColor,
-      backgroundColor: panelStatusColors.backgroundColor,
-      overflow: panelSurface.overflow,
+      ...panelStyleSlots.container,
     },
     header: {
-      flexDirection: panelSurface.headerFlexDirection,
-      alignItems: panelSurface.headerAlignItems,
-      justifyContent: panelSurface.headerJustifyContent,
-      paddingHorizontal: panelSurface.headerPaddingHorizontal,
-      paddingVertical: panelSurface.headerPaddingVertical,
-      borderBottomWidth: panelSurface.headerBorderBottomWidth,
-      borderBottomColor: panelStatusColors.headerBorderBottomColor,
-      backgroundColor: panelStatusColors.headerBackgroundColor,
+      ...panelStyleSlots.header,
     },
     headerCollapsed: {
-      borderBottomWidth: panelSurface.headerCollapsedBorderBottomWidth,
+      ...panelStyleSlots.headerCollapsed,
     },
     headerLeft: {
-      flexDirection: panelSurface.headerLeftFlexDirection,
-      alignItems: panelSurface.headerLeftAlignItems,
-      gap: panelSurface.headerGap,
+      ...panelStyleSlots.headerLeft,
     },
     headerActions: {
-      flexDirection: panelSurface.headerActionsFlexDirection,
-      alignItems: panelSurface.headerActionsAlignItems,
-      gap: panelSurface.headerActionGap,
+      ...panelStyleSlots.headerActions,
     },
     headerTitle: {
-      fontSize: panelSurface.titleFontSize,
-      fontWeight: panelSurface.titleFontWeight,
-      color: panelColors.titleColor,
+      ...panelStyleSlots.headerTitle,
     },
     clearButton: {
-      paddingHorizontal: panelSurface.actionPaddingHorizontal,
-      paddingVertical: panelSurface.actionPaddingVertical,
+      ...panelStyleSlots.clearButton,
     },
     clearButtonText: {
-      fontSize: panelSurface.actionFontSize,
-      color: queuePanelState.hasProcessingMessage
-        ? panelColors.disabledActionColor
-        : panelStatusColors.color,
+      ...panelStyleSlots.clearButtonText,
     },
     queueControlText: {
-      fontSize: panelSurface.actionFontSize,
-      color: queuePanelState.isPaused ? panelColors.resumeActionColor : panelStatusColors.color,
-      fontWeight: panelSurface.processFontWeight,
+      ...panelStyleSlots.queueControlText,
     },
     queueControlTextDisabled: {
-      color: panelColors.disabledActionColor,
+      ...panelStyleSlots.queueControlTextDisabled,
     },
     processButton: {
-      paddingHorizontal: panelSurface.actionPaddingHorizontal,
-      paddingVertical: panelSurface.actionPaddingVertical,
+      ...panelStyleSlots.processButton,
     },
     processButtonText: {
-      fontSize: panelSurface.actionFontSize,
-      color: queuePanelState.canProcessNext ? panelColors.processReadyColor : panelColors.disabledActionColor,
-      fontWeight: panelSurface.processFontWeight,
+      ...panelStyleSlots.processButtonText,
     },
     list: {
-      maxHeight: panelSurface.listMaxHeight,
+      ...panelStyleSlots.list,
     },
     separator: {
-      height: panelSurface.separatorHeight,
-      backgroundColor: panelStatusColors.separatorColor,
+      ...panelStyleSlots.separator,
     },
     pausedNotice: {
-      paddingHorizontal: panelSurface.pausedNoticePaddingHorizontal,
-      paddingVertical: panelSurface.pausedNoticePaddingVertical,
-      backgroundColor: panelStatusColors.pausedNoticeBackgroundColor,
-      borderBottomWidth: panelSurface.separatorHeight,
-      borderBottomColor: panelStatusColors.pausedNoticeBorderBottomColor,
+      ...panelStyleSlots.pausedNotice,
     },
     pausedNoticeText: {
-      color: panelStatusColors.pausedNoticeTextColor,
-      fontSize: panelSurface.pausedNoticeFontSize,
-      lineHeight: panelSurface.pausedNoticeLineHeight,
+      ...panelStyleSlots.pausedNoticeText,
     },
     compactContainer: {
-      flexDirection: panelSurface.compactFlexDirection,
-      alignItems: panelSurface.compactAlignItems,
-      paddingHorizontal: panelSurface.compactPaddingHorizontal,
-      paddingVertical: panelSurface.compactPaddingVertical,
-      gap: panelSurface.compactGap,
-      borderWidth: panelSurface.borderWidth,
-      borderColor: panelStatusColors.borderColor,
-      borderRadius: panelSurface.borderRadius,
-      backgroundColor: panelStatusColors.backgroundColor,
+      ...panelStyleSlots.compactContainer,
     },
     compactText: {
-      flex: panelSurface.compactTextFlex,
-      fontSize: panelSurface.compactFontSize,
-      color: panelStatusColors.color,
+      ...panelStyleSlots.compactText,
     },
     compactAction: {
-      paddingHorizontal: panelSurface.actionPaddingHorizontal,
-      paddingVertical: panelSurface.actionPaddingVertical,
+      ...panelStyleSlots.compactAction,
     },
   });
 
