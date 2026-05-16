@@ -4934,6 +4934,129 @@ export interface ChatComposerRuntimeHandsFreeControlsMobileRenderState {
   controlState: ReturnType<typeof getHandsFreeComposerControlState>
 }
 
+export type ChatComposerRuntimeDockMobilePropsChromeInput = {
+  handsFreeControls: object
+  imageAttachmentControl: object
+  textToSpeechControl: object
+  editBeforeSendControl: object
+  textEntry: {
+    webAccessibility: {
+      isWebPlatform: boolean
+    }
+  } & object
+  queueAction: object
+  submitAction: object
+  micButton: object
+}
+
+export type ChatComposerRuntimeDockMobilePropsInput = {
+  chrome: ChatComposerRuntimeDockMobilePropsChromeInput
+  speechPreviewText: ChatComposerRuntimeTextEntryMobileRenderStateInput["speechPreviewText"]
+  pendingImages: unknown
+  pendingImagesColors: Parameters<typeof getChatImageAttachmentMobileRenderState>[0]["colors"]
+  onRemovePendingImage: unknown
+  handsFreeStatusPhase: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["phase"]
+  handsFreeStatusLabel: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["label"]
+  handsFreeStatusEnabled: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["isEnabled"]
+  handsFreeStatusWakePhrase: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["wakePhrase"]
+  handsFreeStatusSleepPhrase: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["sleepPhrase"]
+  handsFreeStatusLastError: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["lastError"]
+  handsFreeStatusForegroundOnly: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["foregroundOnly"]
+  onWakeHandsFree: unknown
+  onSleepHandsFree: unknown
+  onResumeHandsFree: unknown
+  onPauseHandsFree: unknown
+  composerControlHasContent: ChatComposerRuntimeControlMobileRenderStateInput["hasContent"]
+  composerControlConversationState: ChatComposerRuntimeFollowUpPresentationStateInput["conversationState"]
+  composerControlIsResponding: ChatComposerRuntimeFollowUpPresentationStateInput["isResponding"]
+  composerControlPendingImageCount: ChatComposerRuntimeControlMobileRenderStateInput["pendingImageCount"]
+  composerControlTtsEnabled: ChatComposerRuntimeControlMobileRenderStateInput["ttsEnabled"]
+  composerControlEditBeforeSendEnabled: ChatComposerRuntimeControlMobileRenderStateInput["editBeforeSendEnabled"]
+  composerControlMicPhase: ChatComposerRuntimeControlMobileRenderStateInput["micPhase"]
+  composerControlListening: ChatComposerRuntimeControlMobileRenderStateInput["listening"]
+  composerControlMessageQueueEnabled: ChatComposerRuntimeControlMobileRenderStateInput["messageQueueEnabled"]
+  composerControlColors: ChatComposerRuntimeControlMobileRenderStateInput["colors"]
+  onImageAttachmentPress: unknown
+  onTextToSpeechPress: unknown
+  onEditBeforeSendPress: unknown
+  textEntryInputRef: unknown
+  textEntryValue: unknown
+  onTextEntryChangeText: unknown
+  onTextEntryKeyPress: unknown
+  textEntryHandsFree: ChatComposerRuntimeTextEntryMobileRenderStateInput["handsFree"]
+  textEntryListening: ChatComposerRuntimeTextEntryMobileRenderStateInput["listening"]
+  textEntryWillCancel: ChatComposerRuntimeTextEntryMobileRenderStateInput["willCancel"]
+  textEntryLiveTranscript: ChatComposerRuntimeTextEntryMobileRenderStateInput["liveTranscript"]
+  textEntryWakePhrase: ChatComposerRuntimeTextEntryMobileRenderStateInput["wakePhrase"]
+  textEntryPlaceholderFallback?: ChatComposerRuntimeTextEntryMobileRenderStateInput["placeholderFallback"]
+  onQueueActionPress: unknown
+  onSubmitActionPress: unknown
+  onMicPressIn: unknown
+  onMicPressOut: unknown
+  onMicPress: unknown
+  micWrapperRef?: unknown
+}
+
+export type ChatComposerRuntimeDockMobileProps<TInput extends ChatComposerRuntimeDockMobilePropsInput> = {
+  speechPreview: {
+    label: ChatComposerMobileControlState["sttPreview"]["label"]
+    text: TInput["speechPreviewText"]
+  }
+  pendingImagesRail: {
+    images: TInput["pendingImages"]
+    renderState: ChatImageAttachmentMobileRenderState
+    onRemove: TInput["onRemovePendingImage"]
+  }
+  handsFreeControls: {
+    isVisible: ChatComposerRuntimeControlMobileRenderState["visibility"]["handsFreeControls"]["isVisible"]
+    status: ChatComposerRuntimeHandsFreeControlsMobileRenderState["status"]
+    controlState: ChatComposerRuntimeHandsFreeControlsMobileRenderState["controlState"]
+    onWake: TInput["onWakeHandsFree"]
+    onSleep: TInput["onSleepHandsFree"]
+    onResume: TInput["onResumeHandsFree"]
+    onPause: TInput["onPauseHandsFree"]
+  } & TInput["chrome"]["handsFreeControls"]
+  imageAttachmentControl: {
+    renderState: ChatComposerRuntimeControlMobileRenderState["imageAttachment"]
+    onPress: TInput["onImageAttachmentPress"]
+  } & TInput["chrome"]["imageAttachmentControl"]
+  textToSpeechControl: {
+    renderState: ChatComposerRuntimeControlMobileRenderState["textToSpeech"]
+    onPress: TInput["onTextToSpeechPress"]
+  } & TInput["chrome"]["textToSpeechControl"]
+  editBeforeSendControl: {
+    shouldRender: ChatComposerRuntimeControlMobileRenderState["visibility"]["editBeforeSendControl"]["shouldRender"]
+    renderState: ChatComposerRuntimeControlMobileRenderState["editBeforeSend"]
+    onPress: TInput["onEditBeforeSendPress"]
+  } & TInput["chrome"]["editBeforeSendControl"]
+  textEntry: {
+    inputRef: TInput["textEntryInputRef"]
+    value: TInput["textEntryValue"]
+    onChangeText: TInput["onTextEntryChangeText"]
+    onKeyPress: TInput["onTextEntryKeyPress"]
+    accessibilityLabel: ChatComposerMobileControlState["field"]["accessibilityLabel"]
+    accessibilityHint: ChatComposerRuntimeTextEntryMobileRenderState["accessibilityHint"]
+    placeholder: ChatComposerRuntimeTextEntryMobileRenderState["placeholder"]
+    voiceStatusLiveRegionAnnouncement: ChatComposerRuntimeTextEntryMobileRenderState["voiceStatusLiveRegionAnnouncement"]
+  } & TInput["chrome"]["textEntry"]
+  queueAction: {
+    shouldRender: ChatComposerRuntimeControlMobileRenderState["visibility"]["queueAction"]["shouldRender"]
+    renderState: ChatComposerRuntimeControlMobileRenderState["queueAction"]
+    onPress: TInput["onQueueActionPress"]
+  } & TInput["chrome"]["queueAction"]
+  submitAction: {
+    renderState: ChatComposerRuntimeControlMobileRenderState["submitAction"]
+    onPress: TInput["onSubmitActionPress"]
+  } & TInput["chrome"]["submitAction"]
+  micButton: {
+    renderState: ChatComposerRuntimeControlMobileRenderState["micButton"]
+    onPressIn: TInput["onMicPressIn"] | undefined
+    onPressOut: TInput["onMicPressOut"] | undefined
+    onPress: TInput["onMicPress"] | undefined
+  } & TInput["chrome"]["micButton"]
+  micWrapperRef: TInput["micWrapperRef"]
+}
+
 type ChatComposerHandsFreeMobileSurface = ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>["surface"]
 
 export type ChatComposerHandsFreeMobileSpacingToken =
@@ -9711,6 +9834,167 @@ export function getChatComposerRuntimeControlMobileRenderState({
       willCancel: editBeforeSendEnabled,
       colors,
     }),
+  }
+}
+
+export function createChatComposerRuntimeDockMobileProps<
+  TInput extends ChatComposerRuntimeDockMobilePropsInput,
+>({
+  chrome,
+  speechPreviewText,
+  pendingImages,
+  pendingImagesColors,
+  onRemovePendingImage,
+  handsFreeStatusPhase,
+  handsFreeStatusLabel,
+  handsFreeStatusEnabled,
+  handsFreeStatusWakePhrase,
+  handsFreeStatusSleepPhrase,
+  handsFreeStatusLastError,
+  handsFreeStatusForegroundOnly,
+  onWakeHandsFree,
+  onSleepHandsFree,
+  onResumeHandsFree,
+  onPauseHandsFree,
+  composerControlHasContent,
+  composerControlConversationState,
+  composerControlIsResponding,
+  composerControlPendingImageCount,
+  composerControlTtsEnabled,
+  composerControlEditBeforeSendEnabled,
+  composerControlMicPhase,
+  composerControlListening,
+  composerControlMessageQueueEnabled,
+  composerControlColors,
+  onImageAttachmentPress,
+  onTextToSpeechPress,
+  onEditBeforeSendPress,
+  textEntryInputRef,
+  textEntryValue,
+  onTextEntryChangeText,
+  onTextEntryKeyPress,
+  textEntryHandsFree,
+  textEntryListening,
+  textEntryWillCancel,
+  textEntryLiveTranscript,
+  textEntryWakePhrase,
+  textEntryPlaceholderFallback,
+  onQueueActionPress,
+  onSubmitActionPress,
+  onMicPressIn,
+  onMicPressOut,
+  onMicPress,
+  micWrapperRef,
+}: TInput): ChatComposerRuntimeDockMobileProps<TInput> {
+  const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState({
+    conversationState: composerControlConversationState,
+    isResponding: composerControlIsResponding,
+    isQueueEnabled: composerControlMessageQueueEnabled,
+  })
+  const controlRenderState = getChatComposerRuntimeControlMobileRenderState({
+    hasContent: composerControlHasContent,
+    handsFree: textEntryHandsFree,
+    presentation: composerControlPresentation,
+    pendingImageCount: composerControlPendingImageCount,
+    ttsEnabled: composerControlTtsEnabled,
+    editBeforeSendEnabled: composerControlEditBeforeSendEnabled,
+    micPhase: composerControlMicPhase,
+    listening: composerControlListening,
+    messageQueueEnabled: composerControlMessageQueueEnabled,
+    colors: composerControlColors,
+  })
+  const mobileComposerControls = controlRenderState.controls
+  const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
+    colors: pendingImagesColors,
+  })
+  const handsFreeControlsRenderState = getChatComposerRuntimeHandsFreeControlsMobileRenderState({
+    phase: handsFreeStatusPhase,
+    label: handsFreeStatusLabel,
+    isEnabled: handsFreeStatusEnabled,
+    wakePhrase: handsFreeStatusWakePhrase,
+    sleepPhrase: handsFreeStatusSleepPhrase,
+    lastError: handsFreeStatusLastError,
+    foregroundOnly: handsFreeStatusForegroundOnly,
+  })
+  const textEntryRenderState = getChatComposerRuntimeTextEntryMobileRenderState({
+    presentation: composerControlPresentation,
+    handsFree: textEntryHandsFree,
+    phase: handsFreeStatusPhase,
+    listening: textEntryListening,
+    willCancel: textEntryWillCancel,
+    liveTranscript: textEntryLiveTranscript,
+    wakePhrase: textEntryWakePhrase,
+    placeholderFallback: textEntryPlaceholderFallback,
+    isWebPlatform: chrome.textEntry.webAccessibility.isWebPlatform,
+    speechPreviewText,
+  })
+
+  return {
+    speechPreview: {
+      label: mobileComposerControls.sttPreview.label,
+      text: speechPreviewText,
+    },
+    pendingImagesRail: {
+      images: pendingImages,
+      renderState: pendingImagesRenderState,
+      onRemove: onRemovePendingImage,
+    },
+    handsFreeControls: {
+      isVisible: controlRenderState.visibility.handsFreeControls.isVisible,
+      status: handsFreeControlsRenderState.status,
+      controlState: handsFreeControlsRenderState.controlState,
+      onWake: onWakeHandsFree,
+      onSleep: onSleepHandsFree,
+      onResume: onResumeHandsFree,
+      onPause: onPauseHandsFree,
+      ...chrome.handsFreeControls,
+    },
+    imageAttachmentControl: {
+      renderState: controlRenderState.imageAttachment,
+      onPress: onImageAttachmentPress,
+      ...chrome.imageAttachmentControl,
+    },
+    textToSpeechControl: {
+      renderState: controlRenderState.textToSpeech,
+      onPress: onTextToSpeechPress,
+      ...chrome.textToSpeechControl,
+    },
+    editBeforeSendControl: {
+      shouldRender: controlRenderState.visibility.editBeforeSendControl.shouldRender,
+      renderState: controlRenderState.editBeforeSend,
+      onPress: onEditBeforeSendPress,
+      ...chrome.editBeforeSendControl,
+    },
+    textEntry: {
+      inputRef: textEntryInputRef,
+      value: textEntryValue,
+      onChangeText: onTextEntryChangeText,
+      onKeyPress: onTextEntryKeyPress,
+      accessibilityLabel: mobileComposerControls.field.accessibilityLabel,
+      accessibilityHint: textEntryRenderState.accessibilityHint,
+      placeholder: textEntryRenderState.placeholder,
+      voiceStatusLiveRegionAnnouncement: textEntryRenderState.voiceStatusLiveRegionAnnouncement,
+      ...chrome.textEntry,
+    },
+    queueAction: {
+      shouldRender: controlRenderState.visibility.queueAction.shouldRender,
+      renderState: controlRenderState.queueAction,
+      onPress: onQueueActionPress,
+      ...chrome.queueAction,
+    },
+    submitAction: {
+      renderState: controlRenderState.submitAction,
+      onPress: onSubmitActionPress,
+      ...chrome.submitAction,
+    },
+    micButton: {
+      renderState: controlRenderState.micButton,
+      onPressIn: controlRenderState.visibility.micButton.shouldUsePushToTalk ? onMicPressIn : undefined,
+      onPressOut: controlRenderState.visibility.micButton.shouldUsePushToTalk ? onMicPressOut : undefined,
+      onPress: controlRenderState.visibility.micButton.shouldUseHandsFreePrimaryControl ? onMicPress : undefined,
+      ...chrome.micButton,
+    },
+    micWrapperRef,
   }
 }
 

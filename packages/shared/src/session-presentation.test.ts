@@ -56,6 +56,7 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -2599,6 +2600,83 @@ describe("session presentation semantics", () => {
       CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.pressedOpacity,
     )
     expect(composerDockChrome.micButton.webPressedStyle).toEqual(getChatComposerMicMobileWebPressStyleState())
+    const composerDockProps = createChatComposerRuntimeDockMobileProps({
+      chrome: {
+        handsFreeControls: { controlPressedOpacity: 0.7 },
+        imageAttachmentControl: { activeOpacity: 0.8 },
+        textToSpeechControl: { activeOpacity: 0.81 },
+        editBeforeSendControl: { activeOpacity: 0.82 },
+        textEntry: {
+          placeholderTextColor: "#64748b",
+          webAccessibility: composerDockChrome.textEntry.webAccessibility,
+        },
+        queueAction: { activeOpacity: 0.83 },
+        submitAction: { activeOpacity: 0.84 },
+        micButton: { webPressedStyle: composerDockChrome.micButton.webPressedStyle },
+      },
+      speechPreviewText: "voice draft",
+      pendingImages: ["image-1"],
+      pendingImagesColors: chatRuntimeMobileChromeColors,
+      onRemovePendingImage: "remove-image",
+      handsFreeStatusPhase: "listening",
+      handsFreeStatusLabel: "Listening",
+      handsFreeStatusEnabled: true,
+      handsFreeStatusWakePhrase: "wake up",
+      handsFreeStatusSleepPhrase: "sleep now",
+      handsFreeStatusLastError: null,
+      handsFreeStatusForegroundOnly: false,
+      onWakeHandsFree: "wake-hands-free",
+      onSleepHandsFree: "sleep-hands-free",
+      onResumeHandsFree: "resume-hands-free",
+      onPauseHandsFree: "pause-hands-free",
+      composerControlHasContent: true,
+      composerControlConversationState: "complete",
+      composerControlIsResponding: false,
+      composerControlPendingImageCount: 1,
+      composerControlTtsEnabled: true,
+      composerControlEditBeforeSendEnabled: true,
+      composerControlMicPhase: "listening",
+      composerControlListening: true,
+      composerControlMessageQueueEnabled: true,
+      composerControlColors: chatRuntimeMobileChromeColors,
+      onImageAttachmentPress: "attach-image",
+      onTextToSpeechPress: "toggle-tts",
+      onEditBeforeSendPress: "toggle-edit",
+      textEntryInputRef: "input-ref",
+      textEntryValue: "hello",
+      onTextEntryChangeText: "change-text",
+      onTextEntryKeyPress: "key-press",
+      textEntryHandsFree: true,
+      textEntryListening: true,
+      textEntryWillCancel: false,
+      textEntryLiveTranscript: "live words",
+      textEntryWakePhrase: "wake up",
+      textEntryPlaceholderFallback: "Fallback placeholder",
+      onQueueActionPress: "queue-message",
+      onSubmitActionPress: "send-message",
+      onMicPressIn: "mic-in",
+      onMicPressOut: "mic-out",
+      onMicPress: "mic-primary",
+      micWrapperRef: "mic-wrapper",
+    })
+    expect(composerDockProps.speechPreview).toEqual({
+      label: CHAT_COMPOSER_PRESENTATION.sttPreview.label,
+      text: "voice draft",
+    })
+    expect(composerDockProps.pendingImagesRail.images).toEqual(["image-1"])
+    expect(composerDockProps.pendingImagesRail.onRemove).toBe("remove-image")
+    expect(composerDockProps.handsFreeControls.controlPressedOpacity).toBe(0.7)
+    expect(composerDockProps.handsFreeControls.onPause).toBe("pause-hands-free")
+    expect(composerDockProps.imageAttachmentControl.onPress).toBe("attach-image")
+    expect(composerDockProps.textToSpeechControl.renderState.accessibilityState.checked).toBe(true)
+    expect(composerDockProps.editBeforeSendControl.shouldRender).toBe(false)
+    expect(composerDockProps.textEntry.value).toBe("hello")
+    expect(composerDockProps.textEntry.placeholderTextColor).toBe("#64748b")
+    expect(composerDockProps.queueAction.shouldRender).toBe(true)
+    expect(composerDockProps.submitAction.onPress).toBe("send-message")
+    expect(composerDockProps.micButton.onPress).toBe("mic-primary")
+    expect(composerDockProps.micButton.onPressIn).toBeUndefined()
+    expect(composerDockProps.micWrapperRef).toBe("mic-wrapper")
     const runtimeChromeStyle = getChatRuntimeMobileChromeStyleRenderState({
       colors: chatRuntimeMobileChromeColors,
       platform: "android",
