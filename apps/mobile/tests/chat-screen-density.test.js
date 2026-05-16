@@ -214,8 +214,10 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeThemeSpinnerSource,/);
   assert.match(chatScreenSource, /useChatRuntimeNavigationHeaderChromeOptions\(\{\s+navigation,\s+\.\.\.chatRuntimeChrome\.header,/);
   assert.match(chatMessageChromeSource, /conversationStatusSpinnerSource: spinnerSource,/);
-  assert.match(chatMessageChromeSource, /export function createChatRuntimeThemeSpinnerSource/);
-  assert.match(chatMessageChromeSource, /return isDark \? darkSource : lightSource;/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatRuntimeThemeSpinnerSource/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeThemeSpinnerSource/);
+  assert.match(sessionPresentationSource, /return isDark \? darkSource : lightSource/);
+  assert.match(chatRuntimeMobileStylesSource, /from '@dotagents\/shared\/session-presentation'/);
   assert.doesNotMatch(screenSource, /conversationStatusSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.doesNotMatch(screenSource, /conversationStatusSpinnerSource: chatRuntimeChrome\.spinnerSource,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderConversationStatus/);

@@ -2684,6 +2684,12 @@ export interface ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> {
   base64: true
 }
 
+export interface ChatRuntimeThemeSpinnerSourceInput<TSpinnerSource> {
+  isDark: boolean
+  darkSource: TSpinnerSource
+  lightSource: TSpinnerSource
+}
+
 export type ChatComposerMobileIconName =
   | typeof CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon.name
   | typeof CHAT_COMPOSER_PRESENTATION.textToSpeech.mobileIcon.enabledName
@@ -5255,6 +5261,14 @@ export function getChatComposerRuntimeBase64ImageBytes(rawBase64: string): numbe
 
 export function inferChatComposerRuntimeImageMimeType(source: ImageMimeTypeSource): string | null {
   return inferImageMimeTypeFromSource(source)
+}
+
+export function createChatRuntimeThemeSpinnerSource<TSpinnerSource>({
+  isDark,
+  darkSource,
+  lightSource,
+}: ChatRuntimeThemeSpinnerSourceInput<TSpinnerSource>): TSpinnerSource {
+  return isDark ? darkSource : lightSource
 }
 
 export function getChatComposerMobileVisibilityRenderState({

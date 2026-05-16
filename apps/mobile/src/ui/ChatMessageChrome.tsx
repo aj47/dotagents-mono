@@ -1315,12 +1315,6 @@ type ChatRuntimeNavigationHeaderOptionsInput = {
   styles: ChatRuntimeHeaderStyleSlots;
 };
 
-type ChatRuntimeThemeSpinnerSourceInput = {
-  isDark: boolean;
-  darkSource: ImageSourcePropType;
-  lightSource: ImageSourcePropType;
-};
-
 type ChatRuntimeNavigationHeaderRenderStateInput =
   ChatRuntimeNavigationHeaderMobileRenderStateInput;
 
@@ -8525,14 +8519,6 @@ export function createChatRuntimeNavigationHeaderOptions({
       </ChatRuntimeHeaderActionsRow>
     ),
   };
-}
-
-export function createChatRuntimeThemeSpinnerSource({
-  isDark,
-  darkSource,
-  lightSource,
-}: ChatRuntimeThemeSpinnerSourceInput): ImageSourcePropType {
-  return isDark ? darkSource : lightSource;
 }
 
 export function useChatRuntimeNavigationHeaderOptions({

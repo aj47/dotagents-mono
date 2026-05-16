@@ -17,6 +17,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatComposerRuntimeImagePickerLaunchOptions,
+  createChatRuntimeThemeSpinnerSource,
   deriveAttentionState,
   deriveLifecycleState,
   formatChatRuntimeActivityContent,
@@ -739,6 +740,16 @@ describe("session presentation semantics", () => {
     expect(getChatComposerRuntimeImageDataUrlBytes("not-data")).toBe(0)
     expect(getChatComposerRuntimeBase64ImageBytes("YWJj")).toBe(3)
     expect(inferChatComposerRuntimeImageMimeType({ fileName: "sample.webp" })).toBe("image/webp")
+    expect(createChatRuntimeThemeSpinnerSource({
+      isDark: true,
+      darkSource: "dark-spinner",
+      lightSource: "light-spinner",
+    })).toBe("dark-spinner")
+    expect(createChatRuntimeThemeSpinnerSource({
+      isDark: false,
+      darkSource: "dark-spinner",
+      lightSource: "light-spinner",
+    })).toBe("light-spinner")
     expect(CHAT_COMPOSER_PRESENTATION.field.accessibilityLabel).toBe("Message composer")
     expect(CHAT_COMPOSER_PRESENTATION.imageAttachment.glyph).toBe("🖼️")
     expect(CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon).toMatchObject({

@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatRuntimeThemeSpinnerSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
 } from '@dotagents/shared/session-presentation';
@@ -23,7 +24,6 @@ import {
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatRuntimeThemeSpinnerSource,
   resolveChatRuntimeMobileFontFamily,
 } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
