@@ -15,6 +15,7 @@ import {
   createChatMessageConversationDockStyleSlots,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationViewportStyleSlots,
+  createChatMessageThreadBodyStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeChromeSlots,
   createChatMessageRuntimeChromeStyleSlots,
@@ -61,9 +62,7 @@ import {
   getChatRuntimeMobileSafeAreaLayoutState,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
 } from '@dotagents/shared/session-presentation';
-import {
-  createChatMessageThreadBodyStyleSlots,
-} from './ChatMessageChrome';
+import type { ChatMessageThreadBodyStyleSlots } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
 
@@ -1107,7 +1106,10 @@ export function useChatRuntimeMobileStyleSlots() {
           styles[toneStyleSlot]
         ),
       }),
-      threadBodyStyles: createChatMessageThreadBodyStyleSlots(styles),
+      threadBodyStyles: createChatMessageThreadBodyStyleSlots<
+        ReturnType<typeof createChatRuntimeMobileStyles>,
+        ChatMessageThreadBodyStyleSlots
+      >(styles),
       actionStyles: createChatMessageActionStyleSlots({
         turnDurationStyles: {
           style: styles.messageTurnDurationBadge,

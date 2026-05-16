@@ -14924,6 +14924,531 @@ export function createChatMessageRuntimeThreadStyleSlots<TThreadSurfaceStyles, T
   }
 }
 
+type ChatMessageThreadBodyStyleKey =
+  | "retryStatusCard"
+  | "retryStatusHeader"
+  | "retryStatusTitle"
+  | "retryStatusMetaRow"
+  | "retryStatusAttempt"
+  | "retryStatusCountdown"
+  | "retryStatusDescription"
+  | "delegationCard"
+  | "delegationHeader"
+  | "delegationTitle"
+  | "delegationStatusBadge"
+  | "delegationStatusText"
+  | "delegationLiveText"
+  | "delegationSubtitle"
+  | "delegationMetaRow"
+  | "delegationMetaText"
+  | "delegationConversationPreview"
+  | "delegationConversationPreviewLine"
+  | "delegationConversationPreviewRole"
+  | "delegationConversationPreviewContent"
+  | "delegationConversationPreviewTimestamp"
+  | "delegationConversationPreviewMoreButton"
+  | "delegationConversationPreviewMoreButtonPressed"
+  | "delegationConversationPreviewMore"
+  | "delegationToolPreview"
+  | "delegationToolPreviewLabel"
+  | "delegationToolPreviewLine"
+  | "delegationToolPreviewStatusIcon"
+  | "delegationToolPreviewName"
+  | "toolCallCompactNamePending"
+  | "toolCallCompactNameSuccess"
+  | "toolCallCompactNameError"
+  | "delegationToolPreviewMoreButton"
+  | "delegationToolPreviewMoreButtonPressed"
+  | "delegationToolPreviewMore"
+  | "toolApprovalCard"
+  | "toolApprovalHeader"
+  | "toolApprovalContent"
+  | "toolApprovalContentDisabled"
+  | "toolApprovalTitle"
+  | "toolApprovalToolRow"
+  | "toolApprovalToolLabel"
+  | "toolApprovalTool"
+  | "toolApprovalArgumentsPreview"
+  | "toolApprovalArgumentsToggle"
+  | "toolApprovalArgumentsTogglePressed"
+  | "toolApprovalArgumentsToggleText"
+  | "toolApprovalArgumentsScroll"
+  | "toolApprovalArgumentsFull"
+  | "toolApprovalActions"
+  | "toolApprovalButton"
+  | "toolApprovalButtonDisabled"
+  | "toolApprovalApproveButton"
+  | "toolApprovalApproveButtonText"
+  | "toolApprovalDenyButton"
+  | "toolApprovalDenyButtonText"
+  | "inlineActivityIndicator"
+  | "inlineActivitySpinner"
+  | "messageContentRow"
+  | "messageContentBody"
+  | "streamingContentHeader"
+  | "streamingContentTitle"
+  | "streamingContentSpinner"
+  | "streamingContentBadge"
+  | "streamingContentBadgeText"
+  | "streamingContentBodyRow"
+  | "streamingContentText"
+  | "streamingContentCaret"
+  | "collapsedMessagePreviewToggle"
+  | "collapsedMessagePreviewTogglePressed"
+  | "collapsedMessagePreview"
+  | "toolCallCompactContainer"
+  | "toolCallCompactPressed"
+  | "toolCallCompactLine"
+  | "toolCallCompactLeadingIcon"
+  | "toolCallCompactName"
+  | "toolCallCompactStatusIndicator"
+  | "toolCallCompactToggleIcon"
+  | "toolExecutionExpandedContainer"
+  | "toolExecutionCard"
+  | "toolExecutionPending"
+  | "toolExecutionSuccess"
+  | "toolExecutionError"
+  | "toolExecutionCollapseTopButton"
+  | "toolExecutionCollapseBottomButton"
+  | "toolResponsePendingText"
+  | "toolCallSection"
+  | "toolCallHeader"
+  | "toolCallHeaderPressed"
+  | "toolName"
+  | "toolCallExpandHint"
+  | "toolCallExpandHintText"
+  | "toolParamsSection"
+  | "toolDetailHeaderRow"
+  | "toolPayloadMetaRow"
+  | "toolSectionLabel"
+  | "toolPayloadType"
+  | "toolDetailCopyButton"
+  | "toolDetailCopyButtonPressed"
+  | "toolDetailCopyButtonText"
+  | "toolPayloadPreview"
+  | "toolParamsScroll"
+  | "toolParamsScrollExpanded"
+  | "toolParamsCode"
+  | "toolResultItem"
+  | "toolResultHeader"
+  | "toolResultHeaderMeta"
+  | "toolResultBadge"
+  | "toolResultBadgeSuccess"
+  | "toolResultBadgeError"
+  | "toolResultBadgeText"
+  | "toolResultBadgeTextSuccess"
+  | "toolResultBadgeTextError"
+  | "toolResultCharCount"
+  | "toolResultScroll"
+  | "toolResultScrollExpanded"
+  | "toolResultCode"
+  | "toolResultErrorSection"
+  | "toolResultErrorLabel"
+  | "toolResultErrorText"
+  | "toolResponsePendingRow"
+  | "messageActionsRow"
+
+type ChatMessageThreadBodyStyleSource = Record<ChatMessageThreadBodyStyleKey, unknown>
+
+type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleSource> = {
+  retryStatus: {
+    card: TStyles["retryStatusCard"]
+    header: TStyles["retryStatusHeader"]
+    title: TStyles["retryStatusTitle"]
+    metaRow: TStyles["retryStatusMetaRow"]
+    attempt: TStyles["retryStatusAttempt"]
+    countdown: TStyles["retryStatusCountdown"]
+    description: TStyles["retryStatusDescription"]
+  }
+  delegationCard: {
+    card: TStyles["delegationCard"]
+    header: TStyles["delegationHeader"]
+    title: TStyles["delegationTitle"]
+    statusBadge: TStyles["delegationStatusBadge"]
+    statusText: TStyles["delegationStatusText"]
+    liveText: TStyles["delegationLiveText"]
+    subtitle: TStyles["delegationSubtitle"]
+    metaRow: TStyles["delegationMetaRow"]
+    metaText: TStyles["delegationMetaText"]
+    conversationPreview: TStyles["delegationConversationPreview"]
+    conversationPreviewLine: TStyles["delegationConversationPreviewLine"]
+    conversationPreviewRole: TStyles["delegationConversationPreviewRole"]
+    conversationPreviewContent: TStyles["delegationConversationPreviewContent"]
+    conversationPreviewTimestamp: TStyles["delegationConversationPreviewTimestamp"]
+    conversationPreviewMoreButton: TStyles["delegationConversationPreviewMoreButton"]
+    conversationPreviewMoreButtonPressed: TStyles["delegationConversationPreviewMoreButtonPressed"]
+    conversationPreviewMore: TStyles["delegationConversationPreviewMore"]
+    toolPreview: TStyles["delegationToolPreview"]
+    toolPreviewLabel: TStyles["delegationToolPreviewLabel"]
+    toolPreviewLine: TStyles["delegationToolPreviewLine"]
+    toolPreviewStatusIcon: TStyles["delegationToolPreviewStatusIcon"]
+    toolPreviewName: TStyles["delegationToolPreviewName"]
+    toolPreviewNamePending: TStyles["toolCallCompactNamePending"]
+    toolPreviewNameSuccess: TStyles["toolCallCompactNameSuccess"]
+    toolPreviewNameError: TStyles["toolCallCompactNameError"]
+    toolPreviewMoreButton: TStyles["delegationToolPreviewMoreButton"]
+    toolPreviewMoreButtonPressed: TStyles["delegationToolPreviewMoreButtonPressed"]
+    toolPreviewMore: TStyles["delegationToolPreviewMore"]
+  }
+  toolApproval: {
+    card: TStyles["toolApprovalCard"]
+    header: TStyles["toolApprovalHeader"]
+    content: TStyles["toolApprovalContent"]
+    contentDisabled: TStyles["toolApprovalContentDisabled"]
+    title: TStyles["toolApprovalTitle"]
+    toolRow: TStyles["toolApprovalToolRow"]
+    toolLabel: TStyles["toolApprovalToolLabel"]
+    toolName: TStyles["toolApprovalTool"]
+    argumentsPreview: TStyles["toolApprovalArgumentsPreview"]
+    argumentsToggle: TStyles["toolApprovalArgumentsToggle"]
+    argumentsTogglePressed: TStyles["toolApprovalArgumentsTogglePressed"]
+    argumentsToggleText: TStyles["toolApprovalArgumentsToggleText"]
+    argumentsScroll: TStyles["toolApprovalArgumentsScroll"]
+    argumentsFull: TStyles["toolApprovalArgumentsFull"]
+    actions: TStyles["toolApprovalActions"]
+    button: TStyles["toolApprovalButton"]
+    buttonDisabled: TStyles["toolApprovalButtonDisabled"]
+    approveButton: TStyles["toolApprovalApproveButton"]
+    approveButtonText: TStyles["toolApprovalApproveButtonText"]
+    denyButton: TStyles["toolApprovalDenyButton"]
+    denyButtonText: TStyles["toolApprovalDenyButtonText"]
+  }
+  inlineActivity: {
+    style: TStyles["inlineActivityIndicator"]
+    spinnerStyle: TStyles["inlineActivitySpinner"]
+  }
+  content: {
+    rowStyle: TStyles["messageContentRow"]
+    expandedBodyStyle: TStyles["messageContentBody"]
+    streamingStyles: {
+      header: TStyles["streamingContentHeader"]
+      title: TStyles["streamingContentTitle"]
+      spinner: TStyles["streamingContentSpinner"]
+      badge: TStyles["streamingContentBadge"]
+      badgeText: TStyles["streamingContentBadgeText"]
+      bodyRow: TStyles["streamingContentBodyRow"]
+      text: TStyles["streamingContentText"]
+      caret: TStyles["streamingContentCaret"]
+    }
+    collapsedStyle: TStyles["collapsedMessagePreviewToggle"]
+    collapsedPressedStyle: TStyles["collapsedMessagePreviewTogglePressed"]
+    collapsedTextStyle: TStyles["collapsedMessagePreview"]
+  }
+  toolExecutionStack: {
+    compactGroup: {
+      container: TStyles["toolCallCompactContainer"]
+      pressed: TStyles["toolCallCompactPressed"]
+    }
+    compactRow: {
+      line: TStyles["toolCallCompactLine"]
+      leadingIcon: TStyles["toolCallCompactLeadingIcon"]
+      name: TStyles["toolCallCompactName"]
+      namePending: TStyles["toolCallCompactNamePending"]
+      nameSuccess: TStyles["toolCallCompactNameSuccess"]
+      nameError: TStyles["toolCallCompactNameError"]
+      statusIndicator: TStyles["toolCallCompactStatusIndicator"]
+      toggleIcon: TStyles["toolCallCompactToggleIcon"]
+    }
+    expandedGroup: {
+      container: TStyles["toolExecutionExpandedContainer"]
+      card: TStyles["toolExecutionCard"]
+      pending: TStyles["toolExecutionPending"]
+      success: TStyles["toolExecutionSuccess"]
+      error: TStyles["toolExecutionError"]
+      collapseButton: TStyles["toolCallCompactContainer"]
+      collapsePressed: TStyles["toolCallCompactPressed"]
+      collapseTopPlacement: TStyles["toolExecutionCollapseTopButton"]
+      collapseBottomPlacement: TStyles["toolExecutionCollapseBottomButton"]
+      collapseText: TStyles["toolCallCompactName"]
+    }
+    emptyStateText: TStyles["toolResponsePendingText"]
+    callDetail: {
+      callSection: {
+        section: TStyles["toolCallSection"]
+        header: {
+          header: TStyles["toolCallHeader"]
+          headerPressed: TStyles["toolCallHeaderPressed"]
+          toolName: TStyles["toolName"]
+          expandHint: TStyles["toolCallExpandHint"]
+          expandHintText: TStyles["toolCallExpandHintText"]
+        }
+      }
+      payloadSection: {
+        section: TStyles["toolParamsSection"]
+        headerRow: TStyles["toolDetailHeaderRow"]
+        payloadMeta: {
+          row: TStyles["toolPayloadMetaRow"]
+          label: TStyles["toolSectionLabel"]
+          payloadType: TStyles["toolPayloadType"]
+        }
+        copyButton: {
+          button: TStyles["toolDetailCopyButton"]
+          pressed: TStyles["toolDetailCopyButtonPressed"]
+          text: TStyles["toolDetailCopyButtonText"]
+        }
+        payloadBlock: {
+          preview: TStyles["toolPayloadPreview"]
+          scroll: TStyles["toolParamsScroll"]
+          scrollExpanded: TStyles["toolParamsScrollExpanded"]
+          code: TStyles["toolParamsCode"]
+        }
+      }
+      resultSection: {
+        item: TStyles["toolResultItem"]
+        header: {
+          header: TStyles["toolResultHeader"]
+          meta: TStyles["toolResultHeaderMeta"]
+          payloadMeta: {
+            label: TStyles["toolSectionLabel"]
+            payloadType: TStyles["toolPayloadType"]
+          }
+          badge: {
+            badge: TStyles["toolResultBadge"]
+            badgeSuccess: TStyles["toolResultBadgeSuccess"]
+            badgeError: TStyles["toolResultBadgeError"]
+            text: TStyles["toolResultBadgeText"]
+            textSuccess: TStyles["toolResultBadgeTextSuccess"]
+            textError: TStyles["toolResultBadgeTextError"]
+          }
+          characterCount: TStyles["toolResultCharCount"]
+          copyButton: {
+            button: TStyles["toolDetailCopyButton"]
+            pressed: TStyles["toolDetailCopyButtonPressed"]
+            text: TStyles["toolDetailCopyButtonText"]
+          }
+        }
+        payloadBlock: {
+          preview: TStyles["toolPayloadPreview"]
+          scroll: TStyles["toolResultScroll"]
+          scrollExpanded: TStyles["toolResultScrollExpanded"]
+          code: TStyles["toolResultCode"]
+        }
+        errorBlock: {
+          section: TStyles["toolResultErrorSection"]
+          headerRow: TStyles["toolDetailHeaderRow"]
+          label: TStyles["toolResultErrorLabel"]
+          text: TStyles["toolResultErrorText"]
+          copyButton: {
+            button: TStyles["toolDetailCopyButton"]
+            pressed: TStyles["toolDetailCopyButtonPressed"]
+            text: TStyles["toolDetailCopyButtonText"]
+          }
+        }
+      }
+      pendingResult: {
+        row: TStyles["toolResponsePendingRow"]
+        text: TStyles["toolResponsePendingText"]
+      }
+    }
+  }
+  standaloneActions: {
+    rowStyle: TStyles["messageActionsRow"]
+  }
+}
+
+export function createChatMessageThreadBodyStyleSlots<
+  TStyles extends ChatMessageThreadBodyStyleSource,
+  TThreadBodyStyleSlots = ChatMessageThreadBodyStyleSlots<TStyles>,
+>(
+  styles: TStyles,
+): TThreadBodyStyleSlots {
+  return {
+    retryStatus: {
+      card: styles.retryStatusCard,
+      header: styles.retryStatusHeader,
+      title: styles.retryStatusTitle,
+      metaRow: styles.retryStatusMetaRow,
+      attempt: styles.retryStatusAttempt,
+      countdown: styles.retryStatusCountdown,
+      description: styles.retryStatusDescription,
+    },
+    delegationCard: {
+      card: styles.delegationCard,
+      header: styles.delegationHeader,
+      title: styles.delegationTitle,
+      statusBadge: styles.delegationStatusBadge,
+      statusText: styles.delegationStatusText,
+      liveText: styles.delegationLiveText,
+      subtitle: styles.delegationSubtitle,
+      metaRow: styles.delegationMetaRow,
+      metaText: styles.delegationMetaText,
+      conversationPreview: styles.delegationConversationPreview,
+      conversationPreviewLine: styles.delegationConversationPreviewLine,
+      conversationPreviewRole: styles.delegationConversationPreviewRole,
+      conversationPreviewContent: styles.delegationConversationPreviewContent,
+      conversationPreviewTimestamp: styles.delegationConversationPreviewTimestamp,
+      conversationPreviewMoreButton: styles.delegationConversationPreviewMoreButton,
+      conversationPreviewMoreButtonPressed: styles.delegationConversationPreviewMoreButtonPressed,
+      conversationPreviewMore: styles.delegationConversationPreviewMore,
+      toolPreview: styles.delegationToolPreview,
+      toolPreviewLabel: styles.delegationToolPreviewLabel,
+      toolPreviewLine: styles.delegationToolPreviewLine,
+      toolPreviewStatusIcon: styles.delegationToolPreviewStatusIcon,
+      toolPreviewName: styles.delegationToolPreviewName,
+      toolPreviewNamePending: styles.toolCallCompactNamePending,
+      toolPreviewNameSuccess: styles.toolCallCompactNameSuccess,
+      toolPreviewNameError: styles.toolCallCompactNameError,
+      toolPreviewMoreButton: styles.delegationToolPreviewMoreButton,
+      toolPreviewMoreButtonPressed: styles.delegationToolPreviewMoreButtonPressed,
+      toolPreviewMore: styles.delegationToolPreviewMore,
+    },
+    toolApproval: {
+      card: styles.toolApprovalCard,
+      header: styles.toolApprovalHeader,
+      content: styles.toolApprovalContent,
+      contentDisabled: styles.toolApprovalContentDisabled,
+      title: styles.toolApprovalTitle,
+      toolRow: styles.toolApprovalToolRow,
+      toolLabel: styles.toolApprovalToolLabel,
+      toolName: styles.toolApprovalTool,
+      argumentsPreview: styles.toolApprovalArgumentsPreview,
+      argumentsToggle: styles.toolApprovalArgumentsToggle,
+      argumentsTogglePressed: styles.toolApprovalArgumentsTogglePressed,
+      argumentsToggleText: styles.toolApprovalArgumentsToggleText,
+      argumentsScroll: styles.toolApprovalArgumentsScroll,
+      argumentsFull: styles.toolApprovalArgumentsFull,
+      actions: styles.toolApprovalActions,
+      button: styles.toolApprovalButton,
+      buttonDisabled: styles.toolApprovalButtonDisabled,
+      approveButton: styles.toolApprovalApproveButton,
+      approveButtonText: styles.toolApprovalApproveButtonText,
+      denyButton: styles.toolApprovalDenyButton,
+      denyButtonText: styles.toolApprovalDenyButtonText,
+    },
+    inlineActivity: {
+      style: styles.inlineActivityIndicator,
+      spinnerStyle: styles.inlineActivitySpinner,
+    },
+    content: {
+      rowStyle: styles.messageContentRow,
+      expandedBodyStyle: styles.messageContentBody,
+      streamingStyles: {
+        header: styles.streamingContentHeader,
+        title: styles.streamingContentTitle,
+        spinner: styles.streamingContentSpinner,
+        badge: styles.streamingContentBadge,
+        badgeText: styles.streamingContentBadgeText,
+        bodyRow: styles.streamingContentBodyRow,
+        text: styles.streamingContentText,
+        caret: styles.streamingContentCaret,
+      },
+      collapsedStyle: styles.collapsedMessagePreviewToggle,
+      collapsedPressedStyle: styles.collapsedMessagePreviewTogglePressed,
+      collapsedTextStyle: styles.collapsedMessagePreview,
+    },
+    toolExecutionStack: {
+      compactGroup: {
+        container: styles.toolCallCompactContainer,
+        pressed: styles.toolCallCompactPressed,
+      },
+      compactRow: {
+        line: styles.toolCallCompactLine,
+        leadingIcon: styles.toolCallCompactLeadingIcon,
+        name: styles.toolCallCompactName,
+        namePending: styles.toolCallCompactNamePending,
+        nameSuccess: styles.toolCallCompactNameSuccess,
+        nameError: styles.toolCallCompactNameError,
+        statusIndicator: styles.toolCallCompactStatusIndicator,
+        toggleIcon: styles.toolCallCompactToggleIcon,
+      },
+      expandedGroup: {
+        container: styles.toolExecutionExpandedContainer,
+        card: styles.toolExecutionCard,
+        pending: styles.toolExecutionPending,
+        success: styles.toolExecutionSuccess,
+        error: styles.toolExecutionError,
+        collapseButton: styles.toolCallCompactContainer,
+        collapsePressed: styles.toolCallCompactPressed,
+        collapseTopPlacement: styles.toolExecutionCollapseTopButton,
+        collapseBottomPlacement: styles.toolExecutionCollapseBottomButton,
+        collapseText: styles.toolCallCompactName,
+      },
+      emptyStateText: styles.toolResponsePendingText,
+      callDetail: {
+        callSection: {
+          section: styles.toolCallSection,
+          header: {
+            header: styles.toolCallHeader,
+            headerPressed: styles.toolCallHeaderPressed,
+            toolName: styles.toolName,
+            expandHint: styles.toolCallExpandHint,
+            expandHintText: styles.toolCallExpandHintText,
+          },
+        },
+        payloadSection: {
+          section: styles.toolParamsSection,
+          headerRow: styles.toolDetailHeaderRow,
+          payloadMeta: {
+            row: styles.toolPayloadMetaRow,
+            label: styles.toolSectionLabel,
+            payloadType: styles.toolPayloadType,
+          },
+          copyButton: {
+            button: styles.toolDetailCopyButton,
+            pressed: styles.toolDetailCopyButtonPressed,
+            text: styles.toolDetailCopyButtonText,
+          },
+          payloadBlock: {
+            preview: styles.toolPayloadPreview,
+            scroll: styles.toolParamsScroll,
+            scrollExpanded: styles.toolParamsScrollExpanded,
+            code: styles.toolParamsCode,
+          },
+        },
+        resultSection: {
+          item: styles.toolResultItem,
+          header: {
+            header: styles.toolResultHeader,
+            meta: styles.toolResultHeaderMeta,
+            payloadMeta: {
+              label: styles.toolSectionLabel,
+              payloadType: styles.toolPayloadType,
+            },
+            badge: {
+              badge: styles.toolResultBadge,
+              badgeSuccess: styles.toolResultBadgeSuccess,
+              badgeError: styles.toolResultBadgeError,
+              text: styles.toolResultBadgeText,
+              textSuccess: styles.toolResultBadgeTextSuccess,
+              textError: styles.toolResultBadgeTextError,
+            },
+            characterCount: styles.toolResultCharCount,
+            copyButton: {
+              button: styles.toolDetailCopyButton,
+              pressed: styles.toolDetailCopyButtonPressed,
+              text: styles.toolDetailCopyButtonText,
+            },
+          },
+          payloadBlock: {
+            preview: styles.toolPayloadPreview,
+            scroll: styles.toolResultScroll,
+            scrollExpanded: styles.toolResultScrollExpanded,
+            code: styles.toolResultCode,
+          },
+          errorBlock: {
+            section: styles.toolResultErrorSection,
+            headerRow: styles.toolDetailHeaderRow,
+            label: styles.toolResultErrorLabel,
+            text: styles.toolResultErrorText,
+            copyButton: {
+              button: styles.toolDetailCopyButton,
+              pressed: styles.toolDetailCopyButtonPressed,
+              text: styles.toolDetailCopyButtonText,
+            },
+          },
+        },
+        pendingResult: {
+          row: styles.toolResponsePendingRow,
+          text: styles.toolResponsePendingText,
+        },
+      },
+    },
+    standaloneActions: {
+      rowStyle: styles.messageActionsRow,
+    },
+  } as unknown as TThreadBodyStyleSlots
+}
+
 export function createChatMessageToolActivityGroupBoundaryStyles<
   TToggleContainerStyle,
   TTogglePressedStyle,
