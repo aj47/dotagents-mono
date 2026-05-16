@@ -9,7 +9,7 @@ import {
   formatToolExecutionDuration,
   formatToolExecutionTokens,
   truncateToolExecutionSubagentId,
-} from "@dotagents/shared/tool-execution-display"
+} from "@dotagents/shared/session-presentation"
 
 interface ToolExecutionStatsProps {
   stats: {
@@ -24,7 +24,7 @@ interface ToolExecutionStatsProps {
 
 /**
  * A component for displaying tool execution stats.
- * 
+ *
  * Visual (compact): `haiku • 3.1s • 17k tokens`
  * Visual (expanded): Full breakdown with model, duration, and token details
  */

@@ -308,6 +308,7 @@ import {
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 export {
+  formatToolExecutionDuration,
   formatIndexedToolExecutionLabel,
   formatToolExecutionCompactAccessibilityLabel,
   formatToolExecutionCount,
@@ -316,6 +317,7 @@ export {
   formatToolExecutionHeading,
   formatToolExecutionSectionLabel,
   formatToolExecutionStructuredPayloadValue,
+  formatToolExecutionTokens,
   getToolExecutionCallDisplayState,
   getToolExecutionCompactDesktopSurfaceState,
   getToolExecutionDetailCopyState,
@@ -327,6 +329,7 @@ export {
   getToolExecutionStatusCopyState,
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStructuredPayloadChildEntries,
+  truncateToolExecutionSubagentId,
   type ToolExecutionStructuredPayloadValue,
 } from "./tool-execution-display"
 export type {
