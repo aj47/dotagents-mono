@@ -24,6 +24,10 @@ const messageQueuePanelSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MessageQueuePanel.tsx'),
   'utf8'
 );
+const responseHistoryPanelSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ResponseHistoryPanel.tsx'),
+  'utf8'
+);
 const sessionPresentationSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
   'utf8'
@@ -3520,6 +3524,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /const panelChromeState = useChatMessageRuntimeResponseHistoryPanelChromeState\(panelProps\);/);
   assert.match(chatMessageChromeSource, /<ResponseHistoryPanel\s+responses=\{responses\}\s+colors=\{colors\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}\s+\{\.\.\.panelChromeState\}/);
   assert.doesNotMatch(chatMessageChromeSource, /return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;/);
+  assert.doesNotMatch(responseHistoryPanelSource, /from '@dotagents\/shared\/agent-user-response-store'/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?getAgentResponseHistoryMobileRenderState,[\s\S]*?AgentResponseHistoryMobileAnimationState,[\s\S]*?\} from "\.\/agent-user-response-store"/);
   assert.match(screenSource, /isMessageQueuePaused/);
   assert.match(screenSource, /onPauseMessageQueue: handlePauseMessageQueue/);
   assert.match(screenSource, /onResumeMessageQueue: handleResumeMessageQueue/);

@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
-} from '@dotagents/shared/agent-user-response-store';
+} from '@dotagents/shared/session-presentation';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
 

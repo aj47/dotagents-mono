@@ -4,6 +4,10 @@ import {
   type AgentConversationState,
 } from "./conversation-state"
 export type { AgentConversationState } from "./conversation-state"
+export {
+  getAgentResponseHistoryMobileRenderState,
+  type AgentResponseHistoryMobileAnimationState,
+} from "./agent-user-response-store"
 import {
   applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
