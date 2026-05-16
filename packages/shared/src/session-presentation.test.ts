@@ -3836,6 +3836,10 @@ describe("session presentation semantics", () => {
     })
     expect(getChatRuntimeToolApprovalDesktopSurfaceState()).toBe(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop)
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop.contentDisabledClassName).toBe("opacity-60")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop.argumentsToggleIconClassName).toContain("transition-transform")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop.buttonIconClassName).toBe("mr-1 h-3 w-3")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop.approveButtonSpinnerIconClassName).toContain("animate-spin")
+    expect(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop.hotkeysSeparatorClassName).toBe("opacity-40")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsToggle.flexDirection).toBe("row")
     expect(TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsToggleIcon).toMatchObject({
       collapsedName: "chevron-forward",

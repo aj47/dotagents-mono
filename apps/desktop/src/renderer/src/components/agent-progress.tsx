@@ -2113,7 +2113,12 @@ const ToolApprovalBubble: React.FC<{
             aria-expanded={approvalInteraction.argumentsToggle.ariaExpanded}
             aria-label={approvalInteraction.argumentsToggle.accessibilityLabel}
           >
-            <ChevronRight className={cn("h-3 w-3 transition-transform", showArgs && "rotate-90")} />
+            <ChevronRight
+              className={cn(
+                approvalSurface.argumentsToggleIconClassName,
+                showArgs && approvalSurface.argumentsToggleIconExpandedClassName,
+              )}
+            />
             {approvalInteraction.argumentsToggle.label}
           </button>
           {showArgs && (
@@ -2135,7 +2140,7 @@ const ToolApprovalBubble: React.FC<{
               aria-label={approvalInteraction.denyButton.accessibilityLabel}
               title={approvalCopy.denyHotkeyTitle}
             >
-              <XCircle className="mr-1 h-3 w-3" />
+              <XCircle className={approvalSurface.buttonIconClassName} />
               {approvalInteraction.denyButton.label}
             </Button>
             <Button
@@ -2153,12 +2158,12 @@ const ToolApprovalBubble: React.FC<{
             >
               {approvalInteraction.approveButton.isDisabled ? (
                 <>
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  <Loader2 className={approvalSurface.approveButtonSpinnerIconClassName} />
                   {approvalInteraction.approveButton.label}
                 </>
               ) : (
                 <>
-                  <Check className="mr-1 h-3 w-3" />
+                  <Check className={approvalSurface.buttonIconClassName} />
                   {approvalInteraction.approveButton.label}
                 </>
               )}
@@ -2171,7 +2176,7 @@ const ToolApprovalBubble: React.FC<{
                 <kbd className={approvalSurface.approveKeyClassName}>Space</kbd>
                 <span>{approvalCopy.approveHotkeyLabel}</span>
               </div>
-              <span className="opacity-40" aria-hidden="true">•</span>
+              <span className={approvalSurface.hotkeysSeparatorClassName} aria-hidden="true">•</span>
               <div className="flex flex-wrap items-center gap-1">
                 <kbd className={approvalSurface.denyKeyClassName}>Shift+Space</kbd>
                 <span>{approvalCopy.denyHotkeyLabel}</span>
