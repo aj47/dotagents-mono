@@ -946,6 +946,62 @@ type QueuedMessageMobileActionSurface =
   MessageQueuePanelMobileSurfaceRenderState['surface']['actions'];
 type QueuedMessageMobileEditSurface =
   MessageQueuePanelMobileSurfaceRenderState['surface']['edit'];
+type QueuedMessageMobileItemSurface =
+  MessageQueuePanelMobileSurfaceRenderState['surface']['item'];
+
+export interface QueuedMessageItemMobileStyleSlotsInput {
+  surface: QueuedMessageMobileItemSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['item'];
+  presentation: Pick<QueuedMessageItemPresentation, 'isFailed' | 'isProcessing'>;
+  statusColor: string;
+  statusMetaColor: string;
+}
+
+export interface QueuedMessageItemMobileStyleSlots {
+  container: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+    backgroundColor: string;
+  };
+  row: {
+    flexDirection: QueuedMessageMobileItemSurface['rowFlexDirection'];
+    alignItems: QueuedMessageMobileItemSurface['rowAlignItems'];
+    gap: number;
+  };
+  content: {
+    flex: number;
+    minWidth: number;
+  };
+  messageText: {
+    fontSize: number;
+    color: string;
+  };
+  errorText: {
+    fontSize: number;
+    color: string;
+    marginTop: number;
+  };
+  metaRow: {
+    flexDirection: QueuedMessageMobileItemSurface['metaFlexDirection'];
+    alignItems: QueuedMessageMobileItemSurface['metaAlignItems'];
+    flexWrap: QueuedMessageMobileItemSurface['metaFlexWrap'];
+    gap: number;
+    marginTop: number;
+  };
+  metaText: {
+    fontSize: number;
+    color: string;
+  };
+  expandButton: {
+    flexDirection: QueuedMessageMobileItemSurface['expandButtonFlexDirection'];
+    alignItems: QueuedMessageMobileItemSurface['expandButtonAlignItems'];
+  };
+  expandText: {
+    fontSize: number;
+    color: string;
+    marginLeft: number;
+  };
+}
 
 export interface QueuedMessageActionButtonMobileStyleSlotsInput {
   surface: QueuedMessageMobileActionSurface;
@@ -1119,6 +1175,64 @@ export function getQueuedMessageItemMobileRenderState({
       : presentation.isProcessing
         ? itemColors.processingMetaColor
         : itemColors.metaColor,
+  };
+}
+
+export function createQueuedMessageItemMobileStyleSlots({
+  surface,
+  colors,
+  presentation,
+  statusColor,
+  statusMetaColor,
+}: QueuedMessageItemMobileStyleSlotsInput): QueuedMessageItemMobileStyleSlots {
+  return {
+    container: {
+      paddingHorizontal: surface.paddingHorizontal,
+      paddingVertical: surface.paddingVertical,
+      backgroundColor: presentation.isFailed
+        ? colors.failedBackgroundColor
+        : presentation.isProcessing
+          ? colors.processingBackgroundColor
+          : colors.transparentBackgroundColor,
+    },
+    row: {
+      flexDirection: surface.rowFlexDirection,
+      alignItems: surface.rowAlignItems,
+      gap: surface.rowGap,
+    },
+    content: {
+      flex: surface.contentFlex,
+      minWidth: surface.contentMinWidth,
+    },
+    messageText: {
+      fontSize: surface.message.fontSize,
+      color: statusColor,
+    },
+    errorText: {
+      fontSize: surface.errorFontSize,
+      color: colors.errorColor,
+      marginTop: surface.errorMarginTop,
+    },
+    metaRow: {
+      flexDirection: surface.metaFlexDirection,
+      alignItems: surface.metaAlignItems,
+      flexWrap: surface.metaFlexWrap,
+      gap: surface.metaGap,
+      marginTop: surface.metaMarginTop,
+    },
+    metaText: {
+      fontSize: surface.metaFontSize,
+      color: statusMetaColor,
+    },
+    expandButton: {
+      flexDirection: surface.expandButtonFlexDirection,
+      alignItems: surface.expandButtonAlignItems,
+    },
+    expandText: {
+      fontSize: surface.expandTextFontSize,
+      color: colors.expandTextColor,
+      marginLeft: surface.expandTextMarginLeft,
+    },
   };
 }
 

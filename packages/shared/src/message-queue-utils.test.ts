@@ -9,6 +9,7 @@ import {
   clearQueuedMessages,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageEditMobileStyleSlots,
+  createQueuedMessageItemMobileStyleSlots,
   enqueueQueuedMessage,
   canEditQueuedMessage,
   canMutateQueuedMessage,
@@ -496,6 +497,60 @@ describe('message-queue-utils', () => {
     });
     const mobileQueueSurfaceRenderState = getMessageQueuePanelMobileSurfaceRenderState({
       colors: mobileMessageQueuePalette,
+    });
+    expect(createQueuedMessageItemMobileStyleSlots({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      colors: mobileQueueSurfaceRenderState.colors.item,
+      presentation: {
+        isFailed: true,
+        isProcessing: false,
+      },
+      statusColor: mobileQueueSurfaceRenderState.colors.item.failedColor,
+      statusMetaColor: mobileQueueSurfaceRenderState.colors.item.failedMetaColor,
+    })).toEqual({
+      container: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: 'rgba(220, 38, 38, 0.08)',
+      },
+      row: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+      },
+      content: {
+        flex: 1,
+        minWidth: 0,
+      },
+      messageText: {
+        fontSize: 14,
+        color: '#dc2626',
+      },
+      errorText: {
+        fontSize: 12,
+        color: 'rgba(220, 38, 38, 0.8)',
+        marginTop: 4,
+      },
+      metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 4,
+      },
+      metaText: {
+        fontSize: 12,
+        color: 'rgba(220, 38, 38, 0.7)',
+      },
+      expandButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+      },
+      expandText: {
+        fontSize: 12,
+        color: '#737373',
+        marginLeft: 2,
+      },
     });
     expect(createQueuedMessageActionButtonMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.actions,

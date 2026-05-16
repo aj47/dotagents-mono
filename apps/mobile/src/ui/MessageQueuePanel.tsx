@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageEditMobileStyleSlots,
+  createQueuedMessageItemMobileStyleSlots,
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
@@ -85,6 +86,13 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const statusColor = queuedMessageRenderState.statusColor;
   const statusMetaColor = queuedMessageRenderState.statusMetaColor;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
+  const itemStyleSlots = createQueuedMessageItemMobileStyleSlots({
+    surface: itemSurface,
+    colors: itemColors,
+    presentation: messagePresentation,
+    statusColor,
+    statusMetaColor,
+  });
   const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots({
     surface: actionSurface,
     colors: actionColors,
@@ -127,51 +135,31 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
 
   const styles = StyleSheet.create({
     container: {
-      paddingHorizontal: itemSurface.paddingHorizontal,
-      paddingVertical: itemSurface.paddingVertical,
-      backgroundColor: isFailed
-        ? itemColors.failedBackgroundColor
-        : isProcessing
-        ? itemColors.processingBackgroundColor
-        : itemColors.transparentBackgroundColor,
+      ...itemStyleSlots.container,
     },
     row: {
-      flexDirection: itemSurface.rowFlexDirection,
-      alignItems: itemSurface.rowAlignItems,
-      gap: itemSurface.rowGap,
+      ...itemStyleSlots.row,
     },
     content: {
-      flex: itemSurface.contentFlex,
-      minWidth: itemSurface.contentMinWidth,
+      ...itemStyleSlots.content,
     },
     messageText: {
-      fontSize: itemSurface.message.fontSize,
-      color: statusColor,
+      ...itemStyleSlots.messageText,
     },
     errorText: {
-      fontSize: itemSurface.errorFontSize,
-      color: itemColors.errorColor,
-      marginTop: itemSurface.errorMarginTop,
+      ...itemStyleSlots.errorText,
     },
     metaRow: {
-      flexDirection: itemSurface.metaFlexDirection,
-      alignItems: itemSurface.metaAlignItems,
-      flexWrap: itemSurface.metaFlexWrap,
-      gap: itemSurface.metaGap,
-      marginTop: itemSurface.metaMarginTop,
+      ...itemStyleSlots.metaRow,
     },
     metaText: {
-      fontSize: itemSurface.metaFontSize,
-      color: statusMetaColor,
+      ...itemStyleSlots.metaText,
     },
     expandButton: {
-      flexDirection: itemSurface.expandButtonFlexDirection,
-      alignItems: itemSurface.expandButtonAlignItems,
+      ...itemStyleSlots.expandButton,
     },
     expandText: {
-      fontSize: itemSurface.expandTextFontSize,
-      color: itemColors.expandTextColor,
-      marginLeft: itemSurface.expandTextMarginLeft,
+      ...itemStyleSlots.expandText,
     },
     actions: {
       flexDirection: actionSurface.flexDirection,
