@@ -86,6 +86,7 @@ import {
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
+  createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
@@ -7077,6 +7078,58 @@ describe("session presentation semantics", () => {
         voiceRows: ["voice-row"],
         panelStyle: "debug-panel-style",
         textStyle: "debug-text-style",
+      },
+    })
+    const dockParts = createChatRuntimeConversationDockMobilePropsParts({
+      responseHistoryPanel: {
+        responses: ["response-event"],
+      },
+      scrollToBottomButton: {
+        renderState: "scroll-button-state",
+      },
+      voiceOverlay: {
+        renderState: "voice-overlay-state",
+      },
+      queuePanel: {
+        renderState: "queue-panel-state",
+      },
+      connectionBanner: {
+        renderState: "connection-banner-state",
+      },
+      composer: {
+        value: "composer-value",
+      },
+      styles: {
+        scrollToBottomButtonStyle: "scroll-button-style",
+        voiceOverlay: "voice-overlay-styles",
+        queuePanelStyle: "queue-panel-style",
+        connectionBanner: "connection-banner-styles",
+        composer: "composer-styles",
+      },
+    })
+    expect(dockParts).toEqual({
+      responseHistoryPanel: {
+        responses: ["response-event"],
+      },
+      scrollToBottomButton: {
+        renderState: "scroll-button-state",
+        style: "scroll-button-style",
+      },
+      voiceOverlay: {
+        renderState: "voice-overlay-state",
+        styles: "voice-overlay-styles",
+      },
+      queuePanel: {
+        renderState: "queue-panel-state",
+        style: "queue-panel-style",
+      },
+      connectionBanner: {
+        renderState: "connection-banner-state",
+        styles: "connection-banner-styles",
+      },
+      composer: {
+        value: "composer-value",
+        styles: "composer-styles",
       },
     })
     const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({

@@ -2155,6 +2155,65 @@ export interface ChatRuntimeConversationViewportMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationDockMobilePropsPartsInput<
+  TResponseHistoryPanel extends object = Record<string, never>,
+  TScrollToBottomButton extends object = Record<string, never>,
+  TVoiceOverlay extends object = Record<string, never>,
+  TQueuePanel extends object = Record<string, never>,
+  TConnectionBanner extends object = Record<string, never>,
+  TComposer extends object = Record<string, never>,
+  TScrollToBottomButtonStyle = unknown,
+  TVoiceOverlayStyles = unknown,
+  TQueuePanelStyle = unknown,
+  TConnectionBannerStyles = unknown,
+  TComposerStyles = unknown,
+> {
+  responseHistoryPanel: TResponseHistoryPanel
+  scrollToBottomButton: TScrollToBottomButton
+  voiceOverlay: TVoiceOverlay
+  queuePanel: TQueuePanel
+  connectionBanner: TConnectionBanner
+  composer: TComposer
+  styles: {
+    scrollToBottomButtonStyle: TScrollToBottomButtonStyle
+    voiceOverlay: TVoiceOverlayStyles
+    queuePanelStyle: TQueuePanelStyle
+    connectionBanner: TConnectionBannerStyles
+    composer: TComposerStyles
+  }
+}
+
+export interface ChatRuntimeConversationDockMobilePropsParts<
+  TResponseHistoryPanel extends object = Record<string, never>,
+  TScrollToBottomButton extends object = Record<string, never>,
+  TVoiceOverlay extends object = Record<string, never>,
+  TQueuePanel extends object = Record<string, never>,
+  TConnectionBanner extends object = Record<string, never>,
+  TComposer extends object = Record<string, never>,
+  TScrollToBottomButtonStyle = unknown,
+  TVoiceOverlayStyles = unknown,
+  TQueuePanelStyle = unknown,
+  TConnectionBannerStyles = unknown,
+  TComposerStyles = unknown,
+> {
+  responseHistoryPanel: TResponseHistoryPanel
+  scrollToBottomButton: TScrollToBottomButton & {
+    style: TScrollToBottomButtonStyle
+  }
+  voiceOverlay: TVoiceOverlay & {
+    styles: TVoiceOverlayStyles
+  }
+  queuePanel: TQueuePanel & {
+    style: TQueuePanelStyle
+  }
+  connectionBanner: TConnectionBanner & {
+    styles: TConnectionBannerStyles
+  }
+  composer: TComposer & {
+    styles: TComposerStyles
+  }
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13942,6 +14001,76 @@ export function createChatRuntimeConversationViewportMobilePropsParts<
       ...debugPanels,
       panelStyle: styles.debugPanels.panelStyle,
       textStyle: styles.debugPanels.textStyle,
+    },
+  }
+}
+
+export function createChatRuntimeConversationDockMobilePropsParts<
+  TResponseHistoryPanel extends object,
+  TScrollToBottomButton extends object,
+  TVoiceOverlay extends object,
+  TQueuePanel extends object,
+  TConnectionBanner extends object,
+  TComposer extends object,
+  TScrollToBottomButtonStyle,
+  TVoiceOverlayStyles,
+  TQueuePanelStyle,
+  TConnectionBannerStyles,
+  TComposerStyles,
+>({
+  responseHistoryPanel,
+  scrollToBottomButton,
+  voiceOverlay,
+  queuePanel,
+  connectionBanner,
+  composer,
+  styles,
+}: ChatRuntimeConversationDockMobilePropsPartsInput<
+  TResponseHistoryPanel,
+  TScrollToBottomButton,
+  TVoiceOverlay,
+  TQueuePanel,
+  TConnectionBanner,
+  TComposer,
+  TScrollToBottomButtonStyle,
+  TVoiceOverlayStyles,
+  TQueuePanelStyle,
+  TConnectionBannerStyles,
+  TComposerStyles
+>): ChatRuntimeConversationDockMobilePropsParts<
+  TResponseHistoryPanel,
+  TScrollToBottomButton,
+  TVoiceOverlay,
+  TQueuePanel,
+  TConnectionBanner,
+  TComposer,
+  TScrollToBottomButtonStyle,
+  TVoiceOverlayStyles,
+  TQueuePanelStyle,
+  TConnectionBannerStyles,
+  TComposerStyles
+> {
+  return {
+    responseHistoryPanel,
+    scrollToBottomButton: {
+      ...scrollToBottomButton,
+      style: styles.scrollToBottomButtonStyle,
+    },
+    voiceOverlay: {
+      ...voiceOverlay,
+      styles: styles.voiceOverlay,
+    },
+    queuePanel: {
+      ...queuePanel,
+      style: styles.queuePanelStyle,
+    },
+    connectionBanner: {
+      ...connectionBanner,
+      styles: styles.connectionBanner,
+    },
+    composer: {
+      ...composer,
+      styles: styles.composer,
     },
   }
 }

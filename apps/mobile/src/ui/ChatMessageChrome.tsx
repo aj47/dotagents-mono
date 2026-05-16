@@ -80,6 +80,7 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
+  createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
@@ -9046,41 +9047,46 @@ export function ChatMessageRuntimeDock({
   composer,
   styles,
 }: ChatMessageRuntimeDockProps) {
+  const dockParts = createChatRuntimeConversationDockMobilePropsParts({
+    responseHistoryPanel,
+    scrollToBottomButton,
+    voiceOverlay,
+    queuePanel,
+    connectionBanner,
+    composer,
+    styles,
+  });
+
   return (
     <ChatMessageConversationDock
       responseHistoryPanel={(
         <ChatMessageResponseHistoryPanelDock
-          {...responseHistoryPanel}
+          {...dockParts.responseHistoryPanel}
         />
       )}
       scrollToBottomButton={(
         <ChatMessageScrollToBottomButton
-          {...scrollToBottomButton}
-          style={styles.scrollToBottomButtonStyle}
+          {...dockParts.scrollToBottomButton}
         />
       )}
       voiceOverlay={(
         <ChatComposerVoiceOverlay
-          {...voiceOverlay}
-          styles={styles.voiceOverlay}
+          {...dockParts.voiceOverlay}
         />
       )}
       queuePanel={(
         <ChatMessageQueuePanelDock
-          {...queuePanel}
-          style={styles.queuePanelStyle}
+          {...dockParts.queuePanel}
         />
       )}
       connectionBanner={(
         <ChatMessageConnectionBanner
-          {...connectionBanner}
-          styles={styles.connectionBanner}
+          {...dockParts.connectionBanner}
         />
       )}
       composer={(
         <ChatComposerRuntimeDock
-          {...composer}
-          styles={styles.composer}
+          {...dockParts.composer}
         />
       )}
     />
