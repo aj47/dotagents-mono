@@ -128,6 +128,7 @@ import {
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
   getChatComposerRuntimeFollowUpPresentationState,
+  getChatComposerRuntimeTextEntryMobileRenderState,
   getChatComposerRuntimeImageDataUrlBytes,
   getChatComposerRuntimeDockMobileRenderState,
   getChatComposerSubmitMobileActionState,
@@ -455,6 +456,20 @@ describe("session presentation semantics", () => {
       mode: "send",
       submitTitle: "Send message",
     })
+    const textEntryRenderState = getChatComposerRuntimeTextEntryMobileRenderState({
+      presentation: getFollowUpInputPresentation({ conversationState: "complete" }),
+      handsFree: false,
+      phase: "sleeping",
+      listening: false,
+      willCancel: false,
+      wakePhrase: "hey agent",
+      isWebPlatform: true,
+      speechPreviewText: "draft transcript",
+    })
+    expect(textEntryRenderState.accessibilityHint).toContain("Shift+Enter")
+    expect(textEntryRenderState.placeholder).toBe("Continue conversation...")
+    expect(textEntryRenderState.voiceStatusLiveRegionAnnouncement)
+      .toBe("Voice input captured. Transcript: draft transcript")
   })
 
   it("treats active attention signals as foreground without changing lifecycle", () => {

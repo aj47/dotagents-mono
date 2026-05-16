@@ -105,7 +105,10 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeFollowUpPresentationState\(\{[\s\S]*?conversationState,[\s\S]*?isResponding: responding,[\s\S]*?isQueueEnabled: messageQueueEnabled,[\s\S]*?\}\)/);
   assert.match(screenSource, /composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,/);
   assert.doesNotMatch(screenSource, /composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
-  assert.match(chatMessageChromeSource, /textEntryPlaceholderFallback\s+\?\? \(composerControlPresentation\.placeholder \|\| composerControlPresentation\.submitTitle\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /textEntryPlaceholderFallback\s+\?\? \(composerControlPresentation\.placeholder \|\| composerControlPresentation\.submitTitle\)/);
+  assert.match(chatMessageChromeSource, /const textEntryRenderState = getChatComposerRuntimeTextEntryMobileRenderState\(\{/);
+  assert.match(sessionPresentationSource, /export function getChatComposerRuntimeTextEntryMobileRenderState/);
+  assert.match(sessionPresentationSource, /const fallback = placeholderFallback \?\? \(presentation\.placeholder \|\| presentation\.submitTitle\)/);
   assert.match(sessionPresentationSource, /getChatComposerMobileActionAvailabilityRenderState\(\{\s+hasContent,\s+handsFree,\s+presentation,\s+\}\)/);
   assert.match(sessionPresentationSource, /getChatComposerSubmitMobileRenderState\(\{\s+presentation,\s+isHandsFree: handsFree,\s+isDisabled: actionAvailability\.submitAction\.isDisabled,\s+colors,\s+\}\)/);
   assert.doesNotMatch(screenSource, /const isComposerSubmitDisabled =/);

@@ -35,6 +35,7 @@ import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 import {
   getHandsFreeComposerCopyState,
   getHandsFreeComposerMobileSurfaceRenderState,
+  getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
   type HandsFreeComposerMobileSurfaceColorPalette,
 } from "./hands-free-controller"
@@ -123,11 +124,13 @@ import {
 } from "./message-display-utils"
 import {
   createButtonAccessibilityLabel,
+  createChatComposerAccessibilityHint,
   createMicControlAccessibilityHint,
   createMicControlAccessibilityLabel,
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
+  createVoiceInputLiveRegionAnnouncement,
 } from "./accessibility-utils"
 import {
   formatToolExecutionCount,
@@ -3265,6 +3268,25 @@ export interface ChatComposerRuntimeFollowUpPresentationStateInput {
   conversationState?: AgentConversationState | null
   isResponding?: boolean
   isQueueEnabled?: boolean
+}
+
+export interface ChatComposerRuntimeTextEntryMobileRenderStateInput {
+  presentation: Pick<FollowUpInputPresentation, "placeholder" | "submitTitle">
+  handsFree: boolean
+  phase: Parameters<typeof getHandsFreeComposerPlaceholder>[0]["phase"]
+  listening: boolean
+  willCancel: boolean
+  liveTranscript?: string
+  wakePhrase: Parameters<typeof getHandsFreeComposerPlaceholder>[0]["wakePhrase"]
+  placeholderFallback?: Parameters<typeof getHandsFreeComposerPlaceholder>[0]["fallback"]
+  isWebPlatform?: boolean
+  speechPreviewText?: string | null
+}
+
+export interface ChatComposerRuntimeTextEntryMobileRenderState {
+  accessibilityHint: string
+  placeholder: string
+  voiceStatusLiveRegionAnnouncement: string
 }
 
 export interface ChatComposerMicMobileWebPressStyleState {
@@ -7282,6 +7304,43 @@ export function getChatComposerRuntimeFollowUpPresentationState({
     conversationState: conversationState ?? (isResponding ? "running" : "complete"),
     isQueueEnabled,
   })
+}
+
+export function getChatComposerRuntimeTextEntryMobileRenderState({
+  presentation,
+  handsFree,
+  phase,
+  listening,
+  willCancel,
+  liveTranscript,
+  wakePhrase,
+  placeholderFallback,
+  isWebPlatform = false,
+  speechPreviewText,
+}: ChatComposerRuntimeTextEntryMobileRenderStateInput): ChatComposerRuntimeTextEntryMobileRenderState {
+  const fallback = placeholderFallback ?? (presentation.placeholder || presentation.submitTitle)
+
+  return {
+    accessibilityHint: createChatComposerAccessibilityHint({
+      handsFree,
+      listening,
+      isWeb: isWebPlatform,
+    }),
+    placeholder: getHandsFreeComposerPlaceholder({
+      handsFree,
+      phase,
+      wakePhrase,
+      listening,
+      fallback,
+    }),
+    voiceStatusLiveRegionAnnouncement: createVoiceInputLiveRegionAnnouncement({
+      listening,
+      handsFree,
+      willCancel,
+      liveTranscript,
+      sttPreview: speechPreviewText ?? undefined,
+    }),
+  }
 }
 
 export function getChatComposerMobileTextInputPlatformState(

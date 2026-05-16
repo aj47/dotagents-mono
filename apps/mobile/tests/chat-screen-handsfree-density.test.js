@@ -285,7 +285,8 @@ test('uses shared handsfree composer presentation helpers instead of local phase
   assert.doesNotMatch(screenSource, /getHandsFreeStatusSubtitle/);
   assert.match(chatMessageChromeSource, /getHandsFreeStatusSubtitle/);
   assert.doesNotMatch(screenSource, /getHandsFreeComposerPlaceholder/);
-  assert.match(chatMessageChromeSource, /getHandsFreeComposerPlaceholder/);
+  assert.doesNotMatch(chatMessageChromeSource, /getHandsFreeComposerPlaceholder/);
+  assert.match(sessionPresentationSource, /getHandsFreeComposerPlaceholder/);
   assert.doesNotMatch(screenSource, /getHandsFreeMicButtonLabel/);
   assert.match(sessionPresentationSource, /getHandsFreeMicButtonLabel/);
   assert.doesNotMatch(screenSource, /getHandsFreePauseResumeLabel/);

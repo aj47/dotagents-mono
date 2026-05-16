@@ -62,7 +62,6 @@ import {
   formatHandsFreeSleepingDebugMessage,
   getHandsFreeComposerControlState,
   getHandsFreeComposerDebugMessage,
-  getHandsFreeComposerPlaceholder,
   getHandsFreeStatusSubtitle,
   type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
@@ -74,10 +73,6 @@ import {
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
 } from '@dotagents/shared/tts-preprocessing';
-import {
-  createChatComposerAccessibilityHint,
-  createVoiceInputLiveRegionAnnouncement,
-} from '@dotagents/shared/accessibility-utils';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
@@ -177,6 +172,7 @@ import {
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getChatComposerRuntimeFollowUpPresentationState,
+  getChatComposerRuntimeTextEntryMobileRenderState,
   mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
   type ChatConversationHomePromptDeleteConfirmAlertState,
@@ -195,6 +191,7 @@ import {
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeFollowUpPresentationStateInput,
+  type ChatComposerRuntimeTextEntryMobileRenderStateInput,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
@@ -2765,6 +2762,9 @@ type ChatComposerRuntimeDockChromeInput =
 type ChatComposerRuntimeControlRenderStateInput =
   ChatComposerRuntimeControlMobileRenderStateInput;
 
+type ChatComposerRuntimeTextEntryRenderStateInput =
+  ChatComposerRuntimeTextEntryMobileRenderStateInput;
+
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
   speechPreviewText: ChatComposerSpeechPreviewProps['text'];
@@ -2799,12 +2799,12 @@ type ChatComposerRuntimeDockChromePropsInput = {
   textEntryValue: ChatComposerTextEntryProps['value'];
   onTextEntryChangeText: ChatComposerTextEntryProps['onChangeText'];
   onTextEntryKeyPress: ChatComposerTextEntryProps['onKeyPress'];
-  textEntryHandsFree: Parameters<typeof createChatComposerAccessibilityHint>[0]['handsFree'];
-  textEntryListening: Parameters<typeof createChatComposerAccessibilityHint>[0]['listening'];
-  textEntryWillCancel: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['willCancel'];
-  textEntryLiveTranscript: Parameters<typeof createVoiceInputLiveRegionAnnouncement>[0]['liveTranscript'];
-  textEntryWakePhrase: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['wakePhrase'];
-  textEntryPlaceholderFallback?: Parameters<typeof getHandsFreeComposerPlaceholder>[0]['fallback'];
+  textEntryHandsFree: ChatComposerRuntimeTextEntryRenderStateInput['handsFree'];
+  textEntryListening: ChatComposerRuntimeTextEntryRenderStateInput['listening'];
+  textEntryWillCancel: ChatComposerRuntimeTextEntryRenderStateInput['willCancel'];
+  textEntryLiveTranscript: ChatComposerRuntimeTextEntryRenderStateInput['liveTranscript'];
+  textEntryWakePhrase: ChatComposerRuntimeTextEntryRenderStateInput['wakePhrase'];
+  textEntryPlaceholderFallback?: ChatComposerRuntimeTextEntryRenderStateInput['placeholderFallback'];
   onQueueActionPress: ChatComposerLabeledActionButtonProps['onPress'];
   onSubmitActionPress: ChatComposerLabeledActionButtonProps['onPress'];
   onMicPressIn: ChatComposerMicButtonProps['onPressIn'];
@@ -7410,7 +7410,6 @@ export function createChatComposerRuntimeDockProps({
   onMicPress,
   micWrapperRef,
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
-  const isWebPlatform = chrome.textEntry.webAccessibility.isWebPlatform;
   const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState({
     conversationState: composerControlConversationState,
     isResponding: composerControlIsResponding,
@@ -7442,27 +7441,17 @@ export function createChatComposerRuntimeDockProps({
         foregroundOnly: handsFreeStatusForegroundOnly,
       })
     : undefined;
-  const textEntryAccessibilityHint = createChatComposerAccessibilityHint({
-    handsFree: textEntryHandsFree,
-    listening: textEntryListening,
-    isWeb: isWebPlatform,
-  });
-  const resolvedTextEntryPlaceholderFallback =
-    textEntryPlaceholderFallback
-      ?? (composerControlPresentation.placeholder || composerControlPresentation.submitTitle);
-  const textEntryPlaceholder = getHandsFreeComposerPlaceholder({
+  const textEntryRenderState = getChatComposerRuntimeTextEntryMobileRenderState({
+    presentation: composerControlPresentation,
     handsFree: textEntryHandsFree,
     phase: handsFreeStatusPhase,
-    wakePhrase: textEntryWakePhrase,
     listening: textEntryListening,
-    fallback: resolvedTextEntryPlaceholderFallback,
-  });
-  const textEntryVoiceStatusLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
-    listening: textEntryListening,
-    handsFree: textEntryHandsFree,
     willCancel: textEntryWillCancel,
     liveTranscript: textEntryLiveTranscript,
-    sttPreview: speechPreviewText ?? undefined,
+    wakePhrase: textEntryWakePhrase,
+    placeholderFallback: textEntryPlaceholderFallback,
+    isWebPlatform: chrome.textEntry.webAccessibility.isWebPlatform,
+    speechPreviewText,
   });
 
   return {
@@ -7511,9 +7500,9 @@ export function createChatComposerRuntimeDockProps({
       onChangeText: onTextEntryChangeText,
       onKeyPress: onTextEntryKeyPress,
       accessibilityLabel: mobileComposerControls.field.accessibilityLabel,
-      accessibilityHint: textEntryAccessibilityHint,
-      placeholder: textEntryPlaceholder,
-      voiceStatusLiveRegionAnnouncement: textEntryVoiceStatusLiveRegionAnnouncement,
+      accessibilityHint: textEntryRenderState.accessibilityHint,
+      placeholder: textEntryRenderState.placeholder,
+      voiceStatusLiveRegionAnnouncement: textEntryRenderState.voiceStatusLiveRegionAnnouncement,
       ...chrome.textEntry,
     },
     queueAction: {
