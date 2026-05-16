@@ -8,6 +8,7 @@ import {
   clearOperatorMessageQueueSummary,
   clearQueuedMessages,
   createQueuedMessageActionButtonMobileStyleSlots,
+  createQueuedMessageEditMobileStyleSlots,
   enqueueQueuedMessage,
   canEditQueuedMessage,
   canMutateQueuedMessage,
@@ -528,6 +529,49 @@ describe('message-queue-utils', () => {
         color: '#dc2626',
         fontSize: 12,
         fontWeight: '500',
+      },
+    });
+    expect(createQueuedMessageEditMobileStyleSlots({
+      surface: mobileQueueSurfaceRenderState.surface.edit,
+      colors: mobileQueueSurfaceRenderState.colors.edit,
+    })).toEqual({
+      container: {
+        gap: 8,
+      },
+      input: {
+        minHeight: 60,
+        padding: 8,
+        fontSize: 14,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#d4d4d4',
+        backgroundColor: '#ffffff',
+        color: '#171717',
+        textAlignVertical: 'top',
+      },
+      actions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 8,
+      },
+      button: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+      },
+      cancelButton: {
+        backgroundColor: 'transparent',
+      },
+      saveButton: {
+        backgroundColor: '#2563eb',
+      },
+      buttonText: {
+        fontSize: 12,
+        color: '#171717',
+      },
+      saveButtonText: {
+        fontSize: 12,
+        color: '#ffffff',
       },
     });
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.containerBaseClassName).toContain('transition-colors');

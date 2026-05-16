@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createQueuedMessageActionButtonMobileStyleSlots,
+  createQueuedMessageEditMobileStyleSlots,
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
@@ -87,6 +88,10 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots({
     surface: actionSurface,
     colors: actionColors,
+  });
+  const editStyleSlots = createQueuedMessageEditMobileStyleSlots({
+    surface: editSurface,
+    colors: editColors,
   });
 
   // Sync editText with message.text when it changes (only when not editing)
@@ -188,42 +193,28 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       ...actionButtonStyleSlots.removeText,
     },
     editContainer: {
-      gap: editSurface.containerGap,
+      ...editStyleSlots.container,
     },
     editInput: {
-      minHeight: editSurface.inputMinHeight,
-      padding: editSurface.inputPadding,
-      fontSize: editSurface.inputFontSize,
-      borderRadius: editSurface.inputBorderRadius,
-      borderWidth: editSurface.inputBorderWidth,
-      borderColor: editColors.inputBorderColor,
-      backgroundColor: editColors.inputBackgroundColor,
-      color: editColors.inputTextColor,
-      textAlignVertical: editSurface.inputTextAlignVertical,
+      ...editStyleSlots.input,
     },
     editActions: {
-      flexDirection: editSurface.actionsFlexDirection,
-      justifyContent: editSurface.actionsJustifyContent,
-      gap: editSurface.actionsGap,
+      ...editStyleSlots.actions,
     },
     editButton: {
-      paddingHorizontal: editSurface.buttonPaddingHorizontal,
-      paddingVertical: editSurface.buttonPaddingVertical,
-      borderRadius: editSurface.buttonBorderRadius,
+      ...editStyleSlots.button,
     },
     cancelButton: {
-      backgroundColor: editColors.cancelButtonBackgroundColor,
+      ...editStyleSlots.cancelButton,
     },
     saveButton: {
-      backgroundColor: editColors.saveButtonBackgroundColor,
+      ...editStyleSlots.saveButton,
     },
     buttonText: {
-      fontSize: editSurface.buttonTextFontSize,
-      color: editColors.buttonTextColor,
+      ...editStyleSlots.buttonText,
     },
     saveButtonText: {
-      fontSize: editSurface.buttonTextFontSize,
-      color: editColors.saveButtonTextColor,
+      ...editStyleSlots.saveButtonText,
     },
   });
 

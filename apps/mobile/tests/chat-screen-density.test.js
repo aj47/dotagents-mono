@@ -3488,7 +3488,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?formatQueuedMessageMetaLabel,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?formatQueuedMessageMetaLabel,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
@@ -3538,12 +3538,19 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /createQueuedMessageActionButtonMobileStyleSlots,/);
   assert.match(messageQueuePanelSource, /const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots\(\{\s+surface: actionSurface,\s+colors: actionColors,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createQueuedMessageEditMobileStyleSlots,/);
+  assert.match(messageQueuePanelSource, /const editStyleSlots = createQueuedMessageEditMobileStyleSlots\(\{\s+surface: editSurface,\s+colors: editColors,\s+\}\);/);
   assert.match(messageQueuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.button/);
   assert.match(messageQueuePanelSource, /retryActionText:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.retryText/);
   assert.match(messageQueuePanelSource, /editActionText:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.editText/);
   assert.match(messageQueuePanelSource, /removeActionText:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.removeText/);
+  assert.match(messageQueuePanelSource, /editInput:\s*\{[\s\S]*?\.\.\.editStyleSlots\.input/);
+  assert.match(messageQueuePanelSource, /editButton:\s*\{[\s\S]*?\.\.\.editStyleSlots\.button/);
+  assert.match(messageQueuePanelSource, /saveButtonText:\s*\{[\s\S]*?\.\.\.editStyleSlots\.saveButtonText/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*actionColors\.buttonBorderColor/);
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*actionSurface\.textFontWeight/);
+  assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*editColors\.inputBorderColor/);
+  assert.doesNotMatch(messageQueuePanelSource, /textAlignVertical:\s*editSurface\.inputTextAlignVertical/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);
   assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.removeName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.removeTextColor\}/);

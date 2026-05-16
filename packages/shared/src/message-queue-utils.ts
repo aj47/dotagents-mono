@@ -944,6 +944,8 @@ export interface QueuedMessageItemMobileRenderState {
 
 type QueuedMessageMobileActionSurface =
   MessageQueuePanelMobileSurfaceRenderState['surface']['actions'];
+type QueuedMessageMobileEditSurface =
+  MessageQueuePanelMobileSurfaceRenderState['surface']['edit'];
 
 export interface QueuedMessageActionButtonMobileStyleSlotsInput {
   surface: QueuedMessageMobileActionSurface;
@@ -976,6 +978,52 @@ export interface QueuedMessageActionButtonMobileStyleSlots {
   retryText: QueuedMessageActionTextMobileStyleSlot;
   editText: QueuedMessageActionTextMobileStyleSlot;
   removeText: QueuedMessageActionTextMobileStyleSlot;
+}
+
+export interface QueuedMessageEditMobileStyleSlotsInput {
+  surface: QueuedMessageMobileEditSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['edit'];
+}
+
+export interface QueuedMessageEditMobileStyleSlots {
+  container: {
+    gap: number;
+  };
+  input: {
+    minHeight: number;
+    padding: number;
+    fontSize: number;
+    borderRadius: number;
+    borderWidth: number;
+    borderColor: string;
+    backgroundColor: string;
+    color: string;
+    textAlignVertical: QueuedMessageMobileEditSurface['inputTextAlignVertical'];
+  };
+  actions: {
+    flexDirection: QueuedMessageMobileEditSurface['actionsFlexDirection'];
+    justifyContent: QueuedMessageMobileEditSurface['actionsJustifyContent'];
+    gap: number;
+  };
+  button: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+    borderRadius: number;
+  };
+  cancelButton: {
+    backgroundColor: string;
+  };
+  saveButton: {
+    backgroundColor: string;
+  };
+  buttonText: {
+    fontSize: number;
+    color: string;
+  };
+  saveButtonText: {
+    fontSize: number;
+    color: string;
+  };
 }
 
 export interface QueuedMessageItemDesktopRenderStateInput {
@@ -1102,6 +1150,52 @@ export function createQueuedMessageActionButtonMobileStyleSlots({
     retryText: createTextStyle(colors.retryTextColor),
     editText: createTextStyle(colors.editTextColor),
     removeText: createTextStyle(colors.removeTextColor),
+  };
+}
+
+export function createQueuedMessageEditMobileStyleSlots({
+  surface,
+  colors,
+}: QueuedMessageEditMobileStyleSlotsInput): QueuedMessageEditMobileStyleSlots {
+  return {
+    container: {
+      gap: surface.containerGap,
+    },
+    input: {
+      minHeight: surface.inputMinHeight,
+      padding: surface.inputPadding,
+      fontSize: surface.inputFontSize,
+      borderRadius: surface.inputBorderRadius,
+      borderWidth: surface.inputBorderWidth,
+      borderColor: colors.inputBorderColor,
+      backgroundColor: colors.inputBackgroundColor,
+      color: colors.inputTextColor,
+      textAlignVertical: surface.inputTextAlignVertical,
+    },
+    actions: {
+      flexDirection: surface.actionsFlexDirection,
+      justifyContent: surface.actionsJustifyContent,
+      gap: surface.actionsGap,
+    },
+    button: {
+      paddingHorizontal: surface.buttonPaddingHorizontal,
+      paddingVertical: surface.buttonPaddingVertical,
+      borderRadius: surface.buttonBorderRadius,
+    },
+    cancelButton: {
+      backgroundColor: colors.cancelButtonBackgroundColor,
+    },
+    saveButton: {
+      backgroundColor: colors.saveButtonBackgroundColor,
+    },
+    buttonText: {
+      fontSize: surface.buttonTextFontSize,
+      color: colors.buttonTextColor,
+    },
+    saveButtonText: {
+      fontSize: surface.buttonTextFontSize,
+      color: colors.saveButtonTextColor,
+    },
   };
 }
 

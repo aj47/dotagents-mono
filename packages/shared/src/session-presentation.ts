@@ -386,6 +386,7 @@ import {
 } from "./message-queue-utils"
 export {
   createQueuedMessageActionButtonMobileStyleSlots,
+  createQueuedMessageEditMobileStyleSlots,
   formatQueuedMessageMetaLabel,
   getMessageQueuePanelDesktopRenderState,
   getMessageQueuePanelMobileRenderState,
