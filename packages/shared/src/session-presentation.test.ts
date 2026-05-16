@@ -68,6 +68,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeRetryStatusMobileStyleSlots,
+  createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
@@ -3822,6 +3823,80 @@ describe("session presentation semantics", () => {
       preview: "Mobile did not surface generated step summaries",
       accessibilityRole: "text",
       accessibilityLabel: "Latest activity. Step 3 · High importance · 1 key finding. Compared mobile and desktop chat chrome. Mobile did not surface generated step summaries",
+    })
+    expect(createChatRuntimeStepSummaryMobileStyleSlots({
+      renderState: getChatRuntimeStepSummaryMobileRenderState({
+        summary: {
+          stepNumber: 3,
+          actionSummary: "Compared mobile and desktop chat chrome",
+          importance: "high",
+          keyFindings: ["Mobile did not surface generated step summaries"],
+        },
+        colors: {
+          info: "#2563eb",
+          foreground: "#0f172a",
+          mutedForeground: "#64748b",
+        },
+      }),
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        sm: 6,
+      },
+    })).toEqual({
+      card: {
+        gap: 4,
+        padding: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(37, 99, 235, 0.3)",
+        backgroundColor: "rgba(37, 99, 235, 0.08)",
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        minWidth: 0,
+      },
+      title: {
+        flexShrink: 1,
+        minWidth: 0,
+        color: "#2563eb",
+        fontSize: 11,
+        fontWeight: "700",
+      },
+      badge: {
+        marginLeft: "auto",
+        maxWidth: "56%",
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 6,
+        backgroundColor: "rgba(37, 99, 235, 0.12)",
+      },
+      badgeText: {
+        color: "#2563eb",
+        fontSize: 10,
+        fontWeight: "700",
+      },
+      action: {
+        color: "#0f172a",
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: "600",
+      },
+      meta: {
+        color: "#64748b",
+        fontSize: 11,
+        lineHeight: 15,
+      },
+      preview: {
+        color: "#64748b",
+        fontSize: 12,
+        lineHeight: 17,
+        marginTop: 2,
+      },
     })
     expect(getChatRuntimeStepSummaryState({
       summary: {

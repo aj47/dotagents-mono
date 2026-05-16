@@ -14,6 +14,7 @@ import {
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeRetryStatusMobileStyleSlots,
+  createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
@@ -96,8 +97,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
   });
   const stepSummaryStyleState = conversationChromeStyleState.stepSummary;
-  const stepSummarySurface = stepSummaryStyleState.surface;
-  const stepSummarySurfaceColors = stepSummaryStyleState.colors;
+  const stepSummaryStyleSlots = createChatRuntimeStepSummaryMobileStyleSlots({
+    renderState: stepSummaryStyleState,
+    spacing,
+    radius,
+  });
   const delegationCardStyleState = conversationChromeStyleState.delegationCard;
   const delegationCardSurface = delegationCardStyleState.surface;
   const delegationCardSurfaceColors = delegationCardStyleState.colors;
@@ -387,55 +391,28 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...retryStatusStyleSlots.description,
     },
     stepSummaryCard: {
-      gap: spacing[stepSummarySurface.gap],
-      padding: spacing[stepSummarySurface.padding],
-      borderRadius: radius[stepSummarySurface.borderRadius],
-      borderWidth: stepSummarySurface.borderWidth,
-      borderColor: stepSummarySurfaceColors.card.borderColor,
-      backgroundColor: stepSummarySurfaceColors.card.backgroundColor,
+      ...stepSummaryStyleSlots.card,
     },
     stepSummaryHeader: {
-      flexDirection: stepSummarySurface.headerFlexDirection,
-      alignItems: stepSummarySurface.headerAlignItems,
-      gap: spacing[stepSummarySurface.headerGap],
-      minWidth: stepSummarySurface.headerMinWidth,
+      ...stepSummaryStyleSlots.header,
     },
     stepSummaryTitle: {
-      flexShrink: stepSummarySurface.titleFlexShrink,
-      minWidth: stepSummarySurface.titleMinWidth,
-      color: stepSummarySurfaceColors.title.color,
-      fontSize: stepSummarySurface.titleFontSize,
-      fontWeight: stepSummarySurface.titleFontWeight,
+      ...stepSummaryStyleSlots.title,
     },
     stepSummaryBadge: {
-      marginLeft: stepSummarySurface.badgeMarginLeft,
-      maxWidth: stepSummarySurface.badgeMaxWidth,
-      paddingHorizontal: spacing[stepSummarySurface.badgePaddingHorizontal],
-      paddingVertical: stepSummarySurface.badgePaddingVertical,
-      borderRadius: radius[stepSummarySurface.badgeBorderRadius],
-      backgroundColor: stepSummarySurfaceColors.badge.backgroundColor,
+      ...stepSummaryStyleSlots.badge,
     },
     stepSummaryBadgeText: {
-      color: stepSummarySurfaceColors.badgeText.color,
-      fontSize: stepSummarySurface.badgeTextFontSize,
-      fontWeight: stepSummarySurface.badgeTextFontWeight,
+      ...stepSummaryStyleSlots.badgeText,
     },
     stepSummaryAction: {
-      color: stepSummarySurfaceColors.action.color,
-      fontSize: stepSummarySurface.actionFontSize,
-      lineHeight: stepSummarySurface.actionLineHeight,
-      fontWeight: stepSummarySurface.actionFontWeight,
+      ...stepSummaryStyleSlots.action,
     },
     stepSummaryMeta: {
-      color: stepSummarySurfaceColors.meta.color,
-      fontSize: stepSummarySurface.metaFontSize,
-      lineHeight: stepSummarySurface.metaLineHeight,
+      ...stepSummaryStyleSlots.meta,
     },
     stepSummaryPreview: {
-      color: stepSummarySurfaceColors.preview.color,
-      fontSize: stepSummarySurface.previewFontSize,
-      lineHeight: stepSummarySurface.previewLineHeight,
-      marginTop: stepSummarySurface.previewMarginTop,
+      ...stepSummaryStyleSlots.preview,
     },
     delegationCard: {
       gap: spacing[delegationCardSurface.gap],

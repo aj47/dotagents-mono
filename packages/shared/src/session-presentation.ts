@@ -2531,6 +2531,78 @@ export interface ChatRuntimeStepSummaryMobileRenderState {
   accessibilityLabel: string
 }
 
+type ChatRuntimeStepSummaryMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.stepSummary
+
+export type ChatRuntimeStepSummaryMobileSpacingToken =
+  | ChatRuntimeStepSummaryMobileSurface["gap"]
+  | ChatRuntimeStepSummaryMobileSurface["padding"]
+  | ChatRuntimeStepSummaryMobileSurface["headerGap"]
+  | ChatRuntimeStepSummaryMobileSurface["badgePaddingHorizontal"]
+
+export type ChatRuntimeStepSummaryMobileRadiusToken =
+  | ChatRuntimeStepSummaryMobileSurface["borderRadius"]
+  | ChatRuntimeStepSummaryMobileSurface["badgeBorderRadius"]
+
+export interface ChatRuntimeStepSummaryMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeStepSummaryMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeStepSummaryMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeStepSummaryMobileRadiusToken, number>>
+}
+
+export interface ChatRuntimeStepSummaryMobileStyleSlots {
+  card: {
+    gap: number
+    padding: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  header: {
+    flexDirection: ChatRuntimeStepSummaryMobileSurface["headerFlexDirection"]
+    alignItems: ChatRuntimeStepSummaryMobileSurface["headerAlignItems"]
+    gap: number
+    minWidth: number
+  }
+  title: {
+    flexShrink: number
+    minWidth: number
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeStepSummaryMobileSurface["titleFontWeight"]
+  }
+  badge: {
+    marginLeft: ChatRuntimeStepSummaryMobileSurface["badgeMarginLeft"]
+    maxWidth: ChatRuntimeStepSummaryMobileSurface["badgeMaxWidth"]
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    backgroundColor: string
+  }
+  badgeText: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeStepSummaryMobileSurface["badgeTextFontWeight"]
+  }
+  action: {
+    color: string
+    fontSize: number
+    lineHeight: number
+    fontWeight: ChatRuntimeStepSummaryMobileSurface["actionFontWeight"]
+  }
+  meta: {
+    color: string
+    fontSize: number
+    lineHeight: number
+  }
+  preview: {
+    color: string
+    fontSize: number
+    lineHeight: number
+    marginTop: number
+  }
+}
+
 export type ChatRuntimeDelegationCardMobileColorToken =
   | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.delegationCard.borderColorToken
   | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.delegationCard.backgroundColorToken
@@ -11575,6 +11647,69 @@ export function getChatRuntimeStepSummaryMobileRenderState({
     preview: stepSummary.preview,
     accessibilityRole: surface.accessibilityRole,
     accessibilityLabel: stepSummary.accessibilityLabel,
+  }
+}
+
+export function createChatRuntimeStepSummaryMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatRuntimeStepSummaryMobileStyleSlotsInput): ChatRuntimeStepSummaryMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    card: {
+      gap: spacing[surface.gap],
+      padding: spacing[surface.padding],
+      borderRadius: radius[surface.borderRadius],
+      borderWidth: surface.borderWidth,
+      borderColor: colors.card.borderColor,
+      backgroundColor: colors.card.backgroundColor,
+    },
+    header: {
+      flexDirection: surface.headerFlexDirection,
+      alignItems: surface.headerAlignItems,
+      gap: spacing[surface.headerGap],
+      minWidth: surface.headerMinWidth,
+    },
+    title: {
+      flexShrink: surface.titleFlexShrink,
+      minWidth: surface.titleMinWidth,
+      color: colors.title.color,
+      fontSize: surface.titleFontSize,
+      fontWeight: surface.titleFontWeight,
+    },
+    badge: {
+      marginLeft: surface.badgeMarginLeft,
+      maxWidth: surface.badgeMaxWidth,
+      paddingHorizontal: spacing[surface.badgePaddingHorizontal],
+      paddingVertical: surface.badgePaddingVertical,
+      borderRadius: radius[surface.badgeBorderRadius],
+      backgroundColor: colors.badge.backgroundColor,
+    },
+    badgeText: {
+      color: colors.badgeText.color,
+      fontSize: surface.badgeTextFontSize,
+      fontWeight: surface.badgeTextFontWeight,
+    },
+    action: {
+      color: colors.action.color,
+      fontSize: surface.actionFontSize,
+      lineHeight: surface.actionLineHeight,
+      fontWeight: surface.actionFontWeight,
+    },
+    meta: {
+      color: colors.meta.color,
+      fontSize: surface.metaFontSize,
+      lineHeight: surface.metaLineHeight,
+    },
+    preview: {
+      color: colors.preview.color,
+      fontSize: surface.previewFontSize,
+      lineHeight: surface.previewLineHeight,
+      marginTop: surface.previewMarginTop,
+    },
   }
 }
 
