@@ -20,6 +20,7 @@ import {
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeToolActivityGroupMobileStyleSlots,
+  createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -174,8 +175,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
   const handsFreeSurfaceColors = handsFreeStyleState.colors;
   const toolApprovalStyleState = threadChromeStyleState.toolApproval;
-  const toolApprovalSurface = toolApprovalStyleState.surface;
-  const toolApprovalSurfaceColors = toolApprovalStyleState.colors;
+  const toolApprovalStyleSlots = createChatRuntimeToolApprovalMobileStyleSlots({
+    renderState: toolApprovalStyleState,
+    spacing,
+    radius,
+    platform: mobilePlatform,
+  });
   const mobileMessageThreadStyleState = threadChromeStyleState.messageThread;
   const mobileMessageStyleState = mobileMessageThreadStyleState.message;
   const mobileMessageSurface = mobileMessageStyleState.surface;
@@ -982,131 +987,69 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       lineHeight: voiceOverlaySurface.transcriptLineHeight,
       opacity: voiceOverlaySurface.transcriptOpacity,
     },
-	    toolApprovalCard: {
-	      gap: spacing[toolApprovalSurface.card.gap],
-	      padding: spacing[toolApprovalSurface.card.padding],
-	      borderRadius: radius[toolApprovalSurface.card.borderRadius],
-	      borderWidth: toolApprovalSurface.card.borderWidth,
-	      borderColor: toolApprovalSurfaceColors.card.borderColor,
-	      backgroundColor: toolApprovalSurfaceColors.card.backgroundColor,
-	    },
-	    toolApprovalHeader: {
-	      flexDirection: toolApprovalSurface.header.flexDirection,
-	      alignItems: toolApprovalSurface.header.alignItems,
-	      gap: spacing[toolApprovalSurface.header.gap],
-	    },
-	    toolApprovalContent: {
-	      gap: spacing[toolApprovalSurface.content.gap],
-	    },
-	    toolApprovalContentDisabled: {
-	      opacity: toolApprovalSurface.content.disabledOpacity,
-	    },
-	    toolApprovalTitle: {
-	      flex: toolApprovalSurface.title.flex,
-	      minWidth: toolApprovalSurface.title.minWidth,
-	      fontSize: toolApprovalSurface.title.fontSize,
-	      fontWeight: toolApprovalSurface.title.fontWeight,
-	      color: toolApprovalSurfaceColors.title.color,
+    toolApprovalCard: {
+      ...toolApprovalStyleSlots.card,
+    },
+    toolApprovalHeader: {
+      ...toolApprovalStyleSlots.header,
+    },
+    toolApprovalContent: {
+      ...toolApprovalStyleSlots.content,
+    },
+    toolApprovalContentDisabled: {
+      ...toolApprovalStyleSlots.contentDisabled,
+    },
+    toolApprovalTitle: {
+      ...toolApprovalStyleSlots.title,
     },
     toolApprovalToolRow: {
-      flexDirection: toolApprovalSurface.toolRow.flexDirection,
-      alignItems: toolApprovalSurface.toolRow.alignItems,
-      flexWrap: toolApprovalSurface.toolRow.flexWrap,
-      gap: spacing[toolApprovalSurface.toolRow.gap],
-      marginBottom: toolApprovalSurface.toolRow.marginBottom,
+      ...toolApprovalStyleSlots.toolRow,
     },
     toolApprovalToolLabel: {
-      fontSize: toolApprovalSurface.toolLabel.fontSize,
-      fontWeight: toolApprovalSurface.toolLabel.fontWeight,
-      color: toolApprovalSurfaceColors.toolLabel.color,
+      ...toolApprovalStyleSlots.toolLabel,
     },
     toolApprovalTool: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.toolName.fontFamilyByPlatform, mobilePlatform),
-      fontSize: toolApprovalSurface.toolName.fontSize,
-      color: toolApprovalSurfaceColors.toolName.color,
-      flexShrink: toolApprovalSurface.toolName.flexShrink,
+      ...toolApprovalStyleSlots.tool,
     },
     toolApprovalArgumentsPreview: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.argumentsPreview.fontFamilyByPlatform, mobilePlatform),
-      fontSize: toolApprovalSurface.argumentsPreview.fontSize,
-      lineHeight: toolApprovalSurface.argumentsPreview.lineHeight,
-      borderWidth: toolApprovalSurface.argumentsPreview.borderWidth,
-      borderRadius: radius[toolApprovalSurface.argumentsPreview.borderRadius],
-      paddingHorizontal: spacing[toolApprovalSurface.argumentsPreview.paddingHorizontal],
-      paddingVertical: toolApprovalSurface.argumentsPreview.paddingVertical,
-      borderColor: toolApprovalSurfaceColors.argumentsPreview.borderColor,
-      backgroundColor: toolApprovalSurfaceColors.argumentsPreview.backgroundColor,
-      color: toolApprovalSurfaceColors.argumentsPreview.color,
+      ...toolApprovalStyleSlots.argumentsPreview,
     },
     toolApprovalArgumentsToggle: {
-      flexDirection: toolApprovalSurface.argumentsToggle.flexDirection,
-      alignItems: toolApprovalSurface.argumentsToggle.alignItems,
-      alignSelf: toolApprovalSurface.argumentsToggle.alignSelf,
-      gap: toolApprovalSurface.argumentsToggle.gap,
-      marginTop: spacing[toolApprovalSurface.argumentsToggle.marginTop],
-      paddingVertical: toolApprovalSurface.argumentsToggle.paddingVertical,
+      ...toolApprovalStyleSlots.argumentsToggle,
     },
     toolApprovalArgumentsTogglePressed: {
-      opacity: toolApprovalSurface.argumentsToggle.pressedOpacity,
+      ...toolApprovalStyleSlots.argumentsTogglePressed,
     },
     toolApprovalArgumentsToggleText: {
-      fontSize: toolApprovalSurface.argumentsToggleText.fontSize,
-      fontWeight: toolApprovalSurface.argumentsToggleText.fontWeight,
-      color: toolApprovalSurfaceColors.argumentsToggleText.color,
+      ...toolApprovalStyleSlots.argumentsToggleText,
     },
     toolApprovalArgumentsScroll: {
-      marginTop: toolApprovalSurface.fullArguments.marginTop,
-      maxHeight: toolApprovalSurface.fullArguments.maxHeight,
-      borderRadius: radius[toolApprovalSurface.fullArguments.borderRadius],
-      backgroundColor: toolApprovalSurfaceColors.fullArguments.backgroundColor,
+      ...toolApprovalStyleSlots.argumentsScroll,
     },
     toolApprovalArgumentsFull: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolApprovalSurface.fullArguments.fontFamilyByPlatform, mobilePlatform),
-      fontSize: toolApprovalSurface.fullArguments.fontSize,
-      lineHeight: toolApprovalSurface.fullArguments.lineHeight,
-      padding: toolApprovalSurface.fullArguments.padding,
-      color: toolApprovalSurfaceColors.fullArguments.color,
+      ...toolApprovalStyleSlots.argumentsFull,
     },
     toolApprovalActions: {
-      flexDirection: toolApprovalSurface.actions.flexDirection,
-      justifyContent: toolApprovalSurface.actions.justifyContent,
-      flexWrap: toolApprovalSurface.actions.flexWrap,
-      gap: spacing[toolApprovalSurface.actions.gap],
-      marginTop: spacing[toolApprovalSurface.actions.marginTop],
+      ...toolApprovalStyleSlots.actions,
     },
-	    toolApprovalButton: {
-	      minHeight: toolApprovalSurface.button.minHeight,
-	      minWidth: toolApprovalSurface.button.minWidth,
-	      borderRadius: radius[toolApprovalSurface.button.borderRadius],
-	      paddingHorizontal: spacing[toolApprovalSurface.button.paddingHorizontal],
-	      paddingVertical: spacing[toolApprovalSurface.button.paddingVertical],
-	      flexDirection: toolApprovalSurface.button.flexDirection,
-	      alignItems: toolApprovalSurface.button.alignItems,
-	      justifyContent: toolApprovalSurface.button.justifyContent,
-	      gap: toolApprovalSurface.button.gap,
-	      flex: toolApprovalSurface.button.flex,
-	    },
+    toolApprovalButton: {
+      ...toolApprovalStyleSlots.button,
+    },
     toolApprovalButtonDisabled: {
-      opacity: toolApprovalSurface.disabledOpacity,
+      ...toolApprovalStyleSlots.buttonDisabled,
     },
-	    toolApprovalApproveButton: {
-	      backgroundColor: toolApprovalSurfaceColors.approveButton.backgroundColor,
-	    },
-	    toolApprovalApproveButtonText: {
-	      color: toolApprovalSurfaceColors.approveButtonText.color,
-	      fontSize: toolApprovalSurface.buttonText.fontSize,
-	      fontWeight: toolApprovalSurface.buttonText.fontWeight,
-	    },
-	    toolApprovalDenyButton: {
-	      borderWidth: toolApprovalSurface.buttonVariants.deny.borderWidth,
-	      borderColor: toolApprovalSurfaceColors.denyButton.borderColor,
-	      backgroundColor: toolApprovalSurfaceColors.denyButton.backgroundColor,
-	    },
-	    toolApprovalDenyButtonText: {
-	      color: toolApprovalSurfaceColors.denyButtonText.color,
-	      fontSize: toolApprovalSurface.buttonText.fontSize,
-	      fontWeight: toolApprovalSurface.buttonText.fontWeight,
-	    },
+    toolApprovalApproveButton: {
+      ...toolApprovalStyleSlots.approveButton,
+    },
+    toolApprovalApproveButtonText: {
+      ...toolApprovalStyleSlots.approveButtonText,
+    },
+    toolApprovalDenyButton: {
+      ...toolApprovalStyleSlots.denyButton,
+    },
+    toolApprovalDenyButtonText: {
+      ...toolApprovalStyleSlots.denyButtonText,
+    },
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
       marginTop: detailedToolExecution.card.marginTop,

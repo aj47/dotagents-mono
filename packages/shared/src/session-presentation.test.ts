@@ -74,6 +74,7 @@ import {
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeToolActivityGroupMobileStyleSlots,
+  createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -4701,6 +4702,143 @@ describe("session presentation semantics", () => {
       },
       denyButtonText: {
         color: "#dc2626",
+      },
+    })
+    expect(createChatRuntimeToolApprovalMobileStyleSlots({
+      renderState: getChatRuntimeToolApprovalMobileRenderState({
+        toolName: "write_file",
+        isArgumentsExpanded: false,
+        isResponding: false,
+        colors: toolApprovalSurfaceColors,
+      }),
+      spacing: { xs: 4, sm: 8, md: 12 },
+      radius: { sm: 6 },
+      platform: "android",
+    })).toEqual({
+      card: {
+        gap: 4,
+        padding: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(217, 119, 6, 0.35)",
+        backgroundColor: "rgba(217, 119, 6, 0.1)",
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
+      content: {
+        gap: 4,
+      },
+      contentDisabled: {
+        opacity: 0.6,
+      },
+      title: {
+        flex: 1,
+        minWidth: 0,
+        fontSize: 13,
+        fontWeight: "700",
+        color: "#d97706",
+      },
+      toolRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 4,
+        marginBottom: 2,
+      },
+      toolLabel: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: "#d97706",
+      },
+      tool: {
+        fontFamily: "monospace",
+        fontSize: 12,
+        color: "#0f172a",
+        flexShrink: 1,
+      },
+      argumentsPreview: {
+        fontFamily: "monospace",
+        fontSize: 11,
+        lineHeight: 15,
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingHorizontal: 4,
+        paddingVertical: 4,
+        borderColor: "rgba(217, 119, 6, 0.25)",
+        backgroundColor: "rgba(217, 119, 6, 0.08)",
+        color: "#64748b",
+      },
+      argumentsToggle: {
+        flexDirection: "row",
+        alignItems: "center",
+        alignSelf: "flex-start",
+        gap: 4,
+        marginTop: 4,
+        paddingVertical: 4,
+      },
+      argumentsTogglePressed: {
+        opacity: 0.7,
+      },
+      argumentsToggleText: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#d97706",
+      },
+      argumentsScroll: {
+        marginTop: 4,
+        maxHeight: 180,
+        borderRadius: 6,
+        backgroundColor: "rgba(217, 119, 6, 0.08)",
+      },
+      argumentsFull: {
+        fontFamily: "monospace",
+        fontSize: 10,
+        lineHeight: 14,
+        padding: 6,
+        color: "#0f172a",
+      },
+      actions: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        flexWrap: "wrap",
+        gap: 8,
+        marginTop: 4,
+      },
+      button: {
+        minHeight: 36,
+        minWidth: 84,
+        borderRadius: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        flex: 1,
+      },
+      buttonDisabled: {
+        opacity: 0.6,
+      },
+      approveButton: {
+        backgroundColor: "#16a34a",
+      },
+      approveButtonText: {
+        color: "#ffffff",
+        fontSize: 13,
+        fontWeight: "700",
+      },
+      denyButton: {
+        borderWidth: 1,
+        borderColor: "#dc2626",
+        backgroundColor: "#020617",
+      },
+      denyButtonText: {
+        color: "#dc2626",
+        fontSize: 13,
+        fontWeight: "700",
       },
     })
     expect(getChatRuntimeToolApprovalDesktopSurfaceState()).toBe(TOOL_APPROVAL_SURFACE_PRESENTATION.desktop)

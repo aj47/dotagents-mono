@@ -3818,6 +3818,162 @@ export interface ChatRuntimeToolApprovalMobileRenderState {
   }
 }
 
+type ChatRuntimeToolApprovalMobileSurface = typeof TOOL_APPROVAL_SURFACE_PRESENTATION.mobile
+
+export type ChatRuntimeToolApprovalMobileSpacingToken =
+  | ChatRuntimeToolApprovalMobileSurface["card"]["gap"]
+  | ChatRuntimeToolApprovalMobileSurface["card"]["padding"]
+  | ChatRuntimeToolApprovalMobileSurface["header"]["gap"]
+  | ChatRuntimeToolApprovalMobileSurface["content"]["gap"]
+  | ChatRuntimeToolApprovalMobileSurface["toolRow"]["gap"]
+  | ChatRuntimeToolApprovalMobileSurface["argumentsPreview"]["paddingHorizontal"]
+  | ChatRuntimeToolApprovalMobileSurface["argumentsToggle"]["marginTop"]
+  | ChatRuntimeToolApprovalMobileSurface["actions"]["gap"]
+  | ChatRuntimeToolApprovalMobileSurface["actions"]["marginTop"]
+  | ChatRuntimeToolApprovalMobileSurface["button"]["paddingHorizontal"]
+  | ChatRuntimeToolApprovalMobileSurface["button"]["paddingVertical"]
+
+export type ChatRuntimeToolApprovalMobileRadiusToken =
+  | ChatRuntimeToolApprovalMobileSurface["card"]["borderRadius"]
+  | ChatRuntimeToolApprovalMobileSurface["argumentsPreview"]["borderRadius"]
+  | ChatRuntimeToolApprovalMobileSurface["fullArguments"]["borderRadius"]
+  | ChatRuntimeToolApprovalMobileSurface["button"]["borderRadius"]
+
+export interface ChatRuntimeToolApprovalMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeToolApprovalMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeToolApprovalMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeToolApprovalMobileRadiusToken, number>>
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeToolApprovalMobileStyleSlots {
+  card: {
+    gap: number
+    padding: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  header: {
+    flexDirection: ChatRuntimeToolApprovalMobileSurface["header"]["flexDirection"]
+    alignItems: ChatRuntimeToolApprovalMobileSurface["header"]["alignItems"]
+    gap: number
+  }
+  content: {
+    gap: number
+  }
+  contentDisabled: {
+    opacity: number
+  }
+  title: {
+    flex: number
+    minWidth: number
+    fontSize: number
+    fontWeight: ChatRuntimeToolApprovalMobileSurface["title"]["fontWeight"]
+    color: string
+  }
+  toolRow: {
+    flexDirection: ChatRuntimeToolApprovalMobileSurface["toolRow"]["flexDirection"]
+    alignItems: ChatRuntimeToolApprovalMobileSurface["toolRow"]["alignItems"]
+    flexWrap: ChatRuntimeToolApprovalMobileSurface["toolRow"]["flexWrap"]
+    gap: number
+    marginBottom: number
+  }
+  toolLabel: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolApprovalMobileSurface["toolLabel"]["fontWeight"]
+    color: string
+  }
+  tool: {
+    fontFamily: string
+    fontSize: number
+    color: string
+    flexShrink: number
+  }
+  argumentsPreview: {
+    fontFamily: string
+    fontSize: number
+    lineHeight: number
+    borderWidth: number
+    borderRadius: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderColor: string
+    backgroundColor: string
+    color: string
+  }
+  argumentsToggle: {
+    flexDirection: ChatRuntimeToolApprovalMobileSurface["argumentsToggle"]["flexDirection"]
+    alignItems: ChatRuntimeToolApprovalMobileSurface["argumentsToggle"]["alignItems"]
+    alignSelf: ChatRuntimeToolApprovalMobileSurface["argumentsToggle"]["alignSelf"]
+    gap: number
+    marginTop: number
+    paddingVertical: number
+  }
+  argumentsTogglePressed: {
+    opacity: number
+  }
+  argumentsToggleText: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolApprovalMobileSurface["argumentsToggleText"]["fontWeight"]
+    color: string
+  }
+  argumentsScroll: {
+    marginTop: number
+    maxHeight: number
+    borderRadius: number
+    backgroundColor: string
+  }
+  argumentsFull: {
+    fontFamily: string
+    fontSize: number
+    lineHeight: number
+    padding: number
+    color: string
+  }
+  actions: {
+    flexDirection: ChatRuntimeToolApprovalMobileSurface["actions"]["flexDirection"]
+    justifyContent: ChatRuntimeToolApprovalMobileSurface["actions"]["justifyContent"]
+    flexWrap: ChatRuntimeToolApprovalMobileSurface["actions"]["flexWrap"]
+    gap: number
+    marginTop: number
+  }
+  button: {
+    minHeight: number
+    minWidth: number
+    borderRadius: number
+    paddingHorizontal: number
+    paddingVertical: number
+    flexDirection: ChatRuntimeToolApprovalMobileSurface["button"]["flexDirection"]
+    alignItems: ChatRuntimeToolApprovalMobileSurface["button"]["alignItems"]
+    justifyContent: ChatRuntimeToolApprovalMobileSurface["button"]["justifyContent"]
+    gap: number
+    flex: number
+  }
+  buttonDisabled: {
+    opacity: number
+  }
+  approveButton: {
+    backgroundColor: string
+  }
+  approveButtonText: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeToolApprovalMobileSurface["buttonText"]["fontWeight"]
+  }
+  denyButton: {
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  denyButtonText: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeToolApprovalMobileSurface["buttonText"]["fontWeight"]
+  }
+}
+
 export interface ChatRuntimeToolApprovalCardMobileRenderState {
   approvalId: string
   renderState: ChatRuntimeToolApprovalMobileRenderState
@@ -8927,6 +9083,153 @@ export function getChatRuntimeToolApprovalMobileRenderState({
         size: denyIcon.size,
         color: denyIconColors.color,
       },
+    },
+  }
+}
+
+export function createChatRuntimeToolApprovalMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  platform,
+}: ChatRuntimeToolApprovalMobileStyleSlotsInput): ChatRuntimeToolApprovalMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    card: {
+      gap: spacing[surface.card.gap],
+      padding: spacing[surface.card.padding],
+      borderRadius: radius[surface.card.borderRadius],
+      borderWidth: surface.card.borderWidth,
+      borderColor: colors.card.borderColor,
+      backgroundColor: colors.card.backgroundColor,
+    },
+    header: {
+      flexDirection: surface.header.flexDirection,
+      alignItems: surface.header.alignItems,
+      gap: spacing[surface.header.gap],
+    },
+    content: {
+      gap: spacing[surface.content.gap],
+    },
+    contentDisabled: {
+      opacity: surface.content.disabledOpacity,
+    },
+    title: {
+      flex: surface.title.flex,
+      minWidth: surface.title.minWidth,
+      fontSize: surface.title.fontSize,
+      fontWeight: surface.title.fontWeight,
+      color: colors.title.color,
+    },
+    toolRow: {
+      flexDirection: surface.toolRow.flexDirection,
+      alignItems: surface.toolRow.alignItems,
+      flexWrap: surface.toolRow.flexWrap,
+      gap: spacing[surface.toolRow.gap],
+      marginBottom: surface.toolRow.marginBottom,
+    },
+    toolLabel: {
+      fontSize: surface.toolLabel.fontSize,
+      fontWeight: surface.toolLabel.fontWeight,
+      color: colors.toolLabel.color,
+    },
+    tool: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.toolName.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.toolName.fontSize,
+      color: colors.toolName.color,
+      flexShrink: surface.toolName.flexShrink,
+    },
+    argumentsPreview: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.argumentsPreview.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.argumentsPreview.fontSize,
+      lineHeight: surface.argumentsPreview.lineHeight,
+      borderWidth: surface.argumentsPreview.borderWidth,
+      borderRadius: radius[surface.argumentsPreview.borderRadius],
+      paddingHorizontal: spacing[surface.argumentsPreview.paddingHorizontal],
+      paddingVertical: surface.argumentsPreview.paddingVertical,
+      borderColor: colors.argumentsPreview.borderColor,
+      backgroundColor: colors.argumentsPreview.backgroundColor,
+      color: colors.argumentsPreview.color,
+    },
+    argumentsToggle: {
+      flexDirection: surface.argumentsToggle.flexDirection,
+      alignItems: surface.argumentsToggle.alignItems,
+      alignSelf: surface.argumentsToggle.alignSelf,
+      gap: surface.argumentsToggle.gap,
+      marginTop: spacing[surface.argumentsToggle.marginTop],
+      paddingVertical: surface.argumentsToggle.paddingVertical,
+    },
+    argumentsTogglePressed: {
+      opacity: surface.argumentsToggle.pressedOpacity,
+    },
+    argumentsToggleText: {
+      fontSize: surface.argumentsToggleText.fontSize,
+      fontWeight: surface.argumentsToggleText.fontWeight,
+      color: colors.argumentsToggleText.color,
+    },
+    argumentsScroll: {
+      marginTop: surface.fullArguments.marginTop,
+      maxHeight: surface.fullArguments.maxHeight,
+      borderRadius: radius[surface.fullArguments.borderRadius],
+      backgroundColor: colors.fullArguments.backgroundColor,
+    },
+    argumentsFull: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.fullArguments.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.fullArguments.fontSize,
+      lineHeight: surface.fullArguments.lineHeight,
+      padding: surface.fullArguments.padding,
+      color: colors.fullArguments.color,
+    },
+    actions: {
+      flexDirection: surface.actions.flexDirection,
+      justifyContent: surface.actions.justifyContent,
+      flexWrap: surface.actions.flexWrap,
+      gap: spacing[surface.actions.gap],
+      marginTop: spacing[surface.actions.marginTop],
+    },
+    button: {
+      minHeight: surface.button.minHeight,
+      minWidth: surface.button.minWidth,
+      borderRadius: radius[surface.button.borderRadius],
+      paddingHorizontal: spacing[surface.button.paddingHorizontal],
+      paddingVertical: spacing[surface.button.paddingVertical],
+      flexDirection: surface.button.flexDirection,
+      alignItems: surface.button.alignItems,
+      justifyContent: surface.button.justifyContent,
+      gap: surface.button.gap,
+      flex: surface.button.flex,
+    },
+    buttonDisabled: {
+      opacity: surface.disabledOpacity,
+    },
+    approveButton: {
+      backgroundColor: colors.approveButton.backgroundColor,
+    },
+    approveButtonText: {
+      color: colors.approveButtonText.color,
+      fontSize: surface.buttonText.fontSize,
+      fontWeight: surface.buttonText.fontWeight,
+    },
+    denyButton: {
+      borderWidth: surface.buttonVariants.deny.borderWidth,
+      borderColor: colors.denyButton.borderColor,
+      backgroundColor: colors.denyButton.backgroundColor,
+    },
+    denyButtonText: {
+      color: colors.denyButtonText.color,
+      fontSize: surface.buttonText.fontSize,
+      fontWeight: surface.buttonText.fontWeight,
     },
   }
 }
