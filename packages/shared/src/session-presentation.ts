@@ -130,7 +130,9 @@ import {
 export {
   buildConversationImageAssetHttpUrl,
   buildConversationVideoAssetHttpUrl,
+  formatChatImageAttachmentErrorMessage,
   formatVideoAttachmentRequestFailedMessage,
+  getChatImageAttachmentDesktopComposerPreviewRenderState,
   getChatVideoAttachmentDesktopRenderState,
   getChatVideoAttachmentMobileRenderState,
   getChatImageAttachmentMobileAlertState,

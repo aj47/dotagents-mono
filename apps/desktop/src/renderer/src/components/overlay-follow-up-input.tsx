@@ -16,12 +16,10 @@ import {
   getChatComposerDesktopSurfaceState,
   getChatRuntimeCopyState,
   getFollowUpInputPresentation,
-  type FollowUpInputPresentation,
-} from "@dotagents/shared/session-presentation"
-import {
   formatChatImageAttachmentErrorMessage,
   getChatImageAttachmentDesktopComposerPreviewRenderState,
-} from "@dotagents/shared/conversation-media-assets"
+  type FollowUpInputPresentation,
+} from "@dotagents/shared/session-presentation"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,

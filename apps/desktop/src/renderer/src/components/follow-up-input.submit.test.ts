@@ -11,6 +11,11 @@ const tileSource = readFileSync(
   "utf8",
 )
 
+const textInputPanelSource = readFileSync(
+  new URL("./text-input-panel.tsx", import.meta.url),
+  "utf8",
+)
+
 const presentationSource = readFileSync(
   new URL("../../../../../../packages/shared/src/session-presentation.ts", import.meta.url),
   "utf8",
@@ -103,6 +108,14 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(mediaPresentationSource).toContain("tilePreviewClassName")
     expect(mediaPresentationSource).toContain("getChatImageAttachmentDesktopComposerPreviewRenderState")
     expect(mediaPresentationSource).toContain("getChatImageAttachmentCopyState")
+    expect(presentationSource).toContain("formatChatImageAttachmentErrorMessage")
+    expect(presentationSource).toContain("getChatImageAttachmentDesktopComposerPreviewRenderState")
+    expect(overlaySource).toContain('from "@dotagents/shared/session-presentation"')
+    expect(tileSource).toContain('from "@dotagents/shared/session-presentation"')
+    expect(textInputPanelSource).toContain('from "@dotagents/shared/session-presentation"')
+    expect(overlaySource).not.toContain('from "@dotagents/shared/conversation-media-assets"')
+    expect(tileSource).not.toContain('from "@dotagents/shared/conversation-media-assets"')
+    expect(textInputPanelSource).not.toContain('from "@dotagents/shared/conversation-media-assets"')
     expect(overlaySource).not.toContain("CHAT_COMPOSER_SURFACE_PRESENTATION")
     expect(tileSource).not.toContain("CHAT_COMPOSER_SURFACE_PRESENTATION")
     expect(overlaySource).not.toContain("CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION")

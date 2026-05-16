@@ -11,7 +11,7 @@ import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
 import { logUI } from "@renderer/lib/debug"
-import { formatChatImageAttachmentErrorMessage } from "@dotagents/shared/conversation-media-assets"
+import { formatChatImageAttachmentErrorMessage } from "@dotagents/shared/session-presentation"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,
