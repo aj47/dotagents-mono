@@ -2189,6 +2189,40 @@ export interface ChatRuntimeConversationRuntimeThreadMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeConversationRuntimeThreadListMobilePropsPartsInput<
+  TThreadState extends {
+    threadKey: ChatRuntimeConversationThreadKey
+    shouldRenderThread: boolean
+    groupRenderState: unknown
+    onToggleGroup?: unknown
+    body: unknown
+  } = ChatRuntimeConversationRenderableRuntimeThreadState<unknown>,
+  TStyles = unknown,
+> {
+  threadStates: readonly TThreadState[]
+  styles: TStyles
+}
+
+export interface ChatRuntimeConversationRuntimeThreadListMobilePropsParts<
+  TThreadState extends {
+    threadKey: ChatRuntimeConversationThreadKey
+    groupRenderState: unknown
+    onToggleGroup?: unknown
+    body: unknown
+  } = ChatRuntimeConversationRenderableRuntimeThreadState<unknown>,
+  TStyles = unknown,
+> {
+  threads: Array<{
+    key: TThreadState["threadKey"]
+    props: {
+      groupRenderState: TThreadState["groupRenderState"]
+      onToggleGroup: TThreadState["onToggleGroup"]
+      body: TThreadState["body"]
+      styles: TStyles
+    }
+  }>
+}
+
 export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
   TLoadingState extends object = Record<string, never>,
   THomeQuickStarts extends object = Record<string, never>,
@@ -14273,6 +14307,40 @@ export function createChatRuntimeConversationRuntimeThreadMobilePropsParts<
       },
       bodyStyles: styles.body,
     } : null,
+  }
+}
+
+export function createChatRuntimeConversationRuntimeThreadListMobilePropsParts<
+  TThreadState extends {
+    threadKey: ChatRuntimeConversationThreadKey
+    shouldRenderThread: boolean
+    groupRenderState: unknown
+    onToggleGroup?: unknown
+    body: unknown
+  },
+  TStyles,
+>({
+  threadStates,
+  styles,
+}: ChatRuntimeConversationRuntimeThreadListMobilePropsPartsInput<
+  TThreadState,
+  TStyles
+>): ChatRuntimeConversationRuntimeThreadListMobilePropsParts<
+  TThreadState,
+  TStyles
+> {
+  return {
+    threads: threadStates
+      .filter((threadState) => threadState.shouldRenderThread)
+      .map((threadState) => ({
+        key: threadState.threadKey,
+        props: {
+          groupRenderState: threadState.groupRenderState,
+          onToggleGroup: threadState.onToggleGroup,
+          body: threadState.body,
+          styles,
+        },
+      })),
   }
 }
 

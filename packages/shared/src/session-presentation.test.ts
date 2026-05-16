@@ -86,6 +86,7 @@ import {
   createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
+  createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationSurfaceMobilePropsParts,
@@ -7065,6 +7066,43 @@ describe("session presentation semantics", () => {
       shouldSkipThread: true,
       collapsedBoundary: null,
       bodySurface: null,
+    })
+    const runtimeThreadListParts = createChatRuntimeConversationRuntimeThreadListMobilePropsParts({
+      threadStates: [
+        {
+          threadKey: "thread-visible",
+          shouldRenderThread: true,
+          groupRenderState: {
+            groupKey: "group-1",
+            shouldRenderCollapsedHeader: false,
+          },
+          onToggleGroup: "toggle-group",
+          body: runtimeThreadBody,
+        },
+        {
+          threadKey: "thread-hidden",
+          shouldRenderThread: false,
+          groupRenderState: null,
+          body: null,
+        },
+      ],
+      styles: "runtime-thread-styles",
+    })
+    expect(runtimeThreadListParts).toEqual({
+      threads: [
+        {
+          key: "thread-visible",
+          props: {
+            groupRenderState: {
+              groupKey: "group-1",
+              shouldRenderCollapsedHeader: false,
+            },
+            onToggleGroup: "toggle-group",
+            body: runtimeThreadBody,
+            styles: "runtime-thread-styles",
+          },
+        },
+      ],
     })
     const viewportParts = createChatRuntimeConversationViewportMobilePropsParts({
       loadingState: {

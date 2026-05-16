@@ -82,6 +82,7 @@ import {
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
+  createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
@@ -2873,11 +2874,6 @@ type ChatMessageConversationToolActivityGroupThreadRenderStateInput =
 
 type ChatMessageConversationRenderableRuntimeThreadState =
   ChatRuntimeConversationRenderableRuntimeThreadState<ChatMessageThreadBodyPropsInput | null>;
-
-type ChatMessageConversationRuntimeThreadProps = {
-  threadState: ChatMessageConversationRenderableRuntimeThreadState;
-  styles: ChatMessageRuntimeThreadStyleSlots;
-};
 
 type ChatMessageConversationMessageRuntimeThreadStateInput =
   ChatRuntimeConversationMessageRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
@@ -7338,33 +7334,21 @@ export function ChatMessageRuntimeThread({
   );
 }
 
-export function ChatMessageConversationRuntimeThread({
-  threadState,
-  styles,
-}: ChatMessageConversationRuntimeThreadProps) {
-  if (!threadState.shouldRenderThread) return null;
-
-  return (
-    <ChatMessageRuntimeThread
-      groupRenderState={threadState.groupRenderState}
-      onToggleGroup={threadState.onToggleGroup}
-      body={threadState.body}
-      styles={styles}
-    />
-  );
-}
-
 export function ChatMessageConversationRuntimeThreadList({
   threadStates,
   styles,
 }: ChatMessageConversationRuntimeThreadListProps) {
+  const threadListParts = createChatRuntimeConversationRuntimeThreadListMobilePropsParts({
+    threadStates,
+    styles,
+  });
+
   return (
     <>
-      {threadStates.map((threadState) => (
-        <ChatMessageConversationRuntimeThread
-          key={threadState.threadKey}
-          threadState={threadState}
-          styles={styles}
+      {threadListParts.threads.map((thread) => (
+        <ChatMessageRuntimeThread
+          key={thread.key}
+          {...thread.props}
         />
       ))}
     </>
