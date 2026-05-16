@@ -11,6 +11,7 @@ import {
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
+  createChatMessageConversationThreadStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeChromeSlots,
   createChatMessageRuntimeChromeStyleSlots,
@@ -53,9 +54,11 @@ import {
 import {
   createChatComposerStyleSlots,
   createChatConversationHomePromptEditorModalStyleSlots,
+  createChatMessageActionStyleSlots,
   createChatMessageConversationDockStyleSlots,
-  createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationViewportStyleSlots,
+  createChatMessageThreadBodyStyleSlots,
+  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   createChatRuntimeHeaderStyleSlots,
 } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
@@ -1083,7 +1086,11 @@ export function useChatRuntimeMobileStyleSlots() {
   );
   const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
   const chatMessageConversationThreadStyles = useMemo(
-    () => createChatMessageConversationThreadStyleSlots(styles),
+    () => createChatMessageConversationThreadStyleSlots({
+      threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles),
+      threadBodyStyles: createChatMessageThreadBodyStyleSlots(styles),
+      actionStyles: createChatMessageActionStyleSlots(styles),
+    }),
     [styles],
   );
   const chatRuntimeHeaderStyles = useMemo(

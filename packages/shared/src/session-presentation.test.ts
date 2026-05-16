@@ -30,6 +30,7 @@ import {
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeConnectionErrorTurnState,
+  createChatMessageConversationThreadStyleSlots,
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeFinalHistoryTurnMessages,
   createChatMessageRuntimeFinalResponseTurnState,
@@ -59,6 +60,7 @@ import {
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
+  createChatMessageRuntimeThreadStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageRuntimeChromeSlots,
@@ -3182,6 +3184,24 @@ describe("session presentation semantics", () => {
       frame: "conversation-frame",
       dock: "runtime-dock",
       viewport: "runtime-viewport",
+    })
+    expect(createChatMessageRuntimeThreadStyleSlots({
+      threadSurfaceStyles: "thread-surface",
+      threadBodyStyles: "thread-body",
+    })).toEqual({
+      surface: "thread-surface",
+      body: "thread-body",
+    })
+    expect(createChatMessageConversationThreadStyleSlots({
+      threadSurfaceStyles: "thread-surface",
+      threadBodyStyles: "thread-body",
+      actionStyles: "message-actions",
+    })).toEqual({
+      runtimeThread: {
+        surface: "thread-surface",
+        body: "thread-body",
+      },
+      actionSet: "message-actions",
     })
     expect(createChatMessageRuntimeChromeStyleSlots({
       conversationThreadStyles: {

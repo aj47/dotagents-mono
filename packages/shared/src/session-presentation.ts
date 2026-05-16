@@ -14637,6 +14637,50 @@ export function createChatMessageRuntimeSurfaceStyleSlots<
   }
 }
 
+export function createChatMessageRuntimeThreadStyleSlots<TThreadSurfaceStyles, TThreadBodyStyles>({
+  threadSurfaceStyles,
+  threadBodyStyles,
+}: {
+  threadSurfaceStyles: TThreadSurfaceStyles
+  threadBodyStyles: TThreadBodyStyles
+}): {
+  surface: TThreadSurfaceStyles
+  body: TThreadBodyStyles
+} {
+  return {
+    surface: threadSurfaceStyles,
+    body: threadBodyStyles,
+  }
+}
+
+export function createChatMessageConversationThreadStyleSlots<
+  TThreadSurfaceStyles,
+  TThreadBodyStyles,
+  TActionStyles,
+>({
+  threadSurfaceStyles,
+  threadBodyStyles,
+  actionStyles,
+}: {
+  threadSurfaceStyles: TThreadSurfaceStyles
+  threadBodyStyles: TThreadBodyStyles
+  actionStyles: TActionStyles
+}): {
+  runtimeThread: {
+    surface: TThreadSurfaceStyles
+    body: TThreadBodyStyles
+  }
+  actionSet: TActionStyles
+} {
+  return {
+    runtimeThread: createChatMessageRuntimeThreadStyleSlots({
+      threadSurfaceStyles,
+      threadBodyStyles,
+    }),
+    actionSet: actionStyles,
+  }
+}
+
 export function createChatMessageRuntimeChromeStyleSlots<
   TConversationThreadStyles extends {
     actionSet: unknown

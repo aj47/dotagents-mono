@@ -2855,11 +2855,6 @@ type ChatMessageRuntimeThreadStyleSlots = {
   body: ChatMessageThreadBodyStyleSlots;
 };
 
-type ChatMessageConversationThreadStyleSlots = {
-  runtimeThread: ChatMessageRuntimeThreadStyleSlots;
-  actionSet: ChatMessageActionStyleSlots;
-};
-
 type ChatMessageRuntimeThreadProps = Omit<
   ChatMessageToolActivityGroupThreadSurfaceProps,
   'children' | 'styles' | 'surfaceToneStyle'
@@ -7005,34 +7000,6 @@ export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots(
     boundary: createChatMessageToolActivityGroupBoundaryStyles(styles),
     getToneStyle: (toneStyleSlot) => styles[toneStyleSlot] as ChatMessageThreadSurfaceProps['surfaceToneStyle'],
   } as ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
-}
-
-export function createChatMessageRuntimeThreadStyleSlots({
-  threadSurfaceStyles,
-  threadBodyStyles,
-}: {
-  threadSurfaceStyles: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
-  threadBodyStyles: ChatMessageThreadBodyStyleSlots;
-}): ChatMessageRuntimeThreadStyleSlots {
-  return {
-    surface: threadSurfaceStyles,
-    body: threadBodyStyles,
-  };
-}
-
-export function createChatMessageConversationThreadStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatMessageConversationThreadStyleSlots {
-  const threadSurfaceStyles = createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles);
-  const threadBodyStyles = createChatMessageThreadBodyStyleSlots(styles);
-
-  return {
-    runtimeThread: createChatMessageRuntimeThreadStyleSlots({
-      threadSurfaceStyles,
-      threadBodyStyles,
-    }),
-    actionSet: createChatMessageActionStyleSlots(styles),
-  };
 }
 
 export function createChatMessageConversationViewportStyleSlots(
