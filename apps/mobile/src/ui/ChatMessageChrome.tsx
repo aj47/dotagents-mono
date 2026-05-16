@@ -97,6 +97,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
+  createChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionPendingResultMobilePropsParts,
   createChatRuntimeToolExecutionResultBadgeMobilePropsParts,
@@ -8350,25 +8351,30 @@ export function ChatMessageToolExecutionPayloadMeta({
   renderState,
   styles,
 }: ChatMessageToolExecutionPayloadMetaProps) {
+  const payloadMetaParts = createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
+    renderState,
+    styles,
+  });
+
   const content = (
     <>
-      <Text style={styles.label}>
-        {renderState.label}
+      <Text style={payloadMetaParts.label.style}>
+        {payloadMetaParts.label.text}
       </Text>
-      {renderState.payloadTypeLabel ? (
-        <Text style={styles.payloadType}>
-          {renderState.payloadTypeLabel}
+      {payloadMetaParts.payloadType ? (
+        <Text style={payloadMetaParts.payloadType.style}>
+          {payloadMetaParts.payloadType.text}
         </Text>
       ) : null}
     </>
   );
 
-  if (!styles.row) {
+  if (!payloadMetaParts.row) {
     return content;
   }
 
   return (
-    <View style={styles.row}>
+    <View style={payloadMetaParts.row.style}>
       {content}
     </View>
   );

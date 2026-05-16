@@ -136,6 +136,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
+  createChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionPendingResultMobilePropsParts,
   createChatRuntimeToolExecutionResultBadgeMobilePropsParts,
@@ -9260,6 +9261,46 @@ describe("session presentation semantics", () => {
         previewNumberOfLines: 3,
         styles: "payload-block-styles",
       },
+    })
+    const payloadMetaParts = createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
+      renderState: {
+        label: "Input",
+        payloadTypeLabel: "JSON",
+      },
+      styles: {
+        row: "payload-meta-row",
+        label: "payload-meta-label",
+        payloadType: "payload-type",
+      },
+    })
+    expect(payloadMetaParts).toEqual({
+      row: {
+        style: "payload-meta-row",
+      },
+      label: {
+        text: "Input",
+        style: "payload-meta-label",
+      },
+      payloadType: {
+        text: "JSON",
+        style: "payload-type",
+      },
+    })
+    expect(createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
+      renderState: {
+        label: "Output",
+      },
+      styles: {
+        label: "payload-meta-label",
+        payloadType: "payload-type",
+      },
+    })).toEqual({
+      row: null,
+      label: {
+        text: "Output",
+        style: "payload-meta-label",
+      },
+      payloadType: null,
     })
     const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
       compactText: "preview",

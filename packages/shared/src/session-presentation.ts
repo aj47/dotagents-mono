@@ -2007,6 +2007,59 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput<
+  TRenderState extends {
+    label: string
+    payloadTypeLabel?: string | null
+  } = {
+    label: string
+    payloadTypeLabel?: string | null
+  },
+  TStyles extends {
+    row?: unknown
+    label: unknown
+    payloadType: unknown
+  } = {
+    row?: unknown
+    label: unknown
+    payloadType: unknown
+  },
+> {
+  renderState: TRenderState
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
+  TRenderState extends {
+    label: string
+    payloadTypeLabel?: string | null
+  } = {
+    label: string
+    payloadTypeLabel?: string | null
+  },
+  TStyles extends {
+    row?: unknown
+    label: unknown
+    payloadType: unknown
+  } = {
+    row?: unknown
+    label: unknown
+    payloadType: unknown
+  },
+> {
+  row: ({
+    style: TStyles["row"]
+  }) | null
+  label: {
+    text: TRenderState["label"]
+    style: TStyles["label"]
+  }
+  payloadType: ({
+    text: NonNullable<TRenderState["payloadTypeLabel"]>
+    style: TStyles["payloadType"]
+  }) | null
+}
+
 export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
   TStyles extends {
     preview: unknown
@@ -14881,6 +14934,41 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
       previewNumberOfLines,
       styles: styles.payloadBlock,
     },
+  }
+}
+
+export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
+  TRenderState extends {
+    label: string
+    payloadTypeLabel?: string | null
+  },
+  TStyles extends {
+    row?: unknown
+    label: unknown
+    payloadType: unknown
+  },
+>({
+  renderState,
+  styles,
+}: ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput<
+  TRenderState,
+  TStyles
+>): ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
+  TRenderState,
+  TStyles
+> {
+  return {
+    row: styles.row ? {
+      style: styles.row,
+    } : null,
+    label: {
+      text: renderState.label,
+      style: styles.label,
+    },
+    payloadType: renderState.payloadTypeLabel ? {
+      text: renderState.payloadTypeLabel,
+      style: styles.payloadType,
+    } : null,
   }
 }
 
