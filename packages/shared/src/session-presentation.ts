@@ -2365,6 +2365,20 @@ export interface ChatRuntimeMessageHistoryWindowMobileExpandedVisibleCountInput 
   loadIncrement?: number
 }
 
+export interface ChatRuntimeMessageHistoryWindowMobileBottomStateInput {
+  viewportHeight: number
+  scrollOffsetY: number
+  contentHeight: number
+  bottomResumeThresholdPx?: number
+}
+
+export interface ChatRuntimeMessageHistoryWindowMobileLoadEarlierStateInput {
+  scrollOffsetY: number
+  visibleMessageCount: number
+  messageCount: number
+  topLoadThresholdPx?: number
+}
+
 export interface ChatRuntimeConversationChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeViewportMobileColorPalette
@@ -8923,6 +8937,24 @@ export function getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount({
   if (messageCount === 0) return initialVisibleCount
   const nextVisibleCount = Math.max(initialVisibleCount, currentVisibleCount)
   return Math.min(messageCount, nextVisibleCount)
+}
+
+export function getChatRuntimeMessageHistoryWindowMobileIsAtBottom({
+  viewportHeight,
+  scrollOffsetY,
+  contentHeight,
+  bottomResumeThresholdPx = getChatRuntimeMessageHistoryWindowMobileState().bottomResumeThresholdPx,
+}: ChatRuntimeMessageHistoryWindowMobileBottomStateInput): boolean {
+  return viewportHeight + scrollOffsetY >= contentHeight - bottomResumeThresholdPx
+}
+
+export function getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier({
+  scrollOffsetY,
+  visibleMessageCount,
+  messageCount,
+  topLoadThresholdPx = getChatRuntimeMessageHistoryWindowMobileState().topLoadThresholdPx,
+}: ChatRuntimeMessageHistoryWindowMobileLoadEarlierStateInput): boolean {
+  return scrollOffsetY <= topLoadThresholdPx && visibleMessageCount < messageCount
 }
 
 export function getChatRuntimeMessageHistoryBannerMobileState() {

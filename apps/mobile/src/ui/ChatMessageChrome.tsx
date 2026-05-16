@@ -169,6 +169,8 @@ import {
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount,
+  getChatRuntimeMessageHistoryWindowMobileIsAtBottom,
+  getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationItemThreadMobileState,
   getChatRuntimeConversationMessageThreadMobileState,
@@ -3598,17 +3600,25 @@ export function useChatMessageRuntimeScrollController({
 
   const onScroll = useCallback((event: ChatMessageScrollEvent) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const isAtBottom =
-      layoutMeasurement.height + contentOffset.y >=
-      contentSize.height - bottomResumeThresholdPx;
-    const isNearTop = contentOffset.y <= topLoadThresholdPx;
+    const isAtBottom = getChatRuntimeMessageHistoryWindowMobileIsAtBottom({
+      viewportHeight: layoutMeasurement.height,
+      scrollOffsetY: contentOffset.y,
+      contentHeight: contentSize.height,
+      bottomResumeThresholdPx,
+    });
+    const shouldLoadEarlier = getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier({
+      scrollOffsetY: contentOffset.y,
+      visibleMessageCount,
+      messageCount: messages.length,
+      topLoadThresholdPx,
+    });
 
     if (isAtBottom && !shouldAutoScroll) {
       setShouldAutoScroll(true);
     } else if (!isAtBottom && shouldAutoScroll && isUserDraggingRef.current) {
       setShouldAutoScroll(false);
     }
-    if (isNearTop && visibleMessageCount < messages.length) {
+    if (shouldLoadEarlier) {
       onLoadEarlierMessages();
     }
   }, [

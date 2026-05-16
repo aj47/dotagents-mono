@@ -197,6 +197,8 @@ import {
   getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount,
+  getChatRuntimeMessageHistoryWindowMobileIsAtBottom,
+  getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -2307,6 +2309,36 @@ describe("session presentation semantics", () => {
       messageCount: 0,
       initialVisibleCount: 80,
     })).toBe(80)
+    expect(getChatRuntimeMessageHistoryWindowMobileIsAtBottom({
+      viewportHeight: 600,
+      scrollOffsetY: 350,
+      contentHeight: 1000,
+      bottomResumeThresholdPx: 50,
+    })).toBe(true)
+    expect(getChatRuntimeMessageHistoryWindowMobileIsAtBottom({
+      viewportHeight: 600,
+      scrollOffsetY: 349,
+      contentHeight: 1000,
+      bottomResumeThresholdPx: 50,
+    })).toBe(false)
+    expect(getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier({
+      scrollOffsetY: 120,
+      visibleMessageCount: 80,
+      messageCount: 140,
+      topLoadThresholdPx: 120,
+    })).toBe(true)
+    expect(getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier({
+      scrollOffsetY: 121,
+      visibleMessageCount: 80,
+      messageCount: 140,
+      topLoadThresholdPx: 120,
+    })).toBe(false)
+    expect(getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier({
+      scrollOffsetY: 100,
+      visibleMessageCount: 140,
+      messageCount: 140,
+      topLoadThresholdPx: 120,
+    })).toBe(false)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.reconnecting.backgroundColorToken).toBe("info")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.reconnecting.spinnerSize).toBe("small")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.contentFlexDirection).toBe("row")

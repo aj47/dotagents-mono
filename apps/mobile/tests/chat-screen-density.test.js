@@ -1406,7 +1406,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeScrollController/);
   assert.match(chatMessageChromeSource, /const scrollRef = useRef<ChatMessageScrollViewportRef>\(null\);/);
   assert.match(chatMessageChromeSource, /const onScroll = useCallback\(\(event: ChatMessageScrollEvent\) => \{/);
-  assert.match(chatMessageChromeSource, /if \(isNearTop && visibleMessageCount < messages\.length\) \{\s+onLoadEarlierMessages\(\);/);
+  assert.match(chatMessageChromeSource, /if \(shouldLoadEarlier\) \{\s+onLoadEarlierMessages\(\);/);
   assert.match(screenSource, /const \{\s+scrollRef: scrollViewRef,\s+shouldAutoScroll,\s+onScroll: handleScroll,\s+onScrollBeginDrag: handleScrollBeginDrag,\s+onScrollEndDrag: handleScrollEndDrag,\s+scrollToBottom: handleScrollToBottomPress,\s+\} = useChatMessageRuntimeScrollController\(\{/);
   assert.match(chatMessageChromeSource, /<ScrollView\s+ref=\{scrollRef\}/);
   assert.match(chatMessageChromeSource, /contentContainerStyle=\{contentContainerStyle\}/);
@@ -3029,9 +3029,15 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount\(\{\s+currentVisibleCount,\s+messageCount,\s+loadIncrement: historyWindow\.loadIncrement,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount/);
   assert.match(sessionPresentationSource, /return Math\.min\(messageCount, currentVisibleCount \+ loadIncrement\)/);
-  assert.match(chatMessageChromeSource, /contentSize\.height - bottomResumeThresholdPx/);
-  assert.match(chatMessageChromeSource, /contentOffset\.y <= topLoadThresholdPx/);
-  assert.match(chatMessageChromeSource, /if \(isNearTop && visibleMessageCount < messages\.length\) \{\s+onLoadEarlierMessages\(\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /contentSize\.height - bottomResumeThresholdPx/);
+  assert.doesNotMatch(chatMessageChromeSource, /contentOffset\.y <= topLoadThresholdPx/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileIsAtBottom\(\{\s+viewportHeight: layoutMeasurement\.height,\s+scrollOffsetY: contentOffset\.y,\s+contentHeight: contentSize\.height,\s+bottomResumeThresholdPx,/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier\(\{\s+scrollOffsetY: contentOffset\.y,\s+visibleMessageCount,\s+messageCount: messages\.length,\s+topLoadThresholdPx,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileIsAtBottom/);
+  assert.match(sessionPresentationSource, /return viewportHeight \+ scrollOffsetY >= contentHeight - bottomResumeThresholdPx/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier/);
+  assert.match(sessionPresentationSource, /return scrollOffsetY <= topLoadThresholdPx && visibleMessageCount < messageCount/);
+  assert.match(chatMessageChromeSource, /if \(shouldLoadEarlier\) \{\s+onLoadEarlierMessages\(\);/);
   assert.match(chatMessageChromeSource, /setVisibleMessageCount\(historyWindow\.initialVisibleCount\);/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount\(\{\s+currentVisibleCount,\s+messageCount,\s+initialVisibleCount: historyWindow\.initialVisibleCount,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount/);
