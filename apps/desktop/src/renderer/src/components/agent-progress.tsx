@@ -55,7 +55,7 @@ import {
   getToolActivityRunSummary,
   getToolActivityGroupStateKey,
   getToolActivityGroupSummaryState,
-} from "@dotagents/shared/tool-activity-grouping"
+} from "@dotagents/shared/session-presentation"
 import {
   AGENT_MODEL_FALLBACKS,
   type AgentModelConfigLike,
@@ -169,7 +169,7 @@ import {
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStructuredPayloadChildEntries,
   type ToolExecutionStructuredPayloadValue,
-} from "@dotagents/shared/tool-execution-display"
+} from "@dotagents/shared/session-presentation"
 import { computeTurnDurations, createTurnDurationMessages } from "@dotagents/shared/turn-duration"
 import { useNowTick } from "@renderer/lib/turn-duration"
 

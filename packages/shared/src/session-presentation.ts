@@ -307,6 +307,28 @@ import {
   type ToolExecutionResultOnlyFallbackRenderState,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
+export {
+  formatIndexedToolExecutionLabel,
+  formatToolExecutionCompactAccessibilityLabel,
+  formatToolExecutionCount,
+  getToolExecutionCopyAccessibilityLabel,
+  formatToolExecutionDetailsAccessibilityName,
+  formatToolExecutionHeading,
+  formatToolExecutionSectionLabel,
+  formatToolExecutionStructuredPayloadValue,
+  getToolExecutionCallDisplayState,
+  getToolExecutionCompactDesktopSurfaceState,
+  getToolExecutionDetailCopyState,
+  getToolExecutionDetailArgumentsState,
+  getToolExecutionDetailDesktopSurfaceState,
+  getToolExecutionDetailResultState,
+  getToolExecutionDisplayState,
+  getToolExecutionPayloadValueType,
+  getToolExecutionStatusCopyState,
+  getToolExecutionStatusDesktopClassName,
+  getToolExecutionStructuredPayloadChildEntries,
+  type ToolExecutionStructuredPayloadValue,
+} from "./tool-execution-display"
 export type {
   ToolExecutionCompactMobileRenderState,
   ToolExecutionDetailMobileCollapseControlRenderState,
@@ -327,6 +349,14 @@ import {
   type ToolActivityGroupMobileColorPalette,
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
+} from "./tool-activity-grouping"
+export {
+  TOOL_GROUP_MIN_SIZE,
+  getToolActivityGroupDesktopSurfaceState,
+  getToolActivityGroupCopyState,
+  getToolActivityRunSummary,
+  getToolActivityGroupStateKey,
+  getToolActivityGroupSummaryState,
 } from "./tool-activity-grouping"
 export type {
   ToolActivityGroupMobileRenderState,

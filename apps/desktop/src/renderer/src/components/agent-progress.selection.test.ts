@@ -29,9 +29,13 @@ describe("agent progress text selection", () => {
     )
     expect(agentProgressSource).toContain("normalizeMarkdownThoughtContent")
     expect(agentProgressSource).toContain("getChatMessageDesktopSurfaceState")
+    expect(agentProgressSource).toContain("getToolActivityGroupDesktopSurfaceState")
+    expect(agentProgressSource).toContain("getToolExecutionDisplayState")
     expect(agentProgressSource).toContain('from "@dotagents/shared/session-presentation"')
     expect(agentProgressSource).not.toContain('from "@dotagents/shared/markdown-render-parts"')
     expect(agentProgressSource).not.toContain('from "@dotagents/shared/message-display-utils"')
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/tool-activity-grouping"')
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/tool-execution-display"')
     expect(agentProgressSource).toContain(
       "<MarkdownRenderer content={effectiveContent.trim()} collapsed={messageContentRenderState.isCollapsed} />",
     )
