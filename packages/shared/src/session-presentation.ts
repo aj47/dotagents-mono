@@ -51,6 +51,8 @@ import { formatConnectionStatus, type RecoveryState } from "./connection-recover
 export { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
+  createMarkdownContentMobileStyleSlots,
+  createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockCopyDesktopRenderState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
@@ -75,8 +77,12 @@ export {
   normalizeMarkdownThoughtContent,
   splitMarkdownContent,
   transformMarkdownContentUrl,
+  type MarkdownContentMobileStyleSlotsInput,
   type MarkdownContentMobileSurfaceRenderState,
+  type MarkdownMobileStyleRadiusToken,
+  type MarkdownMobileStyleSpacingToken,
   type MarkdownThinkSectionControlOptions,
+  type MarkdownThinkSectionMobileStyleSlotsInput,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from "./markdown-render-parts"
 export {

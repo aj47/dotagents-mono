@@ -5,6 +5,8 @@ import {
   MARKDOWN_CONTENT_SURFACE_PRESENTATION,
   MARKDOWN_THINK_SECTION_PRESENTATION,
   MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION,
+  createMarkdownContentMobileStyleSlots,
+  createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockCopyDesktopRenderState,
   getMarkdownCodeBlockCopyLabel,
@@ -206,6 +208,52 @@ describe("markdown render parts", () => {
       surface: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile,
       colors: markdownContentSurfaceColors,
     })
+    const markdownContentStyleSlots = createMarkdownContentMobileStyleSlots({
+      renderState: getMarkdownContentMobileSurfaceRenderState({
+        colors: markdownContentPalette,
+        isDark: false,
+      }),
+      spacing: { xs: 4, sm: 8 },
+      radius: { sm: 4, md: 8 },
+      platform: "ios",
+    })
+    expect(markdownContentStyleSlots.body).toEqual({
+      color: "#171717",
+      fontSize: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.body.fontSize,
+      lineHeight: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.body.lineHeight,
+    })
+    expect(markdownContentStyleSlots.heading1).toMatchObject({
+      color: "#171717",
+      marginTop: 4,
+      marginBottom: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.heading1.marginBottom,
+    })
+    expect(markdownContentStyleSlots.code_inline).toMatchObject({
+      backgroundColor: "#e5e5e5",
+      color: "#2563eb",
+      fontFamily: "Menlo",
+      borderRadius: 4,
+    })
+    expect(markdownContentStyleSlots.codeBlockCopyText).toMatchObject({
+      padding: 4,
+      paddingRight: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlock.copyPaddingRight,
+      borderRadius: 4,
+    })
+    expect(markdownContentStyleSlots.codeBlockCopyButton).toMatchObject({
+      width: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.size,
+      height: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.size,
+      borderColor: "#d4d4d4",
+      backgroundColor: "rgba(255, 255, 255, 0.9)",
+    })
+    expect(markdownContentStyleSlots.codeBlockCopyButtonCopied).toEqual({
+      borderColor: "#16a34a",
+      backgroundColor: "rgba(22, 163, 74, 0.16)",
+    })
+    expect(markdownContentStyleSlots.image).toMatchObject({
+      width: "100%",
+      borderRadius: 8,
+      marginBottom: 4,
+      backgroundColor: "#e5e5e5",
+    })
     expect(getMarkdownContentMobileSurfaceColors({
       background: "#050505",
       border: "#404040",
@@ -298,6 +346,35 @@ describe("markdown render parts", () => {
     expect(getMarkdownThinkSectionMobileSurfaceRenderState({ isDark: false })).toEqual({
       surface: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile,
       colors: lightThinkSectionColors,
+    })
+    const thinkSectionStyleSlots = createMarkdownThinkSectionMobileStyleSlots({
+      renderState: getMarkdownThinkSectionMobileSurfaceRenderState({ isDark: false }),
+      spacing: { xs: 4, sm: 8 },
+      radius: { sm: 4, md: 8 },
+    })
+    expect(thinkSectionStyleSlots.container).toEqual({
+      overflow: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.container.overflow,
+      borderRadius: 8,
+      borderWidth: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.container.borderWidth,
+      marginVertical: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.container.collapsedMarginVertical,
+    })
+    expect(thinkSectionStyleSlots.containerExpanded).toMatchObject({
+      borderColor: "rgba(245, 158, 11, 0.5)",
+      backgroundColor: "rgba(254, 243, 199, 0.65)",
+      marginVertical: 4,
+    })
+    expect(thinkSectionStyleSlots.header).toMatchObject({
+      minHeight: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.header.minHeight,
+      flexDirection: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.header.flexDirection,
+      paddingHorizontal: 8,
+    })
+    expect(thinkSectionStyleSlots.label).toMatchObject({
+      color: "#92400e",
+      fontSize: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.label.fontSize,
+    })
+    expect(thinkSectionStyleSlots.content).toEqual({
+      paddingHorizontal: 8,
+      paddingBottom: 8,
     })
     expect(getMarkdownThinkSectionMobileSurfaceColors({ isDark: true })).toEqual({
       collapsedContainer: {

@@ -3457,7 +3457,17 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(videoAttachmentCardSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(markdownRendererSource, /from '@dotagents\/shared\/session-presentation'/);
   assert.match(videoAttachmentCardSource, /from '@dotagents\/shared\/session-presentation'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?formatMarkdownImageRequestFailedMessage,[\s\S]*?getMarkdownCodeBlockFeedbackResetDelayMs,[\s\S]*?getMarkdownCodeBlockCopyMobileRenderState,[\s\S]*?getMarkdownContentMobileSurfaceRenderState,[\s\S]*?getMarkdownThinkSectionMobileSurfaceRenderState,[\s\S]*?isAllowedMarkdownContentLinkUrl,[\s\S]*?splitMarkdownContent,[\s\S]*?type MarkdownContentMobileSurfaceRenderState,[\s\S]*?type MarkdownThinkSectionControlOptions,[\s\S]*?type MarkdownThinkSectionMobileSurfaceRenderState,[\s\S]*?\} from "\.\/markdown-render-parts"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMarkdownContentMobileStyleSlots,[\s\S]*?createMarkdownThinkSectionMobileStyleSlots,[\s\S]*?formatMarkdownImageRequestFailedMessage,[\s\S]*?getMarkdownCodeBlockFeedbackResetDelayMs,[\s\S]*?getMarkdownCodeBlockCopyMobileRenderState,[\s\S]*?getMarkdownContentMobileSurfaceRenderState,[\s\S]*?getMarkdownThinkSectionMobileSurfaceRenderState,[\s\S]*?isAllowedMarkdownContentLinkUrl,[\s\S]*?splitMarkdownContent,[\s\S]*?type MarkdownContentMobileStyleSlotsInput,[\s\S]*?type MarkdownContentMobileSurfaceRenderState,[\s\S]*?type MarkdownThinkSectionControlOptions,[\s\S]*?type MarkdownThinkSectionMobileStyleSlotsInput,[\s\S]*?type MarkdownThinkSectionMobileSurfaceRenderState,[\s\S]*?\} from "\.\/markdown-render-parts"/);
+  assert.match(markdownRendererSource, /createMarkdownContentMobileStyleSlots,/);
+  assert.match(markdownRendererSource, /createMarkdownThinkSectionMobileStyleSlots,/);
+  assert.match(markdownRendererSource, /const markdownContentStyleSlots = React\.useMemo\(\s+\(\) => createMarkdownContentMobileStyleSlots\(\{\s+renderState: markdownContentRenderState,\s+spacing,\s+radius,\s+platform: Platform\.OS,\s+\}\),/);
+  assert.match(markdownRendererSource, /const markdownStyles = React\.useMemo\(\s+\(\) => StyleSheet\.create\(markdownContentStyleSlots\),\s+\[markdownContentStyleSlots\],\s+\);/);
+  assert.match(markdownRendererSource, /const thinkSectionStyleSlots = React\.useMemo\(\s+\(\) => createMarkdownThinkSectionMobileStyleSlots\(\{\s+renderState: thinkSectionRenderState,\s+spacing,\s+radius,\s+\}\),/);
+  assert.match(markdownRendererSource, /const thinkStyles = React\.useMemo\(\s+\(\) => StyleSheet\.create\(thinkSectionStyleSlots\),\s+\[thinkSectionStyleSlots\],\s+\);/);
+  assert.doesNotMatch(markdownRendererSource, /const createThinkStyles =/);
+  assert.doesNotMatch(markdownRendererSource, /resolveMobileMarkdownSpacing/);
+  assert.doesNotMatch(markdownRendererSource, /resolveChatRuntimeMobileFontFamily/);
+  assert.doesNotMatch(markdownRendererSource, /color: markdownContentColors\.body\.color/);
   assert.match(chatMessageChromeSource, /if \(!streamingRenderState\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /<MarkdownRenderer[\s\S]*?content=\{markdownContent\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{streamingRenderState\.accessibilityRole\}/);

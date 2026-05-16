@@ -5,6 +5,8 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationImageAssetHttpUrl,
+  createMarkdownContentMobileStyleSlots,
+  createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownCodeBlockCopyMobileRenderState,
@@ -24,7 +26,6 @@ import {
   isAllowedMarkdownImageUrl,
   isAllowedMarkdownContentLinkUrl,
   parseConversationImageAssetUrl,
-  resolveChatRuntimeMobileFontFamily,
   splitMarkdownContent,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionControlOptions,
@@ -113,9 +114,6 @@ function getHeaderRecord(headers: Headers): Record<string, string> {
   });
   return record;
 }
-
-const resolveMobileMarkdownSpacing = (value: keyof typeof spacing | number) =>
-  typeof value === 'number' ? value : spacing[value];
 
 const MarkdownImage: React.FC<{
   sourceUrl: string;
@@ -275,50 +273,6 @@ const MarkdownCodeBlock: React.FC<{
   );
 };
 
-const createThinkStyles = (renderState: MarkdownThinkSectionMobileSurfaceRenderState) => {
-  const thinkSectionSurface = renderState.surface;
-  const colors = renderState.colors;
-
-  return StyleSheet.create({
-    container: {
-      overflow: thinkSectionSurface.container.overflow,
-      borderRadius: radius[thinkSectionSurface.container.borderRadius],
-      borderWidth: thinkSectionSurface.container.borderWidth,
-      marginVertical: resolveMobileMarkdownSpacing(thinkSectionSurface.container.collapsedMarginVertical),
-    },
-    containerCollapsed: {
-      borderColor: colors.collapsedContainer.borderColor,
-      backgroundColor: colors.collapsedContainer.backgroundColor,
-    },
-    containerExpanded: {
-      borderColor: colors.expandedContainer.borderColor,
-      backgroundColor: colors.expandedContainer.backgroundColor,
-      marginVertical: resolveMobileMarkdownSpacing(thinkSectionSurface.container.expandedMarginVertical),
-    },
-    header: {
-      minHeight: thinkSectionSurface.header.minHeight,
-      flexDirection: thinkSectionSurface.header.flexDirection,
-      alignItems: thinkSectionSurface.header.alignItems,
-      gap: thinkSectionSurface.header.gap,
-      paddingHorizontal: spacing[thinkSectionSurface.header.paddingHorizontal],
-      paddingVertical: thinkSectionSurface.header.paddingVertical,
-    },
-    headerPressed: {
-      opacity: thinkSectionSurface.header.pressedOpacity,
-    },
-    label: {
-      color: colors.label.color,
-      fontSize: thinkSectionSurface.label.fontSize,
-      fontWeight: thinkSectionSurface.label.fontWeight,
-      flex: thinkSectionSurface.label.flex,
-    },
-    content: {
-      paddingHorizontal: spacing[thinkSectionSurface.content.paddingHorizontal],
-      paddingBottom: spacing[thinkSectionSurface.content.paddingBottom],
-    },
-  });
-};
-
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   assetBaseUrl,
@@ -335,215 +289,37 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     }),
     [isDark, theme.colors],
   );
-  const markdownContentSurface = markdownContentRenderState.surface;
   const markdownContentColors = markdownContentRenderState.colors;
-  const codeBlockCopyButtonRenderState = React.useMemo(
-    () => getMarkdownCodeBlockCopyMobileRenderState({
-      colors: markdownContentColors,
+  const markdownContentStyleSlots = React.useMemo(
+    () => createMarkdownContentMobileStyleSlots({
+      renderState: markdownContentRenderState,
+      spacing,
+      radius,
+      platform: Platform.OS,
     }),
-    [markdownContentColors],
+    [markdownContentRenderState],
   );
-  const copiedCodeBlockCopyButtonRenderState = React.useMemo(
-    () => getMarkdownCodeBlockCopyMobileRenderState({
-      isCopied: true,
-      colors: markdownContentColors,
-    }),
-    [markdownContentColors],
+  const markdownStyles = React.useMemo(
+    () => StyleSheet.create(markdownContentStyleSlots),
+    [markdownContentStyleSlots],
   );
   const thinkSectionRenderState = React.useMemo(
     () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
     [isDark],
   );
   const thinkSectionColors = thinkSectionRenderState.colors;
-  const thinkStyles = React.useMemo(
-    () => createThinkStyles(thinkSectionRenderState),
+  const thinkSectionStyleSlots = React.useMemo(
+    () => createMarkdownThinkSectionMobileStyleSlots({
+      renderState: thinkSectionRenderState,
+      spacing,
+      radius,
+    }),
     [thinkSectionRenderState],
   );
-
-  // Compact markdown styles matching desktop's tight layout
-  const markdownStyles = StyleSheet.create({
-    body: {
-      color: markdownContentColors.body.color,
-      fontSize: markdownContentSurface.body.fontSize,
-      lineHeight: markdownContentSurface.body.lineHeight,
-    },
-    heading1: {
-      color: markdownContentColors.heading1.color,
-      fontSize: markdownContentSurface.heading1.fontSize,
-      fontWeight: markdownContentSurface.heading1.fontWeight,
-      marginTop: spacing[markdownContentSurface.heading1.marginTop],
-      marginBottom: markdownContentSurface.heading1.marginBottom,
-    },
-    heading2: {
-      color: markdownContentColors.heading2.color,
-      fontSize: markdownContentSurface.heading2.fontSize,
-      fontWeight: markdownContentSurface.heading2.fontWeight,
-      marginTop: spacing[markdownContentSurface.heading2.marginTop],
-      marginBottom: markdownContentSurface.heading2.marginBottom,
-    },
-    heading3: {
-      color: markdownContentColors.heading3.color,
-      fontSize: markdownContentSurface.heading3.fontSize,
-      fontWeight: markdownContentSurface.heading3.fontWeight,
-      marginTop: markdownContentSurface.heading3.marginTop,
-      marginBottom: markdownContentSurface.heading3.marginBottom,
-    },
-    paragraph: {
-      color: markdownContentColors.paragraph.color,
-      marginBottom: spacing[markdownContentSurface.paragraph.marginBottom],
-      lineHeight: markdownContentSurface.paragraph.lineHeight,
-    },
-    strong: {
-      fontWeight: markdownContentSurface.strong.fontWeight,
-    },
-    em: {
-      fontStyle: markdownContentSurface.emphasis.fontStyle,
-    },
-    s: {
-      textDecorationLine: markdownContentSurface.strikethrough.textDecorationLine,
-    },
-    bullet_list: {
-      marginBottom: spacing[markdownContentSurface.list.marginBottom],
-    },
-    ordered_list: {
-      marginBottom: spacing[markdownContentSurface.list.marginBottom],
-    },
-    list_item: {
-      marginBottom: markdownContentSurface.list.itemMarginBottom,
-    },
-    bullet_list_icon: {
-      color: markdownContentColors.list.iconColor,
-      marginRight: markdownContentSurface.list.iconMarginRight,
-    },
-    ordered_list_icon: {
-      color: markdownContentColors.list.iconColor,
-      marginRight: markdownContentSurface.list.iconMarginRight,
-    },
-    code_inline: {
-      backgroundColor: markdownContentColors.inlineCode.backgroundColor,
-      color: markdownContentColors.inlineCode.color,
-      fontFamily: resolveChatRuntimeMobileFontFamily(
-        markdownContentSurface.inlineCode.fontFamilyByPlatform,
-        Platform.OS,
-      ),
-      fontSize: markdownContentSurface.inlineCode.fontSize,
-      paddingHorizontal: markdownContentSurface.inlineCode.paddingHorizontal,
-      paddingVertical: markdownContentSurface.inlineCode.paddingVertical,
-      borderRadius: radius[markdownContentSurface.inlineCode.borderRadius],
-    },
-    code_block: {
-      backgroundColor: markdownContentColors.codeBlock.backgroundColor,
-      color: markdownContentColors.codeBlock.color,
-      fontFamily: resolveChatRuntimeMobileFontFamily(
-        markdownContentSurface.codeBlock.fontFamilyByPlatform,
-        Platform.OS,
-      ),
-      fontSize: markdownContentSurface.codeBlock.fontSize,
-      padding: spacing[markdownContentSurface.codeBlock.padding],
-      borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
-      marginBottom: spacing[markdownContentSurface.codeBlock.marginBottom],
-      overflow: markdownContentSurface.codeBlock.overflow,
-    },
-    fence: {
-      backgroundColor: markdownContentColors.codeBlock.backgroundColor,
-      color: markdownContentColors.codeBlock.color,
-      fontFamily: resolveChatRuntimeMobileFontFamily(
-        markdownContentSurface.codeBlock.fontFamilyByPlatform,
-        Platform.OS,
-      ),
-      fontSize: markdownContentSurface.codeBlock.fontSize,
-      padding: spacing[markdownContentSurface.codeBlock.padding],
-      borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
-      marginBottom: spacing[markdownContentSurface.codeBlock.marginBottom],
-      overflow: markdownContentSurface.codeBlock.overflow,
-    },
-    codeBlockCopyContainer: {
-      position: 'relative',
-      marginBottom: spacing[markdownContentSurface.codeBlock.marginBottom],
-    },
-    codeBlockCopyText: {
-      backgroundColor: markdownContentColors.codeBlock.backgroundColor,
-      color: markdownContentColors.codeBlock.color,
-      fontFamily: resolveChatRuntimeMobileFontFamily(
-        markdownContentSurface.codeBlock.fontFamilyByPlatform,
-        Platform.OS,
-      ),
-      fontSize: markdownContentSurface.codeBlock.fontSize,
-      padding: spacing[markdownContentSurface.codeBlock.padding],
-      paddingRight: markdownContentSurface.codeBlock.copyPaddingRight,
-      borderRadius: radius[markdownContentSurface.codeBlock.borderRadius],
-      overflow: markdownContentSurface.codeBlock.overflow,
-    },
-    codeBlockCopyButton: {
-      position: codeBlockCopyButtonRenderState.button.position,
-      top: codeBlockCopyButtonRenderState.button.top,
-      right: codeBlockCopyButtonRenderState.button.right,
-      width: codeBlockCopyButtonRenderState.button.size,
-      height: codeBlockCopyButtonRenderState.button.size,
-      borderRadius: radius[codeBlockCopyButtonRenderState.button.borderRadius],
-      borderWidth: codeBlockCopyButtonRenderState.button.borderWidth,
-      borderColor: codeBlockCopyButtonRenderState.buttonColors.borderColor,
-      backgroundColor: codeBlockCopyButtonRenderState.buttonColors.backgroundColor,
-      alignItems: codeBlockCopyButtonRenderState.button.alignItems,
-      justifyContent: codeBlockCopyButtonRenderState.button.justifyContent,
-    },
-    codeBlockCopyButtonCopied: {
-      borderColor: copiedCodeBlockCopyButtonRenderState.buttonColors.borderColor,
-      backgroundColor: copiedCodeBlockCopyButtonRenderState.buttonColors.backgroundColor,
-    },
-    codeBlockCopyButtonPressed: {
-      opacity: codeBlockCopyButtonRenderState.button.pressedOpacity,
-    },
-    blockquote: {
-      backgroundColor: markdownContentColors.blockquote.backgroundColor,
-      borderLeftWidth: markdownContentSurface.blockquote.borderLeftWidth,
-      borderLeftColor: markdownContentColors.blockquote.borderLeftColor,
-      paddingLeft: spacing[markdownContentSurface.blockquote.paddingLeft],
-      paddingVertical: markdownContentSurface.blockquote.paddingVertical,
-      marginBottom: spacing[markdownContentSurface.blockquote.marginBottom],
-    },
-    link: {
-      color: markdownContentColors.link.color,
-      textDecorationLine: markdownContentSurface.link.textDecorationLine,
-    },
-    image: {
-      width: markdownContentSurface.image.width,
-      minHeight: markdownContentSurface.image.minHeight,
-      maxHeight: markdownContentSurface.image.maxHeight,
-      borderRadius: radius[markdownContentSurface.image.borderRadius],
-      marginBottom: spacing[markdownContentSurface.image.marginBottom],
-      backgroundColor: markdownContentColors.image.backgroundColor,
-    },
-    table: {
-      borderWidth: markdownContentSurface.table.borderWidth,
-      borderColor: markdownContentColors.table.borderColor,
-      borderRadius: radius[markdownContentSurface.table.borderRadius],
-      marginBottom: spacing[markdownContentSurface.table.marginBottom],
-    },
-    thead: {
-      backgroundColor: markdownContentColors.tableHead.backgroundColor,
-    },
-    th: {
-      padding: spacing[markdownContentSurface.tableCell.padding],
-      fontWeight: markdownContentSurface.tableCell.headerFontWeight,
-      borderBottomWidth: markdownContentSurface.tableCell.borderBottomWidth,
-      borderColor: markdownContentColors.tableCell.borderColor,
-      fontSize: markdownContentSurface.tableCell.fontSize,
-    },
-    tr: {
-      borderBottomWidth: markdownContentSurface.tableCell.borderBottomWidth,
-      borderColor: markdownContentColors.tableCell.borderColor,
-    },
-    td: {
-      padding: spacing[markdownContentSurface.tableCell.padding],
-      fontSize: markdownContentSurface.tableCell.fontSize,
-    },
-    hr: {
-      backgroundColor: markdownContentColors.horizontalRule.backgroundColor,
-      height: markdownContentSurface.horizontalRule.height,
-      marginVertical: spacing[markdownContentSurface.horizontalRule.marginVertical],
-    },
-  });
+  const thinkStyles = React.useMemo(
+    () => StyleSheet.create(thinkSectionStyleSlots),
+    [thinkSectionStyleSlots],
+  );
 
   const parts = splitMarkdownContent(content, getMarkdownRenderOptions());
   const markdownRules = React.useMemo(() => ({
@@ -577,7 +353,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           alt={alt}
           assetBaseUrl={assetBaseUrl}
           authToken={assetAuthToken}
-          style={markdownStyles.image}
+          style={markdownStyles.image as StyleProp<ImageStyle>}
         />
       );
     },

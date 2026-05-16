@@ -432,6 +432,49 @@ export interface MarkdownContentMobileSurfaceRenderState {
   colors: MarkdownContentMobileSurfaceColors
 }
 
+type MarkdownContentMobileSurface = typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile
+type MarkdownThinkSectionMobileSurface = typeof MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile
+
+export type MarkdownMobileStyleSpacingToken =
+  | Extract<MarkdownContentMobileSurface["heading1"]["marginTop"], string>
+  | Extract<MarkdownContentMobileSurface["heading2"]["marginTop"], string>
+  | Extract<MarkdownContentMobileSurface["paragraph"]["marginBottom"], string>
+  | Extract<MarkdownContentMobileSurface["list"]["marginBottom"], string>
+  | Extract<MarkdownContentMobileSurface["codeBlock"]["padding"], string>
+  | Extract<MarkdownContentMobileSurface["codeBlock"]["marginBottom"], string>
+  | Extract<MarkdownContentMobileSurface["blockquote"]["paddingLeft"], string>
+  | Extract<MarkdownContentMobileSurface["blockquote"]["marginBottom"], string>
+  | Extract<MarkdownContentMobileSurface["image"]["marginBottom"], string>
+  | Extract<MarkdownContentMobileSurface["table"]["marginBottom"], string>
+  | Extract<MarkdownContentMobileSurface["tableCell"]["padding"], string>
+  | Extract<MarkdownContentMobileSurface["horizontalRule"]["marginVertical"], string>
+  | Extract<MarkdownThinkSectionMobileSurface["container"]["collapsedMarginVertical"], string>
+  | Extract<MarkdownThinkSectionMobileSurface["container"]["expandedMarginVertical"], string>
+  | Extract<MarkdownThinkSectionMobileSurface["header"]["paddingHorizontal"], string>
+  | Extract<MarkdownThinkSectionMobileSurface["content"]["paddingHorizontal"], string>
+  | Extract<MarkdownThinkSectionMobileSurface["content"]["paddingBottom"], string>
+
+export type MarkdownMobileStyleRadiusToken =
+  | MarkdownContentMobileSurface["inlineCode"]["borderRadius"]
+  | MarkdownContentMobileSurface["codeBlock"]["borderRadius"]
+  | MarkdownContentMobileSurface["codeBlockCopyButton"]["borderRadius"]
+  | MarkdownContentMobileSurface["image"]["borderRadius"]
+  | MarkdownContentMobileSurface["table"]["borderRadius"]
+  | MarkdownThinkSectionMobileSurface["container"]["borderRadius"]
+
+export interface MarkdownContentMobileStyleSlotsInput {
+  renderState: MarkdownContentMobileSurfaceRenderState
+  spacing: Readonly<Record<MarkdownMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<MarkdownMobileStyleRadiusToken, number>>
+  platform?: string | null
+}
+
+export interface MarkdownThinkSectionMobileStyleSlotsInput {
+  renderState: MarkdownThinkSectionMobileSurfaceRenderState
+  spacing: Readonly<Record<MarkdownMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<MarkdownMobileStyleRadiusToken, number>>
+}
+
 export interface MarkdownCodeBlockCopyMobileRenderStateInput {
   isCopied?: boolean
   colors: Pick<MarkdownContentMobileSurfaceColors, "codeBlockCopyButton" | "codeBlockCopyIcon">
@@ -625,6 +668,201 @@ export function getMarkdownContentMobileSurfaceRenderState({
   }
 }
 
+function resolveMarkdownMobileSpacing(
+  value: MarkdownMobileStyleSpacingToken | number,
+  spacing: Readonly<Record<MarkdownMobileStyleSpacingToken, number>>,
+): number {
+  return typeof value === "number" ? value : spacing[value]
+}
+
+function resolveMarkdownMobileFontFamily(
+  fontFamilyByPlatform: MarkdownContentMobileSurface["inlineCode"]["fontFamilyByPlatform"],
+  platform?: string | null,
+): string {
+  return platform === "ios" ? fontFamilyByPlatform.ios : fontFamilyByPlatform.default
+}
+
+export function createMarkdownContentMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  platform,
+}: MarkdownContentMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors
+  const codeBlockCopyButton = getMarkdownCodeBlockCopyMobileRenderState({ colors })
+  const copiedCodeBlockCopyButton = getMarkdownCodeBlockCopyMobileRenderState({
+    isCopied: true,
+    colors,
+  })
+  const inlineCodeFontFamily = resolveMarkdownMobileFontFamily(surface.inlineCode.fontFamilyByPlatform, platform)
+  const codeBlockFontFamily = resolveMarkdownMobileFontFamily(surface.codeBlock.fontFamilyByPlatform, platform)
+  const codeBlockText = {
+    backgroundColor: colors.codeBlock.backgroundColor,
+    color: colors.codeBlock.color,
+    fontFamily: codeBlockFontFamily,
+    fontSize: surface.codeBlock.fontSize,
+    padding: resolveMarkdownMobileSpacing(surface.codeBlock.padding, spacing),
+    borderRadius: radius[surface.codeBlock.borderRadius],
+    marginBottom: resolveMarkdownMobileSpacing(surface.codeBlock.marginBottom, spacing),
+    overflow: surface.codeBlock.overflow,
+  }
+
+  return {
+    body: {
+      color: colors.body.color,
+      fontSize: surface.body.fontSize,
+      lineHeight: surface.body.lineHeight,
+    },
+    heading1: {
+      color: colors.heading1.color,
+      fontSize: surface.heading1.fontSize,
+      fontWeight: surface.heading1.fontWeight,
+      marginTop: resolveMarkdownMobileSpacing(surface.heading1.marginTop, spacing),
+      marginBottom: surface.heading1.marginBottom,
+    },
+    heading2: {
+      color: colors.heading2.color,
+      fontSize: surface.heading2.fontSize,
+      fontWeight: surface.heading2.fontWeight,
+      marginTop: resolveMarkdownMobileSpacing(surface.heading2.marginTop, spacing),
+      marginBottom: surface.heading2.marginBottom,
+    },
+    heading3: {
+      color: colors.heading3.color,
+      fontSize: surface.heading3.fontSize,
+      fontWeight: surface.heading3.fontWeight,
+      marginTop: surface.heading3.marginTop,
+      marginBottom: surface.heading3.marginBottom,
+    },
+    paragraph: {
+      color: colors.paragraph.color,
+      marginBottom: resolveMarkdownMobileSpacing(surface.paragraph.marginBottom, spacing),
+      lineHeight: surface.paragraph.lineHeight,
+    },
+    strong: {
+      fontWeight: surface.strong.fontWeight,
+    },
+    em: {
+      fontStyle: surface.emphasis.fontStyle,
+    },
+    s: {
+      textDecorationLine: surface.strikethrough.textDecorationLine,
+    },
+    bullet_list: {
+      marginBottom: resolveMarkdownMobileSpacing(surface.list.marginBottom, spacing),
+    },
+    ordered_list: {
+      marginBottom: resolveMarkdownMobileSpacing(surface.list.marginBottom, spacing),
+    },
+    list_item: {
+      marginBottom: surface.list.itemMarginBottom,
+    },
+    bullet_list_icon: {
+      color: colors.list.iconColor,
+      marginRight: surface.list.iconMarginRight,
+    },
+    ordered_list_icon: {
+      color: colors.list.iconColor,
+      marginRight: surface.list.iconMarginRight,
+    },
+    code_inline: {
+      backgroundColor: colors.inlineCode.backgroundColor,
+      color: colors.inlineCode.color,
+      fontFamily: inlineCodeFontFamily,
+      fontSize: surface.inlineCode.fontSize,
+      paddingHorizontal: surface.inlineCode.paddingHorizontal,
+      paddingVertical: surface.inlineCode.paddingVertical,
+      borderRadius: radius[surface.inlineCode.borderRadius],
+    },
+    code_block: codeBlockText,
+    fence: codeBlockText,
+    codeBlockCopyContainer: {
+      position: "relative" as const,
+      marginBottom: resolveMarkdownMobileSpacing(surface.codeBlock.marginBottom, spacing),
+    },
+    codeBlockCopyText: {
+      backgroundColor: colors.codeBlock.backgroundColor,
+      color: colors.codeBlock.color,
+      fontFamily: codeBlockFontFamily,
+      fontSize: surface.codeBlock.fontSize,
+      padding: resolveMarkdownMobileSpacing(surface.codeBlock.padding, spacing),
+      paddingRight: surface.codeBlock.copyPaddingRight,
+      borderRadius: radius[surface.codeBlock.borderRadius],
+      overflow: surface.codeBlock.overflow,
+    },
+    codeBlockCopyButton: {
+      position: codeBlockCopyButton.button.position,
+      top: codeBlockCopyButton.button.top,
+      right: codeBlockCopyButton.button.right,
+      width: codeBlockCopyButton.button.size,
+      height: codeBlockCopyButton.button.size,
+      borderRadius: radius[codeBlockCopyButton.button.borderRadius],
+      borderWidth: codeBlockCopyButton.button.borderWidth,
+      borderColor: codeBlockCopyButton.buttonColors.borderColor,
+      backgroundColor: codeBlockCopyButton.buttonColors.backgroundColor,
+      alignItems: codeBlockCopyButton.button.alignItems,
+      justifyContent: codeBlockCopyButton.button.justifyContent,
+    },
+    codeBlockCopyButtonCopied: {
+      borderColor: copiedCodeBlockCopyButton.buttonColors.borderColor,
+      backgroundColor: copiedCodeBlockCopyButton.buttonColors.backgroundColor,
+    },
+    codeBlockCopyButtonPressed: {
+      opacity: codeBlockCopyButton.button.pressedOpacity,
+    },
+    blockquote: {
+      backgroundColor: colors.blockquote.backgroundColor,
+      borderLeftWidth: surface.blockquote.borderLeftWidth,
+      borderLeftColor: colors.blockquote.borderLeftColor,
+      paddingLeft: resolveMarkdownMobileSpacing(surface.blockquote.paddingLeft, spacing),
+      paddingVertical: surface.blockquote.paddingVertical,
+      marginBottom: resolveMarkdownMobileSpacing(surface.blockquote.marginBottom, spacing),
+    },
+    link: {
+      color: colors.link.color,
+      textDecorationLine: surface.link.textDecorationLine,
+    },
+    image: {
+      width: surface.image.width,
+      minHeight: surface.image.minHeight,
+      maxHeight: surface.image.maxHeight,
+      borderRadius: radius[surface.image.borderRadius],
+      marginBottom: resolveMarkdownMobileSpacing(surface.image.marginBottom, spacing),
+      backgroundColor: colors.image.backgroundColor,
+    },
+    table: {
+      borderWidth: surface.table.borderWidth,
+      borderColor: colors.table.borderColor,
+      borderRadius: radius[surface.table.borderRadius],
+      marginBottom: resolveMarkdownMobileSpacing(surface.table.marginBottom, spacing),
+    },
+    thead: {
+      backgroundColor: colors.tableHead.backgroundColor,
+    },
+    th: {
+      padding: resolveMarkdownMobileSpacing(surface.tableCell.padding, spacing),
+      fontWeight: surface.tableCell.headerFontWeight,
+      borderBottomWidth: surface.tableCell.borderBottomWidth,
+      borderColor: colors.tableCell.borderColor,
+      fontSize: surface.tableCell.fontSize,
+    },
+    tr: {
+      borderBottomWidth: surface.tableCell.borderBottomWidth,
+      borderColor: colors.tableCell.borderColor,
+    },
+    td: {
+      padding: resolveMarkdownMobileSpacing(surface.tableCell.padding, spacing),
+      fontSize: surface.tableCell.fontSize,
+    },
+    hr: {
+      backgroundColor: colors.horizontalRule.backgroundColor,
+      height: surface.horizontalRule.height,
+      marginVertical: resolveMarkdownMobileSpacing(surface.horizontalRule.marginVertical, spacing),
+    },
+  }
+}
+
 export function getMarkdownContentDesktopSurfaceState(): typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop {
   return MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop
 }
@@ -678,6 +916,54 @@ export function getMarkdownThinkSectionMobileSurfaceRenderState({
   return {
     surface: getMarkdownThinkSectionMobileSurfaceState(),
     colors: getMarkdownThinkSectionMobileSurfaceColors({ isDark }),
+  }
+}
+
+export function createMarkdownThinkSectionMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: MarkdownThinkSectionMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    container: {
+      overflow: surface.container.overflow,
+      borderRadius: radius[surface.container.borderRadius],
+      borderWidth: surface.container.borderWidth,
+      marginVertical: resolveMarkdownMobileSpacing(surface.container.collapsedMarginVertical, spacing),
+    },
+    containerCollapsed: {
+      borderColor: colors.collapsedContainer.borderColor,
+      backgroundColor: colors.collapsedContainer.backgroundColor,
+    },
+    containerExpanded: {
+      borderColor: colors.expandedContainer.borderColor,
+      backgroundColor: colors.expandedContainer.backgroundColor,
+      marginVertical: resolveMarkdownMobileSpacing(surface.container.expandedMarginVertical, spacing),
+    },
+    header: {
+      minHeight: surface.header.minHeight,
+      flexDirection: surface.header.flexDirection,
+      alignItems: surface.header.alignItems,
+      gap: surface.header.gap,
+      paddingHorizontal: resolveMarkdownMobileSpacing(surface.header.paddingHorizontal, spacing),
+      paddingVertical: surface.header.paddingVertical,
+    },
+    headerPressed: {
+      opacity: surface.header.pressedOpacity,
+    },
+    label: {
+      color: colors.label.color,
+      fontSize: surface.label.fontSize,
+      fontWeight: surface.label.fontWeight,
+      flex: surface.label.flex,
+    },
+    content: {
+      paddingHorizontal: resolveMarkdownMobileSpacing(surface.content.paddingHorizontal, spacing),
+      paddingBottom: resolveMarkdownMobileSpacing(surface.content.paddingBottom, spacing),
+    },
   }
 }
 
