@@ -19,6 +19,7 @@ import {
   getToolActivityGroupRenderState,
   getToolActivityGroupStateKey,
   getToolActivityGroupSummaryState,
+  getToolActivityRunSummary,
   getToolActivitySummaryLine,
   getToolActivityToolCallPreview,
   groupToolActivity,
@@ -89,6 +90,35 @@ describe('getToolActivitySummaryLine', () => {
     )
     expect(TOOL_ACTIVITY_GROUP_PRESENTATION.fallbackToolResultLabel).toBe('tool result')
     expect(TOOL_ACTIVITY_GROUP_PRESENTATION.fallbackAssistantLabel).toBe('assistant')
+  })
+})
+
+describe('getToolActivityRunSummary', () => {
+  it('summarises tool calls and result previews for renderer-specific grouped runs', () => {
+    expect(getToolActivityRunSummary([
+      {
+        toolCalls: [{ name: 'read_file', arguments: { path: 'README.md' } }],
+        toolResults: [{ success: true, content: 'contents' }],
+      },
+      {
+        toolCalls: [{ name: 'execute_command', arguments: { command: 'git status --short' } }],
+        toolResults: [{ success: true, content: ' M package.json' }],
+      },
+    ])).toEqual({
+      toolCallCount: 2,
+      previewLines: ['read_file', 'git status --short:M package.json'],
+    })
+  })
+
+  it('keeps total call count while limiting preview source items', () => {
+    expect(getToolActivityRunSummary([
+      { toolCalls: [{ name: 'first', arguments: {} }] },
+      { toolCalls: [{ name: 'second', arguments: {} }] },
+      { fallbackSummaryLine: 'tool result' },
+    ], { maxItems: 2 })).toEqual({
+      toolCallCount: 2,
+      previewLines: ['second', 'tool result'],
+    })
   })
 })
 

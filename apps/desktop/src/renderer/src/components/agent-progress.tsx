@@ -49,14 +49,12 @@ import {
   type AgentUserResponseEvent,
 } from "@dotagents/shared/agent-progress"
 import {
-  TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
   getToolActivityGroupDesktopSurfaceState,
   getToolActivityGroupCopyState,
+  getToolActivityRunSummary,
   getToolActivityGroupStateKey,
   getToolActivityGroupSummaryState,
-  getToolActivityToolCallPreview,
-  getToolActivitySummaryLine,
 } from "@dotagents/shared/tool-activity-grouping"
 import {
   AGENT_MODEL_FALLBACKS,
@@ -4057,10 +4055,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // `<command>:<output-preview>` label; other tools fall back to the tool
       // name. The CSS truncate handles overflow on narrow tiles, so we emit the
       // full list and let the layout shrink it.
-      const previewLines: string[] = []
-      let callCount = 0
-      for (let j = 0; j < runItems.length; j++) {
-        const it = runItems[j]
+      const groupSummary = getToolActivityRunSummary(runItems.map((it) => {
         const calls =
           it.kind === "assistant_with_tools"
             ? it.data.calls
@@ -4073,24 +4068,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             : it.kind === "tool_execution"
               ? it.data.results
               : []
-        for (let k = 0; k < calls.length; k++) {
-          const call = calls[k]
-          if (!call) continue
-          callCount += 1
-          const result = results[k] ?? null
-          previewLines.push(getToolActivityToolCallPreview(
-            { name: call.name, arguments: call.arguments ?? {} },
-            result,
-          ))
+        return {
+          toolCalls: calls.map((call) => ({
+            name: call.name,
+            arguments: call.arguments ?? {},
+          })),
+          toolResults: results,
         }
-      }
+      }))
       // Prefix the first child ID so the group stays stable as the run grows
       // without sharing expansion state with any child row.
       const groupId = getToolActivityGroupStateKey(runItems[0]?.id ?? runStart)
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines, callCount },
+        data: {
+          items: runItems,
+          previewLines: groupSummary.previewLines,
+          callCount: groupSummary.toolCallCount,
+        },
       })
       runStart = null
     }

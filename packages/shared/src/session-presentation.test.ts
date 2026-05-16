@@ -831,7 +831,8 @@ describe("session presentation semantics", () => {
       { role: "user", content: "Next" },
       { role: "assistant", content: "Final" },
     ])
-    expect(isLastChatMessageRuntimeConversationContent([{ role: "assistant", content: "Old" }])).toBe(true)
+    const previousAssistantMessage = { role: "assistant" as const, content: "Old" }
+    expect(isLastChatMessageRuntimeConversationContent([previousAssistantMessage])).toBe(true)
     expect(updateLastChatMessageRuntimeConversationContent([
       { role: "user", content: "Question" },
       { role: "assistant", content: "Old" },
@@ -1231,10 +1232,14 @@ describe("session presentation semantics", () => {
         toolName: "edit",
       },
     })
-    expect(removeChatMessageRuntimeToolApprovalMessage([
+    const keptApprovalSiblingMessage = { role: "assistant" as const, content: "Keep" } as RuntimeTestMessage & {
+      toolApproval?: { approvalId?: string } | null
+    }
+    const messagesWithApproval = [
       approvalMessage,
-      { role: "assistant", content: "Keep" },
-    ], "approval-1")).toEqual([
+      keptApprovalSiblingMessage,
+    ]
+    expect(removeChatMessageRuntimeToolApprovalMessage(messagesWithApproval, "approval-1")).toEqual([
       { role: "assistant", content: "Keep" },
     ])
     const progressMessages = createChatMessageRuntimeProgressMessages<RuntimeTestMessage>({
@@ -5131,7 +5136,6 @@ describe("session presentation semantics", () => {
       colors: {
         ...messageThreadStyleColors,
         destructive: "#dc2626",
-        successForeground: "#ecfdf5",
       },
       createThreadState: (input) => ({
         messageIndex: input.messageIndex,

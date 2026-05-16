@@ -48,6 +48,21 @@ export interface ToolActivityPreviewToolResult {
   error?: string
 }
 
+export interface ToolActivityRunSummaryItem {
+  toolCalls?: readonly ToolActivityPreviewToolCall[]
+  toolResults?: readonly (ToolActivityPreviewToolResult | null | undefined)[]
+  fallbackSummaryLine?: string | null
+}
+
+export interface ToolActivityRunSummary {
+  toolCallCount: number
+  previewLines: string[]
+}
+
+export interface ToolActivityRunSummaryOptions {
+  maxItems?: number
+}
+
 /** A contiguous run of tool-activity messages that should be collapsed. */
 export interface ToolActivityGroup {
   /** Index of the first message in the group (inclusive). */
@@ -683,6 +698,46 @@ export function getToolActivitySummaryLine(message: GroupableMessage): string {
     : TOOL_ACTIVITY_GROUP_PRESENTATION.fallbackAssistantLabel
 }
 
+export function getToolActivityRunSummary(
+  items: readonly ToolActivityRunSummaryItem[],
+  options: ToolActivityRunSummaryOptions = {},
+): ToolActivityRunSummary {
+  const summaryItems = typeof options.maxItems === 'number'
+    ? items.slice(Math.max(0, items.length - Math.max(0, options.maxItems)))
+    : items
+  const previewLines: string[] = []
+  let toolCallCount = 0
+
+  for (const item of items) {
+    toolCallCount += item.toolCalls?.length ?? 0
+  }
+
+  for (const item of summaryItems) {
+    const toolCalls = item.toolCalls ?? []
+    const toolResults = item.toolResults ?? []
+
+    if (toolCalls.length > 0) {
+      for (let index = 0; index < toolCalls.length; index++) {
+        const toolCall = toolCalls[index]
+        if (!toolCall) continue
+        previewLines.push(getToolActivityToolCallPreview(
+          toolCall,
+          toolResults[index] ?? null,
+        ))
+      }
+      continue
+    }
+
+    const fallbackSummaryLine = item.fallbackSummaryLine?.trim()
+    if (fallbackSummaryLine) previewLines.push(fallbackSummaryLine)
+  }
+
+  return {
+    toolCallCount,
+    previewLines,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Core grouping algorithm
 // ---------------------------------------------------------------------------
@@ -714,22 +769,21 @@ export function groupToolActivity(messages: GroupableMessage[]): {
       runStart = null
       return
     }
-    const previewLines: string[] = []
-    let toolCallCount = 0
-    for (let i = runStart; i <= runEnd; i++) {
-      toolCallCount += messages[i].toolCalls?.length ?? 0
-    }
-    const previewStartIdx = Math.max(runStart, runEnd - TOOL_GROUP_PREVIEW_COUNT + 1)
-    for (let i = previewStartIdx; i <= runEnd; i++) {
-      const line = getToolActivitySummaryLine(messages[i])
-      if (line) previewLines.push(line)
-    }
+    const runMessages = messages.slice(runStart, runEnd + 1)
+    const summary = getToolActivityRunSummary(
+      runMessages.map((message) => ({
+        toolCalls: message.toolCalls,
+        toolResults: message.toolResults,
+        fallbackSummaryLine: getToolActivitySummaryLine(message),
+      })),
+      { maxItems: TOOL_GROUP_PREVIEW_COUNT },
+    )
     const group: ToolActivityGroup = {
       startIndex: runStart,
       endIndex: runEnd,
       count,
-      toolCallCount,
-      previewLines: previewLines.length > 0 ? [previewLines.join(', ')] : [],
+      toolCallCount: summary.toolCallCount,
+      previewLines: summary.previewLines.length > 0 ? [summary.previewLines.join(', ')] : [],
     }
     groups.push(group)
     for (let i = runStart; i <= runEnd; i++) {
