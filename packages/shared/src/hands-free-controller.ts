@@ -44,6 +44,21 @@ export interface HandsFreeStatusChipMobileColors {
   textColor: string
 }
 
+export interface HandsFreeStatusChipMobileRenderStateInput {
+  phase: HandsFreePhase
+  label: string
+  subtitle?: string | null
+  colors: HandsFreeStatusChipMobileColorPalette
+}
+
+export interface HandsFreeStatusChipMobileRenderState {
+  label: string
+  subtitle: string
+  shouldRenderSubtitle: boolean
+  surface: typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip
+  colors: HandsFreeStatusChipMobileColors
+}
+
 export type HandsFreeComposerMobileSurfaceColorToken =
   | typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.borderColorToken
   | typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.backgroundColorToken
@@ -327,6 +342,23 @@ export function getHandsFreeStatusChipMobileColors(
     backgroundColor: resolveHandsFreeStatusChipColor(spec, "backgroundColor", "backgroundColorToken", colors),
     borderColor: resolveHandsFreeStatusChipColor(spec, "borderColor", "borderColorToken", colors),
     textColor: resolveHandsFreeStatusChipColor(spec, "textColor", "textColorToken", colors),
+  }
+}
+
+export function getHandsFreeStatusChipMobileRenderState({
+  phase,
+  label,
+  subtitle,
+  colors,
+}: HandsFreeStatusChipMobileRenderStateInput): HandsFreeStatusChipMobileRenderState {
+  const normalizedSubtitle = typeof subtitle === "string" ? subtitle : ""
+
+  return {
+    label,
+    subtitle: normalizedSubtitle,
+    shouldRenderSubtitle: normalizedSubtitle.length > 0,
+    surface: getHandsFreeComposerMobileSurfaceState().statusChip,
+    colors: getHandsFreeStatusChipMobileColors(phase, colors),
   }
 }
 

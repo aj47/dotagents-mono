@@ -9,10 +9,13 @@ const chipSource = fs.readFileSync(
 );
 
 test('uses shared hands-free status chip colors and surface tokens', () => {
-  assert.match(chipSource, /getHandsFreeComposerMobileSurfaceState/);
-  assert.match(chipSource, /const statusChipSurface = getHandsFreeComposerMobileSurfaceState\(\)\.statusChip/);
-  assert.match(chipSource, /getHandsFreeStatusChipMobileColors\(phase, theme\.colors\)/);
+  assert.match(chipSource, /getHandsFreeStatusChipMobileRenderState/);
+  assert.match(chipSource, /type HandsFreeStatusChipMobileRenderState/);
+  assert.match(chipSource, /const renderState = useMemo\(/);
+  assert.match(chipSource, /getHandsFreeStatusChipMobileRenderState\(\{[\s\S]*?phase,[\s\S]*?label,[\s\S]*?subtitle,[\s\S]*?colors: theme\.colors,/);
+  assert.match(chipSource, /createStyles\(renderState\.surface\)/);
   assert.match(chipSource, /const colorStyles = useMemo\(/);
+  assert.match(chipSource, /createColorStyles\(renderState\.colors\)/);
   assert.match(chipSource, /backgroundColor:\s*colors\.backgroundColor/);
   assert.match(chipSource, /borderColor:\s*colors\.borderColor/);
   assert.match(chipSource, /color:\s*colors\.textColor/);
@@ -23,9 +26,14 @@ test('uses shared hands-free status chip colors and surface tokens', () => {
   assert.match(chipSource, /alignSelf:\s*statusChipSurface\.alignSelf/);
   assert.match(chipSource, /fontSize:\s*statusChipSurface\.label\.fontSize/);
   assert.match(chipSource, /opacity:\s*statusChipSurface\.subtitle\.opacity/);
-  assert.match(chipSource, /numberOfLines=\{statusChipSurface\.subtitle\.numberOfLines\}/);
+  assert.match(chipSource, /renderState\.shouldRenderSubtitle/);
+  assert.match(chipSource, /numberOfLines=\{renderState\.surface\.subtitle\.numberOfLines\}/);
+  assert.match(chipSource, /\{renderState\.label\}/);
+  assert.match(chipSource, /\{renderState\.subtitle\}/);
   assert.doesNotMatch(chipSource, /numberOfLines=\{2\}/);
   assert.doesNotMatch(chipSource, /alignSelf:\s*'flex-start'/);
+  assert.doesNotMatch(chipSource, /getHandsFreeComposerMobileSurfaceState/);
+  assert.doesNotMatch(chipSource, /getHandsFreeStatusChipMobileColors\(phase, theme\.colors\)/);
   assert.doesNotMatch(chipSource, /function getPhaseColors/);
   assert.doesNotMatch(chipSource, /case 'processing'/);
   assert.doesNotMatch(chipSource, /\{ color: colors\.textColor \}/);

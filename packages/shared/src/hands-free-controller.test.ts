@@ -21,6 +21,7 @@ import {
   getHandsFreePauseResumeLabel,
   getHandsFreeStatusSubtitle,
   getHandsFreeStatusChipMobileColors,
+  getHandsFreeStatusChipMobileRenderState,
   getHandsFreeResumePhase,
   getHandsFreeStatusLabel,
   HANDS_FREE_COMPOSER_PRESENTATION,
@@ -231,6 +232,31 @@ describe("hands-free controller", () => {
       backgroundColor: "#ef4444",
       borderColor: "#ef4444",
       textColor: "#fafafa",
+    })
+    expect(getHandsFreeStatusChipMobileRenderState({
+      phase: "listening",
+      label: "Listening",
+      subtitle: "Say “go to sleep” to return to sleep.",
+      colors,
+    })).toEqual({
+      label: "Listening",
+      subtitle: "Say “go to sleep” to return to sleep.",
+      shouldRenderSubtitle: true,
+      surface: HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip,
+      colors: {
+        backgroundColor: "#171717",
+        borderColor: "#171717",
+        textColor: "#fafafa",
+      },
+    })
+    expect(getHandsFreeStatusChipMobileRenderState({
+      phase: "sleeping",
+      label: "Sleeping",
+      colors,
+    })).toMatchObject({
+      label: "Sleeping",
+      subtitle: "",
+      shouldRenderSubtitle: false,
     })
   })
 
