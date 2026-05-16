@@ -57,6 +57,7 @@ import {
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatRuntimeConnectionBannerMobileStyleSlots,
+  createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
@@ -4173,6 +4174,171 @@ describe("session presentation semantics", () => {
         info: "#2563eb",
         mutedForeground: "#64748b",
       }),
+    })
+    expect(createChatRuntimeDelegationCardMobileStyleSlots({
+      renderState: getChatRuntimeDelegationCardMobileRenderState({
+        colors: {
+          foreground: "#0f172a",
+          info: "#2563eb",
+          mutedForeground: "#64748b",
+        },
+      }),
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        sm: 6,
+      },
+    })).toEqual({
+      card: {
+        gap: 4,
+        padding: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(37, 99, 235, 0.28)",
+        backgroundColor: "rgba(37, 99, 235, 0.07)",
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        minWidth: 0,
+      },
+      title: {
+        flex: 1,
+        minWidth: 0,
+        color: "#0f172a",
+        fontSize: 13,
+        fontWeight: "700",
+      },
+      statusBadge: {
+        flexShrink: 0,
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+      },
+      statusText: {
+        fontSize: 10,
+        fontWeight: "700",
+      },
+      liveText: {
+        color: "#2563eb",
+        fontSize: 10,
+        lineHeight: 14,
+        fontWeight: "700",
+      },
+      subtitle: {
+        color: "#64748b",
+        fontSize: 12,
+        lineHeight: 17,
+      },
+      metaRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 4,
+      },
+      metaText: {
+        color: "#64748b",
+        fontSize: 10,
+        lineHeight: 14,
+      },
+      conversationPreview: {
+        gap: 4,
+        marginTop: 2,
+        paddingHorizontal: 4,
+        paddingVertical: 5,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(37, 99, 235, 0.18)",
+        backgroundColor: "rgba(37, 99, 235, 0.06)",
+      },
+      conversationPreviewLine: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        minWidth: 0,
+      },
+      conversationPreviewRole: {
+        minWidth: 46,
+        maxWidth: 82,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 6,
+        borderWidth: 1,
+        overflow: "hidden",
+        fontSize: 10,
+        fontWeight: "700",
+      },
+      conversationPreviewContent: {
+        flex: 1,
+        minWidth: 0,
+        color: "#64748b",
+        fontSize: 11,
+        lineHeight: 15,
+      },
+      conversationPreviewTimestamp: {
+        flexShrink: 0,
+        color: "#64748b",
+        fontSize: 10,
+      },
+      conversationPreviewMoreButton: {
+        alignSelf: "flex-start",
+      },
+      conversationPreviewMoreButtonPressed: {
+        opacity: 0.78,
+      },
+      conversationPreviewMore: {
+        color: "#64748b",
+        fontSize: 10,
+        fontWeight: "700",
+      },
+      toolPreview: {
+        gap: 4,
+        marginTop: 2,
+        paddingHorizontal: 4,
+        paddingVertical: 5,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(37, 99, 235, 0.16)",
+        backgroundColor: "rgba(37, 99, 235, 0.05)",
+      },
+      toolPreviewLabel: {
+        color: "#64748b",
+        fontSize: 10,
+        fontWeight: "700",
+      },
+      toolPreviewLine: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        minWidth: 0,
+      },
+      toolPreviewStatusIcon: {
+        minWidth: 36,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      },
+      toolPreviewName: {
+        flex: 1,
+        minWidth: 0,
+        color: "#64748b",
+        fontSize: 11,
+      },
+      toolPreviewMoreButton: {
+        alignSelf: "flex-start",
+      },
+      toolPreviewMoreButtonPressed: {
+        opacity: 0.78,
+      },
+      toolPreviewMore: {
+        color: "#64748b",
+        fontSize: 10,
+        fontWeight: "700",
+      },
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.position).toBe("absolute")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.accessibilityRole).toBe("button")

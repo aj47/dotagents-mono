@@ -2674,6 +2674,185 @@ export interface ChatRuntimeDelegationCardMobileRenderState {
   colors: ChatRuntimeDelegationCardMobileColors
 }
 
+type ChatRuntimeDelegationCardMobileSurface =
+  typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.delegationCard
+
+export type ChatRuntimeDelegationCardMobileSpacingToken =
+  | ChatRuntimeDelegationCardMobileSurface["gap"]
+  | ChatRuntimeDelegationCardMobileSurface["padding"]
+  | ChatRuntimeDelegationCardMobileSurface["headerGap"]
+  | ChatRuntimeDelegationCardMobileSurface["statusPaddingHorizontal"]
+  | ChatRuntimeDelegationCardMobileSurface["metaGap"]
+  | ChatRuntimeDelegationCardMobileSurface["conversationPreviewPaddingHorizontal"]
+  | ChatRuntimeDelegationCardMobileSurface["conversationPreviewLineGap"]
+  | ChatRuntimeDelegationCardMobileSurface["conversationPreviewRolePaddingHorizontal"]
+  | ChatRuntimeDelegationCardMobileSurface["toolPreviewPaddingHorizontal"]
+  | ChatRuntimeDelegationCardMobileSurface["toolPreviewLineGap"]
+
+export type ChatRuntimeDelegationCardMobileRadiusToken =
+  | ChatRuntimeDelegationCardMobileSurface["borderRadius"]
+  | ChatRuntimeDelegationCardMobileSurface["statusBorderRadius"]
+  | ChatRuntimeDelegationCardMobileSurface["conversationPreviewBorderRadius"]
+  | ChatRuntimeDelegationCardMobileSurface["conversationPreviewRoleBorderRadius"]
+  | ChatRuntimeDelegationCardMobileSurface["toolPreviewBorderRadius"]
+
+export interface ChatRuntimeDelegationCardMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeDelegationCardMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeDelegationCardMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeDelegationCardMobileRadiusToken, number>>
+}
+
+export interface ChatRuntimeDelegationCardMobileStyleSlots {
+  card: {
+    gap: number
+    padding: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  header: {
+    flexDirection: ChatRuntimeDelegationCardMobileSurface["headerFlexDirection"]
+    alignItems: ChatRuntimeDelegationCardMobileSurface["headerAlignItems"]
+    gap: number
+    minWidth: number
+  }
+  title: {
+    flex: number
+    minWidth: number
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["titleFontWeight"]
+  }
+  statusBadge: {
+    flexShrink: number
+    borderWidth: number
+    borderRadius: number
+    paddingHorizontal: number
+    paddingVertical: number
+  }
+  statusText: {
+    fontSize: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["statusFontWeight"]
+  }
+  liveText: {
+    color: string
+    fontSize: number
+    lineHeight: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["statusFontWeight"]
+  }
+  subtitle: {
+    color: string
+    fontSize: number
+    lineHeight: number
+  }
+  metaRow: {
+    flexDirection: ChatRuntimeDelegationCardMobileSurface["metaFlexDirection"]
+    flexWrap: ChatRuntimeDelegationCardMobileSurface["metaFlexWrap"]
+    alignItems: ChatRuntimeDelegationCardMobileSurface["metaAlignItems"]
+    gap: number
+  }
+  metaText: {
+    color: string
+    fontSize: number
+    lineHeight: number
+  }
+  conversationPreview: {
+    gap: number
+    marginTop: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  conversationPreviewLine: {
+    flexDirection: ChatRuntimeDelegationCardMobileSurface["conversationPreviewLineFlexDirection"]
+    alignItems: ChatRuntimeDelegationCardMobileSurface["conversationPreviewLineAlignItems"]
+    gap: number
+    minWidth: number
+  }
+  conversationPreviewRole: {
+    minWidth: number
+    maxWidth: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    borderWidth: number
+    overflow: ChatRuntimeDelegationCardMobileSurface["conversationPreviewRoleOverflow"]
+    fontSize: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["conversationPreviewRoleFontWeight"]
+  }
+  conversationPreviewContent: {
+    flex: number
+    minWidth: number
+    color: string
+    fontSize: number
+    lineHeight: number
+  }
+  conversationPreviewTimestamp: {
+    flexShrink: number
+    color: string
+    fontSize: number
+  }
+  conversationPreviewMoreButton: {
+    alignSelf: ChatRuntimeDelegationCardMobileSurface["conversationPreviewMoreButtonAlignSelf"]
+  }
+  conversationPreviewMoreButtonPressed: {
+    opacity: number
+  }
+  conversationPreviewMore: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["conversationPreviewMoreFontWeight"]
+  }
+  toolPreview: {
+    gap: number
+    marginTop: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  toolPreviewLabel: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["toolPreviewLabelFontWeight"]
+  }
+  toolPreviewLine: {
+    flexDirection: ChatRuntimeDelegationCardMobileSurface["toolPreviewLineFlexDirection"]
+    alignItems: ChatRuntimeDelegationCardMobileSurface["toolPreviewLineAlignItems"]
+    gap: number
+    minWidth: number
+  }
+  toolPreviewStatusIcon: {
+    minWidth: number
+    alignItems: ChatRuntimeDelegationCardMobileSurface["toolPreviewStatusAlignItems"]
+    justifyContent: ChatRuntimeDelegationCardMobileSurface["toolPreviewStatusJustifyContent"]
+    flexShrink: number
+  }
+  toolPreviewName: {
+    flex: number
+    minWidth: number
+    color: string
+    fontSize: number
+  }
+  toolPreviewMoreButton: {
+    alignSelf: ChatRuntimeDelegationCardMobileSurface["toolPreviewMoreButtonAlignSelf"]
+  }
+  toolPreviewMoreButtonPressed: {
+    opacity: number
+  }
+  toolPreviewMore: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeDelegationCardMobileSurface["toolPreviewMoreFontWeight"]
+  }
+}
+
 export interface ChatRuntimeDelegationMorePreviewActionState {
   label: string
   accessibilityRole: "button"
@@ -9002,6 +9181,166 @@ export function getChatRuntimeDelegationCardMobileRenderState({
   return {
     surface: getChatRuntimeDelegationCardMobileState(),
     colors: getChatRuntimeDelegationCardMobileColors(colors),
+  }
+}
+
+export function createChatRuntimeDelegationCardMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatRuntimeDelegationCardMobileStyleSlotsInput): ChatRuntimeDelegationCardMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    card: {
+      gap: spacing[surface.gap],
+      padding: spacing[surface.padding],
+      borderRadius: radius[surface.borderRadius],
+      borderWidth: surface.borderWidth,
+      borderColor: colors.card.borderColor,
+      backgroundColor: colors.card.backgroundColor,
+    },
+    header: {
+      flexDirection: surface.headerFlexDirection,
+      alignItems: surface.headerAlignItems,
+      gap: spacing[surface.headerGap],
+      minWidth: surface.headerMinWidth,
+    },
+    title: {
+      flex: surface.titleFlex,
+      minWidth: surface.titleMinWidth,
+      color: colors.title.color,
+      fontSize: surface.titleFontSize,
+      fontWeight: surface.titleFontWeight,
+    },
+    statusBadge: {
+      flexShrink: surface.statusFlexShrink,
+      borderWidth: surface.statusBorderWidth,
+      borderRadius: radius[surface.statusBorderRadius],
+      paddingHorizontal: spacing[surface.statusPaddingHorizontal],
+      paddingVertical: surface.statusPaddingVertical,
+    },
+    statusText: {
+      fontSize: surface.statusFontSize,
+      fontWeight: surface.statusFontWeight,
+    },
+    liveText: {
+      color: colors.liveText.color,
+      fontSize: surface.metaFontSize,
+      lineHeight: surface.metaLineHeight,
+      fontWeight: surface.statusFontWeight,
+    },
+    subtitle: {
+      color: colors.subtitle.color,
+      fontSize: surface.subtitleFontSize,
+      lineHeight: surface.subtitleLineHeight,
+    },
+    metaRow: {
+      flexDirection: surface.metaFlexDirection,
+      flexWrap: surface.metaFlexWrap,
+      alignItems: surface.metaAlignItems,
+      gap: spacing[surface.metaGap],
+    },
+    metaText: {
+      color: colors.meta.color,
+      fontSize: surface.metaFontSize,
+      lineHeight: surface.metaLineHeight,
+    },
+    conversationPreview: {
+      gap: surface.conversationPreviewGap,
+      marginTop: surface.conversationPreviewMarginTop,
+      paddingHorizontal: spacing[surface.conversationPreviewPaddingHorizontal],
+      paddingVertical: surface.conversationPreviewPaddingVertical,
+      borderRadius: radius[surface.conversationPreviewBorderRadius],
+      borderWidth: surface.conversationPreviewBorderWidth,
+      borderColor: colors.conversationPreview.borderColor,
+      backgroundColor: colors.conversationPreview.backgroundColor,
+    },
+    conversationPreviewLine: {
+      flexDirection: surface.conversationPreviewLineFlexDirection,
+      alignItems: surface.conversationPreviewLineAlignItems,
+      gap: spacing[surface.conversationPreviewLineGap],
+      minWidth: surface.conversationPreviewLineMinWidth,
+    },
+    conversationPreviewRole: {
+      minWidth: surface.conversationPreviewRoleMinWidth,
+      maxWidth: surface.conversationPreviewRoleMaxWidth,
+      paddingHorizontal: spacing[surface.conversationPreviewRolePaddingHorizontal],
+      paddingVertical: surface.conversationPreviewRolePaddingVertical,
+      borderRadius: radius[surface.conversationPreviewRoleBorderRadius],
+      borderWidth: surface.conversationPreviewRoleBorderWidth,
+      overflow: surface.conversationPreviewRoleOverflow,
+      fontSize: surface.conversationPreviewRoleFontSize,
+      fontWeight: surface.conversationPreviewRoleFontWeight,
+    },
+    conversationPreviewContent: {
+      flex: surface.conversationPreviewContentFlex,
+      minWidth: surface.conversationPreviewContentMinWidth,
+      color: colors.conversationPreviewContent.color,
+      fontSize: surface.conversationPreviewContentFontSize,
+      lineHeight: surface.conversationPreviewContentLineHeight,
+    },
+    conversationPreviewTimestamp: {
+      flexShrink: surface.conversationPreviewTimestampFlexShrink,
+      color: colors.conversationPreviewTimestamp.color,
+      fontSize: surface.conversationPreviewTimestampFontSize,
+    },
+    conversationPreviewMoreButton: {
+      alignSelf: surface.conversationPreviewMoreButtonAlignSelf,
+    },
+    conversationPreviewMoreButtonPressed: {
+      opacity: surface.conversationPreviewMoreButtonPressedOpacity,
+    },
+    conversationPreviewMore: {
+      color: colors.conversationPreviewMore.color,
+      fontSize: surface.conversationPreviewMoreFontSize,
+      fontWeight: surface.conversationPreviewMoreFontWeight,
+    },
+    toolPreview: {
+      gap: surface.toolPreviewGap,
+      marginTop: surface.toolPreviewMarginTop,
+      paddingHorizontal: spacing[surface.toolPreviewPaddingHorizontal],
+      paddingVertical: surface.toolPreviewPaddingVertical,
+      borderRadius: radius[surface.toolPreviewBorderRadius],
+      borderWidth: surface.toolPreviewBorderWidth,
+      borderColor: colors.toolPreview.borderColor,
+      backgroundColor: colors.toolPreview.backgroundColor,
+    },
+    toolPreviewLabel: {
+      color: colors.toolPreviewLabel.color,
+      fontSize: surface.toolPreviewLabelFontSize,
+      fontWeight: surface.toolPreviewLabelFontWeight,
+    },
+    toolPreviewLine: {
+      flexDirection: surface.toolPreviewLineFlexDirection,
+      alignItems: surface.toolPreviewLineAlignItems,
+      gap: spacing[surface.toolPreviewLineGap],
+      minWidth: surface.toolPreviewLineMinWidth,
+    },
+    toolPreviewStatusIcon: {
+      minWidth: surface.toolPreviewStatusMinWidth,
+      alignItems: surface.toolPreviewStatusAlignItems,
+      justifyContent: surface.toolPreviewStatusJustifyContent,
+      flexShrink: surface.toolPreviewStatusFlexShrink,
+    },
+    toolPreviewName: {
+      flex: surface.toolPreviewNameFlex,
+      minWidth: surface.toolPreviewNameMinWidth,
+      color: colors.toolPreviewName.color,
+      fontSize: surface.toolPreviewNameFontSize,
+    },
+    toolPreviewMoreButton: {
+      alignSelf: surface.toolPreviewMoreButtonAlignSelf,
+    },
+    toolPreviewMoreButtonPressed: {
+      opacity: surface.toolPreviewMoreButtonPressedOpacity,
+    },
+    toolPreviewMore: {
+      color: colors.toolPreviewMore.color,
+      fontSize: surface.toolPreviewMoreFontSize,
+      fontWeight: surface.toolPreviewMoreFontWeight,
+    },
   }
 }
 
