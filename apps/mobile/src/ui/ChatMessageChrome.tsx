@@ -37,14 +37,6 @@ import {
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
-  getChatImageAttachmentMobileAlertState,
-  getChatImageAttachmentMobileRenderState,
-  type ChatImageAttachmentMobileAlertInput,
-  type ChatImageAttachmentMessageInput,
-  type ChatImageAttachmentMobileRenderState,
-  type ImageMimeTypeSource,
-} from '@dotagents/shared/conversation-media-assets';
-import {
   type VoiceDebugEntry,
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
@@ -185,6 +177,12 @@ import {
   type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeLoadingStateMobileRenderState,
+  getChatImageAttachmentMobileAlertState,
+  getChatImageAttachmentMobileRenderState,
+  type ChatImageAttachmentMobileAlertInput,
+  type ChatImageAttachmentMessageInput,
+  type ChatImageAttachmentMobileRenderState,
+  type ImageMimeTypeSource,
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,

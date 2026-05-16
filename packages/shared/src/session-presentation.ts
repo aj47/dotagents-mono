@@ -56,14 +56,25 @@ import {
   buildChatImageAttachmentMessage,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
+  getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
   inferImageMimeTypeFromSource,
+  type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMessageInput,
+  type ChatImageAttachmentMobileRenderState,
   type ChatImageAttachmentMobileSurfaceColorPalette,
   type ImageMimeTypeSource,
   MAX_CHAT_IMAGE_ATTACHMENTS,
   MAX_CHAT_IMAGE_FILE_BYTES,
   MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+} from "./conversation-media-assets"
+export {
+  getChatImageAttachmentMobileAlertState,
+  getChatImageAttachmentMobileRenderState,
+  type ChatImageAttachmentMobileAlertInput,
+  type ChatImageAttachmentMessageInput,
+  type ChatImageAttachmentMobileRenderState,
+  type ImageMimeTypeSource,
 } from "./conversation-media-assets"
 import {
   buildPromptLibraryShortcutItems,

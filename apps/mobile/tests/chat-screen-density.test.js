@@ -1994,7 +1994,8 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.doesNotMatch(chatMessageChromeSource, /getChatComposerImageAttachmentAlertState/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatComposerImageAttachmentAlertInput/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/conversation-media-assets'/);
-  assert.match(chatMessageChromeSource, /from '@dotagents\/shared\/conversation-media-assets'/);
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/conversation-media-assets'/);
+  assert.match(sessionPresentationSource, /export \{\s+getChatImageAttachmentMobileAlertState,\s+getChatImageAttachmentMobileRenderState,\s+type ChatImageAttachmentMobileAlertInput,\s+type ChatImageAttachmentMessageInput,\s+type ChatImageAttachmentMobileRenderState,\s+type ImageMimeTypeSource,\s+\} from "\.\/conversation-media-assets"/);
   assert.doesNotMatch(chatScreenSource, /import \* as ImagePicker from 'expo-image-picker';/);
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeImagePickerLaunchOptions,/);
   assert.match(screenSource, /useChatComposerRuntimeImageLibraryPickerState,/);
