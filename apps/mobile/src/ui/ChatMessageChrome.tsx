@@ -91,6 +91,7 @@ import {
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
+  createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
@@ -8534,46 +8535,32 @@ export function ChatMessageToolExecutionCallDetail({
   pendingResult,
   styles,
 }: ChatMessageToolExecutionCallDetailProps) {
+  const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
+    renderState,
+    toolName,
+    onHeaderPress,
+    input,
+    result,
+    pendingResult,
+    styles,
+  });
+
   return (
     <ChatMessageToolExecutionCallSection
-      renderState={renderState}
-      toolName={toolName}
-      onHeaderPress={onHeaderPress}
-      styles={styles.callSection}
+      {...callDetailParts.callSection}
     >
-      {input ? (
+      {callDetailParts.inputSection ? (
         <ChatMessageToolExecutionPayloadSection
-          payloadRenderState={input.payloadRenderState}
-          compactText={input.compactText}
-          content={input.content}
-          isExpanded={input.isExpanded}
-          previewNumberOfLines={input.previewNumberOfLines}
-          copyButtonRenderState={input.copyButtonRenderState}
-          onCopyPress={input.onCopyPress}
-          styles={styles.payloadSection}
+          {...callDetailParts.inputSection}
         />
       ) : null}
-      {result ? (
+      {callDetailParts.resultSection ? (
         <ChatMessageToolExecutionResultSection
-          payloadRenderState={result.payloadRenderState}
-          resultBadge={result.resultBadge}
-          characterCountLabel={result.characterCountLabel}
-          resultCompactText={result.resultCompactText}
-          resultContent={result.resultContent}
-          isExpanded={result.isExpanded}
-          previewNumberOfLines={result.previewNumberOfLines}
-          copyButtonRenderState={result.copyButtonRenderState}
-          onCopyPress={result.onCopyPress}
-          errorRenderState={result.errorRenderState}
-          error={result.error}
-          errorCopyButtonRenderState={result.errorCopyButtonRenderState}
-          onErrorCopyPress={result.onErrorCopyPress}
-          styles={styles.resultSection}
+          {...callDetailParts.resultSection}
         />
-      ) : pendingResult ? (
+      ) : callDetailParts.pendingResult ? (
         <ChatMessageToolExecutionPendingResult
-          renderState={pendingResult.renderState}
-          styles={styles.pendingResult}
+          {...callDetailParts.pendingResult}
         />
       ) : null}
     </ChatMessageToolExecutionCallSection>

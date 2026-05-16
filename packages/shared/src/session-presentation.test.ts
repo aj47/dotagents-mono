@@ -129,6 +129,7 @@ import {
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
+  createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
@@ -9121,6 +9122,59 @@ describe("session presentation semantics", () => {
       },
       emptyState: "empty-state-node",
     })
+    const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
+      renderState: "detail-header-state",
+      toolName: "read_file",
+      onHeaderPress: "toggle-detail",
+      input: {
+        payloadRenderState: "input-payload-state",
+        content: "input-content",
+      },
+      result: null,
+      pendingResult: {
+        renderState: "pending-result-state",
+      },
+      styles: {
+        callSection: "call-section-styles",
+        payloadSection: "payload-section-styles",
+        resultSection: "result-section-styles",
+        pendingResult: "pending-result-styles",
+      },
+    })
+    expect(callDetailParts).toEqual({
+      callSection: {
+        renderState: "detail-header-state",
+        toolName: "read_file",
+        onHeaderPress: "toggle-detail",
+        styles: "call-section-styles",
+      },
+      inputSection: {
+        payloadRenderState: "input-payload-state",
+        content: "input-content",
+        styles: "payload-section-styles",
+      },
+      resultSection: null,
+      pendingResult: {
+        renderState: "pending-result-state",
+        styles: "pending-result-styles",
+      },
+    })
+    expect(createChatRuntimeToolExecutionCallDetailMobilePropsParts({
+      renderState: "detail-header-state",
+      toolName: "read_file",
+      result: {
+        resultContent: "result-content",
+      },
+      pendingResult: {
+        renderState: "pending-result-state",
+      },
+      styles: {
+        callSection: "call-section-styles",
+        payloadSection: "payload-section-styles",
+        resultSection: "result-section-styles",
+        pendingResult: "pending-result-styles",
+      },
+    }).pendingResult).toBeNull()
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
       shouldRender: true,
       isExpanded: false,

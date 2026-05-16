@@ -1878,6 +1878,69 @@ export interface ChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
   emptyState: TEmptyState | undefined
 }
 
+export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
+  TRenderState = unknown,
+  TOnHeaderPress = unknown,
+  TInput extends object = Record<string, never>,
+  TResult extends object = Record<string, never>,
+  TPendingResult extends { renderState: unknown } = { renderState: unknown },
+  TStyles extends {
+    callSection: unknown
+    payloadSection: unknown
+    resultSection: unknown
+    pendingResult: unknown
+  } = {
+    callSection: unknown
+    payloadSection: unknown
+    resultSection: unknown
+    pendingResult: unknown
+  },
+> {
+  renderState: TRenderState
+  toolName: string
+  onHeaderPress?: TOnHeaderPress
+  input?: TInput | null
+  result?: TResult | null
+  pendingResult?: TPendingResult | null
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
+  TRenderState = unknown,
+  TOnHeaderPress = unknown,
+  TInput extends object = Record<string, never>,
+  TResult extends object = Record<string, never>,
+  TPendingResult extends { renderState: unknown } = { renderState: unknown },
+  TStyles extends {
+    callSection: unknown
+    payloadSection: unknown
+    resultSection: unknown
+    pendingResult: unknown
+  } = {
+    callSection: unknown
+    payloadSection: unknown
+    resultSection: unknown
+    pendingResult: unknown
+  },
+> {
+  callSection: {
+    renderState: TRenderState
+    toolName: string
+    onHeaderPress: TOnHeaderPress | undefined
+    styles: TStyles["callSection"]
+  }
+  inputSection: (TInput & {
+    styles: TStyles["payloadSection"]
+  }) | null
+  resultSection: (TResult & {
+    styles: TStyles["resultSection"]
+  }) | null
+  pendingResult: ({
+    renderState: TPendingResult["renderState"]
+    styles: TStyles["pendingResult"]
+  }) | null
+}
+
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
   TExpanded extends object = Record<string, never>,
@@ -14181,6 +14244,66 @@ export function createChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
       styles: collapseControlStyleSlots.bottom,
     },
     emptyState,
+  }
+}
+
+export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
+  TRenderState,
+  TOnHeaderPress,
+  TInput extends object,
+  TResult extends object,
+  TPendingResult extends { renderState: unknown },
+  TStyles extends {
+    callSection: unknown
+    payloadSection: unknown
+    resultSection: unknown
+    pendingResult: unknown
+  },
+>({
+  renderState,
+  toolName,
+  onHeaderPress,
+  input,
+  result,
+  pendingResult,
+  styles,
+}: ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
+  TRenderState,
+  TOnHeaderPress,
+  TInput,
+  TResult,
+  TPendingResult,
+  TStyles
+>): ChatRuntimeToolExecutionCallDetailMobilePropsParts<
+  TRenderState,
+  TOnHeaderPress,
+  TInput,
+  TResult,
+  TPendingResult,
+  TStyles
+> {
+  const inputSection = input ? {
+    ...input,
+    styles: styles.payloadSection,
+  } : null
+  const resultSection = result ? {
+    ...result,
+    styles: styles.resultSection,
+  } : null
+
+  return {
+    callSection: {
+      renderState,
+      toolName,
+      onHeaderPress,
+      styles: styles.callSection,
+    },
+    inputSection,
+    resultSection,
+    pendingResult: !resultSection && pendingResult ? {
+      renderState: pendingResult.renderState,
+      styles: styles.pendingResult,
+    } : null,
   }
 }
 
