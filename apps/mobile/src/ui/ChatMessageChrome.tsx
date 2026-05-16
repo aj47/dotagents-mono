@@ -44,12 +44,8 @@ import {
   type MessageContentForModelLike,
 } from '@dotagents/shared/message-display-utils';
 import {
-  applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
-  getNextAgentUserResponseEventOrdinal,
-  preserveChatMessageDisplayContentFromProgress,
-  sortAgentUserResponseEvents,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
 } from '@dotagents/shared/chat-utils';
@@ -141,12 +137,13 @@ import {
   getChatComposerRuntimeImageDataUrlBytes,
   inferChatComposerRuntimeImageMimeType,
   createChatMessageRuntimeAssistantTextMessage,
-  createChatMessageRuntimeCompletedConversationState,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
+  createChatMessageRuntimeUserResponseMessages,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantFeedbackContent,
   formatChatRuntimeToolApprovalRequiredContent,
+  getChatMessageRuntimeNextResponseEventOrdinal,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
@@ -188,8 +185,10 @@ import {
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   isLastChatMessageRuntimeConversationContent,
+  preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
+  sortChatMessageRuntimeResponseEvents,
   updateLastChatMessageRuntimeConversationContent,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
@@ -3857,24 +3856,6 @@ export function replaceChatMessageRuntimeFinalTurnMessages<
   );
 }
 
-export function createChatMessageRuntimeUserResponseMessages<
-  TMessage extends ChatDisplayMessageLike,
->(
-  messages: readonly TMessage[],
-  userResponse?: string,
-): TMessage[] {
-  return applyUserResponseToChatMessages(messages, userResponse);
-}
-
-export function preserveChatMessageRuntimeDisplayContentFromProgress<
-  TMessage extends ChatDisplayMessageLike,
->(
-  finalMessages: readonly TMessage[],
-  progressMessages: readonly ChatDisplayMessageLike[],
-): TMessage[] {
-  return preserveChatMessageDisplayContentFromProgress(finalMessages, progressMessages);
-}
-
 export function createChatMessageRuntimeProgressMessages<
   TMessage extends ChatDisplayMessageLike,
 >(
@@ -4092,36 +4073,6 @@ type ChatMessageRuntimeSessionDisplayMessagesOptions = {
   includeId?: boolean;
 };
 
-type ChatMessageRuntimeFinalResponseTextStateInput = {
-  responseContent?: string | null;
-  streamingText: string;
-  conversationState: AgentConversationState;
-  finalResponseEvent?: Pick<AgentUserResponseEvent, 'id' | 'text'> | null;
-  lastUserResponse?: string;
-  midTurnLegacyResponseText?: string;
-  playedResponseEventIds?: ReadonlySet<string>;
-};
-
-type ChatMessageRuntimeProgressResponseEventFactory = (
-  sessionId: string | null | undefined,
-  runId: number | undefined,
-  text: string,
-) => AgentUserResponseEvent;
-
-type ChatMessageRuntimeProgressResponseStateInput = {
-  update: Pick<AgentProgressUpdate, 'responseEvents' | 'userResponse' | 'spokenContent' | 'runId'>;
-  requestSessionId?: string | null;
-  lastUserResponse?: string;
-  createFallbackResponseEvent: ChatMessageRuntimeProgressResponseEventFactory;
-};
-
-type ChatMessageRuntimeStreamingTurnState<
-  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
-> = {
-  streamingText: string;
-  updateMessages: (messages: readonly TMessage[]) => TMessage[];
-};
-
 const hasChatMessageRuntimeEntries = <TEntry,>(
   entries?: readonly TEntry[] | null,
 ): boolean => !!entries && entries.length > 0;
@@ -4157,97 +4108,6 @@ export function hasChatMessageRuntimeAssistantContentAfter(
     }
   }
   return false;
-}
-
-export function createChatMessageRuntimeStreamingText(
-  currentText: string,
-  nextToken: string,
-): string {
-  if (nextToken.startsWith(currentText) && nextToken.length >= currentText.length) {
-    return nextToken;
-  }
-  return currentText + nextToken;
-}
-
-export function createChatMessageRuntimeStreamingTurnState<
-  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
->(
-  currentText: string,
-  nextToken: string,
-): ChatMessageRuntimeStreamingTurnState<TMessage> {
-  const streamingText = createChatMessageRuntimeStreamingText(currentText, nextToken);
-  return {
-    streamingText,
-    updateMessages: (messages) => updateLastChatMessageRuntimeConversationContent(messages, streamingText),
-  };
-}
-
-export function createChatMessageRuntimeFinalResponseTextState({
-  responseContent,
-  streamingText,
-  conversationState,
-  finalResponseEvent,
-  lastUserResponse,
-  midTurnLegacyResponseText,
-  playedResponseEventIds,
-}: ChatMessageRuntimeFinalResponseTextStateInput) {
-  const finalText = responseContent || streamingText;
-  const userResponseText = finalResponseEvent?.text || lastUserResponse;
-  const finalDisplayText = userResponseText || finalText;
-  const ttsText = userResponseText || finalText;
-  const alreadySpokenMidTurn = !!(finalResponseEvent
-    ? playedResponseEventIds?.has(finalResponseEvent.id)
-    : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
-
-  return {
-    finalText,
-    finalDisplayText,
-    ttsText,
-    userResponseText,
-    alreadySpokenMidTurn,
-    completedConversationState: createChatMessageRuntimeCompletedConversationState(conversationState),
-  };
-}
-
-export function createChatMessageRuntimeProgressResponseState({
-  update,
-  requestSessionId,
-  lastUserResponse,
-  createFallbackResponseEvent,
-}: ChatMessageRuntimeProgressResponseStateInput) {
-  if (update.responseEvents?.length) {
-    const responseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents);
-    return {
-      hasResponseUpdate: true,
-      responseEvents,
-      speechQueueEvents: responseEvents,
-      lastUserResponse: responseEvents[responseEvents.length - 1]?.text,
-      legacyResponseText: undefined,
-    };
-  }
-
-  const responseText = update.userResponse || update.spokenContent;
-  if (responseText) {
-    const responseEvents = responseText !== lastUserResponse
-      ? [createFallbackResponseEvent(requestSessionId, update.runId, responseText)]
-      : [];
-
-    return {
-      hasResponseUpdate: true,
-      responseEvents,
-      speechQueueEvents: [],
-      lastUserResponse: responseText,
-      legacyResponseText: responseText,
-    };
-  }
-
-  return {
-    hasResponseUpdate: false,
-    responseEvents: [],
-    speechQueueEvents: [],
-    lastUserResponse,
-    legacyResponseText: undefined,
-  };
 }
 
 export function createChatMessageRuntimeProgressTurnState<
@@ -4309,22 +4169,6 @@ export function createChatMessageRuntimeResponseHistoryEvents(
   messages: ChatMessageRuntimeResponseHistorySourceMessage[],
 ): AgentUserResponseEvent[] {
   return extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
-}
-
-export function sortChatMessageRuntimeResponseEvents<
-  TEvent extends Pick<AgentUserResponseEvent, 'ordinal' | 'timestamp' | 'runId'>,
->(
-  events: TEvent[],
-): TEvent[] {
-  return sortAgentUserResponseEvents(events);
-}
-
-export function getChatMessageRuntimeNextResponseEventOrdinal<
-  TEvent extends Pick<AgentUserResponseEvent, 'ordinal'>,
->(
-  events: TEvent[],
-): number {
-  return getNextAgentUserResponseEventOrdinal(events);
 }
 
 export function createChatMessageRuntimeTurnDurationMessages(

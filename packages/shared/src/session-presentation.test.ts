@@ -24,9 +24,14 @@ import {
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeConnectionErrorTurnState,
+  createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimePendingTurnStatusState,
+  createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeQueuedErrorState,
+  createChatMessageRuntimeStreamingText,
+  createChatMessageRuntimeStreamingTurnState,
+  createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeNoSessionAvailableDebugState,
@@ -297,11 +302,14 @@ import {
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
+  getChatMessageRuntimeNextResponseEventOrdinal,
   hasChatMessageRuntimeRequestSessionChanged,
   isLastChatMessageRuntimeConversationContent,
   isChatMessageRuntimeActiveRequest,
   isChatMessageRuntimeLatestSessionRequest,
+  preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
+  sortChatMessageRuntimeResponseEvents,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
   updateLastChatMessageRuntimeConversationContent,
@@ -873,6 +881,173 @@ describe("session presentation semantics", () => {
       requestId: 3,
       activeRequestId: 4,
     })).toBe(false)
+    expect(createChatMessageRuntimeUserResponseMessages(
+      [
+        { role: "user", content: "Question" },
+        { role: "assistant", content: "  " },
+      ],
+      "  Spoken response  ",
+    )).toEqual([
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Spoken response", displayContent: undefined },
+    ])
+    expect(createChatMessageRuntimeUserResponseMessages(
+      [{ role: "user", content: "Question" }],
+      "Spoken response",
+    )).toEqual([
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Spoken response" },
+    ])
+    expect(preserveChatMessageRuntimeDisplayContentFromProgress(
+      [
+        { role: "assistant", content: "Final" },
+        { role: "user", content: "Next" },
+      ],
+      [
+        { role: "assistant", content: "", displayContent: "Spoken preview" },
+        { role: "user", content: "Next", displayContent: "Ignored" },
+      ],
+    )).toEqual([
+      { role: "assistant", content: "Final", displayContent: "Spoken preview" },
+      { role: "user", content: "Next" },
+    ])
+    expect(createChatMessageRuntimeStreamingText("Hel", "Hello")).toBe("Hello")
+    expect(createChatMessageRuntimeStreamingText("Hello", " world")).toBe("Hello world")
+    const streamingTurnState = createChatMessageRuntimeStreamingTurnState("Hel", "Hello")
+    expect(streamingTurnState.streamingText).toBe("Hello")
+    expect(streamingTurnState.updateMessages([{ role: "assistant", content: "Old" }])).toEqual([
+      { role: "assistant", content: "Hello" },
+    ])
+    expect(createChatMessageRuntimeFinalResponseTextState({
+      responseContent: "Final",
+      streamingText: "Stream",
+      conversationState: "running",
+    })).toEqual({
+      finalText: "Final",
+      finalDisplayText: "Final",
+      ttsText: "Final",
+      userResponseText: undefined,
+      alreadySpokenMidTurn: false,
+      completedConversationState: "complete",
+    })
+    expect(createChatMessageRuntimeFinalResponseTextState({
+      responseContent: "Final",
+      streamingText: "Stream",
+      conversationState: "needs_input",
+      finalResponseEvent: { id: "response-2", text: "Spoken final" },
+      playedResponseEventIds: new Set(["response-2"]),
+    })).toEqual({
+      finalText: "Final",
+      finalDisplayText: "Spoken final",
+      ttsText: "Spoken final",
+      userResponseText: "Spoken final",
+      alreadySpokenMidTurn: true,
+      completedConversationState: "needs_input",
+    })
+    const unsortedResponseEvents = [
+      { id: "run-2-first", sessionId: "session-a", runId: 2, ordinal: 1, text: "Run 2", timestamp: 2 },
+      { id: "run-1-second", sessionId: "session-a", runId: 1, ordinal: 2, text: "Second", timestamp: 3 },
+      { id: "run-1-first", sessionId: "session-a", runId: 1, ordinal: 1, text: "First", timestamp: 4 },
+    ]
+    expect(sortChatMessageRuntimeResponseEvents(unsortedResponseEvents).map((event) => event.id)).toEqual([
+      "run-1-first",
+      "run-1-second",
+      "run-2-first",
+    ])
+    expect(getChatMessageRuntimeNextResponseEventOrdinal(unsortedResponseEvents)).toBe(3)
+    const progressResponseEvents = [
+      { id: "response-2", sessionId: "session-a", runId: 1, ordinal: 2, text: "Second", timestamp: 2 },
+      { id: "response-1", sessionId: "session-a", runId: 1, ordinal: 1, text: "First", timestamp: 1 },
+    ]
+    expect(createChatMessageRuntimeProgressResponseState({
+      update: { responseEvents: progressResponseEvents },
+      requestSessionId: "session-a",
+      lastUserResponse: "Old",
+      createFallbackResponseEvent: (sessionId, runId, text) => ({
+        id: `${sessionId ?? "missing"}-${runId ?? 0}-fallback`,
+        sessionId: sessionId ?? "missing",
+        runId,
+        ordinal: 1,
+        text,
+        timestamp: 10,
+      }),
+    })).toEqual({
+      hasResponseUpdate: true,
+      responseEvents: [
+        { id: "response-1", sessionId: "session-a", runId: 1, ordinal: 1, text: "First", timestamp: 1 },
+        { id: "response-2", sessionId: "session-a", runId: 1, ordinal: 2, text: "Second", timestamp: 2 },
+      ],
+      speechQueueEvents: [
+        { id: "response-1", sessionId: "session-a", runId: 1, ordinal: 1, text: "First", timestamp: 1 },
+        { id: "response-2", sessionId: "session-a", runId: 1, ordinal: 2, text: "Second", timestamp: 2 },
+      ],
+      lastUserResponse: "Second",
+      legacyResponseText: undefined,
+    })
+    expect(createChatMessageRuntimeProgressResponseState({
+      update: { userResponse: "Legacy response", runId: 7 },
+      requestSessionId: "session-b",
+      lastUserResponse: "Old",
+      createFallbackResponseEvent: (sessionId, runId, text) => ({
+        id: `${sessionId ?? "missing"}-${runId ?? 0}-fallback`,
+        sessionId: sessionId ?? "missing",
+        runId,
+        ordinal: 1,
+        text,
+        timestamp: 10,
+      }),
+    })).toEqual({
+      hasResponseUpdate: true,
+      responseEvents: [{
+        id: "session-b-7-fallback",
+        sessionId: "session-b",
+        runId: 7,
+        ordinal: 1,
+        text: "Legacy response",
+        timestamp: 10,
+      }],
+      speechQueueEvents: [],
+      lastUserResponse: "Legacy response",
+      legacyResponseText: "Legacy response",
+    })
+    expect(createChatMessageRuntimeProgressResponseState({
+      update: { spokenContent: "Legacy response", runId: 7 },
+      requestSessionId: "session-b",
+      lastUserResponse: "Legacy response",
+      createFallbackResponseEvent: (sessionId, runId, text) => ({
+        id: `${sessionId ?? "missing"}-${runId ?? 0}-fallback`,
+        sessionId: sessionId ?? "missing",
+        runId,
+        ordinal: 1,
+        text,
+        timestamp: 10,
+      }),
+    })).toEqual({
+      hasResponseUpdate: true,
+      responseEvents: [],
+      speechQueueEvents: [],
+      lastUserResponse: "Legacy response",
+      legacyResponseText: "Legacy response",
+    })
+    expect(createChatMessageRuntimeProgressResponseState({
+      update: {},
+      requestSessionId: "session-b",
+      lastUserResponse: "Previous",
+      createFallbackResponseEvent: (sessionId, runId, text) => ({
+        id: `${sessionId ?? "missing"}-${runId ?? 0}-fallback`,
+        sessionId: sessionId ?? "missing",
+        runId,
+        ordinal: 1,
+        text,
+        timestamp: 10,
+      }),
+    })).toEqual({
+      hasResponseUpdate: false,
+      responseEvents: [],
+      speechQueueEvents: [],
+      lastUserResponse: "Previous",
+      legacyResponseText: undefined,
+    })
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.buttonGlyph).toBe("⏹")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.mobileIcon).toMatchObject({
       name: "stop-circle-outline",

@@ -4,15 +4,22 @@ import {
   type AgentConversationState,
 } from "./conversation-state"
 import {
+  applyUserResponseToChatMessages,
+  getNextAgentUserResponseEventOrdinal,
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
   hasVisibleChatMessageContent,
+  preserveChatMessageDisplayContentFromProgress,
+  sortAgentUserResponseEvents,
+  type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from "./chat-utils"
 import {
   getAgentDelegationCardState,
   type ACPDelegationProgress,
+  type AgentProgressUpdate,
+  type AgentUserResponseEvent,
   type AgentDelegationConversationPreviewRow,
   type AgentDelegationPresentation,
 } from "./agent-progress"
@@ -5157,6 +5164,38 @@ export interface ChatMessageRuntimeActiveRequestInput {
   activeRequestId: number
 }
 
+export interface ChatMessageRuntimeFinalResponseTextStateInput {
+  responseContent?: string | null
+  streamingText: string
+  conversationState: AgentConversationState
+  finalResponseEvent?: Pick<AgentUserResponseEvent, "id" | "text"> | null
+  lastUserResponse?: string
+  midTurnLegacyResponseText?: string
+  playedResponseEventIds?: ReadonlySet<string>
+}
+
+export interface ChatMessageRuntimeProgressResponseEventFactory {
+  (
+    sessionId: string | null | undefined,
+    runId: number | undefined,
+    text: string,
+  ): AgentUserResponseEvent
+}
+
+export interface ChatMessageRuntimeProgressResponseStateInput {
+  update: Pick<AgentProgressUpdate, "responseEvents" | "userResponse" | "spokenContent" | "runId">
+  requestSessionId?: string | null
+  lastUserResponse?: string
+  createFallbackResponseEvent: ChatMessageRuntimeProgressResponseEventFactory
+}
+
+export interface ChatMessageRuntimeStreamingTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+> {
+  streamingText: string
+  updateMessages: (messages: readonly TMessage[]) => TMessage[]
+}
+
 export function createChatMessageRuntimeUserTextMessage(
   content: string,
 ): ChatMessageRuntimeUserTextMessage {
@@ -5418,6 +5457,131 @@ export function applyChatMessageRuntimeSettledTurnStatusState(
 ): void {
   statusSetters.setResponding(false)
   statusSetters.setConnectionState(null)
+}
+
+export function createChatMessageRuntimeUserResponseMessages<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  messages: readonly TMessage[],
+  userResponse?: string,
+): TMessage[] {
+  return applyUserResponseToChatMessages(messages, userResponse)
+}
+
+export function preserveChatMessageRuntimeDisplayContentFromProgress<
+  TMessage extends ChatDisplayMessageLike,
+>(
+  finalMessages: readonly TMessage[],
+  progressMessages: readonly ChatDisplayMessageLike[],
+): TMessage[] {
+  return preserveChatMessageDisplayContentFromProgress(finalMessages, progressMessages)
+}
+
+export function createChatMessageRuntimeStreamingText(
+  currentText: string,
+  nextToken: string,
+): string {
+  if (nextToken.startsWith(currentText) && nextToken.length >= currentText.length) {
+    return nextToken
+  }
+  return currentText + nextToken
+}
+
+export function createChatMessageRuntimeStreamingTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  currentText: string,
+  nextToken: string,
+): ChatMessageRuntimeStreamingTurnState<TMessage> {
+  const streamingText = createChatMessageRuntimeStreamingText(currentText, nextToken)
+  return {
+    streamingText,
+    updateMessages: (messages) => updateLastChatMessageRuntimeConversationContent(messages, streamingText),
+  }
+}
+
+export function createChatMessageRuntimeFinalResponseTextState({
+  responseContent,
+  streamingText,
+  conversationState,
+  finalResponseEvent,
+  lastUserResponse,
+  midTurnLegacyResponseText,
+  playedResponseEventIds,
+}: ChatMessageRuntimeFinalResponseTextStateInput) {
+  const finalText = responseContent || streamingText
+  const userResponseText = finalResponseEvent?.text || lastUserResponse
+  const finalDisplayText = userResponseText || finalText
+  const ttsText = userResponseText || finalText
+  const alreadySpokenMidTurn = !!(finalResponseEvent
+    ? playedResponseEventIds?.has(finalResponseEvent.id)
+    : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText)
+
+  return {
+    finalText,
+    finalDisplayText,
+    ttsText,
+    userResponseText,
+    alreadySpokenMidTurn,
+    completedConversationState: createChatMessageRuntimeCompletedConversationState(conversationState),
+  }
+}
+
+export function sortChatMessageRuntimeResponseEvents<
+  TEvent extends Pick<AgentUserResponseEvent, "ordinal" | "timestamp" | "runId">,
+>(
+  events: TEvent[],
+): TEvent[] {
+  return sortAgentUserResponseEvents(events)
+}
+
+export function getChatMessageRuntimeNextResponseEventOrdinal<
+  TEvent extends Pick<AgentUserResponseEvent, "ordinal">,
+>(
+  events: TEvent[],
+): number {
+  return getNextAgentUserResponseEventOrdinal(events)
+}
+
+export function createChatMessageRuntimeProgressResponseState({
+  update,
+  requestSessionId,
+  lastUserResponse,
+  createFallbackResponseEvent,
+}: ChatMessageRuntimeProgressResponseStateInput) {
+  if (update.responseEvents?.length) {
+    const responseEvents = sortChatMessageRuntimeResponseEvents(update.responseEvents)
+    return {
+      hasResponseUpdate: true,
+      responseEvents,
+      speechQueueEvents: responseEvents,
+      lastUserResponse: responseEvents[responseEvents.length - 1]?.text,
+      legacyResponseText: undefined,
+    }
+  }
+
+  const responseText = update.userResponse || update.spokenContent
+  if (responseText) {
+    const responseEvents = responseText !== lastUserResponse
+      ? [createFallbackResponseEvent(requestSessionId, update.runId, responseText)]
+      : []
+
+    return {
+      hasResponseUpdate: true,
+      responseEvents,
+      speechQueueEvents: [],
+      lastUserResponse: responseText,
+      legacyResponseText: responseText,
+    }
+  }
+
+  return {
+    hasResponseUpdate: false,
+    responseEvents: [],
+    speechQueueEvents: [],
+    lastUserResponse,
+    legacyResponseText: undefined,
+  }
 }
 
 export function hasChatMessageRuntimeRequestSessionChanged({
