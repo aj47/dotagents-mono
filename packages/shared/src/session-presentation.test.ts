@@ -124,9 +124,11 @@ import {
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
+  getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationRuntimeThreadState,
   getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileDisplayMode,
   getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
@@ -4066,6 +4068,71 @@ describe("session presentation semantics", () => {
     })).toMatchObject({
       threadKey: 5,
       shouldRenderThread: true,
+    })
+    const threadListMessages = [
+      { role: "user" as const, content: "Question" },
+      { role: "assistant" as const, content: "" },
+      { role: "assistant" as const, content: "Answer" },
+    ]
+    expect(getChatRuntimeConversationThreadListMobileState({
+      allMessages: threadListMessages,
+      messages: threadListMessages.slice(1),
+      firstMessageIndex: 1,
+      groupByIndex: new Map(),
+      speakingMessageIndex: 2,
+      copiedMessageIndex: null,
+      createThreadState: (input) => ({
+        messageIndex: input.messageIndex,
+        isSpeaking: input.isSpeaking,
+        lastConversationContentMessageIndex: input.lastConversationContentMessageIndex,
+      }),
+    })).toEqual([
+      {
+        messageIndex: 1,
+        isSpeaking: false,
+        lastConversationContentMessageIndex: 2,
+      },
+      {
+        messageIndex: 2,
+        isSpeaking: true,
+        lastConversationContentMessageIndex: 2,
+      },
+    ])
+    expect(getChatRuntimeConversationRuntimeThreadListMobileState({
+      messages: threadListMessages,
+      visibleMessageCount: 2,
+      groupByIndex: new Map(),
+      speakingMessageIndex: null,
+      copiedMessageIndex: 2,
+      colors: {
+        ...messageThreadStyleColors,
+        destructive: "#dc2626",
+        successForeground: "#ecfdf5",
+      },
+      createThreadState: (input) => ({
+        messageIndex: input.messageIndex,
+        isCopied: input.isCopied,
+        resultOnlyToolLabel: input.resultOnlyToolLabel,
+        hasDelegationSurface: Boolean(input.presentation.delegationSurface),
+      }),
+    })).toMatchObject({
+      visibleMessageCount: 2,
+      totalMessageCount: 3,
+      hiddenMessageCount: 1,
+      threadStates: [
+        {
+          messageIndex: 1,
+          isCopied: false,
+          resultOnlyToolLabel: "Tool result",
+          hasDelegationSurface: true,
+        },
+        {
+          messageIndex: 2,
+          isCopied: true,
+          resultOnlyToolLabel: "Tool result",
+          hasDelegationSurface: true,
+        },
+      ],
     })
     const messageThreadPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: {

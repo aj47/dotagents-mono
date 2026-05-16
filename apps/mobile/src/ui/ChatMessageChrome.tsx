@@ -34,7 +34,6 @@ import {
   createChatMessageActionSlotRenderMap,
   getChatMessageActionSlotRenderEntries,
   getChatMessageActionMobileButtonStatesBySlot,
-  findLastChatMessageConversationContentIndex,
   isChatMessageConversationContent,
   sanitizeMessagesForModel,
   toggleChatDisplayExpansionState,
@@ -51,7 +50,6 @@ import {
   applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
-  hasVisibleChatMessageContent,
   preserveChatMessageDisplayContentFromProgress,
   sortAgentUserResponseEvents,
   type ChatDisplayMessageLike,
@@ -169,20 +167,19 @@ import {
   getChatRuntimeHomeQuickStartItemMobileRenderState,
   getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeLatestStepSummary,
-  getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
+  getChatRuntimeConversationRuntimeThreadListMobileState,
+  getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeConversationToolActivityGroupThreadRenderState,
-  getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationCardMobilePresentationState,
-  getChatRuntimeToolExecutionResultOnlyFallbackLabel,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -5588,26 +5585,17 @@ export function createChatMessageConversationThreadListRenderState({
   copiedMessageIndex,
   ...threadInput
 }: ChatMessageConversationThreadListRenderStateInput): ChatMessageConversationRenderableRuntimeThreadState[] {
-  const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex(
+  return getChatRuntimeConversationThreadListMobileState({
     allMessages,
-    (message) => message,
-    (message) => hasVisibleChatMessageContent(message),
-  );
-
-  return messages.map((message, visibleIndex) => {
-    const messageIndex = firstMessageIndex + visibleIndex;
-
-    return createChatMessageConversationItemThreadRenderState({
+    messages,
+    firstMessageIndex,
+    groupByIndex,
+    speakingMessageIndex,
+    copiedMessageIndex,
+    createThreadState: (itemState) => createChatMessageConversationItemThreadRenderState({
       ...threadInput,
-      lastConversationContentMessageIndex,
-      group: groupByIndex.get(messageIndex),
-      itemIndex: messageIndex,
-      itemKey: messageIndex,
-      message,
-      messageIndex,
-      isSpeaking: speakingMessageIndex === messageIndex,
-      isCopied: copiedMessageIndex === messageIndex,
-    }).threadState;
+      ...itemState,
+    }).threadState,
   });
 }
 
@@ -5616,33 +5604,15 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
   visibleMessageCount,
   ...threadListInput
 }: ChatMessageConversationRuntimeThreadListRenderStateInput): ChatMessageConversationRuntimeThreadListRenderState {
-  const {
-    firstVisibleMessageIndex,
-    visibleMessages,
-    hiddenMessageCount,
-  } = getChatRuntimeMessageHistoryWindowMobileDisplayState({
+  return getChatRuntimeConversationRuntimeThreadListMobileState({
     messages,
     visibleMessageCount,
-  });
-  const presentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
-    colors: threadListInput.colors,
-  });
-  const resultOnlyToolLabel =
-    threadListInput.resultOnlyToolLabel ?? getChatRuntimeToolExecutionResultOnlyFallbackLabel();
-
-  return {
-    threadStates: createChatMessageConversationThreadListRenderState({
+    ...threadListInput,
+    createThreadState: (itemState) => createChatMessageConversationItemThreadRenderState({
       ...threadListInput,
-      allMessages: messages,
-      messages: visibleMessages,
-      firstMessageIndex: firstVisibleMessageIndex,
-      presentation,
-      resultOnlyToolLabel,
-    }),
-    visibleMessageCount: visibleMessages.length,
-    totalMessageCount: messages.length,
-    hiddenMessageCount,
-  };
+      ...itemState,
+    }).threadState,
+  });
 }
 
 export function createChatMessageConversationThreadBodyInput({

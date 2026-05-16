@@ -6,6 +6,7 @@ import {
 import {
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
+  hasVisibleChatMessageContent,
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
 } from "./chat-utils"
@@ -73,6 +74,7 @@ import {
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
+  findLastChatMessageConversationContentIndex,
   hasChatMessageDisplayContent,
   isChatMessageLiveStreamingConversationContent,
   setChatDisplayExpansionState,
@@ -650,6 +652,60 @@ export type ChatRuntimeConversationMessageRuntimeThreadState<
   TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
 > =
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
+
+export interface ChatRuntimeConversationThreadListMobileItemStateInput<TMessage> {
+  message: TMessage
+  visibleIndex: number
+  messageIndex: number
+  itemIndex: number
+  itemKey: ChatRuntimeConversationThreadKey
+  group?: ToolActivityGroup
+  isSpeaking: boolean
+  isCopied: boolean
+  lastConversationContentMessageIndex: number
+}
+
+export interface ChatRuntimeConversationThreadListMobileStateInput<
+  TMessage extends ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike,
+  TThread,
+> {
+  allMessages: readonly TMessage[]
+  messages: readonly TMessage[]
+  firstMessageIndex: number
+  groupByIndex: ReadonlyMap<number, ToolActivityGroup>
+  speakingMessageIndex: number | null
+  copiedMessageIndex: number | null
+  createThreadState: (input: ChatRuntimeConversationThreadListMobileItemStateInput<TMessage>) => TThread
+}
+
+export interface ChatRuntimeConversationRuntimeThreadListMobileItemStateInput<
+  TMessage extends ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike,
+> extends ChatRuntimeConversationThreadListMobileItemStateInput<TMessage> {
+  presentation: ChatRuntimeMessageThreadPresentationMobileRenderState
+  resultOnlyToolLabel: string
+}
+
+export interface ChatRuntimeConversationRuntimeThreadListMobileStateInput<
+  TMessage extends ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike,
+  TThread,
+> extends Omit<
+    ChatRuntimeConversationThreadListMobileStateInput<TMessage, TThread>,
+    "allMessages" | "messages" | "firstMessageIndex" | "createThreadState"
+  >,
+  ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<TMessage>,
+  ChatRuntimeMessageThreadPresentationMobileRenderStateInput {
+  resultOnlyToolLabel?: string
+  createThreadState: (
+    input: ChatRuntimeConversationRuntimeThreadListMobileItemStateInput<TMessage>
+  ) => TThread
+}
+
+export interface ChatRuntimeConversationRuntimeThreadListMobileState<TThread> {
+  threadStates: TThread[]
+  visibleMessageCount: number
+  totalMessageCount: number
+  hiddenMessageCount: number
+}
 
 export type ChatRuntimeConversationContentMobileRenderState = Pick<
   ChatMessageContentRenderState,
@@ -6788,6 +6844,87 @@ export function getChatRuntimeConversationMessageRuntimeThreadState<
       renderContext,
       body: runtimeThreadInput.body,
     }),
+  }
+}
+
+export function getChatRuntimeConversationThreadListMobileState<
+  TMessage extends ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike,
+  TThread,
+>({
+  allMessages,
+  messages,
+  firstMessageIndex,
+  groupByIndex,
+  speakingMessageIndex,
+  copiedMessageIndex,
+  createThreadState,
+}: ChatRuntimeConversationThreadListMobileStateInput<TMessage, TThread>): TThread[] {
+  const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex(
+    allMessages,
+    (message) => message,
+    (message) => hasVisibleChatMessageContent(message),
+  )
+
+  return messages.map((message, visibleIndex) => {
+    const messageIndex = firstMessageIndex + visibleIndex
+
+    return createThreadState({
+      message,
+      visibleIndex,
+      messageIndex,
+      itemIndex: messageIndex,
+      itemKey: messageIndex,
+      group: groupByIndex.get(messageIndex),
+      isSpeaking: speakingMessageIndex === messageIndex,
+      isCopied: copiedMessageIndex === messageIndex,
+      lastConversationContentMessageIndex,
+    })
+  })
+}
+
+export function getChatRuntimeConversationRuntimeThreadListMobileState<
+  TMessage extends ChatMessageDisplayStateMessageLike & ChatMessageConversationContentLike,
+  TThread,
+>({
+  messages,
+  visibleMessageCount,
+  colors,
+  resultOnlyToolLabel,
+  createThreadState,
+  ...threadListInput
+}: ChatRuntimeConversationRuntimeThreadListMobileStateInput<
+  TMessage,
+  TThread
+>): ChatRuntimeConversationRuntimeThreadListMobileState<TThread> {
+  const {
+    firstVisibleMessageIndex,
+    visibleMessages,
+    hiddenMessageCount,
+  } = getChatRuntimeMessageHistoryWindowMobileDisplayState({
+    messages,
+    visibleMessageCount,
+  })
+  const presentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
+    colors,
+  })
+  const resolvedResultOnlyToolLabel =
+    resultOnlyToolLabel ?? getChatRuntimeToolExecutionResultOnlyFallbackLabel()
+
+  return {
+    threadStates: getChatRuntimeConversationThreadListMobileState({
+      ...threadListInput,
+      allMessages: messages,
+      messages: visibleMessages,
+      firstMessageIndex: firstVisibleMessageIndex,
+      createThreadState: (itemInput) => createThreadState({
+        ...itemInput,
+        presentation,
+        resultOnlyToolLabel: resolvedResultOnlyToolLabel,
+      }),
+    }),
+    visibleMessageCount: visibleMessages.length,
+    totalMessageCount: messages.length,
+    hiddenMessageCount,
   }
 }
 
