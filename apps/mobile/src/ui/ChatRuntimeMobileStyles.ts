@@ -52,11 +52,11 @@ import {
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
+  createChatComposerStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
 } from '@dotagents/shared/session-presentation';
 import {
-  createChatComposerStyleSlots,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatMessageActionStyleSlots,
   createChatMessageThreadBodyStyleSlots,
@@ -1125,7 +1125,60 @@ export function useChatRuntimeMobileStyleSlots() {
     [styles],
   );
   const chatComposerStyles = useMemo(
-    () => createChatComposerStyleSlots(styles),
+    () => createChatComposerStyleSlots({
+      speechPreviewStyles: {
+        box: styles.sttPreviewBox,
+        label: styles.sttPreviewLabel,
+        text: styles.sttPreviewText,
+      },
+      pendingImagesRailStyles: {
+        row: styles.pendingImagesRow,
+        card: styles.pendingImageCard,
+        preview: styles.pendingImagePreview,
+        removeButton: styles.pendingImageRemoveButton,
+      },
+      voiceOverlayStyles: {
+        overlay: styles.overlay,
+        card: styles.overlayCard,
+        label: styles.overlayText,
+        transcript: styles.overlayTranscript,
+      },
+      handsFreeControlsStyles: {
+        statusRow: styles.handsFreeStatusRow,
+        controlsRow: styles.handsFreeControlsRow,
+        controlButton: styles.handsFreeControlButton,
+        controlButtonText: styles.handsFreeControlButtonText,
+      },
+      accessoryButtonStyles: {
+        style: styles.ttsToggle,
+        activeStyle: styles.ttsToggleOn,
+      },
+      textEntryStyles: {
+        input: styles.input,
+        visuallyHiddenHint: styles.visuallyHiddenComposerHint,
+      },
+      queueActionStyles: {
+        button: styles.queueButton,
+        disabledButton: styles.sendButtonDisabled,
+        text: styles.queueButtonText,
+      },
+      submitActionStyles: {
+        button: styles.sendButton,
+        disabledButton: styles.sendButtonDisabled,
+        text: styles.sendButtonText,
+      },
+      micButtonStyles: {
+        button: styles.mic,
+        activeButton: styles.micOn,
+        label: styles.micLabel,
+        activeLabel: styles.micLabelOn,
+      },
+      inputDockStyles: {
+        area: styles.inputArea,
+        row: styles.inputRow,
+        micWrapper: styles.micWrapper,
+      },
+    }),
     [styles],
   );
   const conversationDockStyles = useMemo(

@@ -14535,6 +14535,65 @@ export function createChatComposerRuntimeDockStyleSlots<
   }
 }
 
+export function createChatComposerStyleSlots<
+  TSpeechPreviewStyles,
+  TPendingImagesRailStyles,
+  TVoiceOverlayStyles,
+  THandsFreeControlsStyles,
+  TAccessoryButtonStyles,
+  TTextEntryStyles,
+  TQueueActionStyles,
+  TSubmitActionStyles,
+  TMicButtonStyles,
+  TInputDockStyles,
+>({
+  speechPreviewStyles,
+  pendingImagesRailStyles,
+  voiceOverlayStyles,
+  handsFreeControlsStyles,
+  accessoryButtonStyles,
+  textEntryStyles,
+  queueActionStyles,
+  submitActionStyles,
+  micButtonStyles,
+  inputDockStyles,
+}: {
+  speechPreviewStyles: TSpeechPreviewStyles
+  pendingImagesRailStyles: TPendingImagesRailStyles
+  voiceOverlayStyles: TVoiceOverlayStyles
+  handsFreeControlsStyles: THandsFreeControlsStyles
+  accessoryButtonStyles: TAccessoryButtonStyles
+  textEntryStyles: TTextEntryStyles
+  queueActionStyles: TQueueActionStyles
+  submitActionStyles: TSubmitActionStyles
+  micButtonStyles: TMicButtonStyles
+  inputDockStyles: TInputDockStyles
+}): {
+  speechPreview: TSpeechPreviewStyles
+  pendingImagesRail: TPendingImagesRailStyles
+  voiceOverlay: TVoiceOverlayStyles
+  handsFreeControls: THandsFreeControlsStyles
+  accessoryButton: TAccessoryButtonStyles
+  textEntry: TTextEntryStyles
+  queueAction: TQueueActionStyles
+  submitAction: TSubmitActionStyles
+  micButton: TMicButtonStyles
+  inputDock: TInputDockStyles
+} {
+  return {
+    speechPreview: speechPreviewStyles,
+    pendingImagesRail: pendingImagesRailStyles,
+    voiceOverlay: voiceOverlayStyles,
+    handsFreeControls: handsFreeControlsStyles,
+    accessoryButton: accessoryButtonStyles,
+    textEntry: textEntryStyles,
+    queueAction: queueActionStyles,
+    submitAction: submitActionStyles,
+    micButton: micButtonStyles,
+    inputDock: inputDockStyles,
+  }
+}
+
 export function createChatMessageConnectionBannerStyleSlots<
   TBannerStyle,
   TReconnectingStyle,

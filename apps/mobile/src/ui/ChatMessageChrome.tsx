@@ -6741,65 +6741,6 @@ export function useChatRuntimeNavigationHeaderChromeOptions({
   });
 }
 
-export function createChatComposerStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatComposerStyleSlots {
-  return {
-    speechPreview: {
-      box: styles.sttPreviewBox,
-      label: styles.sttPreviewLabel,
-      text: styles.sttPreviewText,
-    },
-    pendingImagesRail: {
-      row: styles.pendingImagesRow,
-      card: styles.pendingImageCard,
-      preview: styles.pendingImagePreview,
-      removeButton: styles.pendingImageRemoveButton,
-    },
-    voiceOverlay: {
-      overlay: styles.overlay,
-      card: styles.overlayCard,
-      label: styles.overlayText,
-      transcript: styles.overlayTranscript,
-    },
-    handsFreeControls: {
-      statusRow: styles.handsFreeStatusRow,
-      controlsRow: styles.handsFreeControlsRow,
-      controlButton: styles.handsFreeControlButton,
-      controlButtonText: styles.handsFreeControlButtonText,
-    },
-    accessoryButton: {
-      style: styles.ttsToggle,
-      activeStyle: styles.ttsToggleOn,
-    },
-    textEntry: {
-      input: styles.input,
-      visuallyHiddenHint: styles.visuallyHiddenComposerHint,
-    },
-    queueAction: {
-      button: styles.queueButton,
-      disabledButton: styles.sendButtonDisabled,
-      text: styles.queueButtonText,
-    },
-    submitAction: {
-      button: styles.sendButton,
-      disabledButton: styles.sendButtonDisabled,
-      text: styles.sendButtonText,
-    },
-    micButton: {
-      button: styles.mic,
-      activeButton: styles.micOn,
-      label: styles.micLabel,
-      activeLabel: styles.micLabelOn,
-    },
-    inputDock: {
-      area: styles.inputArea,
-      row: styles.inputRow,
-      micWrapper: styles.micWrapper,
-    },
-  } as ChatComposerStyleSlots;
-}
-
 export function createChatComposerRuntimeDockChromeProps({
   colors,
   platform,

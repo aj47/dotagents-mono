@@ -57,6 +57,7 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatComposerStyleSlots,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageConnectionBannerStyleSlots,
@@ -3134,6 +3135,29 @@ describe("session presentation semantics", () => {
     })).toEqual({
       inputDock: "composer-input-safe",
       controls: "composer-controls",
+    })
+    expect(createChatComposerStyleSlots({
+      speechPreviewStyles: "speech-preview",
+      pendingImagesRailStyles: "pending-images",
+      voiceOverlayStyles: "voice-overlay",
+      handsFreeControlsStyles: "hands-free-controls",
+      accessoryButtonStyles: "accessory-button",
+      textEntryStyles: "text-entry",
+      queueActionStyles: "queue-action",
+      submitActionStyles: "submit-action",
+      micButtonStyles: "mic-button",
+      inputDockStyles: "input-dock",
+    })).toEqual({
+      speechPreview: "speech-preview",
+      pendingImagesRail: "pending-images",
+      voiceOverlay: "voice-overlay",
+      handsFreeControls: "hands-free-controls",
+      accessoryButton: "accessory-button",
+      textEntry: "text-entry",
+      queueAction: "queue-action",
+      submitAction: "submit-action",
+      micButton: "mic-button",
+      inputDock: "input-dock",
     })
     expect(createChatMessageConnectionBannerStyleSlots({
       bannerStyle: "banner",
