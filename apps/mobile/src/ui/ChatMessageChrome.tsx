@@ -8,7 +8,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -82,7 +81,6 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
-  getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationCardMobilePresentationState,
@@ -177,6 +175,7 @@ import {
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
+  type ChatRuntimeMobileSafeAreaStyleSlots,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
@@ -2400,15 +2399,6 @@ export type ChatMessageRuntimeChromeSurfaceProps<
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask> & {
   surfaceStyles: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['styles'];
-};
-
-type ChatRuntimeMobileSafeAreaLayout = ReturnType<typeof getChatRuntimeMobileSafeAreaLayoutState>;
-
-type ChatRuntimeMobileSafeAreaStyleSlots = {
-  chatScrollContent: StyleProp<ViewStyle>;
-  scrollToBottomButton: StyleProp<ViewStyle>;
-  voiceOverlay: StyleProp<ViewStyle>;
-  inputArea: StyleProp<ViewStyle>;
 };
 
 type ChatRuntimeSafeAreaMergedStyleSlots = {
@@ -7544,25 +7534,6 @@ export function createChatMessageRuntimeDockStyleSlots({
     connectionBanner: conversationDockStyles.connectionBanner,
     composer: composerStyles,
   } as ChatMessageRuntimeDockStyleSlots;
-}
-
-export function createChatRuntimeMobileSafeAreaStyleSlots(
-  layout: ChatRuntimeMobileSafeAreaLayout,
-): ChatRuntimeMobileSafeAreaStyleSlots {
-  return StyleSheet.create({
-    chatScrollContent: {
-      paddingBottom: layout.chatScrollContent.paddingBottom,
-    },
-    scrollToBottomButton: {
-      bottom: layout.scrollToBottomButton.bottom,
-    },
-    voiceOverlay: {
-      bottom: layout.voiceOverlay.bottom,
-    },
-    inputArea: {
-      paddingBottom: layout.inputArea.paddingBottom,
-    },
-  });
 }
 
 export function createChatRuntimeSafeAreaMergedStyleSlots({

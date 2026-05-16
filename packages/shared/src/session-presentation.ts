@@ -3236,6 +3236,21 @@ export interface ChatRuntimeMobileSafeAreaLayoutState {
   }
 }
 
+export interface ChatRuntimeMobileSafeAreaStyleSlots {
+  chatScrollContent: {
+    paddingBottom: number
+  }
+  scrollToBottomButton: {
+    bottom: number
+  }
+  voiceOverlay: {
+    bottom: number
+  }
+  inputArea: {
+    paddingBottom: number
+  }
+}
+
 export interface ChatRuntimeConnectionBannerFailedMobileIconState {
   name: typeof CHAT_RUNTIME_PRESENTATION.connectionBanner.mobileIcon.failedName
   size: number
@@ -13612,6 +13627,25 @@ export function getChatRuntimeMobileSafeAreaLayoutState(
     },
     inputArea: {
       paddingBottom: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.bottomInsetOffset + bottomInset,
+    },
+  }
+}
+
+export function createChatRuntimeMobileSafeAreaStyleSlots(
+  layout: ChatRuntimeMobileSafeAreaLayoutState,
+): ChatRuntimeMobileSafeAreaStyleSlots {
+  return {
+    chatScrollContent: {
+      paddingBottom: layout.chatScrollContent.paddingBottom,
+    },
+    scrollToBottomButton: {
+      bottom: layout.scrollToBottomButton.bottom,
+    },
+    voiceOverlay: {
+      bottom: layout.voiceOverlay.bottom,
+    },
+    inputArea: {
+      paddingBottom: layout.inputArea.paddingBottom,
     },
   }
 }

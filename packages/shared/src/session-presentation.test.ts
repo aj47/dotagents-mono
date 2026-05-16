@@ -63,6 +63,7 @@ import {
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlots,
+  createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlots,
   createChatRuntimeNoSessionAvailableDebugState,
@@ -2938,6 +2939,20 @@ describe("session presentation semantics", () => {
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.transcriptNumberOfLines).toBe(3)
     expect(getChatComposerMobileSurfaceState()).toBe(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile)
     expect(getChatRuntimeMobileSafeAreaLayoutState(21)).toEqual({
+      chatScrollContent: {
+        paddingBottom: 21,
+      },
+      scrollToBottomButton: {
+        bottom: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.bottomOffset + 21,
+      },
+      voiceOverlay: {
+        bottom: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.voiceOverlay.bottomOffset + 21,
+      },
+      inputArea: {
+        paddingBottom: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.inputArea.bottomInsetOffset + 21,
+      },
+    })
+    expect(createChatRuntimeMobileSafeAreaStyleSlots(getChatRuntimeMobileSafeAreaLayoutState(21))).toEqual({
       chatScrollContent: {
         paddingBottom: 21,
       },

@@ -20,6 +20,7 @@ import {
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeMessageActionRowMobileStyleSlot,
   createChatRuntimeMessageMobileStyleSlots,
+  createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
@@ -50,7 +51,6 @@ import {
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeHeaderStyleSlots,
-  createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
 } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
