@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatComposerImageAttachmentMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
@@ -140,7 +141,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const sttPreviewSurface = composerSurface.sttPreview;
   const voiceOverlaySurface = composerSurface.voiceOverlay;
   const imageAttachmentStyleState = composerChromeStyleState.imageAttachment;
-  const imageAttachmentSurface = imageAttachmentStyleState.surface;
+  const imageAttachmentStyleSlots = createChatComposerImageAttachmentMobileStyleSlots({
+    renderState: imageAttachmentStyleState,
+    spacing,
+    radius,
+  });
   const promptLibraryStyleState = composerChromeStyleState.promptLibrary;
   const promptLibrarySurface = promptLibraryStyleState.surface;
   const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
@@ -183,7 +188,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
     platform: mobilePlatform,
   });
-  const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
   const handsFreeSurfaceColors = handsFreeStyleState.colors;
   const toolApprovalStyleState = threadChromeStyleState.toolApproval;
   const toolApprovalStyleSlots = createChatRuntimeToolApprovalMobileStyleSlots({
@@ -519,35 +523,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       backgroundColor: mobileComposerSurfaceColors.inputArea.backgroundColor,
     },
     pendingImagesRow: {
-      paddingHorizontal: spacing[imageAttachmentSurface.row.paddingHorizontal],
-      paddingTop: spacing[imageAttachmentSurface.row.paddingTop],
-      paddingBottom: imageAttachmentSurface.row.paddingBottom,
-      gap: spacing[imageAttachmentSurface.row.gap],
+      ...imageAttachmentStyleSlots.row,
     },
     pendingImageCard: {
-      width: imageAttachmentSurface.preview.size,
-      height: imageAttachmentSurface.preview.size,
-      borderRadius: radius[imageAttachmentSurface.preview.borderRadius],
-      borderWidth: imageAttachmentSurface.preview.borderWidth,
-      borderColor: imageAttachmentSurfaceColors.preview.borderColor,
-      overflow: imageAttachmentSurface.preview.overflow,
-      backgroundColor: imageAttachmentSurfaceColors.preview.backgroundColor,
-      position: imageAttachmentSurface.preview.position,
+      ...imageAttachmentStyleSlots.card,
     },
     pendingImagePreview: {
-      width: imageAttachmentSurface.previewImage.width,
-      height: imageAttachmentSurface.previewImage.height,
+      ...imageAttachmentStyleSlots.preview,
     },
     pendingImageRemoveButton: {
-      position: imageAttachmentSurface.removeButton.position,
-      top: imageAttachmentSurface.removeButton.top,
-      right: imageAttachmentSurface.removeButton.right,
-      width: imageAttachmentSurface.removeButton.size,
-      height: imageAttachmentSurface.removeButton.size,
-      borderRadius: imageAttachmentSurface.removeButton.borderRadius,
-      backgroundColor: imageAttachmentSurfaceColors.removeButton.backgroundColor,
-      alignItems: imageAttachmentSurface.removeButton.alignItems,
-      justifyContent: imageAttachmentSurface.removeButton.justifyContent,
+      ...imageAttachmentStyleSlots.removeButton,
     },
     sttPreviewBox: {
       marginHorizontal: spacing[sttPreviewSurface.marginHorizontal],

@@ -4176,6 +4176,22 @@ export interface ChatComposerImageAttachmentMobileRenderState {
   }
 }
 
+type ChatComposerImageAttachmentMobileSurface = ChatImageAttachmentMobileRenderState["surface"]
+
+export type ChatComposerImageAttachmentMobileSpacingToken =
+  | ChatComposerImageAttachmentMobileSurface["row"]["paddingHorizontal"]
+  | ChatComposerImageAttachmentMobileSurface["row"]["paddingTop"]
+  | ChatComposerImageAttachmentMobileSurface["row"]["gap"]
+
+export type ChatComposerImageAttachmentMobileRadiusToken =
+  ChatComposerImageAttachmentMobileSurface["preview"]["borderRadius"]
+
+export interface ChatComposerImageAttachmentMobileStyleSlotsInput {
+  renderState: Pick<ChatImageAttachmentMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatComposerImageAttachmentMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatComposerImageAttachmentMobileRadiusToken, number>>
+}
+
 export interface ChatComposerTextToSpeechMobileRenderStateInput {
   isEnabled?: boolean
   colors: ChatComposerMobileIconColorPalette
@@ -8566,6 +8582,49 @@ export function getChatComposerMobileSurfaceRenderState({
     colors: {
       surface: getChatComposerMobileSurfaceColors(colors),
       text: getChatComposerMobileTextColors(colors),
+    },
+  }
+}
+
+export function createChatComposerImageAttachmentMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatComposerImageAttachmentMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    row: {
+      paddingHorizontal: spacing[surface.row.paddingHorizontal],
+      paddingTop: spacing[surface.row.paddingTop],
+      paddingBottom: surface.row.paddingBottom,
+      gap: spacing[surface.row.gap],
+    },
+    card: {
+      width: surface.preview.size,
+      height: surface.preview.size,
+      borderRadius: radius[surface.preview.borderRadius],
+      borderWidth: surface.preview.borderWidth,
+      borderColor: colors.preview.borderColor,
+      overflow: surface.preview.overflow,
+      backgroundColor: colors.preview.backgroundColor,
+      position: surface.preview.position,
+    },
+    preview: {
+      width: surface.previewImage.width,
+      height: surface.previewImage.height,
+    },
+    removeButton: {
+      position: surface.removeButton.position,
+      top: surface.removeButton.top,
+      right: surface.removeButton.right,
+      width: surface.removeButton.size,
+      height: surface.removeButton.size,
+      borderRadius: surface.removeButton.borderRadius,
+      backgroundColor: colors.removeButton.backgroundColor,
+      alignItems: surface.removeButton.alignItems,
+      justifyContent: surface.removeButton.justifyContent,
     },
   }
 }

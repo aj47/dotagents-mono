@@ -79,6 +79,7 @@ import {
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
+  createChatComposerImageAttachmentMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
@@ -2045,6 +2046,48 @@ describe("session presentation semantics", () => {
     })
     expect(composerChromeStyle.composer.input.paddingVertical).toBe(10)
     expect(composerChromeStyle.imageAttachment.colors.preview.borderColor).toBe("#cbd5e1")
+    expect(createChatComposerImageAttachmentMobileStyleSlots({
+      renderState: composerChromeStyle.imageAttachment,
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        md: 8,
+      },
+    })).toMatchObject({
+      row: {
+        paddingHorizontal: 8,
+        paddingTop: 4,
+        paddingBottom: 2,
+        gap: 4,
+      },
+      card: {
+        width: 56,
+        height: 56,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        overflow: "hidden",
+        backgroundColor: "#e2e8f0",
+        position: "relative",
+      },
+      preview: {
+        width: "100%",
+        height: "100%",
+      },
+      removeButton: {
+        position: "absolute",
+        top: 4,
+        right: 4,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        alignItems: "center",
+        justifyContent: "center",
+      },
+    })
     expect(composerChromeStyle.promptLibrary.colors.editorModal.saveButton.backgroundColor).toBe("#2563eb")
     expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)
     expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
