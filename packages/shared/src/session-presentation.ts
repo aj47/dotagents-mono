@@ -2725,6 +2725,35 @@ export interface ChatRuntimeScrollToBottomMobileRenderState {
   }
 }
 
+type ChatRuntimeScrollToBottomMobileSurface =
+  typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom
+
+export type ChatRuntimeScrollToBottomMobileSpacingToken =
+  ChatRuntimeScrollToBottomMobileSurface["right"]
+
+export interface ChatRuntimeScrollToBottomMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeScrollToBottomMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeScrollToBottomMobileSpacingToken, number>>
+}
+
+export interface ChatRuntimeScrollToBottomMobileStyleSlots {
+  button: {
+    position: ChatRuntimeScrollToBottomMobileSurface["position"]
+    right: number
+    width: number
+    height: number
+    borderRadius: number
+    backgroundColor: string
+    alignItems: ChatRuntimeScrollToBottomMobileSurface["alignItems"]
+    justifyContent: ChatRuntimeScrollToBottomMobileSurface["justifyContent"]
+    shadowColor: string
+    shadowOffset: ChatRuntimeScrollToBottomMobileSurface["shadowOffset"]
+    shadowOpacity: number
+    shadowRadius: number
+    elevation: number
+  }
+}
+
 export interface ChatRuntimeMobileSafeAreaLayoutState {
   chatScrollContent: {
     paddingBottom: number
@@ -11446,6 +11475,32 @@ export function getChatRuntimeScrollToBottomMobileRenderState({
         color: resolvedColors.icon.color,
       },
       pressedOpacity: surface.pressedOpacity,
+    },
+  }
+}
+
+export function createChatRuntimeScrollToBottomMobileStyleSlots({
+  renderState,
+  spacing,
+}: ChatRuntimeScrollToBottomMobileStyleSlotsInput): ChatRuntimeScrollToBottomMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    button: {
+      position: surface.position,
+      right: spacing[surface.right],
+      width: surface.size,
+      height: surface.size,
+      borderRadius: surface.borderRadius,
+      backgroundColor: colors.button.backgroundColor,
+      alignItems: surface.alignItems,
+      justifyContent: surface.justifyContent,
+      shadowColor: surface.shadowColor,
+      shadowOffset: surface.shadowOffset,
+      shadowOpacity: surface.shadowOpacity,
+      shadowRadius: surface.shadowRadius,
+      elevation: surface.elevation,
     },
   }
 }

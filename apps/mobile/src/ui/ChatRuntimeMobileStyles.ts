@@ -15,6 +15,7 @@ import {
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeRetryStatusMobileStyleSlots,
+  createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
@@ -110,8 +111,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const delegationCardSurface = delegationCardStyleState.surface;
   const delegationCardSurfaceColors = delegationCardStyleState.colors;
   const scrollToBottomStyleState = conversationChromeStyleState.scrollToBottom;
-  const scrollToBottomSurface = scrollToBottomStyleState.surface;
-  const scrollToBottomSurfaceColors = scrollToBottomStyleState.colors;
+  const scrollToBottomStyleSlots = createChatRuntimeScrollToBottomMobileStyleSlots({
+    renderState: scrollToBottomStyleState,
+    spacing,
+  });
   const messageHistoryBannerStyleState = conversationChromeStyleState.messageHistoryBanner;
   const messageHistoryBannerStyleSlots = createChatRuntimeMessageHistoryBannerMobileStyleSlots({
     renderState: messageHistoryBannerStyleState,
@@ -1009,19 +1012,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...connectionBannerStyleSlots.retryButtonText,
     },
     scrollToBottomButton: {
-      position: scrollToBottomSurface.position,
-      right: spacing[scrollToBottomSurface.right],
-      width: scrollToBottomSurface.size,
-      height: scrollToBottomSurface.size,
-      borderRadius: scrollToBottomSurface.borderRadius,
-      backgroundColor: scrollToBottomSurfaceColors.button.backgroundColor,
-      alignItems: scrollToBottomSurface.alignItems,
-      justifyContent: scrollToBottomSurface.justifyContent,
-      shadowColor: scrollToBottomSurface.shadowColor,
-      shadowOffset: scrollToBottomSurface.shadowOffset,
-      shadowOpacity: scrollToBottomSurface.shadowOpacity,
-      shadowRadius: scrollToBottomSurface.shadowRadius,
-      elevation: scrollToBottomSurface.elevation,
+      ...scrollToBottomStyleSlots.button,
     },
     overlay: {
       position: voiceOverlaySurface.position,

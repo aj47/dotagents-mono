@@ -69,6 +69,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeRetryStatusMobileStyleSlots,
+  createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
@@ -4217,6 +4218,33 @@ describe("session presentation semantics", () => {
           color: "#f8fafc",
         },
         pressedOpacity: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.scrollToBottom.pressedOpacity,
+      },
+    })
+    expect(createChatRuntimeScrollToBottomMobileStyleSlots({
+      renderState: getChatRuntimeScrollToBottomMobileRenderState({
+        colors: {
+          primary: "#111827",
+          primaryForeground: "#f8fafc",
+        },
+      }),
+      spacing: {
+        lg: 16,
+      },
+    })).toEqual({
+      button: {
+        position: "absolute",
+        right: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: "#111827",
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
       },
     })
     expect(getChatRuntimeScrollToBottomMobileRenderState({

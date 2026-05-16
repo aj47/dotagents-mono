@@ -1325,14 +1325,19 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
     chatMessageChromeSource,
     /export function ChatMessageScrollToBottomButton[\s\S]*?(accessibilityLabel=\{renderState\.accessibilityLabel\}|accessibilityHint=\{renderState\.accessibilityHint\}|name=\{renderState\.icon\.name\}|size=\{renderState\.icon\.size\}|color=\{renderState\.icon\.color\})[\s\S]*?export function ChatMessageLoadingState/
   );
+  assert.match(screenSource, /createChatRuntimeScrollToBottomMobileStyleSlots,/);
   assert.match(screenSource, /const scrollToBottomStyleState = conversationChromeStyleState\.scrollToBottom;/);
-  assert.match(screenSource, /const scrollToBottomSurface = scrollToBottomStyleState\.surface;/);
-  assert.match(screenSource, /const scrollToBottomSurfaceColors = scrollToBottomStyleState\.colors;/);
+  assert.match(screenSource, /const scrollToBottomStyleSlots = createChatRuntimeScrollToBottomMobileStyleSlots\(\{\s+renderState: scrollToBottomStyleState,\s+spacing,\s+\}\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeScrollToBottomMobileStyleSlots/);
+  assert.doesNotMatch(screenSource, /const scrollToBottomSurface = scrollToBottomStyleState\.surface;/);
+  assert.doesNotMatch(screenSource, /const scrollToBottomSurfaceColors = scrollToBottomStyleState\.colors;/);
   assert.doesNotMatch(screenSource, /CHAT_RUNTIME_SURFACE_PRESENTATION\.mobile\.scrollToBottom\./);
   assert.doesNotMatch(screenSource, /CHAT_RUNTIME_SURFACE_PRESENTATION,/);
   assert.doesNotMatch(screenSource, /mobileRuntimeSurface\.scrollToBottom\./);
   assert.doesNotMatch(screenSource, /runtimeSurface\.scrollToBottom/);
-  assert.match(screenSource, /scrollToBottomButton:\s*\{[\s\S]*?position:\s*scrollToBottomSurface\.position,[\s\S]*?width:\s*scrollToBottomSurface\.size,[\s\S]*?backgroundColor:\s*scrollToBottomSurfaceColors\.button\.backgroundColor,[\s\S]*?alignItems:\s*scrollToBottomSurface\.alignItems,[\s\S]*?justifyContent:\s*scrollToBottomSurface\.justifyContent,[\s\S]*?shadowOpacity:\s*scrollToBottomSurface\.shadowOpacity/);
+  assert.match(screenSource, /scrollToBottomButton:\s*\{\s+\.\.\.scrollToBottomStyleSlots\.button,/);
+  assert.doesNotMatch(screenSource, /scrollToBottomButton:\s*\{[\s\S]*?scrollToBottomSurface\.position/);
+  assert.doesNotMatch(screenSource, /scrollToBottomButton:\s*\{[\s\S]*?scrollToBottomSurfaceColors\.button\.backgroundColor/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileRuntimeScrollToBottomIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /theme\.colors\[scrollToBottomSurface\.backgroundColorToken\]/);
   assert.doesNotMatch(screenSource, /getChatRuntimeScrollToBottomMobileButtonState,/);
