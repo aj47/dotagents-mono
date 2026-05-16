@@ -94,6 +94,7 @@ import {
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
+  createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
@@ -8430,25 +8431,29 @@ export function ChatMessageToolExecutionPayloadSection({
   onCopyPress,
   styles,
 }: ChatMessageToolExecutionPayloadSectionProps) {
+  const payloadSectionParts = createChatRuntimeToolExecutionPayloadSectionMobilePropsParts({
+    payloadRenderState,
+    compactText,
+    content,
+    isExpanded,
+    previewNumberOfLines,
+    copyButtonRenderState,
+    onCopyPress,
+    styles,
+  });
+
   return (
-    <View style={styles.section}>
-      <View style={styles.headerRow}>
+    <View style={payloadSectionParts.sectionStyle}>
+      <View style={payloadSectionParts.headerRowStyle}>
         <ChatMessageToolExecutionPayloadMeta
-          renderState={payloadRenderState}
-          styles={styles.payloadMeta}
+          {...payloadSectionParts.payloadMeta}
         />
         <ChatMessageToolExecutionCopyButton
-          renderState={copyButtonRenderState}
-          onPress={onCopyPress}
-          styles={styles.copyButton}
+          {...payloadSectionParts.copyButton}
         />
       </View>
       <ChatMessageToolExecutionPayloadBlock
-        compactText={compactText}
-        content={content}
-        isExpanded={isExpanded}
-        previewNumberOfLines={previewNumberOfLines}
-        styles={styles.payloadBlock}
+        {...payloadSectionParts.payloadBlock}
       />
     </View>
   );

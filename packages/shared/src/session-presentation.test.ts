@@ -133,6 +133,7 @@ import {
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
+  createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
@@ -9175,6 +9176,42 @@ describe("session presentation semantics", () => {
         pendingResult: "pending-result-styles",
       },
     }).pendingResult).toBeNull()
+    const payloadSectionParts = createChatRuntimeToolExecutionPayloadSectionMobilePropsParts({
+      payloadRenderState: "payload-render-state",
+      compactText: "preview",
+      content: "payload-content",
+      isExpanded: true,
+      previewNumberOfLines: 3,
+      copyButtonRenderState: "copy-button-state",
+      onCopyPress: "copy-payload",
+      styles: {
+        section: "payload-section",
+        headerRow: "payload-header-row",
+        payloadMeta: "payload-meta-styles",
+        copyButton: "copy-button-styles",
+        payloadBlock: "payload-block-styles",
+      },
+    })
+    expect(payloadSectionParts).toEqual({
+      sectionStyle: "payload-section",
+      headerRowStyle: "payload-header-row",
+      payloadMeta: {
+        renderState: "payload-render-state",
+        styles: "payload-meta-styles",
+      },
+      copyButton: {
+        renderState: "copy-button-state",
+        onPress: "copy-payload",
+        styles: "copy-button-styles",
+      },
+      payloadBlock: {
+        compactText: "preview",
+        content: "payload-content",
+        isExpanded: true,
+        previewNumberOfLines: 3,
+        styles: "payload-block-styles",
+      },
+    })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
       shouldRender: true,
       isExpanded: false,

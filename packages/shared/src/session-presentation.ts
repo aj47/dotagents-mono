@@ -1941,6 +1941,72 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
+  TPayloadRenderState = unknown,
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TStyles extends {
+    section: unknown
+    headerRow: unknown
+    payloadMeta: unknown
+    copyButton: unknown
+    payloadBlock: unknown
+  } = {
+    section: unknown
+    headerRow: unknown
+    payloadMeta: unknown
+    copyButton: unknown
+    payloadBlock: unknown
+  },
+> {
+  payloadRenderState: TPayloadRenderState
+  compactText?: string | null
+  content: string
+  isExpanded: boolean
+  previewNumberOfLines: number
+  copyButtonRenderState: TCopyButtonRenderState
+  onCopyPress?: TOnCopyPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
+  TPayloadRenderState = unknown,
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TStyles extends {
+    section: unknown
+    headerRow: unknown
+    payloadMeta: unknown
+    copyButton: unknown
+    payloadBlock: unknown
+  } = {
+    section: unknown
+    headerRow: unknown
+    payloadMeta: unknown
+    copyButton: unknown
+    payloadBlock: unknown
+  },
+> {
+  sectionStyle: TStyles["section"]
+  headerRowStyle: TStyles["headerRow"]
+  payloadMeta: {
+    renderState: TPayloadRenderState
+    styles: TStyles["payloadMeta"]
+  }
+  copyButton: {
+    renderState: TCopyButtonRenderState
+    onPress: TOnCopyPress | undefined
+    styles: TStyles["copyButton"]
+  }
+  payloadBlock: {
+    compactText: string | null | undefined
+    content: string
+    isExpanded: boolean
+    previewNumberOfLines: number
+    styles: TStyles["payloadBlock"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
   TExpanded extends object = Record<string, never>,
@@ -14304,6 +14370,59 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
       renderState: pendingResult.renderState,
       styles: styles.pendingResult,
     } : null,
+  }
+}
+
+export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
+  TPayloadRenderState,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles extends {
+    section: unknown
+    headerRow: unknown
+    payloadMeta: unknown
+    copyButton: unknown
+    payloadBlock: unknown
+  },
+>({
+  payloadRenderState,
+  compactText,
+  content,
+  isExpanded,
+  previewNumberOfLines,
+  copyButtonRenderState,
+  onCopyPress,
+  styles,
+}: ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
+  TPayloadRenderState,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles
+>): ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
+  TPayloadRenderState,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles
+> {
+  return {
+    sectionStyle: styles.section,
+    headerRowStyle: styles.headerRow,
+    payloadMeta: {
+      renderState: payloadRenderState,
+      styles: styles.payloadMeta,
+    },
+    copyButton: {
+      renderState: copyButtonRenderState,
+      onPress: onCopyPress,
+      styles: styles.copyButton,
+    },
+    payloadBlock: {
+      compactText,
+      content,
+      isExpanded,
+      previewNumberOfLines,
+      styles: styles.payloadBlock,
+    },
   }
 }
 
