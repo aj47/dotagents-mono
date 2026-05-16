@@ -72,6 +72,7 @@ import {
   createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeConversationToolExecutionStackMobileProps,
   createChatRuntimeConversationBodyMobileProps,
+  createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -6881,6 +6882,33 @@ describe("session presentation semantics", () => {
         shouldRender: true,
         detailRows: conversationToolExecutionStackState.detailRows,
       },
+    })
+    const threadBodyProps = createChatRuntimeConversationThreadBodyMobileProps({
+      bodyDisplayMode: "delegationCard",
+      retryStatus: {
+        renderState: null,
+      },
+      delegationCard: {
+        ...delegationCardState,
+        delegation: delegationProgress,
+        toolEntries: delegationToolEntries,
+        displayToolCallCount: 1,
+      },
+      toolApproval: approvalState,
+      inlineActivity: null,
+      conversation: conversationBodyProps,
+    })
+    expect(threadBodyProps).toMatchObject({
+      bodyDisplayMode: "delegationCard",
+      retryStatus: null,
+      delegationCard: {
+        runId: "run-1",
+      },
+      toolApproval: {
+        toolName: "write_file",
+      },
+      inlineActivity: null,
+      conversation: conversationBodyProps,
     })
     conversationToolExecutionStackState.detailRows[0].onHeaderPress()
     conversationToolExecutionStackState.detailRows[0].input?.onCopyPress()

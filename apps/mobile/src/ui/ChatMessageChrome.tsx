@@ -80,13 +80,11 @@ import {
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeConversationBodyMobileProps,
-  createChatRuntimeConversationRetryStatusMobileProps,
-  createChatRuntimeConversationToolApprovalMobileProps,
+  createChatRuntimeConversationThreadBodyMobileProps,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
   createChatRuntimeViewportChromeMobileProps,
-  createChatRuntimeDelegationCardMobileProps,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -6755,32 +6753,14 @@ export function createChatMessageThreadBodyProps({
   inlineActivity,
   conversation,
 }: ChatMessageThreadBodyPropsInput): Omit<ChatMessageThreadBodyProps, 'styles'> {
-  return {
+  return createChatRuntimeConversationThreadBodyMobileProps({
     bodyDisplayMode,
-    retryStatus: createChatMessageRetryStatusProps(retryStatus),
-    delegationCard: createChatMessageDelegationCardProps(delegationCard),
-    toolApproval: createChatMessageToolApprovalProps(toolApproval),
-    inlineActivity: inlineActivity ?? null,
+    retryStatus,
+    delegationCard,
+    toolApproval,
+    inlineActivity,
     conversation: createChatMessageConversationBodyProps(conversation),
-  };
-}
-
-export function createChatMessageRetryStatusProps({
-  renderState,
-}: ChatMessageRetryStatusPropsInput): ChatMessageThreadBodyProps['retryStatus'] {
-  return createChatRuntimeConversationRetryStatusMobileProps({ renderState });
-}
-
-export function createChatMessageDelegationCardProps(
-  cardInput: ChatMessageDelegationCardPropsInput,
-): ChatMessageThreadBodyProps['delegationCard'] {
-  return createChatRuntimeDelegationCardMobileProps(cardInput);
-}
-
-export function createChatMessageToolApprovalProps({
-  cardState,
-}: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
-  return createChatRuntimeConversationToolApprovalMobileProps({ cardState });
+  });
 }
 
 export function createChatMessageActionStyleSlots(

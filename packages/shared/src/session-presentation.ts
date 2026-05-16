@@ -1819,6 +1819,32 @@ export interface ChatRuntimeConversationBodyMobilePropsInput<
   toolExecutionStack: ChatRuntimeConversationToolExecutionStackMobileState
 }
 
+export interface ChatRuntimeConversationThreadBodyMobileProps<
+  TConversation,
+  TInlineActivity = unknown,
+> {
+  bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode
+  retryStatus: ChatRuntimeConversationRetryStatusMobileProps | null
+  delegationCard: ChatRuntimeDelegationCardMobileProps | null
+  toolApproval: ChatRuntimeConversationToolApprovalMobileProps | null
+  inlineActivity: TInlineActivity | null
+  conversation: TConversation
+}
+
+export interface ChatRuntimeConversationThreadBodyMobilePropsInput<
+  TConversation,
+  TInlineActivity = unknown,
+> {
+  bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode
+  retryStatus: ChatRuntimeConversationRetryStatusMobileState
+  delegationCard: ChatRuntimeConversationDelegationCardMobileState<
+    ACPDelegationProgress | null | undefined
+  >
+  toolApproval: ChatRuntimeConversationToolApprovalMobileState
+  inlineActivity?: TInlineActivity | null
+  conversation: TConversation
+}
+
 export type ChatRuntimeConversationTurnDurationMobileState =
   Pick<ChatRuntimeTurnDurationMessageMobileRenderStateInput, "durationMs" | "isLive">
 
@@ -13024,6 +13050,33 @@ export function createChatRuntimeConversationBodyMobileProps<
       shouldRender: actionSet.shouldRenderStandaloneActions,
       entries: actionSet.entries,
     },
+  }
+}
+
+export function createChatRuntimeConversationThreadBodyMobileProps<
+  TConversation,
+  TInlineActivity = unknown,
+>({
+  bodyDisplayMode,
+  retryStatus,
+  delegationCard,
+  toolApproval,
+  inlineActivity,
+  conversation,
+}: ChatRuntimeConversationThreadBodyMobilePropsInput<
+  TConversation,
+  TInlineActivity
+>): ChatRuntimeConversationThreadBodyMobileProps<
+  TConversation,
+  TInlineActivity
+> {
+  return {
+    bodyDisplayMode,
+    retryStatus: createChatRuntimeConversationRetryStatusMobileProps(retryStatus),
+    delegationCard: createChatRuntimeDelegationCardMobileProps(delegationCard),
+    toolApproval: createChatRuntimeConversationToolApprovalMobileProps(toolApproval),
+    inlineActivity: inlineActivity ?? null,
+    conversation,
   }
 }
 
