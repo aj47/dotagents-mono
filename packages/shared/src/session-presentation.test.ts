@@ -64,6 +64,7 @@ import {
   createChatRuntimeStartingRequestDebugState,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
+  createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   deriveAttentionState,
   deriveLifecycleState,
@@ -4432,6 +4433,22 @@ describe("session presentation semantics", () => {
     expect(messageThreadStyle.turnDuration.live.colors).toEqual(
       getChatMessageActionMobileTurnDurationBadgeColors({ isLive: true }, messageThreadStyleColors),
     )
+    const messageDurationStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
+      renderState: messageThreadStyle.turnDuration.live,
+      platform: "ios",
+    })
+    const messageDurationLiveColors = getChatMessageActionMobileTurnDurationBadgeColors(
+      { isLive: true },
+      messageThreadStyleColors,
+    )
+    expect(messageDurationStyleSlots.badge.backgroundColor).toBe(messageDurationLiveColors.backgroundColor)
+    expect(messageDurationStyleSlots.badge.alignSelf).toBe(
+      CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.turnDurationBadge.alignSelf,
+    )
+    expect(messageDurationStyleSlots.text.fontFamily).toBe(
+      CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.turnDurationBadge.fontFamilyByPlatform.ios,
+    )
+    expect(messageDurationStyleSlots.text.color).toBe(messageDurationLiveColors.color)
     const successfulConversationMessage = getChatRuntimeConversationMessageMobileRenderState({
       role: "assistant",
       isComplete: true,

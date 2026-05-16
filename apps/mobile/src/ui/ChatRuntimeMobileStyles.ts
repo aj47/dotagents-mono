@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
+  createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -164,10 +165,14 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageSpeechActiveButtonColors = mobileMessageActionStyleState.activeSlotButtons.speech.colors;
   const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState.turnDuration.standard;
   const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState.turnDuration.live;
-  const mobileMessageTurnDurationBadge = mobileMessageTurnDurationRenderState.badge;
-  const mobileMessageTurnDurationLiveBadge = mobileMessageTurnDurationLiveRenderState.badge;
-  const mobileMessageTurnDurationBadgeColors = mobileMessageTurnDurationRenderState.colors;
-  const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
+  const mobileMessageTurnDurationStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
+    renderState: mobileMessageTurnDurationRenderState,
+    platform: mobilePlatform,
+  });
+  const mobileMessageTurnDurationLiveStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
+    renderState: mobileMessageTurnDurationLiveRenderState,
+    platform: mobilePlatform,
+  });
   const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   const createChatRuntimeMobileHeaderPinButtonStyle = (
@@ -223,34 +228,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   ) => ({
     opacity: button.disabledOpacity,
   } as const);
-  const createChatRuntimeMobileMessageTurnDurationBadgeStyle = (
-    badge: typeof mobileMessageTurnDurationBadge,
-    colors: typeof mobileMessageTurnDurationBadgeColors,
-  ) => ({
-    alignSelf: badge.alignSelf,
-    flexDirection: badge.flexDirection,
-    minHeight: badge.minHeight,
-    marginTop: badge.marginTop,
-    paddingHorizontal: badge.paddingHorizontal,
-    borderRadius: badge.borderRadius,
-    backgroundColor: colors.backgroundColor,
-    alignItems: badge.alignItems,
-    justifyContent: badge.justifyContent,
-    gap: badge.gap,
-    flexShrink: badge.flexShrink,
-    opacity: badge.opacity,
-  } as const);
-  const createChatRuntimeMobileMessageTurnDurationTextStyle = (
-    badge: typeof mobileMessageTurnDurationBadge,
-    colors: typeof mobileMessageTurnDurationBadgeColors,
-  ) => ({
-    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform, mobilePlatform),
-    fontSize: badge.fontSize,
-    lineHeight: badge.lineHeight,
-    fontWeight: badge.fontWeight,
-    color: colors.color,
-  } as const);
-
   return StyleSheet.create({
     keyboardAvoidingContainer: {
       flex: viewportSurface.flex,
@@ -1731,28 +1708,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       gap: spacing[mobileMessageActionRow.gap],
     },
     messageTurnDurationBadge: {
-      ...createChatRuntimeMobileMessageTurnDurationBadgeStyle(
-        mobileMessageTurnDurationBadge,
-        mobileMessageTurnDurationBadgeColors,
-      ),
+      ...mobileMessageTurnDurationStyleSlots.badge,
     },
     messageTurnDurationBadgeLive: {
-      ...createChatRuntimeMobileMessageTurnDurationBadgeStyle(
-        mobileMessageTurnDurationLiveBadge,
-        mobileMessageTurnDurationLiveBadgeColors,
-      ),
+      ...mobileMessageTurnDurationLiveStyleSlots.badge,
     },
     messageTurnDurationText: {
-      ...createChatRuntimeMobileMessageTurnDurationTextStyle(
-        mobileMessageTurnDurationBadge,
-        mobileMessageTurnDurationBadgeColors,
-      ),
+      ...mobileMessageTurnDurationStyleSlots.text,
     },
     messageTurnDurationTextLive: {
-      ...createChatRuntimeMobileMessageTurnDurationTextStyle(
-        mobileMessageTurnDurationLiveBadge,
-        mobileMessageTurnDurationLiveBadgeColors,
-      ),
+      ...mobileMessageTurnDurationLiveStyleSlots.text,
     },
     messageBranchButton: {
       ...createChatRuntimeMobileMessageActionButtonStyle(
