@@ -14595,6 +14595,161 @@ export function createChatComposerStyleSlots<
   }
 }
 
+type ChatComposerStyleSourceKey =
+  | "sttPreviewBox"
+  | "sttPreviewLabel"
+  | "sttPreviewText"
+  | "pendingImagesRow"
+  | "pendingImageCard"
+  | "pendingImagePreview"
+  | "pendingImageRemoveButton"
+  | "overlay"
+  | "overlayCard"
+  | "overlayText"
+  | "overlayTranscript"
+  | "handsFreeStatusRow"
+  | "handsFreeControlsRow"
+  | "handsFreeControlButton"
+  | "handsFreeControlButtonText"
+  | "ttsToggle"
+  | "ttsToggleOn"
+  | "input"
+  | "visuallyHiddenComposerHint"
+  | "queueButton"
+  | "sendButtonDisabled"
+  | "queueButtonText"
+  | "sendButton"
+  | "sendButtonText"
+  | "mic"
+  | "micOn"
+  | "micLabel"
+  | "micLabelOn"
+  | "inputArea"
+  | "inputRow"
+  | "micWrapper"
+
+type ChatComposerStyleSource = Record<ChatComposerStyleSourceKey, unknown>
+
+type ChatComposerStyleSlotsFromStyleSource<
+  TStyles extends ChatComposerStyleSource,
+> = {
+  speechPreview: {
+    box: TStyles["sttPreviewBox"]
+    label: TStyles["sttPreviewLabel"]
+    text: TStyles["sttPreviewText"]
+  }
+  pendingImagesRail: {
+    row: TStyles["pendingImagesRow"]
+    card: TStyles["pendingImageCard"]
+    preview: TStyles["pendingImagePreview"]
+    removeButton: TStyles["pendingImageRemoveButton"]
+  }
+  voiceOverlay: {
+    overlay: TStyles["overlay"]
+    card: TStyles["overlayCard"]
+    label: TStyles["overlayText"]
+    transcript: TStyles["overlayTranscript"]
+  }
+  handsFreeControls: {
+    statusRow: TStyles["handsFreeStatusRow"]
+    controlsRow: TStyles["handsFreeControlsRow"]
+    controlButton: TStyles["handsFreeControlButton"]
+    controlButtonText: TStyles["handsFreeControlButtonText"]
+  }
+  accessoryButton: {
+    style: TStyles["ttsToggle"]
+    activeStyle: TStyles["ttsToggleOn"]
+  }
+  textEntry: {
+    input: TStyles["input"]
+    visuallyHiddenHint: TStyles["visuallyHiddenComposerHint"]
+  }
+  queueAction: {
+    button: TStyles["queueButton"]
+    disabledButton: TStyles["sendButtonDisabled"]
+    text: TStyles["queueButtonText"]
+  }
+  submitAction: {
+    button: TStyles["sendButton"]
+    disabledButton: TStyles["sendButtonDisabled"]
+    text: TStyles["sendButtonText"]
+  }
+  micButton: {
+    button: TStyles["mic"]
+    activeButton: TStyles["micOn"]
+    label: TStyles["micLabel"]
+    activeLabel: TStyles["micLabelOn"]
+  }
+  inputDock: {
+    area: TStyles["inputArea"]
+    row: TStyles["inputRow"]
+    micWrapper: TStyles["micWrapper"]
+  }
+}
+
+export function createChatComposerStyleSlotsFromStyleSource<
+  TStyles extends ChatComposerStyleSource,
+>({
+  styles,
+}: {
+  styles: TStyles
+}): ChatComposerStyleSlotsFromStyleSource<TStyles> {
+  return createChatComposerStyleSlots({
+    speechPreviewStyles: {
+      box: styles.sttPreviewBox,
+      label: styles.sttPreviewLabel,
+      text: styles.sttPreviewText,
+    },
+    pendingImagesRailStyles: {
+      row: styles.pendingImagesRow,
+      card: styles.pendingImageCard,
+      preview: styles.pendingImagePreview,
+      removeButton: styles.pendingImageRemoveButton,
+    },
+    voiceOverlayStyles: {
+      overlay: styles.overlay,
+      card: styles.overlayCard,
+      label: styles.overlayText,
+      transcript: styles.overlayTranscript,
+    },
+    handsFreeControlsStyles: {
+      statusRow: styles.handsFreeStatusRow,
+      controlsRow: styles.handsFreeControlsRow,
+      controlButton: styles.handsFreeControlButton,
+      controlButtonText: styles.handsFreeControlButtonText,
+    },
+    accessoryButtonStyles: {
+      style: styles.ttsToggle,
+      activeStyle: styles.ttsToggleOn,
+    },
+    textEntryStyles: {
+      input: styles.input,
+      visuallyHiddenHint: styles.visuallyHiddenComposerHint,
+    },
+    queueActionStyles: {
+      button: styles.queueButton,
+      disabledButton: styles.sendButtonDisabled,
+      text: styles.queueButtonText,
+    },
+    submitActionStyles: {
+      button: styles.sendButton,
+      disabledButton: styles.sendButtonDisabled,
+      text: styles.sendButtonText,
+    },
+    micButtonStyles: {
+      button: styles.mic,
+      activeButton: styles.micOn,
+      label: styles.micLabel,
+      activeLabel: styles.micLabelOn,
+    },
+    inputDockStyles: {
+      area: styles.inputArea,
+      row: styles.inputRow,
+      micWrapper: styles.micWrapper,
+    },
+  })
+}
+
 export function createChatConversationHomePromptEditorModalStyleSlots<
   TKeyboardAvoidingViewStyle,
   TOverlayStyle,

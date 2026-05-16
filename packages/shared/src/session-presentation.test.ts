@@ -61,6 +61,7 @@ import {
   createChatMessageActionStyleSlots,
   createChatMessageThreadBodyStyleSlots,
   createChatComposerStyleSlots,
+  createChatComposerStyleSlotsFromStyleSource,
   getChatMessageActionMobileButtonStatesBySlot,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockStyleSlots,
@@ -3202,6 +3203,51 @@ describe("session presentation semantics", () => {
       micButton: "mic-button",
       inputDock: "input-dock",
     })
+    const composerStyleSlots = createChatComposerStyleSlotsFromStyleSource({
+      styles: {
+        sttPreviewBox: "source-stt-box",
+        sttPreviewLabel: "source-stt-label",
+        sttPreviewText: "source-stt-text",
+        pendingImagesRow: "source-pending-row",
+        pendingImageCard: "source-pending-card",
+        pendingImagePreview: "source-pending-preview",
+        pendingImageRemoveButton: "source-pending-remove",
+        overlay: "source-overlay",
+        overlayCard: "source-overlay-card",
+        overlayText: "source-overlay-label",
+        overlayTranscript: "source-overlay-transcript",
+        handsFreeStatusRow: "source-handsfree-status-row",
+        handsFreeControlsRow: "source-handsfree-controls-row",
+        handsFreeControlButton: "source-handsfree-button",
+        handsFreeControlButtonText: "source-handsfree-button-text",
+        ttsToggle: "source-tts-toggle",
+        ttsToggleOn: "source-tts-on",
+        input: "source-input",
+        visuallyHiddenComposerHint: "source-hidden-hint",
+        queueButton: "source-queue-button",
+        sendButtonDisabled: "source-send-disabled",
+        queueButtonText: "source-queue-text",
+        sendButton: "source-send-button",
+        sendButtonText: "source-send-text",
+        mic: "source-mic",
+        micOn: "source-mic-on",
+        micLabel: "source-mic-label",
+        micLabelOn: "source-mic-label-on",
+        inputArea: "source-input-area",
+        inputRow: "source-input-row",
+        micWrapper: "source-mic-wrapper",
+      },
+    })
+    expect(composerStyleSlots.speechPreview.box).toBe("source-stt-box")
+    expect(composerStyleSlots.pendingImagesRail.removeButton).toBe("source-pending-remove")
+    expect(composerStyleSlots.voiceOverlay.transcript).toBe("source-overlay-transcript")
+    expect(composerStyleSlots.handsFreeControls.controlButtonText).toBe("source-handsfree-button-text")
+    expect(composerStyleSlots.accessoryButton.activeStyle).toBe("source-tts-on")
+    expect(composerStyleSlots.textEntry.visuallyHiddenHint).toBe("source-hidden-hint")
+    expect(composerStyleSlots.queueAction.disabledButton).toBe("source-send-disabled")
+    expect(composerStyleSlots.submitAction.button).toBe("source-send-button")
+    expect(composerStyleSlots.micButton.activeLabel).toBe("source-mic-label-on")
+    expect(composerStyleSlots.inputDock.micWrapper).toBe("source-mic-wrapper")
     expect(createChatMessageConnectionBannerStyleSlots({
       bannerStyle: "banner",
       reconnectingStyle: "reconnecting",
