@@ -1836,6 +1836,73 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   callDetailStyles: TCallDetailStyles
 }
 
+export interface ChatRuntimeConversationBodyPanelMobilePropsPartsInput<
+  TContent extends { expanded: object; collapsed: object } = { expanded: object; collapsed: object },
+  TToolExecutionStack extends object = Record<string, never>,
+  TStandaloneActions extends object = Record<string, never>,
+  TContentRowStyle = unknown,
+  TExpandedBodyStyle = unknown,
+  TStreamingStyles = unknown,
+  TCollapsedStyle = unknown,
+  TCollapsedPressedStyle = unknown,
+  TCollapsedTextStyle = unknown,
+  TToolExecutionStackStyles = unknown,
+  TStandaloneActionsRowStyle = unknown,
+> {
+  conversation: {
+    content: TContent
+    toolExecutionStack: TToolExecutionStack
+    standaloneActions: TStandaloneActions
+  }
+  styles: {
+    content: {
+      rowStyle: TContentRowStyle
+      expandedBodyStyle: TExpandedBodyStyle
+      streamingStyles: TStreamingStyles
+      collapsedStyle: TCollapsedStyle
+      collapsedPressedStyle: TCollapsedPressedStyle
+      collapsedTextStyle: TCollapsedTextStyle
+    }
+    toolExecutionStack: TToolExecutionStackStyles
+    standaloneActions: {
+      rowStyle?: TStandaloneActionsRowStyle
+    }
+  }
+}
+
+export interface ChatRuntimeConversationBodyPanelMobilePropsParts<
+  TContent extends { expanded: object; collapsed: object } = { expanded: object; collapsed: object },
+  TToolExecutionStack extends object = Record<string, never>,
+  TStandaloneActions extends object = Record<string, never>,
+  TContentRowStyle = unknown,
+  TExpandedBodyStyle = unknown,
+  TStreamingStyles = unknown,
+  TCollapsedStyle = unknown,
+  TCollapsedPressedStyle = unknown,
+  TCollapsedTextStyle = unknown,
+  TToolExecutionStackStyles = unknown,
+  TStandaloneActionsRowStyle = unknown,
+> {
+  content: TContent & {
+    rowStyle: TContentRowStyle
+    expanded: TContent["expanded"] & {
+      bodyStyle: TExpandedBodyStyle
+      streamingStyles: TStreamingStyles
+    }
+    collapsed: TContent["collapsed"] & {
+      style: TCollapsedStyle
+      pressedStyle: TCollapsedPressedStyle
+      textStyle: TCollapsedTextStyle
+    }
+  }
+  toolExecutionStack: TToolExecutionStack & {
+    styles: TToolExecutionStackStyles
+  }
+  standaloneActions: TStandaloneActions & {
+    rowStyle: TStandaloneActionsRowStyle | undefined
+  }
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13378,6 +13445,73 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
     emptyState,
     emptyStateTextStyle: styles.emptyStateText,
     callDetailStyles: styles.callDetail,
+  }
+}
+
+export function createChatRuntimeConversationBodyPanelMobilePropsParts<
+  TContent extends { expanded: object; collapsed: object },
+  TToolExecutionStack extends object,
+  TStandaloneActions extends object,
+  TContentRowStyle,
+  TExpandedBodyStyle,
+  TStreamingStyles,
+  TCollapsedStyle,
+  TCollapsedPressedStyle,
+  TCollapsedTextStyle,
+  TToolExecutionStackStyles,
+  TStandaloneActionsRowStyle,
+>({
+  conversation,
+  styles,
+}: ChatRuntimeConversationBodyPanelMobilePropsPartsInput<
+  TContent,
+  TToolExecutionStack,
+  TStandaloneActions,
+  TContentRowStyle,
+  TExpandedBodyStyle,
+  TStreamingStyles,
+  TCollapsedStyle,
+  TCollapsedPressedStyle,
+  TCollapsedTextStyle,
+  TToolExecutionStackStyles,
+  TStandaloneActionsRowStyle
+>): ChatRuntimeConversationBodyPanelMobilePropsParts<
+  TContent,
+  TToolExecutionStack,
+  TStandaloneActions,
+  TContentRowStyle,
+  TExpandedBodyStyle,
+  TStreamingStyles,
+  TCollapsedStyle,
+  TCollapsedPressedStyle,
+  TCollapsedTextStyle,
+  TToolExecutionStackStyles,
+  TStandaloneActionsRowStyle
+> {
+  return {
+    content: {
+      ...conversation.content,
+      rowStyle: styles.content.rowStyle,
+      expanded: {
+        ...conversation.content.expanded,
+        bodyStyle: styles.content.expandedBodyStyle,
+        streamingStyles: styles.content.streamingStyles,
+      },
+      collapsed: {
+        ...conversation.content.collapsed,
+        style: styles.content.collapsedStyle,
+        pressedStyle: styles.content.collapsedPressedStyle,
+        textStyle: styles.content.collapsedTextStyle,
+      },
+    },
+    toolExecutionStack: {
+      ...conversation.toolExecutionStack,
+      styles: styles.toolExecutionStack,
+    },
+    standaloneActions: {
+      ...conversation.standaloneActions,
+      rowStyle: styles.standaloneActions.rowStyle,
+    },
   }
 }
 

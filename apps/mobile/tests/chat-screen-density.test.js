@@ -4430,6 +4430,19 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /threadStates: conversationThreadListState\.threadStates,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationThreadBodyInput/);
   assert.match(chatMessageChromeSource, /const resolvedBody = createChatMessageThreadBodyProps\(body\);/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeConversationBodyPanelMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationBodyPanelMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const conversationBodyParts = createChatRuntimeConversationBodyPanelMobilePropsParts\(\{\s+conversation,\s+styles,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /bodyStyle: styles\.content\.expandedBodyStyle/);
+  assert.doesNotMatch(chatMessageChromeSource, /pressedStyle: styles\.content\.collapsedPressedStyle/);
+  assert.doesNotMatch(chatMessageChromeSource, /rowStyle=\{styles\.standaloneActions\.rowStyle\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageConversationContent\s+\{\.\.\.conversationBodyParts\.content\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionStack\s+\{\.\.\.conversationBodyParts\.toolExecutionStack\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageStandaloneActions\s+\{\.\.\.conversationBodyParts\.standaloneActions\}/);
+  assert.match(sessionPresentationSource, /content: \{\s+\.\.\.conversation\.content,\s+rowStyle: styles\.content\.rowStyle,/);
+  assert.match(sessionPresentationSource, /expanded: \{\s+\.\.\.conversation\.content\.expanded,\s+bodyStyle: styles\.content\.expandedBodyStyle,\s+streamingStyles: styles\.content\.streamingStyles,/);
+  assert.match(sessionPresentationSource, /standaloneActions: \{\s+\.\.\.conversation\.standaloneActions,\s+rowStyle: styles\.standaloneActions\.rowStyle,/);
   assert.doesNotMatch(screenSource, /body=\{\{/);
   assert.doesNotMatch(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps/);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow/g) ?? []).length, 2);
@@ -4465,7 +4478,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /if \(contentDisplayMode === 'expanded'\) \{/);
   assert.match(chatMessageChromeSource, /if \(contentDisplayMode === 'collapsed'\) \{/);
   assert.match(sessionPresentationSource, /toolExecutionStack: createChatRuntimeConversationToolExecutionStackMobileProps\(toolExecutionStack\),/);
-  assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
+  assert.match(sessionPresentationSource, /rowStyle: styles\.content\.rowStyle,/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);

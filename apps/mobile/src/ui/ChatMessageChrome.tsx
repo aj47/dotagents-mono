@@ -79,6 +79,7 @@ import {
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
+  createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
@@ -7426,30 +7427,21 @@ export function ChatMessageThreadBody({
     );
   }
 
+  const conversationBodyParts = createChatRuntimeConversationBodyPanelMobilePropsParts({
+    conversation,
+    styles,
+  });
+
   return (
     <>
       <ChatMessageConversationContent
-        {...conversation.content}
-        rowStyle={styles.content.rowStyle}
-        expanded={{
-          ...conversation.content.expanded,
-          bodyStyle: styles.content.expandedBodyStyle,
-          streamingStyles: styles.content.streamingStyles,
-        }}
-        collapsed={{
-          ...conversation.content.collapsed,
-          style: styles.content.collapsedStyle,
-          pressedStyle: styles.content.collapsedPressedStyle,
-          textStyle: styles.content.collapsedTextStyle,
-        }}
+        {...conversationBodyParts.content}
       />
       <ChatMessageToolExecutionStack
-        {...conversation.toolExecutionStack}
-        styles={styles.toolExecutionStack}
+        {...conversationBodyParts.toolExecutionStack}
       />
       <ChatMessageStandaloneActions
-        {...conversation.standaloneActions}
-        rowStyle={styles.standaloneActions.rowStyle}
+        {...conversationBodyParts.standaloneActions}
       />
     </>
   );

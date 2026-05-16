@@ -89,6 +89,7 @@ import {
   createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeConversationToolExecutionStackMobileProps,
   createChatRuntimeConversationBodyMobileProps,
+  createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
@@ -6874,6 +6875,76 @@ describe("session presentation semantics", () => {
       threadBodyStyleSlots.toolExecutionStack.callDetail.resultSection.header.badge.textError,
     ).toBe("toolResultBadgeTextError")
     expect(threadBodyStyleSlots.standaloneActions.rowStyle).toBe("messageActionsRow")
+    const conversationBodyPanelParts = createChatRuntimeConversationBodyPanelMobilePropsParts({
+      conversation: {
+        content: {
+          contentDisplayMode: "expanded",
+          shouldRenderActionSlots: true,
+          entries: ["message-action"],
+          expanded: {
+            markdownContent: "expanded message",
+            spinnerSource: "spinner-source",
+          },
+          collapsed: {
+            renderState: "collapsed-preview",
+            onPress: "toggle-preview",
+          },
+        },
+        toolExecutionStack: {
+          shouldRender: true,
+          detailRows: ["tool-detail-row"],
+        },
+        standaloneActions: {
+          shouldRender: true,
+          entries: ["standalone-action"],
+        },
+      },
+      styles: {
+        content: {
+          rowStyle: "message-content-row",
+          expandedBodyStyle: "message-content-body",
+          streamingStyles: "streaming-content-styles",
+          collapsedStyle: "collapsed-preview-style",
+          collapsedPressedStyle: "collapsed-preview-pressed-style",
+          collapsedTextStyle: "collapsed-preview-text-style",
+        },
+        toolExecutionStack: "tool-execution-stack-styles",
+        standaloneActions: {
+          rowStyle: "standalone-actions-row",
+        },
+      },
+    })
+    expect(conversationBodyPanelParts).toEqual({
+      content: {
+        contentDisplayMode: "expanded",
+        shouldRenderActionSlots: true,
+        entries: ["message-action"],
+        rowStyle: "message-content-row",
+        expanded: {
+          markdownContent: "expanded message",
+          spinnerSource: "spinner-source",
+          bodyStyle: "message-content-body",
+          streamingStyles: "streaming-content-styles",
+        },
+        collapsed: {
+          renderState: "collapsed-preview",
+          onPress: "toggle-preview",
+          style: "collapsed-preview-style",
+          pressedStyle: "collapsed-preview-pressed-style",
+          textStyle: "collapsed-preview-text-style",
+        },
+      },
+      toolExecutionStack: {
+        shouldRender: true,
+        detailRows: ["tool-detail-row"],
+        styles: "tool-execution-stack-styles",
+      },
+      standaloneActions: {
+        shouldRender: true,
+        entries: ["standalone-action"],
+        rowStyle: "standalone-actions-row",
+      },
+    })
     const toolActivityGroupBoundaryStyles = createChatMessageToolActivityGroupBoundaryStyles({
       toggleContainerStyle: "toggle-container",
       togglePressedStyle: "toggle-pressed",
