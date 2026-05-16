@@ -79,6 +79,8 @@ import {
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
+  createChatRuntimeConversationRetryStatusMobileProps,
+  createChatRuntimeConversationToolApprovalMobileProps,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
@@ -6772,11 +6774,7 @@ export function createChatMessageThreadBodyProps({
 export function createChatMessageRetryStatusProps({
   renderState,
 }: ChatMessageRetryStatusPropsInput): ChatMessageThreadBodyProps['retryStatus'] {
-  return renderState
-    ? {
-        renderState,
-      }
-    : null;
+  return createChatRuntimeConversationRetryStatusMobileProps({ renderState });
 }
 
 export function createChatMessageDelegationCardProps(
@@ -6788,17 +6786,7 @@ export function createChatMessageDelegationCardProps(
 export function createChatMessageToolApprovalProps({
   cardState,
 }: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
-  if (!cardState) return null;
-
-  return {
-    renderState: cardState.renderState,
-    toolName: cardState.toolName,
-    argumentsPreview: cardState.argumentsPreview,
-    argumentsContent: cardState.argumentsContent,
-    onToggleArguments: cardState.onToggleArguments,
-    onDeny: cardState.onDeny,
-    onApprove: cardState.onApprove,
-  };
+  return createChatRuntimeConversationToolApprovalMobileProps({ cardState });
 }
 
 export function createChatMessageExpandedContentProps({

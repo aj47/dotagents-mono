@@ -1469,6 +1469,10 @@ export interface ChatRuntimeConversationRetryStatusMobileState {
   renderState: ChatRuntimeRetryStatusMobileRenderState | null
 }
 
+export interface ChatRuntimeConversationRetryStatusMobileProps {
+  renderState: ChatRuntimeRetryStatusMobileRenderState
+}
+
 export interface ChatRuntimeConversationToolApprovalMobileStateInput {
   message: {
     variant?: string
@@ -1490,6 +1494,16 @@ export interface ChatRuntimeConversationToolApprovalMobileCardState
 
 export interface ChatRuntimeConversationToolApprovalMobileState {
   cardState: ChatRuntimeConversationToolApprovalMobileCardState | null
+}
+
+export interface ChatRuntimeConversationToolApprovalMobileProps {
+  renderState: ChatRuntimeToolApprovalMobileRenderState
+  toolName: string
+  argumentsPreview: string
+  argumentsContent: string
+  onToggleArguments: () => void
+  onDeny: () => void
+  onApprove: () => void
 }
 
 export type ChatRuntimeConversationDelegationExpansionState = ChatDisplayExpansionStateMap<string>
@@ -12407,6 +12421,16 @@ export function getChatRuntimeConversationRetryStatusMobileState<
   }
 }
 
+export function createChatRuntimeConversationRetryStatusMobileProps({
+  renderState,
+}: ChatRuntimeConversationRetryStatusMobileState): ChatRuntimeConversationRetryStatusMobileProps | null {
+  return renderState
+    ? {
+        renderState,
+      }
+    : null
+}
+
 export function getChatRuntimeConversationToolApprovalMobileState({
   message,
   expandedToolApprovals,
@@ -12435,6 +12459,22 @@ export function getChatRuntimeConversationToolApprovalMobileState({
       onDeny: () => { void onRespondToToolApproval(cardState.approvalId, false) },
       onApprove: () => { void onRespondToToolApproval(cardState.approvalId, true) },
     },
+  }
+}
+
+export function createChatRuntimeConversationToolApprovalMobileProps({
+  cardState,
+}: ChatRuntimeConversationToolApprovalMobileState): ChatRuntimeConversationToolApprovalMobileProps | null {
+  if (!cardState) return null
+
+  return {
+    renderState: cardState.renderState,
+    toolName: cardState.toolName,
+    argumentsPreview: cardState.argumentsPreview,
+    argumentsContent: cardState.argumentsContent,
+    onToggleArguments: cardState.onToggleArguments,
+    onDeny: cardState.onDeny,
+    onApprove: cardState.onApprove,
   }
 }
 

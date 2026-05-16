@@ -68,6 +68,8 @@ import {
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeDelegationCardMobileProps,
+  createChatRuntimeConversationRetryStatusMobileProps,
+  createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -3609,6 +3611,23 @@ describe("session presentation semantics", () => {
         color: "#d97706",
       },
     })
+    const retryStatusRenderState = getChatRuntimeRetryStatusMobileRenderState({
+      retryInfo: {
+        attempt: 2,
+        maxAttempts: 5,
+        delaySeconds: 7,
+        reason: "Rate limit reached",
+      },
+      colors: retryStatusPalette,
+    })
+    expect(createChatRuntimeConversationRetryStatusMobileProps({
+      renderState: retryStatusRenderState,
+    })).toEqual({
+      renderState: retryStatusRenderState,
+    })
+    expect(createChatRuntimeConversationRetryStatusMobileProps({
+      renderState: null,
+    })).toBeNull()
     expect(createChatRuntimeRetryStatusMobileStyleSlots({
       renderState: getChatRuntimeRetryStatusMobileRenderState({
         retryInfo: {
@@ -6011,6 +6030,33 @@ describe("session presentation semantics", () => {
         },
       },
     })
+    if (!toolApprovalCardRenderState) {
+      throw new Error("Expected tool approval card render state")
+    }
+    const toolApprovalPropEvents: string[] = []
+    const toolApprovalProps = createChatRuntimeConversationToolApprovalMobileProps({
+      cardState: {
+        ...toolApprovalCardRenderState,
+        onToggleArguments: () => {
+          toolApprovalPropEvents.push("toggle")
+        },
+        onDeny: () => {
+          toolApprovalPropEvents.push("deny")
+        },
+        onApprove: () => {
+          toolApprovalPropEvents.push("approve")
+        },
+      },
+    })
+    expect(toolApprovalProps?.toolName).toBe("write_file")
+    expect(toolApprovalProps?.argumentsPreview).toBe("path: /test")
+    toolApprovalProps?.onToggleArguments()
+    toolApprovalProps?.onDeny()
+    toolApprovalProps?.onApprove()
+    expect(toolApprovalPropEvents).toEqual(["toggle", "deny", "approve"])
+    expect(createChatRuntimeConversationToolApprovalMobileProps({
+      cardState: null,
+    })).toBeNull()
     expect(getChatRuntimeToolApprovalCardMobileRenderState({
       isApproval: false,
       toolApproval: null,
