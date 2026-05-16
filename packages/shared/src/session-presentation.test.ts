@@ -82,6 +82,7 @@ import {
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerImageAttachmentMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
+  createChatRuntimeMessageActionRowMobileStyleSlot,
   createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
@@ -5822,6 +5823,18 @@ describe("session presentation semantics", () => {
     expect(messageThreadStyle.action.row).toMatchObject({
       flexDirection: "row",
       justifyContent: "flex-end",
+    })
+    expect(createChatRuntimeMessageActionRowMobileStyleSlot({
+      row: messageThreadStyle.action.row,
+      spacing: {
+        xs: 4,
+      },
+    })).toEqual({
+      flexDirection: "row",
+      alignItems: messageThreadStyle.action.row.alignItems,
+      justifyContent: "flex-end",
+      marginTop: messageThreadStyle.action.row.marginTop,
+      gap: 4,
     })
     const expansionButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
       renderState: messageThreadStyle.action.slotButtons.expansion,

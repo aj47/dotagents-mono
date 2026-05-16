@@ -874,6 +874,24 @@ export interface ChatRuntimeMessageActionButtonMobileStyleSlots {
   }
 }
 
+type ChatRuntimeMessageActionMobileStyleRenderState = ReturnType<typeof getChatMessageActionMobileStyleRenderState>
+
+export type ChatRuntimeMessageActionRowMobileStyleSpacingToken =
+  ChatRuntimeMessageActionMobileStyleRenderState["row"]["gap"]
+
+export interface ChatRuntimeMessageActionRowMobileStyleSlotInput {
+  row: ChatRuntimeMessageActionMobileStyleRenderState["row"]
+  spacing: Readonly<Record<ChatRuntimeMessageActionRowMobileStyleSpacingToken, number>>
+}
+
+export interface ChatRuntimeMessageActionRowMobileStyleSlot {
+  flexDirection: ChatRuntimeMessageActionMobileStyleRenderState["row"]["flexDirection"]
+  alignItems: ChatRuntimeMessageActionMobileStyleRenderState["row"]["alignItems"]
+  justifyContent: ChatRuntimeMessageActionMobileStyleRenderState["row"]["justifyContent"]
+  marginTop: number
+  gap: number
+}
+
 export interface ChatRuntimeMessageThreadMobileStyleRenderStateInput {
   colors: ChatMessageMobileRenderColorPalette
 }
@@ -10932,6 +10950,19 @@ export function createChatRuntimeMessageActionButtonMobileStyleSlots({
     disabled: {
       opacity: button.disabledOpacity,
     },
+  }
+}
+
+export function createChatRuntimeMessageActionRowMobileStyleSlot({
+  row,
+  spacing,
+}: ChatRuntimeMessageActionRowMobileStyleSlotInput): ChatRuntimeMessageActionRowMobileStyleSlot {
+  return {
+    flexDirection: row.flexDirection,
+    alignItems: row.alignItems,
+    justifyContent: row.justifyContent,
+    marginTop: row.marginTop,
+    gap: spacing[row.gap],
   }
 }
 

@@ -18,6 +18,7 @@ import {
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
+  createChatRuntimeMessageActionRowMobileStyleSlot,
   createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomMobileStyleSlots,
@@ -231,7 +232,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     platform: mobilePlatform,
   });
   const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
-  const mobileMessageActionRow = mobileMessageActionStyleState.row;
+  const mobileMessageActionRowStyleSlot = createChatRuntimeMessageActionRowMobileStyleSlot({
+    row: mobileMessageActionStyleState.row,
+    spacing,
+  });
   const mobileMessageExpansionButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
     renderState: mobileMessageActionStyleState.slotButtons.expansion,
   });
@@ -1027,11 +1031,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     messageExpandButtonPressed: mobileMessageExpansionButtonStyleSlots.pressed,
     messageActionsRow: {
-      flexDirection: mobileMessageActionRow.flexDirection,
-      alignItems: mobileMessageActionRow.alignItems,
-      justifyContent: mobileMessageActionRow.justifyContent,
-      marginTop: mobileMessageActionRow.marginTop,
-      gap: spacing[mobileMessageActionRow.gap],
+      ...mobileMessageActionRowStyleSlot,
     },
     messageTurnDurationBadge: {
       ...mobileMessageTurnDurationStyleSlots.badge,

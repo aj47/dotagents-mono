@@ -4369,7 +4369,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonRenderState,/);
   assert.doesNotMatch(screenSource, /getChatMessageActionMobileButtonColors,/);
   assert.match(screenSource, /const mobileMessageActionStyleState = mobileMessageThreadStyleState\.action;/);
-  assert.match(screenSource, /const mobileMessageActionRow = mobileMessageActionStyleState\.row;/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionRowMobileStyleSlot\(\{/);
+  assert.match(screenSource, /createChatRuntimeMessageActionRowMobileStyleSlot,/);
+  assert.match(screenSource, /const mobileMessageActionRowStyleSlot = createChatRuntimeMessageActionRowMobileStyleSlot\(\{\s+row: mobileMessageActionStyleState\.row,\s+spacing,\s+\}\);/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionButtonMobileStyleSlots\(\{/);
   assert.match(screenSource, /createChatRuntimeMessageActionButtonMobileStyleSlots,/);
   assert.match(screenSource, /const mobileMessageExpansionButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots\(\{\s+renderState: mobileMessageActionStyleState\.slotButtons\.expansion,\s+\}\);/);
@@ -4380,6 +4382,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /const mobileMessageSpeechActiveButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots\(\{\s+renderState: mobileMessageActionStyleState\.activeSlotButtons\.speech,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const mobileMessageExpansionButton = mobileMessageActionStyleState\.slotButtons\.expansion\.button;/);
   assert.doesNotMatch(screenSource, /const mobileMessageExpansionButtonColors = mobileMessageActionStyleState\.slotButtons\.expansion\.colors;/);
+  assert.doesNotMatch(screenSource, /const mobileMessageActionRow = mobileMessageActionStyleState\.row;/);
   assert.doesNotMatch(screenSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
   assert.doesNotMatch(chatMessageChromeSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
   assert.match(sessionPresentationSource, /isToolOnly: messageDisplayState\.isToolOnly,/);
@@ -5791,7 +5794,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /export function ChatMessageStandaloneActions/);
   assert.doesNotMatch(screenSource, /\{canBranchFromMessage && !shouldShowExpandedContent && !shouldShowCollapsedTextPreview && \(/);
   assert.match(chatMessageChromeSource, /styles\.messageActionsRow/);
-  assert.match(screenSource, /messageActionsRow:\s*\{[\s\S]*?flexDirection:\s*mobileMessageActionRow\.flexDirection,[\s\S]*?alignItems:\s*mobileMessageActionRow\.alignItems,[\s\S]*?justifyContent:\s*mobileMessageActionRow\.justifyContent,[\s\S]*?marginTop:\s*mobileMessageActionRow\.marginTop,[\s\S]*?gap:\s*spacing\[mobileMessageActionRow\.gap\]/);
+  assert.match(screenSource, /messageActionsRow:\s*\{[\s\S]*?\.\.\.mobileMessageActionRowStyleSlot/);
+  assert.doesNotMatch(screenSource, /gap:\s*spacing\[mobileMessageActionRow\.gap\]/);
   assert.doesNotMatch(screenSource, /CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,/);
   assert.doesNotMatch(screenSource, /const messageActionSurface = CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION\.mobile;/);
   assert.doesNotMatch(screenSource, /messageActionsRow:\s*\{[\s\S]*?messageActionSurface\.row\./);
