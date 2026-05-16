@@ -190,6 +190,7 @@ import {
   createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
   createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
   createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
+  createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
@@ -2545,6 +2546,39 @@ describe("session presentation semantics", () => {
       },
     })
     expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)
+    expect(createChatConversationHomePromptEditorModalStyleSlots({
+      keyboardAvoidingViewStyle: "keyboard-view",
+      overlayStyle: "overlay",
+      contentStyle: "content",
+      headerStyle: "header",
+      titleStyle: "title",
+      closeButtonStyle: "close-button",
+      labelStyle: "label",
+      inputStyle: "input",
+      inputMultilineStyle: "input-multiline",
+      actionsStyle: "actions",
+      cancelButtonStyle: "cancel-button",
+      cancelButtonTextStyle: "cancel-button-text",
+      saveButtonStyle: "save-button",
+      saveButtonDisabledStyle: "save-button-disabled",
+      saveButtonTextStyle: "save-button-text",
+    })).toEqual({
+      keyboardAvoidingView: "keyboard-view",
+      overlay: "overlay",
+      content: "content",
+      header: "header",
+      title: "title",
+      closeButton: "close-button",
+      label: "label",
+      input: "input",
+      inputMultiline: "input-multiline",
+      actions: "actions",
+      cancelButton: "cancel-button",
+      cancelButtonText: "cancel-button-text",
+      saveButton: "save-button",
+      saveButtonDisabled: "save-button-disabled",
+      saveButtonText: "save-button-text",
+    })
     expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
     expect(createChatComposerHandsFreeMobileStyleSlots({
       renderState: composerChromeStyle.handsFree,

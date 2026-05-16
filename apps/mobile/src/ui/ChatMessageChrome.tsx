@@ -6815,28 +6815,6 @@ export function createChatComposerRuntimeDockProps({
   });
 }
 
-export function createChatConversationHomePromptEditorModalStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatConversationHomePromptEditorModalStyles {
-  return {
-    keyboardAvoidingView: styles.modalKeyboardAvoidingView,
-    overlay: styles.modalOverlay,
-    content: styles.modalContent,
-    header: styles.modalHeader,
-    title: styles.modalTitle,
-    closeButton: styles.modalCloseButton,
-    label: styles.modalLabel,
-    input: styles.modalInput,
-    inputMultiline: styles.modalInputMultiline,
-    actions: styles.modalActions,
-    cancelButton: styles.modalCancelButton,
-    cancelButtonText: styles.modalCancelButtonText,
-    saveButton: styles.modalSaveButton,
-    saveButtonDisabled: styles.modalSaveButtonDisabled,
-    saveButtonText: styles.modalSaveButtonText,
-  } as ChatConversationHomePromptEditorModalStyles;
-}
-
 export function createChatMessageThreadBodyStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatMessageThreadBodyStyleSlots {

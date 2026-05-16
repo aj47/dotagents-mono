@@ -14595,6 +14595,90 @@ export function createChatComposerStyleSlots<
   }
 }
 
+export function createChatConversationHomePromptEditorModalStyleSlots<
+  TKeyboardAvoidingViewStyle,
+  TOverlayStyle,
+  TContentStyle,
+  THeaderStyle,
+  TTitleStyle,
+  TCloseButtonStyle,
+  TLabelStyle,
+  TInputStyle,
+  TInputMultilineStyle,
+  TActionsStyle,
+  TCancelButtonStyle,
+  TCancelButtonTextStyle,
+  TSaveButtonStyle,
+  TSaveButtonDisabledStyle,
+  TSaveButtonTextStyle,
+>({
+  keyboardAvoidingViewStyle,
+  overlayStyle,
+  contentStyle,
+  headerStyle,
+  titleStyle,
+  closeButtonStyle,
+  labelStyle,
+  inputStyle,
+  inputMultilineStyle,
+  actionsStyle,
+  cancelButtonStyle,
+  cancelButtonTextStyle,
+  saveButtonStyle,
+  saveButtonDisabledStyle,
+  saveButtonTextStyle,
+}: {
+  keyboardAvoidingViewStyle: TKeyboardAvoidingViewStyle
+  overlayStyle: TOverlayStyle
+  contentStyle: TContentStyle
+  headerStyle: THeaderStyle
+  titleStyle: TTitleStyle
+  closeButtonStyle: TCloseButtonStyle
+  labelStyle: TLabelStyle
+  inputStyle: TInputStyle
+  inputMultilineStyle: TInputMultilineStyle
+  actionsStyle: TActionsStyle
+  cancelButtonStyle: TCancelButtonStyle
+  cancelButtonTextStyle: TCancelButtonTextStyle
+  saveButtonStyle: TSaveButtonStyle
+  saveButtonDisabledStyle: TSaveButtonDisabledStyle
+  saveButtonTextStyle: TSaveButtonTextStyle
+}): {
+  keyboardAvoidingView: TKeyboardAvoidingViewStyle
+  overlay: TOverlayStyle
+  content: TContentStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  closeButton: TCloseButtonStyle
+  label: TLabelStyle
+  input: TInputStyle
+  inputMultiline: TInputMultilineStyle
+  actions: TActionsStyle
+  cancelButton: TCancelButtonStyle
+  cancelButtonText: TCancelButtonTextStyle
+  saveButton: TSaveButtonStyle
+  saveButtonDisabled: TSaveButtonDisabledStyle
+  saveButtonText: TSaveButtonTextStyle
+} {
+  return {
+    keyboardAvoidingView: keyboardAvoidingViewStyle,
+    overlay: overlayStyle,
+    content: contentStyle,
+    header: headerStyle,
+    title: titleStyle,
+    closeButton: closeButtonStyle,
+    label: labelStyle,
+    input: inputStyle,
+    inputMultiline: inputMultilineStyle,
+    actions: actionsStyle,
+    cancelButton: cancelButtonStyle,
+    cancelButtonText: cancelButtonTextStyle,
+    saveButton: saveButtonStyle,
+    saveButtonDisabled: saveButtonDisabledStyle,
+    saveButtonText: saveButtonTextStyle,
+  }
+}
+
 export function createChatMessageConnectionBannerStyleSlots<
   TBannerStyle,
   TReconnectingStyle,
