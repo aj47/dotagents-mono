@@ -33,13 +33,16 @@ import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 import {
+  formatHandsFreeSleepingDebugMessage,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerControlState,
+  getHandsFreeComposerDebugMessage,
   getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
   getHandsFreeStatusSubtitle,
   type HandsFreeComposerMobileSurfaceColorPalette,
+  type HandsFreeComposerDebugMessageKey,
 } from "./hands-free-controller"
 import {
   extractDataImageMarkdownReferences,
@@ -3309,6 +3312,8 @@ export interface ChatComposerRuntimeHandsFreeControlsMobileRenderState {
   }
   controlState: ReturnType<typeof getHandsFreeComposerControlState>
 }
+
+export type ChatComposerRuntimeHandsFreeDebugMessageKey = HandsFreeComposerDebugMessageKey
 
 export interface ChatComposerMicMobileWebPressStyleState {
   userSelect: "none"
@@ -7389,6 +7394,16 @@ export function getChatComposerRuntimeHandsFreeControlsMobileRenderState({
     },
     controlState: getHandsFreeComposerControlState(phase),
   }
+}
+
+export function getChatComposerRuntimeHandsFreeDebugMessage(
+  key: ChatComposerRuntimeHandsFreeDebugMessageKey,
+): string {
+  return getHandsFreeComposerDebugMessage(key)
+}
+
+export function formatChatComposerRuntimeHandsFreeSleepingDebugMessage(wakePhrase: string): string {
+  return formatHandsFreeSleepingDebugMessage(wakePhrase)
 }
 
 export function getChatComposerMobileTextInputPlatformState(

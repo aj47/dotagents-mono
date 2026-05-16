@@ -127,7 +127,9 @@ import {
   getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
+  formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeFollowUpPresentationState,
+  getChatComposerRuntimeHandsFreeDebugMessage,
   getChatComposerRuntimeHandsFreeControlsMobileRenderState,
   getChatComposerRuntimeTextEntryMobileRenderState,
   getChatComposerRuntimeImageDataUrlBytes,
@@ -488,6 +490,9 @@ describe("session presentation semantics", () => {
     expect(handsFreeControlsRenderState.status.subtitle).toContain("sleep agent")
     expect(handsFreeControlsRenderState.controlState.primary.action).toBe("sleep")
     expect(handsFreeControlsRenderState.controlState.secondary.action).toBe("pause")
+    expect(getChatComposerRuntimeHandsFreeDebugMessage("paused")).toBe("Handsfree paused.")
+    expect(formatChatComposerRuntimeHandsFreeSleepingDebugMessage("hey agent"))
+      .toContain("hey agent")
   })
 
   it("treats active attention signals as foreground without changing lifecycle", () => {

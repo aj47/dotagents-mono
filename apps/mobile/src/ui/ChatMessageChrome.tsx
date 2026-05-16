@@ -59,10 +59,6 @@ import {
   type ImageMimeTypeSource,
 } from '@dotagents/shared/conversation-media-assets';
 import {
-  formatHandsFreeSleepingDebugMessage,
-  getHandsFreeComposerDebugMessage,
-} from '@dotagents/shared/hands-free-controller';
-import {
   type VoiceDebugEntry,
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
@@ -168,7 +164,9 @@ import {
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
+  formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeFollowUpPresentationState,
+  getChatComposerRuntimeHandsFreeDebugMessage,
   getChatComposerRuntimeHandsFreeControlsMobileRenderState,
   getChatComposerRuntimeTextEntryMobileRenderState,
   mergeChatComposerRuntimeVoiceText,
@@ -4950,12 +4948,12 @@ export function useChatComposerRuntimeHandsFreeControlActionsState({
     if (!listening) {
       void startRecording();
     }
-    setDebugInfo(getHandsFreeComposerDebugMessage('awake'));
+    setDebugInfo(getChatComposerRuntimeHandsFreeDebugMessage('awake'));
   }, [listening, setDebugInfo, startRecording, wakeByUser]);
 
   const sleepHandsFreeByUser = useCallback(() => {
     sleepByUser();
-    setDebugInfo(formatHandsFreeSleepingDebugMessage(wakePhrase));
+    setDebugInfo(formatChatComposerRuntimeHandsFreeSleepingDebugMessage(wakePhrase));
   }, [setDebugInfo, sleepByUser, wakePhrase]);
 
   const resumeHandsFreeByUser = useCallback(() => {
@@ -4963,14 +4961,14 @@ export function useChatComposerRuntimeHandsFreeControlActionsState({
     if (!listening) {
       void startRecording();
     }
-    setDebugInfo(getHandsFreeComposerDebugMessage('resumed'));
+    setDebugInfo(getChatComposerRuntimeHandsFreeDebugMessage('resumed'));
   }, [listening, resumeByUser, setDebugInfo, startRecording]);
 
   const pauseHandsFreeByUser = useCallback(() => {
     pauseByUser();
     stopSpeech();
     void stopRecognitionOnly();
-    setDebugInfo(getHandsFreeComposerDebugMessage('paused'));
+    setDebugInfo(getChatComposerRuntimeHandsFreeDebugMessage('paused'));
   }, [pauseByUser, setDebugInfo, stopRecognitionOnly, stopSpeech]);
 
   const handleHandsFreePrimaryControl = useCallback(() => {
@@ -6147,9 +6145,9 @@ export function useChatRuntimeHandsFreeToggleActionsState<TConfig extends object
       void stopRecognitionOnly();
       stopSpeech();
       stopRemoteSpeech();
-      setDebugInfo(getHandsFreeComposerDebugMessage('disabled'));
+      setDebugInfo(getChatComposerRuntimeHandsFreeDebugMessage('disabled'));
     } else {
-      setDebugInfo(getHandsFreeComposerDebugMessage('enabled'));
+      setDebugInfo(getChatComposerRuntimeHandsFreeDebugMessage('enabled'));
     }
   }, [
     config,
