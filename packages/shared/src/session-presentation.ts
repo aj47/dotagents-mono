@@ -1454,6 +1454,25 @@ export interface ChatRuntimeConversationContentMobileState<
   }
 }
 
+export type ChatRuntimeConversationExpandedContentMobileProps<
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+> =
+  ChatRuntimeConversationContentMobileState<
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken
+  >["expanded"]
+
+export interface ChatRuntimeConversationCollapsedPreviewMobileProps<
+  TOnPress = () => void,
+> {
+  renderState: ChatRuntimeConversationCollapsedPreviewMobileRenderState
+  actionState: ChatRuntimeConversationCollapsedPreviewMobileActionState
+  onPress?: TOnPress
+}
+
 export interface ChatRuntimeConversationRetryStatusMobileStateInput<
   TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
     ChatRuntimeRetryInfoLike | null | undefined,
@@ -1735,6 +1754,69 @@ export interface ChatRuntimeConversationToolExecutionStackMobileProps {
     onCollapsePress: () => void
   }
   detailRows: readonly ChatRuntimeConversationToolExecutionDetailMobileRowState[]
+}
+
+export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
+  entries: readonly TActionEntry[]
+  shouldRenderActionSlots: boolean
+  shouldRenderStandaloneActions: boolean
+}
+
+export interface ChatRuntimeConversationBodyContentMobileProps<
+  TActionEntry,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TCollapsedPreviewPress = () => void,
+> {
+  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode
+  shouldRenderActionSlots: boolean
+  entries: readonly TActionEntry[]
+  expanded: ChatRuntimeConversationExpandedContentMobileProps<
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken
+  >
+  collapsed: ChatRuntimeConversationCollapsedPreviewMobileProps<TCollapsedPreviewPress>
+}
+
+export interface ChatRuntimeConversationBodyMobileProps<
+  TActionEntry,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TCollapsedPreviewPress = () => void,
+> {
+  content: ChatRuntimeConversationBodyContentMobileProps<
+    TActionEntry,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken,
+    TCollapsedPreviewPress
+  >
+  toolExecutionStack: ChatRuntimeConversationToolExecutionStackMobileProps
+  standaloneActions: {
+    shouldRender: boolean
+    entries: readonly TActionEntry[]
+  }
+}
+
+export interface ChatRuntimeConversationBodyMobilePropsInput<
+  TActionEntry,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TCollapsedPreviewPress = () => void,
+> {
+  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode
+  actionSet: ChatRuntimeConversationActionSetMobileProps<TActionEntry>
+  expanded: ChatRuntimeConversationExpandedContentMobileProps<
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken
+  >
+  collapsed: ChatRuntimeConversationCollapsedPreviewMobileProps<TCollapsedPreviewPress>
+  toolExecutionStack: ChatRuntimeConversationToolExecutionStackMobileState
 }
 
 export type ChatRuntimeConversationTurnDurationMobileState =
@@ -12384,6 +12466,48 @@ export function getChatRuntimeConversationContentMobileState<
   }
 }
 
+export function createChatRuntimeConversationExpandedContentMobileProps<
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+>({
+  streamingRenderState,
+  markdownContent,
+  assetBaseUrl,
+  assetAuthToken,
+  spinnerSource,
+}: ChatRuntimeConversationExpandedContentMobileProps<
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken
+>): ChatRuntimeConversationExpandedContentMobileProps<
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken
+> {
+  return {
+    streamingRenderState,
+    markdownContent,
+    assetBaseUrl,
+    assetAuthToken,
+    spinnerSource,
+  }
+}
+
+export function createChatRuntimeConversationCollapsedPreviewMobileProps<
+  TOnPress = () => void,
+>({
+  renderState,
+  actionState,
+  onPress,
+}: ChatRuntimeConversationCollapsedPreviewMobileProps<TOnPress>): ChatRuntimeConversationCollapsedPreviewMobileProps<TOnPress> {
+  return {
+    renderState,
+    actionState,
+    onPress,
+  }
+}
+
 export function getChatRuntimeConversationContentMobileDisplayMode(
   contentState: ChatRuntimeConversationContentMobileRenderState,
 ): ChatRuntimeConversationContentMobileDisplayMode {
@@ -12859,6 +12983,47 @@ export function createChatRuntimeConversationToolExecutionStackMobileProps({
       onCollapsePress: expanded.onToggle,
     },
     detailRows,
+  }
+}
+
+export function createChatRuntimeConversationBodyMobileProps<
+  TActionEntry,
+  TSpinnerSource,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TCollapsedPreviewPress = () => void,
+>({
+  contentDisplayMode,
+  actionSet,
+  expanded,
+  collapsed,
+  toolExecutionStack,
+}: ChatRuntimeConversationBodyMobilePropsInput<
+  TActionEntry,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TCollapsedPreviewPress
+>): ChatRuntimeConversationBodyMobileProps<
+  TActionEntry,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TCollapsedPreviewPress
+> {
+  return {
+    content: {
+      contentDisplayMode,
+      shouldRenderActionSlots: actionSet.shouldRenderActionSlots,
+      entries: actionSet.entries,
+      expanded: createChatRuntimeConversationExpandedContentMobileProps(expanded),
+      collapsed: createChatRuntimeConversationCollapsedPreviewMobileProps(collapsed),
+    },
+    toolExecutionStack: createChatRuntimeConversationToolExecutionStackMobileProps(toolExecutionStack),
+    standaloneActions: {
+      shouldRender: actionSet.shouldRenderStandaloneActions,
+      entries: actionSet.entries,
+    },
   }
 }
 

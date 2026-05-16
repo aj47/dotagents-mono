@@ -79,9 +79,9 @@ import {
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
+  createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
-  createChatRuntimeConversationToolExecutionStackMobileProps,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
@@ -6738,20 +6738,13 @@ export function createChatMessageConversationBodyProps({
 }: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
   const actionSet = createChatMessageActionSet(actionSetInput);
 
-  return {
-    content: {
-      contentDisplayMode,
-      shouldRenderActionSlots: actionSet.shouldRenderActionSlots,
-      entries: actionSet.entries,
-      expanded: createChatMessageExpandedContentProps(expanded),
-      collapsed: createChatMessageCollapsedPreviewProps(collapsed),
-    },
-    toolExecutionStack: createChatMessageToolExecutionStackProps(toolExecutionStack),
-    standaloneActions: {
-      shouldRender: actionSet.shouldRenderStandaloneActions,
-      entries: actionSet.entries,
-    },
-  };
+  return createChatRuntimeConversationBodyMobileProps({
+    contentDisplayMode,
+    actionSet,
+    expanded,
+    collapsed,
+    toolExecutionStack,
+  });
 }
 
 export function createChatMessageThreadBodyProps({
@@ -6788,40 +6781,6 @@ export function createChatMessageToolApprovalProps({
   cardState,
 }: ChatMessageToolApprovalPropsInput): ChatMessageThreadBodyProps['toolApproval'] {
   return createChatRuntimeConversationToolApprovalMobileProps({ cardState });
-}
-
-export function createChatMessageExpandedContentProps({
-  streamingRenderState,
-  markdownContent,
-  assetBaseUrl,
-  assetAuthToken,
-  spinnerSource,
-}: ChatMessageExpandedContentPropsInput): ChatMessageThreadBodyContentProps['expanded'] {
-  return {
-    streamingRenderState,
-    markdownContent,
-    assetBaseUrl,
-    assetAuthToken,
-    spinnerSource,
-  };
-}
-
-export function createChatMessageCollapsedPreviewProps({
-  renderState,
-  actionState,
-  onPress,
-}: ChatMessageCollapsedPreviewPropsInput): ChatMessageThreadBodyContentProps['collapsed'] {
-  return {
-    renderState,
-    actionState,
-    onPress,
-  };
-}
-
-export function createChatMessageToolExecutionStackProps(
-  input: ChatMessageToolExecutionStackPropsInput,
-): ChatMessageConversationBodyProps['toolExecutionStack'] {
-  return createChatRuntimeConversationToolExecutionStackMobileProps(input);
 }
 
 export function createChatMessageActionStyleSlots(

@@ -2607,7 +2607,7 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.doesNotMatch(chatMessageChromeSource, /messageRenderState\.collapsedPreview/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageCollapsedPreviewRenderState =/);
   assert.match(chatMessageChromeSource, /renderState: ChatRuntimeConversationMessageMobileRenderState\['collapsedPreview'\];/);
-  assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(collapsed\),/);
+  assert.match(sessionPresentationSource, /collapsed: createChatRuntimeConversationCollapsedPreviewMobileProps\(collapsed\),/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+renderState=\{collapsed\.renderState\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.text\}/);
   assert.doesNotMatch(screenSource, /const getCollapsedMessagePreview = \(content: string\) =>/);
@@ -2771,9 +2771,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /const renderState = getChatRuntimeToolExecutionStackMobileRenderState\(\{[\s\S]*?displayToolCallCount,[\s\S]*?results: renderedToolEntries\.map\(entry => entry\.result\),[\s\S]*?colors,[\s\S]*?emptyStateRenderState,/);
   assert.match(sessionPresentationSource, /return \{[\s\S]*?displayToolCallCount,[\s\S]*?isExpanded,[\s\S]*?renderState,[\s\S]*?compactRows,[\s\S]*?detailRows,/);
   assert.match(sessionPresentationSource, /compact: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},\s+expanded: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
-  assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
-  assert.match(chatMessageChromeSource, /return createChatRuntimeConversationToolExecutionStackMobileProps\(input\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
+  assert.match(sessionPresentationSource, /toolExecutionStack: createChatRuntimeConversationToolExecutionStackMobileProps\(toolExecutionStack\),/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationToolExecutionStackMobileProps/);
   assert.doesNotMatch(chatMessageChromeSource, /const stackRenderState = getChatRuntimeToolExecutionStackMobileRenderState\(\{/);
   assert.match(sessionPresentationSource, /const visibility = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\)/);
@@ -3494,8 +3493,10 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(sessionPresentationSource, /markdownContent: visibleMessageContent,/);
   assert.match(sessionPresentationSource, /onPress: collapsedPreviewAction\.canToggle\s+\? \(\) => onToggleMessageExpansion\(messageIndex\)\s+: undefined,/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
-  assert.match(chatMessageChromeSource, /expanded: createChatMessageExpandedContentProps\(expanded\),/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeConversationBodyMobileProps\(\{[\s\S]*?expanded,[\s\S]*?collapsed,[\s\S]*?toolExecutionStack,[\s\S]*?\}\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobileProps/);
+  assert.match(sessionPresentationSource, /expanded: createChatRuntimeConversationExpandedContentMobileProps\(expanded\),/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeStreamingContentMobileRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStreamingContentRenderState =/);
@@ -4286,7 +4287,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /const actionSet = createChatMessageActionSet\(actionSetInput\);/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageDelegationCardProps/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageExpandedContentProps/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageInlineActivityProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRetryStatusProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolApprovalProps/);
@@ -4294,7 +4295,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionCompactPreviewRow/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionDetailRow/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionRows/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRenderState/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationMessageRenderContextMobileState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationRenderContext/);
@@ -4323,7 +4324,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderState,/);
   assert.match(chatMessageChromeSource, /entries: getChatMessageActionSlotRenderEntries\(actionRenderState\.layout\.visibleSlots, components\),/);
   assert.match(chatMessageChromeSource, /shouldRenderActionSlots: actionRenderState\.layout\.shouldRenderActionSlots,/);
-  assert.match(chatMessageChromeSource, /shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,/);
+  assert.match(sessionPresentationSource, /shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,/);
   assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+shouldRender=\{shouldRenderActionSlots\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageActionSlotList\(\{\s+shouldRender = true,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionAvailabilityRenderState,/);
@@ -4352,7 +4353,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/components: messageActionSet\.components/g) ?? []).length, 0);
   assert.equal((chatMessageChromeSource.match(/slots: actionSet\.visibleSlots/g) ?? []).length, 0);
   assert.equal((chatMessageChromeSource.match(/components: actionSet\.components/g) ?? []).length, 0);
-  assert.equal((chatMessageChromeSource.match(/entries: actionSet\.entries/g) ?? []).length, 2);
+  assert.equal((chatMessageChromeSource.match(/entries: actionSet\.entries/g) ?? []).length, 0);
+  assert.equal((sessionPresentationSource.match(/entries: actionSet\.entries/g) ?? []).length, 2);
   assert.match(chatScreenSource, /\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(chatScreenSource, /threadList: \{[\s\S]*?threadStyles: chatMessageConversationThreadStyles\.runtimeThread,/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
@@ -4368,12 +4370,12 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /if \(bodyDisplayMode === 'toolApproval'\) \{/);
   assert.match(chatMessageChromeSource, /if \(bodyDisplayMode === 'inlineActivity'\) \{/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
-  assert.match(chatMessageChromeSource, /content: \{\s+contentDisplayMode,\s+shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,\s+entries: actionSet\.entries,/);
+  assert.match(sessionPresentationSource, /content: \{\s+contentDisplayMode,\s+shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,\s+entries: actionSet\.entries,/);
   assert.doesNotMatch(chatMessageChromeSource, /contentState\.shouldRenderExpandedContent/);
   assert.doesNotMatch(chatMessageChromeSource, /contentState\.shouldRenderCollapsedTextPreview/);
   assert.match(chatMessageChromeSource, /if \(contentDisplayMode === 'expanded'\) \{/);
   assert.match(chatMessageChromeSource, /if \(contentDisplayMode === 'collapsed'\) \{/);
-  assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
+  assert.match(sessionPresentationSource, /toolExecutionStack: createChatRuntimeConversationToolExecutionStackMobileProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
@@ -4504,7 +4506,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(screenSource, /accessibilityLabel: messageRenderState\.expansion\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /const messageCollapsedPreviewActionState = messageRenderState\.collapsedPreviewAction;/);
   assert.doesNotMatch(screenSource, /createChatMessageCollapsedPreviewProps,/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobileProps/);
   assert.doesNotMatch(chatMessageChromeSource, /onPress: actionState\.canToggle \? onToggle : undefined,/);
   assert.doesNotMatch(screenSource, /const createChatRuntimeMobileMessageActionButtonStyle =/);
   assert.match(sessionPresentationSource, /backgroundColor: colors\.backgroundColor,[\s\S]*?alignItems: button\.alignItems,[\s\S]*?justifyContent: button\.justifyContent,[\s\S]*?flexShrink: button\.flexShrink/);
@@ -4745,8 +4748,8 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(screenSource, /onToggleMessageExpansion: toggleMessageExpansion,/);
   assert.doesNotMatch(chatMessageChromeSource, /collapsed: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},/);
   assert.match(sessionPresentationSource, /collapsed: \{\s+renderState: collapsedPreview,\s+actionState: collapsedPreviewAction,\s+onPress: collapsedPreviewAction\.canToggle\s+\? \(\) => onToggleMessageExpansion\(messageIndex\)\s+: undefined,\s+\},/);
-  assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(collapsed\),/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps\(\{[\s\S]*?onPress,[\s\S]*?return \{[\s\S]*?onPress,/);
+  assert.match(sessionPresentationSource, /collapsed: createChatRuntimeConversationCollapsedPreviewMobileProps\(collapsed\),/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobileProps[\s\S]*?onPress,[\s\S]*?return \{[\s\S]*?onPress,/);
   assert.doesNotMatch(screenSource, /onPress: messageActionAvailabilityRenderState\.expansion\.canRender/);
   assert.doesNotMatch(screenSource, /accessibilityLabel: messageRenderState\.expansion\.accessibilityLabel/);
   assert.doesNotMatch(screenSource, /style: styles\.collapsedMessagePreviewToggle/);
@@ -5859,7 +5862,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /theme\.colors\[(messageSpeechMobileIcon|messageExpansionMobileIcon|messageCopyMobileIcon|messageTurnDurationMobileIcon|messageBranchMobileIcon)\.colorToken\]/);
   assert.match(sessionPresentationSource, /expansion: \{\s+onPress: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\.\.\.styles\.expansion,\s+\},/);
   assert.doesNotMatch(screenSource, /standaloneActions: \{\s+shouldRender: messageActionSet\.shouldRenderStandaloneActions/);
-  assert.match(chatMessageChromeSource, /standaloneActions: \{\s+shouldRender: actionSet\.shouldRenderStandaloneActions,\s+entries: actionSet\.entries,\s+\}/);
+  assert.match(sessionPresentationSource, /standaloneActions: \{\s+shouldRender: actionSet\.shouldRenderStandaloneActions,\s+entries: actionSet\.entries,\s+\}/);
   assert.match(chatMessageChromeSource, /standaloneActions: \{\s+rowStyle: styles\.messageActionsRow,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageStandaloneActions/);
   assert.doesNotMatch(screenSource, /\{canBranchFromMessage && !shouldShowExpandedContent && !shouldShowCollapsedTextPreview && \(/);

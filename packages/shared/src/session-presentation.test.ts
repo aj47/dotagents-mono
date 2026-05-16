@@ -71,6 +71,7 @@ import {
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeConversationToolExecutionStackMobileProps,
+  createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -6851,6 +6852,35 @@ describe("session presentation semantics", () => {
         rows: conversationToolExecutionStackState.compactRows,
       },
       detailRows: conversationToolExecutionStackState.detailRows,
+    })
+    const conversationBodyProps = createChatRuntimeConversationBodyMobileProps({
+      contentDisplayMode: contentState.contentDisplayMode,
+      actionSet: {
+        entries: ["speech", "copy"],
+        shouldRenderActionSlots: true,
+        shouldRenderStandaloneActions: false,
+      },
+      expanded: contentState.expanded,
+      collapsed: contentState.collapsed,
+      toolExecutionStack: conversationToolExecutionStackState,
+    })
+    expect(conversationBodyProps).toMatchObject({
+      content: {
+        contentDisplayMode: "expanded",
+        shouldRenderActionSlots: true,
+        entries: ["speech", "copy"],
+        expanded: {
+          markdownContent: "Working",
+        },
+      },
+      standaloneActions: {
+        shouldRender: false,
+        entries: ["speech", "copy"],
+      },
+      toolExecutionStack: {
+        shouldRender: true,
+        detailRows: conversationToolExecutionStackState.detailRows,
+      },
     })
     conversationToolExecutionStackState.detailRows[0].onHeaderPress()
     conversationToolExecutionStackState.detailRows[0].input?.onCopyPress()
