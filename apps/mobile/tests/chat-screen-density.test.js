@@ -280,7 +280,11 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(sessionPresentationSource, /export function createChatSessionStatusMobileChromeStyleSlots/);
   assert.match(screenSource, /createChatSessionStatusMobileChromeStyleSlots,/);
   assert.match(screenSource, /const sessionStatusStyleSlots = createChatSessionStatusMobileChromeStyleSlots\(\{\s+surface: sessionStatusSurface,\s+\}\);/);
-  assert.match(screenSource, /headerActionsRow:\s*\{[\s\S]*?flexDirection:\s*headerSurface\.actionsRow\.flexDirection,[\s\S]*?alignItems:\s*headerSurface\.actionsRow\.alignItems,[\s\S]*?gap:\s*headerSurface\.actionsRow\.gap/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderActionsRowMobileStyleSlot/);
+  assert.match(screenSource, /createChatRuntimeHeaderActionsRowMobileStyleSlot,/);
+  assert.match(screenSource, /const headerActionsRowStyleSlot = createChatRuntimeHeaderActionsRowMobileStyleSlot\(\{\s+surface: headerSurface\.actionsRow,\s+\}\);/);
+  assert.match(screenSource, /headerActionsRow:\s*\{[\s\S]*?\.\.\.headerActionsRowStyleSlot/);
+  assert.doesNotMatch(screenSource, /headerActionsRow:\s*\{[\s\S]*?flexDirection:\s*headerSurface\.actionsRow\.flexDirection/);
   assert.match(screenSource, /headerConversationChip:\s*\{[\s\S]*?\.\.\.sessionStatusStyleSlots\.chip/);
   assert.match(screenSource, /headerConversationChipText:\s*\{[\s\S]*?\.\.\.sessionStatusStyleSlots\.text/);
   assert.doesNotMatch(screenSource, /headerConversationChipText:\s*\{\s+\.\.\.theme\.typography\.caption/);

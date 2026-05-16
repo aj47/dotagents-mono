@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createChatSessionStatusMobileChromeStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
+  createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -61,6 +62,9 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerAgentSelectorStyleSlots = createChatRuntimeAgentSelectorMobileStyleSlots({
     surface: headerSurface,
     colors: headerAgentSelectorColors,
+  });
+  const headerActionsRowStyleSlot = createChatRuntimeHeaderActionsRowMobileStyleSlot({
+    surface: headerSurface.actionsRow,
   });
   const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
   const activeHeaderPinButtonColors = headerStyleState.pinButton.active;
@@ -301,9 +305,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...headerAgentSelectorStyleSlots.text,
     },
     headerActionsRow: {
-      flexDirection: headerSurface.actionsRow.flexDirection,
-      alignItems: headerSurface.actionsRow.alignItems,
-      gap: headerSurface.actionsRow.gap,
+      ...headerActionsRowStyleSlot,
     },
     headerConversationChip: {
       ...sessionStatusStyleSlots.chip,

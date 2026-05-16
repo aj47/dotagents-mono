@@ -58,6 +58,7 @@ import {
   createChatMessageRuntimeUserTextMessage,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeAgentSelectorMobileStyleSlots,
+  createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeNoSessionAvailableDebugState,
@@ -2407,6 +2408,13 @@ describe("session presentation semantics", () => {
         color: "#2563eb",
         fontWeight: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorText.fontWeight,
       },
+    })
+    expect(createChatRuntimeHeaderActionsRowMobileStyleSlot({
+      surface: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.actionsRow,
+    })).toEqual({
+      flexDirection: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.actionsRow.flexDirection,
+      alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.actionsRow.alignItems,
+      gap: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.actionsRow.gap,
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.accessibilityRole).toBe("button")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.pressedOpacity).toBe(0.78)

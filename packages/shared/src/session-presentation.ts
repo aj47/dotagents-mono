@@ -2140,6 +2140,16 @@ export interface ChatRuntimeAgentSelectorMobileStyleSlots {
   }
 }
 
+export interface ChatRuntimeHeaderActionsRowMobileStyleSlotInput {
+  surface: ChatRuntimeHeaderMobileSurfaceState["actionsRow"]
+}
+
+export interface ChatRuntimeHeaderActionsRowMobileStyleSlot {
+  flexDirection: ChatRuntimeHeaderMobileSurfaceState["actionsRow"]["flexDirection"]
+  alignItems: ChatRuntimeHeaderMobileSurfaceState["actionsRow"]["alignItems"]
+  gap: number
+}
+
 export interface ChatRuntimeHeaderIconContainerMobileStyleSlotInput<
   TAlignItems extends string = string,
   TJustifyContent extends string = string,
@@ -10583,6 +10593,16 @@ export function createChatRuntimeAgentSelectorMobileStyleSlots({
       color: colors.text.color,
       fontWeight: surface.agentSelectorText.fontWeight,
     },
+  }
+}
+
+export function createChatRuntimeHeaderActionsRowMobileStyleSlot({
+  surface,
+}: ChatRuntimeHeaderActionsRowMobileStyleSlotInput): ChatRuntimeHeaderActionsRowMobileStyleSlot {
+  return {
+    flexDirection: surface.flexDirection,
+    alignItems: surface.alignItems,
+    gap: surface.gap,
   }
 }
 
