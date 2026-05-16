@@ -851,13 +851,18 @@ describe("agent progress tile layout", () => {
   })
 
   it("uses a lightweight plain-text path for active streaming bubbles before final markdown rendering", () => {
-    expect(agentProgressSource).toContain('const contentNode = streamingContent.isStreaming')
+    expect(agentProgressSource).toContain('const streamingState = getChatRuntimeStreamingContentState({')
+    expect(agentProgressSource).toContain('content: streamingContent.text')
+    expect(agentProgressSource).toContain('if (!streamingState.hasContent) return null')
+    expect(agentProgressSource).toContain('const contentNode = streamingState.isStreaming')
     expect(agentProgressSource).toContain('const desktopStreamingContentSurface = desktopRuntimeSurface.streamingContent')
     expect(agentProgressSource).toContain('className={desktopStreamingContentSurface.liveTextClassName}')
-    expect(agentProgressSource).toContain('getChatRuntimeStreamingContentTitle(streamingContent.isStreaming)')
+    expect(agentProgressSource).toContain('{streamingState.title}')
+    expect(agentProgressSource).toContain('aria-label={streamingState.accessibilityLabel}')
     expect(agentProgressSource).toContain('className={desktopStreamingContentSurface.containerClassName}')
     expect(agentProgressSource).toContain('className={desktopStreamingContentSurface.caretClassName}')
-    expect(agentProgressSource).toContain(': <MarkdownRenderer content={streamingContent.text} />')
+    expect(agentProgressSource).toContain(': <MarkdownRenderer content={streamingState.content} />')
+    expect(agentProgressSource).not.toContain('getChatRuntimeStreamingContentTitle(streamingContent.isStreaming)')
     expect(agentProgressSource).not.toContain('streamingContent.isStreaming ? "Generating response..." : "Response"')
   })
 

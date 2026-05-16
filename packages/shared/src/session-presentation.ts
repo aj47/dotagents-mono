@@ -2289,6 +2289,21 @@ export interface ChatRuntimeStreamingContentMobileColors {
   }
 }
 
+export interface ChatRuntimeStreamingContentStateInput {
+  isStreaming?: boolean
+  content?: string | null
+}
+
+export interface ChatRuntimeStreamingContentState {
+  shouldRender: boolean
+  hasContent: boolean
+  isStreaming: boolean
+  title: string
+  accessibilityLabel: string
+  badgeLabel: string
+  content: string
+}
+
 export interface ChatRuntimeStreamingContentMobileRenderStateInput {
   isStreaming?: boolean
   content?: string | null
@@ -7737,6 +7752,25 @@ export function getChatRuntimeStreamingContentTitle(isStreaming: boolean): strin
     : CHAT_RUNTIME_PRESENTATION.streamingContent.responseTitle
 }
 
+export function getChatRuntimeStreamingContentState({
+  isStreaming = false,
+  content = "",
+}: ChatRuntimeStreamingContentStateInput = {}): ChatRuntimeStreamingContentState {
+  const resolvedIsStreaming = Boolean(isStreaming)
+  const title = getChatRuntimeStreamingContentTitle(resolvedIsStreaming)
+  const resolvedContent = content ?? ""
+
+  return {
+    shouldRender: resolvedIsStreaming,
+    hasContent: resolvedContent.length > 0,
+    isStreaming: resolvedIsStreaming,
+    title,
+    accessibilityLabel: title,
+    badgeLabel: CHAT_RUNTIME_PRESENTATION.streamingContent.streamingBadgeLabel,
+    content: resolvedContent,
+  }
+}
+
 export function getChatRuntimeLatestStepSummary<T extends ChatRuntimeStepSummaryLike>(
   input: { latestSummary?: T | null; stepSummaries?: T[] | null },
 ): T | null {
@@ -10482,17 +10516,20 @@ export function getChatRuntimeStreamingContentMobileRenderState({
   const surface = getChatRuntimeStreamingContentMobileState()
   const resolvedColors = getChatRuntimeStreamingContentMobileColors(colors)
   const icon = getChatRuntimeStreamingContentMobileIconState()
-  const title = getChatRuntimeStreamingContentTitle(isStreaming)
+  const streamingContent = getChatRuntimeStreamingContentState({
+    isStreaming,
+    content,
+  })
 
   return {
-    shouldRender: isStreaming,
+    shouldRender: streamingContent.shouldRender,
     surface,
     colors: resolvedColors,
-    title,
+    title: streamingContent.title,
     accessibilityRole: surface.accessibilityRole,
-    accessibilityLabel: title,
-    badgeLabel: CHAT_RUNTIME_PRESENTATION.streamingContent.streamingBadgeLabel,
-    content: content ?? "",
+    accessibilityLabel: streamingContent.accessibilityLabel,
+    badgeLabel: streamingContent.badgeLabel,
+    content: streamingContent.content,
     icon: {
       name: icon.name,
       size: icon.size,

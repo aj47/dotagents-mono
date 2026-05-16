@@ -139,7 +139,7 @@ import {
   getChatRuntimeDesktopSurfaceState,
   getChatRuntimePinAccessibilityLabel,
   getChatRuntimeRetryStatusState,
-  getChatRuntimeStreamingContentTitle,
+  getChatRuntimeStreamingContentState,
   getChatRuntimeToolApprovalDesktopSurfaceState,
   getChatRuntimeToolApprovalInteractionState,
   getChatRuntimeTurnDurationBadgeState,
@@ -3111,34 +3111,42 @@ const StreamingContentBubble: React.FC<{
     isPlaceholder?: boolean
   }
 }> = ({ streamingContent }) => {
-  if (!streamingContent.text) return null
+  const streamingState = getChatRuntimeStreamingContentState({
+    isStreaming: streamingContent.isStreaming,
+    content: streamingContent.text,
+  })
+
+  if (!streamingState.hasContent) return null
 
   if (streamingContent.isPlaceholder) {
     return (
       <div className={desktopStreamingContentSurface.placeholderClassName}>
         <Loader2 className={desktopStreamingContentSurface.placeholderSpinnerClassName} aria-hidden="true" />
-        <span className={desktopStreamingContentSurface.placeholderTextClassName}>{streamingContent.text}</span>
+        <span className={desktopStreamingContentSurface.placeholderTextClassName}>{streamingState.content}</span>
       </div>
     )
   }
 
-  const contentNode = streamingContent.isStreaming
+  const contentNode = streamingState.isStreaming
     ? (
       <div className={desktopStreamingContentSurface.liveTextClassName}>
-        {streamingContent.text}
+        {streamingState.content}
       </div>
     )
-    : <MarkdownRenderer content={streamingContent.text} />
+    : <MarkdownRenderer content={streamingState.content} />
 
   return (
-    <div className={desktopStreamingContentSurface.containerClassName}>
+    <div
+      className={desktopStreamingContentSurface.containerClassName}
+      aria-label={streamingState.accessibilityLabel}
+    >
       {/* Header */}
       <div className={desktopStreamingContentSurface.headerClassName}>
         <Activity className={desktopStreamingContentSurface.iconClassName} />
         <span className={desktopStreamingContentSurface.titleClassName}>
-          {getChatRuntimeStreamingContentTitle(streamingContent.isStreaming)}
+          {streamingState.title}
         </span>
-        {streamingContent.isStreaming && (
+        {streamingState.isStreaming && (
           <Loader2 className={desktopStreamingContentSurface.spinnerClassName} />
         )}
       </div>
@@ -3147,7 +3155,7 @@ const StreamingContentBubble: React.FC<{
       <div className={desktopStreamingContentSurface.contentClassName}>
         <div className={desktopStreamingContentSurface.bodyClassName}>
           {contentNode}
-          {streamingContent.isStreaming && (
+          {streamingState.isStreaming && (
             <span className={desktopStreamingContentSurface.caretClassName} />
           )}
         </div>

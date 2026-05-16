@@ -281,6 +281,7 @@ import {
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeStreamingContentMobileState,
   getChatRuntimeStreamingContentMobileIconState,
+  getChatRuntimeStreamingContentState,
   getChatRuntimeStreamingContentTitle,
   getChatRuntimeSurfaceChromeMobileRenderState,
   getChatRuntimeToolApprovalActionMobileIconColors,
@@ -3004,6 +3005,27 @@ describe("session presentation semantics", () => {
         backgroundColor: "#2563eb",
       },
     })
+    expect(getChatRuntimeStreamingContentState({
+      isStreaming: true,
+      content: "Hello live",
+    })).toEqual({
+      shouldRender: true,
+      hasContent: true,
+      isStreaming: true,
+      title: "Generating response...",
+      accessibilityLabel: "Generating response...",
+      badgeLabel: "Streaming",
+      content: "Hello live",
+    })
+    expect(getChatRuntimeStreamingContentState()).toEqual({
+      shouldRender: false,
+      hasContent: false,
+      isStreaming: false,
+      title: "Response",
+      accessibilityLabel: "Response",
+      badgeLabel: "Streaming",
+      content: "",
+    })
     expect(getChatRuntimeStreamingContentMobileRenderState({
       isStreaming: true,
       content: "Hello live",
@@ -5434,6 +5456,18 @@ describe("session presentation semantics", () => {
     })
     expect(getChatRuntimeStreamingContentTitle(true)).toBe("Generating response...")
     expect(getChatRuntimeStreamingContentTitle(false)).toBe("Response")
+    expect(getChatRuntimeStreamingContentState({
+      isStreaming: true,
+      content: "partial answer",
+    })).toMatchObject({
+      shouldRender: true,
+      hasContent: true,
+      isStreaming: true,
+      title: "Generating response...",
+      accessibilityLabel: "Generating response...",
+      badgeLabel: CHAT_RUNTIME_PRESENTATION.streamingContent.streamingBadgeLabel,
+      content: "partial answer",
+    })
     const stepSummary = {
       stepNumber: 3,
       actionSummary: "Compared mobile and desktop chat chrome",
