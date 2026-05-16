@@ -131,6 +131,7 @@ import {
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
+  createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
@@ -9068,6 +9069,57 @@ describe("session presentation semantics", () => {
         placement: "collapse-bottom",
         text: "collapse-text",
       },
+    })
+    const expandedGroupParts = createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
+      topCollapseRenderState: "top-collapse",
+      bottomCollapseRenderState: "bottom-collapse",
+      onCollapsePress: "collapse-expanded",
+      isPending: true,
+      allSuccess: false,
+      hasErrors: true,
+      emptyState: "empty-state-node",
+      styles: {
+        container: "expanded-container",
+        card: "expanded-card",
+        pending: "expanded-pending",
+        success: "expanded-success",
+        error: "expanded-error",
+        collapseButton: "collapse-button",
+        collapsePressed: "collapse-pressed",
+        collapseTopPlacement: "collapse-top",
+        collapseBottomPlacement: "collapse-bottom",
+        collapseText: "collapse-text",
+      },
+    })
+    expect(expandedGroupParts).toEqual({
+      containerStyle: "expanded-container",
+      cardStyle: [
+        "expanded-card",
+        "expanded-pending",
+        false,
+        "expanded-error",
+      ],
+      topCollapseControl: {
+        renderState: "top-collapse",
+        onPress: "collapse-expanded",
+        styles: {
+          button: "collapse-button",
+          pressed: "collapse-pressed",
+          placement: "collapse-top",
+          text: "collapse-text",
+        },
+      },
+      bottomCollapseControl: {
+        renderState: "bottom-collapse",
+        onPress: "collapse-expanded",
+        styles: {
+          button: "collapse-button",
+          pressed: "collapse-pressed",
+          placement: "collapse-bottom",
+          text: "collapse-text",
+        },
+      },
+      emptyState: "empty-state-node",
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
       shouldRender: true,

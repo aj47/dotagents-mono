@@ -91,7 +91,7 @@ import {
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
-  createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
+  createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -8079,31 +8079,28 @@ export function ChatMessageToolExecutionExpandedGroup({
   styles,
   children,
 }: ChatMessageToolExecutionExpandedGroupProps) {
-  const collapseControlStyleSlots =
-    createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots(styles);
+  const expandedGroupParts = createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
+    topCollapseRenderState,
+    bottomCollapseRenderState,
+    onCollapsePress,
+    isPending,
+    allSuccess,
+    hasErrors,
+    emptyState,
+    styles,
+  });
 
   return (
-    <View style={styles.container}>
+    <View style={expandedGroupParts.containerStyle}>
       <ChatMessageToolExecutionCollapseControl
-        renderState={topCollapseRenderState}
-        onPress={onCollapsePress}
-        styles={collapseControlStyleSlots.top}
+        {...expandedGroupParts.topCollapseControl}
       />
-      <View
-        style={[
-          styles.card,
-          isPending && styles.pending,
-          allSuccess && styles.success,
-          hasErrors && styles.error,
-        ]}
-      >
+      <View style={expandedGroupParts.cardStyle}>
         {children}
-        {emptyState}
+        {expandedGroupParts.emptyState}
       </View>
       <ChatMessageToolExecutionCollapseControl
-        renderState={bottomCollapseRenderState}
-        onPress={onCollapsePress}
-        styles={collapseControlStyleSlots.bottom}
+        {...expandedGroupParts.bottomCollapseControl}
       />
     </View>
   );
