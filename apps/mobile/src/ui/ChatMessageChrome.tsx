@@ -97,6 +97,7 @@ import {
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
+  createChatRuntimeToolExecutionResultSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
@@ -8514,30 +8515,34 @@ export function ChatMessageToolExecutionResultSection({
   onErrorCopyPress,
   styles,
 }: ChatMessageToolExecutionResultSectionProps) {
+  const resultSectionParts = createChatRuntimeToolExecutionResultSectionMobilePropsParts({
+    payloadRenderState,
+    resultBadge,
+    characterCountLabel,
+    resultCompactText,
+    resultContent,
+    isExpanded,
+    previewNumberOfLines,
+    copyButtonRenderState,
+    onCopyPress,
+    errorRenderState,
+    error,
+    errorCopyButtonRenderState,
+    onErrorCopyPress,
+    styles,
+  });
+
   return (
-    <View style={styles.item}>
+    <View style={resultSectionParts.itemStyle}>
       <ChatMessageToolExecutionResultHeader
-        payloadRenderState={payloadRenderState}
-        resultBadge={resultBadge}
-        characterCountLabel={characterCountLabel}
-        copyButtonRenderState={copyButtonRenderState}
-        onCopyPress={onCopyPress}
-        styles={styles.header}
+        {...resultSectionParts.header}
       />
       <ChatMessageToolExecutionPayloadBlock
-        compactText={resultCompactText}
-        content={resultContent}
-        isExpanded={isExpanded}
-        previewNumberOfLines={previewNumberOfLines}
-        styles={styles.payloadBlock}
+        {...resultSectionParts.payloadBlock}
       />
-      {error ? (
+      {resultSectionParts.errorBlock ? (
         <ChatMessageToolExecutionErrorBlock
-          renderState={errorRenderState}
-          error={error}
-          copyButtonRenderState={errorCopyButtonRenderState}
-          onCopyPress={onErrorCopyPress}
-          styles={styles.errorBlock}
+          {...resultSectionParts.errorBlock}
         />
       ) : null}
     </View>

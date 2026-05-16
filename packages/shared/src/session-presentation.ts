@@ -2138,6 +2138,87 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
+  TPayloadRenderState = unknown,
+  TResultBadge = unknown,
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TErrorRenderState = unknown,
+  TErrorCopyButtonRenderState = unknown,
+  TOnErrorCopyPress = unknown,
+  TStyles extends {
+    item: unknown
+    header: unknown
+    payloadBlock: unknown
+    errorBlock: unknown
+  } = {
+    item: unknown
+    header: unknown
+    payloadBlock: unknown
+    errorBlock: unknown
+  },
+> {
+  payloadRenderState: TPayloadRenderState
+  resultBadge: TResultBadge
+  characterCountLabel: string
+  resultCompactText?: string | null
+  resultContent: string
+  isExpanded: boolean
+  previewNumberOfLines: number
+  copyButtonRenderState: TCopyButtonRenderState
+  onCopyPress?: TOnCopyPress
+  errorRenderState: TErrorRenderState
+  error?: string | null
+  errorCopyButtonRenderState: TErrorCopyButtonRenderState
+  onErrorCopyPress?: TOnErrorCopyPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionResultSectionMobilePropsParts<
+  TPayloadRenderState = unknown,
+  TResultBadge = unknown,
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TErrorRenderState = unknown,
+  TErrorCopyButtonRenderState = unknown,
+  TOnErrorCopyPress = unknown,
+  TStyles extends {
+    item: unknown
+    header: unknown
+    payloadBlock: unknown
+    errorBlock: unknown
+  } = {
+    item: unknown
+    header: unknown
+    payloadBlock: unknown
+    errorBlock: unknown
+  },
+> {
+  itemStyle: TStyles["item"]
+  header: {
+    payloadRenderState: TPayloadRenderState
+    resultBadge: TResultBadge
+    characterCountLabel: string
+    copyButtonRenderState: TCopyButtonRenderState
+    onCopyPress: TOnCopyPress | undefined
+    styles: TStyles["header"]
+  }
+  payloadBlock: {
+    compactText: string | null | undefined
+    content: string
+    isExpanded: boolean
+    previewNumberOfLines: number
+    styles: TStyles["payloadBlock"]
+  }
+  errorBlock: ({
+    renderState: TErrorRenderState
+    error: string
+    copyButtonRenderState: TErrorCopyButtonRenderState
+    onCopyPress: TOnErrorCopyPress | undefined
+    styles: TStyles["errorBlock"]
+  }) | null
+}
+
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
   TExpanded extends object = Record<string, never>,
@@ -14657,6 +14738,81 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
       text: error,
       style: styles.text,
     },
+  }
+}
+
+export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
+  TPayloadRenderState,
+  TResultBadge,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TErrorRenderState,
+  TErrorCopyButtonRenderState,
+  TOnErrorCopyPress,
+  TStyles extends {
+    item: unknown
+    header: unknown
+    payloadBlock: unknown
+    errorBlock: unknown
+  },
+>({
+  payloadRenderState,
+  resultBadge,
+  characterCountLabel,
+  resultCompactText,
+  resultContent,
+  isExpanded,
+  previewNumberOfLines,
+  copyButtonRenderState,
+  onCopyPress,
+  errorRenderState,
+  error,
+  errorCopyButtonRenderState,
+  onErrorCopyPress,
+  styles,
+}: ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
+  TPayloadRenderState,
+  TResultBadge,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TErrorRenderState,
+  TErrorCopyButtonRenderState,
+  TOnErrorCopyPress,
+  TStyles
+>): ChatRuntimeToolExecutionResultSectionMobilePropsParts<
+  TPayloadRenderState,
+  TResultBadge,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TErrorRenderState,
+  TErrorCopyButtonRenderState,
+  TOnErrorCopyPress,
+  TStyles
+> {
+  return {
+    itemStyle: styles.item,
+    header: {
+      payloadRenderState,
+      resultBadge,
+      characterCountLabel,
+      copyButtonRenderState,
+      onCopyPress,
+      styles: styles.header,
+    },
+    payloadBlock: {
+      compactText: resultCompactText,
+      content: resultContent,
+      isExpanded,
+      previewNumberOfLines,
+      styles: styles.payloadBlock,
+    },
+    errorBlock: error ? {
+      renderState: errorRenderState,
+      error,
+      copyButtonRenderState: errorCopyButtonRenderState,
+      onCopyPress: onErrorCopyPress,
+      styles: styles.errorBlock,
+    } : null,
   }
 }
 

@@ -136,6 +136,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
+  createChatRuntimeToolExecutionResultSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
@@ -9282,6 +9283,70 @@ describe("session presentation semantics", () => {
         style: "error-text-style",
       },
     })
+    const resultSectionParts = createChatRuntimeToolExecutionResultSectionMobilePropsParts({
+      payloadRenderState: "result-payload-state",
+      resultBadge: "success-badge",
+      characterCountLabel: "42 chars",
+      resultCompactText: "compact-result",
+      resultContent: "full-result",
+      isExpanded: true,
+      previewNumberOfLines: 3,
+      copyButtonRenderState: "copy-result-state",
+      onCopyPress: "copy-result",
+      errorRenderState: "error-state",
+      error: "failed",
+      errorCopyButtonRenderState: "copy-error-state",
+      onErrorCopyPress: "copy-error",
+      styles: {
+        item: "result-item",
+        header: "result-header",
+        payloadBlock: "result-payload-block",
+        errorBlock: "result-error-block",
+      },
+    })
+    expect(resultSectionParts).toEqual({
+      itemStyle: "result-item",
+      header: {
+        payloadRenderState: "result-payload-state",
+        resultBadge: "success-badge",
+        characterCountLabel: "42 chars",
+        copyButtonRenderState: "copy-result-state",
+        onCopyPress: "copy-result",
+        styles: "result-header",
+      },
+      payloadBlock: {
+        compactText: "compact-result",
+        content: "full-result",
+        isExpanded: true,
+        previewNumberOfLines: 3,
+        styles: "result-payload-block",
+      },
+      errorBlock: {
+        renderState: "error-state",
+        error: "failed",
+        copyButtonRenderState: "copy-error-state",
+        onCopyPress: "copy-error",
+        styles: "result-error-block",
+      },
+    })
+    expect(createChatRuntimeToolExecutionResultSectionMobilePropsParts({
+      payloadRenderState: "result-payload-state",
+      resultBadge: "success-badge",
+      characterCountLabel: "42 chars",
+      resultContent: "full-result",
+      isExpanded: false,
+      previewNumberOfLines: 2,
+      copyButtonRenderState: "copy-result-state",
+      errorRenderState: "error-state",
+      error: null,
+      errorCopyButtonRenderState: "copy-error-state",
+      styles: {
+        item: "result-item",
+        header: "result-header",
+        payloadBlock: "result-payload-block",
+        errorBlock: "result-error-block",
+      },
+    }).errorBlock).toBeNull()
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
       shouldRender: true,
       isExpanded: false,
