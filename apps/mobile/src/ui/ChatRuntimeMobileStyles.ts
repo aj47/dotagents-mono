@@ -134,10 +134,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const composerChromeStyleState = chatChromeStyleState.composer;
   const composerStyleState = composerChromeStyleState.composer;
-  const composerSurface = composerStyleState.surface;
-  const mobileComposerSurfaceColors = composerStyleState.colors.surface;
-  const mobileComposerTextColors = composerStyleState.colors.text;
-  const voiceOverlaySurface = composerSurface.voiceOverlay;
   const composerStyleSlots = createChatComposerMobileStyleSlots({
     renderState: composerStyleState,
     spacing,
@@ -849,36 +845,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...scrollToBottomStyleSlots.button,
     },
     overlay: {
-      position: voiceOverlaySurface.position,
-      left: voiceOverlaySurface.left,
-      right: voiceOverlaySurface.right,
-      bottom: voiceOverlaySurface.bottomOffset,
-      // Ensure the live transcription overlay renders above the input area.
-      zIndex: voiceOverlaySurface.zIndex,
-      elevation: voiceOverlaySurface.elevation,
-      alignItems: voiceOverlaySurface.alignItems,
-      paddingHorizontal: spacing[voiceOverlaySurface.paddingHorizontal],
-      paddingBottom: spacing[voiceOverlaySurface.paddingBottom],
+      ...composerStyleSlots.overlay,
     },
     overlayCard: {
-      maxWidth: voiceOverlaySurface.cardMaxWidth,
-      borderRadius: radius[voiceOverlaySurface.cardBorderRadius],
-      backgroundColor: mobileComposerSurfaceColors.voiceOverlay.cardBackgroundColor,
-      paddingHorizontal: voiceOverlaySurface.cardPaddingHorizontal,
-      paddingVertical: voiceOverlaySurface.cardPaddingVertical,
+      ...composerStyleSlots.overlayCard,
     },
     overlayText: {
-      color: mobileComposerTextColors.voiceOverlay.color,
-      fontSize: voiceOverlaySurface.textFontSize,
-      lineHeight: voiceOverlaySurface.textLineHeight,
-      textAlign: voiceOverlaySurface.textAlign,
+      ...composerStyleSlots.overlayText,
     },
     overlayTranscript: {
-      color: mobileComposerTextColors.voiceOverlay.color,
-      marginTop: voiceOverlaySurface.transcriptMarginTop,
-      fontSize: voiceOverlaySurface.transcriptFontSize,
-      lineHeight: voiceOverlaySurface.transcriptLineHeight,
-      opacity: voiceOverlaySurface.transcriptOpacity,
+      ...composerStyleSlots.overlayTranscript,
     },
     toolApprovalCard: {
       ...toolApprovalStyleSlots.card,

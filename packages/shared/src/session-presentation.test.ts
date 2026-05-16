@@ -2058,6 +2058,7 @@ describe("session presentation semantics", () => {
       radius: {
         md: 8,
         lg: 12,
+        xl: 16,
       },
       borderWidths: {
         hairline: 0.5,
@@ -2195,6 +2196,37 @@ describe("session presentation semantics", () => {
         color: "#ffffff",
         fontWeight: "600",
         fontSize: 13,
+      },
+      overlay: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 72,
+        zIndex: 1000,
+        elevation: 10,
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingBottom: 8,
+      },
+      overlayCard: {
+        maxWidth: "88%",
+        borderRadius: 16,
+        backgroundColor: "rgba(15, 23, 42, 0.72)",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+      },
+      overlayText: {
+        color: "#f8fafc",
+        fontSize: 12,
+        lineHeight: 16,
+        textAlign: "center",
+      },
+      overlayTranscript: {
+        color: "#f8fafc",
+        marginTop: 4,
+        fontSize: 12,
+        lineHeight: 16,
+        opacity: 0.92,
       },
     })
     expect(composerChromeStyle.imageAttachment.colors.preview.borderColor).toBe("#cbd5e1")

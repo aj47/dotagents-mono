@@ -4435,12 +4435,15 @@ export type ChatComposerMobileStyleSpacingToken =
   | ChatComposerMobileStyleSurface["micButton"]["gap"]
   | ChatComposerMobileStyleSurface["submitButton"]["paddingHorizontal"]
   | ChatComposerMobileStyleSurface["submitButton"]["paddingVertical"]
+  | ChatComposerMobileStyleSurface["voiceOverlay"]["paddingHorizontal"]
+  | ChatComposerMobileStyleSurface["voiceOverlay"]["paddingBottom"]
 
 export type ChatComposerMobileStyleRadiusToken =
   | ChatComposerMobileStyleSurface["sttPreview"]["borderRadius"]
   | ChatComposerMobileStyleSurface["input"]["borderRadius"]
   | ChatComposerMobileStyleSurface["micButton"]["borderRadius"]
   | ChatComposerMobileStyleSurface["submitButton"]["borderRadius"]
+  | ChatComposerMobileStyleSurface["voiceOverlay"]["cardBorderRadius"]
 
 export type ChatComposerMobileStyleBorderWidthToken =
   ChatComposerMobileStyleSurface["inputArea"]["borderTopWidthToken"]
@@ -8809,6 +8812,37 @@ export function createChatComposerMobileStyleSlots({
       color: textColors.submitButton.color,
       fontWeight: surface.submitButton.fontWeight,
       fontSize: surface.submitButton.fontSize,
+    },
+    overlay: {
+      position: surface.voiceOverlay.position,
+      left: surface.voiceOverlay.left,
+      right: surface.voiceOverlay.right,
+      bottom: surface.voiceOverlay.bottomOffset,
+      zIndex: surface.voiceOverlay.zIndex,
+      elevation: surface.voiceOverlay.elevation,
+      alignItems: surface.voiceOverlay.alignItems,
+      paddingHorizontal: spacing[surface.voiceOverlay.paddingHorizontal],
+      paddingBottom: spacing[surface.voiceOverlay.paddingBottom],
+    },
+    overlayCard: {
+      maxWidth: surface.voiceOverlay.cardMaxWidth,
+      borderRadius: radius[surface.voiceOverlay.cardBorderRadius],
+      backgroundColor: colors.voiceOverlay.cardBackgroundColor,
+      paddingHorizontal: surface.voiceOverlay.cardPaddingHorizontal,
+      paddingVertical: surface.voiceOverlay.cardPaddingVertical,
+    },
+    overlayText: {
+      color: textColors.voiceOverlay.color,
+      fontSize: surface.voiceOverlay.textFontSize,
+      lineHeight: surface.voiceOverlay.textLineHeight,
+      textAlign: surface.voiceOverlay.textAlign,
+    },
+    overlayTranscript: {
+      color: textColors.voiceOverlay.color,
+      marginTop: surface.voiceOverlay.transcriptMarginTop,
+      fontSize: surface.voiceOverlay.transcriptFontSize,
+      lineHeight: surface.voiceOverlay.transcriptLineHeight,
+      opacity: surface.voiceOverlay.transcriptOpacity,
     },
   }
 }
