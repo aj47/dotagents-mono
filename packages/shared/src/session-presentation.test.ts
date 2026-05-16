@@ -342,6 +342,7 @@ import {
   getChatRuntimeMobileActivityAccessibilityState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeNavigationHeaderMobileRenderState,
+  createChatRuntimeNavigationHeaderOptionsParts,
   getChatRuntimePinAccessibilityHint,
   getChatRuntimePinAccessibilityLabel,
   getChatRuntimePinDisplayLabel,
@@ -3834,6 +3835,45 @@ describe("session presentation semantics", () => {
     expect(headerDurationStyleSlots.text.color).toBe(headerDurationLiveColors.text.color)
     expect(navigationHeaderState.killSwitchButtonShouldRender).toBe(true)
     expect(navigationHeaderState.handsFreeButtonRenderState.isEnabled).toBe(true)
+    const navigationHeaderOptionParts = createChatRuntimeNavigationHeaderOptionsParts({
+      ...navigationHeaderState,
+      onAgentSelectorPress: "open-agent-selector",
+      onBackButtonPress: "go-back",
+      onPinButtonPress: "toggle-pin",
+      conversationStatusSpinnerSource: "spinner-source",
+      onKillSwitchButtonPress: "stop-run",
+      onHandsFreeButtonPress: "toggle-hands-free",
+    })
+    expect(navigationHeaderOptionParts.agentSelector).toEqual({
+      renderState: navigationHeaderState.agentSelectorRenderState,
+      onPress: "open-agent-selector",
+      labelNumberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+    })
+    expect(navigationHeaderOptionParts.backButton).toEqual({
+      renderState: navigationHeaderState.backButtonRenderState,
+      onPress: "go-back",
+    })
+    expect(navigationHeaderOptionParts.pinButton).toEqual({
+      renderState: navigationHeaderState.pinButtonRenderState,
+      onPress: "toggle-pin",
+      isActive: navigationHeaderState.pinButtonIsActive,
+    })
+    expect(navigationHeaderOptionParts.conversationStatus).toEqual({
+      renderState: navigationHeaderState.conversationStatusRenderState,
+      spinnerSource: "spinner-source",
+    })
+    expect(navigationHeaderOptionParts.turnDuration).toEqual({
+      renderState: navigationHeaderState.turnDurationRenderState,
+    })
+    expect(navigationHeaderOptionParts.killSwitchButton).toEqual({
+      shouldRender: navigationHeaderState.killSwitchButtonShouldRender,
+      renderState: navigationHeaderState.killSwitchButtonRenderState,
+      onPress: "stop-run",
+    })
+    expect(navigationHeaderOptionParts.handsFreeButton).toEqual({
+      renderState: navigationHeaderState.handsFreeButtonRenderState,
+      onPress: "toggle-hands-free",
+    })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.killSwitchButton.accessibilityRole).toBe("button")

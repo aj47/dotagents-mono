@@ -91,6 +91,7 @@ import {
   getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState,
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
+  createChatRuntimeNavigationHeaderOptionsParts,
   hasChatMessageRuntimeLiveAgentTurn,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
@@ -6522,36 +6523,32 @@ export function createChatRuntimeNavigationHeaderOptions({
   onHandsFreeButtonPress,
   styles,
 }: ChatRuntimeNavigationHeaderOptionsInput): ChatRuntimeNavigationHeaderOptions {
-  const agentSelector = {
-    renderState: agentSelectorRenderState,
-    onPress: onAgentSelectorPress,
-    labelNumberOfLines: agentSelectorLabelNumberOfLines,
-  };
-  const backButton = {
-    renderState: backButtonRenderState,
-    onPress: onBackButtonPress,
-  };
-  const pinButton = {
-    renderState: pinButtonRenderState,
-    onPress: onPinButtonPress,
-    isActive: pinButtonIsActive,
-  };
-  const conversationStatus = {
-    renderState: conversationStatusRenderState,
-    spinnerSource: conversationStatusSpinnerSource,
-  };
-  const turnDuration = {
-    renderState: turnDurationRenderState,
-  };
-  const killSwitchButton = {
-    shouldRender: killSwitchButtonShouldRender,
-    renderState: killSwitchButtonRenderState,
-    onPress: onKillSwitchButtonPress,
-  };
-  const handsFreeButton = {
-    renderState: handsFreeButtonRenderState,
-    onPress: onHandsFreeButtonPress,
-  };
+  const {
+    agentSelector,
+    backButton,
+    pinButton,
+    conversationStatus,
+    turnDuration,
+    killSwitchButton,
+    handsFreeButton,
+  } = createChatRuntimeNavigationHeaderOptionsParts({
+    agentSelectorRenderState,
+    onAgentSelectorPress,
+    agentSelectorLabelNumberOfLines,
+    backButtonRenderState,
+    onBackButtonPress,
+    pinButtonRenderState,
+    onPinButtonPress,
+    pinButtonIsActive,
+    conversationStatusRenderState,
+    conversationStatusSpinnerSource,
+    turnDurationRenderState,
+    killSwitchButtonShouldRender,
+    killSwitchButtonRenderState,
+    onKillSwitchButtonPress,
+    handsFreeButtonRenderState,
+    onHandsFreeButtonPress,
+  });
 
   return {
     headerTitle: () => (

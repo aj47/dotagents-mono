@@ -178,7 +178,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.headerRenderState,/);
   assert.match(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeNavigationHeaderMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeNavigationHeaderOptionsParts,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeNavigationHeaderMobileRenderState/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeNavigationHeaderOptionsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\);/);
   assert.match(sessionPresentationSource, /const agentLabel = getChatRuntimeCurrentAgentLabel\(agentName\)/);
   assert.match(sessionPresentationSource, /getChatRuntimeHeaderMobileSurfaceState\(\)\.agentSelectorText\.numberOfLines/);
@@ -205,7 +207,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /getChatRuntimeNavigationHeaderMobileRenderState\(\{\s+agentName,\s+isPinned,\s+handsFree,\s+conversationState,\s+isResponding,\s+turnDurationMs,\s+turnDurationIsLive,\s+colors,\s+\}\),/);
   assert.match(chatMessageChromeSource, /export function createChatRuntimeNavigationHeaderOptions/);
   assert.match(sessionPresentationSource, /agentSelectorRenderState: getChatRuntimeAgentSelectorMobileRenderState\(\{\s+agentLabel,\s+colors,\s+\}\),/);
-  assert.match(chatMessageChromeSource, /const agentSelector = \{\s+renderState: agentSelectorRenderState,\s+onPress: onAgentSelectorPress,\s+labelNumberOfLines: agentSelectorLabelNumberOfLines,\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /const agentSelector = \{\s+renderState: agentSelectorRenderState,\s+onPress: onAgentSelectorPress,\s+labelNumberOfLines: agentSelectorLabelNumberOfLines,\s+\};/);
+  assert.match(chatMessageChromeSource, /const \{\s+agentSelector,\s+backButton,\s+pinButton,\s+conversationStatus,\s+turnDuration,\s+killSwitchButton,\s+handsFreeButton,\s+\} = createChatRuntimeNavigationHeaderOptionsParts\(\{/);
+  assert.match(sessionPresentationSource, /agentSelector: \{\s+renderState: agentSelectorRenderState,\s+onPress: onAgentSelectorPress,\s+labelNumberOfLines: agentSelectorLabelNumberOfLines,/);
   assert.match(chatMessageChromeSource, /headerTitle: \(\) => \(\s+<ChatRuntimeHeaderAgentSelector\s+\{\.\.\.agentSelector\}\s+styles=\{styles\.agentSelector\}/);
   assert.match(sessionPresentationSource, /agentSelectorStyles: \{\s+button: styles\.headerAgentSelectorButton,\s+chip: styles\.headerAgentSelectorChip,\s+label: styles\.headerAgentSelectorText,/);
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderAgentSelector/);

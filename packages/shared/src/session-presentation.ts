@@ -2776,6 +2776,90 @@ export interface ChatRuntimeNavigationHeaderMobileRenderState {
   handsFreeButtonRenderState: ChatRuntimeHandsFreeMobileRenderState
 }
 
+export type ChatRuntimeNavigationHeaderOptionsPartsInput<
+  TAgentSelectorRenderState = ChatRuntimeAgentSelectorMobileRenderState,
+  TOnAgentSelectorPress = unknown,
+  TBackButtonRenderState = ChatRuntimeBackMobileRenderState,
+  TOnBackButtonPress = unknown,
+  TPinButtonRenderState = ChatRuntimePinMobileRenderState,
+  TOnPinButtonPress = unknown,
+  TPinButtonIsActive = boolean,
+  TConversationStatusRenderState = ChatSessionStatusMobileRenderState,
+  TConversationStatusSpinnerSource = unknown,
+  TTurnDurationRenderState = ChatRuntimeTurnDurationHeaderMobileRenderState,
+  TKillSwitchButtonShouldRender = boolean,
+  TKillSwitchButtonRenderState = ChatRuntimeKillSwitchMobileRenderState,
+  TOnKillSwitchButtonPress = unknown,
+  THandsFreeButtonRenderState = ChatRuntimeHandsFreeMobileRenderState,
+  TOnHandsFreeButtonPress = unknown,
+> = {
+  agentSelectorRenderState: TAgentSelectorRenderState
+  agentSelectorLabelNumberOfLines: number
+  backButtonRenderState: TBackButtonRenderState
+  pinButtonRenderState: TPinButtonRenderState
+  pinButtonIsActive: TPinButtonIsActive
+  conversationStatusRenderState: TConversationStatusRenderState
+  turnDurationRenderState: TTurnDurationRenderState
+  killSwitchButtonShouldRender: TKillSwitchButtonShouldRender
+  killSwitchButtonRenderState: TKillSwitchButtonRenderState
+  handsFreeButtonRenderState: THandsFreeButtonRenderState
+  onAgentSelectorPress: TOnAgentSelectorPress
+  onBackButtonPress: TOnBackButtonPress
+  onPinButtonPress: TOnPinButtonPress
+  conversationStatusSpinnerSource: TConversationStatusSpinnerSource
+  onKillSwitchButtonPress: TOnKillSwitchButtonPress
+  onHandsFreeButtonPress: TOnHandsFreeButtonPress
+}
+
+export type ChatRuntimeNavigationHeaderOptionsParts<
+  TAgentSelectorRenderState = ChatRuntimeAgentSelectorMobileRenderState,
+  TOnAgentSelectorPress = unknown,
+  TBackButtonRenderState = ChatRuntimeBackMobileRenderState,
+  TOnBackButtonPress = unknown,
+  TPinButtonRenderState = ChatRuntimePinMobileRenderState,
+  TOnPinButtonPress = unknown,
+  TPinButtonIsActive = boolean,
+  TConversationStatusRenderState = ChatSessionStatusMobileRenderState,
+  TConversationStatusSpinnerSource = unknown,
+  TTurnDurationRenderState = ChatRuntimeTurnDurationHeaderMobileRenderState,
+  TKillSwitchButtonShouldRender = boolean,
+  TKillSwitchButtonRenderState = ChatRuntimeKillSwitchMobileRenderState,
+  TOnKillSwitchButtonPress = unknown,
+  THandsFreeButtonRenderState = ChatRuntimeHandsFreeMobileRenderState,
+  TOnHandsFreeButtonPress = unknown,
+> = {
+  agentSelector: {
+    renderState: TAgentSelectorRenderState
+    onPress: TOnAgentSelectorPress
+    labelNumberOfLines: number
+  }
+  backButton: {
+    renderState: TBackButtonRenderState
+    onPress: TOnBackButtonPress
+  }
+  pinButton: {
+    renderState: TPinButtonRenderState
+    onPress: TOnPinButtonPress
+    isActive: TPinButtonIsActive
+  }
+  conversationStatus: {
+    renderState: TConversationStatusRenderState
+    spinnerSource: TConversationStatusSpinnerSource
+  }
+  turnDuration: {
+    renderState: TTurnDurationRenderState
+  }
+  killSwitchButton: {
+    shouldRender: TKillSwitchButtonShouldRender
+    renderState: TKillSwitchButtonRenderState
+    onPress: TOnKillSwitchButtonPress
+  }
+  handsFreeButton: {
+    renderState: THandsFreeButtonRenderState
+    onPress: TOnHandsFreeButtonPress
+  }
+}
+
 export interface ChatRuntimeKillSwitchMobileAlertState {
   confirmation: {
     title: string
@@ -14305,6 +14389,108 @@ export function getChatRuntimeNavigationHeaderMobileRenderState({
       isEnabled: handsFree,
       colors,
     }),
+  }
+}
+
+export function createChatRuntimeNavigationHeaderOptionsParts<
+  TInput extends {
+    agentSelectorRenderState: unknown
+    onAgentSelectorPress: unknown
+    agentSelectorLabelNumberOfLines: number
+    backButtonRenderState: unknown
+    onBackButtonPress: unknown
+    pinButtonRenderState: unknown
+    onPinButtonPress: unknown
+    pinButtonIsActive: unknown
+    conversationStatusRenderState: unknown
+    conversationStatusSpinnerSource: unknown
+    turnDurationRenderState: unknown
+    killSwitchButtonShouldRender: unknown
+    killSwitchButtonRenderState: unknown
+    onKillSwitchButtonPress: unknown
+    handsFreeButtonRenderState: unknown
+    onHandsFreeButtonPress: unknown
+  },
+>({
+  agentSelectorRenderState,
+  onAgentSelectorPress,
+  agentSelectorLabelNumberOfLines,
+  backButtonRenderState,
+  onBackButtonPress,
+  pinButtonRenderState,
+  onPinButtonPress,
+  pinButtonIsActive,
+  conversationStatusRenderState,
+  conversationStatusSpinnerSource,
+  turnDurationRenderState,
+  killSwitchButtonShouldRender,
+  killSwitchButtonRenderState,
+  onKillSwitchButtonPress,
+  handsFreeButtonRenderState,
+  onHandsFreeButtonPress,
+}: TInput): {
+  agentSelector: {
+    renderState: TInput["agentSelectorRenderState"]
+    onPress: TInput["onAgentSelectorPress"]
+    labelNumberOfLines: number
+  }
+  backButton: {
+    renderState: TInput["backButtonRenderState"]
+    onPress: TInput["onBackButtonPress"]
+  }
+  pinButton: {
+    renderState: TInput["pinButtonRenderState"]
+    onPress: TInput["onPinButtonPress"]
+    isActive: TInput["pinButtonIsActive"]
+  }
+  conversationStatus: {
+    renderState: TInput["conversationStatusRenderState"]
+    spinnerSource: TInput["conversationStatusSpinnerSource"]
+  }
+  turnDuration: {
+    renderState: TInput["turnDurationRenderState"]
+  }
+  killSwitchButton: {
+    shouldRender: TInput["killSwitchButtonShouldRender"]
+    renderState: TInput["killSwitchButtonRenderState"]
+    onPress: TInput["onKillSwitchButtonPress"]
+  }
+  handsFreeButton: {
+    renderState: TInput["handsFreeButtonRenderState"]
+    onPress: TInput["onHandsFreeButtonPress"]
+  }
+} {
+  return {
+    agentSelector: {
+      renderState: agentSelectorRenderState,
+      onPress: onAgentSelectorPress,
+      labelNumberOfLines: agentSelectorLabelNumberOfLines,
+    },
+    backButton: {
+      renderState: backButtonRenderState,
+      onPress: onBackButtonPress,
+    },
+    pinButton: {
+      renderState: pinButtonRenderState,
+      onPress: onPinButtonPress,
+      isActive: pinButtonIsActive,
+    },
+    conversationStatus: {
+      renderState: conversationStatusRenderState,
+      spinnerSource: conversationStatusSpinnerSource,
+    },
+    turnDuration: {
+      renderState: turnDurationRenderState,
+    },
+    killSwitchButton: {
+      shouldRender: killSwitchButtonShouldRender,
+      renderState: killSwitchButtonRenderState,
+      onPress: onKillSwitchButtonPress,
+    },
+    handsFreeButton: {
+      renderState: handsFreeButtonRenderState,
+      onPress: onHandsFreeButtonPress,
+    },
   }
 }
 
