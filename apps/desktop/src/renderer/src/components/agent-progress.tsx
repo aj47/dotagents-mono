@@ -117,7 +117,6 @@ import {
   setChatDisplayExpansionState,
   stripMarkdownMediaPayloads,
 } from "@dotagents/shared/message-display-utils"
-import { normalizeMarkdownThoughtContent } from "@dotagents/shared/markdown-render-parts"
 import { toast } from "sonner"
 import {
   formatChatRuntimeActivityContent,
@@ -146,6 +145,7 @@ import {
   getFollowUpInputPresentation,
   getSessionPresentation,
   getSessionStatusDesktopRenderState,
+  normalizeMarkdownThoughtContent,
   shouldRenderChatRuntimeActivityStep,
 } from "@dotagents/shared/session-presentation"
 import {

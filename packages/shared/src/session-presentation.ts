@@ -71,6 +71,7 @@ export {
   getMarkdownThinkSectionMobileSurfaceRenderState,
   isAllowedMarkdownContentLinkUrl,
   isMarkdownContentVideoLinkUrl,
+  normalizeMarkdownThoughtContent,
   splitMarkdownContent,
   transformMarkdownContentUrl,
   type MarkdownContentMobileSurfaceRenderState,
