@@ -67,6 +67,7 @@ import {
   createChatRuntimeChromeSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
+  createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -6559,26 +6560,28 @@ describe("session presentation semantics", () => {
         runId: "run-1",
       },
     })
+    const delegationProgress = {
+      runId: "run-1",
+      agentName: "Worker",
+      task: "Inspect files",
+      status: "running" as const,
+      startTime: 1_700_000_000_000,
+      conversation: [{
+        role: "assistant" as const,
+        content: "Looking through the changed files.",
+        timestamp: 1_700_000_010_000,
+      }],
+    }
+    const delegationToolEntries = [{
+      toolCall: { name: "read_file", arguments: { path: "/tmp/file.ts" } },
+      label: "read_file:/tmp/file.ts",
+      origIdx: 0,
+      result: { success: true, content: "ok" },
+    }]
     const delegationPresentationState = getChatRuntimeDelegationCardMobilePresentationState({
       ...delegationCardState,
-      delegation: {
-        runId: "run-1",
-        agentName: "Worker",
-        task: "Inspect files",
-        status: "running",
-        startTime: 1_700_000_000_000,
-        conversation: [{
-          role: "assistant",
-          content: "Looking through the changed files.",
-          timestamp: 1_700_000_010_000,
-        }],
-      },
-      toolEntries: [{
-        toolCall: { name: "read_file", arguments: { path: "/tmp/file.ts" } },
-        label: "read_file:/tmp/file.ts",
-        origIdx: 0,
-        result: { success: true, content: "ok" },
-      }],
+      delegation: delegationProgress,
+      toolEntries: delegationToolEntries,
       displayToolCallCount: 1,
     })
     expect(delegationPresentationState).toMatchObject({
@@ -6606,6 +6609,24 @@ describe("session presentation semantics", () => {
     })
     expect(delegationPresentationState?.accessibilityLabel).toContain("Worker")
     expect(delegationPresentationState?.statusStyles.text.color).toBe("#2563eb")
+    const delegationPropEvents: string[] = []
+    const delegationCardProps = createChatRuntimeDelegationCardMobileProps({
+      ...delegationCardState,
+      delegation: delegationProgress,
+      toolEntries: delegationToolEntries,
+      displayToolCallCount: 1,
+      onShowAllConversationPreview: (runId) => {
+        delegationPropEvents.push(`conversation:${runId}`)
+      },
+      onShowAllToolPreview: (runId) => {
+        delegationPropEvents.push(`tools:${runId}`)
+      },
+    })
+    expect(delegationCardProps?.runId).toBe("run-1")
+    expect(delegationCardProps?.conversationPreview.rows[0]?.content).toBe("Looking through the changed files.")
+    delegationCardProps?.conversationPreview.onShowAll?.()
+    delegationCardProps?.toolPreview.onShowAll?.()
+    expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")
     expect(expandedDelegationConversationPreviews).toEqual({ "run-1": true })

@@ -833,10 +833,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /const toolPreviewVisibilityRenderState = getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState\(\{\s+displayToolCallCount,/);
   assert.doesNotMatch(chatMessageChromeSource, /shouldRender: toolPreviewVisibilityRenderState\.shouldRender,/);
   assert.match(sessionPresentationSource, /shouldRender: toolPreviewVisibilityRenderState\.shouldRender,/);
-  assert.match(chatMessageChromeSource, /const presentationState = getChatRuntimeDelegationCardMobilePresentationState\(cardInput\);/);
-  assert.match(chatMessageChromeSource, /\.\.\.presentationState,/);
-  assert.match(chatMessageChromeSource, /onShowAll: \(\) => onShowAllConversationPreview\(presentationState\.runId\),/);
-  assert.match(chatMessageChromeSource, /onShowAll: \(\) => onShowAllToolPreview\(presentationState\.runId\),/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeDelegationCardMobileProps\(cardInput\);/);
+  assert.match(sessionPresentationSource, /const presentationState = getChatRuntimeDelegationCardMobilePresentationState\(cardInput\)/);
+  assert.match(sessionPresentationSource, /\.\.\.presentationState,/);
+  assert.match(sessionPresentationSource, /onShowAll: \(\) => onShowAllConversationPreview\(presentationState\.runId\),/);
+  assert.match(sessionPresentationSource, /onShowAll: \(\) => onShowAllToolPreview\(presentationState\.runId\),/);
   assert.doesNotMatch(screenSource, /delegationRoleStyles: delegationConversationPreviewRoleStyles,/);
   assert.match(sessionPresentationSource, /roleStyles: presentation\.delegationRoleStyles,/);
   assert.match(screenSource, /colors: theme\.colors,/);
@@ -856,8 +857,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /setExpandedDelegationToolPreviews\(\{\}\);/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationCard/);
   assert.match(chatMessageChromeSource, /export function createChatMessageDelegationCardProps/);
-  assert.match(chatMessageChromeSource, /const presentationState = getChatRuntimeDelegationCardMobilePresentationState\(cardInput\);/);
-  assert.match(chatMessageChromeSource, /if \(!presentationState\) return null;/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeDelegationCardMobileProps\(cardInput\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobileProps/);
+  assert.match(sessionPresentationSource, /if \(!presentationState\) return null/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{surface\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /delegationCard: \{[\s\S]*?card: styles\.delegationCard,[\s\S]*?toolPreviewMore: styles\.delegationToolPreviewMore,/);
@@ -930,7 +932,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /setExpandedDelegationConversationPreviews,/);
   assert.match(sessionPresentationSource, /onShowAllConversationPreview: \(runId\) => \{\s+setExpandedDelegationConversationPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
   assert.doesNotMatch(chatMessageChromeSource, /onShowAll: onShowAllConversationPreview\s+\? \(\) => onShowAllConversationPreview\(delegation\.runId\)\s+: undefined,/);
-  assert.match(chatMessageChromeSource, /onShowAll: \(\) => onShowAllConversationPreview\(presentationState\.runId\),/);
+  assert.match(sessionPresentationSource, /onShowAll: \(\) => onShowAllConversationPreview\(presentationState\.runId\),/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{conversationPreview\.moreAction\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{conversationPreview\.moreAction\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /styles\.conversationPreviewMoreButton/);
@@ -994,7 +996,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /setExpandedDelegationToolPreviews,/);
   assert.match(sessionPresentationSource, /onShowAllToolPreview: \(runId\) => \{\s+setExpandedDelegationToolPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
   assert.doesNotMatch(chatMessageChromeSource, /onShowAll: onShowAllToolPreview\s+\? \(\) => onShowAllToolPreview\(delegation\.runId\)\s+: undefined,/);
-  assert.match(chatMessageChromeSource, /onShowAll: \(\) => onShowAllToolPreview\(presentationState\.runId\),/);
+  assert.match(sessionPresentationSource, /onShowAll: \(\) => onShowAllToolPreview\(presentationState\.runId\),/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{toolPreview\.moreAction\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{toolPreview\.moreAction\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /styles\.toolPreviewMoreButton/);

@@ -1573,6 +1573,17 @@ export interface ChatRuntimeDelegationCardMobilePresentationState {
   }
 }
 
+export type ChatRuntimeDelegationCardMobileProps =
+  Omit<ChatRuntimeDelegationCardMobilePresentationState, "conversationPreview" | "toolPreview">
+  & {
+    conversationPreview: ChatRuntimeDelegationCardMobilePresentationState["conversationPreview"] & {
+      onShowAll?: () => void
+    }
+    toolPreview: ChatRuntimeDelegationCardMobilePresentationState["toolPreview"] & {
+      onShowAll?: () => void
+    }
+  }
+
 export interface ChatRuntimeConversationActionSetMobileStyleSlots<
   TTurnDurationStyle extends object = Record<string, never>,
   TSpeechStyle extends object = Record<string, never>,
@@ -12542,6 +12553,32 @@ export function getChatRuntimeDelegationCardMobilePresentationState({
       }),
       hiddenCount: hiddenToolCount,
       moreAction: getChatRuntimeDelegationToolPreviewMoreActionState(hiddenToolCount),
+    },
+  }
+}
+
+export function createChatRuntimeDelegationCardMobileProps(
+  cardInput: ChatRuntimeConversationDelegationCardMobileState<
+    ACPDelegationProgress | null | undefined
+  >,
+): ChatRuntimeDelegationCardMobileProps | null {
+  const presentationState = getChatRuntimeDelegationCardMobilePresentationState(cardInput)
+  if (!presentationState) return null
+
+  const {
+    onShowAllConversationPreview,
+    onShowAllToolPreview,
+  } = cardInput
+
+  return {
+    ...presentationState,
+    conversationPreview: {
+      ...presentationState.conversationPreview,
+      onShowAll: () => onShowAllConversationPreview(presentationState.runId),
+    },
+    toolPreview: {
+      ...presentationState.toolPreview,
+      onShowAll: () => onShowAllToolPreview(presentationState.runId),
     },
   }
 }

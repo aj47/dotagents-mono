@@ -83,7 +83,7 @@ import {
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
   createChatRuntimeViewportChromeMobileProps,
-  getChatRuntimeDelegationCardMobilePresentationState,
+  createChatRuntimeDelegationCardMobileProps,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -6782,24 +6782,7 @@ export function createChatMessageRetryStatusProps({
 export function createChatMessageDelegationCardProps(
   cardInput: ChatMessageDelegationCardPropsInput,
 ): ChatMessageThreadBodyProps['delegationCard'] {
-  const presentationState = getChatRuntimeDelegationCardMobilePresentationState(cardInput);
-  if (!presentationState) return null;
-  const {
-    onShowAllConversationPreview,
-    onShowAllToolPreview,
-  } = cardInput;
-
-  return {
-    ...presentationState,
-    conversationPreview: {
-      ...presentationState.conversationPreview,
-      onShowAll: () => onShowAllConversationPreview(presentationState.runId),
-    },
-    toolPreview: {
-      ...presentationState.toolPreview,
-      onShowAll: () => onShowAllToolPreview(presentationState.runId),
-    },
-  };
+  return createChatRuntimeDelegationCardMobileProps(cardInput);
 }
 
 export function createChatMessageToolApprovalProps({
