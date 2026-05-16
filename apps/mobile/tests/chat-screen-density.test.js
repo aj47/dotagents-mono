@@ -759,8 +759,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] = useState<Record<string, boolean>>\(\{\}\);/);
   assert.doesNotMatch(screenSource, /setExpandedDelegationConversationPreviews\(\{\}\);/);
   assert.doesNotMatch(screenSource, /setExpandedDelegationToolPreviews\(\{\}\);/);
-  assert.match(chatMessageChromeSource, /const \[expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews\] =\s+useState<ChatDisplayExpansionStateMap<string>>\(\{\}\);/);
-  assert.match(chatMessageChromeSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] =\s+useState<ChatDisplayExpansionStateMap<string>>\(\{\}\);/);
+  assert.match(sessionPresentationSource, /export type ChatRuntimeConversationDelegationExpansionState = ChatDisplayExpansionStateMap<string>/);
+  assert.match(chatMessageChromeSource, /const \[expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews\] =\s+useState<ChatRuntimeConversationDelegationExpansionState>\(\{\}\);/);
+  assert.match(chatMessageChromeSource, /const \[expandedDelegationToolPreviews, setExpandedDelegationToolPreviews\] =\s+useState<ChatRuntimeConversationDelegationExpansionState>\(\{\}\);/);
   assert.match(chatMessageChromeSource, /setExpandedDelegationConversationPreviews\(\{\}\);/);
   assert.match(chatMessageChromeSource, /setExpandedDelegationToolPreviews\(\{\}\);/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationCard/);
@@ -3998,7 +3999,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /function createChatMessageActionRenderers\(\{/);
   assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(\s+availability,\s+createChatMessageActionRenderers\(input\),\s+\);/);
-  assert.match(sessionPresentationSource, /export \{\s+createChatMessageActionSlotRenderMap,\s+getChatMessageActionMobileButtonStatesBySlot,\s+getChatMessageActionSlotRenderEntries,\s+type ChatMessageActionSlotRenderEntry,\s+type ChatMessageActionSlotRenderMap,\s+\} from "\.\/message-display-utils"/);
+  assert.match(sessionPresentationSource, /export \{\s+createChatMessageActionSlotRenderMap,\s+getChatMessageActionMobileButtonStatesBySlot,\s+getChatMessageActionSlotRenderEntries,\s+type ChatMessageCollapsedPreviewMobileActionState,\s+type ChatMessageExpansionMobileRenderState,\s+type ChatMessageActionSlotRenderEntry,\s+type ChatMessageActionSlotRenderMap,\s+\} from "\.\/message-display-utils"/);
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/message-display-utils';/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderMap,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;/);

@@ -30,11 +30,6 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
-  type ChatDisplayExpansionStateMap,
-  type ChatMessageCollapsedPreviewMobileActionState,
-  type ChatMessageExpansionMobileRenderState,
-} from '@dotagents/shared/message-display-utils';
-import {
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
 } from '@dotagents/shared/chat-utils';
@@ -208,6 +203,7 @@ import {
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationContentMobileDisplayMode,
+  type ChatRuntimeConversationDelegationExpansionState,
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
@@ -235,6 +231,8 @@ import {
   type ChatMessageRuntimeMessageExpansionState,
   type ChatMessageRuntimeResponseHistorySourceMessage,
   type ChatMessageRuntimeSessionMessageLike,
+  type ChatMessageCollapsedPreviewMobileActionState,
+  type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
@@ -3806,9 +3804,9 @@ export function useChatMessageRuntimeThreadExpansionState<TMessage extends ChatM
   const [expandedGroups, setExpandedGroups] = useState<ChatMessageRuntimeToolActivityGroupExpansionState>({});
   const [expandedToolApprovals, setExpandedToolApprovals] = useState<ChatMessageRuntimeToolApprovalExpansionState>({});
   const [expandedDelegationConversationPreviews, setExpandedDelegationConversationPreviews] =
-    useState<ChatDisplayExpansionStateMap<string>>({});
+    useState<ChatRuntimeConversationDelegationExpansionState>({});
   const [expandedDelegationToolPreviews, setExpandedDelegationToolPreviews] =
-    useState<ChatDisplayExpansionStateMap<string>>({});
+    useState<ChatRuntimeConversationDelegationExpansionState>({});
 
   const resetThreadExpansionState = useCallback(() => {
     setExpandedMessages({});

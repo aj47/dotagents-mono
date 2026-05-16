@@ -134,6 +134,8 @@ export {
   createChatMessageActionSlotRenderMap,
   getChatMessageActionMobileButtonStatesBySlot,
   getChatMessageActionSlotRenderEntries,
+  type ChatMessageCollapsedPreviewMobileActionState,
+  type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
 } from "./message-display-utils"
@@ -896,10 +898,12 @@ export interface ChatRuntimeConversationToolApprovalMobileState {
   cardState: ChatRuntimeConversationToolApprovalMobileCardState | null
 }
 
+export type ChatRuntimeConversationDelegationExpansionState = ChatDisplayExpansionStateMap<string>
+
 export type ChatRuntimeConversationDelegationExpansionSetter = (
   updater: (
-    current: ChatDisplayExpansionStateMap<string>,
-  ) => ChatDisplayExpansionStateMap<string>,
+    current: ChatRuntimeConversationDelegationExpansionState,
+  ) => ChatRuntimeConversationDelegationExpansionState,
 ) => void
 
 export type ChatRuntimeConversationDelegationCardMobileColors =
@@ -916,8 +920,8 @@ export interface ChatRuntimeConversationDelegationCardMobileStateInput<
   surface: ChatRuntimeDelegationCardMobileRenderState["surface"]
   toolEntries: readonly ChatMessageDisplayToolEntry[]
   displayToolCallCount: number
-  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>
-  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>
+  expandedDelegationConversationPreviews: ChatRuntimeConversationDelegationExpansionState
+  expandedDelegationToolPreviews: ChatRuntimeConversationDelegationExpansionState
   roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
   colors: ChatRuntimeConversationDelegationCardMobileColors
   setExpandedDelegationConversationPreviews: ChatRuntimeConversationDelegationExpansionSetter
@@ -932,8 +936,8 @@ export interface ChatRuntimeConversationDelegationCardMobileState<
   delegation?: TDelegation
   toolEntries: readonly ChatMessageDisplayToolEntry[]
   displayToolCallCount: number
-  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>
-  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>
+  expandedDelegationConversationPreviews: ChatRuntimeConversationDelegationExpansionState
+  expandedDelegationToolPreviews: ChatRuntimeConversationDelegationExpansionState
   roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
   colors: ChatRuntimeConversationDelegationCardMobileColors
   onShowAllConversationPreview: (runId: string) => void
@@ -946,8 +950,8 @@ export interface ChatRuntimeDelegationCardMobilePresentationStateInput {
   delegation?: ACPDelegationProgress | null
   toolEntries: readonly ChatMessageDisplayToolEntry[]
   displayToolCallCount: number
-  expandedDelegationConversationPreviews: ChatDisplayExpansionStateMap<string>
-  expandedDelegationToolPreviews: ChatDisplayExpansionStateMap<string>
+  expandedDelegationConversationPreviews: ChatRuntimeConversationDelegationExpansionState
+  expandedDelegationToolPreviews: ChatRuntimeConversationDelegationExpansionState
   roleStyles: ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
   colors: ChatRuntimeConversationDelegationCardMobileColors
 }
