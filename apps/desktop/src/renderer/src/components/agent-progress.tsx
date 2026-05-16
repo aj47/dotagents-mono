@@ -121,11 +121,9 @@ import { normalizeMarkdownThoughtContent } from "@dotagents/shared/markdown-rend
 import { toast } from "sonner"
 import {
   formatChatRuntimeActivityContent,
-  formatChatRuntimeConversationHistorySummary,
   formatChatRuntimeDelegationMessageCount,
   formatChatRuntimeDelegationMessagesLabel,
   formatChatRuntimeEarlierDelegationMessagesLabel,
-  formatChatRuntimeLoadEarlierLabel,
   formatChatRuntimeModelPickerTitle,
   formatChatRuntimeThinkingPickerTitle,
   formatChatRuntimeToolApprovalFailureMessage,
@@ -137,6 +135,7 @@ import {
   getChatRuntimeCopyState,
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeDesktopSurfaceState,
+  getChatRuntimeMessageHistoryBannerState,
   getChatRuntimePinAccessibilityLabel,
   getChatRuntimeRetryStatusState,
   getChatRuntimeStreamingContentState,
@@ -4143,6 +4142,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     0,
     conversationHistoryTotalCount - loadedConversationHistoryCount,
   )
+  const conversationHistoryBannerState = getChatRuntimeMessageHistoryBannerState({
+    visibleCount: loadedConversationHistoryCount,
+    totalCount: conversationHistoryTotalCount,
+    hiddenCount: hiddenConversationHistoryCount,
+    loadIncrement: CONVERSATION_HISTORY_PAGE_SIZE,
+    isLoadingEarlier: isLoadingEarlierConversationHistory,
+  })
 
   const getToolActivityGroupExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
     return getChatDisplayGroupedExpansionState({
@@ -4653,9 +4659,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         {formatChatRuntimeVisibleUpdatesSummary(visibleDisplayItems.length)}
                       </div>
                     )}
-                    {hiddenConversationHistoryCount > 0 && (
+                    {conversationHistoryBannerState.shouldRender && (
                       <div className={desktopRuntimeSurface.conversationHistoryBanner.containerClassName}>
-                        <span>{formatChatRuntimeConversationHistorySummary(loadedConversationHistoryCount, conversationHistoryTotalCount)}</span>
+                        <span>{conversationHistoryBannerState.summaryLabel}</span>
                         {onLoadEarlierConversationHistory && (
                           <button
                             type="button"
@@ -4667,11 +4673,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             }}
                             className={desktopRuntimeSurface.conversationHistoryBanner.loadButtonClassName}
                           >
-                            {formatChatRuntimeLoadEarlierLabel(
-                              hiddenConversationHistoryCount,
-                              CONVERSATION_HISTORY_PAGE_SIZE,
-                              isLoadingEarlierConversationHistory,
-                            )}
+                            {conversationHistoryBannerState.loadEarlierLabel}
                           </button>
                         )}
                       </div>
@@ -5116,9 +5118,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   {formatChatRuntimeVisibleUpdatesSummary(visibleDisplayItems.length)}
                 </div>
               )}
-              {hiddenConversationHistoryCount > 0 && (
+              {conversationHistoryBannerState.shouldRender && (
                 <div className={desktopRuntimeSurface.conversationHistoryBanner.containerClassName}>
-                  <span>{formatChatRuntimeConversationHistorySummary(loadedConversationHistoryCount, conversationHistoryTotalCount)}</span>
+                  <span>{conversationHistoryBannerState.summaryLabel}</span>
                   {onLoadEarlierConversationHistory && (
                     <button
                       type="button"
@@ -5130,11 +5132,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       }}
                       className={desktopRuntimeSurface.conversationHistoryBanner.loadButtonClassName}
                     >
-                      {formatChatRuntimeLoadEarlierLabel(
-                        hiddenConversationHistoryCount,
-                        CONVERSATION_HISTORY_PAGE_SIZE,
-                        isLoadingEarlierConversationHistory,
-                      )}
+                      {conversationHistoryBannerState.loadEarlierLabel}
                     </button>
                   )}
                 </div>

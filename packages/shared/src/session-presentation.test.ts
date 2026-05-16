@@ -253,6 +253,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileIsAtBottom,
   getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeMessageHistoryBannerState,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeMobileActivityAccessibilityState,
@@ -3103,6 +3104,31 @@ describe("session presentation semantics", () => {
         color: "#0f172a",
       },
     })
+    expect(getChatRuntimeMessageHistoryBannerState({
+      visibleCount: 40,
+      totalCount: 100,
+      hiddenCount: 60,
+      loadIncrement: 30,
+      includeScrollHint: true,
+    })).toEqual({
+      shouldRender: true,
+      visibleCount: 40,
+      totalCount: 100,
+      hiddenCount: 60,
+      summaryLabel: "Showing latest 40 of 100 messages. Scroll up to load older messages.",
+      loadEarlierLabel: "Load 30 earlier",
+    })
+    expect(getChatRuntimeMessageHistoryBannerState({
+      visibleCount: 100,
+      totalCount: 100,
+    })).toEqual({
+      shouldRender: false,
+      visibleCount: 100,
+      totalCount: 100,
+      hiddenCount: 0,
+      summaryLabel: "",
+      loadEarlierLabel: "",
+    })
     expect(getChatRuntimeMessageHistoryBannerMobileRenderState({
       visibleCount: 40,
       totalCount: 100,
@@ -5587,6 +5613,17 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeLoadEarlierLabel(350, 120)).toBe("Load 120 earlier")
     expect(formatChatRuntimeLoadEarlierLabel(30, 120)).toBe("Load 30 earlier")
     expect(formatChatRuntimeLoadEarlierLabel(30, 120, true)).toBe("Loading...")
+    expect(getChatRuntimeMessageHistoryBannerState({
+      visibleCount: 120,
+      totalCount: 240,
+      loadIncrement: 50,
+      isLoadingEarlier: true,
+    })).toMatchObject({
+      shouldRender: true,
+      hiddenCount: 120,
+      summaryLabel: "Showing latest 120 of 240 messages",
+      loadEarlierLabel: "Loading...",
+    })
     expect(formatChatRuntimeAssistantFeedbackContent("Reasoning", true)).toBe("Reasoning")
     expect(formatChatRuntimeAssistantFeedbackContent("First thought\nSecond thought", true)).toBe(
       "First thought\n\nSecond thought",

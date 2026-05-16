@@ -2360,6 +2360,24 @@ export interface ChatRuntimeMessageHistoryBannerMobileColors {
   }
 }
 
+export interface ChatRuntimeMessageHistoryBannerStateInput {
+  visibleCount?: number
+  totalCount?: number
+  hiddenCount?: number
+  loadIncrement?: number
+  isLoadingEarlier?: boolean
+  includeScrollHint?: boolean
+}
+
+export interface ChatRuntimeMessageHistoryBannerState {
+  shouldRender: boolean
+  visibleCount: number
+  totalCount: number
+  hiddenCount: number
+  summaryLabel: string
+  loadEarlierLabel: string
+}
+
 export interface ChatRuntimeMessageHistoryBannerMobileRenderStateInput {
   visibleCount?: number
   totalCount?: number
@@ -9570,6 +9588,33 @@ export function formatChatRuntimeLoadEarlierLabel(
   return `Load ${Math.min(hiddenCount, pageSize)} earlier`
 }
 
+export function getChatRuntimeMessageHistoryBannerState({
+  visibleCount = 0,
+  totalCount = 0,
+  hiddenCount,
+  loadIncrement = getChatRuntimeMessageHistoryWindowMobileState().loadIncrement,
+  isLoadingEarlier = false,
+  includeScrollHint = false,
+}: ChatRuntimeMessageHistoryBannerStateInput = {}): ChatRuntimeMessageHistoryBannerState {
+  const safeVisibleCount = Math.max(0, visibleCount)
+  const safeTotalCount = Math.max(0, totalCount)
+  const safeHiddenCount = Math.max(0, hiddenCount ?? safeTotalCount - safeVisibleCount)
+  const shouldRender = safeHiddenCount > 0
+
+  return {
+    shouldRender,
+    visibleCount: safeVisibleCount,
+    totalCount: safeTotalCount,
+    hiddenCount: safeHiddenCount,
+    summaryLabel: shouldRender
+      ? formatChatRuntimeConversationHistorySummary(safeVisibleCount, safeTotalCount, { includeScrollHint })
+      : "",
+    loadEarlierLabel: shouldRender
+      ? formatChatRuntimeLoadEarlierLabel(safeHiddenCount, loadIncrement, isLoadingEarlier)
+      : "",
+  }
+}
+
 export function formatChatRuntimeAssistantFeedbackContent(
   thinkingContent: string | null | undefined,
   hasToolActivity: boolean,
@@ -10643,25 +10688,24 @@ export function getChatRuntimeMessageHistoryBannerMobileRenderState({
   const surface = getChatRuntimeMessageHistoryBannerMobileState()
   const resolvedColors = getChatRuntimeMessageHistoryBannerMobileColors(colors)
   const loadIcon = getChatRuntimeMessageHistoryLoadEarlierMobileIconState()
-  const safeVisibleCount = Math.max(0, visibleCount)
-  const safeTotalCount = Math.max(0, totalCount)
-  const safeHiddenCount = Math.max(0, hiddenCount ?? safeTotalCount - safeVisibleCount)
-  const shouldRender = safeHiddenCount > 0
-  const loadEarlierLabel = shouldRender
-    ? formatChatRuntimeLoadEarlierLabel(safeHiddenCount, loadIncrement, isLoadingEarlier)
-    : ""
+  const banner = getChatRuntimeMessageHistoryBannerState({
+    visibleCount,
+    totalCount,
+    hiddenCount,
+    loadIncrement,
+    isLoadingEarlier,
+    includeScrollHint,
+  })
 
   return {
-    shouldRender,
+    shouldRender: banner.shouldRender,
     surface,
     colors: resolvedColors,
-    summaryLabel: shouldRender
-      ? formatChatRuntimeConversationHistorySummary(safeVisibleCount, safeTotalCount, { includeScrollHint })
-      : "",
+    summaryLabel: banner.summaryLabel,
     loadButton: {
       accessibilityRole: surface.loadButton.accessibilityRole,
-      accessibilityLabel: loadEarlierLabel,
-      label: loadEarlierLabel,
+      accessibilityLabel: banner.loadEarlierLabel,
+      label: banner.loadEarlierLabel,
       icon: {
         name: loadIcon.name,
         size: loadIcon.size,
