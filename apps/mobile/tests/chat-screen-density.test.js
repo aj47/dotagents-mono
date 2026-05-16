@@ -3534,6 +3534,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /groupRenderState=\{messageThreadState\.groupRenderState\}/);
   assert.doesNotMatch(screenSource, /body=\{messageThreadState\.body\}/);
   assert.doesNotMatch(screenSource, /surfaceToneStyleSlot=\{messageRenderState\.toneStyleSlot\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /body\.conversation\.messageRenderState\.toneStyleSlot/);
   assert.match(chatMessageChromeSource, /const resolvedBody = createChatMessageThreadBodyProps\(body\);/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolActivityGroupThreadSurface\s+key=\{i\}/);
   assert.doesNotMatch(screenSource, /surfaceStyle=\{styles\.msg\}/);
@@ -4246,8 +4247,9 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(sessionPresentationSource, /toolResults: renderedToolEntries\.map\(\(entry\) => entry\.result\),\s+content: visibleMessageContent,\s+isExpanded,\s+shouldCollapse: messageDisplayState\.shouldCollapse,\s+isToolOnly: messageDisplayState\.isToolOnly,\s+isLiveStreaming: isLiveStreamingAssistantMessage,\s+colors,/);
   assert.doesNotMatch(screenSource, /const messageContentRenderState = messageRenderState\.content;/);
   assert.doesNotMatch(screenSource, /const messageToneStyle = messageThreadSurfaceStyles\.getToneStyle\(messageRenderState\.toneStyleSlot\);/);
-  assert.match(chatMessageChromeSource, /const surfaceToneStyleSlot = body\.conversation\.messageRenderState\.toneStyleSlot;/);
-  assert.match(chatMessageChromeSource, /const surfaceToneStyle = surfaceToneStyleSlot\s+\? styles\.surface\.getToneStyle\(surfaceToneStyleSlot\)\s+: undefined;/);
+  assert.match(sessionPresentationSource, /surfaceToneStyleSlot: messageRenderState\.toneStyleSlot,/);
+  assert.doesNotMatch(chatMessageChromeSource, /body\.conversation\.messageRenderState\.toneStyleSlot/);
+  assert.match(chatMessageChromeSource, /const surfaceToneStyle = styles\.surface\.getToneStyle\(body\.conversation\.surfaceToneStyleSlot\);/);
   assert.doesNotMatch(screenSource, /styles\[messageRenderState\.toneStyleSlot\]/);
   assert.doesNotMatch(screenSource, /messageTone === 'assistant_final'[\s\S]*?styles\.assistantFinal/);
   assert.doesNotMatch(screenSource, /messageTone === 'tool'[\s\S]*?styles\.tool/);

@@ -645,6 +645,9 @@ export type ChatRuntimeConversationContentMobileRenderState = Pick<
   "shouldRenderExpandedContent" | "shouldRenderCollapsedTextPreview"
 >
 
+export type ChatRuntimeConversationSurfaceToneMobileStyleSlot =
+  ChatRuntimeConversationMessageMobileRenderState["toneStyleSlot"]
+
 export type ChatRuntimeConversationCollapsedPreviewMobileRenderState =
   ChatRuntimeConversationMessageMobileRenderState["collapsedPreview"]
 
@@ -1158,7 +1161,7 @@ export interface ChatRuntimeConversationThreadBodyMobileState<
     TAssetBaseUrl,
     TAssetAuthToken
   > & {
-    messageRenderState: ChatRuntimeConversationMessageMobileRenderState
+    surfaceToneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot
     actionSet: ChatRuntimeConversationActionSetMobileState<
       TTurnDurationStyle,
       TSpeechStyle,
@@ -7309,7 +7312,7 @@ export function getChatRuntimeConversationThreadBodyMobileState<
     }),
     inlineActivity,
     conversation: {
-      messageRenderState,
+      surfaceToneStyleSlot: messageRenderState.toneStyleSlot,
       actionSet: getChatRuntimeConversationActionSetMobileState({
         message,
         messageIndex,

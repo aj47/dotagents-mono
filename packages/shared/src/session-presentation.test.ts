@@ -3880,7 +3880,7 @@ describe("session presentation semantics", () => {
       },
       inlineActivity: { state: "inline" },
       conversation: {
-        messageRenderState: successfulConversationMessage,
+        surfaceToneStyleSlot: successfulConversationMessage.toneStyleSlot,
         actionSet: {
           turnDuration: {
             durationMs: 12000,

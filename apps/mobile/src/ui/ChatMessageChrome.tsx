@@ -235,7 +235,6 @@ import {
   type ChatRuntimeConversationContentMobileRenderState,
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
-  type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
   type ChatRuntimeConversationRetryStatusMobileState,
   type ChatRuntimeConversationMessageRuntimeThreadState,
@@ -244,6 +243,7 @@ import {
   type ChatRuntimeConversationThreadBodyMobileState,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
+  type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeConversationToolApprovalMobileState,
   type ChatRuntimeConversationToolExecutionDetailMobileRowState,
   type ChatRuntimeConversationToolExecutionStackMobileState,
@@ -1208,8 +1208,6 @@ type ChatMessageRuntimeClipboardActionsState = {
   handleCopyMessage: (messageIndex: number, content: string) => Promise<void>;
   handleCopyToolPayload: (content: string) => Promise<void>;
 };
-
-type ChatMessageMobileRenderState = ChatRuntimeConversationMessageMobileRenderState;
 
 type ChatMessageConversationRenderContextInput =
   ChatRuntimeConversationMessageRenderContextMobileStateInput;
@@ -2941,7 +2939,9 @@ type ChatMessageThreadBodyStyleSlots = {
 type ChatMessageToolActivityGroupThreadSurfaceStyleSlots = {
   surfaceStyle: ChatMessageThreadSurfaceProps['surfaceStyle'];
   boundary: ChatMessageToolActivityGroupBoundaryStyles;
-  getToneStyle: (toneStyleSlot: string) => ChatMessageThreadSurfaceProps['surfaceToneStyle'];
+  getToneStyle: (
+    toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot
+  ) => ChatMessageThreadSurfaceProps['surfaceToneStyle'];
 };
 
 type ChatMessageThreadBodyContentProps =
@@ -2972,7 +2972,7 @@ type ChatMessageThreadBodyProps = {
 export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
 export type ChatMessageConversationBodyPropsInput = {
-  messageRenderState: ChatMessageMobileRenderState;
+  surfaceToneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot;
   contentState: ChatMessageConversationContentState;
   actionSet: ChatMessageActionSetInput;
   expanded: ChatMessageExpandedContentPropsInput;
@@ -8262,7 +8262,6 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
 }
 
 export function createChatMessageConversationBodyProps({
-  messageRenderState,
   contentState,
   actionSet: actionSetInput,
   expanded,
@@ -10003,10 +10002,7 @@ export function ChatMessageRuntimeThread({
   if (!body) return null;
 
   const resolvedBody = createChatMessageThreadBodyProps(body);
-  const surfaceToneStyleSlot = body.conversation.messageRenderState.toneStyleSlot;
-  const surfaceToneStyle = surfaceToneStyleSlot
-    ? styles.surface.getToneStyle(surfaceToneStyleSlot)
-    : undefined;
+  const surfaceToneStyle = styles.surface.getToneStyle(body.conversation.surfaceToneStyleSlot);
 
   return (
     <ChatMessageToolActivityGroupThreadSurface
