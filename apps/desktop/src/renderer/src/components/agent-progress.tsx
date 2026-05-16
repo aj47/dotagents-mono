@@ -2125,6 +2125,7 @@ const ToolApprovalBubble: React.FC<{
               className={approvalSurface.denyButtonClassName}
               onClick={onDeny}
               disabled={approvalInteraction.denyButton.isDisabled}
+              aria-label={approvalInteraction.denyButton.accessibilityLabel}
               title={approvalCopy.denyHotkeyTitle}
             >
               <XCircle className="mr-1 h-3 w-3" />
@@ -2140,6 +2141,7 @@ const ToolApprovalBubble: React.FC<{
               )}
               onClick={onApprove}
               disabled={approvalInteraction.approveButton.isDisabled}
+              aria-label={approvalInteraction.approveButton.accessibilityLabel}
               title={approvalCopy.approveHotkeyTitle}
             >
               {approvalInteraction.approveButton.isDisabled ? (
@@ -2155,7 +2157,7 @@ const ToolApprovalBubble: React.FC<{
               )}
             </Button>
           </div>
-          {!isResponding && (
+          {!approvalInteraction.approveButton.isDisabled && (
             <div className={approvalSurface.hotkeysRowClassName}>
               <span className={approvalSurface.hotkeysLabelClassName}>{approvalCopy.hotkeysLabel}</span>
               <div className="flex flex-wrap items-center gap-1">
