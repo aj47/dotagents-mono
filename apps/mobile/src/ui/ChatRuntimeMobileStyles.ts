@@ -15,6 +15,7 @@ import {
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
+  createMessageQueuePanelMobileWrapperStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   resolveChatRuntimeMobileFontFamily,
@@ -115,7 +116,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const promptEditorModalSurface = promptLibrarySurface.editorModal;
   const promptEditorInputPaddingVertical = composerChromeStyleState.promptEditorInputPaddingVertical;
   const messageQueuePanelWrapperState = chatChromeStyleState.messageQueuePanelWrapper;
-  const messageQueuePanelWrapper = messageQueuePanelWrapperState.wrapper;
+  const messageQueuePanelWrapperStyleSlots = createMessageQueuePanelMobileWrapperStyleSlots({
+    wrapper: messageQueuePanelWrapperState.wrapper,
+    spacing,
+  });
   const handsFreeStyleState = composerChromeStyleState.handsFree;
   const handsFreeSurface = handsFreeStyleState.surface;
   const headerActionButton = chatChromeStyleState.headerActionButton;
@@ -292,8 +296,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       backgroundColor: streamingContentSurfaceColors.caret.backgroundColor,
     },
     messageQueuePanelWrapper: {
-      paddingHorizontal: spacing[messageQueuePanelWrapper.paddingHorizontal],
-      paddingTop: spacing[messageQueuePanelWrapper.paddingTop],
+      ...messageQueuePanelWrapperStyleSlots.wrapper,
     },
     headerAgentSelectorButton: {
       ...headerAgentSelectorStyleSlots.button,

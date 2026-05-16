@@ -8,6 +8,7 @@ import {
   clearOperatorMessageQueueSummary,
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
+  createMessageQueuePanelMobileWrapperStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
@@ -297,6 +298,18 @@ describe('message-queue-utils', () => {
     expect(getMessageQueuePanelMobileSurfaceState()).toBe(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile);
     expect(getMessageQueuePanelMobileWrapperRenderState()).toEqual({
       wrapper: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper,
+    });
+    expect(createMessageQueuePanelMobileWrapperStyleSlots({
+      wrapper: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper,
+      spacing: {
+        md: 16,
+        sm: 8,
+      },
+    })).toEqual({
+      wrapper: {
+        paddingHorizontal: 16,
+        paddingTop: 8,
+      },
     });
     expect(getMessageQueuePanelMobileDockRenderState({
       isQueueEnabled: true,

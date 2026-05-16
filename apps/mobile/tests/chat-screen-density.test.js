@@ -3500,12 +3500,13 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?formatQueuedMessageMetaLabel,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?formatQueuedMessageMetaLabel,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
   assert.match(screenSource, /const messageQueuePanelWrapperState = chatChromeStyleState\.messageQueuePanelWrapper;/);
-  assert.match(screenSource, /const messageQueuePanelWrapper = messageQueuePanelWrapperState\.wrapper;/);
+  assert.match(screenSource, /createMessageQueuePanelMobileWrapperStyleSlots,/);
+  assert.match(screenSource, /const messageQueuePanelWrapperStyleSlots = createMessageQueuePanelMobileWrapperStyleSlots\(\{\s+wrapper: messageQueuePanelWrapperState\.wrapper,\s+spacing,\s+\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeQueuePanelState,/);
   assert.match(screenSource, /const \{\s+queuedMessages,\s+isMessageQueuePaused,\s+nextQueuedMessage,\s+handleProcessNextQueuedMessage,\s+handlePauseMessageQueue,\s+handleResumeMessageQueue,\s+handleRemoveQueuedMessage,\s+handleUpdateQueuedMessage,\s+handleRetryQueuedMessage,\s+handleClearQueuedMessages,\s+\} = useChatMessageRuntimeQueuePanelState\(\{\s+currentConversationId,\s+queue: messageQueue,\s+responding,\s+handsFree,\s+handsFreePhase: handsFreeController\.state\.phase,\s+handsFreeRef,\s+handsFreePhaseRef,\s+processQueuedMessage,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const isMessageQueuePaused = messageQueue\.isQueuePaused\(currentConversationId\);/);
@@ -3598,7 +3599,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(screenSource, /onPauseMessageQueue: handlePauseMessageQueue/);
   assert.match(screenSource, /onResumeMessageQueue: handleResumeMessageQueue/);
   assert.match(chatMessageChromeSource, /isPaused: isMessageQueuePaused,\s+onPause: onPauseMessageQueue,\s+onResume: onResumeMessageQueue,/);
-  assert.match(screenSource, /messageQueuePanelWrapper:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\[messageQueuePanelWrapper\.paddingHorizontal\],[\s\S]*?paddingTop:\s*spacing\[messageQueuePanelWrapper\.paddingTop\]/);
+  assert.match(screenSource, /messageQueuePanelWrapper:\s*\{[\s\S]*?\.\.\.messageQueuePanelWrapperStyleSlots\.wrapper/);
+  assert.doesNotMatch(screenSource, /paddingHorizontal:\s*spacing\[messageQueuePanelWrapper\.paddingHorizontal\]/);
+  assert.doesNotMatch(screenSource, /paddingTop:\s*spacing\[messageQueuePanelWrapper\.paddingTop\]/);
   assert.doesNotMatch(screenSource, /MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION\.mobile/);
   assert.doesNotMatch(screenSource, /MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION,/);
   assert.doesNotMatch(screenSource, /style=\{\{ paddingHorizontal: spacing\.md, paddingTop: spacing\.sm \}\}/);

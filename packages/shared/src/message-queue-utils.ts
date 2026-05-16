@@ -516,6 +516,25 @@ export interface MessageQueuePanelMobileWrapperRenderState {
   wrapper: typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper;
 }
 
+export type MessageQueuePanelMobileWrapperSpacingToken =
+  | typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingHorizontal
+  | typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingTop;
+
+export type MessageQueuePanelMobileWrapperSpacingScale =
+  Readonly<Record<MessageQueuePanelMobileWrapperSpacingToken, number>>;
+
+export interface MessageQueuePanelMobileWrapperStyleSlotsInput {
+  wrapper: MessageQueuePanelMobileWrapperRenderState['wrapper'];
+  spacing: MessageQueuePanelMobileWrapperSpacingScale;
+}
+
+export interface MessageQueuePanelMobileWrapperStyleSlots {
+  wrapper: {
+    paddingHorizontal: number;
+    paddingTop: number;
+  };
+}
+
 export interface MessageQueuePanelMobileDockRenderStateInput {
   isQueueEnabled?: boolean;
   messageCount?: number | null;
@@ -618,6 +637,18 @@ export function getMessageQueuePanelMobileSurfaceState(): typeof MESSAGE_QUEUE_P
 export function getMessageQueuePanelMobileWrapperRenderState(): MessageQueuePanelMobileWrapperRenderState {
   return {
     wrapper: getMessageQueuePanelMobileSurfaceState().wrapper,
+  };
+}
+
+export function createMessageQueuePanelMobileWrapperStyleSlots({
+  wrapper,
+  spacing,
+}: MessageQueuePanelMobileWrapperStyleSlotsInput): MessageQueuePanelMobileWrapperStyleSlots {
+  return {
+    wrapper: {
+      paddingHorizontal: spacing[wrapper.paddingHorizontal],
+      paddingTop: spacing[wrapper.paddingTop],
+    },
   };
 }
 
