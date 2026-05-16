@@ -3789,66 +3789,6 @@ export function useChatMessageRuntimeThreadExpansionState<TMessage extends ChatM
   };
 }
 
-export function createChatMessageRuntimeViewportChromeProps<
-  TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string; name: string },
->({
-  viewportContentIsLoadingMessages,
-  viewportContentMessageCount,
-  loadingSpinnerSource,
-  quickStartPrompts,
-  quickStartSkills,
-  quickStartTasks,
-  quickStartCanAddPrompt,
-  isLoadingQuickStartPrompts,
-  runningPromptTaskId,
-  onQuickStartPress,
-  onEditPrompt,
-  onDeletePrompt,
-  visibleMessageCount,
-  totalMessageCount,
-  hiddenMessageCount,
-  messageHistoryLoadIncrement,
-  latestStepSummary,
-  colors,
-  onLoadEarlierMessages,
-  requestDebugText,
-  voiceDebugEnabled,
-  voiceEvents,
-  ...scrollViewportProps
-}: ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeViewportChromeProps<TPrompt, TTask> {
-  return createChatRuntimeViewportChromeMobileProps<
-    TPrompt,
-    PromptLibrarySkillLike & { id: string },
-    TTask,
-    ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>
-  >({
-    viewportContentIsLoadingMessages,
-    viewportContentMessageCount,
-    loadingSpinnerSource,
-    quickStartPrompts,
-    quickStartSkills,
-    quickStartTasks,
-    quickStartCanAddPrompt,
-    isLoadingQuickStartPrompts,
-    runningPromptTaskId,
-    onQuickStartPress,
-    onEditPrompt,
-    onDeletePrompt,
-    visibleMessageCount,
-    totalMessageCount,
-    hiddenMessageCount,
-    messageHistoryLoadIncrement,
-    latestStepSummary,
-    requestDebugText,
-    voiceDebugEnabled,
-    voiceEvents,
-    colors,
-    onLoadEarlierMessages,
-    ...scrollViewportProps,
-  });
-}
-
 export function createChatMessageRuntimeDockChromeProps({
   responseHistoryResponses,
   responseHistoryTtsProvider,
@@ -3925,53 +3865,6 @@ export function createChatMessageRuntimeDockChromeProps({
   });
 }
 
-export function createChatMessageRuntimeSurfaceChromeProps<
-  TPrompt extends PredefinedPromptSummary,
-  TTask extends PromptLibraryTaskLike & { id: string },
->({
-  platform,
-  colors,
-  keyboardVerticalOffset,
-  dock,
-  viewport,
-  threadStates,
-  threadStyles,
-  agentSelectorVisible,
-  onAgentSelectorClose,
-  promptEditorVisible,
-  promptEditorIsEditing,
-  promptEditorNameValue,
-  onPromptEditorNameChange,
-  promptEditorContentValue,
-  onPromptEditorContentChange,
-  promptEditorIsSaving,
-  onPromptEditorClose,
-  onPromptEditorSave,
-  promptEditorStyles,
-}: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
-  return createChatRuntimeSurfaceChromeMobileProps({
-    platform,
-    colors,
-    keyboardVerticalOffset,
-    dock,
-    viewport,
-    threadStates,
-    threadStyles,
-    agentSelectorVisible,
-    onAgentSelectorClose,
-    promptEditorVisible,
-    promptEditorIsEditing,
-    promptEditorNameValue,
-    onPromptEditorNameChange,
-    promptEditorContentValue,
-    onPromptEditorContentChange,
-    promptEditorIsSaving,
-    onPromptEditorClose,
-    onPromptEditorSave,
-    promptEditorStyles,
-  });
-}
-
 export function createChatMessageRuntimeChromeProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -4014,7 +3907,12 @@ export function createChatMessageRuntimeChromeProps<
     pendingImagesColors: colors,
     composerControlColors: colors,
   });
-  const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps({
+  const chatMessageRuntimeViewport = createChatRuntimeViewportChromeMobileProps<
+    TPrompt,
+    PromptLibrarySkillLike & { id: string },
+    TTask,
+    ChatMessageRuntimeViewportChromePropsInput<TPrompt, TTask>
+  >({
     ...viewport,
     colors,
     loadingSpinnerSource: spinnerSource,
@@ -4028,7 +3926,7 @@ export function createChatMessageRuntimeChromeProps<
     composer: chatComposerRuntimeDock,
   });
 
-  return createChatMessageRuntimeSurfaceChromeProps({
+  return createChatRuntimeSurfaceChromeMobileProps({
     ...surface,
     platform,
     colors,
