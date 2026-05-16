@@ -93,6 +93,7 @@ import {
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
+  createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
@@ -7953,18 +7954,21 @@ export function ChatMessageToolExecutionCompactGroup({
   styles,
   children,
 }: ChatMessageToolExecutionCompactGroupProps) {
+  const compactGroupParts = createChatRuntimeToolExecutionCompactGroupMobilePropsParts({
+    renderState,
+    onPress,
+    styles,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint}
-      accessibilityState={renderState.accessibilityState}
-      aria-expanded={renderState.ariaExpanded}
-      style={({ pressed }) => [
-        styles.container,
-        pressed && styles.pressed,
-      ]}
+      onPress={compactGroupParts.container.onPress}
+      accessibilityRole={compactGroupParts.container.accessibilityRole}
+      accessibilityLabel={compactGroupParts.container.accessibilityLabel}
+      accessibilityHint={compactGroupParts.container.accessibilityHint}
+      accessibilityState={compactGroupParts.container.accessibilityState}
+      aria-expanded={compactGroupParts.container.ariaExpanded}
+      style={compactGroupParts.container.style}
     >
       {children}
     </Pressable>

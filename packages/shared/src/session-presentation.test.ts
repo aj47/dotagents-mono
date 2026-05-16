@@ -132,6 +132,7 @@ import {
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
+  createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
@@ -9179,6 +9180,42 @@ describe("session presentation semantics", () => {
       "collapse-button",
       "collapse-pressed",
       "collapse-top",
+    ])
+    const compactGroupParts = createChatRuntimeToolExecutionCompactGroupMobilePropsParts({
+      renderState: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Expand tool details",
+        accessibilityHint: "Shows tool details",
+        accessibilityState: {
+          expanded: false,
+        },
+        ariaExpanded: false,
+      },
+      onPress: "expand-tools",
+      styles: {
+        container: "compact-group",
+        pressed: "compact-group-pressed",
+      },
+    })
+    expect(compactGroupParts).toMatchObject({
+      container: {
+        onPress: "expand-tools",
+        accessibilityRole: "button",
+        accessibilityLabel: "Expand tool details",
+        accessibilityHint: "Shows tool details",
+        accessibilityState: {
+          expanded: false,
+        },
+        ariaExpanded: false,
+      },
+    })
+    expect(compactGroupParts.container.style({ pressed: false })).toEqual([
+      "compact-group",
+      false,
+    ])
+    expect(compactGroupParts.container.style({ pressed: true })).toEqual([
+      "compact-group",
+      "compact-group-pressed",
     ])
     const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
       renderState: "detail-header-state",

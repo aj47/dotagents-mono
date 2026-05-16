@@ -2324,6 +2324,68 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  },
+  TOnPress = unknown,
+  TStyles extends {
+    container: unknown
+    pressed: unknown
+  } = {
+    container: unknown
+    pressed: unknown
+  },
+> {
+  renderState: TRenderState
+  onPress?: TOnPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  },
+  TOnPress = unknown,
+  TStyles extends {
+    container: unknown
+    pressed: unknown
+  } = {
+    container: unknown
+    pressed: unknown
+  },
+> {
+  container: {
+    onPress: TOnPress | undefined
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string
+    accessibilityState: TRenderState["accessibilityState"]
+    ariaExpanded: TRenderState["ariaExpanded"]
+    style: (state: { pressed: boolean }) => Array<TStyles["container"] | TStyles["pressed"] | false>
+  }
+}
+
 export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -15249,6 +15311,48 @@ export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
     label: {
       text: renderState.label,
       style: styles.text,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  },
+  TOnPress,
+  TStyles extends {
+    container: unknown
+    pressed: unknown
+  },
+>({
+  renderState,
+  onPress,
+  styles,
+}: ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TStyles
+>): ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TStyles
+> {
+  return {
+    container: {
+      onPress,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint,
+      accessibilityState: renderState.accessibilityState,
+      ariaExpanded: renderState.ariaExpanded,
+      style: ({ pressed }) => [
+        styles.container,
+        pressed && styles.pressed,
+      ],
     },
   }
 }
