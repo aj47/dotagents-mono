@@ -4,6 +4,11 @@ import { describe, expect, it } from "vitest"
 const source = readFileSync(new URL("./message-queue-panel.tsx", import.meta.url), "utf8")
 
 describe("desktop message queue panel presentation", () => {
+  it("routes desktop queue presentation through the shared session facade", () => {
+    expect(source).toContain('from "@dotagents/shared/session-presentation"')
+    expect(source).not.toContain('from "@dotagents/shared/message-queue-utils"')
+  })
+
   it("uses shared queue presentation helpers for visible copy and labels", () => {
     expect(source).toContain("getMessageQueuePanelDesktopRenderState")
     expect(source).toContain("getQueuedMessageItemDesktopRenderState")

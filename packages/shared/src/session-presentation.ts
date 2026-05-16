@@ -308,8 +308,10 @@ import {
 } from "./message-queue-utils"
 export {
   formatQueuedMessageMetaLabel,
+  getMessageQueuePanelDesktopRenderState,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
+  getQueuedMessageItemDesktopRenderState,
   getQueuedMessageItemMobileRenderState,
   type QueuedMessage,
 } from "./message-queue-utils"

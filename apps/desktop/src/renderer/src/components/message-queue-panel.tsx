@@ -7,7 +7,7 @@ import {
   getQueuedMessageEditDraftState,
   getQueuedMessageItemDesktopRenderState,
   type QueuedMessage,
-} from "@dotagents/shared/message-queue-utils"
+} from "@dotagents/shared/session-presentation"
 import { useMutation } from "@tanstack/react-query"
 import { desktopMessageQueueClient } from "@renderer/lib/desktop-message-queue-client"
 
