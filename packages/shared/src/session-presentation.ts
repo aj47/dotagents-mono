@@ -3804,6 +3804,33 @@ export interface ChatSessionStatusMobileStyleState {
 
 export type ChatSessionStatusMobileColorSlots = Record<SessionPresentationIntent, ChatSessionStatusMobileColors>
 export type ChatSessionStatusMobileStyleSlots = Record<SessionPresentationIntent, ChatSessionStatusMobileStyleState>
+type ChatSessionStatusMobileSurfaceState = typeof CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile
+
+export interface ChatSessionStatusMobileChromeStyleSlotsInput {
+  surface: ChatSessionStatusMobileSurfaceState
+}
+
+export interface ChatSessionStatusMobileChromeStyleSlots {
+  chip: {
+    flexDirection: ChatSessionStatusMobileSurfaceState["chip"]["flexDirection"]
+    alignItems: ChatSessionStatusMobileSurfaceState["chip"]["alignItems"]
+    gap: number
+    borderWidth: number
+    borderRadius: number
+    paddingHorizontal: number
+    paddingVertical: number
+    marginHorizontal: number
+  }
+  text: {
+    fontSize: number
+    lineHeight: number
+    fontWeight: ChatSessionStatusMobileSurfaceState["chipText"]["fontWeight"]
+  }
+  spinner: {
+    width: number
+    height: number
+  }
+}
 
 export interface ChatSessionStatusMobileStyleRenderStateInput {
   colors: ChatSessionStatusMobileColorPalette
@@ -11997,6 +12024,32 @@ export function getChatSessionStatusMobileStyleState(
     },
     text: {
       color: colors.textColor,
+    },
+  }
+}
+
+export function createChatSessionStatusMobileChromeStyleSlots({
+  surface,
+}: ChatSessionStatusMobileChromeStyleSlotsInput): ChatSessionStatusMobileChromeStyleSlots {
+  return {
+    chip: {
+      flexDirection: surface.chip.flexDirection,
+      alignItems: surface.chip.alignItems,
+      gap: surface.chip.gap,
+      borderWidth: surface.chip.borderWidth,
+      borderRadius: surface.chip.borderRadius,
+      paddingHorizontal: surface.chip.paddingHorizontal,
+      paddingVertical: surface.chip.paddingVertical,
+      marginHorizontal: surface.chip.marginHorizontal,
+    },
+    text: {
+      fontSize: surface.chipText.fontSize,
+      lineHeight: surface.chipText.lineHeight,
+      fontWeight: surface.chipText.fontWeight,
+    },
+    spinner: {
+      width: surface.runningIndicator.size,
+      height: surface.runningIndicator.size,
     },
   }
 }

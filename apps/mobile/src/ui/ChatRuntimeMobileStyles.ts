@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatSessionStatusMobileChromeStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
@@ -118,6 +119,9 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerPinButton = chatChromeStyleState.headerPinButton;
   const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
   const sessionStatusSurface = sessionStatusStyleState.surface;
+  const sessionStatusStyleSlots = createChatSessionStatusMobileChromeStyleSlots({
+    surface: sessionStatusSurface,
+  });
   const threadChromeStyleState = chatChromeStyleState.thread;
   const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
   const compactToolExecution = compactToolExecutionStyleState.surface;
@@ -302,23 +306,13 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       gap: headerSurface.actionsRow.gap,
     },
     headerConversationChip: {
-      flexDirection: sessionStatusSurface.chip.flexDirection,
-      alignItems: sessionStatusSurface.chip.alignItems,
-      gap: sessionStatusSurface.chip.gap,
-      borderWidth: sessionStatusSurface.chip.borderWidth,
-      borderRadius: sessionStatusSurface.chip.borderRadius,
-      paddingHorizontal: sessionStatusSurface.chip.paddingHorizontal,
-      paddingVertical: sessionStatusSurface.chip.paddingVertical,
-      marginHorizontal: sessionStatusSurface.chip.marginHorizontal,
+      ...sessionStatusStyleSlots.chip,
     },
     headerConversationChipText: {
-      fontSize: sessionStatusSurface.chipText.fontSize,
-      lineHeight: sessionStatusSurface.chipText.lineHeight,
-      fontWeight: sessionStatusSurface.chipText.fontWeight,
+      ...sessionStatusStyleSlots.text,
     },
     headerConversationSpinner: {
-      width: sessionStatusSurface.runningIndicator.size,
-      height: sessionStatusSurface.runningIndicator.size,
+      ...sessionStatusStyleSlots.spinner,
     },
     headerDurationChip: {
       ...headerTurnDurationStyleSlots.chip,

@@ -18,6 +18,7 @@ import {
   applyChatMessageRuntimeProgressTurnStatusState,
   applyChatMessageRuntimeSettledTurnStatusState,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
+  createChatSessionStatusMobileChromeStyleSlots,
   createChatMessageRuntimeActivityMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantDebugErrorMessage,
@@ -6161,6 +6162,29 @@ describe("session presentation semantics", () => {
       },
       text: {
         color: "#3b82f6",
+      },
+    })
+    expect(createChatSessionStatusMobileChromeStyleSlots({
+      surface: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile,
+    })).toEqual({
+      chip: {
+        flexDirection: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.flexDirection,
+        alignItems: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.alignItems,
+        gap: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.gap,
+        borderWidth: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.borderWidth,
+        borderRadius: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.borderRadius,
+        paddingHorizontal: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.paddingHorizontal,
+        paddingVertical: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.paddingVertical,
+        marginHorizontal: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chip.marginHorizontal,
+      },
+      text: {
+        fontSize: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chipText.fontSize,
+        lineHeight: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chipText.lineHeight,
+        fontWeight: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.chipText.fontWeight,
+      },
+      spinner: {
+        width: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.runningIndicator.size,
+        height: CHAT_SESSION_STATUS_SURFACE_PRESENTATION.mobile.runningIndicator.size,
       },
     })
     expect(getSessionStatusMobileStyleRenderState({
