@@ -34,11 +34,9 @@ import {
   createChatMessageActionSlotRenderMap,
   getChatMessageActionSlotRenderEntries,
   getChatMessageActionMobileButtonStatesBySlot,
-  isChatMessageConversationContent,
   sanitizeMessagesForModel,
   toggleChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
-  type ChatMessageConversationContentLike,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
@@ -142,11 +140,12 @@ import {
   getChatComposerRuntimeDraftMessageState,
   getChatComposerRuntimeImageDataUrlBytes,
   inferChatComposerRuntimeImageMimeType,
+  createChatMessageRuntimeAssistantTextMessage,
+  createChatMessageRuntimeCompletedConversationState,
+  createChatMessageRuntimeCompletedTurnMessages,
+  createChatMessageRuntimeCompletedTextTurnMessages,
   formatChatRuntimeActivityContent,
-  formatChatRuntimeAssistantErrorContent,
   formatChatRuntimeAssistantFeedbackContent,
-  formatChatRuntimeConnectionErrorMessage,
-  formatChatRuntimeDebugError,
   formatChatRuntimeToolApprovalRequiredContent,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
@@ -160,7 +159,6 @@ import {
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
-  getChatRuntimeAlertMessage,
   getChatRuntimeDockChromeMobileRenderState,
   getChatRuntimeHomeQuickStartEmptyMobileRenderState,
   getChatRuntimeHomeQuickStartItemMobileRenderState,
@@ -185,11 +183,14 @@ import {
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
-  getChatRuntimeDebugMessage,
   getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState,
   getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState,
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
+  isLastChatMessageRuntimeConversationContent,
+  removeChatMessageRuntimePendingTurnMessages,
+  replaceChatMessageRuntimeTurnMessages,
+  updateLastChatMessageRuntimeConversationContent,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
@@ -250,6 +251,9 @@ import {
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
+  type ChatMessageRuntimeAssistantTextMessage,
+  type ChatMessageRuntimeConversationContentUpdateMessage,
+  type ChatMessageRuntimePendingTurnMessage,
 } from '@dotagents/shared/session-presentation';
 import {
   type ToolExecutionCompactMobileRenderState,
@@ -881,24 +885,9 @@ type ChatRuntimeStatusState = {
   setConnectionState: Dispatch<SetStateAction<RecoveryState | null>>;
 };
 
-type ChatRuntimePendingTurnStatusSetters = Pick<
-  ChatRuntimeStatusState,
-  'setLatestStepSummary' | 'setResponding' | 'setConversationState'
->;
-
 type ChatRuntimeProgressTurnStatusSetters = Pick<
   ChatRuntimeStatusState,
   'setLatestStepSummary' | 'setConversationState'
->;
-
-type ChatRuntimeConversationTurnStatusSetters = Pick<
-  ChatRuntimeStatusState,
-  'setConversationState'
->;
-
-type ChatRuntimeSettledTurnStatusSetters = Pick<
-  ChatRuntimeStatusState,
-  'setResponding' | 'setConnectionState'
 >;
 
 type ChatRuntimeRequestDebugState = {
@@ -3805,121 +3794,6 @@ export function useChatComposerRuntimeImageLibraryPickerState(
   });
 }
 
-export type ChatMessageRuntimeAssistantTextMessage = {
-  role: 'assistant';
-  content: string;
-};
-
-export type ChatMessageRuntimeUserTextMessage = {
-  role: 'user';
-  content: string;
-};
-
-export function createChatMessageRuntimeUserTextMessage(
-  content: string,
-): ChatMessageRuntimeUserTextMessage {
-  return {
-    role: 'user',
-    content,
-  };
-}
-
-export function createChatMessageRuntimeAssistantTextMessage(
-  content: string,
-): ChatMessageRuntimeAssistantTextMessage {
-  return {
-    role: 'assistant',
-    content,
-  };
-}
-
-export function createChatMessageRuntimeAssistantPlaceholderMessage(): ChatMessageRuntimeAssistantTextMessage {
-  return createChatMessageRuntimeAssistantTextMessage('');
-}
-
-export type ChatMessageRuntimePendingTurnMessage = {
-  role: 'user' | 'assistant' | 'tool';
-  content?: string;
-};
-
-export function appendChatMessageRuntimePendingTurnMessages<
-  TMessage extends ChatMessageRuntimePendingTurnMessage,
->(
-  messages: readonly TMessage[],
-  userMessage: TMessage,
-): TMessage[] {
-  return [
-    ...messages,
-    userMessage,
-    createChatMessageRuntimeAssistantPlaceholderMessage() as TMessage,
-  ];
-}
-
-export type ChatMessageRuntimePendingTurnState<TMessage> = {
-  userMessage: TMessage;
-  currentMessages: readonly TMessage[];
-  messageCountBeforeTurn: number;
-  latestStepSummary: null;
-  responding: boolean;
-  conversationState: AgentConversationState;
-  updateMessages: (messages: readonly TMessage[]) => TMessage[];
-};
-
-export function createChatMessageRuntimePendingTurnState<
-  TMessage extends ChatMessageRuntimePendingTurnMessage,
->(
-  currentMessages: readonly TMessage[],
-  content: string,
-): ChatMessageRuntimePendingTurnState<TMessage> {
-  const userMessage = createChatMessageRuntimeUserTextMessage(content) as TMessage;
-  const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState();
-  return {
-    userMessage,
-    currentMessages,
-    messageCountBeforeTurn: currentMessages.length,
-    latestStepSummary: pendingTurnStatusState.latestStepSummary,
-    responding: pendingTurnStatusState.responding,
-    conversationState: pendingTurnStatusState.conversationState,
-    updateMessages: (messages) => appendChatMessageRuntimePendingTurnMessages(messages, userMessage),
-  };
-}
-
-export function removeChatMessageRuntimePendingTurnMessages<TMessage>(
-  messages: readonly TMessage[],
-): TMessage[] {
-  if (messages.length < 2) {
-    return [...messages];
-  }
-  return messages.slice(0, -2);
-}
-
-export function createChatMessageRuntimeAssistantDebugErrorMessage(
-  message: string,
-): ChatMessageRuntimeAssistantTextMessage {
-  return createChatMessageRuntimeAssistantTextMessage(formatChatRuntimeDebugError(message));
-}
-
-export function appendChatMessageRuntimeAssistantDebugErrorMessage<
-  TMessage extends ChatMessageRuntimePendingTurnMessage,
->(
-  messages: readonly TMessage[],
-  message: string,
-): TMessage[] {
-  return [
-    ...messages,
-    createChatMessageRuntimeAssistantDebugErrorMessage(message) as TMessage,
-  ];
-}
-
-export function createChatMessageRuntimeAssistantErrorMessage(
-  errorMessage: string,
-  partialContent?: string | null,
-): ChatMessageRuntimeAssistantTextMessage {
-  return createChatMessageRuntimeAssistantTextMessage(
-    formatChatRuntimeAssistantErrorContent(errorMessage, partialContent),
-  );
-}
-
 export type ChatMessageRuntimeRetryMessage = ChatMessageRuntimeAssistantTextMessage & {
   variant: 'retry';
   retryInfo: AgentRetryInfo;
@@ -3980,118 +3854,6 @@ export function createChatMessageRuntimeActivityMessage(
   };
 }
 
-export type ChatMessageRuntimeConversationContentUpdateMessage =
-  ChatMessageConversationContentLike & {
-    content?: string;
-  };
-
-export function isLastChatMessageRuntimeConversationContent(
-  messages: readonly ChatMessageConversationContentLike[],
-): boolean {
-  const lastMessage = messages[messages.length - 1];
-  return !!lastMessage && isChatMessageConversationContent(lastMessage);
-}
-
-export function updateLastChatMessageRuntimeConversationContent<
-  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
->(
-  messages: readonly TMessage[],
-  content: string,
-): TMessage[] {
-  const copy = [...messages];
-  for (let i = copy.length - 1; i >= 0; i--) {
-    if (isChatMessageConversationContent(copy[i])) {
-      copy[i] = { ...copy[i], content } as TMessage;
-      break;
-    }
-  }
-  return copy;
-}
-
-export function updateLastChatMessageRuntimeAssistantErrorMessage<
-  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
->(
-  messages: readonly TMessage[],
-  errorMessage: string,
-  partialContent?: string | null,
-): TMessage[] {
-  const errorMessageState = createChatMessageRuntimeAssistantErrorMessage(errorMessage, partialContent);
-  return updateLastChatMessageRuntimeConversationContent(messages, errorMessageState.content);
-}
-
-export function createChatMessageRuntimeAssistantErrorTurnState<
-  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
->(
-  errorMessage: string,
-  partialContent?: string | null,
-) {
-  return {
-    debugInfo: formatChatRuntimeDebugError(errorMessage),
-    updateMessages: (messages: readonly TMessage[]) => updateLastChatMessageRuntimeAssistantErrorMessage(
-      messages,
-      errorMessage,
-      partialContent,
-    ),
-  };
-}
-
-export type ChatMessageRuntimeConnectionErrorTurnStateInput = {
-  message: string;
-  recoveryState: Parameters<typeof formatChatRuntimeConnectionErrorMessage>[1];
-  partialContent?: string | null;
-};
-
-export function createChatMessageRuntimeConnectionErrorTurnState<
-  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
->({
-  message,
-  recoveryState,
-  partialContent,
-}: ChatMessageRuntimeConnectionErrorTurnStateInput) {
-  const errorMessage = formatChatRuntimeConnectionErrorMessage(message, recoveryState);
-  return createChatMessageRuntimeAssistantErrorTurnState<TMessage>(
-    errorMessage,
-    partialContent,
-  );
-}
-
-export function createChatMessageRuntimeAssistantDebugErrorTurnState<
-  TMessage extends ChatMessageRuntimePendingTurnMessage,
->(
-  message: string,
-) {
-  return {
-    updateMessages: (messages: readonly TMessage[]) => appendChatMessageRuntimeAssistantDebugErrorMessage(
-      messages,
-      message,
-    ),
-  };
-}
-
-export function createChatMessageRuntimeQueuedErrorState<
-  TMessage extends ChatMessageRuntimePendingTurnMessage,
->(
-  error: unknown,
-) {
-  const message = getChatRuntimeAlertMessage(
-    error,
-    getChatRuntimeDebugMessage('unknownError'),
-  );
-  return {
-    message,
-    turnState: createChatMessageRuntimeAssistantDebugErrorTurnState<TMessage>(message),
-  };
-}
-
-export function replaceChatMessageRuntimeTurnMessages<TMessage>(
-  messages: readonly TMessage[],
-  messageCountBeforeTurn: number,
-  turnMessages: readonly TMessage[],
-): TMessage[] {
-  const beforePlaceholder = messages.slice(0, messageCountBeforeTurn + 1);
-  return [...beforePlaceholder, ...turnMessages];
-}
-
 export function replaceChatMessageRuntimeFinalTurnMessages<
   TMessage extends ChatDisplayMessageLike,
 >(
@@ -4108,32 +3870,6 @@ export function replaceChatMessageRuntimeFinalTurnMessages<
     messages,
     messageCountBeforeTurn,
     mergedMessages,
-  );
-}
-
-export function createChatMessageRuntimeCompletedTurnMessages<TMessage>(
-  messages: readonly TMessage[],
-  messageCountBeforeTurn: number,
-  userMessage: TMessage,
-  turnMessages: readonly TMessage[],
-): TMessage[] {
-  const messagesBeforeTurn = messages.slice(0, messageCountBeforeTurn);
-  return [...messagesBeforeTurn, userMessage, ...turnMessages];
-}
-
-export function createChatMessageRuntimeCompletedTextTurnMessages<
-  TMessage extends ChatMessageRuntimePendingTurnMessage,
->(
-  messages: readonly TMessage[],
-  messageCountBeforeTurn: number,
-  userMessage: TMessage,
-  content: string,
-): TMessage[] {
-  return createChatMessageRuntimeCompletedTurnMessages(
-    messages,
-    messageCountBeforeTurn,
-    userMessage,
-    [createChatMessageRuntimeAssistantTextMessage(content) as TMessage],
   );
 }
 
@@ -4564,46 +4300,6 @@ export function applyChatMessageRuntimeProgressTurnStatusState(
   statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary ?? null);
 }
 
-export function createChatMessageRuntimePendingTurnStatusState() {
-  return {
-    latestStepSummary: null,
-    responding: true,
-    conversationState: 'running' as AgentConversationState,
-  };
-}
-
-export function applyChatMessageRuntimePendingTurnStatusState(
-  pendingTurnState: Pick<
-    ChatMessageRuntimePendingTurnState<unknown>,
-    'latestStepSummary' | 'responding' | 'conversationState'
-  >,
-  statusSetters: ChatRuntimePendingTurnStatusSetters,
-): void {
-  statusSetters.setLatestStepSummary(pendingTurnState.latestStepSummary);
-  statusSetters.setResponding(pendingTurnState.responding);
-  statusSetters.setConversationState(pendingTurnState.conversationState);
-}
-
-export function applyChatMessageRuntimeCompletedTurnStatusState(
-  completedConversationState: AgentConversationState,
-  statusSetters: ChatRuntimeConversationTurnStatusSetters,
-): void {
-  statusSetters.setConversationState(completedConversationState);
-}
-
-export function applyChatMessageRuntimeBlockedTurnStatusState(
-  statusSetters: ChatRuntimeConversationTurnStatusSetters,
-): void {
-  statusSetters.setConversationState('blocked');
-}
-
-export function applyChatMessageRuntimeSettledTurnStatusState(
-  statusSetters: ChatRuntimeSettledTurnStatusSetters,
-): void {
-  statusSetters.setResponding(false);
-  statusSetters.setConnectionState(null);
-}
-
 export function hasChatMessageRuntimeRequestSessionChanged({
   currentSessionId,
   requestSessionId,
@@ -4624,12 +4320,6 @@ export function isChatMessageRuntimeActiveRequest({
   activeRequestId,
 }: ChatMessageRuntimeActiveRequestInput): boolean {
   return activeRequestId === requestId;
-}
-
-export function createChatMessageRuntimeCompletedConversationState(
-  conversationState: AgentConversationState,
-): AgentConversationState {
-  return conversationState === 'running' ? 'complete' : conversationState;
 }
 
 export function createChatMessageRuntimeSessionDisplayMessages<

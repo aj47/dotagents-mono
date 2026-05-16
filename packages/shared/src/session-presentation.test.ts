@@ -9,6 +9,25 @@ import {
   CHAT_SESSION_STATUS_SURFACE_PRESENTATION,
   CHAT_RUNTIME_PRESENTATION,
   TOOL_APPROVAL_SURFACE_PRESENTATION,
+  appendChatMessageRuntimeAssistantDebugErrorMessage,
+  appendChatMessageRuntimePendingTurnMessages,
+  applyChatMessageRuntimeBlockedTurnStatusState,
+  applyChatMessageRuntimeCompletedTurnStatusState,
+  applyChatMessageRuntimePendingTurnStatusState,
+  applyChatMessageRuntimeSettledTurnStatusState,
+  createChatMessageRuntimeAssistantDebugErrorMessage,
+  createChatMessageRuntimeAssistantErrorMessage,
+  createChatMessageRuntimeAssistantErrorTurnState,
+  createChatMessageRuntimeAssistantPlaceholderMessage,
+  createChatMessageRuntimeAssistantTextMessage,
+  createChatMessageRuntimeCompletedConversationState,
+  createChatMessageRuntimeCompletedTextTurnMessages,
+  createChatMessageRuntimeCompletedTurnMessages,
+  createChatMessageRuntimeConnectionErrorTurnState,
+  createChatMessageRuntimePendingTurnState,
+  createChatMessageRuntimePendingTurnStatusState,
+  createChatMessageRuntimeQueuedErrorState,
+  createChatMessageRuntimeUserTextMessage,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
@@ -278,6 +297,11 @@ import {
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
+  isLastChatMessageRuntimeConversationContent,
+  removeChatMessageRuntimePendingTurnMessages,
+  replaceChatMessageRuntimeTurnMessages,
+  updateLastChatMessageRuntimeAssistantErrorMessage,
+  updateLastChatMessageRuntimeConversationContent,
   getChatSessionStatusMobileStyleState,
   getFollowUpInputPresentation,
   getSessionStatusMobileColors,
@@ -650,6 +674,172 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeStartingRequestDebugMessage("http://localhost:3000")).toBe(
       "Starting request to http://localhost:3000...",
     )
+    expect(createChatMessageRuntimeUserTextMessage("Run this")).toEqual({
+      role: "user",
+      content: "Run this",
+    })
+    expect(createChatMessageRuntimeAssistantTextMessage("Done")).toEqual({
+      role: "assistant",
+      content: "Done",
+    })
+    expect(createChatMessageRuntimeAssistantPlaceholderMessage()).toEqual({
+      role: "assistant",
+      content: "",
+    })
+    expect(appendChatMessageRuntimePendingTurnMessages(
+      [{ role: "assistant", content: "Ready" }],
+      { role: "user", content: "Next" },
+    )).toEqual([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "" },
+    ])
+    const pendingTurnState = createChatMessageRuntimePendingTurnState(
+      [{ role: "assistant", content: "Ready" }],
+      "Next",
+    )
+    expect(pendingTurnState).toMatchObject({
+      userMessage: { role: "user", content: "Next" },
+      messageCountBeforeTurn: 1,
+      latestStepSummary: null,
+      responding: true,
+      conversationState: "running",
+    })
+    expect(pendingTurnState.updateMessages(pendingTurnState.currentMessages)).toEqual([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "" },
+    ])
+    expect(removeChatMessageRuntimePendingTurnMessages([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "" },
+    ])).toEqual([{ role: "assistant", content: "Ready" }])
+    expect(removeChatMessageRuntimePendingTurnMessages([{ role: "assistant", content: "Only" }])).toEqual([
+      { role: "assistant", content: "Only" },
+    ])
+    expect(createChatMessageRuntimePendingTurnStatusState()).toEqual({
+      latestStepSummary: null,
+      responding: true,
+      conversationState: "running",
+    })
+    const statusEvents: unknown[] = []
+    applyChatMessageRuntimePendingTurnStatusState(pendingTurnState, {
+      setLatestStepSummary: (value) => statusEvents.push(["latestStepSummary", value]),
+      setResponding: (value) => statusEvents.push(["responding", value]),
+      setConversationState: (value) => statusEvents.push(["conversationState", value]),
+    })
+    applyChatMessageRuntimeCompletedTurnStatusState("complete", {
+      setConversationState: (value) => statusEvents.push(["conversationState", value]),
+    })
+    applyChatMessageRuntimeBlockedTurnStatusState({
+      setConversationState: (value) => statusEvents.push(["conversationState", value]),
+    })
+    applyChatMessageRuntimeSettledTurnStatusState({
+      setResponding: (value) => statusEvents.push(["responding", value]),
+      setConnectionState: (value) => statusEvents.push(["connectionState", value]),
+    })
+    expect(statusEvents).toEqual([
+      ["latestStepSummary", null],
+      ["responding", true],
+      ["conversationState", "running"],
+      ["conversationState", "complete"],
+      ["conversationState", "blocked"],
+      ["responding", false],
+      ["connectionState", null],
+    ])
+    expect(createChatMessageRuntimeCompletedConversationState("running")).toBe("complete")
+    expect(createChatMessageRuntimeCompletedConversationState("needs_input")).toBe("needs_input")
+    expect(replaceChatMessageRuntimeTurnMessages(
+      [
+        { role: "assistant", content: "Ready" },
+        { role: "user", content: "Next" },
+        { role: "assistant", content: "" },
+      ],
+      1,
+      [{ role: "assistant", content: "Final" }],
+    )).toEqual([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "Final" },
+    ])
+    expect(createChatMessageRuntimeCompletedTurnMessages(
+      [{ role: "assistant", content: "Ready" }],
+      1,
+      { role: "user", content: "Next" },
+      [{ role: "assistant", content: "Final" }],
+    )).toEqual([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "Final" },
+    ])
+    expect(createChatMessageRuntimeCompletedTextTurnMessages(
+      [{ role: "assistant", content: "Ready" }],
+      1,
+      { role: "user", content: "Next" },
+      "Final",
+    )).toEqual([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "Final" },
+    ])
+    expect(isLastChatMessageRuntimeConversationContent([{ role: "assistant", content: "Old" }])).toBe(true)
+    expect(updateLastChatMessageRuntimeConversationContent([
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Old" },
+    ], "New")).toEqual([
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "New" },
+    ])
+    expect(createChatMessageRuntimeAssistantDebugErrorMessage("Queue failed")).toEqual({
+      role: "assistant",
+      content: "Error: Queue failed",
+    })
+    expect(appendChatMessageRuntimeAssistantDebugErrorMessage(
+      [{ role: "user", content: "Next" }],
+      "Queue failed",
+    )).toEqual([
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "Error: Queue failed" },
+    ])
+    expect(createChatMessageRuntimeAssistantErrorMessage("Lost", "Partial")).toEqual({
+      role: "assistant",
+      content: "Partial\n\n---\nConnection lost. Partial response shown above.\n\nError: Lost",
+    })
+    expect(updateLastChatMessageRuntimeAssistantErrorMessage([
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Partial" },
+    ], "Lost", "Partial")).toEqual([
+      { role: "user", content: "Question" },
+      {
+        role: "assistant",
+        content: "Partial\n\n---\nConnection lost. Partial response shown above.\n\nError: Lost",
+      },
+    ])
+    const assistantErrorTurnState = createChatMessageRuntimeAssistantErrorTurnState("Lost", "Partial")
+    expect(assistantErrorTurnState.debugInfo).toBe("Error: Lost")
+    expect(assistantErrorTurnState.updateMessages([
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "Partial" },
+    ])).toEqual([
+      { role: "user", content: "Question" },
+      {
+        role: "assistant",
+        content: "Partial\n\n---\nConnection lost. Partial response shown above.\n\nError: Lost",
+      },
+    ])
+    const connectionErrorTurnState = createChatMessageRuntimeConnectionErrorTurnState({
+      message: "Lost",
+      recoveryState: { status: "reconnecting", retryCount: 2 },
+      partialContent: "Partial",
+    })
+    expect(connectionErrorTurnState.debugInfo).toBe("Error: Connection lost. Attempted 2 reconnections. Lost")
+    const queuedErrorState = createChatMessageRuntimeQueuedErrorState(new Error("Queue failed"))
+    expect(queuedErrorState.message).toBe("Queue failed")
+    expect(queuedErrorState.turnState.updateMessages([{ role: "user", content: "Next" }])).toEqual([
+      { role: "user", content: "Next" },
+      { role: "assistant", content: "Error: Queue failed" },
+    ])
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.buttonGlyph).toBe("⏹")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.mobileIcon).toMatchObject({
       name: "stop-circle-outline",

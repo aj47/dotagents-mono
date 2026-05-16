@@ -85,6 +85,7 @@ import {
   getChatMessageSpeechMobileRenderState,
   findLastChatMessageConversationContentIndex,
   hasChatMessageDisplayContent,
+  isChatMessageConversationContent,
   isChatMessageLiveStreamingConversationContent,
   setChatDisplayExpansionState,
   shouldShowChatMessageTurnDurationBadge,
@@ -5083,6 +5084,324 @@ export function createChatRuntimeSessionChangedDuringProcessingQueueFailureState
 
 export function createChatRuntimeRequestSupersededQueueFailureState(): ChatRuntimeQueueFailureState {
   return createChatRuntimeQueueFailureState("requestSuperseded")
+}
+
+export interface ChatRuntimeStatusSetter<TValue> {
+  (value: TValue): void
+}
+
+export interface ChatRuntimePendingTurnStatusSetters {
+  setLatestStepSummary: ChatRuntimeStatusSetter<null>
+  setResponding: ChatRuntimeStatusSetter<boolean>
+  setConversationState: ChatRuntimeStatusSetter<AgentConversationState>
+}
+
+export interface ChatRuntimeConversationTurnStatusSetters {
+  setConversationState: ChatRuntimeStatusSetter<AgentConversationState>
+}
+
+export interface ChatRuntimeSettledTurnStatusSetters {
+  setResponding: ChatRuntimeStatusSetter<boolean>
+  setConnectionState: ChatRuntimeStatusSetter<RecoveryState | null>
+}
+
+export interface ChatMessageRuntimeAssistantTextMessage {
+  role: "assistant"
+  content: string
+}
+
+export interface ChatMessageRuntimeUserTextMessage {
+  role: "user"
+  content: string
+}
+
+export interface ChatMessageRuntimePendingTurnMessage {
+  role: "user" | "assistant" | "tool"
+  content?: string
+}
+
+export interface ChatMessageRuntimePendingTurnState<TMessage> {
+  userMessage: TMessage
+  currentMessages: readonly TMessage[]
+  messageCountBeforeTurn: number
+  latestStepSummary: null
+  responding: boolean
+  conversationState: AgentConversationState
+  updateMessages: (messages: readonly TMessage[]) => TMessage[]
+}
+
+export type ChatMessageRuntimeConversationContentUpdateMessage =
+  ChatMessageConversationContentLike & {
+    content?: string
+  }
+
+export interface ChatMessageRuntimeConnectionErrorTurnStateInput {
+  message: string
+  recoveryState: Parameters<typeof formatChatRuntimeConnectionErrorMessage>[1]
+  partialContent?: string | null
+}
+
+export function createChatMessageRuntimeUserTextMessage(
+  content: string,
+): ChatMessageRuntimeUserTextMessage {
+  return {
+    role: "user",
+    content,
+  }
+}
+
+export function createChatMessageRuntimeAssistantTextMessage(
+  content: string,
+): ChatMessageRuntimeAssistantTextMessage {
+  return {
+    role: "assistant",
+    content,
+  }
+}
+
+export function createChatMessageRuntimeAssistantPlaceholderMessage(): ChatMessageRuntimeAssistantTextMessage {
+  return createChatMessageRuntimeAssistantTextMessage("")
+}
+
+export function appendChatMessageRuntimePendingTurnMessages<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  messages: readonly TMessage[],
+  userMessage: TMessage,
+): TMessage[] {
+  return [
+    ...messages,
+    userMessage,
+    createChatMessageRuntimeAssistantPlaceholderMessage() as TMessage,
+  ]
+}
+
+export function createChatMessageRuntimePendingTurnStatusState() {
+  return {
+    latestStepSummary: null,
+    responding: true,
+    conversationState: "running" as AgentConversationState,
+  }
+}
+
+export function createChatMessageRuntimePendingTurnState<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  currentMessages: readonly TMessage[],
+  content: string,
+): ChatMessageRuntimePendingTurnState<TMessage> {
+  const userMessage = createChatMessageRuntimeUserTextMessage(content) as TMessage
+  const pendingTurnStatusState = createChatMessageRuntimePendingTurnStatusState()
+  return {
+    userMessage,
+    currentMessages,
+    messageCountBeforeTurn: currentMessages.length,
+    latestStepSummary: pendingTurnStatusState.latestStepSummary,
+    responding: pendingTurnStatusState.responding,
+    conversationState: pendingTurnStatusState.conversationState,
+    updateMessages: (messages) => appendChatMessageRuntimePendingTurnMessages(messages, userMessage),
+  }
+}
+
+export function removeChatMessageRuntimePendingTurnMessages<TMessage>(
+  messages: readonly TMessage[],
+): TMessage[] {
+  if (messages.length < 2) {
+    return [...messages]
+  }
+  return messages.slice(0, -2)
+}
+
+export function createChatMessageRuntimeAssistantDebugErrorMessage(
+  message: string,
+): ChatMessageRuntimeAssistantTextMessage {
+  return createChatMessageRuntimeAssistantTextMessage(formatChatRuntimeDebugError(message))
+}
+
+export function appendChatMessageRuntimeAssistantDebugErrorMessage<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  messages: readonly TMessage[],
+  message: string,
+): TMessage[] {
+  return [
+    ...messages,
+    createChatMessageRuntimeAssistantDebugErrorMessage(message) as TMessage,
+  ]
+}
+
+export function createChatMessageRuntimeAssistantErrorMessage(
+  errorMessage: string,
+  partialContent?: string | null,
+): ChatMessageRuntimeAssistantTextMessage {
+  return createChatMessageRuntimeAssistantTextMessage(
+    formatChatRuntimeAssistantErrorContent(errorMessage, partialContent),
+  )
+}
+
+export function isLastChatMessageRuntimeConversationContent(
+  messages: readonly ChatMessageConversationContentLike[],
+): boolean {
+  const lastMessage = messages[messages.length - 1]
+  return !!lastMessage && isChatMessageConversationContent(lastMessage)
+}
+
+export function updateLastChatMessageRuntimeConversationContent<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  messages: readonly TMessage[],
+  content: string,
+): TMessage[] {
+  const copy = [...messages]
+  for (let i = copy.length - 1; i >= 0; i--) {
+    if (isChatMessageConversationContent(copy[i])) {
+      copy[i] = { ...copy[i], content } as TMessage
+      break
+    }
+  }
+  return copy
+}
+
+export function updateLastChatMessageRuntimeAssistantErrorMessage<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  messages: readonly TMessage[],
+  errorMessage: string,
+  partialContent?: string | null,
+): TMessage[] {
+  const errorMessageState = createChatMessageRuntimeAssistantErrorMessage(errorMessage, partialContent)
+  return updateLastChatMessageRuntimeConversationContent(messages, errorMessageState.content)
+}
+
+export function createChatMessageRuntimeAssistantErrorTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>(
+  errorMessage: string,
+  partialContent?: string | null,
+) {
+  return {
+    debugInfo: formatChatRuntimeDebugError(errorMessage),
+    updateMessages: (messages: readonly TMessage[]) => updateLastChatMessageRuntimeAssistantErrorMessage(
+      messages,
+      errorMessage,
+      partialContent,
+    ),
+  }
+}
+
+export function createChatMessageRuntimeConnectionErrorTurnState<
+  TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
+>({
+  message,
+  recoveryState,
+  partialContent,
+}: ChatMessageRuntimeConnectionErrorTurnStateInput) {
+  const errorMessage = formatChatRuntimeConnectionErrorMessage(message, recoveryState)
+  return createChatMessageRuntimeAssistantErrorTurnState<TMessage>(
+    errorMessage,
+    partialContent,
+  )
+}
+
+export function createChatMessageRuntimeAssistantDebugErrorTurnState<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  message: string,
+) {
+  return {
+    updateMessages: (messages: readonly TMessage[]) => appendChatMessageRuntimeAssistantDebugErrorMessage(
+      messages,
+      message,
+    ),
+  }
+}
+
+export function createChatMessageRuntimeQueuedErrorState<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  error: unknown,
+) {
+  const message = getChatRuntimeAlertMessage(
+    error,
+    getChatRuntimeDebugMessage("unknownError"),
+  )
+  return {
+    message,
+    turnState: createChatMessageRuntimeAssistantDebugErrorTurnState<TMessage>(message),
+  }
+}
+
+export function replaceChatMessageRuntimeTurnMessages<TMessage>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  turnMessages: readonly TMessage[],
+): TMessage[] {
+  const beforePlaceholder = messages.slice(0, messageCountBeforeTurn + 1)
+  return [...beforePlaceholder, ...turnMessages]
+}
+
+export function createChatMessageRuntimeCompletedTurnMessages<TMessage>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  userMessage: TMessage,
+  turnMessages: readonly TMessage[],
+): TMessage[] {
+  const messagesBeforeTurn = messages.slice(0, messageCountBeforeTurn)
+  return [...messagesBeforeTurn, userMessage, ...turnMessages]
+}
+
+export function createChatMessageRuntimeCompletedTextTurnMessages<
+  TMessage extends ChatMessageRuntimePendingTurnMessage,
+>(
+  messages: readonly TMessage[],
+  messageCountBeforeTurn: number,
+  userMessage: TMessage,
+  content: string,
+): TMessage[] {
+  return createChatMessageRuntimeCompletedTurnMessages(
+    messages,
+    messageCountBeforeTurn,
+    userMessage,
+    [createChatMessageRuntimeAssistantTextMessage(content) as TMessage],
+  )
+}
+
+export function createChatMessageRuntimeCompletedConversationState(
+  conversationState: AgentConversationState,
+): AgentConversationState {
+  return conversationState === "running" ? "complete" : conversationState
+}
+
+export function applyChatMessageRuntimePendingTurnStatusState(
+  pendingTurnState: Pick<
+    ChatMessageRuntimePendingTurnState<unknown>,
+    "latestStepSummary" | "responding" | "conversationState"
+  >,
+  statusSetters: ChatRuntimePendingTurnStatusSetters,
+): void {
+  statusSetters.setLatestStepSummary(pendingTurnState.latestStepSummary)
+  statusSetters.setResponding(pendingTurnState.responding)
+  statusSetters.setConversationState(pendingTurnState.conversationState)
+}
+
+export function applyChatMessageRuntimeCompletedTurnStatusState(
+  completedConversationState: AgentConversationState,
+  statusSetters: ChatRuntimeConversationTurnStatusSetters,
+): void {
+  statusSetters.setConversationState(completedConversationState)
+}
+
+export function applyChatMessageRuntimeBlockedTurnStatusState(
+  statusSetters: ChatRuntimeConversationTurnStatusSetters,
+): void {
+  statusSetters.setConversationState("blocked")
+}
+
+export function applyChatMessageRuntimeSettledTurnStatusState(
+  statusSetters: ChatRuntimeSettledTurnStatusSetters,
+): void {
+  statusSetters.setResponding(false)
+  statusSetters.setConnectionState(null)
 }
 
 export function formatChatRuntimeWebConfirmMessage(title: string, message: string): string {
