@@ -66,7 +66,9 @@ import {
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageConnectionBannerStyleSlots,
   createChatMessageConversationDockStyleSlots,
+  createChatMessageConversationDockStyleSlotsFromStyleSource,
   createChatMessageConversationViewportStyleSlots,
+  createChatMessageConversationViewportStyleSlotsFromStyleSource,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
   createChatMessageToolActivityGroupBoundaryStyles,
@@ -3231,6 +3233,36 @@ describe("session presentation semantics", () => {
       queuePanelStyle: "queue-panel",
       connectionBanner: "connection-banner",
     })
+    const conversationDockStyleSlots = createChatMessageConversationDockStyleSlotsFromStyleSource({
+      styles: {
+        scrollToBottomButton: "source-scroll-button",
+        messageQueuePanelWrapper: "source-queue-panel",
+        connectionBanner: "source-banner",
+        connectionBannerReconnecting: "source-reconnecting",
+        connectionBannerFailed: "source-failed",
+        connectionBannerContent: "source-content",
+        connectionBannerIcon: "source-icon",
+        connectionBannerTextContainer: "source-text-container",
+        connectionBannerText: "source-title",
+        connectionBannerSubtext: "source-subtitle",
+        retryButton: "source-retry-button",
+        retryButtonText: "source-retry-button-text",
+      },
+    })
+    expect(conversationDockStyleSlots.scrollToBottomButtonStyle).toBe("source-scroll-button")
+    expect(conversationDockStyleSlots.queuePanelStyle).toBe("source-queue-panel")
+    expect(conversationDockStyleSlots.connectionBanner).toEqual({
+      banner: "source-banner",
+      reconnecting: "source-reconnecting",
+      failed: "source-failed",
+      content: "source-content",
+      icon: "source-icon",
+      textContainer: "source-text-container",
+      title: "source-title",
+      subtitle: "source-subtitle",
+      retryButton: "source-retry-button",
+      retryButtonText: "source-retry-button-text",
+    })
     expect(createChatMessageConversationViewportStyleSlots({
       frameStyles: "frame",
       scrollViewportStyles: "scroll-viewport",
@@ -3248,6 +3280,62 @@ describe("session presentation semantics", () => {
       stepSummary: "step-summary",
       debugPanels: "debug-panels",
     })
+    const conversationViewportStyleSlots = createChatMessageConversationViewportStyleSlotsFromStyleSource({
+      styles: {
+        keyboardAvoidingContainer: "source-keyboard",
+        chatRoot: "source-root",
+        chatScroll: "source-scroll",
+        chatScrollContent: "source-scroll-content",
+        loadingState: "source-loading",
+        loadingSpinner: "source-spinner",
+        chatHomeCard: "source-home-card",
+        chatHomeEmptyText: "source-home-empty",
+        chatHomeShortcutGrid: "source-home-grid",
+        chatHomeShortcutCard: "source-shortcut-card",
+        chatHomeShortcutCardAdd: "source-shortcut-add",
+        chatHomeShortcutCardDisabled: "source-shortcut-disabled",
+        chatHomeShortcutCardPressed: "source-shortcut-pressed",
+        chatHomeShortcutSourcePill: "source-pill",
+        chatHomeShortcutSourceLabel: "source-label",
+        chatHomeShortcutAddIcon: "source-add-icon",
+        chatHomeShortcutTitle: "source-title",
+        chatHomeShortcutTitleAdd: "source-title-add",
+        chatHomeShortcutDescription: "source-description",
+        chatHomeShortcutActions: "source-actions",
+        chatHomeShortcutActionButton: "source-action-button",
+        chatHomeShortcutActionButtonPressed: "source-action-button-pressed",
+        chatHomeShortcutActionText: "source-action-text",
+        chatHomeShortcutActionDangerText: "source-danger-text",
+        loadOlderContainer: "source-history-container",
+        loadOlderText: "source-history-summary",
+        loadOlderButton: "source-history-button",
+        loadOlderButtonPressed: "source-history-button-pressed",
+        loadOlderButtonText: "source-history-button-text",
+        stepSummaryCard: "source-step-card",
+        stepSummaryHeader: "source-step-header",
+        stepSummaryTitle: "source-step-title",
+        stepSummaryBadge: "source-step-badge",
+        stepSummaryBadgeText: "source-step-badge-text",
+        stepSummaryAction: "source-step-action",
+        stepSummaryMeta: "source-step-meta",
+        stepSummaryPreview: "source-step-preview",
+        debugInfo: "source-debug-panel",
+        debugText: "source-debug-text",
+      },
+    })
+    expect(conversationViewportStyleSlots.frame.keyboardAvoidingStyle).toBe("source-keyboard")
+    expect(conversationViewportStyleSlots.scrollViewport.contentContainerStyle).toBe(
+      "source-scroll-content",
+    )
+    expect(conversationViewportStyleSlots.loadingState.spinnerStyle).toBe("source-spinner")
+    expect(conversationViewportStyleSlots.homeQuickStarts.shortcutCardPressed).toBe(
+      "source-shortcut-pressed",
+    )
+    expect(conversationViewportStyleSlots.historyBanner.loadButtonPressed).toBe(
+      "source-history-button-pressed",
+    )
+    expect(conversationViewportStyleSlots.stepSummary.badgeText).toBe("source-step-badge-text")
+    expect(conversationViewportStyleSlots.debugPanels.textStyle).toBe("source-debug-text")
     expect(createChatMessageRuntimeDockStyleSlots({
       conversationDockStyles: {
         queuePanelStyle: "queue-panel",

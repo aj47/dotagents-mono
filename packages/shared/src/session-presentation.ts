@@ -14762,6 +14762,71 @@ export function createChatMessageConversationDockStyleSlots<
   }
 }
 
+type ChatMessageConversationDockStyleSourceKey =
+  | "scrollToBottomButton"
+  | "messageQueuePanelWrapper"
+  | "connectionBanner"
+  | "connectionBannerReconnecting"
+  | "connectionBannerFailed"
+  | "connectionBannerContent"
+  | "connectionBannerIcon"
+  | "connectionBannerTextContainer"
+  | "connectionBannerText"
+  | "connectionBannerSubtext"
+  | "retryButton"
+  | "retryButtonText"
+
+type ChatMessageConversationDockStyleSource =
+  Record<ChatMessageConversationDockStyleSourceKey, unknown>
+
+type ChatMessageConnectionBannerStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationDockStyleSource,
+> = {
+  banner: TStyles["connectionBanner"]
+  reconnecting: TStyles["connectionBannerReconnecting"]
+  failed: TStyles["connectionBannerFailed"]
+  content: TStyles["connectionBannerContent"]
+  icon: TStyles["connectionBannerIcon"]
+  textContainer: TStyles["connectionBannerTextContainer"]
+  title: TStyles["connectionBannerText"]
+  subtitle: TStyles["connectionBannerSubtext"]
+  retryButton: TStyles["retryButton"]
+  retryButtonText: TStyles["retryButtonText"]
+}
+
+type ChatMessageConversationDockStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationDockStyleSource,
+> = {
+  scrollToBottomButtonStyle: TStyles["scrollToBottomButton"]
+  queuePanelStyle: TStyles["messageQueuePanelWrapper"]
+  connectionBanner: ChatMessageConnectionBannerStyleSlotsFromStyleSource<TStyles>
+}
+
+export function createChatMessageConversationDockStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationDockStyleSource,
+>({
+  styles,
+}: {
+  styles: TStyles
+}): ChatMessageConversationDockStyleSlotsFromStyleSource<TStyles> {
+  return createChatMessageConversationDockStyleSlots({
+    scrollToBottomButtonStyle: styles.scrollToBottomButton,
+    queuePanelStyle: styles.messageQueuePanelWrapper,
+    connectionBannerStyles: createChatMessageConnectionBannerStyleSlots({
+      bannerStyle: styles.connectionBanner,
+      reconnectingStyle: styles.connectionBannerReconnecting,
+      failedStyle: styles.connectionBannerFailed,
+      contentStyle: styles.connectionBannerContent,
+      iconStyle: styles.connectionBannerIcon,
+      textContainerStyle: styles.connectionBannerTextContainer,
+      titleStyle: styles.connectionBannerText,
+      subtitleStyle: styles.connectionBannerSubtext,
+      retryButtonStyle: styles.retryButton,
+      retryButtonTextStyle: styles.retryButtonText,
+    }),
+  })
+}
+
 export function createChatMessageRuntimeDockStyleSlots<
   TConversationDockStyles extends {
     queuePanelStyle: unknown
@@ -14838,6 +14903,172 @@ export function createChatMessageConversationViewportStyleSlots<
     stepSummary: stepSummaryStyles,
     debugPanels: debugPanelStyles,
   }
+}
+
+type ChatMessageConversationViewportStyleSourceKey =
+  | "keyboardAvoidingContainer"
+  | "chatRoot"
+  | "chatScroll"
+  | "chatScrollContent"
+  | "loadingState"
+  | "loadingSpinner"
+  | "chatHomeCard"
+  | "chatHomeEmptyText"
+  | "chatHomeShortcutGrid"
+  | "chatHomeShortcutCard"
+  | "chatHomeShortcutCardAdd"
+  | "chatHomeShortcutCardDisabled"
+  | "chatHomeShortcutCardPressed"
+  | "chatHomeShortcutSourcePill"
+  | "chatHomeShortcutSourceLabel"
+  | "chatHomeShortcutAddIcon"
+  | "chatHomeShortcutTitle"
+  | "chatHomeShortcutTitleAdd"
+  | "chatHomeShortcutDescription"
+  | "chatHomeShortcutActions"
+  | "chatHomeShortcutActionButton"
+  | "chatHomeShortcutActionButtonPressed"
+  | "chatHomeShortcutActionText"
+  | "chatHomeShortcutActionDangerText"
+  | "loadOlderContainer"
+  | "loadOlderText"
+  | "loadOlderButton"
+  | "loadOlderButtonPressed"
+  | "loadOlderButtonText"
+  | "stepSummaryCard"
+  | "stepSummaryHeader"
+  | "stepSummaryTitle"
+  | "stepSummaryBadge"
+  | "stepSummaryBadgeText"
+  | "stepSummaryAction"
+  | "stepSummaryMeta"
+  | "stepSummaryPreview"
+  | "debugInfo"
+  | "debugText"
+
+type ChatMessageConversationViewportStyleSource =
+  Record<ChatMessageConversationViewportStyleSourceKey, unknown>
+
+type ChatMessageConversationViewportStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationViewportStyleSource,
+> = {
+  frame: {
+    keyboardAvoidingStyle: TStyles["keyboardAvoidingContainer"]
+    rootStyle: TStyles["chatRoot"]
+  }
+  scrollViewport: {
+    style: TStyles["chatScroll"]
+    contentContainerStyle: TStyles["chatScrollContent"]
+  }
+  loadingState: {
+    style: TStyles["loadingState"]
+    spinnerStyle: TStyles["loadingSpinner"]
+  }
+  homeQuickStarts: {
+    card: TStyles["chatHomeCard"]
+    emptyText: TStyles["chatHomeEmptyText"]
+    grid: TStyles["chatHomeShortcutGrid"]
+    shortcutCard: TStyles["chatHomeShortcutCard"]
+    shortcutCardAdd: TStyles["chatHomeShortcutCardAdd"]
+    shortcutCardDisabled: TStyles["chatHomeShortcutCardDisabled"]
+    shortcutCardPressed: TStyles["chatHomeShortcutCardPressed"]
+    sourcePill: TStyles["chatHomeShortcutSourcePill"]
+    sourceLabel: TStyles["chatHomeShortcutSourceLabel"]
+    addIcon: TStyles["chatHomeShortcutAddIcon"]
+    title: TStyles["chatHomeShortcutTitle"]
+    titleAdd: TStyles["chatHomeShortcutTitleAdd"]
+    description: TStyles["chatHomeShortcutDescription"]
+    actions: TStyles["chatHomeShortcutActions"]
+    actionButton: TStyles["chatHomeShortcutActionButton"]
+    actionButtonPressed: TStyles["chatHomeShortcutActionButtonPressed"]
+    actionText: TStyles["chatHomeShortcutActionText"]
+    actionDangerText: TStyles["chatHomeShortcutActionDangerText"]
+  }
+  historyBanner: {
+    container: TStyles["loadOlderContainer"]
+    summary: TStyles["loadOlderText"]
+    loadButton: TStyles["loadOlderButton"]
+    loadButtonPressed: TStyles["loadOlderButtonPressed"]
+    loadButtonText: TStyles["loadOlderButtonText"]
+  }
+  stepSummary: {
+    card: TStyles["stepSummaryCard"]
+    header: TStyles["stepSummaryHeader"]
+    title: TStyles["stepSummaryTitle"]
+    badge: TStyles["stepSummaryBadge"]
+    badgeText: TStyles["stepSummaryBadgeText"]
+    action: TStyles["stepSummaryAction"]
+    meta: TStyles["stepSummaryMeta"]
+    preview: TStyles["stepSummaryPreview"]
+  }
+  debugPanels: {
+    panelStyle: TStyles["debugInfo"]
+    textStyle: TStyles["debugText"]
+  }
+}
+
+export function createChatMessageConversationViewportStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationViewportStyleSource,
+>({
+  styles,
+}: {
+  styles: TStyles
+}): ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles> {
+  return createChatMessageConversationViewportStyleSlots({
+    frameStyles: {
+      keyboardAvoidingStyle: styles.keyboardAvoidingContainer,
+      rootStyle: styles.chatRoot,
+    },
+    scrollViewportStyles: {
+      style: styles.chatScroll,
+      contentContainerStyle: styles.chatScrollContent,
+    },
+    loadingStateStyles: {
+      style: styles.loadingState,
+      spinnerStyle: styles.loadingSpinner,
+    },
+    homeQuickStartStyles: {
+      card: styles.chatHomeCard,
+      emptyText: styles.chatHomeEmptyText,
+      grid: styles.chatHomeShortcutGrid,
+      shortcutCard: styles.chatHomeShortcutCard,
+      shortcutCardAdd: styles.chatHomeShortcutCardAdd,
+      shortcutCardDisabled: styles.chatHomeShortcutCardDisabled,
+      shortcutCardPressed: styles.chatHomeShortcutCardPressed,
+      sourcePill: styles.chatHomeShortcutSourcePill,
+      sourceLabel: styles.chatHomeShortcutSourceLabel,
+      addIcon: styles.chatHomeShortcutAddIcon,
+      title: styles.chatHomeShortcutTitle,
+      titleAdd: styles.chatHomeShortcutTitleAdd,
+      description: styles.chatHomeShortcutDescription,
+      actions: styles.chatHomeShortcutActions,
+      actionButton: styles.chatHomeShortcutActionButton,
+      actionButtonPressed: styles.chatHomeShortcutActionButtonPressed,
+      actionText: styles.chatHomeShortcutActionText,
+      actionDangerText: styles.chatHomeShortcutActionDangerText,
+    },
+    historyBannerStyles: {
+      container: styles.loadOlderContainer,
+      summary: styles.loadOlderText,
+      loadButton: styles.loadOlderButton,
+      loadButtonPressed: styles.loadOlderButtonPressed,
+      loadButtonText: styles.loadOlderButtonText,
+    },
+    stepSummaryStyles: {
+      card: styles.stepSummaryCard,
+      header: styles.stepSummaryHeader,
+      title: styles.stepSummaryTitle,
+      badge: styles.stepSummaryBadge,
+      badgeText: styles.stepSummaryBadgeText,
+      action: styles.stepSummaryAction,
+      meta: styles.stepSummaryMeta,
+      preview: styles.stepSummaryPreview,
+    },
+    debugPanelStyles: {
+      panelStyle: styles.debugInfo,
+      textStyle: styles.debugText,
+    },
+  })
 }
 
 export function createChatMessageRuntimeViewportStyleSlots<
