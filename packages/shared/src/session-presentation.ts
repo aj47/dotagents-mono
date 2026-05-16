@@ -1795,6 +1795,27 @@ export interface ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyle
   }
 }
 
+export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
+  TCompact extends object = Record<string, never>,
+  TExpanded extends object = Record<string, never>,
+> {
+  shouldRender: boolean
+  isExpanded: boolean
+  compact: TCompact
+  expanded: TExpanded
+}
+
+export interface ChatRuntimeToolExecutionPanelMobilePropsParts<
+  TCompact extends object = Record<string, never>,
+  TExpanded extends object = Record<string, never>,
+> {
+  shouldRenderPanel: boolean
+  compact: TCompact & {
+    shouldRender: boolean
+  }
+  expandedGroup: TExpanded | null
+}
+
 export interface ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
   TExpanded extends { emptyState?: unknown | null } = { emptyState?: unknown | null },
@@ -14158,6 +14179,31 @@ export function createChatComposerRuntimeDockMobilePropsParts<
       micWrapperRef,
       styles: styles.inputDock,
     },
+  }
+}
+
+export function createChatRuntimeToolExecutionPanelMobilePropsParts<
+  TCompact extends object,
+  TExpanded extends object,
+>({
+  shouldRender,
+  isExpanded,
+  compact,
+  expanded,
+}: ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
+  TCompact,
+  TExpanded
+>): ChatRuntimeToolExecutionPanelMobilePropsParts<
+  TCompact,
+  TExpanded
+> {
+  return {
+    shouldRenderPanel: shouldRender,
+    compact: {
+      ...compact,
+      shouldRender: shouldRender && !isExpanded,
+    },
+    expandedGroup: shouldRender && isExpanded ? expanded : null,
   }
 }
 

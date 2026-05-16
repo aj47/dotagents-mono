@@ -92,6 +92,7 @@ import {
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
+  createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
@@ -8115,16 +8116,22 @@ export function ChatMessageToolExecutionPanel({
   expanded,
   children,
 }: ChatMessageToolExecutionPanelProps) {
-  if (!shouldRender) return null;
+  const panelParts = createChatRuntimeToolExecutionPanelMobilePropsParts({
+    shouldRender,
+    isExpanded,
+    compact,
+    expanded,
+  });
+
+  if (!panelParts.shouldRenderPanel) return null;
 
   return (
     <>
       <ChatMessageToolExecutionCompactList
-        shouldRender={!isExpanded}
-        {...compact}
+        {...panelParts.compact}
       />
-      {isExpanded ? (
-        <ChatMessageToolExecutionExpandedGroup {...expanded}>
+      {panelParts.expandedGroup ? (
+        <ChatMessageToolExecutionExpandedGroup {...panelParts.expandedGroup}>
           {children}
         </ChatMessageToolExecutionExpandedGroup>
       ) : null}

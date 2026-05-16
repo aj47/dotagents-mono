@@ -102,6 +102,7 @@ import {
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeDockChromeMobileProps,
+  createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderStyleSlots,
@@ -9067,6 +9068,59 @@ describe("session presentation semantics", () => {
         placement: "collapse-bottom",
         text: "collapse-text",
       },
+    })
+    expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
+      shouldRender: true,
+      isExpanded: false,
+      compact: {
+        renderState: "compact-render-state",
+      },
+      expanded: {
+        renderState: "expanded-render-state",
+      },
+    })).toEqual({
+      shouldRenderPanel: true,
+      compact: {
+        renderState: "compact-render-state",
+        shouldRender: true,
+      },
+      expandedGroup: null,
+    })
+    expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
+      shouldRender: true,
+      isExpanded: true,
+      compact: {
+        renderState: "compact-render-state",
+      },
+      expanded: {
+        renderState: "expanded-render-state",
+      },
+    })).toEqual({
+      shouldRenderPanel: true,
+      compact: {
+        renderState: "compact-render-state",
+        shouldRender: false,
+      },
+      expandedGroup: {
+        renderState: "expanded-render-state",
+      },
+    })
+    expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
+      shouldRender: false,
+      isExpanded: true,
+      compact: {
+        renderState: "compact-render-state",
+      },
+      expanded: {
+        renderState: "expanded-render-state",
+      },
+    })).toEqual({
+      shouldRenderPanel: false,
+      compact: {
+        renderState: "compact-render-state",
+        shouldRender: false,
+      },
+      expandedGroup: null,
     })
     const toolExecutionPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
       compact: {
