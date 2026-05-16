@@ -6635,24 +6635,6 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
   });
 }
 
-export function createChatMessageConversationBodyProps({
-  contentDisplayMode,
-  actionSet: actionSetInput,
-  expanded,
-  collapsed,
-  toolExecutionStack,
-}: ChatMessageConversationBodyPropsInput): ChatMessageConversationBodyProps {
-  const actionSet = createChatMessageActionSet(actionSetInput);
-
-  return createChatRuntimeConversationBodyMobileProps({
-    contentDisplayMode,
-    actionSet,
-    expanded,
-    collapsed,
-    toolExecutionStack,
-  });
-}
-
 export function createChatMessageThreadBodyProps({
   bodyDisplayMode,
   retryStatus,
@@ -6661,13 +6643,28 @@ export function createChatMessageThreadBodyProps({
   inlineActivity,
   conversation,
 }: ChatMessageThreadBodyPropsInput): Omit<ChatMessageThreadBodyProps, 'styles'> {
+  const {
+    contentDisplayMode,
+    actionSet: actionSetInput,
+    expanded,
+    collapsed,
+    toolExecutionStack,
+  } = conversation;
+  const actionSet = createChatMessageActionSet(actionSetInput);
+
   return createChatRuntimeConversationThreadBodyMobileProps({
     bodyDisplayMode,
     retryStatus,
     delegationCard,
     toolApproval,
     inlineActivity,
-    conversation: createChatMessageConversationBodyProps(conversation),
+    conversation: createChatRuntimeConversationBodyMobileProps({
+      contentDisplayMode,
+      actionSet,
+      expanded,
+      collapsed,
+      toolExecutionStack,
+    }),
   });
 }
 
