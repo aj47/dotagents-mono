@@ -93,6 +93,7 @@ import {
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderStyleSlots,
+  createChatRuntimeHeaderStyleSlotsFromStyleSource,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
@@ -3432,6 +3433,35 @@ describe("session presentation semantics", () => {
       turnDuration: "turn-duration",
       iconButtons: "icon-buttons",
     })
+    const headerStyleSlots = createChatRuntimeHeaderStyleSlotsFromStyleSource({
+      styles: {
+        headerActionsRow: "source-actions-row",
+        headerAgentSelectorButton: "source-agent-button",
+        headerAgentSelectorChip: "source-agent-chip",
+        headerAgentSelectorText: "source-agent-label",
+        headerConversationChip: "source-conversation-chip",
+        headerConversationChipText: "source-conversation-text",
+        headerConversationSpinner: "source-conversation-spinner",
+        headerDurationChip: "source-duration-chip",
+        headerDurationChipLive: "source-duration-chip-live",
+        headerDurationChipText: "source-duration-text",
+        headerDurationChipTextLive: "source-duration-text-live",
+        headerEdgeActionButton: "source-edge-button",
+        headerPinButton: "source-pin-button",
+        headerPinButtonActive: "source-pin-button-active",
+        headerActionButton: "source-action-button",
+        headerKillSwitchIconContainer: "source-kill-switch-icon",
+        headerHandsFreeIconContainer: "source-hands-free-icon",
+      },
+    })
+    expect(headerStyleSlots.actionsRowStyle).toBe("source-actions-row")
+    expect(headerStyleSlots.agentSelector.label).toBe("source-agent-label")
+    expect(headerStyleSlots.conversationStatus.spinner).toBe("source-conversation-spinner")
+    expect(headerStyleSlots.turnDuration.liveText).toBe("source-duration-text-live")
+    expect(headerStyleSlots.iconButtons.pinActiveStyle).toBe("source-pin-button-active")
+    expect(headerStyleSlots.iconButtons.handsFreeIconContainerStyle).toBe(
+      "source-hands-free-icon",
+    )
     expect(createChatRuntimeHeaderChromeSlots({
       colors: "theme-colors",
       spinnerSource: "spinner-source",

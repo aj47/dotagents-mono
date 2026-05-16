@@ -28,7 +28,7 @@ import {
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlots,
   createChatRuntimeHeaderPinButtonMobileStyleSlots,
-  createChatRuntimeHeaderStyleSlots,
+  createChatRuntimeHeaderStyleSlotsFromStyleSource,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeMessageActionRowMobileStyleSlot,
@@ -1098,32 +1098,8 @@ export function useChatRuntimeMobileStyleSlots() {
     [styles],
   );
   const chatRuntimeHeaderStyles = useMemo(
-    () => createChatRuntimeHeaderStyleSlots({
-      actionsRowStyle: styles.headerActionsRow,
-      agentSelectorStyles: {
-        button: styles.headerAgentSelectorButton,
-        chip: styles.headerAgentSelectorChip,
-        label: styles.headerAgentSelectorText,
-      },
-      conversationStatusStyles: {
-        chip: styles.headerConversationChip,
-        text: styles.headerConversationChipText,
-        spinner: styles.headerConversationSpinner,
-      },
-      turnDurationStyles: {
-        chip: styles.headerDurationChip,
-        liveChip: styles.headerDurationChipLive,
-        text: styles.headerDurationChipText,
-        liveText: styles.headerDurationChipTextLive,
-      },
-      iconButtonStyles: {
-        edgeStyle: styles.headerEdgeActionButton,
-        pinStyle: styles.headerPinButton,
-        pinActiveStyle: styles.headerPinButtonActive,
-        actionStyle: styles.headerActionButton,
-        killSwitchIconContainerStyle: styles.headerKillSwitchIconContainer,
-        handsFreeIconContainerStyle: styles.headerHandsFreeIconContainer,
-      },
+    () => createChatRuntimeHeaderStyleSlotsFromStyleSource({
+      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
     }),
     [styles],
   );

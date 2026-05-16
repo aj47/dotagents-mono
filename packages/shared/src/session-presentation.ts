@@ -16002,6 +16002,93 @@ export function createChatRuntimeHeaderStyleSlots<
   }
 }
 
+type ChatRuntimeHeaderStyleSourceKey =
+  | "headerActionsRow"
+  | "headerAgentSelectorButton"
+  | "headerAgentSelectorChip"
+  | "headerAgentSelectorText"
+  | "headerConversationChip"
+  | "headerConversationChipText"
+  | "headerConversationSpinner"
+  | "headerDurationChip"
+  | "headerDurationChipLive"
+  | "headerDurationChipText"
+  | "headerDurationChipTextLive"
+  | "headerEdgeActionButton"
+  | "headerPinButton"
+  | "headerPinButtonActive"
+  | "headerActionButton"
+  | "headerKillSwitchIconContainer"
+  | "headerHandsFreeIconContainer"
+
+type ChatRuntimeHeaderStyleSource = Record<ChatRuntimeHeaderStyleSourceKey, unknown>
+
+type ChatRuntimeHeaderStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeHeaderStyleSource,
+> = {
+  actionsRowStyle: TStyles["headerActionsRow"]
+  agentSelector: {
+    button: TStyles["headerAgentSelectorButton"]
+    chip: TStyles["headerAgentSelectorChip"]
+    label: TStyles["headerAgentSelectorText"]
+  }
+  conversationStatus: {
+    chip: TStyles["headerConversationChip"]
+    text: TStyles["headerConversationChipText"]
+    spinner: TStyles["headerConversationSpinner"]
+  }
+  turnDuration: {
+    chip: TStyles["headerDurationChip"]
+    liveChip: TStyles["headerDurationChipLive"]
+    text: TStyles["headerDurationChipText"]
+    liveText: TStyles["headerDurationChipTextLive"]
+  }
+  iconButtons: {
+    edgeStyle: TStyles["headerEdgeActionButton"]
+    pinStyle: TStyles["headerPinButton"]
+    pinActiveStyle: TStyles["headerPinButtonActive"]
+    actionStyle: TStyles["headerActionButton"]
+    killSwitchIconContainerStyle: TStyles["headerKillSwitchIconContainer"]
+    handsFreeIconContainerStyle: TStyles["headerHandsFreeIconContainer"]
+  }
+}
+
+export function createChatRuntimeHeaderStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeHeaderStyleSource,
+>({
+  styles,
+}: {
+  styles: TStyles
+}): ChatRuntimeHeaderStyleSlotsFromStyleSource<TStyles> {
+  return createChatRuntimeHeaderStyleSlots({
+    actionsRowStyle: styles.headerActionsRow,
+    agentSelectorStyles: {
+      button: styles.headerAgentSelectorButton,
+      chip: styles.headerAgentSelectorChip,
+      label: styles.headerAgentSelectorText,
+    },
+    conversationStatusStyles: {
+      chip: styles.headerConversationChip,
+      text: styles.headerConversationChipText,
+      spinner: styles.headerConversationSpinner,
+    },
+    turnDurationStyles: {
+      chip: styles.headerDurationChip,
+      liveChip: styles.headerDurationChipLive,
+      text: styles.headerDurationChipText,
+      liveText: styles.headerDurationChipTextLive,
+    },
+    iconButtonStyles: {
+      edgeStyle: styles.headerEdgeActionButton,
+      pinStyle: styles.headerPinButton,
+      pinActiveStyle: styles.headerPinButtonActive,
+      actionStyle: styles.headerActionButton,
+      killSwitchIconContainerStyle: styles.headerKillSwitchIconContainer,
+      handsFreeIconContainerStyle: styles.headerHandsFreeIconContainer,
+    },
+  })
+}
+
 export function createChatRuntimeHeaderChromeSlots<TColors, TSpinnerSource, TStyles>({
   colors,
   spinnerSource,
