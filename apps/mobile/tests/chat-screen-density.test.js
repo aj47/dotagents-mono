@@ -100,7 +100,7 @@ test('keeps mobile chat shared domain types routed through session presentation'
 
 test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.doesNotMatch(screenSource, /from '\.\.\/ui\/mobileTypography'/);
-  assert.match(screenSource, /resolveChatRuntimeMobileFontFamily,/);
+  assert.doesNotMatch(screenSource, /resolveChatRuntimeMobileFontFamily,/);
   assert.doesNotMatch(chatMessageChromeSource, /import \{ resolveMobileFontFamily \} from '\.\/mobileTypography';/);
   assert.doesNotMatch(chatMessageChromeSource, /export function resolveChatRuntimeMobileFontFamily/);
   assert.match(sessionPresentationSource, /export type ChatRuntimeMobileFontFamilyByPlatform = Readonly<\{/);
@@ -120,7 +120,10 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.match(screenSource, /messageTurnDurationText:\s*\{[\s\S]*?\.\.\.mobileMessageTurnDurationStyleSlots\.text/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupMobileStyleSlots\(\{/);
   assert.match(screenSource, /const toolActivityGroupStyleSlots = createChatRuntimeToolActivityGroupMobileStyleSlots\(\{\s+renderState: toolActivityGroupStyleState,\s+spacing,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
-  assert.match(screenSource, /debugText:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(handsFreeSurface\.debugText\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(sessionPresentationSource, /export function createChatComposerHandsFreeMobileStyleSlots\(\{/);
+  assert.match(screenSource, /const handsFreeStyleSlots = createChatComposerHandsFreeMobileStyleSlots\(\{\s+renderState: handsFreeStyleState,\s+spacing,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.match(sessionPresentationSource, /debugText:\s*\{[\s\S]*?fontFamily: resolveChatRuntimeMobileFontFamily\(\s+surface\.debugText\.fontFamilyByPlatform,\s+platform \?\? "",\s+\)/);
+  assert.match(screenSource, /debugText:\s*\{\s+\.\.\.handsFreeStyleSlots\.debugText,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobileStyleSlots\(\{/);
   assert.match(screenSource, /const toolApprovalStyleSlots = createChatRuntimeToolApprovalMobileStyleSlots\(\{\s+renderState: toolApprovalStyleState,\s+spacing,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
   assert.match(sessionPresentationSource, /tool:\s*\{[\s\S]*?fontFamily: resolveChatRuntimeMobileFontFamily\(\s+surface\.toolName\.fontFamilyByPlatform,\s+platform \?\? "",\s+\)/);

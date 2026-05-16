@@ -147,6 +147,7 @@ import {
   getChatComposerRuntimeChromeMobileStyleRenderState,
   getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
+  createChatComposerHandsFreeMobileStyleSlots,
   getChatComposerRuntimeDraftMessageState,
   createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
   createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
@@ -2092,6 +2093,57 @@ describe("session presentation semantics", () => {
     expect(composerChromeStyle.promptLibrary.colors.editorModal.saveButton.backgroundColor).toBe("#2563eb")
     expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)
     expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
+    expect(createChatComposerHandsFreeMobileStyleSlots({
+      renderState: composerChromeStyle.handsFree,
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        md: 8,
+        lg: 12,
+      },
+      platform: "ios",
+    })).toMatchObject({
+      statusRow: {
+        paddingHorizontal: 8,
+        paddingTop: 4,
+      },
+      controlsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingTop: 4,
+      },
+      controlButton: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        backgroundColor: "#f8fafc",
+        minHeight: 36,
+        paddingHorizontal: 8,
+        borderRadius: 8,
+      },
+      controlButtonText: {
+        color: "#0f172a",
+        fontWeight: "600",
+        fontSize: 12,
+      },
+      debugPanel: {
+        backgroundColor: "#e2e8f0",
+        padding: 8,
+        margin: 8,
+        borderRadius: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: "#2563eb",
+      },
+      debugText: {
+        fontSize: 12,
+        color: "#64748b",
+        fontFamily: "Menlo",
+      },
+    })
     const composerDockChrome = getChatComposerRuntimeDockMobileRenderState({
       colors: chatRuntimeMobileChromeColors,
       platform: "web",

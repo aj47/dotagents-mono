@@ -4643,6 +4643,29 @@ export interface ChatComposerRuntimeHandsFreeControlsMobileRenderState {
   controlState: ReturnType<typeof getHandsFreeComposerControlState>
 }
 
+type ChatComposerHandsFreeMobileSurface = ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>["surface"]
+
+export type ChatComposerHandsFreeMobileSpacingToken =
+  | ChatComposerHandsFreeMobileSurface["statusRow"]["paddingHorizontal"]
+  | ChatComposerHandsFreeMobileSurface["statusRow"]["paddingTop"]
+  | ChatComposerHandsFreeMobileSurface["controlsRow"]["gap"]
+  | ChatComposerHandsFreeMobileSurface["controlsRow"]["paddingHorizontal"]
+  | ChatComposerHandsFreeMobileSurface["controlsRow"]["paddingTop"]
+  | ChatComposerHandsFreeMobileSurface["controlButton"]["paddingHorizontal"]
+  | ChatComposerHandsFreeMobileSurface["debugPanel"]["padding"]
+  | ChatComposerHandsFreeMobileSurface["debugPanel"]["margin"]
+
+export type ChatComposerHandsFreeMobileRadiusToken =
+  | ChatComposerHandsFreeMobileSurface["controlButton"]["borderRadius"]
+  | ChatComposerHandsFreeMobileSurface["debugPanel"]["borderRadius"]
+
+export interface ChatComposerHandsFreeMobileStyleSlotsInput {
+  renderState: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>
+  spacing: Readonly<Record<ChatComposerHandsFreeMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatComposerHandsFreeMobileRadiusToken, number>>
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
 export type ChatComposerRuntimeHandsFreeDebugMessageKey = HandsFreeComposerDebugMessageKey
 
 export interface ChatComposerMicMobileWebPressStyleState {
@@ -8648,6 +8671,62 @@ export function createChatComposerImageAttachmentMobileStyleSlots({
       backgroundColor: colors.removeButton.backgroundColor,
       alignItems: surface.removeButton.alignItems,
       justifyContent: surface.removeButton.justifyContent,
+    },
+  }
+}
+
+export function createChatComposerHandsFreeMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  platform,
+}: ChatComposerHandsFreeMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    statusRow: {
+      paddingHorizontal: spacing[surface.statusRow.paddingHorizontal],
+      paddingTop: spacing[surface.statusRow.paddingTop],
+    },
+    controlsRow: {
+      flexDirection: surface.controlsRow.flexDirection,
+      alignItems: surface.controlsRow.alignItems,
+      gap: spacing[surface.controlsRow.gap],
+      paddingHorizontal: spacing[surface.controlsRow.paddingHorizontal],
+      paddingTop: spacing[surface.controlsRow.paddingTop],
+    },
+    controlButton: {
+      flex: surface.controlButton.flex,
+      borderWidth: surface.controlButton.borderWidth,
+      borderColor: colors.controlButton.borderColor,
+      backgroundColor: colors.controlButton.backgroundColor,
+      minHeight: surface.controlButton.minHeight,
+      paddingHorizontal: spacing[surface.controlButton.paddingHorizontal],
+      borderRadius: radius[surface.controlButton.borderRadius],
+      alignItems: surface.controlButton.alignItems,
+      justifyContent: surface.controlButton.justifyContent,
+    },
+    controlButtonText: {
+      color: colors.controlButtonText.color,
+      fontWeight: surface.controlButtonText.fontWeight,
+      fontSize: surface.controlButtonText.fontSize,
+    },
+    debugPanel: {
+      backgroundColor: colors.debugPanel.backgroundColor,
+      padding: spacing[surface.debugPanel.padding],
+      margin: spacing[surface.debugPanel.margin],
+      borderRadius: radius[surface.debugPanel.borderRadius],
+      borderLeftWidth: surface.debugPanel.borderLeftWidth,
+      borderLeftColor: colors.debugPanel.borderLeftColor,
+    },
+    debugText: {
+      fontSize: surface.debugText.fontSize,
+      color: colors.debugText.color,
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.debugText.fontFamilyByPlatform,
+        platform ?? "",
+      ),
     },
   }
 }

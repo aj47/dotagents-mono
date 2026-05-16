@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatComposerHandsFreeMobileStyleSlots,
   createChatComposerImageAttachmentMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
@@ -32,7 +33,6 @@ import {
   createMessageQueuePanelMobileWrapperStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
-  resolveChatRuntimeMobileFontFamily,
 } from '@dotagents/shared/session-presentation';
 import {
   createChatComposerRuntimeDockStyleSlots,
@@ -158,7 +158,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     spacing,
   });
   const handsFreeStyleState = composerChromeStyleState.handsFree;
-  const handsFreeSurface = handsFreeStyleState.surface;
+  const handsFreeStyleSlots = createChatComposerHandsFreeMobileStyleSlots({
+    renderState: handsFreeStyleState,
+    spacing,
+    radius,
+    platform: mobilePlatform,
+  });
   const headerActionButton = chatChromeStyleState.headerActionButton;
   const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
   const headerPinButton = chatChromeStyleState.headerPinButton;
@@ -189,7 +194,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
     platform: mobilePlatform,
   });
-  const handsFreeSurfaceColors = handsFreeStyleState.colors;
   const toolApprovalStyleState = threadChromeStyleState.toolApproval;
   const toolApprovalStyleSlots = createChatRuntimeToolApprovalMobileStyleSlots({
     renderState: toolApprovalStyleState,
@@ -561,31 +565,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       paddingVertical: spacing[composerSurface.inputRow.paddingVertical],
     },
     handsFreeStatusRow: {
-      paddingHorizontal: spacing[handsFreeSurface.statusRow.paddingHorizontal],
-      paddingTop: spacing[handsFreeSurface.statusRow.paddingTop],
+      ...handsFreeStyleSlots.statusRow,
     },
     handsFreeControlsRow: {
-      flexDirection: handsFreeSurface.controlsRow.flexDirection,
-      alignItems: handsFreeSurface.controlsRow.alignItems,
-      gap: spacing[handsFreeSurface.controlsRow.gap],
-      paddingHorizontal: spacing[handsFreeSurface.controlsRow.paddingHorizontal],
-      paddingTop: spacing[handsFreeSurface.controlsRow.paddingTop],
+      ...handsFreeStyleSlots.controlsRow,
     },
     handsFreeControlButton: {
-      flex: handsFreeSurface.controlButton.flex,
-      borderWidth: handsFreeSurface.controlButton.borderWidth,
-      borderColor: handsFreeSurfaceColors.controlButton.borderColor,
-      backgroundColor: handsFreeSurfaceColors.controlButton.backgroundColor,
-      minHeight: handsFreeSurface.controlButton.minHeight,
-      paddingHorizontal: spacing[handsFreeSurface.controlButton.paddingHorizontal],
-      borderRadius: radius[handsFreeSurface.controlButton.borderRadius],
-      alignItems: handsFreeSurface.controlButton.alignItems,
-      justifyContent: handsFreeSurface.controlButton.justifyContent,
+      ...handsFreeStyleSlots.controlButton,
     },
     handsFreeControlButtonText: {
-      color: handsFreeSurfaceColors.controlButtonText.color,
-      fontWeight: handsFreeSurface.controlButtonText.fontWeight,
-      fontSize: handsFreeSurface.controlButtonText.fontSize,
+      ...handsFreeStyleSlots.controlButtonText,
     },
     chatHomeCard: {
       marginHorizontal: spacing[promptLibrarySurface.quickStartCard.marginHorizontal],
@@ -894,17 +883,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       fontSize: composerSurface.submitButton.fontSize,
     },
     debugInfo: {
-      backgroundColor: handsFreeSurfaceColors.debugPanel.backgroundColor,
-      padding: spacing[handsFreeSurface.debugPanel.padding],
-      margin: spacing[handsFreeSurface.debugPanel.margin],
-      borderRadius: radius[handsFreeSurface.debugPanel.borderRadius],
-      borderLeftWidth: handsFreeSurface.debugPanel.borderLeftWidth,
-      borderLeftColor: handsFreeSurfaceColors.debugPanel.borderLeftColor,
+      ...handsFreeStyleSlots.debugPanel,
     },
     debugText: {
-      fontSize: handsFreeSurface.debugText.fontSize,
-      color: handsFreeSurfaceColors.debugText.color,
-      fontFamily: resolveChatRuntimeMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform, mobilePlatform),
+      ...handsFreeStyleSlots.debugText,
     },
     connectionBanner: {
       ...connectionBannerStyleSlots.banner,
