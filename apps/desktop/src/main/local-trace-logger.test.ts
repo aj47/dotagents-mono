@@ -3,12 +3,17 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 
-let currentConfig: { localTraceLoggingEnabled?: boolean; localTraceLogPath?: string } = {}
+let currentConfig: {
+  localTraceLoggingEnabled?: boolean
+  localTraceLogPath?: string
+} = {}
 let tempDir: string
 
 vi.mock("./config", () => ({
   configStore: { get: () => currentConfig },
-  get dataFolder() { return tempDir },
+  get dataFolder() {
+    return tempDir
+  },
 }))
 vi.mock("./debug", () => ({
   isDebugLLM: () => false,
@@ -35,7 +40,11 @@ describe("local-trace-logger", () => {
     currentConfig = { localTraceLoggingEnabled: false }
 
     expect(mod.isLocalTraceLoggingEnabled()).toBe(false)
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "Agent" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "t1",
+      name: "Agent",
+    })
 
     const expected = path.join(tempDir, "traces", "t1.jsonl")
     expect(fs.existsSync(expected)).toBe(false)
@@ -45,7 +54,11 @@ describe("local-trace-logger", () => {
     const mod = await import("./local-trace-logger")
     currentConfig = { localTraceLoggingEnabled: true }
 
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "Agent" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "t1",
+      name: "Agent",
+    })
     mod.appendLocalTraceEvent({
       type: "generation.start",
       traceId: "t1",
@@ -83,8 +96,16 @@ describe("local-trace-logger", () => {
     const mod = await import("./local-trace-logger")
     currentConfig = { localTraceLoggingEnabled: true }
 
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "session/one", name: "One" })
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "session:two", name: "Two" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "session/one",
+      name: "One",
+    })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "session:two",
+      name: "Two",
+    })
     await mod.flushLocalTraceLogger()
 
     const firstPath = path.join(tempDir, "traces", "session_one.jsonl")
@@ -92,17 +113,29 @@ describe("local-trace-logger", () => {
 
     expect(fs.existsSync(firstPath)).toBe(true)
     expect(fs.existsSync(secondPath)).toBe(true)
-    expect(JSON.parse(fs.readFileSync(firstPath, "utf8").trim()).name).toBe("One")
-    expect(JSON.parse(fs.readFileSync(secondPath, "utf8").trim()).name).toBe("Two")
+    expect(JSON.parse(fs.readFileSync(firstPath, "utf8").trim()).name).toBe(
+      "One",
+    )
+    expect(JSON.parse(fs.readFileSync(secondPath, "utf8").trim()).name).toBe(
+      "Two",
+    )
   })
 
   it("honours a custom localTraceLogPath as a trace directory", async () => {
     const customPath = path.join(tempDir, "custom")
-    currentConfig = { localTraceLoggingEnabled: true, localTraceLogPath: customPath }
+    currentConfig = {
+      localTraceLoggingEnabled: true,
+      localTraceLogPath: customPath,
+    }
 
     const mod = await import("./local-trace-logger")
     mod.resetLocalTraceLogger()
-    mod.appendLocalTraceEvent({ type: "span.start", traceId: "t1", spanId: "s1", name: "tool" })
+    mod.appendLocalTraceEvent({
+      type: "span.start",
+      traceId: "t1",
+      spanId: "s1",
+      name: "tool",
+    })
     await mod.flushLocalTraceLogger()
 
     const expected = path.join(customPath, "t1.jsonl")
@@ -115,11 +148,18 @@ describe("local-trace-logger", () => {
 
   it("uses the parent directory when custom localTraceLogPath is a legacy jsonl file path", async () => {
     const legacyFilePath = path.join(tempDir, "custom", "agent-traces.jsonl")
-    currentConfig = { localTraceLoggingEnabled: true, localTraceLogPath: legacyFilePath }
+    currentConfig = {
+      localTraceLoggingEnabled: true,
+      localTraceLogPath: legacyFilePath,
+    }
 
     const mod = await import("./local-trace-logger")
     mod.resetLocalTraceLogger()
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "Agent" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "t1",
+      name: "Agent",
+    })
     await mod.flushLocalTraceLogger()
 
     expect(fs.existsSync(path.join(tempDir, "custom", "t1.jsonl"))).toBe(true)
@@ -129,15 +169,29 @@ describe("local-trace-logger", () => {
   it("uses an updated custom path after reset", async () => {
     const firstPath = path.join(tempDir, "first")
     const secondPath = path.join(tempDir, "second")
-    currentConfig = { localTraceLoggingEnabled: true, localTraceLogPath: firstPath }
+    currentConfig = {
+      localTraceLoggingEnabled: true,
+      localTraceLogPath: firstPath,
+    }
 
     const mod = await import("./local-trace-logger")
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "First" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "t1",
+      name: "First",
+    })
     await mod.flushLocalTraceLogger()
 
-    currentConfig = { localTraceLoggingEnabled: true, localTraceLogPath: secondPath }
+    currentConfig = {
+      localTraceLoggingEnabled: true,
+      localTraceLogPath: secondPath,
+    }
     mod.resetLocalTraceLogger()
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t2", name: "Second" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "t2",
+      name: "Second",
+    })
     await mod.flushLocalTraceLogger()
 
     expect(fs.existsSync(path.join(firstPath, "t1.jsonl"))).toBe(true)
@@ -149,13 +203,21 @@ describe("local-trace-logger", () => {
     const mod = await import("./local-trace-logger")
     currentConfig = { localTraceLoggingEnabled: true }
 
-    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "Agent" })
+    mod.appendLocalTraceEvent({
+      type: "trace.start",
+      traceId: "t1",
+      name: "Agent",
+    })
     await mod.flushLocalTraceLogger()
 
     const tracesDir = path.join(tempDir, "traces")
     fs.rmSync(tracesDir, { recursive: true, force: true })
 
-    mod.appendLocalTraceEvent({ type: "trace.end", traceId: "t1", output: "done" })
+    mod.appendLocalTraceEvent({
+      type: "trace.end",
+      traceId: "t1",
+      output: "done",
+    })
     await mod.flushLocalTraceLogger()
 
     const expected = path.join(tracesDir, "t1.jsonl")
@@ -163,5 +225,93 @@ describe("local-trace-logger", () => {
     const line = JSON.parse(fs.readFileSync(expected, "utf8").trim())
     expect(line.type).toBe("trace.end")
     expect(line.output).toBe("done")
+  })
+
+  it("truncates oversized strings before writing local trace events", async () => {
+    const mod = await import("./local-trace-logger")
+    currentConfig = { localTraceLoggingEnabled: true }
+
+    mod.appendLocalTraceEvent({
+      type: "generation.start",
+      traceId: "big-string",
+      generationId: "g1",
+      name: "LLM",
+      model: "test-model",
+      input: {
+        messages: [
+          {
+            role: "user",
+            content: `HEAD-${"x".repeat(120_000)}-TAIL`,
+          },
+        ],
+      },
+    })
+    await mod.flushLocalTraceLogger()
+
+    const expected = path.join(tempDir, "traces", "big-string.jsonl")
+    const line = fs.readFileSync(expected, "utf8").trim()
+    expect(line.length).toBeLessThan(20_000)
+
+    const record = JSON.parse(line)
+    const content = record.input.messages[0].content
+    expect(content).toContain("HEAD-")
+    expect(content).toContain("-TAIL")
+    expect(content).toContain("[local trace truncated:")
+    expect(
+      record.metadata.localTraceSanitization.truncatedStrings,
+    ).toBeGreaterThan(0)
+  })
+
+  it("compacts events that are still too large after field-level sanitization", async () => {
+    const mod = await import("./local-trace-logger")
+    currentConfig = { localTraceLoggingEnabled: true }
+
+    mod.appendLocalTraceEvent({
+      type: "generation.start",
+      traceId: "huge-event",
+      generationId: "g1",
+      name: "LLM",
+      model: "test-model",
+      input: {
+        wide: Object.fromEntries(
+          Array.from({ length: 80 }, (_, index) => [
+            `key${index}`,
+            `value-${index}-${"x".repeat(20_000)}`,
+          ]),
+        ),
+      },
+    })
+    await mod.flushLocalTraceLogger()
+
+    const expected = path.join(tempDir, "traces", "huge-event.jsonl")
+    const line = fs.readFileSync(expected, "utf8").trim()
+    expect(line.length).toBeLessThan(80_000)
+
+    const record = JSON.parse(line)
+    expect(
+      record.metadata.localTraceSanitization.compactedEvents,
+    ).toBeGreaterThan(0)
+    expect(record.input.__localTraceSummary).toBe("Object")
+  })
+
+  it("serializes circular trace payloads without dropping the event", async () => {
+    const mod = await import("./local-trace-logger")
+    currentConfig = { localTraceLoggingEnabled: true }
+    const input: Record<string, unknown> = { name: "cycle" }
+    input.self = input
+
+    mod.appendLocalTraceEvent({
+      type: "span.start",
+      traceId: "cycle",
+      spanId: "s1",
+      name: "tool",
+      input,
+    })
+    await mod.flushLocalTraceLogger()
+
+    const expected = path.join(tempDir, "traces", "cycle.jsonl")
+    const record = JSON.parse(fs.readFileSync(expected, "utf8").trim())
+    expect(record.input.self).toBe("[Circular]")
+    expect(record.metadata.localTraceSanitization.circularReferences).toBe(1)
   })
 })
