@@ -76,7 +76,6 @@ import {
   getChatRuntimeConversationItemThreadMobileState,
   getChatRuntimeConversationMessageThreadMobileState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
-  getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
@@ -107,7 +106,6 @@ import {
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeHandsFreeDebugMessage,
   mergeChatComposerRuntimeVoiceText,
-  shouldRenderChatRuntimeConversationThread,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
   formatConnectionStatus,
@@ -191,7 +189,6 @@ import {
   type ChatRuntimeConversationRenderableRuntimeThreadState,
   type ChatRuntimeConversationThreadBodyMobileDisplayMode,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
-  type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeConversationToolApprovalMobileState,
   type ChatRuntimeConversationToolExecutionDetailMobileRowState,
@@ -2836,9 +2833,6 @@ export type ChatMessageThreadBodyPropsInput =
     conversation: ChatMessageConversationBodyPropsInput;
   };
 
-type ChatMessageConversationThreadVisibilityInput =
-  ChatRuntimeConversationThreadVisibilityInput<Pick<ChatMessageThreadBodyPropsInput, 'bodyDisplayMode'>>;
-
 type ChatMessageConversationThreadBodySharedInput =
   ChatRuntimeConversationThreadBodyMobileStateInput<
     ChatMessageActionStyleSlots['turnDuration'],
@@ -3201,13 +3195,6 @@ type ChatMessageConversationRuntimeThreadListRenderStateInput =
     ChatMessageConversationThreadListRenderStateInput['messages'][number]
   >;
 
-type ChatMessageConversationRuntimeThreadListRenderState = {
-  threadStates: ChatMessageConversationRenderableRuntimeThreadState[];
-  visibleMessageCount: number;
-  totalMessageCount: number;
-  hiddenMessageCount: number;
-};
-
 type ChatMessageConversationRuntimeThreadListProps = {
   threadStates: readonly ChatMessageConversationRenderableRuntimeThreadState[];
   styles: ChatMessageRuntimeThreadStyleSlots;
@@ -3285,13 +3272,6 @@ function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
       icon={spec.renderState.icon}
     />
   );
-}
-
-export function shouldRenderChatMessageConversationThread({
-  renderContext,
-  body,
-}: ChatMessageConversationThreadVisibilityInput): boolean {
-  return shouldRenderChatRuntimeConversationThread({ renderContext, body });
 }
 
 export function createChatMessageConversationMessageThreadRenderState({
@@ -4006,11 +3986,23 @@ export function createChatMessageRuntimeChromeProps<
   viewport,
   surface,
 }: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
-  const conversationThreadListState = createChatMessageConversationRuntimeThreadListRenderState({
-    ...threadList,
+  const {
+    messages: threadListMessages,
+    visibleMessageCount: threadListVisibleMessageCount,
+    ...threadListInput
+  } = threadList;
+  const conversationThreadListState = getChatRuntimeConversationRuntimeThreadListMobileState({
+    messages: threadListMessages,
+    visibleMessageCount: threadListVisibleMessageCount,
+    ...threadListInput,
     colors,
-    actionStyles: styles.actionStyles,
-    spinnerSource,
+    createThreadState: (itemState) => createChatMessageConversationItemThreadRenderState({
+      ...threadListInput,
+      ...itemState,
+      colors,
+      actionStyles: styles.actionStyles,
+      spinnerSource,
+    }).threadState,
   });
   const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps({
     colors,
@@ -4063,45 +4055,6 @@ export function ChatMessageRuntimeChromeSurface<
       styles={surfaceStyles}
     />
   );
-}
-
-export function createChatMessageConversationThreadListRenderState({
-  allMessages,
-  messages,
-  firstMessageIndex,
-  groupByIndex,
-  speakingMessageIndex,
-  copiedMessageIndex,
-  ...threadInput
-}: ChatMessageConversationThreadListRenderStateInput): ChatMessageConversationRenderableRuntimeThreadState[] {
-  return getChatRuntimeConversationThreadListMobileState({
-    allMessages,
-    messages,
-    firstMessageIndex,
-    groupByIndex,
-    speakingMessageIndex,
-    copiedMessageIndex,
-    createThreadState: (itemState) => createChatMessageConversationItemThreadRenderState({
-      ...threadInput,
-      ...itemState,
-    }).threadState,
-  });
-}
-
-export function createChatMessageConversationRuntimeThreadListRenderState({
-  messages,
-  visibleMessageCount,
-  ...threadListInput
-}: ChatMessageConversationRuntimeThreadListRenderStateInput): ChatMessageConversationRuntimeThreadListRenderState {
-  return getChatRuntimeConversationRuntimeThreadListMobileState({
-    messages,
-    visibleMessageCount,
-    ...threadListInput,
-    createThreadState: (itemState) => createChatMessageConversationItemThreadRenderState({
-      ...threadListInput,
-      ...itemState,
-    }).threadState,
-  });
 }
 
 function createChatMessageActionRenderers({
