@@ -127,6 +127,9 @@ import {
   getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
+  createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
+  createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
+  createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeFollowUpPresentationState,
   getChatComposerRuntimeHandsFreeDebugMessage,
@@ -493,6 +496,12 @@ describe("session presentation semantics", () => {
     expect(getChatComposerRuntimeHandsFreeDebugMessage("paused")).toBe("Handsfree paused.")
     expect(formatChatComposerRuntimeHandsFreeSleepingDebugMessage("hey agent"))
       .toContain("hey agent")
+    expect(createChatComposerRuntimeHandsFreeTranscriptAddedDebugState().debugInfo)
+      .toBe("Voice transcript added to the composer.")
+    expect(createChatComposerRuntimeHandsFreePermissionDeniedDebugState().debugInfo)
+      .toBe("Speech recognition permission denied.")
+    expect(createChatComposerRuntimeHandsFreeRecognizerErrorDebugState("muted").debugInfo)
+      .toBe("Voice error: muted")
   })
 
   it("treats active attention signals as foreground without changing lifecycle", () => {

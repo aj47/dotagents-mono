@@ -33,6 +33,9 @@ import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 import {
+  createHandsFreeComposerPermissionDeniedDebugState,
+  createHandsFreeComposerRecognizerErrorDebugState,
+  createHandsFreeComposerTranscriptAddedDebugState,
   formatHandsFreeSleepingDebugMessage,
   getHandsFreeComposerCopyState,
   getHandsFreeComposerControlState,
@@ -7404,6 +7407,18 @@ export function getChatComposerRuntimeHandsFreeDebugMessage(
 
 export function formatChatComposerRuntimeHandsFreeSleepingDebugMessage(wakePhrase: string): string {
   return formatHandsFreeSleepingDebugMessage(wakePhrase)
+}
+
+export function createChatComposerRuntimeHandsFreeTranscriptAddedDebugState() {
+  return createHandsFreeComposerTranscriptAddedDebugState()
+}
+
+export function createChatComposerRuntimeHandsFreePermissionDeniedDebugState() {
+  return createHandsFreeComposerPermissionDeniedDebugState()
+}
+
+export function createChatComposerRuntimeHandsFreeRecognizerErrorDebugState(message: string) {
+  return createHandsFreeComposerRecognizerErrorDebugState(message)
 }
 
 export function getChatComposerMobileTextInputPlatformState(

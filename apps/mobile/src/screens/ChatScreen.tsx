@@ -79,11 +79,6 @@ import type {
   Loop,
   PredefinedPromptSummary,
 } from '@dotagents/shared/api-types';
-import {
-  createHandsFreeComposerPermissionDeniedDebugState,
-  createHandsFreeComposerRecognizerErrorDebugState,
-  createHandsFreeComposerTranscriptAddedDebugState,
-} from '@dotagents/shared/hands-free-controller';
 import { createChatRuntimeMobileConfigState } from '@dotagents/shared/mobile-app-config';
 import {
   createChatRuntimeEffectiveRemoteSpeechSettingsState,
@@ -95,6 +90,9 @@ import {
   applyChatMessageRuntimePendingTurnStatusState,
   applyChatMessageRuntimeProgressTurnStatusState,
   applyChatMessageRuntimeSettledTurnStatusState,
+  createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
+  createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
+  createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
   createChatMessageRuntimeConnectionErrorTurnState,
   createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimeFinalResponseTextState,
@@ -526,7 +524,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (mode === 'edit') {
         mergeVoiceTextIntoComposer(finalText);
-        setDebugInfo(createHandsFreeComposerTranscriptAddedDebugState().debugInfo);
+        setDebugInfo(createChatComposerRuntimeHandsFreeTranscriptAddedDebugState().debugInfo);
         setTimeout(focusComposerInput, 0);
         return;
       }
@@ -545,10 +543,10 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     onRecognizerError: (message) => {
       handsFreeController.onRecognizerError(message);
-      setDebugInfo(createHandsFreeComposerRecognizerErrorDebugState(message).debugInfo);
+      setDebugInfo(createChatComposerRuntimeHandsFreeRecognizerErrorDebugState(message).debugInfo);
     },
     onPermissionDenied: () => {
-      setDebugInfo(createHandsFreeComposerPermissionDeniedDebugState().debugInfo);
+      setDebugInfo(createChatComposerRuntimeHandsFreePermissionDeniedDebugState().debugInfo);
     },
     log: voiceLog,
   });
