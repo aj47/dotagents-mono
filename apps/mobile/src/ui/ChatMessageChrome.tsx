@@ -92,6 +92,7 @@ import {
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
@@ -8192,23 +8193,26 @@ export function ChatMessageToolExecutionCopyButton({
   onPress,
   styles,
 }: ChatMessageToolExecutionCopyButtonProps) {
+  const copyButtonParts = createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
+    renderState,
+    onPress,
+    styles,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.pressed,
-      ]}
+      onPress={copyButtonParts.container.onPress}
+      accessibilityRole={copyButtonParts.container.accessibilityRole}
+      accessibilityLabel={copyButtonParts.container.accessibilityLabel}
+      style={copyButtonParts.container.style}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={copyButtonParts.icon.name}
+        size={copyButtonParts.icon.size}
+        color={copyButtonParts.icon.color}
       />
-      <Text style={styles.text}>
-        {renderState.label}
+      <Text style={copyButtonParts.label.style}>
+        {copyButtonParts.label.text}
       </Text>
     </Pressable>
   );

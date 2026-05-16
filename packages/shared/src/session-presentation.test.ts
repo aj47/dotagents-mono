@@ -131,6 +131,7 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
@@ -9182,6 +9183,48 @@ describe("session presentation semantics", () => {
         pendingResult: "pending-result-styles",
       },
     }).pendingResult).toBeNull()
+    const copyButtonParts = createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
+      renderState: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Copy input payload",
+        icon: {
+          name: "copy-outline",
+          size: 12,
+          color: "#555",
+        },
+        label: "Copy",
+      },
+      onPress: "copy-payload",
+      styles: {
+        button: "copy-button",
+        pressed: "copy-button-pressed",
+        text: "copy-button-text",
+      },
+    })
+    expect(copyButtonParts).toMatchObject({
+      container: {
+        onPress: "copy-payload",
+        accessibilityRole: "button",
+        accessibilityLabel: "Copy input payload",
+      },
+      icon: {
+        name: "copy-outline",
+        size: 12,
+        color: "#555",
+      },
+      label: {
+        text: "Copy",
+        style: "copy-button-text",
+      },
+    })
+    expect(copyButtonParts.container.style({ pressed: false })).toEqual([
+      "copy-button",
+      false,
+    ])
+    expect(copyButtonParts.container.style({ pressed: true })).toEqual([
+      "copy-button",
+      "copy-button-pressed",
+    ])
     const payloadSectionParts = createChatRuntimeToolExecutionPayloadSectionMobilePropsParts({
       payloadRenderState: "payload-render-state",
       compactText: "preview",
