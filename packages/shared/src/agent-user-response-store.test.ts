@@ -5,6 +5,7 @@ import {
   AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION,
   appendAgentUserResponseEvent,
   clearAgentUserResponseEvents,
+  createAgentResponseHistoryMobileStyleSlots,
   createAgentUserResponseStoreState,
   formatAgentResponseHistoryPreviewText,
   formatAgentResponseHistoryTimestamp,
@@ -127,6 +128,50 @@ describe('agent-user-response-store', () => {
     })).toEqual({
       surface: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile,
       colors: responseHistorySurfaceColors,
+    });
+    const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots({
+      renderState: getAgentResponseHistoryMobileRenderState({
+        responses: [{ text: 'Hello from the agent', timestamp: 1000 }],
+        colors: responseHistoryPalette,
+        isCollapsed: false,
+      }),
+      spacing: {
+        sm: 8,
+      },
+      radius: {
+        md: 8,
+      },
+    });
+    expect(responseHistoryStyleSlots.container).toEqual({
+      borderRadius: 8,
+      borderWidth: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.container.borderWidth,
+      borderColor: '#d4d4d4',
+      backgroundColor: 'rgba(229, 229, 229, 0.19)',
+      overflow: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.container.overflow,
+      marginHorizontal: 8,
+      marginBottom: 8,
+    });
+    expect(responseHistoryStyleSlots.header).toMatchObject({
+      flexDirection: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.flexDirection,
+      alignItems: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.alignItems,
+      justifyContent: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.justifyContent,
+      borderBottomWidth: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.expandedBorderBottomWidth,
+      borderBottomColor: '#d4d4d4',
+      backgroundColor: 'rgba(229, 229, 229, 0.31)',
+    });
+    expect(responseHistoryStyleSlots.badgeText).toEqual({
+      fontSize: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.badge.fontSize,
+      fontWeight: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.badge.fontWeight,
+      color: '#ffffff',
+    });
+    expect(responseHistoryStyleSlots.separator).toEqual({
+      height: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.list.separatorHeight,
+      backgroundColor: '#d4d4d4',
+    });
+    expect(responseHistoryStyleSlots.collapsedPreviewText).toEqual({
+      fontSize: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewFontSize,
+      lineHeight: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewLineHeight,
+      color: '#171717',
     });
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.preview.maxLength).toBe(110);
     expect(getAgentResponseHistoryToggleAccessibilityLabel(true)).toBe('Show agent responses');

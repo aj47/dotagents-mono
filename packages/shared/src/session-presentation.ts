@@ -5,6 +5,7 @@ import {
 } from "./conversation-state"
 export type { AgentConversationState } from "./conversation-state"
 export {
+  createAgentResponseHistoryMobileStyleSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
 } from "./agent-user-response-store"

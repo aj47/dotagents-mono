@@ -3720,7 +3720,16 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /<ResponseHistoryPanel\s+responses=\{responses\}\s+colors=\{colors\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}\s+\{\.\.\.panelChromeState\}/);
   assert.doesNotMatch(chatMessageChromeSource, /return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;/);
   assert.doesNotMatch(responseHistoryPanelSource, /from '@dotagents\/shared\/agent-user-response-store'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?getAgentResponseHistoryMobileRenderState,[\s\S]*?AgentResponseHistoryMobileAnimationState,[\s\S]*?\} from "\.\/agent-user-response-store"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createAgentResponseHistoryMobileStyleSlots,[\s\S]*?getAgentResponseHistoryMobileRenderState,[\s\S]*?AgentResponseHistoryMobileAnimationState,[\s\S]*?\} from "\.\/agent-user-response-store"/);
+  assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobileStyleSlots,/);
+  assert.match(responseHistoryPanelSource, /const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);
+  assert.match(responseHistoryPanelSource, /container:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.container/);
+  assert.match(responseHistoryPanelSource, /header:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.header/);
+  assert.match(responseHistoryPanelSource, /responseItem:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.responseItem/);
+  assert.match(responseHistoryPanelSource, /collapsedPreviewText:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.collapsedPreviewText/);
+  assert.doesNotMatch(responseHistoryPanelSource, /borderRadius:\s*radius\[responseHistorySurface\.container\.borderRadius\]/);
+  assert.doesNotMatch(responseHistoryPanelSource, /backgroundColor:\s*responseHistorySurfaceColors\.container\.backgroundColor/);
+  assert.doesNotMatch(responseHistoryPanelSource, /paddingHorizontal:\s*responseHistorySurface\.item\.paddingHorizontal/);
   assert.match(screenSource, /isMessageQueuePaused/);
   assert.match(screenSource, /onPauseMessageQueue: handlePauseMessageQueue/);
   assert.match(screenSource, /onResumeMessageQueue: handleResumeMessageQueue/);

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  createAgentResponseHistoryMobileStyleSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
 } from '@dotagents/shared/session-presentation';
@@ -99,6 +100,11 @@ export function ResponseHistoryPanel({
   const responseHistorySurfaceColors = responseHistoryRenderState.colors;
   const responseHistoryIcons = responseHistoryRenderState.icons;
   const responseHistoryAnimation = responseHistoryRenderState.animation;
+  const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots({
+    renderState: responseHistoryRenderState,
+    spacing,
+    radius,
+  });
 
   if (!responseHistoryRenderState.shouldRender) {
     return null;
@@ -106,86 +112,49 @@ export function ResponseHistoryPanel({
 
   const styles = StyleSheet.create({
     container: {
-      borderRadius: radius[responseHistorySurface.container.borderRadius],
-      borderWidth: responseHistorySurface.container.borderWidth,
-      borderColor: responseHistorySurfaceColors.container.borderColor,
-      backgroundColor: responseHistorySurfaceColors.container.backgroundColor,
-      overflow: responseHistorySurface.container.overflow,
-      marginHorizontal: spacing[responseHistorySurface.container.marginHorizontal],
-      marginBottom: spacing[responseHistorySurface.container.marginBottom],
+      ...responseHistoryStyleSlots.container,
     },
     header: {
-      flexDirection: responseHistorySurface.header.flexDirection,
-      alignItems: responseHistorySurface.header.alignItems,
-      justifyContent: responseHistorySurface.header.justifyContent,
-      paddingHorizontal: responseHistorySurface.header.paddingHorizontal,
-      paddingVertical: responseHistorySurface.header.paddingVertical,
-      borderBottomWidth: responseHistoryPanelState.headerBorderBottomWidth,
-      borderBottomColor: responseHistorySurfaceColors.header.borderBottomColor,
-      backgroundColor: responseHistorySurfaceColors.header.backgroundColor,
+      ...responseHistoryStyleSlots.header,
     },
     headerLeft: {
-      flexDirection: responseHistorySurface.header.leftFlexDirection,
-      alignItems: responseHistorySurface.header.leftAlignItems,
-      gap: responseHistorySurface.header.gap,
+      ...responseHistoryStyleSlots.headerLeft,
     },
     headerTitle: {
-      fontSize: responseHistorySurface.header.titleFontSize,
-      fontWeight: responseHistorySurface.header.titleFontWeight,
-      color: responseHistorySurfaceColors.header.titleColor,
+      ...responseHistoryStyleSlots.headerTitle,
     },
     badge: {
-      backgroundColor: responseHistorySurfaceColors.badge.backgroundColor,
-      borderRadius: responseHistorySurface.badge.borderRadius,
-      minWidth: responseHistorySurface.badge.minWidth,
-      height: responseHistorySurface.badge.height,
-      alignItems: responseHistorySurface.badge.alignItems,
-      justifyContent: responseHistorySurface.badge.justifyContent,
-      paddingHorizontal: responseHistorySurface.badge.paddingHorizontal,
+      ...responseHistoryStyleSlots.badge,
     },
     badgeText: {
-      fontSize: responseHistorySurface.badge.fontSize,
-      fontWeight: responseHistorySurface.badge.fontWeight,
-      color: responseHistorySurfaceColors.badge.textColor,
+      ...responseHistoryStyleSlots.badgeText,
     },
     list: {
-      maxHeight: responseHistorySurface.list.maxHeight,
+      ...responseHistoryStyleSlots.list,
     },
     responseItem: {
-      paddingHorizontal: responseHistorySurface.item.paddingHorizontal,
-      paddingVertical: responseHistorySurface.item.paddingVertical,
+      ...responseHistoryStyleSlots.responseItem,
     },
     responseHeader: {
-      flexDirection: responseHistorySurface.item.headerFlexDirection,
-      alignItems: responseHistorySurface.item.headerAlignItems,
-      justifyContent: responseHistorySurface.item.headerJustifyContent,
-      marginBottom: responseHistorySurface.item.headerMarginBottom,
+      ...responseHistoryStyleSlots.responseHeader,
     },
     timestamp: {
-      fontSize: responseHistorySurface.item.timestampFontSize,
-      color: responseHistorySurfaceColors.item.timestampColor,
+      ...responseHistoryStyleSlots.timestamp,
     },
     speakButton: {
-      padding: responseHistorySurface.item.speakButtonPadding,
+      ...responseHistoryStyleSlots.speakButton,
     },
     separator: {
-      height: responseHistorySurface.list.separatorHeight,
-      backgroundColor: responseHistorySurfaceColors.list.separatorColor,
+      ...responseHistoryStyleSlots.separator,
     },
     collapsedPreview: {
-      paddingHorizontal: responseHistorySurface.collapsedPreview.paddingHorizontal,
-      paddingBottom: responseHistorySurface.collapsedPreview.paddingBottom,
-      gap: responseHistorySurface.collapsedPreview.gap,
-      backgroundColor: responseHistorySurfaceColors.collapsedPreview.backgroundColor,
+      ...responseHistoryStyleSlots.collapsedPreview,
     },
     collapsedPreviewTimestamp: {
-      fontSize: responseHistorySurface.collapsedPreview.timestampFontSize,
-      color: responseHistorySurfaceColors.collapsedPreview.timestampColor,
+      ...responseHistoryStyleSlots.collapsedPreviewTimestamp,
     },
     collapsedPreviewText: {
-      fontSize: responseHistorySurface.collapsedPreview.previewFontSize,
-      lineHeight: responseHistorySurface.collapsedPreview.previewLineHeight,
-      color: responseHistorySurfaceColors.collapsedPreview.previewColor,
+      ...responseHistoryStyleSlots.collapsedPreviewText,
     },
   });
 

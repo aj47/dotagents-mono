@@ -277,6 +277,106 @@ export interface AgentResponseHistoryMobileRenderState<T> {
   animation: AgentResponseHistoryMobileAnimationState;
 }
 
+type AgentResponseHistoryMobileSurface = typeof AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile;
+
+export type AgentResponseHistoryMobileStyleSpacingToken =
+  | AgentResponseHistoryMobileSurface['container']['marginHorizontal']
+  | AgentResponseHistoryMobileSurface['container']['marginBottom'];
+
+export type AgentResponseHistoryMobileStyleRadiusToken =
+  AgentResponseHistoryMobileSurface['container']['borderRadius'];
+
+export interface AgentResponseHistoryMobileStyleSlotsInput {
+  renderState: Pick<AgentResponseHistoryMobileRenderState<unknown>, 'surface' | 'colors' | 'panel'>;
+  spacing: Readonly<Record<AgentResponseHistoryMobileStyleSpacingToken, number>>;
+  radius: Readonly<Record<AgentResponseHistoryMobileStyleRadiusToken, number>>;
+}
+
+export interface AgentResponseHistoryMobileStyleSlots {
+  container: {
+    borderRadius: number;
+    borderWidth: number;
+    borderColor: string;
+    backgroundColor: string;
+    overflow: AgentResponseHistoryMobileSurface['container']['overflow'];
+    marginHorizontal: number;
+    marginBottom: number;
+  };
+  header: {
+    flexDirection: AgentResponseHistoryMobileSurface['header']['flexDirection'];
+    alignItems: AgentResponseHistoryMobileSurface['header']['alignItems'];
+    justifyContent: AgentResponseHistoryMobileSurface['header']['justifyContent'];
+    paddingHorizontal: number;
+    paddingVertical: number;
+    borderBottomWidth: number;
+    borderBottomColor: string;
+    backgroundColor: string;
+  };
+  headerLeft: {
+    flexDirection: AgentResponseHistoryMobileSurface['header']['leftFlexDirection'];
+    alignItems: AgentResponseHistoryMobileSurface['header']['leftAlignItems'];
+    gap: number;
+  };
+  headerTitle: {
+    fontSize: number;
+    fontWeight: AgentResponseHistoryMobileSurface['header']['titleFontWeight'];
+    color: string;
+  };
+  badge: {
+    backgroundColor: string;
+    borderRadius: number;
+    minWidth: number;
+    height: number;
+    alignItems: AgentResponseHistoryMobileSurface['badge']['alignItems'];
+    justifyContent: AgentResponseHistoryMobileSurface['badge']['justifyContent'];
+    paddingHorizontal: number;
+  };
+  badgeText: {
+    fontSize: number;
+    fontWeight: AgentResponseHistoryMobileSurface['badge']['fontWeight'];
+    color: string;
+  };
+  list: {
+    maxHeight: number;
+  };
+  responseItem: {
+    paddingHorizontal: number;
+    paddingVertical: number;
+  };
+  responseHeader: {
+    flexDirection: AgentResponseHistoryMobileSurface['item']['headerFlexDirection'];
+    alignItems: AgentResponseHistoryMobileSurface['item']['headerAlignItems'];
+    justifyContent: AgentResponseHistoryMobileSurface['item']['headerJustifyContent'];
+    marginBottom: number;
+  };
+  timestamp: {
+    fontSize: number;
+    color: string;
+  };
+  speakButton: {
+    padding: number;
+  };
+  separator: {
+    height: number;
+    backgroundColor: string;
+  };
+  collapsedPreview: {
+    paddingHorizontal: number;
+    paddingBottom: number;
+    gap: number;
+    backgroundColor: string;
+  };
+  collapsedPreviewTimestamp: {
+    fontSize: number;
+    color: string;
+  };
+  collapsedPreviewText: {
+    fontSize: number;
+    lineHeight: number;
+    color: string;
+  };
+}
+
 const NO_RUN_ORDINAL_KEY = 'no-run';
 
 export function getAgentResponseHistoryToggleAccessibilityLabel(isCollapsed: boolean): string {
@@ -390,6 +490,101 @@ export function getAgentResponseHistoryMobileSurfaceRenderState({
   return {
     surface: getAgentResponseHistoryMobileSurfaceState(),
     colors: getAgentResponseHistoryMobileSurfaceColors(colors),
+  };
+}
+
+export function createAgentResponseHistoryMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: AgentResponseHistoryMobileStyleSlotsInput): AgentResponseHistoryMobileStyleSlots {
+  const surface = renderState.surface;
+  const colors = renderState.colors;
+  const panel = renderState.panel;
+
+  return {
+    container: {
+      borderRadius: radius[surface.container.borderRadius],
+      borderWidth: surface.container.borderWidth,
+      borderColor: colors.container.borderColor,
+      backgroundColor: colors.container.backgroundColor,
+      overflow: surface.container.overflow,
+      marginHorizontal: spacing[surface.container.marginHorizontal],
+      marginBottom: spacing[surface.container.marginBottom],
+    },
+    header: {
+      flexDirection: surface.header.flexDirection,
+      alignItems: surface.header.alignItems,
+      justifyContent: surface.header.justifyContent,
+      paddingHorizontal: surface.header.paddingHorizontal,
+      paddingVertical: surface.header.paddingVertical,
+      borderBottomWidth: panel.headerBorderBottomWidth,
+      borderBottomColor: colors.header.borderBottomColor,
+      backgroundColor: colors.header.backgroundColor,
+    },
+    headerLeft: {
+      flexDirection: surface.header.leftFlexDirection,
+      alignItems: surface.header.leftAlignItems,
+      gap: surface.header.gap,
+    },
+    headerTitle: {
+      fontSize: surface.header.titleFontSize,
+      fontWeight: surface.header.titleFontWeight,
+      color: colors.header.titleColor,
+    },
+    badge: {
+      backgroundColor: colors.badge.backgroundColor,
+      borderRadius: surface.badge.borderRadius,
+      minWidth: surface.badge.minWidth,
+      height: surface.badge.height,
+      alignItems: surface.badge.alignItems,
+      justifyContent: surface.badge.justifyContent,
+      paddingHorizontal: surface.badge.paddingHorizontal,
+    },
+    badgeText: {
+      fontSize: surface.badge.fontSize,
+      fontWeight: surface.badge.fontWeight,
+      color: colors.badge.textColor,
+    },
+    list: {
+      maxHeight: surface.list.maxHeight,
+    },
+    responseItem: {
+      paddingHorizontal: surface.item.paddingHorizontal,
+      paddingVertical: surface.item.paddingVertical,
+    },
+    responseHeader: {
+      flexDirection: surface.item.headerFlexDirection,
+      alignItems: surface.item.headerAlignItems,
+      justifyContent: surface.item.headerJustifyContent,
+      marginBottom: surface.item.headerMarginBottom,
+    },
+    timestamp: {
+      fontSize: surface.item.timestampFontSize,
+      color: colors.item.timestampColor,
+    },
+    speakButton: {
+      padding: surface.item.speakButtonPadding,
+    },
+    separator: {
+      height: surface.list.separatorHeight,
+      backgroundColor: colors.list.separatorColor,
+    },
+    collapsedPreview: {
+      paddingHorizontal: surface.collapsedPreview.paddingHorizontal,
+      paddingBottom: surface.collapsedPreview.paddingBottom,
+      gap: surface.collapsedPreview.gap,
+      backgroundColor: colors.collapsedPreview.backgroundColor,
+    },
+    collapsedPreviewTimestamp: {
+      fontSize: surface.collapsedPreview.timestampFontSize,
+      color: colors.collapsedPreview.timestampColor,
+    },
+    collapsedPreviewText: {
+      fontSize: surface.collapsedPreview.previewFontSize,
+      lineHeight: surface.collapsedPreview.previewLineHeight,
+      color: colors.collapsedPreview.previewColor,
+    },
   };
 }
 
