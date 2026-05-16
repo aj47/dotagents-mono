@@ -63,6 +63,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatComposerRuntimeImagePickerLaunchOptions,
+  createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -4410,6 +4411,21 @@ describe("session presentation semantics", () => {
       flexDirection: "row",
       justifyContent: "flex-end",
     })
+    const expansionButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
+      renderState: messageThreadStyle.action.slotButtons.expansion,
+    })
+    expect(expansionButtonStyleSlots.button.backgroundColor).toBe(
+      messageThreadStyle.action.slotButtons.expansion.colors.backgroundColor,
+    )
+    expect(expansionButtonStyleSlots.button.width).toBe(
+      messageThreadStyle.action.slotButtons.expansion.button.width,
+    )
+    expect(expansionButtonStyleSlots.pressed.opacity).toBe(
+      messageThreadStyle.action.slotButtons.expansion.button.pressedOpacity,
+    )
+    expect(expansionButtonStyleSlots.disabled.opacity).toBe(
+      messageThreadStyle.action.slotButtons.expansion.button.disabledOpacity,
+    )
     const threadBodyColors = {
       ...messageThreadStyleColors,
       background: "#ffffff",

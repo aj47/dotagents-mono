@@ -230,6 +230,7 @@ import {
   shouldShowChatMessageTurnDurationBadge,
   toggleChatDisplayExpansionState,
   type ChatMessageActionAvailabilityRenderState,
+  type ChatMessageActionMobileButtonRenderState,
   type ChatMessageActionLayoutState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageConversationContentLike,
@@ -781,6 +782,30 @@ export interface ChatRuntimeTurnDurationMessageMobileStyleSlots {
     lineHeight: number
     fontWeight: ChatRuntimeTurnDurationMessageMobileRenderState["badge"]["fontWeight"]
     color: string
+  }
+}
+
+export interface ChatRuntimeMessageActionButtonMobileStyleSlotsInput {
+  renderState: Pick<ChatMessageActionMobileButtonRenderState, "button" | "colors">
+}
+
+export interface ChatRuntimeMessageActionButtonMobileStyleSlots {
+  button: {
+    alignSelf: ChatMessageActionMobileButtonRenderState["button"]["alignSelf"]
+    width: number
+    height: number
+    marginTop: number
+    borderRadius: number
+    backgroundColor: string
+    alignItems: ChatMessageActionMobileButtonRenderState["button"]["alignItems"]
+    justifyContent: ChatMessageActionMobileButtonRenderState["button"]["justifyContent"]
+    flexShrink: number
+  }
+  pressed: {
+    opacity: number
+  }
+  disabled: {
+    opacity: number
   }
 }
 
@@ -8844,6 +8869,32 @@ export function createChatRuntimeTurnDurationMessageMobileStyleSlots({
       lineHeight: badge.lineHeight,
       fontWeight: badge.fontWeight,
       color: colors.color,
+    },
+  }
+}
+
+export function createChatRuntimeMessageActionButtonMobileStyleSlots({
+  renderState,
+}: ChatRuntimeMessageActionButtonMobileStyleSlotsInput): ChatRuntimeMessageActionButtonMobileStyleSlots {
+  const { button, colors } = renderState
+
+  return {
+    button: {
+      alignSelf: button.alignSelf,
+      width: button.width,
+      height: button.height,
+      marginTop: button.marginTop,
+      borderRadius: button.borderRadius,
+      backgroundColor: colors.backgroundColor,
+      alignItems: button.alignItems,
+      justifyContent: button.justifyContent,
+      flexShrink: button.flexShrink,
+    },
+    pressed: {
+      opacity: button.pressedOpacity,
+    },
+    disabled: {
+      opacity: button.disabledOpacity,
     },
   }
 }
