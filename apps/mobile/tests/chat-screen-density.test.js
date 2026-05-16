@@ -1347,13 +1347,13 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(screenSource, /scrollToBottom: handleScrollToBottomPress,/);
   assert.match(chatMessageChromeSource, /const scrollToBottom = useCallback\(\(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollRef\.current\?\.scrollToEnd\(\{ animated: true \}\);/);
   assert.match(screenSource, /scrollToBottomVisible: !shouldAutoScroll,\s+onScrollToBottom: handleScrollToBottomPress,/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockChromeProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDockChromeProps/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeDockChromeMobileRenderState/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDockChromeMobileProps/);
   assert.match(sessionPresentationSource, /scrollToBottom: getChatRuntimeScrollToBottomMobileRenderState\(\{\s+isVisible: scrollToBottomVisible,\s+colors,\s+\}\),/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDockChromeMobileRenderState,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeDockChromeMobileProps,/);
-  assert.match(chatMessageChromeSource, /return createChatRuntimeDockChromeMobileProps\(\{\s+responseHistoryResponses,[\s\S]*?speakNative: Speech\.speak,[\s\S]*?stopRemoteSpeech: stopRemoteTts,[\s\S]*?scrollToBottomVisible,[\s\S]*?onScrollToBottom,[\s\S]*?voiceOverlayTranscript,[\s\S]*?queuePanelConversationId,[\s\S]*?queuedMessages,[\s\S]*?onResumeMessageQueue,[\s\S]*?onConnectionBannerRetry,[\s\S]*?composer,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const chatMessageRuntimeDock = createChatRuntimeDockChromeMobileProps\(\{\s+\.\.\.dock,[\s\S]*?speakNative: Speech\.speak,[\s\S]*?stopRemoteSpeech: stopRemoteTts,[\s\S]*?colors,[\s\S]*?composer: chatComposerRuntimeDock,/);
   assert.match(sessionPresentationSource, /const dockChromeRenderState = getChatRuntimeDockChromeMobileRenderState\(\{/);
   assert.match(sessionPresentationSource, /scrollToBottomButton: \{\s+renderState: dockChromeRenderState\.scrollToBottom,\s+onPress: onScrollToBottom,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButton\s+\{\.\.\.scrollToBottomButton\}\s+style=\{styles\.scrollToBottomButtonStyle\}/);
