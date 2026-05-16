@@ -4489,6 +4489,40 @@ export interface ChatConversationHomePromptLibraryMobileStyleSlotsInput {
   radius: Readonly<Record<ChatConversationHomePromptLibraryMobileStyleRadiusToken, number>>
 }
 
+type ChatConversationHomePromptEditorMobileStyleSurface =
+  ChatConversationHomePromptLibraryMobileStyleSurface["editorModal"]
+
+export type ChatConversationHomePromptEditorMobileStyleSpacingToken =
+  | ChatConversationHomePromptEditorMobileStyleSurface["overlay"]["padding"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["content"]["padding"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["header"]["gap"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["header"]["marginBottom"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["label"]["marginBottom"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["input"]["paddingHorizontal"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["input"]["marginBottom"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["multilineInput"]["paddingTop"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["multilineInput"]["paddingBottom"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["actions"]["gap"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["actions"]["marginTop"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["cancelButton"]["paddingHorizontal"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["cancelButton"]["paddingVertical"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["saveButton"]["paddingHorizontal"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["saveButton"]["paddingVertical"]
+
+export type ChatConversationHomePromptEditorMobileStyleRadiusToken =
+  | ChatConversationHomePromptEditorMobileStyleSurface["content"]["borderRadius"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["closeButton"]["borderRadius"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["input"]["borderRadius"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["cancelButton"]["borderRadius"]
+  | ChatConversationHomePromptEditorMobileStyleSurface["saveButton"]["borderRadius"]
+
+export interface ChatConversationHomePromptEditorMobileStyleSlotsInput {
+  renderState: ChatConversationHomePromptLibraryMobileStyleRenderState
+  inputPaddingVertical: number
+  spacing: Readonly<Record<ChatConversationHomePromptEditorMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<ChatConversationHomePromptEditorMobileStyleRadiusToken, number>>
+}
+
 export type ChatComposerRuntimeChromeMobileStyleColorPalette =
   & ChatComposerMobileSurfaceRenderStateColorPalette
   & ChatImageAttachmentMobileSurfaceColorPalette
@@ -9005,6 +9039,110 @@ export function createChatConversationHomePromptLibraryMobileStyleSlots({
     },
     chatHomeShortcutActionDangerText: {
       color: colors.shortcutActionText.destructiveColor,
+    },
+  }
+}
+
+export function createChatConversationHomePromptEditorMobileStyleSlots({
+  renderState,
+  inputPaddingVertical,
+  spacing,
+  radius,
+}: ChatConversationHomePromptEditorMobileStyleSlotsInput) {
+  const surface = renderState.surface.editorModal
+  const colors = renderState.colors.editorModal
+
+  return {
+    modalKeyboardAvoidingView: {
+      flex: surface.keyboardAvoidingView.flex,
+    },
+    modalOverlay: {
+      flex: surface.overlay.flex,
+      backgroundColor: colors.overlay.backgroundColor,
+      justifyContent: surface.overlay.justifyContent,
+      padding: spacing[surface.overlay.padding],
+    },
+    modalContent: {
+      backgroundColor: colors.content.backgroundColor,
+      borderRadius: radius[surface.content.borderRadius],
+      padding: spacing[surface.content.padding],
+      borderWidth: surface.content.borderWidth,
+      borderColor: colors.content.borderColor,
+    },
+    modalHeader: {
+      flexDirection: surface.header.flexDirection,
+      alignItems: surface.header.alignItems,
+      justifyContent: surface.header.justifyContent,
+      gap: spacing[surface.header.gap],
+      marginBottom: spacing[surface.header.marginBottom],
+    },
+    modalTitle: {
+      flex: surface.title.flex,
+      fontSize: surface.title.fontSize,
+      lineHeight: surface.title.lineHeight,
+      fontWeight: surface.title.fontWeight,
+      marginBottom: surface.title.marginBottom,
+      color: colors.title.color,
+    },
+    modalCloseButton: {
+      width: surface.closeButton.width,
+      height: surface.closeButton.height,
+      borderRadius: radius[surface.closeButton.borderRadius],
+      alignItems: surface.closeButton.alignItems,
+      justifyContent: surface.closeButton.justifyContent,
+    },
+    modalLabel: {
+      fontSize: surface.label.fontSize,
+      lineHeight: surface.label.lineHeight,
+      fontWeight: surface.label.fontWeight,
+      color: colors.label.color,
+      marginBottom: spacing[surface.label.marginBottom],
+    },
+    modalInput: {
+      borderWidth: surface.input.borderWidth,
+      borderColor: colors.input.borderColor,
+      borderRadius: radius[surface.input.borderRadius],
+      paddingHorizontal: spacing[surface.input.paddingHorizontal],
+      paddingVertical: inputPaddingVertical,
+      backgroundColor: colors.input.backgroundColor,
+      marginBottom: spacing[surface.input.marginBottom],
+      color: colors.input.color,
+      fontSize: surface.input.fontSize,
+    },
+    modalInputMultiline: {
+      height: surface.multilineInput.height,
+      paddingTop: spacing[surface.multilineInput.paddingTop],
+      paddingBottom: spacing[surface.multilineInput.paddingBottom],
+    },
+    modalActions: {
+      flexDirection: surface.actions.flexDirection,
+      justifyContent: surface.actions.justifyContent,
+      gap: spacing[surface.actions.gap],
+      marginTop: spacing[surface.actions.marginTop],
+    },
+    modalCancelButton: {
+      paddingHorizontal: spacing[surface.cancelButton.paddingHorizontal],
+      paddingVertical: spacing[surface.cancelButton.paddingVertical],
+      borderRadius: radius[surface.cancelButton.borderRadius],
+    },
+    modalCancelButtonText: {
+      color: colors.cancelButtonText.color,
+      fontWeight: surface.actionText.fontWeight,
+    },
+    modalSaveButton: {
+      paddingHorizontal: spacing[surface.saveButton.paddingHorizontal],
+      paddingVertical: spacing[surface.saveButton.paddingVertical],
+      borderRadius: radius[surface.saveButton.borderRadius],
+      backgroundColor: colors.saveButton.backgroundColor,
+      minWidth: surface.saveButton.minWidth,
+      alignItems: surface.saveButton.alignItems,
+    },
+    modalSaveButtonDisabled: {
+      opacity: surface.saveButton.disabledOpacity,
+    },
+    modalSaveButtonText: {
+      color: colors.saveButtonText.color,
+      fontWeight: surface.actionText.fontWeight,
     },
   }
 }

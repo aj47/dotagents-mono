@@ -152,6 +152,7 @@ import {
   createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
   createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
   createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
+  createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeFollowUpPresentationState,
@@ -2396,6 +2397,113 @@ describe("session presentation semantics", () => {
       },
       chatHomeShortcutActionDangerText: {
         color: "#dc2626",
+      },
+    })
+    expect(createChatConversationHomePromptEditorMobileStyleSlots({
+      renderState: composerChromeStyle.promptLibrary,
+      inputPaddingVertical: composerChromeStyle.promptEditorInputPaddingVertical,
+      spacing: {
+        xs: 4,
+        sm: 8,
+        md: 12,
+        lg: 16,
+      },
+      radius: {
+        md: 8,
+        lg: 12,
+        xl: 16,
+      },
+    })).toMatchObject({
+      modalKeyboardAvoidingView: {
+        flex: 1,
+      },
+      modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        padding: 16,
+      },
+      modalContent: {
+        backgroundColor: "#f8fafc",
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+      },
+      modalHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        marginBottom: 12,
+      },
+      modalTitle: {
+        flex: 1,
+        fontSize: 18,
+        lineHeight: 26,
+        fontWeight: "600",
+        marginBottom: 0,
+        color: "#0f172a",
+      },
+      modalCloseButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      modalLabel: {
+        fontSize: 12,
+        lineHeight: 16,
+        fontWeight: "600",
+        color: "#0f172a",
+        marginBottom: 4,
+      },
+      modalInput: {
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: "#f8fafc",
+        marginBottom: 12,
+        color: "#0f172a",
+        fontSize: 16,
+      },
+      modalInputMultiline: {
+        height: 120,
+        paddingTop: 8,
+        paddingBottom: 8,
+      },
+      modalActions: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        gap: 8,
+        marginTop: 8,
+      },
+      modalCancelButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+      },
+      modalCancelButtonText: {
+        color: "#64748b",
+        fontWeight: "600",
+      },
+      modalSaveButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: "#2563eb",
+        minWidth: 100,
+        alignItems: "center",
+      },
+      modalSaveButtonDisabled: {
+        opacity: 0.5,
+      },
+      modalSaveButtonText: {
+        color: "#ffffff",
+        fontWeight: "600",
       },
     })
     expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)

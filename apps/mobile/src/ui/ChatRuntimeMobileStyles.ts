@@ -31,6 +31,7 @@ import {
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   createChatRuntimeViewportActivityMobileStyleSlots,
+  createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
@@ -148,15 +149,17 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
   });
   const promptLibraryStyleState = composerChromeStyleState.promptLibrary;
-  const promptLibrarySurface = promptLibraryStyleState.surface;
-  const promptLibrarySurfaceColors = promptLibraryStyleState.colors;
   const promptLibraryStyleSlots = createChatConversationHomePromptLibraryMobileStyleSlots({
     renderState: promptLibraryStyleState,
     spacing,
     radius,
   });
-  const promptEditorModalSurface = promptLibrarySurface.editorModal;
-  const promptEditorInputPaddingVertical = composerChromeStyleState.promptEditorInputPaddingVertical;
+  const promptEditorModalStyleSlots = createChatConversationHomePromptEditorMobileStyleSlots({
+    renderState: promptLibraryStyleState,
+    inputPaddingVertical: composerChromeStyleState.promptEditorInputPaddingVertical,
+    spacing,
+    radius,
+  });
   const messageQueuePanelWrapperState = chatChromeStyleState.messageQueuePanelWrapper;
   const messageQueuePanelWrapperStyleSlots = createMessageQueuePanelMobileWrapperStyleSlots({
     wrapper: messageQueuePanelWrapperState.wrapper,
@@ -617,95 +620,49 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...promptLibraryStyleSlots.chatHomeShortcutActionDangerText,
     },
     modalKeyboardAvoidingView: {
-      flex: promptEditorModalSurface.keyboardAvoidingView.flex,
+      ...promptEditorModalStyleSlots.modalKeyboardAvoidingView,
     },
     modalOverlay: {
-      flex: promptEditorModalSurface.overlay.flex,
-      backgroundColor: promptLibrarySurfaceColors.editorModal.overlay.backgroundColor,
-      justifyContent: promptEditorModalSurface.overlay.justifyContent,
-      padding: spacing[promptEditorModalSurface.overlay.padding],
+      ...promptEditorModalStyleSlots.modalOverlay,
     },
     modalContent: {
-      backgroundColor: promptLibrarySurfaceColors.editorModal.content.backgroundColor,
-      borderRadius: radius[promptEditorModalSurface.content.borderRadius],
-      padding: spacing[promptEditorModalSurface.content.padding],
-      borderWidth: promptEditorModalSurface.content.borderWidth,
-      borderColor: promptLibrarySurfaceColors.editorModal.content.borderColor,
+      ...promptEditorModalStyleSlots.modalContent,
     },
     modalHeader: {
-      flexDirection: promptEditorModalSurface.header.flexDirection,
-      alignItems: promptEditorModalSurface.header.alignItems,
-      justifyContent: promptEditorModalSurface.header.justifyContent,
-      gap: spacing[promptEditorModalSurface.header.gap],
-      marginBottom: spacing[promptEditorModalSurface.header.marginBottom],
+      ...promptEditorModalStyleSlots.modalHeader,
     },
     modalTitle: {
-      flex: promptEditorModalSurface.title.flex,
-      fontSize: promptEditorModalSurface.title.fontSize,
-      lineHeight: promptEditorModalSurface.title.lineHeight,
-      fontWeight: promptEditorModalSurface.title.fontWeight,
-      marginBottom: promptEditorModalSurface.title.marginBottom,
-      color: promptLibrarySurfaceColors.editorModal.title.color,
+      ...promptEditorModalStyleSlots.modalTitle,
     },
     modalCloseButton: {
-      width: promptEditorModalSurface.closeButton.width,
-      height: promptEditorModalSurface.closeButton.height,
-      borderRadius: radius[promptEditorModalSurface.closeButton.borderRadius],
-      alignItems: promptEditorModalSurface.closeButton.alignItems,
-      justifyContent: promptEditorModalSurface.closeButton.justifyContent,
+      ...promptEditorModalStyleSlots.modalCloseButton,
     },
     modalLabel: {
-      fontSize: promptEditorModalSurface.label.fontSize,
-      lineHeight: promptEditorModalSurface.label.lineHeight,
-      fontWeight: promptEditorModalSurface.label.fontWeight,
-      color: promptLibrarySurfaceColors.editorModal.label.color,
-      marginBottom: spacing[promptEditorModalSurface.label.marginBottom],
+      ...promptEditorModalStyleSlots.modalLabel,
     },
     modalInput: {
-      borderWidth: promptEditorModalSurface.input.borderWidth,
-      borderColor: promptLibrarySurfaceColors.editorModal.input.borderColor,
-      borderRadius: radius[promptEditorModalSurface.input.borderRadius],
-      paddingHorizontal: spacing[promptEditorModalSurface.input.paddingHorizontal],
-      paddingVertical: promptEditorInputPaddingVertical,
-      backgroundColor: promptLibrarySurfaceColors.editorModal.input.backgroundColor,
-      marginBottom: spacing[promptEditorModalSurface.input.marginBottom],
-      color: promptLibrarySurfaceColors.editorModal.input.color,
-      fontSize: promptEditorModalSurface.input.fontSize,
+      ...promptEditorModalStyleSlots.modalInput,
     },
     modalInputMultiline: {
-      height: promptEditorModalSurface.multilineInput.height,
-      paddingTop: spacing[promptEditorModalSurface.multilineInput.paddingTop],
-      paddingBottom: spacing[promptEditorModalSurface.multilineInput.paddingBottom],
+      ...promptEditorModalStyleSlots.modalInputMultiline,
     },
     modalActions: {
-      flexDirection: promptEditorModalSurface.actions.flexDirection,
-      justifyContent: promptEditorModalSurface.actions.justifyContent,
-      gap: spacing[promptEditorModalSurface.actions.gap],
-      marginTop: spacing[promptEditorModalSurface.actions.marginTop],
+      ...promptEditorModalStyleSlots.modalActions,
     },
     modalCancelButton: {
-      paddingHorizontal: spacing[promptEditorModalSurface.cancelButton.paddingHorizontal],
-      paddingVertical: spacing[promptEditorModalSurface.cancelButton.paddingVertical],
-      borderRadius: radius[promptEditorModalSurface.cancelButton.borderRadius],
+      ...promptEditorModalStyleSlots.modalCancelButton,
     },
     modalCancelButtonText: {
-      color: promptLibrarySurfaceColors.editorModal.cancelButtonText.color,
-      fontWeight: promptEditorModalSurface.actionText.fontWeight,
+      ...promptEditorModalStyleSlots.modalCancelButtonText,
     },
     modalSaveButton: {
-      paddingHorizontal: spacing[promptEditorModalSurface.saveButton.paddingHorizontal],
-      paddingVertical: spacing[promptEditorModalSurface.saveButton.paddingVertical],
-      borderRadius: radius[promptEditorModalSurface.saveButton.borderRadius],
-      backgroundColor: promptLibrarySurfaceColors.editorModal.saveButton.backgroundColor,
-      minWidth: promptEditorModalSurface.saveButton.minWidth,
-      alignItems: promptEditorModalSurface.saveButton.alignItems,
+      ...promptEditorModalStyleSlots.modalSaveButton,
     },
     modalSaveButtonDisabled: {
-      opacity: promptEditorModalSurface.saveButton.disabledOpacity,
+      ...promptEditorModalStyleSlots.modalSaveButtonDisabled,
     },
     modalSaveButtonText: {
-      color: promptLibrarySurfaceColors.editorModal.saveButtonText.color,
-      fontWeight: promptEditorModalSurface.actionText.fontWeight,
+      ...promptEditorModalStyleSlots.modalSaveButtonText,
     },
     input: {
       ...composerStyleSlots.input,
