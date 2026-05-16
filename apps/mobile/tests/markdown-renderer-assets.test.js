@@ -24,6 +24,9 @@ test('markdown renderer loads conversation image assets through authenticated re
   assert.match(rendererSource, /setError\(getMarkdownImageUnavailableLabel\(\)\)/);
   assert.match(rendererSource, /throw new Error\(getMarkdownImageInvalidAssetUrlMessage\(\)\)/);
   assert.match(rendererSource, /getMarkdownImageLoadErrorFallback\(\)/);
+  assert.match(rendererSource, /const imageLabel = getMarkdownImageFallbackLabel\(alt\);/);
+  assert.match(rendererSource, /return <Text>\{imageLabel\}<\/Text>;/);
+  assert.match(rendererSource, /accessibilityLabel=\{imageLabel\}/);
   assert.match(rendererSource, /await client\.buildRequestHeaders\(\)/);
   assert.match(rendererSource, /rules=\{markdownRules\}/);
   assert.match(rendererSource, /<ThinkSection[\s\S]*?markdownRules=\{markdownRules\}/);
@@ -34,6 +37,7 @@ test('markdown renderer loads conversation image assets through authenticated re
   assert.doesNotMatch(rendererSource, /throw new Error\('Invalid image asset URL\.'\)/);
   assert.doesNotMatch(rendererSource, /'Unable to load image\.'/);
   assert.doesNotMatch(rendererSource, /alt \|\| 'Image'/);
+  assert.doesNotMatch(rendererSource, /accessibilityLabel=\{alt\}/);
 });
 
 test('markdown renderer uses shared think-section copy and surface tokens', () => {

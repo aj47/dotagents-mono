@@ -27,6 +27,7 @@ import {
   formatAgentSelectorSelectAccessibilityLabel,
   getAgentSelectorMobileFallbackAvatarBackgroundColor,
   getAgentSelectorMobileRenderState,
+  type AgentSelectorMobileRenderState,
   type AgentSelectorMobileSurfaceColors,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/agent-selector-options';
@@ -59,7 +60,10 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const agentSelectorSurface = agentSelectorRenderState.surface;
   const agentSelectorColors = agentSelectorRenderState.colors;
   const agentSelectorCloseButton = agentSelectorRenderState.closeButton;
-  const styles = React.useMemo(() => createStyles(agentSelectorColors), [agentSelectorColors]);
+  const styles = React.useMemo(
+    () => createStyles(agentSelectorSurface, agentSelectorColors),
+    [agentSelectorColors, agentSelectorSurface],
+  );
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
   const missingConfigError = agentSelectorCopy.missingConfigError;
 
@@ -252,7 +256,10 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   );
 }
 
-function createStyles(agentSelectorColors: AgentSelectorMobileSurfaceColors) {
+function createStyles(
+  agentSelectorSurface: AgentSelectorMobileRenderState['surface'],
+  agentSelectorColors: AgentSelectorMobileSurfaceColors,
+) {
   return StyleSheet.create({
     backdrop: {
       flex: 1,

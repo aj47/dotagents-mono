@@ -44,6 +44,8 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.match(sheetSource, /const agentSelectorCopy = agentSelectorRenderState\.copy;/);
   assert.match(sheetSource, /const agentSelectorSurface = agentSelectorRenderState\.surface;/);
   assert.match(sheetSource, /const agentSelectorColors = agentSelectorRenderState\.colors;/);
+  assert.match(sheetSource, /createStyles\(agentSelectorSurface, agentSelectorColors\)/);
+  assert.match(sheetSource, /function createStyles\(\s*agentSelectorSurface: AgentSelectorMobileRenderState\['surface'\],\s*agentSelectorColors: AgentSelectorMobileSurfaceColors,/);
   assert.match(sheetSource, /\{agentSelectorRenderState\.title\}/);
   assert.match(sheetSource, /\{agentSelectorRenderState\.emptyLabel\}/);
   assert.match(sheetSource, /formatAgentSelectorSelectAccessibilityLabel\(item\.name\)/);

@@ -130,6 +130,7 @@ const MarkdownImage: React.FC<{
   const [error, setError] = React.useState<string | null>(null);
   const objectUrlRef = React.useRef<string | null>(null);
   const assetRef = React.useMemo(() => parseConversationImageAssetUrl(sourceUrl), [sourceUrl]);
+  const imageLabel = getMarkdownImageFallbackLabel(alt);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -196,14 +197,14 @@ const MarkdownImage: React.FC<{
   }, [assetBaseUrl, assetRef, authToken, sourceUrl]);
 
   if (error) {
-    return <Text>{alt || error}</Text>;
+    return <Text>{alt ? imageLabel : error}</Text>;
   }
 
   if (!imageSource) {
-    return <Text>{getMarkdownImageFallbackLabel(alt)}</Text>;
+    return <Text>{imageLabel}</Text>;
   }
 
-  return <Image source={imageSource} style={style} resizeMode="contain" accessibilityLabel={alt} />;
+  return <Image source={imageSource} style={style} resizeMode="contain" accessibilityLabel={imageLabel} />;
 };
 
 function getMarkdownCodeContent(node: any): string {
