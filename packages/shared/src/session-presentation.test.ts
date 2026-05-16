@@ -14,7 +14,10 @@ import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
   applyChatMessageRuntimePendingTurnStatusState,
+  applyChatMessageRuntimeProgressTurnStatusState,
   applyChatMessageRuntimeSettledTurnStatusState,
+  createChatMessageRuntimeActivityMessage,
+  createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantDebugErrorMessage,
   createChatMessageRuntimeAssistantErrorMessage,
   createChatMessageRuntimeAssistantErrorTurnState,
@@ -32,14 +35,18 @@ import {
   createChatMessageRuntimeHistoryDisplayMessages,
   createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimePendingTurnStatusState,
+  createChatMessageRuntimeProgressMessages,
   createChatMessageRuntimeProgressResponseState,
+  createChatMessageRuntimeProgressTurnState,
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeRecoveredHistoryMessages,
   createChatMessageRuntimeRecoverableHistoryMessages,
   createChatMessageRuntimeResponseHistoryEvents,
+  createChatMessageRuntimeRetryMessage,
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeStreamingText,
   createChatMessageRuntimeStreamingTurnState,
+  createChatMessageRuntimeToolApprovalRequiredMessage,
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
@@ -325,6 +332,7 @@ import {
   mergeChatMessageRuntimeToolResultsIntoLastMessage,
   preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
+  removeChatMessageRuntimeToolApprovalMessage,
   sortChatMessageRuntimeResponseEvents,
   replaceChatMessageRuntimeFinalTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
@@ -1109,6 +1117,144 @@ describe("session presentation semantics", () => {
       toolResults?: Array<{ id: string }>
       branchMessageIndex?: number
     }
+    const retryInfo = {
+      isRetrying: true,
+      attempt: 2,
+      maxAttempts: 3,
+      delaySeconds: 4,
+      reason: "Retrying after rate limit",
+      startedAt: 20,
+    }
+    expect(createChatMessageRuntimeRetryMessage(retryInfo)).toEqual({
+      role: "assistant",
+      content: "Retrying after rate limit",
+      variant: "retry",
+      retryInfo,
+    })
+    expect(createChatMessageRuntimeAssistantFeedbackMessage({
+      thinkingContent: "Checking files",
+      hasToolActivity: true,
+      toolCalls: [{ name: "search" }],
+      toolResults: [{ id: "search-result" }],
+    })).toEqual({
+      role: "assistant",
+      content: formatChatRuntimeAssistantFeedbackContent("Checking files", true),
+      toolCalls: [{ name: "search" }],
+      toolResults: [{ id: "search-result" }],
+    })
+    const activeProgressStep = {
+      id: "step-1",
+      type: "thinking" as const,
+      title: "Inspecting",
+      status: "in_progress" as const,
+      timestamp: 30,
+    }
+    expect(createChatMessageRuntimeActivityMessage(activeProgressStep)).toEqual({
+      role: "assistant",
+      content: formatChatRuntimeActivityContent(activeProgressStep),
+    })
+    const approvalMessage = createChatMessageRuntimeToolApprovalRequiredMessage({
+      approvalId: "approval-1",
+      toolName: "edit",
+    })
+    expect(approvalMessage).toEqual({
+      role: "assistant",
+      content: formatChatRuntimeToolApprovalRequiredContent("edit"),
+      variant: "approval",
+      toolApproval: {
+        approvalId: "approval-1",
+        toolName: "edit",
+      },
+    })
+    expect(removeChatMessageRuntimeToolApprovalMessage([
+      approvalMessage,
+      { role: "assistant", content: "Keep" },
+    ], "approval-1")).toEqual([
+      { role: "assistant", content: "Keep" },
+    ])
+    const progressMessages = createChatMessageRuntimeProgressMessages<RuntimeTestMessage>({
+      sessionId: "session-a",
+      currentIteration: 1,
+      maxIterations: 3,
+      isComplete: false,
+      steps: [
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Thinking",
+          status: "completed",
+          timestamp: 1,
+          content: "Checking files",
+        },
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Search",
+          status: "completed",
+          timestamp: 2,
+          toolCall: { name: "search", arguments: {} },
+        },
+      ],
+      streamingContent: {
+        text: "Streaming answer",
+        isStreaming: true,
+      },
+      pendingToolApproval: {
+        approvalId: "approval-2",
+        toolName: "write",
+        arguments: {},
+      },
+    })
+    expect(progressMessages).toMatchObject([
+      {
+        role: "assistant",
+        content: "Streaming answer",
+        toolCalls: [{ name: "search" }],
+      },
+      {
+        role: "assistant",
+        variant: "approval",
+        toolApproval: { approvalId: "approval-2", toolName: "write" },
+      },
+    ])
+    const progressTurnSummary = {
+      id: "summary-1",
+      sessionId: "session-a",
+      stepNumber: 3,
+      timestamp: 40,
+      actionSummary: "Checked files",
+    }
+    const progressTurnState = createChatMessageRuntimeProgressTurnState<RuntimeTestMessage>({
+      sessionId: "session-a",
+      currentIteration: 1,
+      maxIterations: 3,
+      isComplete: false,
+      steps: [activeProgressStep],
+      latestSummary: progressTurnSummary,
+    })
+    expect(progressTurnState.conversationState).toBe("running")
+    expect(progressTurnState.latestStepSummary).toBe(progressTurnSummary)
+    expect(progressTurnState.updateMessages([
+      { role: "assistant", content: "Ready" },
+      { role: "user", content: "Question" },
+      { role: "assistant", content: "" },
+    ], 1).map((message) => message.content)).toEqual([
+      "Ready",
+      "Question",
+      formatChatRuntimeActivityContent(activeProgressStep),
+    ])
+    let appliedConversationState: string | null = null
+    let appliedStepSummary: unknown = undefined
+    applyChatMessageRuntimeProgressTurnStatusState(progressTurnState, {
+      setConversationState: (value) => {
+        appliedConversationState = value
+      },
+      setLatestStepSummary: (value) => {
+        appliedStepSummary = value
+      },
+    })
+    expect(appliedConversationState).toBe("running")
+    expect(appliedStepSummary).toBe(progressTurnSummary)
     const historyMessages: RuntimeTestMessage[] = [
       { id: "u1", role: "user", content: "Question", timestamp: 1 },
       {

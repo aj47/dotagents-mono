@@ -49,11 +49,8 @@ import {
   type ChatMessageDisplayStateMessageLike,
 } from '@dotagents/shared/chat-utils';
 import {
-  createAgentDelegationProgressMessages,
-  resolveAgentProgressConversationState,
   type ACPDelegationProgress,
   type AgentRetryInfo,
-  type AgentProgressUpdate,
   type AgentStepSummary,
   type AgentUserResponseEvent,
 } from '@dotagents/shared/agent-progress';
@@ -131,17 +128,10 @@ import {
   getChatComposerRuntimeImageDataUrlBytes,
   inferChatComposerRuntimeImageMimeType,
   computeChatMessageRuntimeTurnDurations,
-  createChatMessageRuntimeAssistantTextMessage,
-  createChatMessageRuntimeHistoryDisplayMessages,
   createChatMessageRuntimeRecoverableHistoryMessages,
   createChatMessageRuntimeResponseHistoryEvents,
   createChatMessageRuntimeSessionDisplayMessages,
   createChatMessageRuntimeTurnDurationMessages,
-  createChatMessageRuntimeUserResponseMessages,
-  findChatMessageRuntimeLastUserMessageIndex,
-  formatChatRuntimeActivityContent,
-  formatChatRuntimeAssistantFeedbackContent,
-  formatChatRuntimeToolApprovalRequiredContent,
   getChatMessageRuntimeNextResponseEventOrdinal,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
@@ -159,7 +149,6 @@ import {
   getChatRuntimeHomeQuickStartEmptyMobileRenderState,
   getChatRuntimeHomeQuickStartItemMobileRenderState,
   getChatRuntimeHomeQuickStartPressIntent,
-  getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileIsAtBottom,
@@ -184,17 +173,14 @@ import {
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   hasChatMessageRuntimeLiveAgentTurn,
-  hasChatMessageRuntimeMessagesAfter,
-  isLastChatMessageRuntimeConversationContent,
   removeChatMessageRuntimePendingTurnMessages,
-  replaceChatMessageRuntimeTurnMessages,
+  removeChatMessageRuntimeToolApprovalMessage,
   sortChatMessageRuntimeResponseEvents,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getFollowUpInputPresentation,
   shouldRenderChatRuntimeConversationThread,
-  shouldRenderChatRuntimeActivityStep,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
   type ChatRuntimeDelegationCardMobilePresentationState,
@@ -254,6 +240,7 @@ import {
   type ChatMessageRuntimeResponseHistorySourceMessage,
   type ChatMessageRuntimeSessionMessageLike,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
+  type ChatMessageRuntimeToolApprovalStateMessageLike,
   type ChatMessageRuntimeTurnDurationStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -885,11 +872,6 @@ type ChatRuntimeStatusState = {
   connectionState: RecoveryState | null;
   setConnectionState: Dispatch<SetStateAction<RecoveryState | null>>;
 };
-
-type ChatRuntimeProgressTurnStatusSetters = Pick<
-  ChatRuntimeStatusState,
-  'setLatestStepSummary' | 'setConversationState'
->;
 
 type ChatRuntimeRequestDebugState = {
   requestDebugText: string;
@@ -3779,196 +3761,6 @@ export function useChatComposerRuntimeImageLibraryPickerState(
   });
 }
 
-export type ChatMessageRuntimeRetryMessage = ChatMessageRuntimeAssistantTextMessage & {
-  variant: 'retry';
-  retryInfo: AgentRetryInfo;
-};
-
-export function createChatMessageRuntimeRetryMessage(
-  retryInfo: AgentRetryInfo,
-): ChatMessageRuntimeRetryMessage {
-  return {
-    ...createChatMessageRuntimeAssistantTextMessage(retryInfo.reason),
-    variant: 'retry',
-    retryInfo,
-  };
-}
-
-export type ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> = {
-  role: 'assistant';
-  content: string;
-  toolCalls?: TToolCall[];
-  toolResults?: TToolResult[];
-};
-
-export type ChatMessageRuntimeAssistantFeedbackMessageInput<TToolCall, TToolResult> = {
-  thinkingContent: string | null | undefined;
-  hasToolActivity: boolean;
-  toolCalls?: TToolCall[];
-  toolResults?: TToolResult[];
-};
-
-export function createChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult>({
-  thinkingContent,
-  hasToolActivity,
-  toolCalls,
-  toolResults,
-}: ChatMessageRuntimeAssistantFeedbackMessageInput<
-  TToolCall,
-  TToolResult
->): ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResult> {
-  return {
-    role: 'assistant',
-    content: formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity),
-    ...(toolCalls && toolCalls.length > 0 ? { toolCalls } : {}),
-    ...(toolResults && toolResults.length > 0 ? { toolResults } : {}),
-  };
-}
-
-export type ChatMessageRuntimeActivityMessage = {
-  role: 'assistant';
-  content: string;
-};
-
-export function createChatMessageRuntimeActivityMessage(
-  step?: ChatRuntimeActivityStepLike | null,
-): ChatMessageRuntimeActivityMessage {
-  return {
-    role: 'assistant',
-    content: formatChatRuntimeActivityContent(step),
-  };
-}
-
-export function createChatMessageRuntimeProgressMessages<
-  TMessage extends ChatDisplayMessageLike,
->(
-  update: AgentProgressUpdate,
-): TMessage[] {
-  const messages: TMessage[] = [];
-  const delegationMessages = createAgentDelegationProgressMessages(update.steps) as unknown as TMessage[];
-  console.log('[convertProgressToMessages] Processing update, steps:', update.steps?.length || 0, 'history:', update.conversationHistory?.length || 0, 'isComplete:', update.isComplete);
-
-  if (update.steps && update.steps.length > 0) {
-    let currentToolCalls: any[] = [];
-    let currentToolResults: any[] = [];
-    let thinkingContent = '';
-
-    for (const step of update.steps) {
-      const stepContent = step.content || step.llmContent;
-      if (step.type === 'thinking' && stepContent) {
-        thinkingContent = stepContent;
-      } else if (step.type === 'tool_call') {
-        if (step.toolCall) {
-          currentToolCalls.push(step.toolCall);
-        }
-        if (step.toolResult) {
-          currentToolResults.push(step.toolResult);
-        }
-      } else if (step.type === 'tool_result' && step.toolResult) {
-        currentToolResults.push(step.toolResult);
-      } else if (step.type === 'completion' && stepContent) {
-        thinkingContent = stepContent;
-      }
-    }
-
-    const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
-    const shouldRenderActiveStep = shouldRenderChatRuntimeActivityStep(activeStep);
-    const hasCurrentToolActivity = currentToolCalls.length > 0 || currentToolResults.length > 0;
-    const hasCurrentAssistantFeedback = hasCurrentToolActivity || thinkingContent.trim().length > 0;
-    const hasCurrentStateFeedback =
-      hasCurrentAssistantFeedback ||
-      !!update.pendingToolApproval ||
-      !!update.retryInfo?.isRetrying ||
-      delegationMessages.length > 0 ||
-      !!update.streamingContent?.text;
-
-    if (hasCurrentAssistantFeedback) {
-      messages.push(createChatMessageRuntimeAssistantFeedbackMessage({
-        thinkingContent,
-        hasToolActivity: hasCurrentToolActivity,
-        toolCalls: currentToolCalls,
-        toolResults: currentToolResults,
-      }) as unknown as TMessage);
-    } else if (
-      !update.isComplete &&
-      !hasCurrentStateFeedback &&
-      shouldRenderActiveStep
-    ) {
-      messages.push(createChatMessageRuntimeActivityMessage(activeStep) as unknown as TMessage);
-    }
-  }
-
-  if (update.conversationHistory && update.conversationHistory.length > 0) {
-    const currentTurnStartIndex = findChatMessageRuntimeLastUserMessageIndex(update.conversationHistory);
-    const hasAssistantMessages = hasChatMessageRuntimeMessagesAfter(update.conversationHistory, currentTurnStartIndex);
-    if (hasAssistantMessages) {
-      messages.length = 0;
-      messages.push(...createChatMessageRuntimeHistoryDisplayMessages(update.conversationHistory, {
-        startIndex: currentTurnStartIndex + 1,
-      }) as unknown as TMessage[]);
-    }
-  }
-
-  if (update.retryInfo?.isRetrying) {
-    messages.push(createChatMessageRuntimeRetryMessage(update.retryInfo) as unknown as TMessage);
-  }
-
-  if (update.streamingContent?.text) {
-    if (
-      messages.length > 0
-      && isLastChatMessageRuntimeConversationContent(messages)
-    ) {
-      messages[messages.length - 1].content = update.streamingContent.text;
-    } else {
-      messages.push(createChatMessageRuntimeAssistantTextMessage(update.streamingContent.text) as unknown as TMessage);
-    }
-  }
-
-  if (update.pendingToolApproval) {
-    messages.push(createChatMessageRuntimeToolApprovalRequiredMessage(update.pendingToolApproval) as unknown as TMessage);
-  }
-
-  const messagesWithUserResponse = createChatMessageRuntimeUserResponseMessages(
-    messages,
-    update.userResponse || update.spokenContent,
-  );
-  return [...messagesWithUserResponse, ...delegationMessages];
-}
-
-export function createChatMessageRuntimeProgressTurnState<
-  TMessage extends ChatDisplayMessageLike,
->(
-  update: AgentProgressUpdate,
-  lifecycleState: AgentConversationState = 'running',
-) {
-  const progressMessages = createChatMessageRuntimeProgressMessages<TMessage>(update);
-
-  return {
-    conversationState: resolveAgentProgressConversationState(update, lifecycleState),
-    latestStepSummary: getChatRuntimeLatestStepSummary(update),
-    progressMessages,
-    updateMessages: (
-      messages: readonly TMessage[],
-      messageCountBeforeTurn: number,
-    ) => replaceChatMessageRuntimeTurnMessages(
-      messages,
-      messageCountBeforeTurn,
-      progressMessages,
-    ),
-  };
-}
-
-export function applyChatMessageRuntimeProgressTurnStatusState(
-  progressTurnState: {
-    conversationState: AgentConversationState;
-    latestStepSummary?: AgentStepSummary | null;
-  },
-  statusSetters: ChatRuntimeProgressTurnStatusSetters,
-): void {
-  statusSetters.setConversationState(progressTurnState.conversationState);
-  statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary ?? null);
-}
-
 export function useChatMessageRuntimeTurnDurations({
   messages,
   conversationState,
@@ -4200,47 +3992,6 @@ export function useChatMessageRuntimeThreadExpansionState<TMessage extends ChatM
     toggleToolApprovalArguments,
     resetThreadExpansionState,
   };
-}
-
-export type ChatMessageRuntimeToolApprovalLike = {
-  toolName: string;
-};
-
-export type ChatMessageRuntimeToolApprovalStateMessageLike = {
-  toolApproval?: {
-    approvalId?: string;
-  } | null;
-};
-
-export type ChatMessageRuntimeToolApprovalRequiredMessage<
-  TToolApproval extends ChatMessageRuntimeToolApprovalLike,
-> = {
-  role: 'assistant';
-  content: string;
-  variant: 'approval';
-  toolApproval: TToolApproval;
-};
-
-export function createChatMessageRuntimeToolApprovalRequiredMessage<
-  TToolApproval extends ChatMessageRuntimeToolApprovalLike,
->(
-  toolApproval: TToolApproval,
-): ChatMessageRuntimeToolApprovalRequiredMessage<TToolApproval> {
-  return {
-    role: 'assistant',
-    content: formatChatRuntimeToolApprovalRequiredContent(toolApproval.toolName),
-    variant: 'approval',
-    toolApproval,
-  };
-}
-
-export function removeChatMessageRuntimeToolApprovalMessage<
-  TMessage extends ChatMessageRuntimeToolApprovalStateMessageLike,
->(
-  messages: readonly TMessage[],
-  approvalId: string,
-): TMessage[] {
-  return messages.filter((message) => message.toolApproval?.approvalId !== approvalId);
 }
 
 export function createChatMessageRuntimeViewportChromeProps<
