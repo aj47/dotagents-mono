@@ -88,7 +88,9 @@ import {
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
+  createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -206,6 +208,8 @@ import {
   type ChatRuntimeConversationToolExecutionDetailMobileRowState,
   type ChatRuntimeConversationToolExecutionStackMobileState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
+  type ChatRuntimeToolActivityGroupBoundaryMobileKind,
+  type ChatRuntimeToolActivityGroupHeaderMobileKind,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
@@ -1568,7 +1572,7 @@ type ChatMessageDelegationCardProps = Omit<
 type ChatMessageDelegationCardPropsInput =
   ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;
 
-type ChatMessageToolActivityGroupHeaderKind = 'collapsed' | 'expanded';
+type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
 
 type ChatMessageToolActivityGroupToggleStyles = {
   container: StyleProp<ViewStyle>;
@@ -1598,7 +1602,7 @@ type ChatMessageToolActivityGroupFooterProps = {
   styles: ChatMessageToolActivityGroupFooterStyles;
 };
 
-type ChatMessageToolActivityGroupBoundaryKind = ChatMessageToolActivityGroupHeaderKind | 'footer';
+type ChatMessageToolActivityGroupBoundaryKind = ChatRuntimeToolActivityGroupBoundaryMobileKind;
 
 type ChatMessageToolActivityGroupBoundaryStyles = {
   toggle: ChatMessageToolActivityGroupToggleStyles;
@@ -7823,10 +7827,10 @@ export function ChatMessageToolActivityGroupToggle({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupToggleProps) {
-  const headerState = headerKind === 'collapsed'
-    ? renderState.collapsedHeader
-    : renderState.expandedHeader;
-  const { summary } = renderState;
+  const { headerState, summary } = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+    renderState,
+    headerKind,
+  });
 
   return (
     <Pressable
@@ -7906,22 +7910,26 @@ export function ChatMessageToolActivityGroupBoundary({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupBoundaryProps) {
-  if (kind === 'footer') {
+  const boundaryParts = createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
+    renderState,
+    kind,
+    onPress,
+    styles,
+  });
+
+  if (boundaryParts.footer) {
     return (
       <ChatMessageToolActivityGroupFooter
-        renderState={renderState}
-        onPress={onPress}
-        styles={styles.footer}
+        {...boundaryParts.footer}
       />
     );
   }
 
+  if (!boundaryParts.toggle) return null;
+
   return (
     <ChatMessageToolActivityGroupToggle
-      renderState={renderState}
-      headerKind={kind}
-      onPress={onPress}
-      styles={styles.toggle}
+      {...boundaryParts.toggle}
     />
   );
 }

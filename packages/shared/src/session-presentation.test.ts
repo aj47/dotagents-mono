@@ -98,7 +98,9 @@ import {
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
+  createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -6987,6 +6989,59 @@ describe("session presentation semantics", () => {
       },
       leadingBoundary: null,
       trailingBoundary: null,
+    })
+    const activityGroupToggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+      renderState: {
+        collapsedHeader: "collapsed-header-state",
+        expandedHeader: "expanded-header-state",
+        summary: "activity-summary",
+      },
+      headerKind: "collapsed",
+    })
+    expect(activityGroupToggleParts).toEqual({
+      headerState: "collapsed-header-state",
+      summary: "activity-summary",
+    })
+    expect(createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+      renderState: {
+        collapsedHeader: "collapsed-header-state",
+        expandedHeader: "expanded-header-state",
+        summary: "activity-summary",
+      },
+      headerKind: "expanded",
+    }).headerState).toBe("expanded-header-state")
+    expect(createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
+      renderState: "activity-group-state",
+      kind: "footer",
+      onPress: "toggle-group",
+      styles: {
+        toggle: "toggle-styles",
+        footer: "footer-styles",
+      },
+    })).toEqual({
+      toggle: null,
+      footer: {
+        renderState: "activity-group-state",
+        onPress: "toggle-group",
+        styles: "footer-styles",
+      },
+    })
+    expect(createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
+      renderState: "activity-group-state",
+      kind: "collapsed",
+      onPress: "toggle-group",
+      styles: {
+        toggle: "toggle-styles",
+        footer: "footer-styles",
+      },
+    })).toEqual({
+      toggle: {
+        renderState: "activity-group-state",
+        headerKind: "collapsed",
+        onPress: "toggle-group",
+        styles: "toggle-styles",
+      },
+      footer: null,
     })
     const runtimeThreadSurfaceStyles = {
       surfaceStyle: "thread-surface",

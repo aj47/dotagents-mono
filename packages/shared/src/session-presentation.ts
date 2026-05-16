@@ -2068,6 +2068,67 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   }) | null
 }
 
+export type ChatRuntimeToolActivityGroupHeaderMobileKind = "collapsed" | "expanded"
+
+export type ChatRuntimeToolActivityGroupBoundaryMobileKind =
+  ChatRuntimeToolActivityGroupHeaderMobileKind | "footer"
+
+export interface ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<
+  TRenderState extends {
+    collapsedHeader: unknown
+    expandedHeader: unknown
+    summary: unknown
+  } = Pick<ToolActivityGroupMobileRenderState, "collapsedHeader" | "expandedHeader" | "summary">,
+> {
+  renderState: TRenderState
+  headerKind: ChatRuntimeToolActivityGroupHeaderMobileKind
+}
+
+export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
+  TRenderState extends {
+    collapsedHeader: unknown
+    expandedHeader: unknown
+    summary: unknown
+  } = Pick<ToolActivityGroupMobileRenderState, "collapsedHeader" | "expandedHeader" | "summary">,
+> {
+  headerState: TRenderState["collapsedHeader"] | TRenderState["expandedHeader"]
+  summary: TRenderState["summary"]
+}
+
+export interface ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput<
+  TRenderState = ToolActivityGroupMobileRenderState,
+  TOnPress = unknown,
+  TToggleStyles = unknown,
+  TFooterStyles = unknown,
+> {
+  renderState: TRenderState
+  kind: ChatRuntimeToolActivityGroupBoundaryMobileKind
+  onPress?: TOnPress
+  styles: {
+    toggle: TToggleStyles
+    footer: TFooterStyles
+  }
+}
+
+export interface ChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
+  TRenderState = ToolActivityGroupMobileRenderState,
+  TOnPress = unknown,
+  TToggleStyles = unknown,
+  TFooterStyles = unknown,
+> {
+  toggle: ({
+    renderState: TRenderState
+    headerKind: ChatRuntimeToolActivityGroupHeaderMobileKind
+    onPress: TOnPress | undefined
+    styles: TToggleStyles
+  }) | null
+  footer: ({
+    renderState: TRenderState
+    onPress: TOnPress | undefined
+    styles: TFooterStyles
+  }) | null
+}
+
 export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsPartsInput<
   TGroupRenderState extends {
     shouldRenderExpandedHeader?: boolean
@@ -14202,6 +14263,68 @@ export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsPar
       style: styles.inlineActivity.style,
       spinnerStyle: styles.inlineActivity.spinnerStyle,
     } : null,
+  }
+}
+
+export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
+  TRenderState extends {
+    collapsedHeader: unknown
+    expandedHeader: unknown
+    summary: unknown
+  },
+>({
+  renderState,
+  headerKind,
+}: ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<TRenderState>):
+  ChatRuntimeToolActivityGroupToggleMobilePropsParts<TRenderState> {
+  return {
+    headerState: headerKind === "collapsed"
+      ? renderState.collapsedHeader
+      : renderState.expandedHeader,
+    summary: renderState.summary,
+  }
+}
+
+export function createChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TToggleStyles,
+  TFooterStyles,
+>({
+  renderState,
+  kind,
+  onPress,
+  styles,
+}: ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TToggleStyles,
+  TFooterStyles
+>): ChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TToggleStyles,
+  TFooterStyles
+> {
+  if (kind === "footer") {
+    return {
+      toggle: null,
+      footer: {
+        renderState,
+        onPress,
+        styles: styles.footer,
+      },
+    }
+  }
+
+  return {
+    toggle: {
+      renderState,
+      headerKind: kind,
+      onPress,
+      styles: styles.toggle,
+    },
+    footer: null,
   }
 }
 
