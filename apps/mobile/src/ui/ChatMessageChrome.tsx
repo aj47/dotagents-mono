@@ -43,12 +43,6 @@ import {
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
-  createChatRuntimeRemoteSpeechSettingsState,
-  getChatRuntimeDefaultRemoteSpeechSettingsState,
-  type ChatRuntimeRemoteSpeechProvider,
-  type ChatRuntimeRemoteSpeechSettingsState,
-} from '@dotagents/shared/text-to-speech-settings';
-import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   sortPredefinedPromptsByUpdatedAt,
@@ -144,7 +138,11 @@ import {
   formatConnectionStatus,
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
+  createChatRuntimeRemoteSpeechSettingsState,
+  getChatRuntimeDefaultRemoteSpeechSettingsState,
   type RecoveryState,
+  type ChatRuntimeRemoteSpeechProvider,
+  type ChatRuntimeRemoteSpeechSettingsState,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
   type ChatRuntimeDelegationCardMobilePresentationState,

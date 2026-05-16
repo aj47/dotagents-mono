@@ -41,6 +41,13 @@ export {
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
 } from "./tts-preprocessing"
+export {
+  createChatRuntimeEffectiveRemoteSpeechSettingsState,
+  createChatRuntimeRemoteSpeechSettingsState,
+  getChatRuntimeDefaultRemoteSpeechSettingsState,
+  type ChatRuntimeRemoteSpeechProvider,
+  type ChatRuntimeRemoteSpeechSettingsState,
+} from "./text-to-speech-settings"
 import {
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,

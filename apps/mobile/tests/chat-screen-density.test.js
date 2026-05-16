@@ -4590,7 +4590,9 @@ test('keeps session lifecycle refs in chat chrome state hooks', () => {
 });
 
 test('routes every desktop TTS provider through the paired remote TTS endpoint', () => {
-  assert.match(chatScreenSource, /from '@dotagents\/shared\/text-to-speech-settings';/);
+  assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/text-to-speech-settings';/);
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/text-to-speech-settings';/);
+  assert.match(sessionPresentationSource, /export \{\s+createChatRuntimeEffectiveRemoteSpeechSettingsState,\s+createChatRuntimeRemoteSpeechSettingsState,\s+getChatRuntimeDefaultRemoteSpeechSettingsState,\s+type ChatRuntimeRemoteSpeechProvider,\s+type ChatRuntimeRemoteSpeechSettingsState,\s+\} from "\.\/text-to-speech-settings"/);
   assert.match(screenSource, /const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatRuntimeDefaultRemoteSpeechSettingsState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeRemoteSpeechSettingsState,/);
   assert.match(screenSource, /const \{\s+remoteTtsProvider,\s+remoteTtsVoice,\s+remoteTtsModel,\s+remoteTtsRate,\s+applyRemoteSpeechSettings,\s+\} = useChatMessageRuntimeRemoteSpeechSettingsState\(DEFAULT_REMOTE_SPEECH_SETTINGS\);/);

@@ -81,10 +81,6 @@ import type {
 } from '@dotagents/shared/api-types';
 import { createChatRuntimeMobileConfigState } from '@dotagents/shared/mobile-app-config';
 import {
-  createChatRuntimeEffectiveRemoteSpeechSettingsState,
-  getChatRuntimeDefaultRemoteSpeechSettingsState,
-} from '@dotagents/shared/text-to-speech-settings';
-import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
   applyChatMessageRuntimePendingTurnStatusState,
@@ -106,6 +102,8 @@ import {
   createChatRuntimeCompletedDebugState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
+  createChatRuntimeEffectiveRemoteSpeechSettingsState,
+  getChatRuntimeDefaultRemoteSpeechSettingsState,
   createChatRuntimeRequestSentDebugState,
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
