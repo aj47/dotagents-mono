@@ -66,10 +66,6 @@ import {
 } from '@dotagents/shared/predefined-prompts';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
-  formatConnectionStatus,
-  type RecoveryState,
-} from '@dotagents/shared/connection-recovery';
-import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
@@ -149,6 +145,8 @@ import {
   getChatComposerRuntimeTextEntryMobileRenderState,
   mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
+  formatConnectionStatus,
+  type RecoveryState,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
   type ChatRuntimeDelegationCardMobilePresentationState,

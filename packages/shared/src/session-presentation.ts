@@ -35,6 +35,7 @@ import {
 } from "./agent-progress"
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
+export { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 import {
   createHandsFreeComposerPermissionDeniedDebugState,

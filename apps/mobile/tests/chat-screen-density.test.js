@@ -1584,6 +1584,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(screenSource, /retryButtonText:\s*\{[\s\S]*?fontWeight:\s*connectionBannerSurface\.retryButton\.fontWeight/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeConnectionStatus\(state\)/);
   assert.match(chatMessageChromeSource, /formatConnectionStatus,/);
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/connection-recovery';/);
+  assert.match(sessionPresentationSource, /export \{ formatConnectionStatus, type RecoveryState \} from "\.\/connection-recovery"/);
   assert.doesNotMatch(chatMessageChromeSource, /export function formatChatMessageRuntimeConnectionStatus/);
   assert.doesNotMatch(screenSource, /formatConnectionStatus,/);
   assert.doesNotMatch(screenSource, /formatConnectionStatus\(state\)/);
