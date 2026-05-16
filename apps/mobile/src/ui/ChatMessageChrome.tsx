@@ -114,7 +114,6 @@ import {
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
-  getChatComposerMobileControlState,
   getChatComposerQueueMobileActionState,
   getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
@@ -7411,7 +7410,6 @@ export function createChatComposerRuntimeDockProps({
   onMicPress,
   micWrapperRef,
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
-  const mobileComposerControls = getChatComposerMobileControlState();
   const isWebPlatform = chrome.textEntry.webAccessibility.isWebPlatform;
   const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState({
     conversationState: composerControlConversationState,
@@ -7430,6 +7428,7 @@ export function createChatComposerRuntimeDockProps({
     messageQueueEnabled: composerControlMessageQueueEnabled,
     colors: composerControlColors,
   });
+  const mobileComposerControls = controlRenderState.controls;
   const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
     colors: pendingImagesColors,
   });

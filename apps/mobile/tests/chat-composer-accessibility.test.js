@@ -41,7 +41,8 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(chatMessageChromeSource, /getChatComposerRuntimeFollowUpPresentationState/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeFollowUpPresentationState/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileControlState/);
-  assert.match(chatMessageChromeSource, /getChatComposerMobileControlState/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatComposerMobileControlState/);
+  assert.match(sessionPresentationSource, /controls: ChatComposerMobileControlState/);
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
   assert.match(sessionPresentationSource, /getChatComposerMobileActionAvailabilityRenderState/);
@@ -49,7 +50,7 @@ test('uses shared session presentation for mobile composer copy and disabled sta
   assert.match(sessionPresentationSource, /getChatComposerSubmitMobileRenderState/);
   assert.match(sessionPresentationSource, /getChatComposerTextToSpeechMobileRenderState/);
   assert.match(sessionPresentationSource, /getChatComposerEditBeforeSendMobileRenderState/);
-  assert.match(chatMessageChromeSource, /const mobileComposerControls = getChatComposerMobileControlState\(\);/);
+  assert.match(chatMessageChromeSource, /const mobileComposerControls = controlRenderState\.controls;/);
   assert.doesNotMatch(screenSource, /mobileComposerQueueRenderState/);
   assert.match(screenSource, /composerControlHasContent: composerHasContent,[\s\S]*?composerControlConversationState: conversationState,[\s\S]*?composerControlIsResponding: responding,[\s\S]*?onImageAttachmentPress: handlePickImages,/);
   assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);

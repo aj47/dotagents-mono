@@ -3250,6 +3250,7 @@ export interface ChatComposerRuntimeControlMobileRenderStateInput {
 }
 
 export interface ChatComposerRuntimeControlMobileRenderState {
+  controls: ChatComposerMobileControlState
   actionAvailability: ChatComposerMobileActionAvailabilityRenderState
   visibility: ChatComposerMobileVisibilityRenderState
   imageAttachment: ChatComposerImageAttachmentMobileRenderState
@@ -7344,6 +7345,10 @@ export function getChatComposerRuntimeControlMobileRenderState({
   messageQueueEnabled = false,
   colors,
 }: ChatComposerRuntimeControlMobileRenderStateInput): ChatComposerRuntimeControlMobileRenderState {
+  const controls = getChatComposerMobileControlState({
+    textToSpeechEnabled: ttsEnabled,
+    editBeforeSendEnabled,
+  })
   const micLabel = getHandsFreeMicButtonLabel({
     handsFree,
     phase: micPhase,
@@ -7356,6 +7361,7 @@ export function getChatComposerRuntimeControlMobileRenderState({
   })
 
   return {
+    controls,
     actionAvailability,
     visibility: getChatComposerMobileVisibilityRenderState({
       handsFree,

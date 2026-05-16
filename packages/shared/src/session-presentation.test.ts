@@ -2192,6 +2192,10 @@ describe("session presentation semantics", () => {
     expect(composerControlRenderState.actionAvailability.queueAction.isDisabled).toBe(false)
     expect(composerControlRenderState.actionAvailability.submitAction.isDisabled).toBe(false)
     expect(composerControlRenderState.visibility.queueAction.shouldRender).toBe(false)
+    expect(composerControlRenderState.controls).toEqual(getChatComposerMobileControlState({
+      textToSpeechEnabled: true,
+      editBeforeSendEnabled: true,
+    }))
     expect(composerControlRenderState.imageAttachment.isActive).toBe(true)
     expect(composerControlRenderState.textToSpeech.isActive).toBe(true)
     expect(composerControlRenderState.editBeforeSend.isActive).toBe(true)
