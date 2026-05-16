@@ -24,14 +24,12 @@ import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi
 import { useProfile } from '../store/profile';
 import {
   buildSelectorProfiles,
-  formatAgentSelectorSelectAccessibilityLabel,
-  getAgentSelectorMobileFallbackAvatarBackgroundColor,
+  getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
   type AgentSelectorMobileRenderState,
   type AgentSelectorMobileSurfaceColors,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/agent-selector-options';
-import { getAgentAvatarColors } from '@dotagents/shared/agent-avatar-colors';
 
 interface AgentSelectorSheetProps {
   visible: boolean;
@@ -132,25 +130,26 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   };
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
-    const isSelected = currentProfile?.id === item.id;
-    const profileSummary = item.description || item.guidelines;
-    const fallbackAvatarColor = getAgentAvatarColors(item.id)[0];
-    const fallbackAvatarBackgroundColor = getAgentSelectorMobileFallbackAvatarBackgroundColor(fallbackAvatarColor);
+    const profileItemRenderState = getAgentSelectorMobileProfileItemRenderState({
+      profile: item,
+      currentProfileId: currentProfile?.id,
+      isSwitching,
+    });
     return (
       <TouchableOpacity
-        style={[styles.profileItem, isSelected && styles.profileItemSelected]}
+        style={[styles.profileItem, profileItemRenderState.isSelected && styles.profileItemSelected]}
         onPress={() => handleSelectProfile(item)}
-        disabled={isSwitching}
-        activeOpacity={agentSelectorSurface.profileItem.pressedOpacity}
-        accessibilityRole={agentSelectorSurface.profileItem.accessibilityRole}
-        accessibilityLabel={formatAgentSelectorSelectAccessibilityLabel(item.name)}
-        accessibilityState={{ selected: isSelected, disabled: isSwitching }}
+        disabled={profileItemRenderState.isDisabled}
+        activeOpacity={profileItemRenderState.activeOpacity}
+        accessibilityRole={profileItemRenderState.accessibilityRole}
+        accessibilityLabel={profileItemRenderState.accessibilityLabel}
+        accessibilityState={profileItemRenderState.accessibilityState}
       >
         <View
           style={[
             styles.profileAvatar,
             !item.avatarDataUrl && {
-              backgroundColor: fallbackAvatarBackgroundColor,
+              backgroundColor: profileItemRenderState.fallbackAvatar.backgroundColor,
             },
           ]}
         >
@@ -170,21 +169,21 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         </View>
         <View style={styles.profileInfo}>
           <Text
-            style={[styles.profileName, isSelected && styles.profileNameSelected]}
+            style={[styles.profileName, profileItemRenderState.isSelected && styles.profileNameSelected]}
             numberOfLines={agentSelectorSurface.profileName.numberOfLines}
           >
             {item.name}
           </Text>
-          {profileSummary && (
+          {profileItemRenderState.shouldRenderProfileSummary && (
             <Text
               style={styles.profileDescription}
               numberOfLines={agentSelectorSurface.profileDescription.numberOfLines}
             >
-              {profileSummary}
+              {profileItemRenderState.profileSummary}
             </Text>
           )}
         </View>
-        {isSelected && (
+        {profileItemRenderState.isSelected && (
           <Ionicons
             name={agentSelectorSurface.checkIcon.name}
             size={agentSelectorSurface.checkIcon.size}

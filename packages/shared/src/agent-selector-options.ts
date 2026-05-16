@@ -5,6 +5,7 @@ import {
   type LegacyMainAgentMode,
 } from "./main-agent-selection"
 import { hexToRgba } from "./colors"
+import { getAgentAvatarColors } from "./agent-avatar-colors"
 
 export type AgentSelectorProfileCandidate = {
   id: string
@@ -238,6 +239,29 @@ export interface AgentSelectorMobileRenderStateInput {
   colors: AgentSelectorMobileSurfaceColorPalette
 }
 
+export interface AgentSelectorMobileProfileItemRenderStateInput {
+  profile: SelectableAgentProfile
+  currentProfileId?: string | null
+  isSwitching?: boolean
+}
+
+export interface AgentSelectorMobileProfileItemRenderState {
+  isSelected: boolean
+  isDisabled: boolean
+  profileSummary: string
+  shouldRenderProfileSummary: boolean
+  activeOpacity: typeof AGENT_SELECTOR_PRESENTATION.mobile.profileItem.pressedOpacity
+  accessibilityRole: typeof AGENT_SELECTOR_PRESENTATION.mobile.profileItem.accessibilityRole
+  accessibilityLabel: string
+  accessibilityState: {
+    selected: boolean
+    disabled: boolean
+  }
+  fallbackAvatar: {
+    backgroundColor: string
+  }
+}
+
 export interface AgentSelectorMobileRenderState {
   copy: typeof AGENT_SELECTOR_PRESENTATION.sheet
   surface: typeof AGENT_SELECTOR_PRESENTATION.mobile
@@ -437,6 +461,34 @@ export function getAgentSelectorMobileRenderState({
         size: closeIcon.size,
         color: surfaceColors.headerCloseIcon.color,
       },
+    },
+  }
+}
+
+export function getAgentSelectorMobileProfileItemRenderState({
+  profile,
+  currentProfileId = null,
+  isSwitching = false,
+}: AgentSelectorMobileProfileItemRenderStateInput): AgentSelectorMobileProfileItemRenderState {
+  const profileSummary = profile.description || profile.guidelines || ""
+  const fallbackAvatarColor = getAgentAvatarColors(profile.id)[0]
+  const isSelected = currentProfileId === profile.id
+  const isDisabled = isSwitching === true
+
+  return {
+    isSelected,
+    isDisabled,
+    profileSummary,
+    shouldRenderProfileSummary: profileSummary.length > 0,
+    activeOpacity: AGENT_SELECTOR_PRESENTATION.mobile.profileItem.pressedOpacity,
+    accessibilityRole: AGENT_SELECTOR_PRESENTATION.mobile.profileItem.accessibilityRole,
+    accessibilityLabel: formatAgentSelectorSelectAccessibilityLabel(profile.name),
+    accessibilityState: {
+      selected: isSelected,
+      disabled: isDisabled,
+    },
+    fallbackAvatar: {
+      backgroundColor: getAgentSelectorMobileFallbackAvatarBackgroundColor(fallbackAvatarColor),
     },
   }
 }

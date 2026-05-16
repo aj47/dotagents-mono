@@ -39,21 +39,21 @@ test('keeps the mobile agent selector title shrink-safe beside the header close 
 
 test('uses shared selector presentation tokens and desktop-like avatar rows', () => {
   assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
-  assert.match(sheetSource, /getAgentSelectorMobileFallbackAvatarBackgroundColor/);
+  assert.match(sheetSource, /getAgentSelectorMobileProfileItemRenderState/);
   assert.match(sheetSource, /const agentSelectorRenderState = React\.useMemo\([\s\S]*?getAgentSelectorMobileRenderState\(\{[\s\S]*?selectorMode,[\s\S]*?colors: theme\.colors,/);
   assert.match(sheetSource, /const agentSelectorCopy = agentSelectorRenderState\.copy;/);
   assert.match(sheetSource, /const agentSelectorSurface = agentSelectorRenderState\.surface;/);
   assert.match(sheetSource, /const agentSelectorColors = agentSelectorRenderState\.colors;/);
   assert.match(sheetSource, /createStyles\(agentSelectorSurface, agentSelectorColors\)/);
   assert.match(sheetSource, /function createStyles\(\s*agentSelectorSurface: AgentSelectorMobileRenderState\['surface'\],\s*agentSelectorColors: AgentSelectorMobileSurfaceColors,/);
+  assert.match(sheetSource, /const profileItemRenderState = getAgentSelectorMobileProfileItemRenderState\(\{[\s\S]*?profile: item,[\s\S]*?currentProfileId: currentProfile\?\.id,[\s\S]*?isSwitching,/);
   assert.match(sheetSource, /\{agentSelectorRenderState\.title\}/);
   assert.match(sheetSource, /\{agentSelectorRenderState\.emptyLabel\}/);
-  assert.match(sheetSource, /formatAgentSelectorSelectAccessibilityLabel\(item\.name\)/);
-  assert.match(sheetSource, /activeOpacity=\{agentSelectorSurface\.profileItem\.pressedOpacity\}/);
-  assert.match(sheetSource, /accessibilityRole=\{agentSelectorSurface\.profileItem\.accessibilityRole\}/);
-  assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching \}\}/);
-  assert.match(sheetSource, /getAgentAvatarColors\(item\.id\)\[0\]/);
-  assert.match(sheetSource, /getAgentSelectorMobileFallbackAvatarBackgroundColor\(fallbackAvatarColor\)/);
+  assert.match(sheetSource, /activeOpacity=\{profileItemRenderState\.activeOpacity\}/);
+  assert.match(sheetSource, /accessibilityRole=\{profileItemRenderState\.accessibilityRole\}/);
+  assert.match(sheetSource, /accessibilityLabel=\{profileItemRenderState\.accessibilityLabel\}/);
+  assert.match(sheetSource, /accessibilityState=\{profileItemRenderState\.accessibilityState\}/);
+  assert.match(sheetSource, /profileItemRenderState\.fallbackAvatar\.backgroundColor/);
   assert.match(sheetSource, /<Image[\s\S]*?source=\{\{ uri: item\.avatarDataUrl \}\}/);
   assert.match(sheetSource, /<Ionicons[\s\S]*?name=\{agentSelectorSurface\.avatar\.fallbackIconName\}/);
   assert.match(sheetSource, /name=\{agentSelectorSurface\.checkIcon\.name\}/);
@@ -67,6 +67,8 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.match(sheetSource, /profileAvatar:\s*\{[\s\S]*?alignItems:\s*agentSelectorSurface\.avatar\.alignItems,[\s\S]*?justifyContent:\s*agentSelectorSurface\.avatar\.justifyContent,[\s\S]*?overflow:\s*agentSelectorSurface\.avatar\.overflow,[\s\S]*?flexShrink:\s*agentSelectorSurface\.avatar\.flexShrink,/);
   assert.match(sheetSource, /profileAvatarImage:\s*\{[\s\S]*?width:\s*agentSelectorSurface\.avatarImage\.width,[\s\S]*?height:\s*agentSelectorSurface\.avatarImage\.height,/);
   assert.match(sheetSource, /profileInfo:\s*\{[\s\S]*?flex:\s*agentSelectorSurface\.profileInfo\.flex,[\s\S]*?minWidth:\s*agentSelectorSurface\.profileInfo\.minWidth,/);
+  assert.match(sheetSource, /profileItemRenderState\.shouldRenderProfileSummary/);
+  assert.match(sheetSource, /\{profileItemRenderState\.profileSummary\}/);
   assert.match(sheetSource, /numberOfLines=\{agentSelectorSurface\.profileName\.numberOfLines\}/);
   assert.match(sheetSource, /numberOfLines=\{agentSelectorSurface\.profileDescription\.numberOfLines\}/);
   assert.match(sheetSource, /loadingContainer:\s*\{[\s\S]*?alignItems:\s*agentSelectorSurface\.loadingContainer\.alignItems,/);
@@ -86,6 +88,9 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.doesNotMatch(sheetSource, /backgroundColor:\s*'rgba\(0, 0, 0, 0\.4\)'/);
   assert.doesNotMatch(sheetSource, /accessibilityRole="button"/);
   assert.doesNotMatch(sheetSource, /accessibilityLabel=\{`Select \$\{item\.name\} agent`\}/);
+  assert.doesNotMatch(sheetSource, /formatAgentSelectorSelectAccessibilityLabel\(item\.name\)/);
+  assert.doesNotMatch(sheetSource, /getAgentAvatarColors\(item\.id\)\[0\]/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorMobileFallbackAvatarBackgroundColor\(fallbackAvatarColor\)/);
   assert.doesNotMatch(sheetSource, /getAgentSelectorSheetCopyState/);
   assert.doesNotMatch(sheetSource, /getAgentSelectorMobileSurfaceColors/);
   assert.doesNotMatch(sheetSource, /getAgentSelectorMobileSurfaceState/);

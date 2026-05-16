@@ -13,6 +13,7 @@ import {
   getAgentSelectorDesktopSurfaceState,
   getAgentSelectorMobileFallbackAvatarBackgroundColor,
   getAgentSelectorMobileCloseIconState,
+  getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
   getAgentSelectorMobileSurfaceColors,
   getAgentSelectorMobileSurfaceState,
@@ -287,6 +288,49 @@ describe("agent selector option helpers", () => {
     expect(getAgentSelectorMobileFallbackAvatarBackgroundColor("#0f172a")).toBe(
       "rgba(15, 23, 42, 0.14)",
     )
+    expect(getAgentSelectorMobileProfileItemRenderState({
+      profile: {
+        id: "research",
+        name: "Research",
+        description: "Finds citations",
+        selectorMode: "profile",
+        selectionValue: "research",
+      },
+      currentProfileId: "research",
+      isSwitching: true,
+    })).toEqual({
+      isSelected: true,
+      isDisabled: true,
+      profileSummary: "Finds citations",
+      shouldRenderProfileSummary: true,
+      activeOpacity: AGENT_SELECTOR_PRESENTATION.mobile.profileItem.pressedOpacity,
+      accessibilityRole: AGENT_SELECTOR_PRESENTATION.mobile.profileItem.accessibilityRole,
+      accessibilityLabel: "Select Research agent",
+      accessibilityState: {
+        selected: true,
+        disabled: true,
+      },
+      fallbackAvatar: {
+        backgroundColor: getAgentSelectorMobileFallbackAvatarBackgroundColor("#06b6d4"),
+      },
+    })
+    expect(getAgentSelectorMobileProfileItemRenderState({
+      profile: {
+        id: "plain",
+        name: "Plain",
+        selectorMode: "profile",
+        selectionValue: "plain",
+      },
+    })).toMatchObject({
+      isSelected: false,
+      isDisabled: false,
+      profileSummary: "",
+      shouldRenderProfileSummary: false,
+      accessibilityState: {
+        selected: false,
+        disabled: false,
+      },
+    })
     expect(formatAgentSelectorSelectedAccessibilityLabel("Research")).toBe("Selected agent: Research")
     expect(formatAgentSelectorSelectAccessibilityLabel("Research")).toBe("Select Research agent")
     expect(formatAgentSelectorEditLabel("Research")).toBe("Edit Research")
