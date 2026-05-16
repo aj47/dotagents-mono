@@ -14840,6 +14840,93 @@ export function createChatMessageRuntimeThreadStyleSlots<TThreadSurfaceStyles, T
   }
 }
 
+export function createChatMessageToolActivityGroupBoundaryStyles<
+  TToggleContainerStyle,
+  TTogglePressedStyle,
+  TToggleHeaderRowStyle,
+  TToggleCountBadgeStyle,
+  TToggleCountBadgeTextStyle,
+  TTogglePreviewLineStyle,
+  TFooterButtonStyle,
+  TFooterPressedStyle,
+  TFooterTextStyle,
+>({
+  toggleContainerStyle,
+  togglePressedStyle,
+  toggleHeaderRowStyle,
+  toggleCountBadgeStyle,
+  toggleCountBadgeTextStyle,
+  togglePreviewLineStyle,
+  footerButtonStyle,
+  footerPressedStyle,
+  footerTextStyle,
+}: {
+  toggleContainerStyle: TToggleContainerStyle
+  togglePressedStyle: TTogglePressedStyle
+  toggleHeaderRowStyle: TToggleHeaderRowStyle
+  toggleCountBadgeStyle: TToggleCountBadgeStyle
+  toggleCountBadgeTextStyle: TToggleCountBadgeTextStyle
+  togglePreviewLineStyle: TTogglePreviewLineStyle
+  footerButtonStyle: TFooterButtonStyle
+  footerPressedStyle: TFooterPressedStyle
+  footerTextStyle: TFooterTextStyle
+}): {
+  toggle: {
+    container: TToggleContainerStyle
+    pressed: TTogglePressedStyle
+    headerRow: TToggleHeaderRowStyle
+    countBadge: TToggleCountBadgeStyle
+    countBadgeText: TToggleCountBadgeTextStyle
+    previewLine: TTogglePreviewLineStyle
+  }
+  footer: {
+    button: TFooterButtonStyle
+    pressed: TFooterPressedStyle
+    text: TFooterTextStyle
+  }
+} {
+  return {
+    toggle: {
+      container: toggleContainerStyle,
+      pressed: togglePressedStyle,
+      headerRow: toggleHeaderRowStyle,
+      countBadge: toggleCountBadgeStyle,
+      countBadgeText: toggleCountBadgeTextStyle,
+      previewLine: togglePreviewLineStyle,
+    },
+    footer: {
+      button: footerButtonStyle,
+      pressed: footerPressedStyle,
+      text: footerTextStyle,
+    },
+  }
+}
+
+export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots<
+  TSurfaceStyle,
+  TBoundaryStyles,
+  TToneStyleSlot,
+  TToneStyle,
+>({
+  surfaceStyle,
+  boundaryStyles,
+  getToneStyle,
+}: {
+  surfaceStyle: TSurfaceStyle
+  boundaryStyles: TBoundaryStyles
+  getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+}): {
+  surfaceStyle: TSurfaceStyle
+  boundary: TBoundaryStyles
+  getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+} {
+  return {
+    surfaceStyle,
+    boundary: boundaryStyles,
+    getToneStyle,
+  }
+}
+
 export function createChatMessageConversationThreadStyleSlots<
   TThreadSurfaceStyles,
   TThreadBodyStyles,

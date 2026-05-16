@@ -67,6 +67,8 @@ import {
   createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
+  createChatMessageToolActivityGroupBoundaryStyles,
+  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageRuntimeChromeSlots,
@@ -6458,6 +6460,40 @@ describe("session presentation semantics", () => {
     expect(expansionButtonStyleSlots.disabled.opacity).toBe(
       messageThreadStyle.action.slotButtons.expansion.button.disabledOpacity,
     )
+    const toolActivityGroupBoundaryStyles = createChatMessageToolActivityGroupBoundaryStyles({
+      toggleContainerStyle: "toggle-container",
+      togglePressedStyle: "toggle-pressed",
+      toggleHeaderRowStyle: "toggle-header-row",
+      toggleCountBadgeStyle: "toggle-count-badge",
+      toggleCountBadgeTextStyle: "toggle-count-badge-text",
+      togglePreviewLineStyle: "toggle-preview-line",
+      footerButtonStyle: "footer-button",
+      footerPressedStyle: "footer-pressed",
+      footerTextStyle: "footer-text",
+    })
+    expect(toolActivityGroupBoundaryStyles).toEqual({
+      toggle: {
+        container: "toggle-container",
+        pressed: "toggle-pressed",
+        headerRow: "toggle-header-row",
+        countBadge: "toggle-count-badge",
+        countBadgeText: "toggle-count-badge-text",
+        previewLine: "toggle-preview-line",
+      },
+      footer: {
+        button: "footer-button",
+        pressed: "footer-pressed",
+        text: "footer-text",
+      },
+    })
+    const toolActivityGroupThreadSurfaceStyles = createChatMessageToolActivityGroupThreadSurfaceStyleSlots({
+      surfaceStyle: "thread-surface",
+      boundaryStyles: toolActivityGroupBoundaryStyles,
+      getToneStyle: (toneStyleSlot: "user" | "assistant") => `tone-${toneStyleSlot}`,
+    })
+    expect(toolActivityGroupThreadSurfaceStyles.surfaceStyle).toBe("thread-surface")
+    expect(toolActivityGroupThreadSurfaceStyles.boundary).toBe(toolActivityGroupBoundaryStyles)
+    expect(toolActivityGroupThreadSurfaceStyles.getToneStyle("assistant")).toBe("tone-assistant")
     const actionStyleSlots = createChatMessageActionStyleSlots({
       turnDurationStyles: "turn-duration",
       speechStyles: {

@@ -20,6 +20,8 @@ import {
   createChatMessageRuntimeChromeStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeSurfaceChromeSlots,
+  createChatMessageToolActivityGroupBoundaryStyles,
+  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatMessageActionStyleSlots,
   createChatRuntimeChromeSlots,
@@ -56,11 +58,11 @@ import {
   createChatComposerStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
+  type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
 } from '@dotagents/shared/session-presentation';
 import {
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatMessageThreadBodyStyleSlots,
-  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
 } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
@@ -1088,7 +1090,23 @@ export function useChatRuntimeMobileStyleSlots() {
   const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
   const chatMessageConversationThreadStyles = useMemo(
     () => createChatMessageConversationThreadStyleSlots({
-      threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots(styles),
+      threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots({
+        surfaceStyle: styles.msg,
+        boundaryStyles: createChatMessageToolActivityGroupBoundaryStyles({
+          toggleContainerStyle: styles.toolActivityGroupCollapsed,
+          togglePressedStyle: styles.toolActivityGroupPressed,
+          toggleHeaderRowStyle: styles.toolActivityGroupHeaderRow,
+          toggleCountBadgeStyle: styles.toolActivityGroupCountBadge,
+          toggleCountBadgeTextStyle: styles.toolActivityGroupCountBadgeText,
+          togglePreviewLineStyle: styles.toolActivityGroupPreviewLine,
+          footerButtonStyle: styles.toolActivityGroupFooterButton,
+          footerPressedStyle: styles.toolActivityGroupPressed,
+          footerTextStyle: styles.toolActivityGroupFooterText,
+        }),
+        getToneStyle: (toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot) => (
+          styles[toneStyleSlot]
+        ),
+      }),
       threadBodyStyles: createChatMessageThreadBodyStyleSlots(styles),
       actionStyles: createChatMessageActionStyleSlots({
         turnDurationStyles: {

@@ -6815,36 +6815,6 @@ export function createChatComposerRuntimeDockProps({
   });
 }
 
-export function createChatMessageToolActivityGroupBoundaryStyles(
-  styles: ChatMessageChromeStyleSource,
-): ChatMessageToolActivityGroupBoundaryStyles {
-  return {
-    toggle: {
-      container: styles.toolActivityGroupCollapsed,
-      pressed: styles.toolActivityGroupPressed,
-      headerRow: styles.toolActivityGroupHeaderRow,
-      countBadge: styles.toolActivityGroupCountBadge,
-      countBadgeText: styles.toolActivityGroupCountBadgeText,
-      previewLine: styles.toolActivityGroupPreviewLine,
-    },
-    footer: {
-      button: styles.toolActivityGroupFooterButton,
-      pressed: styles.toolActivityGroupPressed,
-      text: styles.toolActivityGroupFooterText,
-    },
-  };
-}
-
-export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatMessageToolActivityGroupThreadSurfaceStyleSlots {
-  return {
-    surfaceStyle: styles.msg,
-    boundary: createChatMessageToolActivityGroupBoundaryStyles(styles),
-    getToneStyle: (toneStyleSlot) => styles[toneStyleSlot] as ChatMessageThreadSurfaceProps['surfaceToneStyle'],
-  } as ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
-}
-
 export function createChatConversationHomePromptEditorModalStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatConversationHomePromptEditorModalStyles {
