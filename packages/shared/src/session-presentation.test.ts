@@ -87,6 +87,7 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
+  createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
@@ -7130,6 +7131,54 @@ describe("session presentation semantics", () => {
       composer: {
         value: "composer-value",
         styles: "composer-styles",
+      },
+    })
+    const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
+      frame: {
+        keyboardAvoidingBehavior: "padding",
+        keyboardVerticalOffset: 24,
+      },
+      dock: {
+        scrollToBottomButton: "scroll-button-props",
+      },
+      overlays: {
+        agentSelector: "agent-selector-props",
+      },
+      threadList: {
+        items: ["thread-item"],
+      },
+      viewport: {
+        scrollRef: "scroll-ref",
+      },
+      styles: {
+        frame: {
+          keyboardAvoidingStyle: "keyboard-avoiding-style",
+          rootStyle: "root-style",
+        },
+        dock: "dock-styles",
+        viewport: "viewport-styles",
+      },
+    })
+    expect(surfaceParts).toEqual({
+      frame: {
+        keyboardAvoidingBehavior: "padding",
+        keyboardVerticalOffset: 24,
+        keyboardAvoidingStyle: "keyboard-avoiding-style",
+        rootStyle: "root-style",
+      },
+      dock: {
+        scrollToBottomButton: "scroll-button-props",
+        styles: "dock-styles",
+      },
+      overlays: {
+        agentSelector: "agent-selector-props",
+      },
+      threadList: {
+        items: ["thread-item"],
+      },
+      viewport: {
+        scrollRef: "scroll-ref",
+        styles: "viewport-styles",
       },
     })
     const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({

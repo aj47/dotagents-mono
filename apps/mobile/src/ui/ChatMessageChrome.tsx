@@ -82,6 +82,7 @@ import {
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
+  createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
@@ -8808,29 +8809,36 @@ export function ChatMessageRuntimeSurface<
   viewport,
   styles,
 }: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>) {
+  const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
+    frame,
+    dock,
+    overlays,
+    threadList,
+    viewport,
+    styles,
+  });
+
   return (
     <ChatMessageConversationFrame
-      keyboardAvoidingStyle={styles.frame.keyboardAvoidingStyle}
-      keyboardAvoidingBehavior={frame.keyboardAvoidingBehavior}
-      keyboardVerticalOffset={frame.keyboardVerticalOffset}
-      rootStyle={styles.frame.rootStyle}
+      keyboardAvoidingStyle={surfaceParts.frame.keyboardAvoidingStyle}
+      keyboardAvoidingBehavior={surfaceParts.frame.keyboardAvoidingBehavior}
+      keyboardVerticalOffset={surfaceParts.frame.keyboardVerticalOffset}
+      rootStyle={surfaceParts.frame.rootStyle}
       dock={(
         <ChatMessageRuntimeDock
-          {...dock}
-          styles={styles.dock}
+          {...surfaceParts.dock}
         />
       )}
       overlays={(
         <ChatMessageRuntimeOverlays
-          {...overlays}
+          {...surfaceParts.overlays}
         />
       )}
     >
       <ChatMessageRuntimeViewport
-        {...viewport}
-        styles={styles.viewport}
+        {...surfaceParts.viewport}
       >
-        <ChatMessageConversationRuntimeThreadList {...threadList} />
+        <ChatMessageConversationRuntimeThreadList {...surfaceParts.threadList} />
       </ChatMessageRuntimeViewport>
     </ChatMessageConversationFrame>
   );

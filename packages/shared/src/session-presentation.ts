@@ -2214,6 +2214,57 @@ export interface ChatRuntimeConversationDockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput<
+  TFrame extends object = Record<string, never>,
+  TDock extends object = Record<string, never>,
+  TOverlays extends object = Record<string, never>,
+  TThreadList extends object = Record<string, never>,
+  TViewport extends object = Record<string, never>,
+  TFrameKeyboardAvoidingStyle = unknown,
+  TFrameRootStyle = unknown,
+  TDockStyles = unknown,
+  TViewportStyles = unknown,
+> {
+  frame: TFrame
+  dock: TDock
+  overlays: TOverlays
+  threadList: TThreadList
+  viewport: TViewport
+  styles: {
+    frame: {
+      keyboardAvoidingStyle: TFrameKeyboardAvoidingStyle
+      rootStyle: TFrameRootStyle
+    }
+    dock: TDockStyles
+    viewport: TViewportStyles
+  }
+}
+
+export interface ChatRuntimeConversationSurfaceMobilePropsParts<
+  TFrame extends object = Record<string, never>,
+  TDock extends object = Record<string, never>,
+  TOverlays extends object = Record<string, never>,
+  TThreadList extends object = Record<string, never>,
+  TViewport extends object = Record<string, never>,
+  TFrameKeyboardAvoidingStyle = unknown,
+  TFrameRootStyle = unknown,
+  TDockStyles = unknown,
+  TViewportStyles = unknown,
+> {
+  frame: TFrame & {
+    keyboardAvoidingStyle: TFrameKeyboardAvoidingStyle
+    rootStyle: TFrameRootStyle
+  }
+  dock: TDock & {
+    styles: TDockStyles
+  }
+  overlays: TOverlays
+  threadList: TThreadList
+  viewport: TViewport & {
+    styles: TViewportStyles
+  }
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -14071,6 +14122,63 @@ export function createChatRuntimeConversationDockMobilePropsParts<
     composer: {
       ...composer,
       styles: styles.composer,
+    },
+  }
+}
+
+export function createChatRuntimeConversationSurfaceMobilePropsParts<
+  TFrame extends object,
+  TDock extends object,
+  TOverlays extends object,
+  TThreadList extends object,
+  TViewport extends object,
+  TFrameKeyboardAvoidingStyle,
+  TFrameRootStyle,
+  TDockStyles,
+  TViewportStyles,
+>({
+  frame,
+  dock,
+  overlays,
+  threadList,
+  viewport,
+  styles,
+}: ChatRuntimeConversationSurfaceMobilePropsPartsInput<
+  TFrame,
+  TDock,
+  TOverlays,
+  TThreadList,
+  TViewport,
+  TFrameKeyboardAvoidingStyle,
+  TFrameRootStyle,
+  TDockStyles,
+  TViewportStyles
+>): ChatRuntimeConversationSurfaceMobilePropsParts<
+  TFrame,
+  TDock,
+  TOverlays,
+  TThreadList,
+  TViewport,
+  TFrameKeyboardAvoidingStyle,
+  TFrameRootStyle,
+  TDockStyles,
+  TViewportStyles
+> {
+  return {
+    frame: {
+      ...frame,
+      keyboardAvoidingStyle: styles.frame.keyboardAvoidingStyle,
+      rootStyle: styles.frame.rootStyle,
+    },
+    dock: {
+      ...dock,
+      styles: styles.dock,
+    },
+    overlays,
+    threadList,
+    viewport: {
+      ...viewport,
+      styles: styles.viewport,
     },
   }
 }
