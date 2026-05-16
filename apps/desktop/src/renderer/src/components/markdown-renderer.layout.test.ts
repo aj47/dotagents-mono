@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest"
 const markdownRendererSource = readFileSync(new URL("./markdown-renderer.tsx", import.meta.url), "utf8")
 
 describe("markdown renderer layout", () => {
+  it("routes desktop markdown presentation through the shared session facade", () => {
+    expect(markdownRendererSource).toContain('from "@dotagents/shared/session-presentation"')
+    expect(markdownRendererSource).not.toContain('from "@dotagents/shared/markdown-render-parts"')
+    expect(markdownRendererSource).not.toContain('from "@dotagents/shared/conversation-media-assets"')
+  })
+
   it("keeps long links, inline code, and fenced code blocks readable in narrow tiles", () => {
     expect(markdownRendererSource).toContain("className={markdownContentSurface.linkClassName}")
     expect(markdownRendererSource).toContain("className={markdownContentSurface.inlineCodeClassName}")

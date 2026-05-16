@@ -6,8 +6,6 @@ import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "
 import {
   getChatVideoAttachmentDesktopRenderState,
   isAllowedMarkdownImageUrl as isSharedAllowedMarkdownImageUrl,
-} from "@dotagents/shared/conversation-media-assets"
-import {
   getMarkdownCodeBlockCopyDesktopRenderState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownContentDesktopSurfaceState,
@@ -22,7 +20,7 @@ import {
   splitMarkdownContent,
   transformMarkdownContentUrl,
   type MarkdownThinkSectionControlOptions,
-} from "@dotagents/shared/markdown-render-parts"
+} from "@dotagents/shared/session-presentation"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import "highlight.js/styles/github.css"
