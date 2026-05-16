@@ -31,6 +31,7 @@ import {
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeConnectionErrorTurnState,
   createChatMessageConversationThreadStyleSlots,
+  createChatMessageConversationThreadStyleSlotsFromStyleSource,
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeFinalHistoryTurnMessages,
   createChatMessageRuntimeFinalResponseTurnState,
@@ -6703,6 +6704,56 @@ describe("session presentation semantics", () => {
     )
     expect(actionStyleSlots.expansion.hitSlop).toEqual(
       getChatMessageActionMobileButtonStatesBySlot().expansion.hitSlop,
+    )
+    const conversationThreadStyleSlots = createChatMessageConversationThreadStyleSlotsFromStyleSource({
+      styles: {
+        ...threadBodyStyleSource,
+        msg: "message-surface",
+        toolActivityGroupCollapsed: "tool-activity-collapsed",
+        toolActivityGroupPressed: "tool-activity-pressed",
+        toolActivityGroupHeaderRow: "tool-activity-header-row",
+        toolActivityGroupCountBadge: "tool-activity-count-badge",
+        toolActivityGroupCountBadgeText: "tool-activity-count-badge-text",
+        toolActivityGroupPreviewLine: "tool-activity-preview-line",
+        toolActivityGroupFooterButton: "tool-activity-footer-button",
+        toolActivityGroupFooterText: "tool-activity-footer-text",
+        messageTurnDurationBadge: "message-turn-duration-badge",
+        messageTurnDurationBadgeLive: "message-turn-duration-badge-live",
+        messageTurnDurationText: "message-turn-duration-text",
+        messageTurnDurationTextLive: "message-turn-duration-text-live",
+        speakButton: "speak-button",
+        speakButtonActive: "speak-button-active",
+        speakButtonPressed: "speak-button-pressed",
+        messageBranchButton: "message-branch-button",
+        messageBranchButtonPressed: "message-branch-button-pressed",
+        messageBranchButtonDisabled: "message-branch-button-disabled",
+        messageCopyButton: "message-copy-button",
+        messageCopyButtonCopied: "message-copy-button-copied",
+        messageCopyButtonPressed: "message-copy-button-pressed",
+        messageExpandButton: "message-expand-button",
+        messageExpandButtonPressed: "message-expand-button-pressed",
+      },
+      getToneStyle: (toneStyleSlot: "user" | "assistant") => `tone-${toneStyleSlot}`,
+    })
+    expect(conversationThreadStyleSlots.runtimeThread.surface.surfaceStyle).toBe("message-surface")
+    expect(
+      conversationThreadStyleSlots.runtimeThread.surface.boundary.toggle.container,
+    ).toBe("tool-activity-collapsed")
+    expect(
+      conversationThreadStyleSlots.runtimeThread.surface.boundary.footer.pressed,
+    ).toBe("tool-activity-pressed")
+    expect(conversationThreadStyleSlots.runtimeThread.surface.getToneStyle("assistant")).toBe(
+      "tone-assistant",
+    )
+    expect(conversationThreadStyleSlots.runtimeThread.body.retryStatus.card).toBe("retryStatusCard")
+    expect(conversationThreadStyleSlots.actionSet.turnDuration.style).toBe("message-turn-duration-badge")
+    expect(conversationThreadStyleSlots.actionSet.speech.activeStyle).toBe("speak-button-active")
+    expect(conversationThreadStyleSlots.actionSet.branch.disabledStyle).toBe(
+      "message-branch-button-disabled",
+    )
+    expect(conversationThreadStyleSlots.actionSet.copy.activeStyle).toBe("message-copy-button-copied")
+    expect(conversationThreadStyleSlots.actionSet.expansion.pressedStyle).toBe(
+      "message-expand-button-pressed",
     )
     const threadBodyColors = {
       ...messageThreadStyleColors,

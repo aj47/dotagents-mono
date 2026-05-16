@@ -15564,6 +15564,99 @@ export function createChatMessageConversationThreadStyleSlots<
   }
 }
 
+type ChatMessageConversationThreadStyleSourceKey =
+  | ChatMessageThreadBodyStyleKey
+  | "msg"
+  | "toolActivityGroupCollapsed"
+  | "toolActivityGroupPressed"
+  | "toolActivityGroupHeaderRow"
+  | "toolActivityGroupCountBadge"
+  | "toolActivityGroupCountBadgeText"
+  | "toolActivityGroupPreviewLine"
+  | "toolActivityGroupFooterButton"
+  | "toolActivityGroupFooterText"
+  | "messageTurnDurationBadge"
+  | "messageTurnDurationBadgeLive"
+  | "messageTurnDurationText"
+  | "messageTurnDurationTextLive"
+  | "speakButton"
+  | "speakButtonActive"
+  | "speakButtonPressed"
+  | "messageBranchButton"
+  | "messageBranchButtonPressed"
+  | "messageBranchButtonDisabled"
+  | "messageCopyButton"
+  | "messageCopyButtonCopied"
+  | "messageCopyButtonPressed"
+  | "messageExpandButton"
+  | "messageExpandButtonPressed"
+
+type ChatMessageConversationThreadStyleSource =
+  ChatMessageThreadBodyStyleSource
+  & Record<ChatMessageConversationThreadStyleSourceKey, unknown>
+
+export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationThreadStyleSource,
+  TToneStyleSlot,
+  TToneStyle,
+  TThreadBodyStyleSlots = ChatMessageThreadBodyStyleSlots<TStyles>,
+>({
+  styles,
+  getToneStyle,
+}: {
+  styles: TStyles
+  getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+}) {
+  return createChatMessageConversationThreadStyleSlots({
+    threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots({
+      surfaceStyle: styles.msg,
+      boundaryStyles: createChatMessageToolActivityGroupBoundaryStyles({
+        toggleContainerStyle: styles.toolActivityGroupCollapsed,
+        togglePressedStyle: styles.toolActivityGroupPressed,
+        toggleHeaderRowStyle: styles.toolActivityGroupHeaderRow,
+        toggleCountBadgeStyle: styles.toolActivityGroupCountBadge,
+        toggleCountBadgeTextStyle: styles.toolActivityGroupCountBadgeText,
+        togglePreviewLineStyle: styles.toolActivityGroupPreviewLine,
+        footerButtonStyle: styles.toolActivityGroupFooterButton,
+        footerPressedStyle: styles.toolActivityGroupPressed,
+        footerTextStyle: styles.toolActivityGroupFooterText,
+      }),
+      getToneStyle,
+    }),
+    threadBodyStyles: createChatMessageThreadBodyStyleSlots<
+      TStyles,
+      TThreadBodyStyleSlots
+    >(styles),
+    actionStyles: createChatMessageActionStyleSlots({
+      turnDurationStyles: {
+        style: styles.messageTurnDurationBadge,
+        liveStyle: styles.messageTurnDurationBadgeLive,
+        textStyle: styles.messageTurnDurationText,
+        liveTextStyle: styles.messageTurnDurationTextLive,
+      },
+      speechStyles: {
+        style: styles.speakButton,
+        activeStyle: styles.speakButtonActive,
+        pressedStyle: styles.speakButtonPressed,
+      },
+      branchStyles: {
+        style: styles.messageBranchButton,
+        pressedStyle: styles.messageBranchButtonPressed,
+        disabledStyle: styles.messageBranchButtonDisabled,
+      },
+      copyStyles: {
+        style: styles.messageCopyButton,
+        activeStyle: styles.messageCopyButtonCopied,
+        pressedStyle: styles.messageCopyButtonPressed,
+      },
+      expansionStyles: {
+        style: styles.messageExpandButton,
+        pressedStyle: styles.messageExpandButtonPressed,
+      },
+    }),
+  })
+}
+
 export function createChatMessageRuntimeChromeStyleSlots<
   TConversationThreadStyles extends {
     actionSet: unknown

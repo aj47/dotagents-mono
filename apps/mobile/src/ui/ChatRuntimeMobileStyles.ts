@@ -13,18 +13,14 @@ import {
   createChatSessionStatusMobileChromeStyleSlots,
   createChatMessageConnectionBannerStyleSlots,
   createChatMessageConversationDockStyleSlots,
-  createChatMessageConversationThreadStyleSlots,
+  createChatMessageConversationThreadStyleSlotsFromStyleSource,
   createChatMessageConversationViewportStyleSlots,
-  createChatMessageThreadBodyStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeChromeSlots,
   createChatMessageRuntimeChromeStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeSurfaceChromeSlots,
-  createChatMessageToolActivityGroupBoundaryStyles,
-  createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
-  createChatMessageActionStyleSlots,
   createChatRuntimeChromeSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
@@ -62,7 +58,10 @@ import {
   getChatRuntimeMobileSafeAreaLayoutState,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
 } from '@dotagents/shared/session-presentation';
-import type { ChatMessageThreadBodyStyleSlots } from './ChatMessageChrome';
+import type {
+  ChatMessageConversationThreadStyleSlots,
+  ChatMessageThreadBodyStyleSlots,
+} from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
 
@@ -1088,56 +1087,15 @@ export function useChatRuntimeMobileStyleSlots() {
   );
   const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
   const chatMessageConversationThreadStyles = useMemo(
-    () => createChatMessageConversationThreadStyleSlots({
-      threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots({
-        surfaceStyle: styles.msg,
-        boundaryStyles: createChatMessageToolActivityGroupBoundaryStyles({
-          toggleContainerStyle: styles.toolActivityGroupCollapsed,
-          togglePressedStyle: styles.toolActivityGroupPressed,
-          toggleHeaderRowStyle: styles.toolActivityGroupHeaderRow,
-          toggleCountBadgeStyle: styles.toolActivityGroupCountBadge,
-          toggleCountBadgeTextStyle: styles.toolActivityGroupCountBadgeText,
-          togglePreviewLineStyle: styles.toolActivityGroupPreviewLine,
-          footerButtonStyle: styles.toolActivityGroupFooterButton,
-          footerPressedStyle: styles.toolActivityGroupPressed,
-          footerTextStyle: styles.toolActivityGroupFooterText,
-        }),
-        getToneStyle: (toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot) => (
-          styles[toneStyleSlot]
-        ),
-      }),
-      threadBodyStyles: createChatMessageThreadBodyStyleSlots<
-        ReturnType<typeof createChatRuntimeMobileStyles>,
-        ChatMessageThreadBodyStyleSlots
-      >(styles),
-      actionStyles: createChatMessageActionStyleSlots({
-        turnDurationStyles: {
-          style: styles.messageTurnDurationBadge,
-          liveStyle: styles.messageTurnDurationBadgeLive,
-          textStyle: styles.messageTurnDurationText,
-          liveTextStyle: styles.messageTurnDurationTextLive,
-        },
-        speechStyles: {
-          style: styles.speakButton,
-          activeStyle: styles.speakButtonActive,
-          pressedStyle: styles.speakButtonPressed,
-        },
-        branchStyles: {
-          style: styles.messageBranchButton,
-          pressedStyle: styles.messageBranchButtonPressed,
-          disabledStyle: styles.messageBranchButtonDisabled,
-        },
-        copyStyles: {
-          style: styles.messageCopyButton,
-          activeStyle: styles.messageCopyButtonCopied,
-          pressedStyle: styles.messageCopyButtonPressed,
-        },
-        expansionStyles: {
-          style: styles.messageExpandButton,
-          pressedStyle: styles.messageExpandButtonPressed,
-        },
-      }),
-    }),
+    () => createChatMessageConversationThreadStyleSlotsFromStyleSource<
+      ReturnType<typeof createChatRuntimeMobileStyles>,
+      ChatRuntimeConversationSurfaceToneMobileStyleSlot,
+      ReturnType<typeof createChatRuntimeMobileStyles>[ChatRuntimeConversationSurfaceToneMobileStyleSlot],
+      ChatMessageThreadBodyStyleSlots
+    >({
+      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
+      getToneStyle: (toneStyleSlot) => styles[toneStyleSlot],
+    }) as ChatMessageConversationThreadStyleSlots,
     [styles],
   );
   const chatRuntimeHeaderStyles = useMemo(

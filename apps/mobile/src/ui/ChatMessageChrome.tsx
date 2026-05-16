@@ -1126,7 +1126,7 @@ export type ChatMessageActionSet = {
   shouldRenderStandaloneActions: boolean;
 };
 
-type ChatMessageActionStyleSlots = {
+export type ChatMessageActionStyleSlots = {
   turnDuration: Pick<
     ChatMessageTurnDurationActionSpec,
     'style' | 'liveStyle' | 'textStyle' | 'liveTextStyle'
@@ -2838,9 +2838,14 @@ type ChatMessageConversationThreadBodySharedInput =
 
 type ChatMessageConversationThreadBodyInput = ChatMessageConversationThreadBodySharedInput;
 
-type ChatMessageRuntimeThreadStyleSlots = {
+export type ChatMessageRuntimeThreadStyleSlots = {
   surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
   body: ChatMessageThreadBodyStyleSlots;
+};
+
+export type ChatMessageConversationThreadStyleSlots = {
+  runtimeThread: ChatMessageRuntimeThreadStyleSlots;
+  actionSet: ChatMessageActionStyleSlots;
 };
 
 type ChatMessageRuntimeThreadProps = Omit<
