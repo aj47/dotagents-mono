@@ -1770,6 +1770,48 @@ export interface ChatRuntimeConversationActionSetMobilePropsInput<TActionContent
   components: ChatMessageActionSlotRenderMap<TActionContent>
 }
 
+export interface ChatRuntimeConversationActionComponentsMobileProps<
+  TTurnDurationAction,
+  TSpeechAction,
+  TBranchAction,
+  TCopyAction,
+  TExpansionAction,
+> {
+  availability: ChatRuntimeConversationMessageActionsMobileRenderState["availability"]
+  turnDuration: TTurnDurationAction & {
+    renderState: ChatRuntimeConversationMessageActionsMobileRenderState["turnDuration"]
+  }
+  speech: Omit<TSpeechAction, "isSpeaking"> & {
+    renderState: ChatRuntimeConversationMessageActionsMobileRenderState["speech"]
+    isActive: boolean
+  }
+  branch: TBranchAction & {
+    renderState: ChatRuntimeConversationMessageActionsMobileRenderState["branch"]
+  }
+  copy: Omit<TCopyAction, "isCopied"> & {
+    renderState: ChatRuntimeConversationMessageActionsMobileRenderState["copy"]
+    isActive: boolean
+  }
+  expansion: TExpansionAction & {
+    renderState: ChatRuntimeConversationMessageActionsMobileRenderState["expansion"]
+  }
+}
+
+export interface ChatRuntimeConversationActionComponentsMobilePropsInput<
+  TTurnDurationAction,
+  TSpeechAction extends { isSpeaking?: boolean },
+  TBranchAction,
+  TCopyAction extends { isCopied?: boolean },
+  TExpansionAction,
+> {
+  renderState: ChatRuntimeConversationMessageActionsMobileRenderState
+  turnDuration: TTurnDurationAction
+  speech: TSpeechAction
+  branch: TBranchAction
+  copy: TCopyAction
+  expansion: TExpansionAction
+}
+
 export interface ChatRuntimeConversationBodyContentMobileProps<
   TActionEntry,
   TSpinnerSource,
@@ -12921,6 +12963,62 @@ export function createChatRuntimeConversationActionSetMobileProps<TActionContent
     entries: getChatMessageActionSlotRenderEntries(renderState.layout.visibleSlots, components),
     shouldRenderActionSlots: renderState.layout.shouldRenderActionSlots,
     shouldRenderStandaloneActions: renderState.layout.shouldRenderStandaloneRow,
+  }
+}
+
+export function createChatRuntimeConversationActionComponentsMobileProps<
+  TTurnDurationAction,
+  TSpeechAction extends { isSpeaking?: boolean },
+  TBranchAction,
+  TCopyAction extends { isCopied?: boolean },
+  TExpansionAction,
+>({
+  renderState,
+  turnDuration,
+  speech,
+  branch,
+  copy,
+  expansion,
+}: ChatRuntimeConversationActionComponentsMobilePropsInput<
+  TTurnDurationAction,
+  TSpeechAction,
+  TBranchAction,
+  TCopyAction,
+  TExpansionAction
+>): ChatRuntimeConversationActionComponentsMobileProps<
+  TTurnDurationAction,
+  TSpeechAction,
+  TBranchAction,
+  TCopyAction,
+  TExpansionAction
+> {
+  const { isSpeaking, ...speechProps } = speech
+  const { isCopied, ...copyProps } = copy
+
+  return {
+    availability: renderState.availability,
+    turnDuration: {
+      ...turnDuration,
+      renderState: renderState.turnDuration,
+    },
+    speech: {
+      ...speechProps,
+      renderState: renderState.speech,
+      isActive: Boolean(isSpeaking),
+    },
+    branch: {
+      ...branch,
+      renderState: renderState.branch,
+    },
+    copy: {
+      ...copyProps,
+      renderState: renderState.copy,
+      isActive: Boolean(isCopied),
+    },
+    expansion: {
+      ...expansion,
+      renderState: renderState.expansion,
+    },
   }
 }
 

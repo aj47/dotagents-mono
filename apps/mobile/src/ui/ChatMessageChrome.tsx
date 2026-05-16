@@ -78,6 +78,7 @@ import {
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
+  createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationThreadBodyMobileProps,
@@ -4170,37 +4171,16 @@ export function createChatMessageActionSet({
   expansion,
   ...input
 }: ChatMessageActionSetInput): ChatMessageActionSet {
-  const turnDurationAction: ChatMessageTurnDurationActionSpec = {
-    ...turnDuration,
-    renderState: actionRenderState.turnDuration,
-  };
-  const speechAction: ChatMessageSpeechActionSpec = {
-    ...speech,
-    renderState: actionRenderState.speech,
-    isActive: speech.isSpeaking,
-  };
-  const branchAction: ChatMessageBranchActionSpec = {
-    ...branch,
-    renderState: actionRenderState.branch,
-  };
-  const copyAction: ChatMessageCopyActionSpec = {
-    ...copy,
-    renderState: actionRenderState.copy,
-    isActive: copy.isCopied,
-  };
-  const actionInput: Omit<ChatMessageActionComponentsInput, 'availability'> = {
+  const actionInput = createChatRuntimeConversationActionComponentsMobileProps({
+    renderState: actionRenderState,
     ...input,
-    turnDuration: turnDurationAction,
-    speech: speechAction,
-    branch: branchAction,
-    copy: copyAction,
-    expansion: {
-      ...expansion,
-      renderState: actionRenderState.expansion,
-    },
-  };
+    turnDuration,
+    speech,
+    branch,
+    copy,
+    expansion,
+  });
   const components = createChatMessageActionComponents({
-    availability: actionRenderState.availability,
     ...actionInput,
   });
 

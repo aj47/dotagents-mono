@@ -68,6 +68,7 @@ import {
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeDelegationCardMobileProps,
+  createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
@@ -6788,6 +6789,36 @@ describe("session presentation semantics", () => {
       "copy:4:Working",
       "expand:4",
     ])
+    const actionComponentProps = createChatRuntimeConversationActionComponentsMobileProps({
+      renderState: actionSetState.renderState,
+      turnDuration: actionSetState.turnDuration,
+      speech: actionSetState.speech,
+      branch: actionSetState.branch,
+      copy: actionSetState.copy,
+      expansion: actionSetState.expansion,
+    })
+    expect(actionComponentProps).toMatchObject({
+      availability: actionSetState.renderState.availability,
+      turnDuration: {
+        renderState: actionSetState.renderState.turnDuration,
+      },
+      speech: {
+        renderState: actionSetState.renderState.speech,
+        isActive: false,
+      },
+      branch: {
+        renderState: actionSetState.renderState.branch,
+      },
+      copy: {
+        renderState: actionSetState.renderState.copy,
+        isActive: false,
+      },
+      expansion: {
+        renderState: actionSetState.renderState.expansion,
+      },
+    })
+    expect(actionComponentProps.speech).not.toHaveProperty("isSpeaking")
+    expect(actionComponentProps.copy).not.toHaveProperty("isCopied")
     const actionSetProps = createChatRuntimeConversationActionSetMobileProps({
       renderState: actionSetState.renderState,
       components: {

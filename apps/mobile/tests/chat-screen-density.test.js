@@ -4305,6 +4305,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /function createChatMessageActionRenderers\(\{/);
   assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(\s+availability,\s+createChatMessageActionRenderers\(input\),\s+\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationActionComponentsMobileProps/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationActionSetMobileProps/);
   assert.match(sessionPresentationSource, /export \{\s+createChatMessageActionSlotRenderMap,\s+getChatMessageActionMobileButtonStatesBySlot,\s+getChatMessageActionSlotRenderEntries,\s+type ChatMessageCollapsedPreviewMobileActionState,\s+type ChatMessageExpansionMobileRenderState,\s+type ChatMessageActionSlotRenderEntry,\s+type ChatMessageActionSlotRenderMap,\s+\} from "\.\/message-display-utils"/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/message-display-utils';/);
@@ -4320,7 +4321,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /const availability = getChatMessageActionAvailabilityRenderState\(\{\s+turnDuration: turnDurationRenderState\.shouldRender,\s+speech: speechRenderState\.canSpeak,\s+branch: branchRenderState\.canBranch,\s+copy: copyRenderState\.canCopy,\s+expansion: expansionRenderState\.canToggle,\s+\}\)/);
   assert.doesNotMatch(screenSource, /isVisible: messageContentRenderState\.speech\.isVisible,/);
   assert.doesNotMatch(chatMessageChromeSource, /isVisible: contentRenderState\.speech\.isVisible,/);
-  assert.match(chatMessageChromeSource, /expansion: \{\s+\.\.\.expansion,\s+renderState: actionRenderState\.expansion,\s+\},/);
+  assert.doesNotMatch(chatMessageChromeSource, /renderState: actionRenderState\.(turnDuration|speech|branch|copy|expansion)/);
+  assert.match(sessionPresentationSource, /speech: \{\s+\.\.\.speechProps,\s+renderState: renderState\.speech,\s+isActive: Boolean\(isSpeaking\),/);
+  assert.match(sessionPresentationSource, /copy: \{\s+\.\.\.copyProps,\s+renderState: renderState\.copy,\s+isActive: Boolean\(isCopied\),/);
+  assert.match(sessionPresentationSource, /expansion: \{\s+\.\.\.expansion,\s+renderState: renderState\.expansion,\s+\},/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderState,/);
   assert.match(chatMessageChromeSource, /return createChatRuntimeConversationActionSetMobileProps\(\{\s+renderState: actionRenderState,\s+components,\s+\}\);/);
   assert.match(sessionPresentationSource, /entries: getChatMessageActionSlotRenderEntries\(renderState\.layout\.visibleSlots, components\),/);
@@ -4580,7 +4584,8 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.doesNotMatch(screenSource, /const messageCopyRenderState = getChatMessageCopyMobileRenderState\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageCopyMobileRenderState\(\{/);
   assert.match(sessionPresentationSource, /const copyRenderState = getChatMessageCopyMobileRenderState\(copy\)/);
-  assert.match(chatMessageChromeSource, /renderState: actionRenderState\.copy,/);
+  assert.doesNotMatch(chatMessageChromeSource, /renderState: actionRenderState\.copy,/);
+  assert.match(sessionPresentationSource, /copy: \{\s+\.\.\.copyProps,\s+renderState: renderState\.copy,\s+isActive: Boolean\(isCopied\),/);
   assert.match(screenSource, /copiedMessageIndex,/);
   assert.match(sessionPresentationSource, /isCopied: copiedMessageIndex === messageIndex,/);
   assert.match(sessionPresentationSource, /copy: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+isAssistantComplete: !isResponding,\s+isCopied,\s+colors,\s+onPress: \(\) => \{ void onCopyMessage\(messageIndex, visibleMessageContent\) \},/);
@@ -4645,7 +4650,8 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /const messageTurnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeTurnDurationMessageMobileRenderState,/);
   assert.match(sessionPresentationSource, /const turnDurationRenderState = getChatRuntimeTurnDurationMessageMobileRenderState\(turnDuration\)/);
-  assert.match(chatMessageChromeSource, /renderState: actionRenderState\.turnDuration,/);
+  assert.doesNotMatch(chatMessageChromeSource, /renderState: actionRenderState\.turnDuration,/);
+  assert.match(sessionPresentationSource, /turnDuration: \{\s+\.\.\.turnDuration,\s+renderState: renderState\.turnDuration,\s+\},/);
   assert.match(sessionPresentationSource, /standard: getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: "user",\s+durationMs: 1,\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /live: getChatRuntimeTurnDurationMessageMobileRenderState\(\{\s+role: "user",\s+durationMs: 1,\s+isLive: true,\s+colors,\s+\}\),/);
   assert.match(screenSource, /const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState\.turnDuration\.standard;/);
@@ -5839,7 +5845,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(sessionPresentationSource, /branch: \{\s+conversationId,\s+role: message\.role,\s+branchMessageIndex: message\.branchMessageIndex,\s+fallbackMessageIndex: messageIndex,\s+pendingMessageIndex: pendingBranchMessageIndex,\s+colors,\s+onPress: \(\) => \{/);
   assert.match(sessionPresentationSource, /const branchMessageIndex = renderState\.branch\.messageIndex\s+if \(branchMessageIndex !== null\) \{\s+onBranchMessage\?\.\(branchMessageIndex\)/);
   assert.doesNotMatch(chatMessageChromeSource, /role: branchRole/);
-  assert.match(chatMessageChromeSource, /const branchAction: ChatMessageBranchActionSpec = \{\s+\.\.\.branch,\s+renderState: actionRenderState\.branch,/);
+  assert.doesNotMatch(chatMessageChromeSource, /const branchAction: ChatMessageBranchActionSpec/);
+  assert.match(sessionPresentationSource, /branch: \{\s+\.\.\.branch,\s+renderState: renderState\.branch,\s+\},/);
   assert.match(sessionPresentationSource, /const branchRenderState = getChatRuntimeBranchMobileRenderState\(branch\)/);
   assert.doesNotMatch(chatMessageChromeSource, /branch\.onBranchMessage/);
   assert.doesNotMatch(chatMessageChromeSource, /actionRenderState\.branch\.messageIndex != null/);
