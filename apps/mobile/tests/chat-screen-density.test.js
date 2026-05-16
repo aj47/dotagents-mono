@@ -2878,7 +2878,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /statusIndicator:\s*\{[\s\S]*?width: surface\.statusIcon\.width,[\s\S]*?alignItems: surface\.iconCell\.alignItems/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionDetailMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?platform,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionStackPanelMobilePropsParts/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionStackPanelMobilePropsParts,/);
   assert.match(sessionPresentationSource, /card:\s*\{[\s\S]*?marginTop: surface\.card\.marginTop,[\s\S]*?borderRadius: radius\[surface\.card\.borderRadius\],[\s\S]*?\.\.\.colors\.byState\.idle/);
   assert.match(sessionPresentationSource, /callSection:\s*\{[\s\S]*?marginBottom: spacing\[surface\.section\.marginBottom\],[\s\S]*?borderBottomColor: contentColors\.section\.borderBottomColor/);
   assert.match(screenSource, /toolExecutionCard:\s*\{\s+\.\.\.toolExecutionDetailStyleSlots\.card,/);
@@ -2919,6 +2921,16 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /styles=\{collapseControlStyleSlots\.bottom\}/);
   assert.match(sessionPresentationSource, /top: \{\s+\.\.\.collapseControlStyles,\s+placement: collapseTopPlacement,/);
   assert.match(sessionPresentationSource, /bottom: \{\s+\.\.\.collapseControlStyles,\s+placement: collapseBottomPlacement,/);
+  assert.doesNotMatch(chatMessageChromeSource, /groupStyles: styles\.compactGroup/);
+  assert.doesNotMatch(chatMessageChromeSource, /rowStyles: styles\.compactRow/);
+  assert.doesNotMatch(chatMessageChromeSource, /styles: styles\.expandedGroup/);
+  assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.callDetail\}/);
+  assert.match(chatMessageChromeSource, /const \{\s+compact: compactPanelProps,\s+expandedGroup,\s+emptyState,\s+emptyStateTextStyle,\s+callDetailStyles,\s+\} = createChatRuntimeToolExecutionStackPanelMobilePropsParts\(\{/);
+  assert.match(chatMessageChromeSource, /compact=\{compactPanelProps\}/);
+  assert.match(chatMessageChromeSource, /style=\{emptyStateTextStyle\}/);
+  assert.match(chatMessageChromeSource, /styles=\{callDetailStyles\}/);
+  assert.match(sessionPresentationSource, /compact: \{\s+\.\.\.compact,\s+groupStyles: styles\.compactGroup,\s+rowStyles: styles\.compactRow,/);
+  assert.match(sessionPresentationSource, /expandedGroup: \{\s+\.\.\.expandedGroup,\s+styles: styles\.expandedGroup,/);
   assert.match(chatMessageChromeSource, /styles\.card,[\s\S]*?isPending && styles\.pending,[\s\S]*?allSuccess && styles\.success,[\s\S]*?hasErrors && styles\.error/);
   assert.match(chatMessageChromeSource, /\{emptyState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControl/);
@@ -3051,7 +3063,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionCallDetail\s+key=\{idx\}/);
   assert.doesNotMatch(screenSource, /toggleToolCallExpansion\(stableMessageKey, idx\)/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+rows=\{detailRows\}\s+styles=\{styles\.callDetail\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+rows=\{detailRows\}\s+styles=\{callDetailStyles\}/);
   assert.match(chatMessageChromeSource, /rows\.map\(\(row\) => \(/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallDetail\s+key=\{row\.key\}/);
   assert.match(sessionPresentationSource, /callSection: \{\s+section: styles\.toolCallSection,\s+header: \{\s+header: styles\.toolCallHeader,\s+headerPressed: styles\.toolCallHeaderPressed,\s+toolName: styles\.toolName,\s+expandHint: styles\.toolCallExpandHint,\s+expandHintText: styles\.toolCallExpandHintText,/);
@@ -3192,7 +3204,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.noToolCallsLabel/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{toolExecutionDetailEmptyState\}\s+style=\{styles\.toolResponsePendingText\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{emptyState\.renderState\}\s+style=\{styles\.emptyStateText\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{emptyState\.renderState\}\s+style=\{emptyStateTextStyle\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.label\}/);

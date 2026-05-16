@@ -119,6 +119,7 @@ import {
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
+  createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatRuntimeViewportMobileStyleSlots,
@@ -8375,6 +8376,50 @@ describe("session presentation semantics", () => {
         placement: "collapse-bottom",
         text: "collapse-text",
       },
+    })
+    const toolExecutionPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
+      compact: {
+        renderState: "compact-render-state",
+        rows: ["compact-row"],
+        onPress: "toggle-compact",
+      },
+      expanded: {
+        topCollapseRenderState: "top-collapse",
+        bottomCollapseRenderState: "bottom-collapse",
+        emptyState: {
+          shouldRender: true,
+          renderState: "empty-state",
+        },
+        onCollapsePress: "collapse-expanded",
+      },
+      styles: {
+        compactGroup: "compact-group-styles",
+        compactRow: "compact-row-styles",
+        expandedGroup: "expanded-group-styles",
+        emptyStateText: "empty-state-text-styles",
+        callDetail: "call-detail-styles",
+      },
+    })
+    expect(toolExecutionPanelParts).toEqual({
+      compact: {
+        renderState: "compact-render-state",
+        rows: ["compact-row"],
+        onPress: "toggle-compact",
+        groupStyles: "compact-group-styles",
+        rowStyles: "compact-row-styles",
+      },
+      expandedGroup: {
+        topCollapseRenderState: "top-collapse",
+        bottomCollapseRenderState: "bottom-collapse",
+        onCollapsePress: "collapse-expanded",
+        styles: "expanded-group-styles",
+      },
+      emptyState: {
+        shouldRender: true,
+        renderState: "empty-state",
+      },
+      emptyStateTextStyle: "empty-state-text-styles",
+      callDetailStyles: "call-detail-styles",
     })
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")

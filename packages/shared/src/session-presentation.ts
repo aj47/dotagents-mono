@@ -1795,6 +1795,47 @@ export interface ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyle
   }
 }
 
+export interface ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
+  TCompact extends object = Record<string, never>,
+  TExpanded extends { emptyState?: unknown | null } = { emptyState?: unknown | null },
+  TCompactGroupStyles = unknown,
+  TCompactRowStyles = unknown,
+  TExpandedGroupStyles = unknown,
+  TEmptyStateTextStyle = unknown,
+  TCallDetailStyles = unknown,
+> {
+  compact: TCompact
+  expanded: TExpanded
+  styles: {
+    compactGroup: TCompactGroupStyles
+    compactRow: TCompactRowStyles
+    expandedGroup: TExpandedGroupStyles
+    emptyStateText: TEmptyStateTextStyle
+    callDetail: TCallDetailStyles
+  }
+}
+
+export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
+  TCompact extends object = Record<string, never>,
+  TExpanded extends { emptyState?: unknown | null } = { emptyState?: unknown | null },
+  TCompactGroupStyles = unknown,
+  TCompactRowStyles = unknown,
+  TExpandedGroupStyles = unknown,
+  TEmptyStateTextStyle = unknown,
+  TCallDetailStyles = unknown,
+> {
+  compact: TCompact & {
+    groupStyles: TCompactGroupStyles
+    rowStyles: TCompactRowStyles
+  }
+  expandedGroup: Omit<TExpanded, "emptyState"> & {
+    styles: TExpandedGroupStyles
+  }
+  emptyState: TExpanded["emptyState"]
+  emptyStateTextStyle: TEmptyStateTextStyle
+  callDetailStyles: TCallDetailStyles
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13290,6 +13331,53 @@ export function createChatRuntimeToolExecutionExpandedGroupCollapseControlMobile
       ...collapseControlStyles,
       placement: collapseBottomPlacement,
     },
+  }
+}
+
+export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
+  TCompact extends object,
+  TExpanded extends { emptyState?: unknown | null },
+  TCompactGroupStyles,
+  TCompactRowStyles,
+  TExpandedGroupStyles,
+  TEmptyStateTextStyle,
+  TCallDetailStyles,
+>({
+  compact,
+  expanded,
+  styles,
+}: ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
+  TCompact,
+  TExpanded,
+  TCompactGroupStyles,
+  TCompactRowStyles,
+  TExpandedGroupStyles,
+  TEmptyStateTextStyle,
+  TCallDetailStyles
+>): ChatRuntimeToolExecutionStackPanelMobilePropsParts<
+  TCompact,
+  TExpanded,
+  TCompactGroupStyles,
+  TCompactRowStyles,
+  TExpandedGroupStyles,
+  TEmptyStateTextStyle,
+  TCallDetailStyles
+> {
+  const { emptyState, ...expandedGroup } = expanded
+
+  return {
+    compact: {
+      ...compact,
+      groupStyles: styles.compactGroup,
+      rowStyles: styles.compactRow,
+    },
+    expandedGroup: {
+      ...expandedGroup,
+      styles: styles.expandedGroup,
+    },
+    emptyState,
+    emptyStateTextStyle: styles.emptyStateText,
+    callDetailStyles: styles.callDetail,
   }
 }
 

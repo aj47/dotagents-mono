@@ -81,6 +81,7 @@ import {
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
+  createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
@@ -8158,31 +8159,36 @@ export function ChatMessageToolExecutionStack({
   detailRows,
   styles,
 }: ChatMessageToolExecutionStackProps) {
-  const { emptyState, ...expandedGroup } = expanded;
+  const {
+    compact: compactPanelProps,
+    expandedGroup,
+    emptyState,
+    emptyStateTextStyle,
+    callDetailStyles,
+  } = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
+    compact,
+    expanded,
+    styles,
+  });
 
   return (
     <ChatMessageToolExecutionPanel
       shouldRender={shouldRender}
       isExpanded={isExpanded}
-      compact={{
-        ...compact,
-        groupStyles: styles.compactGroup,
-        rowStyles: styles.compactRow,
-      }}
+      compact={compactPanelProps}
       expanded={{
         ...expandedGroup,
         emptyState: emptyState?.shouldRender ? (
           <ChatMessageToolExecutionEmptyState
             renderState={emptyState.renderState}
-            style={styles.emptyStateText}
+            style={emptyStateTextStyle}
           />
         ) : null,
-        styles: styles.expandedGroup,
       }}
     >
       <ChatMessageToolExecutionCallList
         rows={detailRows}
-        styles={styles.callDetail}
+        styles={callDetailStyles}
       />
     </ChatMessageToolExecutionPanel>
   );
