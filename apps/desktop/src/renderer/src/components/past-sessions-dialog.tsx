@@ -14,7 +14,10 @@ import {
 
 import { cn } from "@renderer/lib/utils"
 import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
-import { getSidebarStatusPresentation } from "@dotagents/shared/session-presentation"
+import {
+  getSidebarStatusPresentation,
+  normalizeMessagePreviewText,
+} from "@dotagents/shared/session-presentation"
 import {
   getLatestUserFacingResponse,
   getSidebarActivityPresentation,
@@ -51,7 +54,6 @@ import {
   getConversationListPinActionPresentation,
   normalizeConversationListPreviewText,
 } from "@dotagents/shared/conversation-list-presentation"
-import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 
 const INITIAL_SAVED_CONVERSATIONS = 20
 const KEYBOARD_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac")

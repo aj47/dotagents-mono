@@ -11,6 +11,9 @@ describe("saved conversations dialog presentation", () => {
     expect(dialogSource).toContain(
       "@dotagents/shared/conversation-list-presentation",
     )
+    expect(dialogSource).toContain("@dotagents/shared/session-presentation")
+    expect(dialogSource).toContain("normalizeMessagePreviewText")
+    expect(dialogSource).not.toContain("@dotagents/shared/message-display-utils")
     expect(dialogSource).toContain(
       "APP_CONVERSATION_LIST_SECTION_LABELS[entry.kind]",
     )

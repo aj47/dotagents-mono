@@ -263,6 +263,7 @@ export {
   getChatMessageToneDesktopClassName,
   isChatMessageConversationContent,
   normalizeAssistantResponseForDedupe,
+  normalizeMessagePreviewText,
   sanitizeMessageContentForDisplay,
   sanitizeMessageContentForSpeech,
   setChatDisplayExpansionState,
