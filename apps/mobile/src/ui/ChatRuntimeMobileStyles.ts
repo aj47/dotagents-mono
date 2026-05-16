@@ -14,8 +14,8 @@ import {
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
-  createChatRuntimeHeaderIconContainerMobileStyleSlot,
-  createChatRuntimeHeaderPinButtonMobileStyleSlot,
+  createChatRuntimeHeaderIconContainerMobileStyleSlots,
+  createChatRuntimeHeaderPinButtonMobileStyleSlots,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeMessageActionRowMobileStyleSlot,
@@ -86,9 +86,18 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerActionsRowStyleSlot = createChatRuntimeHeaderActionsRowMobileStyleSlot({
     surface: headerSurface.actionsRow,
   });
-  const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
-  const activeHeaderPinButtonColors = headerStyleState.pinButton.active;
-  const headerKillSwitchButtonColors = headerStyleState.killSwitchButton;
+  const headerPinButtonStyleSlots = createChatRuntimeHeaderPinButtonMobileStyleSlots({
+    surface: headerSurface,
+    touchTarget: chatChromeStyleState.headerPinButton,
+    colors: headerStyleState.pinButton,
+    radius,
+  });
+  const headerIconContainerStyleSlots = createChatRuntimeHeaderIconContainerMobileStyleSlots({
+    surface: headerSurface,
+    colors: {
+      killSwitchButton: headerStyleState.killSwitchButton,
+    },
+  });
   const conversationChromeStyleState = chatChromeStyleState.conversation;
   const viewportStyleState = conversationChromeStyleState.viewport;
   const viewportStyleSlots = createChatRuntimeViewportMobileStyleSlots({
@@ -179,7 +188,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const headerActionButton = chatChromeStyleState.headerActionButton;
   const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
-  const headerPinButton = chatChromeStyleState.headerPinButton;
   const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
   const sessionStatusSurface = sessionStatusStyleState.surface;
   const sessionStatusStyleSlots = createChatSessionStatusMobileChromeStyleSlots({
@@ -263,18 +271,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageTurnDurationLiveStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
     renderState: mobileMessageTurnDurationLiveRenderState,
     platform: mobilePlatform,
-  });
-  const inactiveHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot({
-    touchTarget: headerPinButton,
-    borderRadius: radius[headerSurface.pinButton.borderRadius],
-    borderWidth: headerSurface.pinButton.borderWidth,
-    colors: inactiveHeaderPinButtonColors.button,
-  });
-  const activeHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot({
-    touchTarget: headerPinButton,
-    borderRadius: radius[headerSurface.pinButton.borderRadius],
-    borderWidth: headerSurface.pinButton.borderWidth,
-    colors: activeHeaderPinButtonColors.button,
   });
   return StyleSheet.create({
     keyboardAvoidingContainer: {
@@ -364,26 +360,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
-      ...inactiveHeaderPinButtonStyleSlot,
+      ...headerPinButtonStyleSlots.inactive,
     },
     headerPinButtonActive: {
-      ...activeHeaderPinButtonStyleSlot,
+      ...headerPinButtonStyleSlots.active,
     },
     headerKillSwitchIconContainer: {
-      ...createChatRuntimeHeaderIconContainerMobileStyleSlot({
-        size: headerSurface.killSwitchButton.size,
-        borderRadius: headerSurface.killSwitchButton.borderRadius,
-        backgroundColor: headerKillSwitchButtonColors.button.backgroundColor,
-        alignItems: headerSurface.killSwitchButton.alignItems,
-        justifyContent: headerSurface.killSwitchButton.justifyContent,
-      }),
+      ...headerIconContainerStyleSlots.killSwitch,
     },
     headerHandsFreeIconContainer: {
-      ...createChatRuntimeHeaderIconContainerMobileStyleSlot({
-        size: headerSurface.handsFreeButton.size,
-        alignItems: headerSurface.handsFreeButton.alignItems,
-        justifyContent: headerSurface.handsFreeButton.justifyContent,
-      }),
+      ...headerIconContainerStyleSlots.handsFree,
     },
     loadOlderContainer: {
       ...messageHistoryBannerStyleSlots.container,

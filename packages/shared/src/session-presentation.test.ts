@@ -62,7 +62,9 @@ import {
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
+  createChatRuntimeHeaderIconContainerMobileStyleSlots,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
+  createChatRuntimeHeaderPinButtonMobileStyleSlots,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
   createChatRuntimeRequestSentDebugState,
@@ -3070,6 +3072,39 @@ describe("session presentation semantics", () => {
       borderColor: "#2563eb",
       backgroundColor: "rgba(37, 99, 235, 0.09)",
     })
+    const headerPinButtonStyleSlots = createChatRuntimeHeaderPinButtonMobileStyleSlots({
+      surface: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile,
+      touchTarget: {
+        minWidth: 44,
+        minHeight: 44,
+        paddingHorizontal: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.horizontalPadding,
+        paddingVertical: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.verticalPadding,
+        marginHorizontal: 4,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      colors: {
+        inactive: getChatRuntimePinMobileColors(false, pinMobileColors),
+        active: getChatRuntimePinMobileColors(true, pinMobileColors),
+      },
+      radius: {
+        lg: 12,
+      },
+    })
+    expect(headerPinButtonStyleSlots.active).toEqual(pinnedHeaderButtonStyle)
+    expect(headerPinButtonStyleSlots.inactive).toEqual({
+      minWidth: 44,
+      minHeight: 44,
+      paddingHorizontal: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.horizontalPadding,
+      paddingVertical: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.verticalPadding,
+      marginHorizontal: 4,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 12,
+      borderWidth: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.pinButton.borderWidth,
+      borderColor: "#e2e8f0",
+      backgroundColor: "#ffffff",
+    })
     expect(getChatRuntimePinMobileRenderState({
       isPinned: true,
       colors: pinMobileColors,
@@ -3213,6 +3248,14 @@ describe("session presentation semantics", () => {
       alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.alignItems,
       justifyContent: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.handsFreeButton.justifyContent,
     })
+    const headerIconContainerStyleSlots = createChatRuntimeHeaderIconContainerMobileStyleSlots({
+      surface: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile,
+      colors: {
+        killSwitchButton: getChatRuntimeKillSwitchMobileColors(headerMobileStyleColors),
+      },
+    })
+    expect(headerIconContainerStyleSlots.killSwitch).toEqual(killSwitchIconContainerStyle)
+    expect(headerIconContainerStyleSlots.handsFree).toEqual(handsFreeIconContainerStyle)
     expect(getChatRuntimeHeaderMobileSurfaceState()).toBe(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile)
     expect(CHAT_RUNTIME_PRESENTATION.connectionBanner.failedTitle).toBe("Message failed to send")
     expect(CHAT_RUNTIME_PRESENTATION.connectionBanner.mobileIcon).toMatchObject({

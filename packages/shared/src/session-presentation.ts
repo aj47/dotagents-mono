@@ -2468,6 +2468,37 @@ export type ChatRuntimeHeaderPinButtonMobileStyleSlot =
     backgroundColor: string
   }
 
+export type ChatRuntimeHeaderPinButtonMobileStyleRadiusToken =
+  ChatRuntimeHeaderMobileSurfaceState["pinButton"]["borderRadius"]
+
+export interface ChatRuntimeHeaderPinButtonMobileStyleSlotsInput {
+  surface: Pick<ChatRuntimeHeaderMobileSurfaceState, "pinButton">
+  touchTarget: ReturnType<typeof createMinimumTouchTargetStyle>
+  colors: ChatRuntimeHeaderMobileStyleRenderState["pinButton"]
+  radius: Readonly<Record<ChatRuntimeHeaderPinButtonMobileStyleRadiusToken, number>>
+}
+
+export interface ChatRuntimeHeaderPinButtonMobileStyleSlots {
+  inactive: ChatRuntimeHeaderPinButtonMobileStyleSlot
+  active: ChatRuntimeHeaderPinButtonMobileStyleSlot
+}
+
+export interface ChatRuntimeHeaderIconContainerMobileStyleSlotsInput {
+  surface: Pick<ChatRuntimeHeaderMobileSurfaceState, "killSwitchButton" | "handsFreeButton">
+  colors: Pick<ChatRuntimeHeaderMobileStyleRenderState, "killSwitchButton">
+}
+
+export interface ChatRuntimeHeaderIconContainerMobileStyleSlots {
+  killSwitch: ChatRuntimeHeaderIconContainerMobileStyleSlot<
+    ChatRuntimeHeaderMobileSurfaceState["killSwitchButton"]["alignItems"],
+    ChatRuntimeHeaderMobileSurfaceState["killSwitchButton"]["justifyContent"]
+  >
+  handsFree: ChatRuntimeHeaderIconContainerMobileStyleSlot<
+    ChatRuntimeHeaderMobileSurfaceState["handsFreeButton"]["alignItems"],
+    ChatRuntimeHeaderMobileSurfaceState["handsFreeButton"]["justifyContent"]
+  >
+}
+
 export interface ChatRuntimeHeaderChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeHeaderMobileStyleColorPalette
@@ -13045,6 +13076,51 @@ export function createChatRuntimeHeaderPinButtonMobileStyleSlot({
     borderWidth,
     borderColor: colors.borderColor,
     backgroundColor: colors.backgroundColor,
+  }
+}
+
+export function createChatRuntimeHeaderPinButtonMobileStyleSlots({
+  surface,
+  touchTarget,
+  colors,
+  radius,
+}: ChatRuntimeHeaderPinButtonMobileStyleSlotsInput): ChatRuntimeHeaderPinButtonMobileStyleSlots {
+  const borderRadius = radius[surface.pinButton.borderRadius]
+  const borderWidth = surface.pinButton.borderWidth
+
+  return {
+    inactive: createChatRuntimeHeaderPinButtonMobileStyleSlot({
+      touchTarget,
+      borderRadius,
+      borderWidth,
+      colors: colors.inactive.button,
+    }),
+    active: createChatRuntimeHeaderPinButtonMobileStyleSlot({
+      touchTarget,
+      borderRadius,
+      borderWidth,
+      colors: colors.active.button,
+    }),
+  }
+}
+
+export function createChatRuntimeHeaderIconContainerMobileStyleSlots({
+  surface,
+  colors,
+}: ChatRuntimeHeaderIconContainerMobileStyleSlotsInput): ChatRuntimeHeaderIconContainerMobileStyleSlots {
+  return {
+    killSwitch: createChatRuntimeHeaderIconContainerMobileStyleSlot({
+      size: surface.killSwitchButton.size,
+      borderRadius: surface.killSwitchButton.borderRadius,
+      backgroundColor: colors.killSwitchButton.button.backgroundColor,
+      alignItems: surface.killSwitchButton.alignItems,
+      justifyContent: surface.killSwitchButton.justifyContent,
+    }),
+    handsFree: createChatRuntimeHeaderIconContainerMobileStyleSlot({
+      size: surface.handsFreeButton.size,
+      alignItems: surface.handsFreeButton.alignItems,
+      justifyContent: surface.handsFreeButton.justifyContent,
+    }),
   }
 }
 
