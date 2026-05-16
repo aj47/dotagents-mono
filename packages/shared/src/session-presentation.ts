@@ -3260,6 +3260,12 @@ export interface ChatComposerRuntimeControlMobileRenderState {
   micButton: ChatComposerMicMobileRenderState
 }
 
+export interface ChatComposerRuntimeFollowUpPresentationStateInput {
+  conversationState?: AgentConversationState | null
+  isResponding?: boolean
+  isQueueEnabled?: boolean
+}
+
 export interface ChatComposerMicMobileWebPressStyleState {
   userSelect: "none"
   WebkitUserSelect: "none"
@@ -7264,6 +7270,17 @@ export function getChatComposerRuntimeDockMobileRenderState({
       webPressedStyle: isWebPlatform ? getChatComposerMicMobileWebPressStyleState() : undefined,
     },
   }
+}
+
+export function getChatComposerRuntimeFollowUpPresentationState({
+  conversationState,
+  isResponding = false,
+  isQueueEnabled = false,
+}: ChatComposerRuntimeFollowUpPresentationStateInput): FollowUpInputPresentation {
+  return getFollowUpInputPresentation({
+    conversationState: conversationState ?? (isResponding ? "running" : "complete"),
+    isQueueEnabled,
+  })
 }
 
 export function getChatComposerMobileTextInputPlatformState(

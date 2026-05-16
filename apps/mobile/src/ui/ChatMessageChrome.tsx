@@ -177,7 +177,7 @@ import {
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
-  getFollowUpInputPresentation,
+  getChatComposerRuntimeFollowUpPresentationState,
   mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
   type ChatConversationHomePromptDeleteConfirmAlertState,
@@ -195,6 +195,7 @@ import {
   type ChatRuntimeKillSwitchResultLike,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatComposerRuntimeDockMobileRenderStateInput,
+  type ChatComposerRuntimeFollowUpPresentationStateInput,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
@@ -2785,12 +2786,6 @@ type ChatComposerRuntimeDockChromeInput =
 
 type ChatComposerRuntimeControlRenderStateInput =
   ChatComposerRuntimeControlMobileRenderStateInput;
-
-type ChatComposerRuntimeFollowUpPresentationStateInput = {
-  conversationState?: AgentConversationState | null;
-  isResponding?: boolean;
-  isQueueEnabled?: boolean;
-};
 
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
@@ -7439,9 +7434,9 @@ export function createChatComposerRuntimeDockProps({
 }: ChatComposerRuntimeDockChromePropsInput): Omit<ChatComposerRuntimeDockProps, 'styles'> {
   const mobileComposerControls = getChatComposerMobileControlState();
   const isWebPlatform = chrome.textEntry.webAccessibility.isWebPlatform;
-  const composerControlPresentation = getFollowUpInputPresentation({
-    conversationState:
-      composerControlConversationState ?? (composerControlIsResponding ? 'running' : 'complete'),
+  const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState({
+    conversationState: composerControlConversationState,
+    isResponding: composerControlIsResponding,
     isQueueEnabled: composerControlMessageQueueEnabled,
   });
   const controlRenderState = getChatComposerRuntimeControlMobileRenderState({

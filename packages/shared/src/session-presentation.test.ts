@@ -127,6 +127,7 @@ import {
   getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
+  getChatComposerRuntimeFollowUpPresentationState,
   getChatComposerRuntimeImageDataUrlBytes,
   getChatComposerRuntimeDockMobileRenderState,
   getChatComposerSubmitMobileActionState,
@@ -438,6 +439,22 @@ describe("session presentation semantics", () => {
       submitHint: "Sends your message to the selected agent.",
     })
     expect(getFollowUpInputPresentation({ conversationState: "blocked", isQueueEnabled: true }).mode).toBe("send")
+    expect(getChatComposerRuntimeFollowUpPresentationState({
+      conversationState: null,
+      isResponding: true,
+      isQueueEnabled: true,
+    })).toMatchObject({
+      mode: "queue",
+      submitTitle: "Queue next message",
+    })
+    expect(getChatComposerRuntimeFollowUpPresentationState({
+      conversationState: null,
+      isResponding: false,
+      isQueueEnabled: true,
+    })).toMatchObject({
+      mode: "send",
+      submitTitle: "Send message",
+    })
   })
 
   it("treats active attention signals as foreground without changing lifecycle", () => {
