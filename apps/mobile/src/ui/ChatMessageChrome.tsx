@@ -169,8 +169,7 @@ import {
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationItemThreadMobileState,
-  getChatRuntimeConversationMessageRenderContextMobileState,
-  getChatRuntimeConversationMessageRuntimeThreadState,
+  getChatRuntimeConversationMessageThreadMobileState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
@@ -3467,27 +3466,16 @@ export function createChatMessageConversationMessageThreadRenderState({
   resultOnlyToolLabel,
   ...bodyInput
 }: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageThreadRenderState {
-  const renderContext = getChatRuntimeConversationMessageRenderContextMobileState({
-    message: bodyInput.message,
-    messageIndex: bodyInput.messageIndex,
-    isResponding: bodyInput.isResponding,
-    lastConversationContentMessageIndex,
-    expandedMessages,
-    resultOnlyToolLabel,
-    colors: bodyInput.colors,
-  });
-  const body = createChatMessageConversationThreadBodyInput({
-    ...bodyInput,
-    renderContext,
-  });
-
   return {
-    threadState: getChatRuntimeConversationMessageRuntimeThreadState({
+    threadState: getChatRuntimeConversationMessageThreadMobileState({
       itemKey,
       groupRenderState,
       groupThreadState,
-      renderContext,
-      body,
+      lastConversationContentMessageIndex,
+      expandedMessages,
+      resultOnlyToolLabel,
+      bodyInput,
+      createBodyState: createChatMessageConversationThreadBodyInput,
     }),
   };
 }

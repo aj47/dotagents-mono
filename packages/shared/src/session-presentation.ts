@@ -653,6 +653,29 @@ export type ChatRuntimeConversationMessageRuntimeThreadState<
 > =
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
 
+export type ChatRuntimeConversationMessageThreadMobileBodyInput =
+  Pick<
+    ChatRuntimeConversationMessageRenderContextMobileStateInput,
+    "message" | "messageIndex" | "isResponding" | "colors"
+  >
+
+export interface ChatRuntimeConversationMessageThreadMobileStateInput<
+  TBodyInput extends ChatRuntimeConversationMessageThreadMobileBodyInput,
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+> extends Pick<
+    ChatRuntimeConversationMessageRuntimeThreadStateInput<TBody>,
+    "itemKey" | "groupRenderState" | "groupThreadState"
+  >,
+  Pick<
+    ChatRuntimeConversationMessageRenderContextMobileStateInput,
+    "lastConversationContentMessageIndex" | "expandedMessages" | "resultOnlyToolLabel"
+  > {
+  bodyInput: TBodyInput
+  createBodyState: (
+    input: TBodyInput & { renderContext: ChatRuntimeConversationMessageRenderContextMobileState }
+  ) => TBody
+}
+
 export interface ChatRuntimeConversationItemThreadMobileStateInput<
   TMessageThreadInput,
   TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
@@ -6859,6 +6882,45 @@ export function getChatRuntimeConversationMessageRuntimeThreadState<
       body: runtimeThreadInput.body,
     }),
   }
+}
+
+export function getChatRuntimeConversationMessageThreadMobileState<
+  TBodyInput extends ChatRuntimeConversationMessageThreadMobileBodyInput,
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+>({
+  itemKey,
+  groupRenderState,
+  groupThreadState,
+  lastConversationContentMessageIndex,
+  expandedMessages,
+  resultOnlyToolLabel,
+  bodyInput,
+  createBodyState,
+}: ChatRuntimeConversationMessageThreadMobileStateInput<
+  TBodyInput,
+  TBody
+>): ChatRuntimeConversationMessageRuntimeThreadState<TBody> {
+  const renderContext = getChatRuntimeConversationMessageRenderContextMobileState({
+    message: bodyInput.message,
+    messageIndex: bodyInput.messageIndex,
+    isResponding: bodyInput.isResponding,
+    lastConversationContentMessageIndex,
+    expandedMessages,
+    resultOnlyToolLabel,
+    colors: bodyInput.colors,
+  })
+  const body = createBodyState({
+    ...bodyInput,
+    renderContext,
+  })
+
+  return getChatRuntimeConversationMessageRuntimeThreadState({
+    itemKey,
+    groupRenderState,
+    groupThreadState,
+    renderContext,
+    body,
+  })
 }
 
 export function getChatRuntimeConversationItemThreadMobileState<

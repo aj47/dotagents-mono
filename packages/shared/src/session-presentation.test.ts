@@ -124,6 +124,7 @@ import {
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationMessageRenderContextMobileState,
+  getChatRuntimeConversationMessageThreadMobileState,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationRuntimeThreadState,
@@ -4135,6 +4136,39 @@ describe("session presentation semantics", () => {
     })).toMatchObject({
       threadKey: 5,
       shouldRenderThread: true,
+    })
+    expect(getChatRuntimeConversationMessageThreadMobileState({
+      itemKey: 7,
+      groupRenderState: null,
+      groupThreadState: getChatRuntimeConversationToolActivityGroupThreadState({
+        group: null,
+        groupRenderState: null,
+        itemKey: 7,
+        onToggleGroup: () => {},
+      }),
+      lastConversationContentMessageIndex: 7,
+      expandedMessages: { 7: true },
+      resultOnlyToolLabel: "Tool result",
+      bodyInput: {
+        message: {
+          role: "assistant" as const,
+          content: "Shared message thread",
+        },
+        messageIndex: 7,
+        isResponding: false,
+        colors: messageThreadStyleColors,
+      },
+      createBodyState: ({ renderContext }) => ({
+        bodyDisplayMode: renderContext.shouldRenderSurface ? "conversation" : "inlineActivity",
+        visibleMessageContent: renderContext.visibleMessageContent,
+      }),
+    })).toMatchObject({
+      threadKey: 7,
+      shouldRenderThread: true,
+      body: {
+        bodyDisplayMode: "conversation",
+        visibleMessageContent: "Shared message thread",
+      },
     })
     const threadListMessages = [
       { role: "user" as const, content: "Question" },
