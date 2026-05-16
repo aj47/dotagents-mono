@@ -2324,7 +2324,9 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
   assert.match(sessionPresentationSource, /renderState: message\.content,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRenderState,/);
   assert.match(sessionPresentationSource, /export type ChatRuntimeConversationContentMobileRenderState = Pick<\s+ChatMessageContentRenderState,\s+"shouldRenderExpandedContent" \| "shouldRenderCollapsedTextPreview"\s+>/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConversationContentState = ChatRuntimeConversationContentMobileRenderState;/);
+  assert.match(sessionPresentationSource, /export type ChatRuntimeConversationContentMobileDisplayMode =\s+\| "expanded"\s+\| "collapsed"\s+\| "hidden"/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationContentState = ChatRuntimeConversationContentMobileRenderState;/);
+  assert.match(chatMessageChromeSource, /contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;/);
   assert.doesNotMatch(chatMessageChromeSource, /const contentState = messageRenderState\.content;/);
   assert.doesNotMatch(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0/);
 });
@@ -3165,7 +3167,7 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageConversationContentInput/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeConversationContentMobileState\(\{/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationContentMobileState/);
-  assert.match(sessionPresentationSource, /return \{\s+contentState,\s+expanded: \{/);
+  assert.match(sessionPresentationSource, /return \{\s+contentState,\s+contentDisplayMode: getChatRuntimeConversationContentMobileDisplayMode\(contentState\),\s+expanded: \{/);
   assert.match(sessionPresentationSource, /streamingRenderState: getChatRuntimeStreamingContentMobileRenderState\(\{\s+isStreaming,\s+content: visibleMessageContent,\s+colors,/);
   assert.match(sessionPresentationSource, /markdownContent: visibleMessageContent,/);
   assert.match(sessionPresentationSource, /onPress: collapsedPreviewAction\.canToggle\s+\? \(\) => onToggleMessageExpansion\(messageIndex\)\s+: undefined,/);
@@ -3925,7 +3927,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{styles\.body\}/);
   assert.match(chatMessageChromeSource, /return getChatRuntimeConversationThreadBodyMobileState\(\{/);
   assert.match(chatMessageChromeSource, /conversation: createChatMessageConversationBodyProps\(conversation\),/);
-  assert.match(chatMessageChromeSource, /content: \{\s+contentState,\s+shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,\s+entries: actionSet\.entries,/);
+  assert.match(chatMessageChromeSource, /content: \{\s+contentDisplayMode,\s+shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,\s+entries: actionSet\.entries,/);
+  assert.doesNotMatch(chatMessageChromeSource, /contentState\.shouldRenderExpandedContent/);
+  assert.doesNotMatch(chatMessageChromeSource, /contentState\.shouldRenderCollapsedTextPreview/);
+  assert.match(chatMessageChromeSource, /if \(contentDisplayMode === 'expanded'\) \{/);
+  assert.match(chatMessageChromeSource, /if \(contentDisplayMode === 'collapsed'\) \{/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);

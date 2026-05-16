@@ -3430,6 +3430,7 @@ describe("session presentation semantics", () => {
       shouldRenderExpandedContent: true,
       shouldRenderCollapsedTextPreview: false,
     })
+    expect(contentState.contentDisplayMode).toBe("expanded")
     expect(contentState.collapsed).toMatchObject({
       renderState: toggleableMessageRenderState.collapsedPreview,
       actionState: toggleableMessageRenderState.collapsedPreviewAction,
@@ -3901,6 +3902,7 @@ describe("session presentation semantics", () => {
             styleId: "copy",
           },
         },
+        contentDisplayMode: "expanded",
         expanded: {
           markdownContent: "Working",
           assetBaseUrl: "https://assets.local",

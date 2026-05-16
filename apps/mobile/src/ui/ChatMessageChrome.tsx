@@ -232,7 +232,7 @@ import {
   type ChatComposerRuntimeControlMobileRenderStateInput,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
-  type ChatRuntimeConversationContentMobileRenderState,
+  type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
@@ -2743,8 +2743,6 @@ type ChatMessageContentRowProps = {
   bodyStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageConversationContentState = ChatRuntimeConversationContentMobileRenderState;
-
 type ChatMessageStreamingContentRenderState = {
   shouldRender: boolean;
   accessibilityRole: AccessibilityRole;
@@ -2803,7 +2801,7 @@ type ChatMessageCollapsedPreviewPropsInput = Pick<
 >;
 
 type ChatMessageConversationContentProps = {
-  contentState: ChatMessageConversationContentState;
+  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;
   rowStyle: StyleProp<ViewStyle>;
   shouldRenderActionSlots: boolean;
   entries: readonly ChatMessageActionEntry[];
@@ -2973,7 +2971,7 @@ export type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conve
 
 export type ChatMessageConversationBodyPropsInput = {
   surfaceToneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot;
-  contentState: ChatMessageConversationContentState;
+  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;
   actionSet: ChatMessageActionSetInput;
   expanded: ChatMessageExpandedContentPropsInput;
   collapsed: ChatMessageCollapsedPreviewPropsInput;
@@ -8262,7 +8260,7 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
 }
 
 export function createChatMessageConversationBodyProps({
-  contentState,
+  contentDisplayMode,
   actionSet: actionSetInput,
   expanded,
   collapsed,
@@ -8272,7 +8270,7 @@ export function createChatMessageConversationBodyProps({
 
   return {
     content: {
-      contentState,
+      contentDisplayMode,
       shouldRenderActionSlots: actionSet.shouldRenderActionSlots,
       entries: actionSet.entries,
       expanded: createChatMessageExpandedContentProps(expanded),
@@ -12459,14 +12457,14 @@ export function ChatMessageCollapsedPreview({
 }
 
 export function ChatMessageConversationContent({
-  contentState,
+  contentDisplayMode,
   rowStyle,
   shouldRenderActionSlots,
   entries,
   expanded,
   collapsed,
 }: ChatMessageConversationContentProps) {
-  if (contentState.shouldRenderExpandedContent) {
+  if (contentDisplayMode === 'expanded') {
     return (
       <ChatMessageContentRow
         rowStyle={rowStyle}
@@ -12486,7 +12484,7 @@ export function ChatMessageConversationContent({
     );
   }
 
-  if (contentState.shouldRenderCollapsedTextPreview) {
+  if (contentDisplayMode === 'collapsed') {
     return (
       <ChatMessageContentRow
         rowStyle={rowStyle}

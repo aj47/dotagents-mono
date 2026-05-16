@@ -645,6 +645,11 @@ export type ChatRuntimeConversationContentMobileRenderState = Pick<
   "shouldRenderExpandedContent" | "shouldRenderCollapsedTextPreview"
 >
 
+export type ChatRuntimeConversationContentMobileDisplayMode =
+  | "expanded"
+  | "collapsed"
+  | "hidden"
+
 export type ChatRuntimeConversationSurfaceToneMobileStyleSlot =
   ChatRuntimeConversationMessageMobileRenderState["toneStyleSlot"]
 
@@ -679,6 +684,7 @@ export interface ChatRuntimeConversationContentMobileState<
   TAssetAuthToken = string,
 > {
   contentState: ChatRuntimeConversationContentMobileRenderState
+  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode
   expanded: {
     streamingRenderState: ChatRuntimeStreamingContentMobileRenderState
     markdownContent: string
@@ -6790,6 +6796,7 @@ export function getChatRuntimeConversationContentMobileState<
 > {
   return {
     contentState,
+    contentDisplayMode: getChatRuntimeConversationContentMobileDisplayMode(contentState),
     expanded: {
       streamingRenderState: getChatRuntimeStreamingContentMobileRenderState({
         isStreaming,
@@ -6809,6 +6816,14 @@ export function getChatRuntimeConversationContentMobileState<
         : undefined,
     },
   }
+}
+
+export function getChatRuntimeConversationContentMobileDisplayMode(
+  contentState: ChatRuntimeConversationContentMobileRenderState,
+): ChatRuntimeConversationContentMobileDisplayMode {
+  if (contentState.shouldRenderExpandedContent) return "expanded"
+  if (contentState.shouldRenderCollapsedTextPreview) return "collapsed"
+  return "hidden"
 }
 
 export function getChatRuntimeConversationRetryStatusMobileState<
