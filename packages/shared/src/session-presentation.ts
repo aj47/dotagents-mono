@@ -14652,6 +14652,50 @@ export function createChatMessageRuntimeDockStyleSlots<
   }
 }
 
+export function createChatMessageConversationViewportStyleSlots<
+  TFrameStyles,
+  TScrollViewportStyles,
+  TLoadingStateStyles,
+  THomeQuickStartStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyles,
+>({
+  frameStyles,
+  scrollViewportStyles,
+  loadingStateStyles,
+  homeQuickStartStyles,
+  historyBannerStyles,
+  stepSummaryStyles,
+  debugPanelStyles,
+}: {
+  frameStyles: TFrameStyles
+  scrollViewportStyles: TScrollViewportStyles
+  loadingStateStyles: TLoadingStateStyles
+  homeQuickStartStyles: THomeQuickStartStyles
+  historyBannerStyles: THistoryBannerStyles
+  stepSummaryStyles: TStepSummaryStyles
+  debugPanelStyles: TDebugPanelStyles
+}): {
+  frame: TFrameStyles
+  scrollViewport: TScrollViewportStyles
+  loadingState: TLoadingStateStyles
+  homeQuickStarts: THomeQuickStartStyles
+  historyBanner: THistoryBannerStyles
+  stepSummary: TStepSummaryStyles
+  debugPanels: TDebugPanelStyles
+} {
+  return {
+    frame: frameStyles,
+    scrollViewport: scrollViewportStyles,
+    loadingState: loadingStateStyles,
+    homeQuickStarts: homeQuickStartStyles,
+    historyBanner: historyBannerStyles,
+    stepSummary: stepSummaryStyles,
+    debugPanels: debugPanelStyles,
+  }
+}
+
 export function createChatMessageRuntimeViewportStyleSlots<
   TConversationViewportStyles extends {
     scrollViewport: {

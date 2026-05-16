@@ -61,6 +61,7 @@ import {
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageConnectionBannerStyleSlots,
   createChatMessageConversationDockStyleSlots,
+  createChatMessageConversationViewportStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -3164,6 +3165,23 @@ describe("session presentation semantics", () => {
       scrollToBottomButtonStyle: "scroll-button",
       queuePanelStyle: "queue-panel",
       connectionBanner: "connection-banner",
+    })
+    expect(createChatMessageConversationViewportStyleSlots({
+      frameStyles: "frame",
+      scrollViewportStyles: "scroll-viewport",
+      loadingStateStyles: "loading-state",
+      homeQuickStartStyles: "home-quick-starts",
+      historyBannerStyles: "history-banner",
+      stepSummaryStyles: "step-summary",
+      debugPanelStyles: "debug-panels",
+    })).toEqual({
+      frame: "frame",
+      scrollViewport: "scroll-viewport",
+      loadingState: "loading-state",
+      homeQuickStarts: "home-quick-starts",
+      historyBanner: "history-banner",
+      stepSummary: "step-summary",
+      debugPanels: "debug-panels",
     })
     expect(createChatMessageRuntimeDockStyleSlots({
       conversationDockStyles: {

@@ -6975,66 +6975,6 @@ export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots(
   } as ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
 }
 
-export function createChatMessageConversationViewportStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatMessageConversationViewportStyleSlots {
-  return {
-    frame: {
-      keyboardAvoidingStyle: styles.keyboardAvoidingContainer,
-      rootStyle: styles.chatRoot,
-    },
-    scrollViewport: {
-      style: styles.chatScroll,
-      contentContainerStyle: styles.chatScrollContent,
-    },
-    loadingState: {
-      style: styles.loadingState,
-      spinnerStyle: styles.loadingSpinner,
-    },
-    homeQuickStarts: {
-      card: styles.chatHomeCard,
-      emptyText: styles.chatHomeEmptyText,
-      grid: styles.chatHomeShortcutGrid,
-      shortcutCard: styles.chatHomeShortcutCard,
-      shortcutCardAdd: styles.chatHomeShortcutCardAdd,
-      shortcutCardDisabled: styles.chatHomeShortcutCardDisabled,
-      shortcutCardPressed: styles.chatHomeShortcutCardPressed,
-      sourcePill: styles.chatHomeShortcutSourcePill,
-      sourceLabel: styles.chatHomeShortcutSourceLabel,
-      addIcon: styles.chatHomeShortcutAddIcon,
-      title: styles.chatHomeShortcutTitle,
-      titleAdd: styles.chatHomeShortcutTitleAdd,
-      description: styles.chatHomeShortcutDescription,
-      actions: styles.chatHomeShortcutActions,
-      actionButton: styles.chatHomeShortcutActionButton,
-      actionButtonPressed: styles.chatHomeShortcutActionButtonPressed,
-      actionText: styles.chatHomeShortcutActionText,
-      actionDangerText: styles.chatHomeShortcutActionDangerText,
-    },
-    historyBanner: {
-      container: styles.loadOlderContainer,
-      summary: styles.loadOlderText,
-      loadButton: styles.loadOlderButton,
-      loadButtonPressed: styles.loadOlderButtonPressed,
-      loadButtonText: styles.loadOlderButtonText,
-    },
-    stepSummary: {
-      card: styles.stepSummaryCard,
-      header: styles.stepSummaryHeader,
-      title: styles.stepSummaryTitle,
-      badge: styles.stepSummaryBadge,
-      badgeText: styles.stepSummaryBadgeText,
-      action: styles.stepSummaryAction,
-      meta: styles.stepSummaryMeta,
-      preview: styles.stepSummaryPreview,
-    },
-    debugPanels: {
-      panelStyle: styles.debugInfo,
-      textStyle: styles.debugText,
-    },
-  } as ChatMessageConversationViewportStyleSlots;
-}
-
 export function createChatConversationHomePromptEditorModalStyleSlots(
   styles: ChatMessageChromeStyleSource,
 ): ChatConversationHomePromptEditorModalStyles {
