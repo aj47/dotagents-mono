@@ -76,6 +76,7 @@ import {
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
+  createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -6294,6 +6295,75 @@ describe("session presentation semantics", () => {
       },
     })
     expect(threadChromeStyle.toolExecutionDetail.payloadPreview.numberOfLines).toBe(2)
+    expect(createChatRuntimeToolExecutionDetailMobileStyleSlots({
+      renderState: threadChromeStyle.toolExecutionDetail,
+      spacing: { xs: 4 },
+      radius: { sm: 6 },
+      platform: "android",
+    })).toMatchObject({
+      card: {
+        marginTop: 2,
+        borderRadius: 6,
+        borderLeftWidth: 1.5,
+        borderLeftColor: "rgba(100, 116, 139, 0.5)",
+        backgroundColor: "rgba(100, 116, 139, 0.02)",
+        overflow: "hidden",
+      },
+      pending: {
+        borderLeftColor: "rgba(14, 165, 233, 0.5)",
+      },
+      callSection: {
+        marginBottom: 4,
+        paddingBottom: 4,
+        borderBottomWidth: 0.5,
+        borderBottomColor: "rgba(100, 116, 139, 0.15)",
+      },
+      toolName: {
+        fontFamily: "monospace",
+        fontWeight: "600",
+        color: "#2563eb",
+        fontSize: 10,
+        flex: 1,
+      },
+      payloadPreview: {
+        fontFamily: "monospace",
+        fontSize: 8,
+        lineHeight: 11,
+        borderRadius: 6,
+        backgroundColor: "rgba(100, 116, 139, 0.04)",
+        color: "#64748b",
+      },
+      copyButton: {
+        minHeight: 24,
+        borderRadius: 6,
+        backgroundColor: "rgba(100, 116, 139, 0.08)",
+        flexDirection: "row",
+        flexShrink: 0,
+      },
+      paramsCode: {
+        fontFamily: "monospace",
+        color: "#0f172a",
+        backgroundColor: "#f1f5f9",
+        borderRadius: 6,
+      },
+      resultCharCount: {
+        fontFamily: "monospace",
+        color: "#64748b",
+        opacity: 0.6,
+      },
+      resultBadgeSuccess: {
+        backgroundColor: "rgba(22, 163, 74, 0.12)",
+      },
+      resultBadgeTextError: {
+        color: "#dc2626",
+      },
+      resultErrorText: {
+        fontFamily: "monospace",
+        color: "#dc2626",
+        backgroundColor: "rgba(220, 38, 38, 0.06)",
+        borderRadius: 6,
+      },
+    })
     expect(threadChromeStyle.toolActivityGroup.colors.countBadge.color).toBe("#0ea5e9")
     expect(threadChromeStyle.toolApproval.title).toBe("Tool Approval Required")
     expect(threadChromeStyle.messageThread.message.surface.paddingHorizontal).toBe("sm")

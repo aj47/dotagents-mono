@@ -22,6 +22,7 @@ import {
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
+  createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -168,7 +169,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     platform: mobilePlatform,
   });
   const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;
-  const detailedToolExecution = toolExecutionDetailStyleState.surface;
+  const toolExecutionDetailStyleSlots = createChatRuntimeToolExecutionDetailMobileStyleSlots({
+    renderState: toolExecutionDetailStyleState,
+    spacing,
+    radius,
+    platform: mobilePlatform,
+  });
   const viewportSurfaceColors = viewportStyleState.colors;
   const toolActivityGroupStyleState = threadChromeStyleState.toolActivityGroup;
   const toolActivityGroupStyleSlots = createChatRuntimeToolActivityGroupMobileStyleSlots({
@@ -193,13 +199,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageCollapsedPreview = mobileMessageStyleState.collapsedPreview;
   const mobileMessageCollapsedPreviewColors = mobileMessageStyleState.colors.collapsedPreview;
   const mobileMessageToneColors = mobileMessageStyleState.colors.tones;
-  const toolExecutionDetailStyleColors = toolExecutionDetailStyleState.colors;
-  const toolPayloadPreviewColors = toolExecutionDetailStyleColors.payloadPreview;
-  const toolDetailCopyButtonColors = toolExecutionDetailStyleColors.copyButton;
-  const toolResultBadgeSuccessColors = toolExecutionDetailStyleColors.badge.success;
-  const toolResultBadgeErrorColors = toolExecutionDetailStyleColors.badge.error;
-  const toolResultErrorColors = toolExecutionDetailStyleColors.error;
-  const toolExecutionDetailContentColors = toolExecutionDetailStyleColors.content;
   const headerTurnDurationStyleState = headerChromeStyleState.turnDuration.standard;
   const headerTurnDurationLiveStyleState = headerChromeStyleState.turnDuration.live;
   const headerTurnDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
@@ -240,7 +239,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     renderState: mobileMessageTurnDurationLiveRenderState,
     platform: mobilePlatform,
   });
-  const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   const inactiveHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot({
     touchTarget: headerPinButton,
     borderRadius: radius[headerSurface.pinButton.borderRadius],
@@ -1056,23 +1054,19 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
-      marginTop: detailedToolExecution.card.marginTop,
-      borderRadius: radius[detailedToolExecution.card.borderRadius],
-      borderLeftWidth: detailedToolExecution.card.borderLeftWidth,
-      ...toolExecutionDetailColorsByState.idle,
-      overflow: detailedToolExecution.card.overflow,
+      ...toolExecutionDetailStyleSlots.card,
     },
-    toolExecutionPending: toolExecutionDetailColorsByState.pending,
-    toolExecutionSuccess: toolExecutionDetailColorsByState.success,
-    toolExecutionError: toolExecutionDetailColorsByState.error,
+    toolExecutionPending: toolExecutionDetailStyleSlots.pending,
+    toolExecutionSuccess: toolExecutionDetailStyleSlots.success,
+    toolExecutionError: toolExecutionDetailStyleSlots.error,
     toolExecutionExpandedContainer: {
-      position: detailedToolExecution.expandedContainer.position,
+      ...toolExecutionDetailStyleSlots.expandedContainer,
     },
     toolExecutionCollapseTopButton: {
-      marginBottom: detailedToolExecution.collapseButton.topMarginBottom,
+      ...toolExecutionDetailStyleSlots.collapseTopButton,
     },
     toolExecutionCollapseBottomButton: {
-      marginTop: detailedToolExecution.collapseButton.bottomMarginTop,
+      ...toolExecutionDetailStyleSlots.collapseBottomButton,
     },
     toolCallCompactContainer: {
       ...compactToolExecutionStyleSlots.container,
@@ -1139,215 +1133,112 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...toolActivityGroupStyleSlots.footerText,
     },
     toolParamsSection: {
-      paddingHorizontal: spacing[detailedToolExecution.blockSection.paddingHorizontal],
-      paddingVertical: detailedToolExecution.blockSection.paddingVertical,
+      ...toolExecutionDetailStyleSlots.paramsSection,
     },
     toolCallSection: {
-      marginBottom: spacing[detailedToolExecution.section.marginBottom],
-      paddingBottom: spacing[detailedToolExecution.section.paddingBottom],
-      borderBottomWidth: detailedToolExecution.section.borderBottomWidth,
-      borderBottomColor: toolExecutionDetailContentColors.section.borderBottomColor,
+      ...toolExecutionDetailStyleSlots.callSection,
     },
     toolName: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.toolName.fontFamilyByPlatform, mobilePlatform),
-      fontWeight: detailedToolExecution.toolName.fontWeight,
-      color: toolExecutionDetailContentColors.toolName.color,
-      fontSize: detailedToolExecution.toolName.fontSize,
-      flex: detailedToolExecution.toolName.flex,
+      ...toolExecutionDetailStyleSlots.toolName,
     },
     toolCallHeader: {
-      flexDirection: detailedToolExecution.header.flexDirection,
-      alignItems: detailedToolExecution.header.alignItems,
-      justifyContent: detailedToolExecution.header.justifyContent,
-      paddingVertical: spacing[detailedToolExecution.header.paddingVertical],
-      marginBottom: spacing[detailedToolExecution.header.marginBottom],
-      minHeight: detailedToolExecution.header.minHeight,
+      ...toolExecutionDetailStyleSlots.callHeader,
     },
     toolCallHeaderPressed: {
-      opacity: detailedToolExecution.header.pressedOpacity,
+      ...toolExecutionDetailStyleSlots.callHeaderPressed,
     },
     toolCallExpandHint: {
-      flexDirection: detailedToolExecution.expandHint.flexDirection,
-      alignItems: detailedToolExecution.expandHint.alignItems,
-      gap: detailedToolExecution.expandHint.gap,
+      ...toolExecutionDetailStyleSlots.expandHint,
     },
     toolCallExpandHintText: {
-      fontSize: detailedToolExecution.expandHint.fontSize,
-      color: toolExecutionDetailContentColors.expandHintText.color,
-      fontWeight: detailedToolExecution.expandHint.fontWeight,
+      ...toolExecutionDetailStyleSlots.expandHintText,
     },
     toolSectionLabel: {
-      fontSize: detailedToolExecution.sectionLabel.fontSize,
-      fontWeight: detailedToolExecution.sectionLabel.fontWeight,
-      color: toolExecutionDetailContentColors.sectionLabel.color,
-      marginBottom: detailedToolExecution.sectionLabel.marginBottom,
-      textTransform: detailedToolExecution.sectionLabel.textTransform,
-      letterSpacing: detailedToolExecution.sectionLabel.letterSpacing,
+      ...toolExecutionDetailStyleSlots.sectionLabel,
     },
     toolDetailHeaderRow: {
-      flexDirection: detailedToolExecution.detailHeaderRow.flexDirection,
-      alignItems: detailedToolExecution.detailHeaderRow.alignItems,
-      justifyContent: detailedToolExecution.detailHeaderRow.justifyContent,
-      gap: detailedToolExecution.detailHeaderRow.gap,
-      marginBottom: detailedToolExecution.detailHeaderRow.marginBottom,
+      ...toolExecutionDetailStyleSlots.detailHeaderRow,
     },
     toolPayloadMetaRow: {
-      flexDirection: detailedToolExecution.payloadMeta.flexDirection,
-      alignItems: detailedToolExecution.payloadMeta.alignItems,
-      minWidth: detailedToolExecution.payloadMeta.minWidth,
-      gap: detailedToolExecution.payloadMeta.gap,
-      marginBottom: detailedToolExecution.payloadMeta.marginBottom,
+      ...toolExecutionDetailStyleSlots.payloadMetaRow,
     },
     toolPayloadType: {
-      fontSize: detailedToolExecution.payloadType.fontSize,
-      fontWeight: detailedToolExecution.payloadType.fontWeight,
-      opacity: detailedToolExecution.payloadType.opacity,
-      color: toolExecutionDetailContentColors.payloadType.color,
+      ...toolExecutionDetailStyleSlots.payloadType,
     },
     toolPayloadPreview: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.payloadPreview.fontFamilyByPlatform, mobilePlatform),
-      fontSize: detailedToolExecution.payloadPreview.fontSize,
-      lineHeight: detailedToolExecution.payloadPreview.lineHeight,
-      paddingHorizontal: detailedToolExecution.payloadPreview.paddingHorizontal,
-      paddingVertical: detailedToolExecution.payloadPreview.paddingVertical,
-      borderRadius: radius[detailedToolExecution.payloadPreview.borderRadius],
-      backgroundColor: toolPayloadPreviewColors.backgroundColor,
-      color: toolPayloadPreviewColors.color,
-      marginBottom: detailedToolExecution.result.headerMarginBottom,
+      ...toolExecutionDetailStyleSlots.payloadPreview,
     },
     toolDetailCopyButton: {
-      minHeight: detailedToolExecution.copyButton.minHeight,
-      paddingHorizontal: detailedToolExecution.copyButton.paddingHorizontal,
-      paddingVertical: detailedToolExecution.copyButton.paddingVertical,
-      borderRadius: radius[detailedToolExecution.copyButton.borderRadius],
-      backgroundColor: toolDetailCopyButtonColors.backgroundColor,
-      flexDirection: detailedToolExecution.copyButton.flexDirection,
-      alignItems: detailedToolExecution.copyButton.alignItems,
-      justifyContent: detailedToolExecution.copyButton.justifyContent,
-      gap: detailedToolExecution.copyButton.gap,
-      flexShrink: detailedToolExecution.copyButton.flexShrink,
-    } as const,
+      ...toolExecutionDetailStyleSlots.copyButton,
+    },
     toolDetailCopyButtonPressed: {
-      opacity: detailedToolExecution.copyButton.pressedOpacity,
+      ...toolExecutionDetailStyleSlots.copyButtonPressed,
     },
     toolDetailCopyButtonText: {
-      fontSize: detailedToolExecution.copyButtonText.fontSize,
-      fontWeight: detailedToolExecution.copyButtonText.fontWeight,
-      color: toolDetailCopyButtonColors.textColor,
+      ...toolExecutionDetailStyleSlots.copyButtonText,
     },
     toolParamsScroll: {
-      maxHeight: detailedToolExecution.scroll.collapsedMaxHeight,
-      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
-      overflow: detailedToolExecution.scroll.overflow,
+      ...toolExecutionDetailStyleSlots.paramsScroll,
     },
     toolParamsScrollExpanded: {
-      maxHeight: detailedToolExecution.scroll.expandedMaxHeight,
-      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
-      overflow: detailedToolExecution.scroll.overflow,
+      ...toolExecutionDetailStyleSlots.paramsScrollExpanded,
     },
     toolParamsCode: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform, mobilePlatform),
-      fontSize: detailedToolExecution.codeBlock.fontSize,
-      color: toolExecutionDetailContentColors.codeBlock.color,
-      backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
-      padding: detailedToolExecution.codeBlock.padding,
-      borderRadius: radius[detailedToolExecution.codeBlock.borderRadius],
+      ...toolExecutionDetailStyleSlots.paramsCode,
     },
     toolResponsePendingText: {
-      fontSize: detailedToolExecution.pendingText.fontSize,
-      fontStyle: detailedToolExecution.pendingText.fontStyle,
-      color: toolExecutionDetailContentColors.pendingText.color,
-      textAlign: detailedToolExecution.pendingText.textAlign,
-      paddingVertical: detailedToolExecution.pendingText.paddingVertical,
+      ...toolExecutionDetailStyleSlots.responsePendingText,
     },
     toolResponsePendingRow: {
-      flexDirection: detailedToolExecution.pendingRow.flexDirection,
-      alignItems: detailedToolExecution.pendingRow.alignItems,
-      justifyContent: detailedToolExecution.pendingRow.justifyContent,
-      gap: detailedToolExecution.pendingRow.gap,
-      paddingVertical: detailedToolExecution.pendingRow.paddingVertical,
+      ...toolExecutionDetailStyleSlots.responsePendingRow,
     },
     toolResultItem: {
-      marginBottom: detailedToolExecution.result.itemMarginBottom,
+      ...toolExecutionDetailStyleSlots.resultItem,
     },
     toolResultHeader: {
-      flexDirection: detailedToolExecution.resultHeader.flexDirection,
-      alignItems: detailedToolExecution.resultHeader.alignItems,
-      justifyContent: detailedToolExecution.resultHeader.justifyContent,
-      marginBottom: detailedToolExecution.result.headerMarginBottom,
-      gap: detailedToolExecution.resultHeader.gap,
+      ...toolExecutionDetailStyleSlots.resultHeader,
     },
     toolResultHeaderMeta: {
-      flexDirection: detailedToolExecution.resultHeaderMeta.flexDirection,
-      alignItems: detailedToolExecution.resultHeaderMeta.alignItems,
-      gap: detailedToolExecution.resultHeaderMeta.gap,
-      flexShrink: detailedToolExecution.resultHeaderMeta.flexShrink,
-      minWidth: detailedToolExecution.resultHeaderMeta.minWidth,
+      ...toolExecutionDetailStyleSlots.resultHeaderMeta,
     },
     toolResultCharCount: {
-      fontSize: detailedToolExecution.characterCount.fontSize,
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.characterCount.fontFamilyByPlatform, mobilePlatform),
-      color: toolExecutionDetailContentColors.characterCount.color,
-      opacity: detailedToolExecution.characterCount.opacity,
+      ...toolExecutionDetailStyleSlots.resultCharCount,
     },
     toolResultBadge: {
-      flexDirection: detailedToolExecution.badge.flexDirection,
-      alignItems: detailedToolExecution.badge.alignItems,
-      gap: detailedToolExecution.badge.gap,
-      paddingHorizontal: detailedToolExecution.badge.paddingHorizontal,
-      paddingVertical: detailedToolExecution.badge.paddingVertical,
-      borderRadius: radius[detailedToolExecution.badge.borderRadius],
+      ...toolExecutionDetailStyleSlots.resultBadge,
     },
     toolResultBadgeSuccess: {
-      backgroundColor: toolResultBadgeSuccessColors.backgroundColor,
+      ...toolExecutionDetailStyleSlots.resultBadgeSuccess,
     },
     toolResultBadgeError: {
-      backgroundColor: toolResultBadgeErrorColors.backgroundColor,
+      ...toolExecutionDetailStyleSlots.resultBadgeError,
     },
     toolResultBadgeText: {
-      fontSize: detailedToolExecution.badge.fontSize,
-      fontWeight: detailedToolExecution.badge.fontWeight,
+      ...toolExecutionDetailStyleSlots.resultBadgeText,
     },
     toolResultBadgeTextSuccess: {
-      color: toolResultBadgeSuccessColors.color,
+      ...toolExecutionDetailStyleSlots.resultBadgeTextSuccess,
     },
     toolResultBadgeTextError: {
-      color: toolResultBadgeErrorColors.color,
+      ...toolExecutionDetailStyleSlots.resultBadgeTextError,
     },
     toolResultScroll: {
-      maxHeight: detailedToolExecution.scroll.collapsedMaxHeight,
-      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
-      overflow: detailedToolExecution.scroll.overflow,
+      ...toolExecutionDetailStyleSlots.resultScroll,
     },
     toolResultScrollExpanded: {
-      maxHeight: detailedToolExecution.scroll.expandedMaxHeight,
-      borderRadius: radius[detailedToolExecution.scroll.borderRadius],
-      overflow: detailedToolExecution.scroll.overflow,
+      ...toolExecutionDetailStyleSlots.resultScrollExpanded,
     },
     toolResultCode: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform, mobilePlatform),
-      fontSize: detailedToolExecution.codeBlock.fontSize,
-      color: toolExecutionDetailContentColors.codeBlock.color,
-      backgroundColor: toolExecutionDetailContentColors.codeBlock.backgroundColor,
-      padding: detailedToolExecution.codeBlock.padding,
-      borderRadius: radius[detailedToolExecution.codeBlock.borderRadius],
+      ...toolExecutionDetailStyleSlots.resultCode,
     },
     toolResultErrorSection: {
-      marginTop: detailedToolExecution.result.errorSectionMarginTop,
+      ...toolExecutionDetailStyleSlots.resultErrorSection,
     },
     toolResultErrorLabel: {
-      fontSize: detailedToolExecution.error.labelFontSize,
-      fontWeight: detailedToolExecution.error.labelFontWeight,
-      color: toolResultErrorColors.color,
-      marginBottom: detailedToolExecution.error.labelMarginBottom,
+      ...toolExecutionDetailStyleSlots.resultErrorLabel,
     },
     toolResultErrorText: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(detailedToolExecution.codeBlock.fontFamilyByPlatform, mobilePlatform),
-      fontSize: detailedToolExecution.codeBlock.fontSize,
-      color: toolResultErrorColors.color,
-      backgroundColor: toolResultErrorColors.backgroundColor,
-      padding: detailedToolExecution.codeBlock.padding,
-      borderRadius: radius[detailedToolExecution.codeBlock.borderRadius],
+      ...toolExecutionDetailStyleSlots.resultErrorText,
     },
     messageContentRow: {
       flexDirection: mobileMessageContentLayout.row.flexDirection,

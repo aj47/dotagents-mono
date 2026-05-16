@@ -314,6 +314,7 @@ import {
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
   type ToolExecutionCompactMobileStyleRenderState,
+  type ToolExecutionDetailMobileStyleRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
   type ToolExecutionDetailCopyFailureAlertState,
   type ToolExecutionDetailMobileHeaderRenderState,
@@ -966,6 +967,30 @@ export interface ChatRuntimeToolExecutionCompactMobileStyleSlots {
   statusError: {
     color: string
   }
+}
+
+type ChatRuntimeToolExecutionDetailMobileSurface = ToolExecutionDetailMobileStyleRenderState["surface"]
+
+export type ChatRuntimeToolExecutionDetailMobileSpacingToken =
+  | ChatRuntimeToolExecutionDetailMobileSurface["blockSection"]["paddingHorizontal"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["section"]["marginBottom"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["section"]["paddingBottom"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["header"]["paddingVertical"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["header"]["marginBottom"]
+
+export type ChatRuntimeToolExecutionDetailMobileRadiusToken =
+  | ChatRuntimeToolExecutionDetailMobileSurface["card"]["borderRadius"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["payloadPreview"]["borderRadius"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["copyButton"]["borderRadius"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["scroll"]["borderRadius"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["codeBlock"]["borderRadius"]
+  | ChatRuntimeToolExecutionDetailMobileSurface["badge"]["borderRadius"]
+
+export interface ChatRuntimeToolExecutionDetailMobileStyleSlotsInput {
+  renderState: Pick<ToolExecutionDetailMobileStyleRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeToolExecutionDetailMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeToolExecutionDetailMobileRadiusToken, number>>
+  platform?: ChatRuntimeMobileFontPlatform | null
 }
 
 type ChatRuntimeToolActivityGroupMobileSurface = ToolActivityGroupMobileSurfaceRenderState["surface"]
@@ -10276,6 +10301,256 @@ export function createChatRuntimeToolExecutionCompactMobileStyleSlots({
     },
     statusError: {
       color: statusColors.error,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionDetailMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  platform,
+}: ChatRuntimeToolExecutionDetailMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors
+  const contentColors = colors.content
+
+  const codeBlock = {
+    fontFamily: resolveChatRuntimeMobileFontFamily(
+      surface.codeBlock.fontFamilyByPlatform,
+      platform ?? "",
+    ),
+    fontSize: surface.codeBlock.fontSize,
+    color: contentColors.codeBlock.color,
+    backgroundColor: contentColors.codeBlock.backgroundColor,
+    padding: surface.codeBlock.padding,
+    borderRadius: radius[surface.codeBlock.borderRadius],
+  }
+
+  const scroll = {
+    maxHeight: surface.scroll.collapsedMaxHeight,
+    borderRadius: radius[surface.scroll.borderRadius],
+    overflow: surface.scroll.overflow,
+  }
+
+  const expandedScroll = {
+    maxHeight: surface.scroll.expandedMaxHeight,
+    borderRadius: radius[surface.scroll.borderRadius],
+    overflow: surface.scroll.overflow,
+  }
+
+  return {
+    card: {
+      marginTop: surface.card.marginTop,
+      borderRadius: radius[surface.card.borderRadius],
+      borderLeftWidth: surface.card.borderLeftWidth,
+      ...colors.byState.idle,
+      overflow: surface.card.overflow,
+    },
+    pending: colors.byState.pending,
+    success: colors.byState.success,
+    error: colors.byState.error,
+    expandedContainer: {
+      position: surface.expandedContainer.position,
+    },
+    collapseTopButton: {
+      marginBottom: surface.collapseButton.topMarginBottom,
+    },
+    collapseBottomButton: {
+      marginTop: surface.collapseButton.bottomMarginTop,
+    },
+    paramsSection: {
+      paddingHorizontal: spacing[surface.blockSection.paddingHorizontal],
+      paddingVertical: surface.blockSection.paddingVertical,
+    },
+    callSection: {
+      marginBottom: spacing[surface.section.marginBottom],
+      paddingBottom: spacing[surface.section.paddingBottom],
+      borderBottomWidth: surface.section.borderBottomWidth,
+      borderBottomColor: contentColors.section.borderBottomColor,
+    },
+    toolName: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.toolName.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontWeight: surface.toolName.fontWeight,
+      color: contentColors.toolName.color,
+      fontSize: surface.toolName.fontSize,
+      flex: surface.toolName.flex,
+    },
+    callHeader: {
+      flexDirection: surface.header.flexDirection,
+      alignItems: surface.header.alignItems,
+      justifyContent: surface.header.justifyContent,
+      paddingVertical: spacing[surface.header.paddingVertical],
+      marginBottom: spacing[surface.header.marginBottom],
+      minHeight: surface.header.minHeight,
+    },
+    callHeaderPressed: {
+      opacity: surface.header.pressedOpacity,
+    },
+    expandHint: {
+      flexDirection: surface.expandHint.flexDirection,
+      alignItems: surface.expandHint.alignItems,
+      gap: surface.expandHint.gap,
+    },
+    expandHintText: {
+      fontSize: surface.expandHint.fontSize,
+      color: contentColors.expandHintText.color,
+      fontWeight: surface.expandHint.fontWeight,
+    },
+    sectionLabel: {
+      fontSize: surface.sectionLabel.fontSize,
+      fontWeight: surface.sectionLabel.fontWeight,
+      color: contentColors.sectionLabel.color,
+      marginBottom: surface.sectionLabel.marginBottom,
+      textTransform: surface.sectionLabel.textTransform,
+      letterSpacing: surface.sectionLabel.letterSpacing,
+    },
+    detailHeaderRow: {
+      flexDirection: surface.detailHeaderRow.flexDirection,
+      alignItems: surface.detailHeaderRow.alignItems,
+      justifyContent: surface.detailHeaderRow.justifyContent,
+      gap: surface.detailHeaderRow.gap,
+      marginBottom: surface.detailHeaderRow.marginBottom,
+    },
+    payloadMetaRow: {
+      flexDirection: surface.payloadMeta.flexDirection,
+      alignItems: surface.payloadMeta.alignItems,
+      minWidth: surface.payloadMeta.minWidth,
+      gap: surface.payloadMeta.gap,
+      marginBottom: surface.payloadMeta.marginBottom,
+    },
+    payloadType: {
+      fontSize: surface.payloadType.fontSize,
+      fontWeight: surface.payloadType.fontWeight,
+      opacity: surface.payloadType.opacity,
+      color: contentColors.payloadType.color,
+    },
+    payloadPreview: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.payloadPreview.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.payloadPreview.fontSize,
+      lineHeight: surface.payloadPreview.lineHeight,
+      paddingHorizontal: surface.payloadPreview.paddingHorizontal,
+      paddingVertical: surface.payloadPreview.paddingVertical,
+      borderRadius: radius[surface.payloadPreview.borderRadius],
+      backgroundColor: colors.payloadPreview.backgroundColor,
+      color: colors.payloadPreview.color,
+      marginBottom: surface.result.headerMarginBottom,
+    },
+    copyButton: {
+      minHeight: surface.copyButton.minHeight,
+      paddingHorizontal: surface.copyButton.paddingHorizontal,
+      paddingVertical: surface.copyButton.paddingVertical,
+      borderRadius: radius[surface.copyButton.borderRadius],
+      backgroundColor: colors.copyButton.backgroundColor,
+      flexDirection: surface.copyButton.flexDirection,
+      alignItems: surface.copyButton.alignItems,
+      justifyContent: surface.copyButton.justifyContent,
+      gap: surface.copyButton.gap,
+      flexShrink: surface.copyButton.flexShrink,
+    },
+    copyButtonPressed: {
+      opacity: surface.copyButton.pressedOpacity,
+    },
+    copyButtonText: {
+      fontSize: surface.copyButtonText.fontSize,
+      fontWeight: surface.copyButtonText.fontWeight,
+      color: colors.copyButton.textColor,
+    },
+    paramsScroll: scroll,
+    paramsScrollExpanded: expandedScroll,
+    paramsCode: codeBlock,
+    responsePendingText: {
+      fontSize: surface.pendingText.fontSize,
+      fontStyle: surface.pendingText.fontStyle,
+      color: contentColors.pendingText.color,
+      textAlign: surface.pendingText.textAlign,
+      paddingVertical: surface.pendingText.paddingVertical,
+    },
+    responsePendingRow: {
+      flexDirection: surface.pendingRow.flexDirection,
+      alignItems: surface.pendingRow.alignItems,
+      justifyContent: surface.pendingRow.justifyContent,
+      gap: surface.pendingRow.gap,
+      paddingVertical: surface.pendingRow.paddingVertical,
+    },
+    resultItem: {
+      marginBottom: surface.result.itemMarginBottom,
+    },
+    resultHeader: {
+      flexDirection: surface.resultHeader.flexDirection,
+      alignItems: surface.resultHeader.alignItems,
+      justifyContent: surface.resultHeader.justifyContent,
+      marginBottom: surface.result.headerMarginBottom,
+      gap: surface.resultHeader.gap,
+    },
+    resultHeaderMeta: {
+      flexDirection: surface.resultHeaderMeta.flexDirection,
+      alignItems: surface.resultHeaderMeta.alignItems,
+      gap: surface.resultHeaderMeta.gap,
+      flexShrink: surface.resultHeaderMeta.flexShrink,
+      minWidth: surface.resultHeaderMeta.minWidth,
+    },
+    resultCharCount: {
+      fontSize: surface.characterCount.fontSize,
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.characterCount.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      color: contentColors.characterCount.color,
+      opacity: surface.characterCount.opacity,
+    },
+    resultBadge: {
+      flexDirection: surface.badge.flexDirection,
+      alignItems: surface.badge.alignItems,
+      gap: surface.badge.gap,
+      paddingHorizontal: surface.badge.paddingHorizontal,
+      paddingVertical: surface.badge.paddingVertical,
+      borderRadius: radius[surface.badge.borderRadius],
+    },
+    resultBadgeSuccess: {
+      backgroundColor: colors.badge.success.backgroundColor,
+    },
+    resultBadgeError: {
+      backgroundColor: colors.badge.error.backgroundColor,
+    },
+    resultBadgeText: {
+      fontSize: surface.badge.fontSize,
+      fontWeight: surface.badge.fontWeight,
+    },
+    resultBadgeTextSuccess: {
+      color: colors.badge.success.color,
+    },
+    resultBadgeTextError: {
+      color: colors.badge.error.color,
+    },
+    resultScroll: scroll,
+    resultScrollExpanded: expandedScroll,
+    resultCode: codeBlock,
+    resultErrorSection: {
+      marginTop: surface.result.errorSectionMarginTop,
+    },
+    resultErrorLabel: {
+      fontSize: surface.error.labelFontSize,
+      fontWeight: surface.error.labelFontWeight,
+      color: colors.error.color,
+      marginBottom: surface.error.labelMarginBottom,
+    },
+    resultErrorText: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.codeBlock.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.codeBlock.fontSize,
+      color: colors.error.color,
+      backgroundColor: colors.error.backgroundColor,
+      padding: surface.codeBlock.padding,
+      borderRadius: radius[surface.codeBlock.borderRadius],
     },
   }
 }
