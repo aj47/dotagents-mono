@@ -58,7 +58,9 @@ import {
   getChatImageAttachmentMobileSurfaceState,
   getChatImageAttachmentMobileRemoveIconState,
   getChatVideoAttachmentCopyState,
+  getChatVideoAttachmentDesktopRenderState,
   getChatVideoAttachmentDesktopSurfaceState,
+  getChatVideoAttachmentMobileRenderState,
   getChatVideoAttachmentMobileSurfaceColors,
   getChatVideoAttachmentMobileSurfaceState,
   getRenderableVideoMimeTypeFromFileName,
@@ -179,6 +181,18 @@ describe('conversation video asset utilities', () => {
     expect(getChatVideoAttachmentCopyState()).toBe(CHAT_VIDEO_ATTACHMENT_PRESENTATION);
     expect(getChatVideoAttachmentDesktopSurfaceState()).toBe(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop);
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop.videoClassName).toContain('bg-black');
+    expect(getChatVideoAttachmentDesktopRenderState({
+      src: 'assets://conversation-video/conv_1/abcdef1234567890.mp4',
+      label: 'Demo clip',
+    })).toEqual({
+      copy: CHAT_VIDEO_ATTACHMENT_PRESENTATION,
+      surface: CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop,
+      displayLabel: 'Demo clip',
+      subtitle: CHAT_VIDEO_ATTACHMENT_PRESENTATION.labels.desktopLazyLoadSubtitle,
+      loadButton: {
+        accessibilityLabel: 'Load video Demo clip',
+      },
+    });
     expect(getChatVideoAttachmentMobileSurfaceState()).toBe(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile);
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.borderColorToken).toBe('border');
     expect(CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.card.backgroundColor.dark).toBe('#ffffff');
@@ -229,6 +243,42 @@ describe('conversation video asset utilities', () => {
       },
       errorText: {
         color: '#dc2626',
+      },
+    });
+    expect(getChatVideoAttachmentMobileRenderState({
+      sourceUrl: 'assets://conversation-video/conv_1/abcdef1234567890.mp4',
+      label: 'Demo clip',
+      colors: {
+        border: '#d4d4d4',
+        destructive: '#dc2626',
+        foreground: '#171717',
+        mutedForeground: '#737373',
+        primary: '#2563eb',
+        primaryForeground: '#ffffff',
+      },
+      isDark: true,
+      loading: true,
+    })).toMatchObject({
+      copy: CHAT_VIDEO_ATTACHMENT_PRESENTATION,
+      surface: CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile,
+      displayLabel: 'Demo clip',
+      title: '🎬 Demo clip',
+      subtitle: 'Loading…',
+      fallbackLink: {
+        accessibilityRole: 'link',
+        accessibilityLabel: 'Open video link: Demo clip',
+      },
+      video: {
+        accessibilityLabel: 'Play video Demo clip',
+      },
+      loadButton: {
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Load video Demo clip',
+        accessibilityState: { busy: true },
+      },
+      externalLink: {
+        accessibilityRole: 'link',
+        accessibilityLabel: 'Open video link: Demo clip',
       },
     });
     expect(getChatVideoAttachmentMobileSurfaceColors({

@@ -4,10 +4,7 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "lucide-react"
 import {
-  getChatVideoAttachmentCopyState,
-  getChatVideoAttachmentDesktopSurfaceState,
-  getVideoAttachmentLoadAccessibilityLabel,
-  getVideoAssetLabel,
+  getChatVideoAttachmentDesktopRenderState,
   isAllowedMarkdownImageUrl as isSharedAllowedMarkdownImageUrl,
 } from "@dotagents/shared/conversation-media-assets"
 import {
@@ -56,9 +53,6 @@ const COMPACT_THINK_PROSE_CLASS_NAME =
 
 const SELECTABLE_MARKDOWN_CLASS_NAME = markdownContentSurface.selectableClassName
 
-const videoAttachmentCopy = getChatVideoAttachmentCopyState()
-const videoAttachmentSurface = getChatVideoAttachmentDesktopSurfaceState()
-
 export const isAllowedMarkdownLinkUrl = isAllowedMarkdownContentLinkUrl
 
 const VideoAttachmentCard = ({
@@ -69,7 +63,8 @@ const VideoAttachmentCard = ({
   label?: string
 }) => {
   const [loaded, setLoaded] = useState(false)
-  const displayLabel = getVideoAssetLabel(label, src)
+  const videoAttachmentRenderState = getChatVideoAttachmentDesktopRenderState({ src, label })
+  const videoAttachmentSurface = videoAttachmentRenderState.surface
 
   return (
     <span className={videoAttachmentSurface.cardClassName}>
@@ -82,7 +77,7 @@ const VideoAttachmentCard = ({
           className={videoAttachmentSurface.videoClassName}
           onError={() => {
             logUI("[MarkdownRenderer] video failed to render", {
-              label: displayLabel,
+              label: videoAttachmentRenderState.displayLabel,
               srcPreview: src.slice(0, 64),
             })
           }}
@@ -92,15 +87,17 @@ const VideoAttachmentCard = ({
           type="button"
           onClick={() => setLoaded(true)}
           className={videoAttachmentSurface.loadButtonClassName}
-          aria-label={getVideoAttachmentLoadAccessibilityLabel(displayLabel)}
+          aria-label={videoAttachmentRenderState.loadButton.accessibilityLabel}
         >
           <span className={videoAttachmentSurface.playIconWrapperClassName}>
             <PlayCircle className={videoAttachmentSurface.playIconClassName} />
           </span>
           <span className={videoAttachmentSurface.textWrapperClassName}>
-            <span className={videoAttachmentSurface.titleClassName}>{displayLabel}</span>
+            <span className={videoAttachmentSurface.titleClassName}>
+              {videoAttachmentRenderState.displayLabel}
+            </span>
             <span className={videoAttachmentSurface.subtitleClassName}>
-              {videoAttachmentCopy.labels.desktopLazyLoadSubtitle}
+              {videoAttachmentRenderState.subtitle}
             </span>
           </span>
         </button>

@@ -492,6 +492,54 @@ export interface ChatVideoAttachmentMobileSurfaceColors {
   };
 }
 
+export interface ChatVideoAttachmentDesktopRenderStateInput {
+  src: string;
+  label?: string;
+}
+
+export interface ChatVideoAttachmentDesktopRenderState {
+  copy: typeof CHAT_VIDEO_ATTACHMENT_PRESENTATION;
+  surface: typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.desktop;
+  displayLabel: string;
+  subtitle: typeof CHAT_VIDEO_ATTACHMENT_PRESENTATION.labels.desktopLazyLoadSubtitle;
+  loadButton: {
+    accessibilityLabel: string;
+  };
+}
+
+export interface ChatVideoAttachmentMobileRenderStateInput {
+  sourceUrl: string;
+  label?: string;
+  colors: ChatVideoAttachmentMobileSurfaceColorPalette;
+  isDark?: boolean;
+  loading?: boolean;
+}
+
+export interface ChatVideoAttachmentMobileRenderState {
+  copy: typeof CHAT_VIDEO_ATTACHMENT_PRESENTATION;
+  surface: typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+  colors: ChatVideoAttachmentMobileSurfaceColors;
+  displayLabel: string;
+  title: string;
+  subtitle: string;
+  fallbackLink: {
+    accessibilityRole: typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.fallbackLink.accessibilityRole;
+    accessibilityLabel: string;
+  };
+  video: {
+    accessibilityLabel: string;
+  };
+  loadButton: {
+    accessibilityRole: typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.loadButton.accessibilityRole;
+    accessibilityLabel: string;
+    accessibilityState: { busy: boolean };
+  };
+  externalLink: {
+    accessibilityRole: typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile.externalLink.accessibilityRole;
+    accessibilityLabel: string;
+  };
+}
+
 export function getChatVideoAttachmentMobileSurfaceColors(
   colors: ChatVideoAttachmentMobileSurfaceColorPalette,
   input: { isDark?: boolean } = {},
@@ -549,6 +597,61 @@ export function getVideoAttachmentPlayAccessibilityLabel(displayLabel: string): 
 
 export function getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel: string): string {
   return `Open video link: ${displayLabel}`;
+}
+
+export function getChatVideoAttachmentDesktopRenderState({
+  src,
+  label,
+}: ChatVideoAttachmentDesktopRenderStateInput): ChatVideoAttachmentDesktopRenderState {
+  const copy = getChatVideoAttachmentCopyState();
+  const displayLabel = getVideoAssetLabel(label, src);
+
+  return {
+    copy,
+    surface: getChatVideoAttachmentDesktopSurfaceState(),
+    displayLabel,
+    subtitle: copy.labels.desktopLazyLoadSubtitle,
+    loadButton: {
+      accessibilityLabel: getVideoAttachmentLoadAccessibilityLabel(displayLabel),
+    },
+  };
+}
+
+export function getChatVideoAttachmentMobileRenderState({
+  sourceUrl,
+  label,
+  colors,
+  isDark,
+  loading = false,
+}: ChatVideoAttachmentMobileRenderStateInput): ChatVideoAttachmentMobileRenderState {
+  const copy = getChatVideoAttachmentCopyState();
+  const surface = getChatVideoAttachmentMobileSurfaceState();
+  const displayLabel = getVideoAssetLabel(label, sourceUrl);
+
+  return {
+    copy,
+    surface,
+    colors: getChatVideoAttachmentMobileSurfaceColors(colors, { isDark }),
+    displayLabel,
+    title: `${copy.glyphs.video} ${displayLabel}`,
+    subtitle: loading ? copy.labels.loading : copy.labels.mobileLazyLoadSubtitle,
+    fallbackLink: {
+      accessibilityRole: surface.fallbackLink.accessibilityRole,
+      accessibilityLabel: getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel),
+    },
+    video: {
+      accessibilityLabel: getVideoAttachmentPlayAccessibilityLabel(displayLabel),
+    },
+    loadButton: {
+      accessibilityRole: surface.loadButton.accessibilityRole,
+      accessibilityLabel: getVideoAttachmentLoadAccessibilityLabel(displayLabel),
+      accessibilityState: { busy: loading },
+    },
+    externalLink: {
+      accessibilityRole: surface.externalLink.accessibilityRole,
+      accessibilityLabel: getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel),
+    },
+  };
 }
 
 export function formatVideoAttachmentRequestFailedMessage(status: number): string {

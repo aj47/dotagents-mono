@@ -5,14 +5,8 @@ import { File, Paths } from 'expo-file-system';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
-  getChatVideoAttachmentCopyState,
-  getChatVideoAttachmentMobileSurfaceColors,
-  getChatVideoAttachmentMobileSurfaceState,
+  getChatVideoAttachmentMobileRenderState,
   formatVideoAttachmentRequestFailedMessage,
-  getVideoAttachmentLoadAccessibilityLabel,
-  getVideoAttachmentOpenLinkAccessibilityLabel,
-  getVideoAttachmentPlayAccessibilityLabel,
-  getVideoAssetLabel,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
 } from '@dotagents/shared/conversation-media-assets';
@@ -26,9 +20,6 @@ interface VideoAttachmentCardProps {
   assetBaseUrl?: string;
   authToken?: string;
 }
-
-const videoAttachmentCopy = getChatVideoAttachmentCopyState();
-const videoAttachmentSurface = getChatVideoAttachmentMobileSurfaceState();
 
 function resolveVideoUri(sourceUrl: string, assetBaseUrl?: string): string {
   const remoteAssetUrl = assetBaseUrl
@@ -68,7 +59,20 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const cachedFileRef = useRef<File | null>(null);
   const objectUrlRef = useRef<string | null>(null);
-  const displayLabel = getVideoAssetLabel(label, sourceUrl);
+  const videoAttachmentRenderState = useMemo(
+    () => getChatVideoAttachmentMobileRenderState({
+      sourceUrl,
+      label,
+      colors: theme.colors,
+      isDark,
+      loading,
+    }),
+    [isDark, label, loading, sourceUrl, theme.colors],
+  );
+  const videoAttachmentCopy = videoAttachmentRenderState.copy;
+  const videoAttachmentSurface = videoAttachmentRenderState.surface;
+  const videoAttachmentSurfaceColors = videoAttachmentRenderState.colors;
+  const displayLabel = videoAttachmentRenderState.displayLabel;
   const resolvedUri = resolveVideoUri(sourceUrl, assetBaseUrl);
   const conversationAssetRef = useMemo(() => parseConversationVideoAssetUrl(sourceUrl), [sourceUrl]);
   const isConversationAsset = !!conversationAssetRef;
@@ -89,11 +93,6 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     return isRenderableVideoUrl(sourceUrl) || isRenderableVideoUrl(resolvedUri);
   })();
   const canOpenExternally = !isConversationAsset;
-  const videoAttachmentSurfaceColors = useMemo(
-    () => getChatVideoAttachmentMobileSurfaceColors(theme.colors, { isDark }),
-    [isDark, theme.colors],
-  );
-
   const source = useMemo<VideoSource>(() => {
     if (!playbackUri || !canRender) return null;
     return { uri: playbackUri };
@@ -164,7 +163,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [assetApiClient, canRender, conversationAssetRef, loading, playbackUri, resolvedUri, shouldFetchWithAuth]);
+  }, [assetApiClient, canRender, conversationAssetRef, loading, playbackUri, resolvedUri, shouldFetchWithAuth, videoAttachmentCopy]);
 
   const styles = useMemo(() => StyleSheet.create({
     card: {
@@ -245,8 +244,8 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   if (!canRender) {
     return (
       <Pressable
-        accessibilityRole={videoAttachmentSurface.fallbackLink.accessibilityRole}
-        accessibilityLabel={getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel)}
+        accessibilityRole={videoAttachmentRenderState.fallbackLink.accessibilityRole}
+        accessibilityLabel={videoAttachmentRenderState.fallbackLink.accessibilityLabel}
         onPress={() => Linking.openURL(resolvedUri)}
         style={({ pressed }) => [styles.fallbackLink, pressed && styles.fallbackLinkPressed]}
       >
@@ -261,7 +260,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     <View style={styles.card}>
       {playbackUri ? (
         <VideoView
-          accessibilityLabel={getVideoAttachmentPlayAccessibilityLabel(displayLabel)}
+          accessibilityLabel={videoAttachmentRenderState.video.accessibilityLabel}
           player={player}
           style={styles.video}
           nativeControls
@@ -272,9 +271,9 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       ) : (
         <View style={styles.header}>
           <Pressable
-            accessibilityRole={videoAttachmentSurface.loadButton.accessibilityRole}
-            accessibilityLabel={getVideoAttachmentLoadAccessibilityLabel(displayLabel)}
-            accessibilityState={{ busy: loading }}
+            accessibilityRole={videoAttachmentRenderState.loadButton.accessibilityRole}
+            accessibilityLabel={videoAttachmentRenderState.loadButton.accessibilityLabel}
+            accessibilityState={videoAttachmentRenderState.loadButton.accessibilityState}
             onPress={loadVideo}
             style={({ pressed }) => [
               styles.loadButton,
@@ -296,12 +295,10 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
             </View>
             <View style={styles.textWrapper}>
               <Text style={styles.title} numberOfLines={videoAttachmentSurface.title.numberOfLines}>
-                {videoAttachmentCopy.glyphs.video} {displayLabel}
+                {videoAttachmentRenderState.title}
               </Text>
               <Text style={styles.subtitle} numberOfLines={videoAttachmentSurface.subtitle.numberOfLines}>
-                {loading
-                  ? videoAttachmentCopy.labels.loading
-                  : videoAttachmentCopy.labels.mobileLazyLoadSubtitle}
+                {videoAttachmentRenderState.subtitle}
               </Text>
             </View>
           </Pressable>
@@ -310,8 +307,8 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
           ) : null}
           {canOpenExternally ? (
             <Pressable
-              accessibilityRole={videoAttachmentSurface.externalLink.accessibilityRole}
-              accessibilityLabel={getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel)}
+              accessibilityRole={videoAttachmentRenderState.externalLink.accessibilityRole}
+              accessibilityLabel={videoAttachmentRenderState.externalLink.accessibilityLabel}
               onPress={() => Linking.openURL(resolvedUri)}
               style={({ pressed }) => pressed && styles.externalLinkPressed}
             >
