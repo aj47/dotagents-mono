@@ -3476,7 +3476,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeConversationToolActivityGroupRenderState,/);
   assert.match(sessionPresentationSource, /return group\s+\? getToolActivityGroupMobileRenderState\(\{\s+group,\s+itemIndex,\s+groupState,\s+inheritedState,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationToolActivityGroupThreadRenderState/);
-  assert.match(chatMessageChromeSource, /getChatRuntimeConversationToolActivityGroupThreadRenderState\(\{[\s\S]*?group,[\s\S]*?itemIndex,[\s\S]*?itemKey,[\s\S]*?groupState,[\s\S]*?inheritedState,[\s\S]*?onToggleGroup,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeConversationToolActivityGroupThreadRenderState,/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeConversationItemThreadMobileState/);
   assert.match(sessionPresentationSource, /const groupRenderState = getChatRuntimeConversationToolActivityGroupRenderState\(\{\s+group,\s+\.\.\.renderStateInput,\s+\}\)/);
   assert.match(sessionPresentationSource, /const groupThreadState = getChatRuntimeConversationToolActivityGroupThreadState\(\{\s+group,\s+groupRenderState,\s+itemKey,\s+onToggleGroup,\s+\}\)/);
   assert.match(sessionPresentationSource, /groupOnlyThreadState: getChatRuntimeConversationToolActivityGroupRuntimeThreadState\(\{\s+itemKey,\s+groupRenderState,\s+groupThreadState,\s+\}\),/);
@@ -3501,9 +3502,10 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /return getChatRuntimeConversationThreadListMobileState\(\{/);
   assert.match(sessionPresentationSource, /return messages\.map\(\(message, visibleIndex\) => \{\s+const messageIndex = firstMessageIndex \+ visibleIndex/);
   assert.match(sessionPresentationSource, /isSpeaking: speakingMessageIndex === messageIndex,\s+isCopied: copiedMessageIndex === messageIndex,/);
-  assert.match(chatMessageChromeSource, /const \{\s+groupRenderState,\s+groupThreadState,\s+groupOnlyThreadState,\s+\} = getChatRuntimeConversationToolActivityGroupThreadRenderState\(\{/);
-  assert.match(chatMessageChromeSource, /if \(groupOnlyThreadState\.shouldRenderThread\) \{\s+return \{\s+threadState: groupOnlyThreadState,/);
-  assert.match(chatMessageChromeSource, /return createChatMessageConversationMessageThreadRenderState\(\{\s+itemKey,\s+groupRenderState,\s+groupThreadState,\s+\.\.\.messageThreadInput,/);
+  assert.match(chatMessageChromeSource, /threadState: getChatRuntimeConversationItemThreadMobileState\(\{\s+messageThreadInput,\s+createMessageThreadState: \(input\) =>\s+createChatMessageConversationMessageThreadRenderState\(input\)\.threadState,/);
+  assert.match(sessionPresentationSource, /const \{\s+groupRenderState,\s+groupThreadState,\s+groupOnlyThreadState,\s+\} = getChatRuntimeConversationToolActivityGroupThreadRenderState\(\{/);
+  assert.match(sessionPresentationSource, /if \(groupOnlyThreadState\.shouldRenderThread\) \{\s+return groupOnlyThreadState\s+\}/);
+  assert.match(sessionPresentationSource, /return createMessageThreadState\(\{\s+\.\.\.messageThreadInput,\s+itemKey,\s+groupRenderState,\s+groupThreadState,\s+\}\)/);
   assert.match(chatMessageChromeSource, /const body = createChatMessageConversationThreadBodyInput\(\{\s+\.\.\.bodyInput,\s+renderContext,/);
   assert.match(chatMessageChromeSource, /threadState: getChatRuntimeConversationMessageRuntimeThreadState\(\{\s+itemKey,\s+groupRenderState,\s+groupThreadState,\s+renderContext,\s+body,/);
   assert.match(sessionPresentationSource, /\.\.\.getChatRuntimeConversationRuntimeThreadState\(runtimeThreadInput\),\s+shouldRenderThread: shouldRenderChatRuntimeConversationThread\(\{/);

@@ -168,12 +168,12 @@ import {
   getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileState,
+  getChatRuntimeConversationItemThreadMobileState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
-  getChatRuntimeConversationToolActivityGroupThreadRenderState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -3504,35 +3504,23 @@ export function createChatMessageConversationItemThreadRenderState({
   onToggleGroup,
   ...messageThreadInput
 }: ChatMessageConversationItemThreadRenderStateInput): ChatMessageConversationItemThreadRenderState {
-  const {
-    groupRenderState,
-    groupThreadState,
-    groupOnlyThreadState,
-  } = getChatRuntimeConversationToolActivityGroupThreadRenderState({
-    group,
-    itemIndex,
-    itemKey,
-    groupState,
-    inheritedState,
-    groupKey,
-    inheritedKey,
-    defaultExpanded,
-    colors: messageThreadInput.colors,
-    onToggleGroup,
-  });
-
-  if (groupOnlyThreadState.shouldRenderThread) {
-    return {
-      threadState: groupOnlyThreadState,
-    };
-  }
-
-  return createChatMessageConversationMessageThreadRenderState({
-    itemKey,
-    groupRenderState,
-    groupThreadState,
-    ...messageThreadInput,
-  });
+  return {
+    threadState: getChatRuntimeConversationItemThreadMobileState({
+      messageThreadInput,
+      createMessageThreadState: (input) =>
+        createChatMessageConversationMessageThreadRenderState(input).threadState,
+      colors: messageThreadInput.colors,
+      group,
+      itemIndex,
+      itemKey,
+      groupState,
+      inheritedState,
+      groupKey,
+      inheritedKey,
+      defaultExpanded,
+      onToggleGroup,
+    }),
+  };
 }
 
 export function useChatMessageRuntimeHistoryWindowState({

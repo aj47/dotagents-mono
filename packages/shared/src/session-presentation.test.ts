@@ -120,6 +120,7 @@ import {
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
   getChatRuntimeConversationContentMobileState,
+  getChatRuntimeConversationItemThreadMobileState,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationMessageRenderContextMobileState,
@@ -3994,6 +3995,72 @@ describe("session presentation semantics", () => {
       threadKey: "group-tools-3",
       shouldRenderThread: true,
     })
+    let didCreateCollapsedMessageThread = false
+    expect(getChatRuntimeConversationItemThreadMobileState({
+      group: toolActivityGroup,
+      itemIndex: 3,
+      itemKey: 3,
+      groupState: {},
+      inheritedState: {},
+      groupKey: "tools-3",
+      inheritedKey: 3,
+      defaultExpanded: false,
+      colors: {
+        info: "#0ea5e9",
+        mutedForeground: "#64748b",
+      },
+      onToggleGroup: () => {},
+      messageThreadInput: { messageId: "message-3" },
+      createMessageThreadState: () => {
+        didCreateCollapsedMessageThread = true
+        return {
+          threadKey: 3,
+          groupRenderState: null,
+          body: { bodyDisplayMode: "conversation" as const, messageId: "message-3" },
+          shouldRenderThread: true,
+        }
+      },
+    })).toMatchObject({
+      threadKey: "group-tools-3",
+      body: null,
+      shouldRenderThread: true,
+    })
+    expect(didCreateCollapsedMessageThread).toBe(false)
+    let createdMessageThreadItemKey: unknown = null
+    expect(getChatRuntimeConversationItemThreadMobileState({
+      group: null,
+      itemIndex: 6,
+      itemKey: 6,
+      groupState: {},
+      inheritedState: {},
+      groupKey: "tools-6",
+      inheritedKey: 6,
+      defaultExpanded: false,
+      colors: {
+        info: "#0ea5e9",
+        mutedForeground: "#64748b",
+      },
+      onToggleGroup: () => {},
+      messageThreadInput: { messageId: "message-6" },
+      createMessageThreadState: (input) => {
+        createdMessageThreadItemKey = input.itemKey
+        return {
+          threadKey: input.itemKey,
+          groupRenderState: input.groupRenderState,
+          onToggleGroup: input.groupThreadState.onToggleGroup,
+          body: { bodyDisplayMode: "conversation" as const, messageId: input.messageId },
+          shouldRenderThread: true,
+        }
+      },
+    })).toMatchObject({
+      threadKey: 6,
+      body: {
+        bodyDisplayMode: "conversation",
+        messageId: "message-6",
+      },
+      shouldRenderThread: true,
+    })
+    expect(createdMessageThreadItemKey).toBe(6)
     expect(getChatRuntimeConversationRuntimeThreadState({
       itemKey: 3,
       groupRenderState: collapsedGroupRenderState,

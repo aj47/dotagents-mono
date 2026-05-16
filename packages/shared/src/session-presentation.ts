@@ -653,6 +653,20 @@ export type ChatRuntimeConversationMessageRuntimeThreadState<
 > =
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
 
+export interface ChatRuntimeConversationItemThreadMobileStateInput<
+  TMessageThreadInput,
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+> extends ChatRuntimeConversationToolActivityGroupThreadRenderStateInput {
+  messageThreadInput: TMessageThreadInput
+  createMessageThreadState: (
+    input: TMessageThreadInput
+      & Pick<
+        ChatRuntimeConversationMessageRuntimeThreadStateInput<TBody>,
+        "itemKey" | "groupRenderState" | "groupThreadState"
+      >
+  ) => ChatRuntimeConversationRenderableRuntimeThreadState<TBody | null>
+}
+
 export interface ChatRuntimeConversationThreadListMobileItemStateInput<TMessage> {
   message: TMessage
   visibleIndex: number
@@ -6845,6 +6859,55 @@ export function getChatRuntimeConversationMessageRuntimeThreadState<
       body: runtimeThreadInput.body,
     }),
   }
+}
+
+export function getChatRuntimeConversationItemThreadMobileState<
+  TMessageThreadInput,
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+>({
+  group,
+  itemIndex,
+  itemKey,
+  groupState,
+  inheritedState,
+  groupKey,
+  inheritedKey,
+  defaultExpanded,
+  colors,
+  onToggleGroup,
+  messageThreadInput,
+  createMessageThreadState,
+}: ChatRuntimeConversationItemThreadMobileStateInput<
+  TMessageThreadInput,
+  TBody
+>): ChatRuntimeConversationRenderableRuntimeThreadState<TBody | null> {
+  const {
+    groupRenderState,
+    groupThreadState,
+    groupOnlyThreadState,
+  } = getChatRuntimeConversationToolActivityGroupThreadRenderState({
+    group,
+    itemIndex,
+    itemKey,
+    groupState,
+    inheritedState,
+    groupKey,
+    inheritedKey,
+    defaultExpanded,
+    colors,
+    onToggleGroup,
+  })
+
+  if (groupOnlyThreadState.shouldRenderThread) {
+    return groupOnlyThreadState
+  }
+
+  return createMessageThreadState({
+    ...messageThreadInput,
+    itemKey,
+    groupRenderState,
+    groupThreadState,
+  })
 }
 
 export function getChatRuntimeConversationThreadListMobileState<
