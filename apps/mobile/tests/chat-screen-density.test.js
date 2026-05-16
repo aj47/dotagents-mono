@@ -2405,6 +2405,8 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.match(screenSource, /threadList: \{[\s\S]*?messages,[\s\S]*?visibleMessageCount,/);
   assert.doesNotMatch(screenSource, /renderState: messageRenderState\.collapsedPreview,/);
   assert.doesNotMatch(chatMessageChromeSource, /messageRenderState\.collapsedPreview/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageCollapsedPreviewRenderState =/);
+  assert.match(chatMessageChromeSource, /renderState: ChatRuntimeConversationMessageMobileRenderState\['collapsedPreview'\];/);
   assert.match(chatMessageChromeSource, /collapsed: createChatMessageCollapsedPreviewProps\(collapsed\),/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+renderState=\{collapsed\.renderState\}/);
   assert.match(chatMessageChromeSource, /\{renderState\.text\}/);
@@ -3270,6 +3272,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /expanded: createChatMessageExpandedContentProps\(expanded\),/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeStreamingContentMobileRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStreamingContentRenderState =/);
+  assert.match(chatMessageChromeSource, /streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+streamingRenderState=\{expanded\.streamingRenderState\}[\s\S]*?markdownContent=\{expanded\.markdownContent\}[\s\S]*?spinnerSource=\{expanded\.spinnerSource\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /if \(!streamingRenderState\.shouldRender\) \{/);

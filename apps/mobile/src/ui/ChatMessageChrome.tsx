@@ -219,6 +219,7 @@ import {
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
+  type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationRetryStatusMobileState,
   type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
@@ -235,6 +236,7 @@ import {
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
+  type ChatRuntimeStreamingContentMobileRenderState,
   type ChatMessageRuntimeAssistantTextMessage,
   type ChatMessageRuntimeHistoryMessageLike,
   type ChatMessageRuntimeLogMeta,
@@ -2667,22 +2669,6 @@ type ChatMessageContentRowProps = {
   bodyStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageStreamingContentRenderState = {
-  shouldRender: boolean;
-  accessibilityRole: AccessibilityRole;
-  accessibilityLabel: string;
-  title: string;
-  badgeLabel: string;
-  content: string;
-  icon: ChatMessageActionIcon;
-  spinner: {
-    resizeMode: ComponentProps<typeof Image>['resizeMode'];
-  };
-  surface: {
-    titleNumberOfLines: number;
-  };
-};
-
 type ChatMessageExpandedContentStyles = {
   header: StyleProp<ViewStyle>;
   title: StyleProp<TextStyle>;
@@ -2695,7 +2681,7 @@ type ChatMessageExpandedContentStyles = {
 };
 
 type ChatMessageExpandedContentProps = {
-  streamingRenderState: ChatMessageStreamingContentRenderState;
+  streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;
   markdownContent: string;
   assetBaseUrl?: string;
   assetAuthToken?: string;
@@ -2703,15 +2689,8 @@ type ChatMessageExpandedContentProps = {
   streamingStyles: ChatMessageExpandedContentStyles;
 };
 
-type ChatMessageCollapsedPreviewRenderState = {
-  accessibilityRole: AccessibilityRole;
-  hitSlop?: number | Insets;
-  numberOfLines: number;
-  text: string;
-};
-
 type ChatMessageCollapsedPreviewProps = {
-  renderState: ChatMessageCollapsedPreviewRenderState;
+  renderState: ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'];
   actionState: ChatMessageCollapsedPreviewMobileActionState;
   onPress?: (event: GestureResponderEvent) => void;
   style: StyleProp<ViewStyle>;
