@@ -30,21 +30,16 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
-  applyChatDisplayGroupedExpansionInheritance,
   createChatMessageActionSlotRenderMap,
   getChatMessageActionSlotRenderEntries,
   getChatMessageActionMobileButtonStatesBySlot,
-  sanitizeMessagesForModel,
-  toggleChatDisplayExpansionState,
   type ChatDisplayExpansionStateMap,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
-  type MessageContentForModelLike,
 } from '@dotagents/shared/message-display-utils';
 import {
-  applyChatMessageAutoExpansionState,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
 } from '@dotagents/shared/chat-utils';
@@ -56,7 +51,6 @@ import {
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
-  extractDataImageMarkdownReferences,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
   type ChatImageAttachmentMobileAlertInput,
@@ -107,10 +101,6 @@ import {
 } from '@dotagents/shared/predefined-prompts';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
-  getToolActivityGroupExpansionInheritanceItems,
-  getToolActivityGroupStateKey,
-  groupToolActivity,
-  type ToolActivityGroup,
   type ToolActivityGroupMobileRenderState,
 } from '@dotagents/shared/tool-activity-grouping';
 import {
@@ -119,7 +109,12 @@ import {
 } from '@dotagents/shared/connection-recovery';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
+  applyChatMessageRuntimeAutoExpansionState,
+  applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
   createChatComposerRuntimeImagePickerLaunchOptions,
+  createChatMessageRuntimeLogMeta,
+  createChatMessageRuntimeModelMessages,
+  createChatMessageRuntimeToolActivityGroups,
   getChatComposerMobileControlState,
   getChatComposerQueueMobileActionState,
   getChatComposerRuntimeBase64ImageBytes,
@@ -176,6 +171,10 @@ import {
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
   sortChatMessageRuntimeResponseEvents,
+  toggleChatMessageRuntimeMessageExpansionState,
+  toggleChatMessageRuntimeToolActivityGroupExpansionState,
+  toggleChatMessageRuntimeToolApprovalExpansionState,
+  toggleChatMessageRuntimeToolCallExpansionState,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
@@ -237,10 +236,17 @@ import {
   type ChatRuntimeStreamingContentMobileRenderStateInput,
   type ChatMessageRuntimeAssistantTextMessage,
   type ChatMessageRuntimeHistoryMessageLike,
+  type ChatMessageRuntimeLogMeta,
+  type ChatMessageRuntimeMessageExpansionState,
   type ChatMessageRuntimeResponseHistorySourceMessage,
   type ChatMessageRuntimeSessionMessageLike,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
+  type ChatMessageRuntimeToolActivityGroup,
+  type ChatMessageRuntimeToolActivityGroups,
+  type ChatMessageRuntimeToolActivityGroupExpansionState,
+  type ChatMessageRuntimeToolApprovalExpansionState,
   type ChatMessageRuntimeToolApprovalStateMessageLike,
+  type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurationStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
@@ -270,11 +276,6 @@ export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput
 };
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
-
-export interface ChatMessageRuntimeLogMeta {
-  length: number;
-  inlineImageCount: number;
-}
 
 type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   remoteTtsProvider: ChatRuntimeRemoteSpeechProvider;
@@ -1150,13 +1151,6 @@ type ChatMessageConversationRenderContextInput =
 
 type ChatMessageConversationRenderContext =
   ChatRuntimeConversationMessageRenderContextMobileState;
-
-export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup;
-export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>;
-export type ChatMessageRuntimeMessageExpansionState = ChatDisplayExpansionStateMap<number>;
-export type ChatMessageRuntimeToolCallExpansionState = ChatDisplayExpansionStateMap<string>;
-export type ChatMessageRuntimeToolApprovalExpansionState = ChatDisplayExpansionStateMap<string>;
-export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpansionStateMap<string>;
 
 type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;
 type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;
@@ -3030,7 +3024,7 @@ type ChatMessageConversationThreadListRenderStateInput =
     allMessages: readonly ChatMessageConversationItemThreadRenderStateInput['message'][];
     messages: readonly ChatMessageConversationItemThreadRenderStateInput['message'][];
     firstMessageIndex: number;
-    groupByIndex: ReadonlyMap<number, ToolActivityGroup>;
+    groupByIndex: ReadonlyMap<number, ChatMessageRuntimeToolActivityGroup>;
     speakingMessageIndex: number | null;
     copiedMessageIndex: number | null;
   };
@@ -3789,19 +3783,6 @@ export function useChatMessageRuntimeTurnDurations({
   );
 }
 
-export function createChatMessageRuntimeLogMeta(content: string): ChatMessageRuntimeLogMeta {
-  return {
-    length: content.length,
-    inlineImageCount: extractDataImageMarkdownReferences(content).length,
-  };
-}
-
-export function createChatMessageRuntimeModelMessages<TMessage extends MessageContentForModelLike>(
-  messages: TMessage[],
-): TMessage[] {
-  return sanitizeMessagesForModel(messages);
-}
-
 export function useChatMessageRuntimeRemoteSpeechSettingsState(
   initialSettings: ChatRuntimeRemoteSpeechSettingsState = getChatRuntimeDefaultRemoteSpeechSettingsState(),
 ): ChatMessageRuntimeRemoteSpeechSettingsHookState {
@@ -3829,81 +3810,6 @@ export function useChatMessageRuntimeRemoteSpeechSettingsState(
     setRemoteTtsRate,
     applyRemoteSpeechSettings,
   };
-}
-
-export function createChatMessageRuntimeToolActivityGroups(
-  messages: Parameters<typeof groupToolActivity>[0],
-): ChatMessageRuntimeToolActivityGroups {
-  return groupToolActivity(messages);
-}
-
-export function toggleChatMessageRuntimeMessageExpansionState(
-  messageState: ChatMessageRuntimeMessageExpansionState,
-  messageIndex: number,
-): ChatMessageRuntimeMessageExpansionState {
-  return toggleChatDisplayExpansionState(
-    messageState,
-    messageIndex,
-  ) as ChatMessageRuntimeMessageExpansionState;
-}
-
-export function toggleChatMessageRuntimeToolCallExpansionState(
-  toolCallState: ChatMessageRuntimeToolCallExpansionState,
-  messageId: string,
-  toolCallIndex: number,
-): ChatMessageRuntimeToolCallExpansionState {
-  return toggleChatDisplayExpansionState(
-    toolCallState,
-    `${messageId}-${toolCallIndex}`,
-  ) as ChatMessageRuntimeToolCallExpansionState;
-}
-
-export function toggleChatMessageRuntimeToolApprovalExpansionState(
-  toolApprovalState: ChatMessageRuntimeToolApprovalExpansionState,
-  approvalId: string,
-): ChatMessageRuntimeToolApprovalExpansionState {
-  return toggleChatDisplayExpansionState(
-    toolApprovalState,
-    approvalId,
-  ) as ChatMessageRuntimeToolApprovalExpansionState;
-}
-
-export function applyChatMessageRuntimeAutoExpansionState<TMessage extends ChatDisplayMessageLike>(
-  messageState: ChatMessageRuntimeMessageExpansionState,
-  messages: readonly TMessage[],
-  options: Parameters<typeof applyChatMessageAutoExpansionState>[2],
-): ChatMessageRuntimeMessageExpansionState {
-  return applyChatMessageAutoExpansionState(
-    messageState,
-    messages,
-    options,
-  ) as ChatMessageRuntimeMessageExpansionState;
-}
-
-export function toggleChatMessageRuntimeToolActivityGroupExpansionState(
-  groupState: ChatMessageRuntimeToolActivityGroupExpansionState,
-  group: ChatMessageRuntimeToolActivityGroup,
-): ChatMessageRuntimeToolActivityGroupExpansionState {
-  return toggleChatDisplayExpansionState(
-    groupState,
-    getToolActivityGroupStateKey(group),
-  ) as ChatMessageRuntimeToolActivityGroupExpansionState;
-}
-
-export function applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
-  groupState,
-  inheritedState,
-  groups,
-}: {
-  groupState: ChatMessageRuntimeToolActivityGroupExpansionState;
-  inheritedState?: ChatDisplayExpansionStateMap<number>;
-  groups: readonly ChatMessageRuntimeToolActivityGroup[];
-}): ChatMessageRuntimeToolActivityGroupExpansionState {
-  return applyChatDisplayGroupedExpansionInheritance({
-    groupState,
-    inheritedState,
-    groups: getToolActivityGroupExpansionInheritanceItems(groups),
-  }) as ChatMessageRuntimeToolActivityGroupExpansionState;
 }
 
 type ChatMessageRuntimeThreadExpansionMessage =

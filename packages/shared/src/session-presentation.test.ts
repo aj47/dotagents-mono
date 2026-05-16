@@ -13,9 +13,11 @@ import {
   appendChatMessageRuntimePendingTurnMessages,
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
+  applyChatMessageRuntimeAutoExpansionState,
   applyChatMessageRuntimePendingTurnStatusState,
   applyChatMessageRuntimeProgressTurnStatusState,
   applyChatMessageRuntimeSettledTurnStatusState,
+  applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
   createChatMessageRuntimeActivityMessage,
   createChatMessageRuntimeAssistantFeedbackMessage,
   createChatMessageRuntimeAssistantDebugErrorMessage,
@@ -33,6 +35,8 @@ import {
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimeHistoryDisplayMessage,
   createChatMessageRuntimeHistoryDisplayMessages,
+  createChatMessageRuntimeLogMeta,
+  createChatMessageRuntimeModelMessages,
   createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimePendingTurnStatusState,
   createChatMessageRuntimeProgressMessages,
@@ -47,6 +51,7 @@ import {
   createChatMessageRuntimeStreamingText,
   createChatMessageRuntimeStreamingTurnState,
   createChatMessageRuntimeToolApprovalRequiredMessage,
+  createChatMessageRuntimeToolActivityGroups,
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
@@ -334,6 +339,10 @@ import {
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
   sortChatMessageRuntimeResponseEvents,
+  toggleChatMessageRuntimeMessageExpansionState,
+  toggleChatMessageRuntimeToolActivityGroupExpansionState,
+  toggleChatMessageRuntimeToolApprovalExpansionState,
+  toggleChatMessageRuntimeToolCallExpansionState,
   replaceChatMessageRuntimeFinalTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   shouldSkipChatMessageRuntimeSyntheticToolSummary,
@@ -1107,6 +1116,51 @@ describe("session presentation semantics", () => {
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "needs_input" })).toBe(true)
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete", isResponding: true })).toBe(true)
     expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete" })).toBe(false)
+    expect(createChatMessageRuntimeLogMeta("hello")).toEqual({
+      length: 5,
+      inlineImageCount: 0,
+    })
+    expect(createChatMessageRuntimeModelMessages([
+      { role: "user" as const, content: "![pic](data:image/png;base64,abc)" },
+      { role: "assistant" as const, content: "ok" },
+    ])).toEqual([
+      { role: "user", content: "[Image: pic]" },
+      { role: "assistant", content: "ok" },
+    ])
+    expect(toggleChatMessageRuntimeMessageExpansionState({ 1: false }, 1)).toEqual({ 1: true })
+    expect(toggleChatMessageRuntimeToolCallExpansionState({}, "message-1", 2)).toEqual({
+      "message-1-2": true,
+    })
+    expect(toggleChatMessageRuntimeToolApprovalExpansionState({}, "approval-1")).toEqual({
+      "approval-1": true,
+    })
+    expect(applyChatMessageRuntimeAutoExpansionState({}, [
+      { role: "assistant", content: "Visible" },
+    ], { isResponding: false })).toEqual({ 0: true })
+    const toolActivityGroups = createChatMessageRuntimeToolActivityGroups([
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ name: "search", arguments: {} }],
+      },
+      {
+        role: "tool",
+        content: "Result",
+        toolResults: [{ success: true, content: "done" }],
+      },
+    ])
+    expect(toolActivityGroups.groups).toHaveLength(1)
+    const runtimeToolActivityGroup = toolActivityGroups.groups[0]
+    expect(toggleChatMessageRuntimeToolActivityGroupExpansionState({}, runtimeToolActivityGroup)).toEqual({
+      "tool-activity-group:0": true,
+    })
+    expect(applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
+      groupState: {},
+      inheritedState: { 0: true },
+      groups: [runtimeToolActivityGroup],
+    })).toEqual({
+      "tool-activity-group:0": true,
+    })
     type RuntimeTestMessage = {
       id?: string
       role: "user" | "assistant" | "tool"

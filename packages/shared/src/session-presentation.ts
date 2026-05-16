@@ -5,6 +5,7 @@ import {
 } from "./conversation-state"
 import {
   applyUserResponseToChatMessages,
+  applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
   getNextAgentUserResponseEventOrdinal,
   getChatMessageDisplayState,
@@ -38,6 +39,7 @@ import {
   type HandsFreeComposerMobileSurfaceColorPalette,
 } from "./hands-free-controller"
 import {
+  extractDataImageMarkdownReferences,
   buildChatImageAttachmentMessage,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
@@ -84,6 +86,7 @@ import type { ToolCall, ToolResult } from "./types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,
+  applyChatDisplayGroupedExpansionInheritance,
   getChatDisplayExpansionState,
   getChatMessageActionCopyState,
   getChatMessageActionAvailabilityRenderState,
@@ -99,8 +102,10 @@ import {
   hasChatMessageDisplayContent,
   isChatMessageConversationContent,
   isChatMessageLiveStreamingConversationContent,
+  sanitizeMessagesForModel,
   setChatDisplayExpansionState,
   shouldShowChatMessageTurnDurationBadge,
+  toggleChatDisplayExpansionState,
   type ChatMessageActionAvailabilityRenderState,
   type ChatMessageActionLayoutState,
   type ChatDisplayExpansionStateMap,
@@ -113,6 +118,7 @@ import {
   type ChatMessageMobileRenderColorPalette,
   type ChatMessageSpeechMobileRenderState,
   type ChatMessageSpeechMobileRenderStateInput,
+  type MessageContentForModelLike,
 } from "./message-display-utils"
 import {
   createButtonAccessibilityLabel,
@@ -152,8 +158,11 @@ import {
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 import {
+  getToolActivityGroupExpansionInheritanceItems,
   getToolActivityGroupMobileRenderState,
   getToolActivityGroupMobileSurfaceRenderState,
+  getToolActivityGroupStateKey,
+  groupToolActivity,
   type ToolActivityGroup,
   type ToolActivityGroupMobileColorPalette,
   type ToolActivityGroupMobileRenderState,
@@ -5213,6 +5222,18 @@ export interface ChatMessageRuntimeTurnDurationStateInput {
   isResponding?: boolean
 }
 
+export interface ChatMessageRuntimeLogMeta {
+  length: number
+  inlineImageCount: number
+}
+
+export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup
+export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>
+export type ChatMessageRuntimeMessageExpansionState = ChatDisplayExpansionStateMap<number>
+export type ChatMessageRuntimeToolCallExpansionState = ChatDisplayExpansionStateMap<string>
+export type ChatMessageRuntimeToolApprovalExpansionState = ChatDisplayExpansionStateMap<string>
+export type ChatMessageRuntimeToolActivityGroupExpansionState = ChatDisplayExpansionStateMap<string>
+
 export interface ChatMessageRuntimeHistoryMessageLike<TToolCall, TToolResult> {
   id?: string
   role: "user" | "assistant" | "tool"
@@ -5973,6 +5994,94 @@ export function computeChatMessageRuntimeTurnDurations(
   nowMs: number,
 ): ReturnType<typeof computeTurnDurations> {
   return computeTurnDurations(messages, isComplete, nowMs)
+}
+
+export function createChatMessageRuntimeLogMeta(content: string): ChatMessageRuntimeLogMeta {
+  return {
+    length: content.length,
+    inlineImageCount: extractDataImageMarkdownReferences(content).length,
+  }
+}
+
+export function createChatMessageRuntimeModelMessages<TMessage extends MessageContentForModelLike>(
+  messages: TMessage[],
+): TMessage[] {
+  return sanitizeMessagesForModel(messages)
+}
+
+export function createChatMessageRuntimeToolActivityGroups(
+  messages: Parameters<typeof groupToolActivity>[0],
+): ChatMessageRuntimeToolActivityGroups {
+  return groupToolActivity(messages)
+}
+
+export function toggleChatMessageRuntimeMessageExpansionState(
+  messageState: ChatMessageRuntimeMessageExpansionState,
+  messageIndex: number,
+): ChatMessageRuntimeMessageExpansionState {
+  return toggleChatDisplayExpansionState(
+    messageState,
+    messageIndex,
+  ) as ChatMessageRuntimeMessageExpansionState
+}
+
+export function toggleChatMessageRuntimeToolCallExpansionState(
+  toolCallState: ChatMessageRuntimeToolCallExpansionState,
+  messageId: string,
+  toolCallIndex: number,
+): ChatMessageRuntimeToolCallExpansionState {
+  return toggleChatDisplayExpansionState(
+    toolCallState,
+    `${messageId}-${toolCallIndex}`,
+  ) as ChatMessageRuntimeToolCallExpansionState
+}
+
+export function toggleChatMessageRuntimeToolApprovalExpansionState(
+  toolApprovalState: ChatMessageRuntimeToolApprovalExpansionState,
+  approvalId: string,
+): ChatMessageRuntimeToolApprovalExpansionState {
+  return toggleChatDisplayExpansionState(
+    toolApprovalState,
+    approvalId,
+  ) as ChatMessageRuntimeToolApprovalExpansionState
+}
+
+export function applyChatMessageRuntimeAutoExpansionState<TMessage extends ChatDisplayMessageLike>(
+  messageState: ChatMessageRuntimeMessageExpansionState,
+  messages: readonly TMessage[],
+  options: Parameters<typeof applyChatMessageAutoExpansionState>[2],
+): ChatMessageRuntimeMessageExpansionState {
+  return applyChatMessageAutoExpansionState(
+    messageState,
+    messages,
+    options,
+  ) as ChatMessageRuntimeMessageExpansionState
+}
+
+export function toggleChatMessageRuntimeToolActivityGroupExpansionState(
+  groupState: ChatMessageRuntimeToolActivityGroupExpansionState,
+  group: ChatMessageRuntimeToolActivityGroup,
+): ChatMessageRuntimeToolActivityGroupExpansionState {
+  return toggleChatDisplayExpansionState(
+    groupState,
+    getToolActivityGroupStateKey(group),
+  ) as ChatMessageRuntimeToolActivityGroupExpansionState
+}
+
+export function applyChatMessageRuntimeToolActivityGroupExpansionInheritance({
+  groupState,
+  inheritedState,
+  groups,
+}: {
+  groupState: ChatMessageRuntimeToolActivityGroupExpansionState
+  inheritedState?: ChatDisplayExpansionStateMap<number>
+  groups: readonly ChatMessageRuntimeToolActivityGroup[]
+}): ChatMessageRuntimeToolActivityGroupExpansionState {
+  return applyChatDisplayGroupedExpansionInheritance({
+    groupState,
+    inheritedState,
+    groups: getToolActivityGroupExpansionInheritanceItems(groups),
+  }) as ChatMessageRuntimeToolActivityGroupExpansionState
 }
 
 export function hasChatMessageRuntimeLiveAgentTurn({
