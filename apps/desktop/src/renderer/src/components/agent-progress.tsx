@@ -130,7 +130,6 @@ import {
   formatChatRuntimeRetryAttemptLabel,
   formatChatRuntimeRetryCountdownLabel,
   formatChatRuntimeThinkingPickerTitle,
-  getChatRuntimeToolApprovalArgumentsAccessibilityLabel,
   formatChatRuntimeToolApprovalFailureMessage,
   formatChatRuntimeVerbosityPickerTitle,
   formatChatRuntimeVisibleUpdatesSummary,
@@ -143,6 +142,7 @@ import {
   getChatRuntimePinAccessibilityLabel,
   getChatRuntimeStreamingContentTitle,
   getChatRuntimeToolApprovalDesktopSurfaceState,
+  getChatRuntimeToolApprovalInteractionState,
   getChatRuntimeTurnDurationBadgeState,
   getFollowUpInputPresentation,
   getSessionPresentation,
@@ -2056,7 +2056,12 @@ const ToolApprovalBubble: React.FC<{
   // Generate preview text for collapsed view hint
   const approvalArgumentsDetail = getToolExecutionDetailArgumentsState(approval.arguments)
   const argsPreview = approvalArgumentsDetail.preview
-  const approvalCopy = desktopRuntimeCopy.approval
+  const approvalInteraction = getChatRuntimeToolApprovalInteractionState({
+    toolName: approval.toolName,
+    isArgumentsExpanded: showArgs,
+    isResponding,
+  })
+  const approvalCopy = approvalInteraction.copy
   const approvalSurface = getChatRuntimeToolApprovalDesktopSurfaceState()
 
   return (
@@ -2065,7 +2070,7 @@ const ToolApprovalBubble: React.FC<{
       <div className={approvalSurface.headerClassName}>
         <Shield className={approvalSurface.iconClassName} />
         <span className={approvalSurface.titleClassName}>
-          {isResponding ? approvalCopy.processingTitle : approvalCopy.title}
+          {approvalInteraction.title}
         </span>
         {isResponding && (
           <Loader2 className={approvalSurface.spinnerClassName} />
@@ -2097,15 +2102,12 @@ const ToolApprovalBubble: React.FC<{
             type="button"
             onClick={() => setShowArgs(!showArgs)}
             className={approvalSurface.expandButtonClassName}
-            disabled={isResponding}
-            aria-expanded={showArgs}
-            aria-label={getChatRuntimeToolApprovalArgumentsAccessibilityLabel(
-              approval.toolName,
-              showArgs,
-            )}
+            disabled={approvalInteraction.argumentsToggle.isDisabled}
+            aria-expanded={approvalInteraction.argumentsToggle.ariaExpanded}
+            aria-label={approvalInteraction.argumentsToggle.accessibilityLabel}
           >
             <ChevronRight className={cn("h-3 w-3 transition-transform", showArgs && "rotate-90")} />
-            {showArgs ? approvalCopy.hideArgumentsLabel : approvalCopy.viewArgumentsLabel}
+            {approvalInteraction.argumentsToggle.label}
           </button>
           {showArgs && (
             <div className="mt-1.5">
@@ -2122,33 +2124,33 @@ const ToolApprovalBubble: React.FC<{
               size="sm"
               className={approvalSurface.denyButtonClassName}
               onClick={onDeny}
-              disabled={isResponding}
+              disabled={approvalInteraction.denyButton.isDisabled}
               title={approvalCopy.denyHotkeyTitle}
             >
               <XCircle className="mr-1 h-3 w-3" />
-              {approvalCopy.denyLabel}
+              {approvalInteraction.denyButton.label}
             </Button>
             <Button
               size="sm"
               className={cn(
                 approvalSurface.approveButtonClassName,
-                isResponding
+                approvalInteraction.approveButton.isDisabled
                   ? approvalSurface.approveButtonProcessingClassName
                   : approvalSurface.approveButtonReadyClassName
               )}
               onClick={onApprove}
-              disabled={isResponding}
+              disabled={approvalInteraction.approveButton.isDisabled}
               title={approvalCopy.approveHotkeyTitle}
             >
-              {isResponding ? (
+              {approvalInteraction.approveButton.isDisabled ? (
                 <>
                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  {approvalCopy.processingLabel}
+                  {approvalInteraction.approveButton.label}
                 </>
               ) : (
                 <>
                   <Check className="mr-1 h-3 w-3" />
-                  {approvalCopy.approveLabel}
+                  {approvalInteraction.approveButton.label}
                 </>
               )}
             </Button>

@@ -292,6 +292,7 @@ import {
   getChatRuntimeToolApprovalDesktopSurfaceState,
   getChatRuntimeToolApprovalHeaderMobileIconColors,
   getChatRuntimeToolApprovalHeaderMobileIconState,
+  getChatRuntimeToolApprovalInteractionState,
   getChatRuntimeToolApprovalCardMobileRenderState,
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
@@ -5364,6 +5365,33 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeToolApprovalArgumentsAccessibilityLabel("write_file", true)).toBe(
       "Hide full arguments for write_file",
     )
+    expect(getChatRuntimeToolApprovalInteractionState({
+      toolName: "write_file",
+      isArgumentsExpanded: true,
+      isResponding: true,
+    })).toEqual({
+      copy: CHAT_RUNTIME_PRESENTATION.approval,
+      title: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
+      argumentsToggle: {
+        label: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
+        isDisabled: true,
+        accessibilityLabel: "Hide full arguments for write_file",
+        accessibilityState: { expanded: true, disabled: true },
+        ariaExpanded: true,
+      },
+      approveButton: {
+        label: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
+        isDisabled: true,
+        accessibilityLabel: "Approve tool call write_file",
+        accessibilityState: { disabled: true },
+      },
+      denyButton: {
+        label: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
+        isDisabled: true,
+        accessibilityLabel: "Deny tool call write_file",
+        accessibilityState: { disabled: true },
+      },
+    })
     expect(formatChatRuntimeRetryAttemptLabel({ attempt: 2 })).toBe("Attempt 2")
     expect(formatChatRuntimeRetryAttemptLabel({ attempt: 2, maxAttempts: 5 })).toBe("Attempt 2/5")
     expect(formatChatRuntimeRetryCountdownLabel(7)).toBe("Retrying in 7s")

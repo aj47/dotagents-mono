@@ -2511,6 +2511,43 @@ export interface ChatRuntimeToolApprovalMobileSpinnerColors {
   color: string
 }
 
+export interface ChatRuntimeToolApprovalInteractionStateInput {
+  toolName: string
+  isArgumentsExpanded?: boolean
+  isResponding?: boolean
+}
+
+export interface ChatRuntimeToolApprovalInteractionState {
+  copy: typeof CHAT_RUNTIME_PRESENTATION.approval
+  title: string
+  argumentsToggle: {
+    label: string
+    isDisabled: boolean
+    accessibilityLabel: string
+    accessibilityState: {
+      expanded: boolean
+      disabled: boolean
+    }
+    ariaExpanded: boolean
+  }
+  approveButton: {
+    label: string
+    isDisabled: boolean
+    accessibilityLabel: string
+    accessibilityState: {
+      disabled: boolean
+    }
+  }
+  denyButton: {
+    label: string
+    isDisabled: boolean
+    accessibilityLabel: string
+    accessibilityState: {
+      disabled: boolean
+    }
+  }
+}
+
 export interface ChatRuntimeToolApprovalMobileAlertState {
   connectionRequired: {
     title: string
@@ -7328,6 +7365,44 @@ export function getChatRuntimeToolApprovalArgumentsAccessibilityLabel(
   return `${label} for ${toolName}`
 }
 
+export function getChatRuntimeToolApprovalInteractionState({
+  toolName,
+  isArgumentsExpanded = false,
+  isResponding = false,
+}: ChatRuntimeToolApprovalInteractionStateInput): ChatRuntimeToolApprovalInteractionState {
+  const copy = CHAT_RUNTIME_PRESENTATION.approval
+
+  return {
+    copy,
+    title: isResponding ? copy.processingTitle : copy.title,
+    argumentsToggle: {
+      label: isArgumentsExpanded ? copy.hideArgumentsLabel : copy.viewArgumentsLabel,
+      isDisabled: isResponding,
+      accessibilityLabel: getChatRuntimeToolApprovalArgumentsAccessibilityLabel(
+        toolName,
+        isArgumentsExpanded,
+      ),
+      accessibilityState: {
+        expanded: isArgumentsExpanded,
+        disabled: isResponding,
+      },
+      ariaExpanded: isArgumentsExpanded,
+    },
+    approveButton: {
+      label: isResponding ? copy.processingLabel : copy.approveLabel,
+      isDisabled: isResponding,
+      accessibilityLabel: getChatRuntimeToolApprovalAccessibilityLabel("approve", toolName),
+      accessibilityState: { disabled: isResponding },
+    },
+    denyButton: {
+      label: copy.denyLabel,
+      isDisabled: isResponding,
+      accessibilityLabel: getChatRuntimeToolApprovalAccessibilityLabel("deny", toolName),
+      accessibilityState: { disabled: isResponding },
+    },
+  }
+}
+
 export function getChatRuntimeToolApprovalHeaderMobileIconState(): ChatRuntimeToolApprovalHeaderMobileIconState {
   return {
     name: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.icon.name,
@@ -7467,7 +7542,11 @@ export function getChatRuntimeToolApprovalMobileRenderState({
   isResponding = false,
   colors,
 }: ChatRuntimeToolApprovalMobileRenderStateInput): ChatRuntimeToolApprovalMobileRenderState {
-  const copy = CHAT_RUNTIME_PRESENTATION.approval
+  const interaction = getChatRuntimeToolApprovalInteractionState({
+    toolName,
+    isArgumentsExpanded,
+    isResponding,
+  })
   const surface = getChatRuntimeToolApprovalMobileSurfaceState()
   const headerIcon = getChatRuntimeToolApprovalHeaderMobileIconState()
   const headerIconColors = getChatRuntimeToolApprovalHeaderMobileIconColors(colors)
@@ -7484,10 +7563,10 @@ export function getChatRuntimeToolApprovalMobileRenderState({
   const buttonSpinnerColors = getChatRuntimeToolApprovalButtonSpinnerMobileColors(colors)
 
   return {
-    copy,
+    copy: interaction.copy,
     surface,
     colors: getChatRuntimeToolApprovalMobileSurfaceColors(colors),
-    title: isResponding ? copy.processingTitle : copy.title,
+    title: interaction.title,
     headerIcon: {
       name: headerIcon.name,
       size: headerIcon.size,
@@ -7498,15 +7577,12 @@ export function getChatRuntimeToolApprovalMobileRenderState({
       color: spinnerColors.color,
     },
     argumentsToggle: {
-      label: isArgumentsExpanded ? copy.hideArgumentsLabel : copy.viewArgumentsLabel,
-      isDisabled: isResponding,
+      label: interaction.argumentsToggle.label,
+      isDisabled: interaction.argumentsToggle.isDisabled,
       accessibilityRole: surface.argumentsToggle.accessibilityRole,
-      accessibilityLabel: getChatRuntimeToolApprovalArgumentsAccessibilityLabel(toolName, isArgumentsExpanded),
-      accessibilityState: {
-        expanded: isArgumentsExpanded,
-        disabled: isResponding,
-      },
-      ariaExpanded: isArgumentsExpanded,
+      accessibilityLabel: interaction.argumentsToggle.accessibilityLabel,
+      accessibilityState: interaction.argumentsToggle.accessibilityState,
+      ariaExpanded: interaction.argumentsToggle.ariaExpanded,
       pressedOpacity: surface.argumentsToggle.pressedOpacity,
       icon: {
         name: argumentsToggleIcon.name,
@@ -7515,11 +7591,11 @@ export function getChatRuntimeToolApprovalMobileRenderState({
       },
     },
     approveButton: {
-      label: isResponding ? copy.processingLabel : copy.approveLabel,
-      isDisabled: isResponding,
+      label: interaction.approveButton.label,
+      isDisabled: interaction.approveButton.isDisabled,
       accessibilityRole: surface.button.accessibilityRole,
-      accessibilityLabel: getChatRuntimeToolApprovalAccessibilityLabel("approve", toolName),
-      accessibilityState: { disabled: isResponding },
+      accessibilityLabel: interaction.approveButton.accessibilityLabel,
+      accessibilityState: interaction.approveButton.accessibilityState,
       icon: {
         name: approveIcon.name,
         size: approveIcon.size,
@@ -7531,11 +7607,11 @@ export function getChatRuntimeToolApprovalMobileRenderState({
       },
     },
     denyButton: {
-      label: copy.denyLabel,
-      isDisabled: isResponding,
+      label: interaction.denyButton.label,
+      isDisabled: interaction.denyButton.isDisabled,
       accessibilityRole: surface.button.accessibilityRole,
-      accessibilityLabel: getChatRuntimeToolApprovalAccessibilityLabel("deny", toolName),
-      accessibilityState: { disabled: isResponding },
+      accessibilityLabel: interaction.denyButton.accessibilityLabel,
+      accessibilityState: interaction.denyButton.accessibilityState,
       icon: {
         name: denyIcon.name,
         size: denyIcon.size,
