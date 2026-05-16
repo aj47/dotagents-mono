@@ -12,11 +12,16 @@ import {
   createChatComposerMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
+  createChatMessageRuntimeChromeSlots,
+  createChatMessageRuntimeChromeStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
+  createChatMessageRuntimeSurfaceChromeSlots,
   createChatMessageRuntimeViewportStyleSlots,
+  createChatRuntimeChromeSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
+  createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlots,
   createChatRuntimeHeaderPinButtonMobileStyleSlots,
@@ -1102,15 +1107,14 @@ export function useChatRuntimeMobileStyleSlots() {
     [styles],
   );
   const chatMessageRuntimeChromeStyles = useMemo(
-    () => ({
-      actionStyles: chatMessageConversationThreadStyles.actionSet,
-      threadStyles: chatMessageConversationThreadStyles.runtimeThread,
+    () => createChatMessageRuntimeChromeStyleSlots({
+      conversationThreadStyles: chatMessageConversationThreadStyles,
       promptEditorStyles: promptEditorModalStyles,
     }),
     [chatMessageConversationThreadStyles, promptEditorModalStyles],
   );
   const chatRuntimeHeaderChrome = useMemo(
-    () => ({
+    () => createChatRuntimeHeaderChromeSlots({
       colors: chatRuntimeChromeEnvironment.colors,
       spinnerSource: chatRuntimeSpinnerSource,
       styles: chatRuntimeHeaderStyles,
@@ -1118,7 +1122,7 @@ export function useChatRuntimeMobileStyleSlots() {
     [chatRuntimeChromeEnvironment, chatRuntimeHeaderStyles, chatRuntimeSpinnerSource],
   );
   const chatMessageRuntimeChrome = useMemo(
-    () => ({
+    () => createChatMessageRuntimeChromeSlots({
       colors: chatRuntimeChromeEnvironment.colors,
       platform: chatRuntimeChromeEnvironment.platform,
       spinnerSource: chatRuntimeSpinnerSource,
@@ -1174,13 +1178,13 @@ export function useChatRuntimeMobileStyleSlots() {
     [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
   );
   const chatMessageRuntimeSurfaceChrome = useMemo(
-    () => ({
+    () => createChatMessageRuntimeSurfaceChromeSlots({
       surfaceStyles: chatMessageRuntimeSurfaceStyles,
     }),
     [chatMessageRuntimeSurfaceStyles],
   );
   const chatRuntimeChrome = useMemo(
-    () => ({
+    () => createChatRuntimeChromeSlots({
       environment: chatRuntimeChromeEnvironmentProps,
       header: chatRuntimeHeaderChrome,
       messageRuntime: chatMessageRuntimeChrome,

@@ -60,9 +60,14 @@ import {
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
   createChatMessageRuntimeViewportStyleSlots,
+  createChatMessageRuntimeChromeSlots,
+  createChatMessageRuntimeChromeStyleSlots,
+  createChatMessageRuntimeSurfaceChromeSlots,
+  createChatRuntimeChromeSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeCompletedDebugState,
+  createChatRuntimeHeaderChromeSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
@@ -3088,6 +3093,53 @@ describe("session presentation semantics", () => {
       frame: "conversation-frame",
       dock: "runtime-dock",
       viewport: "runtime-viewport",
+    })
+    expect(createChatMessageRuntimeChromeStyleSlots({
+      conversationThreadStyles: {
+        actionSet: "message-actions",
+        runtimeThread: "message-thread",
+      },
+      promptEditorStyles: "prompt-editor",
+    })).toEqual({
+      actionStyles: "message-actions",
+      threadStyles: "message-thread",
+      promptEditorStyles: "prompt-editor",
+    })
+    expect(createChatRuntimeHeaderChromeSlots({
+      colors: "theme-colors",
+      spinnerSource: "spinner-source",
+      styles: "header-styles",
+    })).toEqual({
+      colors: "theme-colors",
+      spinnerSource: "spinner-source",
+      styles: "header-styles",
+    })
+    expect(createChatMessageRuntimeChromeSlots({
+      colors: "theme-colors",
+      platform: "ios",
+      spinnerSource: "spinner-source",
+      styles: "runtime-styles",
+    })).toEqual({
+      colors: "theme-colors",
+      platform: "ios",
+      spinnerSource: "spinner-source",
+      styles: "runtime-styles",
+    })
+    expect(createChatMessageRuntimeSurfaceChromeSlots({
+      surfaceStyles: "surface-styles",
+    })).toEqual({
+      surfaceStyles: "surface-styles",
+    })
+    expect(createChatRuntimeChromeSlots({
+      environment: "environment",
+      header: "header",
+      messageRuntime: "message-runtime",
+      surface: "surface",
+    })).toEqual({
+      environment: "environment",
+      header: "header",
+      messageRuntime: "message-runtime",
+      surface: "surface",
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.justifyContent).toBe("center")

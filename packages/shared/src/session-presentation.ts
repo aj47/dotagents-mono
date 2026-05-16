@@ -13879,6 +13879,110 @@ export function createChatMessageRuntimeSurfaceStyleSlots<
   }
 }
 
+export function createChatMessageRuntimeChromeStyleSlots<
+  TConversationThreadStyles extends {
+    actionSet: unknown
+    runtimeThread: unknown
+  },
+  TPromptEditorStyles,
+>({
+  conversationThreadStyles,
+  promptEditorStyles,
+}: {
+  conversationThreadStyles: TConversationThreadStyles
+  promptEditorStyles: TPromptEditorStyles
+}): {
+  actionStyles: TConversationThreadStyles["actionSet"]
+  threadStyles: TConversationThreadStyles["runtimeThread"]
+  promptEditorStyles: TPromptEditorStyles
+} {
+  return {
+    actionStyles: conversationThreadStyles.actionSet,
+    threadStyles: conversationThreadStyles.runtimeThread,
+    promptEditorStyles,
+  }
+}
+
+export function createChatRuntimeHeaderChromeSlots<TColors, TSpinnerSource, TStyles>({
+  colors,
+  spinnerSource,
+  styles,
+}: {
+  colors: TColors
+  spinnerSource: TSpinnerSource
+  styles: TStyles
+}): {
+  colors: TColors
+  spinnerSource: TSpinnerSource
+  styles: TStyles
+} {
+  return {
+    colors,
+    spinnerSource,
+    styles,
+  }
+}
+
+export function createChatMessageRuntimeChromeSlots<TColors, TPlatform, TSpinnerSource, TStyles>({
+  colors,
+  platform,
+  spinnerSource,
+  styles,
+}: {
+  colors: TColors
+  platform: TPlatform
+  spinnerSource: TSpinnerSource
+  styles: TStyles
+}): {
+  colors: TColors
+  platform: TPlatform
+  spinnerSource: TSpinnerSource
+  styles: TStyles
+} {
+  return {
+    colors,
+    platform,
+    spinnerSource,
+    styles,
+  }
+}
+
+export function createChatMessageRuntimeSurfaceChromeSlots<TSurfaceStyles>({
+  surfaceStyles,
+}: {
+  surfaceStyles: TSurfaceStyles
+}): {
+  surfaceStyles: TSurfaceStyles
+} {
+  return {
+    surfaceStyles,
+  }
+}
+
+export function createChatRuntimeChromeSlots<TEnvironment, THeader, TMessageRuntime, TSurface>({
+  environment,
+  header,
+  messageRuntime,
+  surface,
+}: {
+  environment: TEnvironment
+  header: THeader
+  messageRuntime: TMessageRuntime
+  surface: TSurface
+}): {
+  environment: TEnvironment
+  header: THeader
+  messageRuntime: TMessageRuntime
+  surface: TSurface
+} {
+  return {
+    environment,
+    header,
+    messageRuntime,
+    surface,
+  }
+}
+
 export function getChatRuntimeRetryStatusMobileRenderState({
   retryInfo,
   colors,
