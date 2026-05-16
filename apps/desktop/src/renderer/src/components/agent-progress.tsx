@@ -7,7 +7,6 @@ import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
@@ -201,6 +200,9 @@ const getConfiguredAgentModel = (config: Config | undefined, providerId: ChatPro
 
 const getModelDisplayName = (model: string): string => model.split("/").pop() || model
 
+const SESSION_CONTROL_SELECT_CLASS =
+  "h-[18px] min-w-0 max-w-full cursor-pointer rounded border-0 bg-transparent py-0 pl-0 pr-4 text-[10px] text-muted-foreground/80 shadow-none outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
+
 const buildAgentModelConfigUpdates = (config: Config, providerId: ChatProviderId, modelId: string): Partial<Config> => {
   if (providerId === "openai") {
     const currentPresetId = config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
@@ -277,40 +279,27 @@ const SessionModelPicker: React.FC<{
   if (!currentValue) return null
 
   return (
-    <Select value={currentValue} onValueChange={handleModelChange} disabled={!config}>
-      <SelectTrigger
-        className={cn(
-          "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
-          compact ? "max-w-[150px] text-[10px]" : "max-w-[170px] text-[10px]",
-        )}
-        title={`Change agent model (${providerLabel}/${currentValue})`}
-        aria-label="Change agent model"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <SelectValue>
-          <span className="block min-w-0 truncate">
-            {providerLabel}/{getModelDisplayName(currentValue)}
-          </span>
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent className="max-h-[300px] min-w-[260px]" onClick={(event) => event.stopPropagation()}>
-        {modelOptions.map((model) => (
-          <SelectItem key={model.id} value={model.id}>
-            <span className="truncate">{model.name || model.id}</span>
-          </SelectItem>
-        ))}
-        {modelsQuery.isLoading && (
-          <div className="px-3 py-2 text-xs text-muted-foreground">
-            Loading models…
-          </div>
-        )}
-        {modelOptions.length === 0 && (
-          <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-            No models available
-          </div>
-        )}
-      </SelectContent>
-    </Select>
+    <select
+      value={currentValue}
+      onChange={(event) => void handleModelChange(event.currentTarget.value)}
+      disabled={!config}
+      className={cn(SESSION_CONTROL_SELECT_CLASS, compact ? "max-w-[150px]" : "max-w-[170px]")}
+      title={`Change agent model (${providerLabel}/${currentValue})`}
+      aria-label="Change agent model"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {modelOptions.map((model) => (
+        <option key={model.id} value={model.id}>
+          {providerLabel}/{model.name || getModelDisplayName(model.id)}
+        </option>
+      ))}
+      {modelsQuery.isLoading && modelOptions.length === 0 && (
+        <option value={currentValue}>Loading models...</option>
+      )}
+      {modelOptions.length === 0 && !modelsQuery.isLoading && (
+        <option value={currentValue}>No models available</option>
+      )}
+    </select>
   )
 }
 
@@ -365,31 +354,24 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
   const currentLabel = REASONING_EFFORT_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
 
   return (
-    <Select value={currentValue} onValueChange={handleChange} disabled={!config}>
-      <SelectTrigger
-        className={cn(
-          "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
-          compact ? "text-[10px]" : "text-[10px]",
-        )}
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <Brain className="h-3 w-3 shrink-0 opacity-70" />
+      <select
+        value={currentValue}
+        onChange={(event) => void handleChange(event.currentTarget.value)}
+        disabled={!config}
+        className={cn(SESSION_CONTROL_SELECT_CLASS, compact ? "max-w-[82px]" : "max-w-[105px]")}
         title={`Thinking level (${currentLabel})`}
         aria-label="Change thinking level"
         onClick={(event) => event.stopPropagation()}
       >
-        <SelectValue>
-          <span className="flex min-w-0 items-center gap-1 truncate">
-            <Brain className="h-3 w-3 shrink-0 opacity-70" />
-            <span className="truncate">{currentLabel}</span>
-          </span>
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent className="min-w-[160px]" onClick={(event) => event.stopPropagation()}>
         {REASONING_EFFORT_OPTIONS.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
+          <option key={option.value} value={option.value}>
             {option.label}
-          </SelectItem>
+          </option>
         ))}
-      </SelectContent>
-    </Select>
+      </select>
+    </span>
   )
 }
 
@@ -419,31 +401,24 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
   const currentLabel = VERBOSITY_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
 
   return (
-    <Select value={currentValue} onValueChange={handleChange} disabled={!config}>
-      <SelectTrigger
-        className={cn(
-          "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
-          compact ? "text-[10px]" : "text-[10px]",
-        )}
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <Volume2 className="h-3 w-3 shrink-0 opacity-70" />
+      <select
+        value={currentValue}
+        onChange={(event) => void handleChange(event.currentTarget.value)}
+        disabled={!config}
+        className={cn(SESSION_CONTROL_SELECT_CLASS, compact ? "max-w-[70px]" : "max-w-[90px]")}
         title={`Verbosity (${currentLabel})`}
         aria-label="Change verbosity"
         onClick={(event) => event.stopPropagation()}
       >
-        <SelectValue>
-          <span className="flex min-w-0 items-center gap-1 truncate">
-            <Volume2 className="h-3 w-3 shrink-0 opacity-70" />
-            <span className="truncate">{currentLabel}</span>
-          </span>
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent className="min-w-[160px]" onClick={(event) => event.stopPropagation()}>
         {VERBOSITY_OPTIONS.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
+          <option key={option.value} value={option.value}>
             {option.label}
-          </SelectItem>
+          </option>
         ))}
-      </SelectContent>
-    </Select>
+      </select>
+    </span>
   )
 }
 
