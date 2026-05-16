@@ -3432,6 +3432,9 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 });
 
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
+  assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/mobile-app-config';/);
+  assert.match(sessionPresentationSource, /export \{ createChatRuntimeMobileConfigState \} from "\.\/mobile-app-config"/);
+  assert.match(screenSource, /const chatRuntimeConfig = createChatRuntimeMobileConfigState\(config\);/);
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);

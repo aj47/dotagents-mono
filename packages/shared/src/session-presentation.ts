@@ -48,6 +48,7 @@ export {
   type ChatRuntimeRemoteSpeechProvider,
   type ChatRuntimeRemoteSpeechSettingsState,
 } from "./text-to-speech-settings"
+export { createChatRuntimeMobileConfigState } from "./mobile-app-config"
 import {
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,

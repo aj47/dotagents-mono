@@ -79,7 +79,6 @@ import type {
   Loop,
   PredefinedPromptSummary,
 } from '@dotagents/shared/api-types';
-import { createChatRuntimeMobileConfigState } from '@dotagents/shared/mobile-app-config';
 import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
@@ -100,6 +99,7 @@ import {
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeStreamingTurnState,
   createChatRuntimeCompletedDebugState,
+  createChatRuntimeMobileConfigState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
   createChatRuntimeEffectiveRemoteSpeechSettingsState,
