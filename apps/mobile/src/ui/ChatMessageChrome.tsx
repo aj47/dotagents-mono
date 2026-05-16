@@ -95,6 +95,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
@@ -8368,25 +8369,30 @@ export function ChatMessageToolExecutionResultHeader({
   onCopyPress,
   styles,
 }: ChatMessageToolExecutionResultHeaderProps) {
+  const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({
+    payloadRenderState,
+    resultBadge,
+    characterCountLabel,
+    copyButtonRenderState,
+    onCopyPress,
+    styles,
+  });
+
   return (
-    <View style={styles.header}>
-      <View style={styles.meta}>
+    <View style={resultHeaderParts.headerStyle}>
+      <View style={resultHeaderParts.metaStyle}>
         <ChatMessageToolExecutionPayloadMeta
-          renderState={payloadRenderState}
-          styles={styles.payloadMeta}
+          {...resultHeaderParts.payloadMeta}
         />
         <ChatMessageToolExecutionResultBadge
-          badge={resultBadge}
-          styles={styles.badge}
+          {...resultHeaderParts.resultBadge}
         />
-        <Text style={styles.characterCount}>
-          {characterCountLabel}
+        <Text style={resultHeaderParts.characterCount.style}>
+          {resultHeaderParts.characterCount.label}
         </Text>
       </View>
       <ChatMessageToolExecutionCopyButton
-        renderState={copyButtonRenderState}
-        onPress={onCopyPress}
-        styles={styles.copyButton}
+        {...resultHeaderParts.copyButton}
       />
     </View>
   );

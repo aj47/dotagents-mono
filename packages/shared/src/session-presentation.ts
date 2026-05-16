@@ -2007,6 +2007,77 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
+  TPayloadRenderState = unknown,
+  TResultBadge = unknown,
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TStyles extends {
+    header: unknown
+    meta: unknown
+    payloadMeta: unknown
+    badge: unknown
+    characterCount: unknown
+    copyButton: unknown
+  } = {
+    header: unknown
+    meta: unknown
+    payloadMeta: unknown
+    badge: unknown
+    characterCount: unknown
+    copyButton: unknown
+  },
+> {
+  payloadRenderState: TPayloadRenderState
+  resultBadge: TResultBadge
+  characterCountLabel: string
+  copyButtonRenderState: TCopyButtonRenderState
+  onCopyPress?: TOnCopyPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
+  TPayloadRenderState = unknown,
+  TResultBadge = unknown,
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TStyles extends {
+    header: unknown
+    meta: unknown
+    payloadMeta: unknown
+    badge: unknown
+    characterCount: unknown
+    copyButton: unknown
+  } = {
+    header: unknown
+    meta: unknown
+    payloadMeta: unknown
+    badge: unknown
+    characterCount: unknown
+    copyButton: unknown
+  },
+> {
+  headerStyle: TStyles["header"]
+  metaStyle: TStyles["meta"]
+  payloadMeta: {
+    renderState: TPayloadRenderState
+    styles: TStyles["payloadMeta"]
+  }
+  resultBadge: {
+    badge: TResultBadge
+    styles: TStyles["badge"]
+  }
+  characterCount: {
+    label: string
+    style: TStyles["characterCount"]
+  }
+  copyButton: {
+    renderState: TCopyButtonRenderState
+    onPress: TOnCopyPress | undefined
+    styles: TStyles["copyButton"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
   TExpanded extends object = Record<string, never>,
@@ -14422,6 +14493,62 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
       isExpanded,
       previewNumberOfLines,
       styles: styles.payloadBlock,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
+  TPayloadRenderState,
+  TResultBadge,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles extends {
+    header: unknown
+    meta: unknown
+    payloadMeta: unknown
+    badge: unknown
+    characterCount: unknown
+    copyButton: unknown
+  },
+>({
+  payloadRenderState,
+  resultBadge,
+  characterCountLabel,
+  copyButtonRenderState,
+  onCopyPress,
+  styles,
+}: ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
+  TPayloadRenderState,
+  TResultBadge,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles
+>): ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
+  TPayloadRenderState,
+  TResultBadge,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles
+> {
+  return {
+    headerStyle: styles.header,
+    metaStyle: styles.meta,
+    payloadMeta: {
+      renderState: payloadRenderState,
+      styles: styles.payloadMeta,
+    },
+    resultBadge: {
+      badge: resultBadge,
+      styles: styles.badge,
+    },
+    characterCount: {
+      label: characterCountLabel,
+      style: styles.characterCount,
+    },
+    copyButton: {
+      renderState: copyButtonRenderState,
+      onPress: onCopyPress,
+      styles: styles.copyButton,
     },
   }
 }

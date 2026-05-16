@@ -134,6 +134,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
@@ -9210,6 +9211,42 @@ describe("session presentation semantics", () => {
         isExpanded: true,
         previewNumberOfLines: 3,
         styles: "payload-block-styles",
+      },
+    })
+    const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({
+      payloadRenderState: "result-payload-state",
+      resultBadge: "success-badge",
+      characterCountLabel: "42 chars",
+      copyButtonRenderState: "copy-result-state",
+      onCopyPress: "copy-result",
+      styles: {
+        header: "result-header",
+        meta: "result-meta",
+        payloadMeta: "result-payload-meta",
+        badge: "result-badge-styles",
+        characterCount: "character-count-style",
+        copyButton: "result-copy-button",
+      },
+    })
+    expect(resultHeaderParts).toEqual({
+      headerStyle: "result-header",
+      metaStyle: "result-meta",
+      payloadMeta: {
+        renderState: "result-payload-state",
+        styles: "result-payload-meta",
+      },
+      resultBadge: {
+        badge: "success-badge",
+        styles: "result-badge-styles",
+      },
+      characterCount: {
+        label: "42 chars",
+        style: "character-count-style",
+      },
+      copyButton: {
+        renderState: "copy-result-state",
+        onPress: "copy-result",
+        styles: "result-copy-button",
       },
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
