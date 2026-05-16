@@ -80,6 +80,7 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
@@ -8095,21 +8096,15 @@ export function ChatMessageToolExecutionExpandedGroup({
   styles,
   children,
 }: ChatMessageToolExecutionExpandedGroupProps) {
-  const collapseControlStyles = {
-    button: styles.collapseButton,
-    pressed: styles.collapsePressed,
-    text: styles.collapseText,
-  };
+  const collapseControlStyleSlots =
+    createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots(styles);
 
   return (
     <View style={styles.container}>
       <ChatMessageToolExecutionCollapseControl
         renderState={topCollapseRenderState}
         onPress={onCollapsePress}
-        styles={{
-          ...collapseControlStyles,
-          placement: styles.collapseTopPlacement,
-        }}
+        styles={collapseControlStyleSlots.top}
       />
       <View
         style={[
@@ -8125,10 +8120,7 @@ export function ChatMessageToolExecutionExpandedGroup({
       <ChatMessageToolExecutionCollapseControl
         renderState={bottomCollapseRenderState}
         onPress={onCollapsePress}
-        styles={{
-          ...collapseControlStyles,
-          placement: styles.collapseBottomPlacement,
-        }}
+        styles={collapseControlStyleSlots.bottom}
       />
     </View>
   );

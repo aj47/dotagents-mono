@@ -2877,6 +2877,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /name:\s*\{[\s\S]*?color: statusColors\.idle/);
   assert.match(sessionPresentationSource, /statusIndicator:\s*\{[\s\S]*?width: surface\.statusIcon\.width,[\s\S]*?alignItems: surface\.iconCell\.alignItems/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionDetailMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?platform,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,/);
   assert.match(sessionPresentationSource, /card:\s*\{[\s\S]*?marginTop: surface\.card\.marginTop,[\s\S]*?borderRadius: radius\[surface\.card\.borderRadius\],[\s\S]*?\.\.\.colors\.byState\.idle/);
   assert.match(sessionPresentationSource, /callSection:\s*\{[\s\S]*?marginBottom: spacing\[surface\.section\.marginBottom\],[\s\S]*?borderBottomColor: contentColors\.section\.borderBottomColor/);
   assert.match(screenSource, /toolExecutionCard:\s*\{\s+\.\.\.toolExecutionDetailStyleSlots\.card,/);
@@ -2911,6 +2913,12 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionExpandedGroup \{\.\.\.expanded\}>[\s\S]*?\{children\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControl\s+renderState=\{topCollapseRenderState\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControl\s+renderState=\{bottomCollapseRenderState\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const collapseControlStyles = \{/);
+  assert.match(chatMessageChromeSource, /const collapseControlStyleSlots =\s+createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots\(styles\);/);
+  assert.match(chatMessageChromeSource, /styles=\{collapseControlStyleSlots\.top\}/);
+  assert.match(chatMessageChromeSource, /styles=\{collapseControlStyleSlots\.bottom\}/);
+  assert.match(sessionPresentationSource, /top: \{\s+\.\.\.collapseControlStyles,\s+placement: collapseTopPlacement,/);
+  assert.match(sessionPresentationSource, /bottom: \{\s+\.\.\.collapseControlStyles,\s+placement: collapseBottomPlacement,/);
   assert.match(chatMessageChromeSource, /styles\.card,[\s\S]*?isPending && styles\.pending,[\s\S]*?allSuccess && styles\.success,[\s\S]*?hasErrors && styles\.error/);
   assert.match(chatMessageChromeSource, /\{emptyState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControl/);

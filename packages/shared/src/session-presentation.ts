@@ -1760,6 +1760,41 @@ export interface ChatRuntimeConversationToolExecutionStackMobileProps {
   detailRows: readonly ChatRuntimeConversationToolExecutionDetailMobileRowState[]
 }
 
+export interface ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlotsInput<
+  TButtonStyle = unknown,
+  TPressedStyle = unknown,
+  TTopPlacementStyle = unknown,
+  TBottomPlacementStyle = unknown,
+  TTextStyle = unknown,
+> {
+  collapseButton: TButtonStyle
+  collapsePressed: TPressedStyle
+  collapseTopPlacement: TTopPlacementStyle
+  collapseBottomPlacement: TBottomPlacementStyle
+  collapseText: TTextStyle
+}
+
+export interface ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
+  TButtonStyle = unknown,
+  TPressedStyle = unknown,
+  TTopPlacementStyle = unknown,
+  TBottomPlacementStyle = unknown,
+  TTextStyle = unknown,
+> {
+  top: {
+    button: TButtonStyle
+    pressed: TPressedStyle
+    placement: TTopPlacementStyle
+    text: TTextStyle
+  }
+  bottom: {
+    button: TButtonStyle
+    pressed: TPressedStyle
+    placement: TBottomPlacementStyle
+    text: TTextStyle
+  }
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13212,6 +13247,49 @@ export function createChatRuntimeConversationToolExecutionStackMobileProps({
       onCollapsePress: expanded.onToggle,
     },
     detailRows,
+  }
+}
+
+export function createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
+  TButtonStyle,
+  TPressedStyle,
+  TTopPlacementStyle,
+  TBottomPlacementStyle,
+  TTextStyle,
+>({
+  collapseButton,
+  collapsePressed,
+  collapseTopPlacement,
+  collapseBottomPlacement,
+  collapseText,
+}: ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlotsInput<
+  TButtonStyle,
+  TPressedStyle,
+  TTopPlacementStyle,
+  TBottomPlacementStyle,
+  TTextStyle
+>): ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
+  TButtonStyle,
+  TPressedStyle,
+  TTopPlacementStyle,
+  TBottomPlacementStyle,
+  TTextStyle
+> {
+  const collapseControlStyles = {
+    button: collapseButton,
+    pressed: collapsePressed,
+    text: collapseText,
+  }
+
+  return {
+    top: {
+      ...collapseControlStyles,
+      placement: collapseTopPlacement,
+    },
+    bottom: {
+      ...collapseControlStyles,
+      placement: collapseBottomPlacement,
+    },
   }
 }
 

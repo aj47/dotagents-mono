@@ -118,6 +118,7 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
+  createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatRuntimeViewportMobileStyleSlots,
@@ -8353,6 +8354,28 @@ describe("session presentation semantics", () => {
     })
     expect(emptyToolExecutionStackState.shouldRender).toBe(false)
     expect(emptyToolExecutionStackState.expanded.emptyState.shouldRender).toBe(true)
+    const collapseControlStyleSlots =
+      createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots({
+        collapseButton: "collapse-button",
+        collapsePressed: "collapse-pressed",
+        collapseTopPlacement: "collapse-top",
+        collapseBottomPlacement: "collapse-bottom",
+        collapseText: "collapse-text",
+      })
+    expect(collapseControlStyleSlots).toEqual({
+      top: {
+        button: "collapse-button",
+        pressed: "collapse-pressed",
+        placement: "collapse-top",
+        text: "collapse-text",
+      },
+      bottom: {
+        button: "collapse-button",
+        pressed: "collapse-pressed",
+        placement: "collapse-bottom",
+        text: "collapse-text",
+      },
+    })
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")
