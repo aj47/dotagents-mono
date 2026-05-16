@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useTheme } from './ThemeProvider';
 import {
   getConnectionStatusIndicatorMobileRenderState,
-  getConnectionStatusIndicatorMobileSurfaceState,
+  type ConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
 } from '@dotagents/shared/connection-recovery';
 
@@ -12,8 +12,6 @@ export interface ConnectionStatusIndicatorProps {
   retryCount?: number;
   compact?: boolean;
 }
-
-const connectionStatusSurface = getConnectionStatusIndicatorMobileSurfaceState();
 
 /**
  * Visual indicator for tunnel connection status.
@@ -25,8 +23,6 @@ export function ConnectionStatusIndicator({
   compact = false,
 }: ConnectionStatusIndicatorProps) {
   const { theme } = useTheme();
-  const pulseAnim = useRef(new Animated.Value(connectionStatusSurface.pulse.minOpacity)).current;
-
   const connectionStatusState = useMemo(
     () => getConnectionStatusIndicatorMobileRenderState({
       status: state,
@@ -35,6 +31,12 @@ export function ConnectionStatusIndicator({
       colors: theme.colors,
     }),
     [compact, retryCount, state, theme.colors],
+  );
+  const connectionStatusSurface = connectionStatusState.surface;
+  const pulseAnim = useRef(new Animated.Value(connectionStatusSurface.pulse.minOpacity)).current;
+  const styles = useMemo(
+    () => createStyles(connectionStatusSurface),
+    [connectionStatusSurface],
   );
   const colorStyles = useMemo(
     () => StyleSheet.create({
@@ -73,7 +75,7 @@ export function ConnectionStatusIndicator({
     } else {
       pulseAnim.setValue(connectionStatusSurface.pulse.minOpacity);
     }
-  }, [connectionStatusState.isPulsing, pulseAnim]);
+  }, [connectionStatusState.isPulsing, connectionStatusSurface, pulseAnim]);
 
   return (
     <View
@@ -108,47 +110,49 @@ export function ConnectionStatusIndicator({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: connectionStatusSurface.container.flexDirection,
-    alignItems: connectionStatusSurface.container.alignItems,
-    paddingVertical: connectionStatusSurface.container.paddingVertical,
-    paddingHorizontal: connectionStatusSurface.container.paddingHorizontal,
-  },
-  containerCompact: {
-    paddingVertical: connectionStatusSurface.container.compactPaddingVertical,
-    paddingHorizontal: connectionStatusSurface.container.compactPaddingHorizontal,
-  },
-  dotContainer: {
-    position: connectionStatusSurface.dotContainer.position,
-    width: connectionStatusSurface.dotContainer.size,
-    height: connectionStatusSurface.dotContainer.size,
-    marginRight: connectionStatusSurface.dotContainer.marginRight,
-  },
-  dot: {
-    width: connectionStatusSurface.dot.size,
-    height: connectionStatusSurface.dot.size,
-    borderRadius: connectionStatusSurface.dot.borderRadius,
-    position: connectionStatusSurface.dot.position,
-    top: connectionStatusSurface.dot.offset,
-    left: connectionStatusSurface.dot.offset,
-  },
-  dotPulsing: {
-    opacity: connectionStatusSurface.dot.pulsingOpacity,
-  },
-  dotPulse: {
-    width: connectionStatusSurface.pulse.size,
-    height: connectionStatusSurface.pulse.size,
-    borderRadius: connectionStatusSurface.pulse.borderRadius,
-    opacity: connectionStatusSurface.pulse.minOpacity,
-    position: connectionStatusSurface.pulse.position,
-    top: connectionStatusSurface.pulse.top,
-    left: connectionStatusSurface.pulse.left,
-  },
-  text: {
-    fontSize: connectionStatusSurface.text.fontSize,
-    fontWeight: connectionStatusSurface.text.fontWeight,
-  },
-});
+function createStyles(connectionStatusSurface: ConnectionStatusIndicatorMobileRenderState['surface']) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: connectionStatusSurface.container.flexDirection,
+      alignItems: connectionStatusSurface.container.alignItems,
+      paddingVertical: connectionStatusSurface.container.paddingVertical,
+      paddingHorizontal: connectionStatusSurface.container.paddingHorizontal,
+    },
+    containerCompact: {
+      paddingVertical: connectionStatusSurface.container.compactPaddingVertical,
+      paddingHorizontal: connectionStatusSurface.container.compactPaddingHorizontal,
+    },
+    dotContainer: {
+      position: connectionStatusSurface.dotContainer.position,
+      width: connectionStatusSurface.dotContainer.size,
+      height: connectionStatusSurface.dotContainer.size,
+      marginRight: connectionStatusSurface.dotContainer.marginRight,
+    },
+    dot: {
+      width: connectionStatusSurface.dot.size,
+      height: connectionStatusSurface.dot.size,
+      borderRadius: connectionStatusSurface.dot.borderRadius,
+      position: connectionStatusSurface.dot.position,
+      top: connectionStatusSurface.dot.offset,
+      left: connectionStatusSurface.dot.offset,
+    },
+    dotPulsing: {
+      opacity: connectionStatusSurface.dot.pulsingOpacity,
+    },
+    dotPulse: {
+      width: connectionStatusSurface.pulse.size,
+      height: connectionStatusSurface.pulse.size,
+      borderRadius: connectionStatusSurface.pulse.borderRadius,
+      opacity: connectionStatusSurface.pulse.minOpacity,
+      position: connectionStatusSurface.pulse.position,
+      top: connectionStatusSurface.pulse.top,
+      left: connectionStatusSurface.pulse.left,
+    },
+    text: {
+      fontSize: connectionStatusSurface.text.fontSize,
+      fontWeight: connectionStatusSurface.text.fontWeight,
+    },
+  });
+}
 
 export default ConnectionStatusIndicator;

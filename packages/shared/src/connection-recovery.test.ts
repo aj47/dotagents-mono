@@ -321,6 +321,7 @@ describe('connection status indicator presentation', () => {
         warning: '#f59e0b',
       },
     })).toEqual({
+      surface: CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile,
       statusText: 'Reconnecting (2)...',
       accessibilityLabel: 'Reconnecting (2)...',
       accessibilityRole: 'text',

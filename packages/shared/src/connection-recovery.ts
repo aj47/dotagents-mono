@@ -106,6 +106,7 @@ export interface ConnectionStatusIndicatorMobileRenderStateInput {
 }
 
 export interface ConnectionStatusIndicatorMobileRenderState {
+  surface: typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile;
   statusText: string;
   accessibilityLabel: string;
   accessibilityRole: typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.accessibilityRole;
@@ -166,6 +167,7 @@ export function getConnectionStatusIndicatorMobileRenderState({
   const isPulsing = isConnectionStatusIndicatorPulsing(status);
 
   return {
+    surface: getConnectionStatusIndicatorMobileSurfaceState(),
     statusText,
     accessibilityLabel: statusText,
     accessibilityRole: getConnectionStatusIndicatorMobileSurfaceState().container.accessibilityRole,

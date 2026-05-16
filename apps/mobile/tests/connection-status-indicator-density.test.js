@@ -9,11 +9,12 @@ const indicatorSource = fs.readFileSync(
 );
 
 test('uses shared connection status indicator presentation and labels', () => {
-  assert.match(indicatorSource, /getConnectionStatusIndicatorMobileSurfaceState/);
   assert.match(indicatorSource, /getConnectionStatusIndicatorMobileRenderState/);
-  assert.match(indicatorSource, /const connectionStatusSurface = getConnectionStatusIndicatorMobileSurfaceState\(\)/);
+  assert.match(indicatorSource, /type ConnectionStatusIndicatorMobileRenderState/);
   assert.match(indicatorSource, /const connectionStatusState = useMemo\(/);
   assert.match(indicatorSource, /getConnectionStatusIndicatorMobileRenderState\(\{[\s\S]*?status: state,[\s\S]*?retryCount,[\s\S]*?compact,[\s\S]*?colors: theme\.colors,/);
+  assert.match(indicatorSource, /const connectionStatusSurface = connectionStatusState\.surface;/);
+  assert.match(indicatorSource, /createStyles\(connectionStatusSurface\)/);
   assert.match(indicatorSource, /const colorStyles = useMemo\(/);
   assert.match(indicatorSource, /accessibilityLabel=\{connectionStatusState\.accessibilityLabel\}/);
   assert.match(indicatorSource, /connectionStatusState\.shouldRenderPulse/);
@@ -24,6 +25,7 @@ test('uses shared connection status indicator presentation and labels', () => {
   assert.doesNotMatch(indicatorSource, /formatConnectionStatusIndicatorLabel\(state, retryCount\)/);
   assert.doesNotMatch(indicatorSource, /isConnectionStatusIndicatorPulsing\(state\)/);
   assert.doesNotMatch(indicatorSource, /getConnectionStatusIndicatorMobileVisualColors\(state, theme\.colors\)/);
+  assert.doesNotMatch(indicatorSource, /getConnectionStatusIndicatorMobileSurfaceState/);
   assert.doesNotMatch(indicatorSource, /getConnectionStatusIndicatorMobileSurfaceColors/);
   assert.doesNotMatch(indicatorSource, /statusColorByStatus\[state\]/);
   assert.doesNotMatch(indicatorSource, /CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION/);
