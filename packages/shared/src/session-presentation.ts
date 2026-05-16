@@ -2055,6 +2055,83 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
+  TBadge extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isSuccess: boolean
+    icon: unknown
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isSuccess: boolean
+    icon: unknown
+    label: string
+  },
+  TStyles extends {
+    badge: unknown
+    badgeSuccess: unknown
+    badgeError: unknown
+    text: unknown
+    textSuccess: unknown
+    textError: unknown
+  } = {
+    badge: unknown
+    badgeSuccess: unknown
+    badgeError: unknown
+    text: unknown
+    textSuccess: unknown
+    textError: unknown
+  },
+> {
+  badge: TBadge
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
+  TBadge extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isSuccess: boolean
+    icon: unknown
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isSuccess: boolean
+    icon: unknown
+    label: string
+  },
+  TStyles extends {
+    badge: unknown
+    badgeSuccess: unknown
+    badgeError: unknown
+    text: unknown
+    textSuccess: unknown
+    textError: unknown
+  } = {
+    badge: unknown
+    badgeSuccess: unknown
+    badgeError: unknown
+    text: unknown
+    textSuccess: unknown
+    textError: unknown
+  },
+> {
+  container: {
+    accessible: true
+    accessibilityRole: TBadge["accessibilityRole"]
+    accessibilityLabel: string
+    style: Array<TStyles["badge"] | TStyles["badgeSuccess"] | TStyles["badgeError"]>
+  }
+  icon: TBadge["icon"]
+  label: {
+    text: string
+    style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+  }
+}
+
 export interface ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TResultBadge = unknown,
@@ -14713,6 +14790,53 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
     code: {
       text: content,
       style: styles.code,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
+  TBadge extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isSuccess: boolean
+    icon: unknown
+    label: string
+  },
+  TStyles extends {
+    badge: unknown
+    badgeSuccess: unknown
+    badgeError: unknown
+    text: unknown
+    textSuccess: unknown
+    textError: unknown
+  },
+>({
+  badge,
+  styles,
+}: ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
+  TBadge,
+  TStyles
+>): ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
+  TBadge,
+  TStyles
+> {
+  return {
+    container: {
+      accessible: true,
+      accessibilityRole: badge.accessibilityRole,
+      accessibilityLabel: badge.accessibilityLabel,
+      style: [
+        styles.badge,
+        badge.isSuccess ? styles.badgeSuccess : styles.badgeError,
+      ],
+    },
+    icon: badge.icon,
+    label: {
+      text: badge.label,
+      style: [
+        styles.text,
+        badge.isSuccess ? styles.textSuccess : styles.textError,
+      ],
     },
   }
 }

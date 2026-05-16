@@ -136,6 +136,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  createChatRuntimeToolExecutionResultBadgeMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
@@ -9259,6 +9260,84 @@ describe("session presentation semantics", () => {
       scroll: {
         style: "payload-scroll",
         nestedScrollEnabled: true,
+      },
+    })
+    const resultBadgeParts = createChatRuntimeToolExecutionResultBadgeMobilePropsParts({
+      badge: {
+        accessibilityRole: "text",
+        accessibilityLabel: "Tool result succeeded",
+        isSuccess: true,
+        icon: {
+          name: "checkmark-circle",
+          size: 12,
+          color: "#0f0",
+        },
+        label: "Succeeded",
+      },
+      styles: {
+        badge: "result-badge",
+        badgeSuccess: "result-badge-success",
+        badgeError: "result-badge-error",
+        text: "result-badge-text",
+        textSuccess: "result-badge-text-success",
+        textError: "result-badge-text-error",
+      },
+    })
+    expect(resultBadgeParts).toEqual({
+      container: {
+        accessible: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Tool result succeeded",
+        style: [
+          "result-badge",
+          "result-badge-success",
+        ],
+      },
+      icon: {
+        name: "checkmark-circle",
+        size: 12,
+        color: "#0f0",
+      },
+      label: {
+        text: "Succeeded",
+        style: [
+          "result-badge-text",
+          "result-badge-text-success",
+        ],
+      },
+    })
+    expect(createChatRuntimeToolExecutionResultBadgeMobilePropsParts({
+      badge: {
+        accessibilityRole: "text",
+        accessibilityLabel: "Tool result failed",
+        isSuccess: false,
+        icon: {
+          name: "alert-circle",
+          size: 12,
+          color: "#f00",
+        },
+        label: "Failed",
+      },
+      styles: {
+        badge: "result-badge",
+        badgeSuccess: "result-badge-success",
+        badgeError: "result-badge-error",
+        text: "result-badge-text",
+        textSuccess: "result-badge-text-success",
+        textError: "result-badge-text-error",
+      },
+    })).toMatchObject({
+      container: {
+        style: [
+          "result-badge",
+          "result-badge-error",
+        ],
+      },
+      label: {
+        style: [
+          "result-badge-text",
+          "result-badge-text-error",
+        ],
       },
     })
     const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({

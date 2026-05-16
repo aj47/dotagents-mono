@@ -97,6 +97,7 @@ import {
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  createChatRuntimeToolExecutionResultBadgeMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
@@ -8272,28 +8273,27 @@ export function ChatMessageToolExecutionResultBadge({
   badge,
   styles,
 }: ChatMessageToolExecutionResultBadgeProps) {
+  const resultBadgeParts = createChatRuntimeToolExecutionResultBadgeMobilePropsParts({
+    badge,
+    styles,
+  });
+
   return (
     <View
-      accessible
-      accessibilityRole={badge.accessibilityRole}
-      accessibilityLabel={badge.accessibilityLabel}
-      style={[
-        styles.badge,
-        badge.isSuccess ? styles.badgeSuccess : styles.badgeError,
-      ]}
+      accessible={resultBadgeParts.container.accessible}
+      accessibilityRole={resultBadgeParts.container.accessibilityRole}
+      accessibilityLabel={resultBadgeParts.container.accessibilityLabel}
+      style={resultBadgeParts.container.style}
     >
       <Ionicons
-        name={badge.icon.name}
-        size={badge.icon.size}
-        color={badge.icon.color}
+        name={resultBadgeParts.icon.name}
+        size={resultBadgeParts.icon.size}
+        color={resultBadgeParts.icon.color}
       />
       <Text
-        style={[
-          styles.text,
-          badge.isSuccess ? styles.textSuccess : styles.textError,
-        ]}
+        style={resultBadgeParts.label.style}
       >
-        {badge.label}
+        {resultBadgeParts.label.text}
       </Text>
     </View>
   );
