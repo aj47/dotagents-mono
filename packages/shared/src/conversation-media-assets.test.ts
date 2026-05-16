@@ -50,6 +50,7 @@ import {
   formatChatImageTryFewerOrSmallerMessage,
   formatChatImageUnsupportedFormatMessage,
   getChatImageAttachmentCopyState,
+  getChatImageAttachmentDesktopComposerPreviewRenderState,
   getChatImageAttachmentDesktopSurfaceState,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
@@ -424,6 +425,13 @@ describe('conversation video asset utilities', () => {
     expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.overlayPreviewClassName).toContain('h-14 w-14');
     expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.tilePreviewClassName).toContain('h-12 w-12');
     expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview.removeButtonClassName).toContain('bg-black/70');
+    expect(getChatImageAttachmentDesktopComposerPreviewRenderState()).toEqual({
+      copy: CHAT_IMAGE_ATTACHMENT_PRESENTATION,
+      surface: CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview,
+      removeButton: {
+        title: CHAT_IMAGE_ATTACHMENT_PRESENTATION.composerPreview.removeTitle,
+      },
+    });
     expect(getChatImageAttachmentMobileSurfaceState()).toBe(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile);
     expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.row.showsHorizontalScrollIndicator).toBe(false);
     expect(CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.mobile.preview.size).toBe(56);

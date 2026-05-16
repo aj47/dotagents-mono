@@ -19,8 +19,7 @@ import {
 } from "@dotagents/shared/session-presentation"
 import {
   formatChatImageAttachmentErrorMessage,
-  getChatImageAttachmentCopyState,
-  getChatImageAttachmentDesktopSurfaceState,
+  getChatImageAttachmentDesktopComposerPreviewRenderState,
 } from "@dotagents/shared/conversation-media-assets"
 import {
   buildMessageWithImages,
@@ -35,8 +34,8 @@ import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "@dotagents/shared/mcp-api"
 const desktopComposerSurface = getChatComposerDesktopSurfaceState().followUp
 const desktopComposerCopy = getChatComposerCopyState()
 const desktopRuntimeCopy = getChatRuntimeCopyState()
-const desktopImageAttachmentSurface = getChatImageAttachmentDesktopSurfaceState().composerPreview
-const desktopImageAttachmentCopy = getChatImageAttachmentCopyState()
+const desktopImageAttachmentPreview = getChatImageAttachmentDesktopComposerPreviewRenderState()
+const desktopImageAttachmentSurface = desktopImageAttachmentPreview.surface
 
 interface TileFollowUpInputProps {
   conversationId?: string
@@ -361,7 +360,8 @@ export function TileFollowUpInput({
                 type="button"
                 className={desktopImageAttachmentSurface.removeButtonClassName}
                 onClick={() => removeImageAttachment(attachment.id)}
-                title={desktopImageAttachmentCopy.composerPreview.removeTitle}
+                title={desktopImageAttachmentPreview.removeButton.title}
+                aria-label={desktopImageAttachmentPreview.removeButton.title}
               >
                 <X className={desktopImageAttachmentSurface.tileRemoveIconClassName} />
               </button>

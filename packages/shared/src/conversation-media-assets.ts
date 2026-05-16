@@ -194,6 +194,14 @@ export interface ChatImageAttachmentMobileRenderState {
   removeIcon: ChatImageAttachmentMobileRemoveIconState;
 }
 
+export interface ChatImageAttachmentDesktopComposerPreviewRenderState {
+  copy: typeof CHAT_IMAGE_ATTACHMENT_PRESENTATION;
+  surface: typeof CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION.desktop.composerPreview;
+  removeButton: {
+    title: typeof CHAT_IMAGE_ATTACHMENT_PRESENTATION.composerPreview.removeTitle;
+  };
+}
+
 export interface ChatImageAttachmentMobileAlertState {
   title: string;
   message: string;
@@ -251,6 +259,18 @@ export function getChatImageAttachmentMobileRemoveIconState(): ChatImageAttachme
     name: removeIcon.name,
     size: removeIcon.size,
     color: removeIcon.color,
+  };
+}
+
+export function getChatImageAttachmentDesktopComposerPreviewRenderState(): ChatImageAttachmentDesktopComposerPreviewRenderState {
+  const copy = getChatImageAttachmentCopyState();
+
+  return {
+    copy,
+    surface: getChatImageAttachmentDesktopSurfaceState().composerPreview,
+    removeButton: {
+      title: copy.composerPreview.removeTitle,
+    },
   };
 }
 
