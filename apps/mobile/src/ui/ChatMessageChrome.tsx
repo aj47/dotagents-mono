@@ -2896,20 +2896,12 @@ type ChatMessageConversationMessageThreadRenderStateInput =
     'itemKey' | 'groupRenderState' | 'groupThreadState'
   >;
 
-type ChatMessageConversationMessageThreadRenderState = {
-  threadState: ChatMessageConversationMessageRuntimeThreadState;
-};
-
 type ChatMessageConversationItemThreadRenderStateInput =
   ChatMessageConversationToolActivityGroupThreadRenderStateInput
   & Omit<
     ChatMessageConversationMessageThreadRenderStateInput,
     'itemKey' | 'groupRenderState' | 'groupThreadState'
   >;
-
-type ChatMessageConversationItemThreadRenderState = {
-  threadState: ChatMessageConversationRenderableRuntimeThreadState;
-};
 
 type ChatMessageConversationThreadListRenderStateInput =
   Omit<
@@ -3274,7 +3266,7 @@ function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
   );
 }
 
-export function createChatMessageConversationMessageThreadRenderState({
+function createChatMessageConversationMessageThreadState({
   itemKey,
   groupRenderState,
   groupThreadState,
@@ -3282,22 +3274,20 @@ export function createChatMessageConversationMessageThreadRenderState({
   expandedMessages,
   resultOnlyToolLabel,
   ...bodyInput
-}: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageThreadRenderState {
-  return {
-    threadState: getChatRuntimeConversationMessageThreadMobileState({
-      itemKey,
-      groupRenderState,
-      groupThreadState,
-      lastConversationContentMessageIndex,
-      expandedMessages,
-      resultOnlyToolLabel,
-      bodyInput,
-      createBodyState: getChatRuntimeConversationThreadBodyMobileState,
-    }),
-  };
+}: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageRuntimeThreadState {
+  return getChatRuntimeConversationMessageThreadMobileState({
+    itemKey,
+    groupRenderState,
+    groupThreadState,
+    lastConversationContentMessageIndex,
+    expandedMessages,
+    resultOnlyToolLabel,
+    bodyInput,
+    createBodyState: getChatRuntimeConversationThreadBodyMobileState,
+  });
 }
 
-export function createChatMessageConversationItemThreadRenderState({
+function createChatMessageConversationItemThreadState({
   group,
   itemIndex,
   itemKey,
@@ -3308,24 +3298,21 @@ export function createChatMessageConversationItemThreadRenderState({
   defaultExpanded,
   onToggleGroup,
   ...messageThreadInput
-}: ChatMessageConversationItemThreadRenderStateInput): ChatMessageConversationItemThreadRenderState {
-  return {
-    threadState: getChatRuntimeConversationItemThreadMobileState({
-      messageThreadInput,
-      createMessageThreadState: (input) =>
-        createChatMessageConversationMessageThreadRenderState(input).threadState,
-      colors: messageThreadInput.colors,
-      group,
-      itemIndex,
-      itemKey,
-      groupState,
-      inheritedState,
-      groupKey,
-      inheritedKey,
-      defaultExpanded,
-      onToggleGroup,
-    }),
-  };
+}: ChatMessageConversationItemThreadRenderStateInput): ChatMessageConversationRenderableRuntimeThreadState {
+  return getChatRuntimeConversationItemThreadMobileState({
+    messageThreadInput,
+    createMessageThreadState: createChatMessageConversationMessageThreadState,
+    colors: messageThreadInput.colors,
+    group,
+    itemIndex,
+    itemKey,
+    groupState,
+    inheritedState,
+    groupKey,
+    inheritedKey,
+    defaultExpanded,
+    onToggleGroup,
+  });
 }
 
 export function useChatMessageRuntimeHistoryWindowState({
@@ -3889,13 +3876,13 @@ export function createChatMessageRuntimeChromeProps<
     visibleMessageCount: threadListVisibleMessageCount,
     ...threadListInput,
     colors,
-    createThreadState: (itemState) => createChatMessageConversationItemThreadRenderState({
+    createThreadState: (itemState) => createChatMessageConversationItemThreadState({
       ...threadListInput,
       ...itemState,
       colors,
       actionStyles: styles.actionStyles,
       spinnerSource,
-    }).threadState,
+    }),
   });
   const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps({
     colors,
