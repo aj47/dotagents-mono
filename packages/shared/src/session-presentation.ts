@@ -858,6 +858,29 @@ export interface ChatRuntimeMessageThreadMobileStyleRenderState {
   }
 }
 
+type ChatRuntimeMessageMobileStyleRenderState = ReturnType<typeof getChatMessageMobileRenderState>
+type ChatRuntimeMessageMobileSurface = ChatRuntimeMessageMobileStyleRenderState["surface"]
+type ChatRuntimeMessageMobileContentLayout = ChatRuntimeMessageMobileStyleRenderState["contentLayout"]
+
+export type ChatRuntimeMessageMobileSpacingToken =
+  | ChatRuntimeMessageMobileSurface["paddingHorizontal"]
+  | ChatRuntimeMessageMobileSurface["paddingVertical"]
+  | ChatRuntimeMessageMobileSurface["marginBottom"]
+  | ChatRuntimeMessageMobileContentLayout["row"]["gap"]
+
+export type ChatRuntimeMessageMobileRadiusToken =
+  ChatRuntimeMessageMobileSurface["borderRadius"]
+
+export type ChatRuntimeMessageMobileBorderWidthToken =
+  ChatRuntimeMessageMobileSurface["borderWidth"]
+
+export interface ChatRuntimeMessageMobileStyleSlotsInput {
+  renderState: ChatRuntimeMessageMobileStyleRenderState
+  spacing: Readonly<Record<ChatRuntimeMessageMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeMessageMobileRadiusToken, number>>
+  borderWidths: Readonly<Record<ChatRuntimeMessageMobileBorderWidthToken, number>>
+}
+
 export type ChatRuntimeMessageThreadPresentationMobileColorPalette =
   & ChatRuntimeDelegationCardMobileColorPalette
   & ChatRuntimeDelegationConversationPreviewRoleColorPalette
@@ -10687,6 +10710,55 @@ export function createChatRuntimeToolActivityGroupMobileStyleSlots({
       fontSize: surface.footerText.fontSize,
       fontWeight: surface.footerText.fontWeight,
       color: colors.footerText.color,
+    },
+  }
+}
+
+export function createChatRuntimeMessageMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  borderWidths,
+}: ChatRuntimeMessageMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const contentLayout = renderState.contentLayout
+  const collapsedPreview = renderState.collapsedPreview
+  const colors = renderState.colors
+
+  return {
+    message: {
+      paddingHorizontal: spacing[surface.paddingHorizontal],
+      paddingVertical: spacing[surface.paddingVertical],
+      marginBottom: spacing[surface.marginBottom],
+      width: surface.width,
+      borderWidth: borderWidths[surface.borderWidth],
+      borderRadius: radius[surface.borderRadius],
+    },
+    user: colors.tones.user,
+    assistant: colors.tones.assistant,
+    assistantFinal: colors.tones.assistant_final,
+    tool: colors.tones.tool,
+    contentRow: {
+      flexDirection: contentLayout.row.flexDirection,
+      alignItems: contentLayout.row.alignItems,
+      gap: spacing[contentLayout.row.gap],
+      width: contentLayout.row.width,
+    },
+    contentBody: {
+      flex: contentLayout.body.flex,
+      minWidth: contentLayout.body.minWidth,
+    },
+    collapsedPreviewToggle: {
+      flex: collapsedPreview.flex,
+      minWidth: collapsedPreview.minWidth,
+    },
+    collapsedPreviewTogglePressed: {
+      opacity: collapsedPreview.pressedOpacity,
+    },
+    collapsedPreview: {
+      color: colors.collapsedPreview.text.color,
+      fontSize: collapsedPreview.fontSize,
+      lineHeight: collapsedPreview.lineHeight,
     },
   }
 }

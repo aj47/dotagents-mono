@@ -16,6 +16,7 @@ import {
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
+  createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
@@ -198,11 +199,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const mobileMessageThreadStyleState = threadChromeStyleState.messageThread;
   const mobileMessageStyleState = mobileMessageThreadStyleState.message;
-  const mobileMessageSurface = mobileMessageStyleState.surface;
-  const mobileMessageContentLayout = mobileMessageStyleState.contentLayout;
-  const mobileMessageCollapsedPreview = mobileMessageStyleState.collapsedPreview;
-  const mobileMessageCollapsedPreviewColors = mobileMessageStyleState.colors.collapsedPreview;
-  const mobileMessageToneColors = mobileMessageStyleState.colors.tones;
+  const mobileMessageStyleSlots = createChatRuntimeMessageMobileStyleSlots({
+    renderState: mobileMessageStyleState,
+    spacing,
+    radius,
+    borderWidths: theme,
+  });
   const headerTurnDurationStyleState = headerChromeStyleState.turnDuration.standard;
   const headerTurnDurationLiveStyleState = headerChromeStyleState.turnDuration.live;
   const headerTurnDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
@@ -385,17 +387,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     // Compact desktop-style messages: full-width role cards with shared tone semantics.
     msg: {
-      paddingHorizontal: spacing[mobileMessageSurface.paddingHorizontal],
-      paddingVertical: spacing[mobileMessageSurface.paddingVertical],
-      marginBottom: spacing[mobileMessageSurface.marginBottom],
-      width: mobileMessageSurface.width,
-      borderWidth: theme[mobileMessageSurface.borderWidth],
-      borderRadius: radius[mobileMessageSurface.borderRadius],
+      ...mobileMessageStyleSlots.message,
     },
-    user: mobileMessageToneColors.user,
-    assistant: mobileMessageToneColors.assistant,
-    assistantFinal: mobileMessageToneColors.assistant_final,
-    tool: mobileMessageToneColors.tool,
+    user: mobileMessageStyleSlots.user,
+    assistant: mobileMessageStyleSlots.assistant,
+    assistantFinal: mobileMessageStyleSlots.assistantFinal,
+    tool: mobileMessageStyleSlots.tool,
     retryStatusCard: {
       ...retryStatusStyleSlots.card,
     },
@@ -1226,26 +1223,19 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...toolExecutionDetailStyleSlots.resultErrorText,
     },
     messageContentRow: {
-      flexDirection: mobileMessageContentLayout.row.flexDirection,
-      alignItems: mobileMessageContentLayout.row.alignItems,
-      gap: spacing[mobileMessageContentLayout.row.gap],
-      width: mobileMessageContentLayout.row.width,
+      ...mobileMessageStyleSlots.contentRow,
     },
     messageContentBody: {
-      flex: mobileMessageContentLayout.body.flex,
-      minWidth: mobileMessageContentLayout.body.minWidth,
+      ...mobileMessageStyleSlots.contentBody,
     },
     collapsedMessagePreviewToggle: {
-      flex: mobileMessageCollapsedPreview.flex,
-      minWidth: mobileMessageCollapsedPreview.minWidth,
+      ...mobileMessageStyleSlots.collapsedPreviewToggle,
     },
     collapsedMessagePreviewTogglePressed: {
-      opacity: mobileMessageCollapsedPreview.pressedOpacity,
+      ...mobileMessageStyleSlots.collapsedPreviewTogglePressed,
     },
     collapsedMessagePreview: {
-      color: mobileMessageCollapsedPreviewColors.text.color,
-      fontSize: mobileMessageCollapsedPreview.fontSize,
-      lineHeight: mobileMessageCollapsedPreview.lineHeight,
+      ...mobileMessageStyleSlots.collapsedPreview,
     },
     messageExpandButton: {
       ...mobileMessageExpansionButtonStyleSlots.button,

@@ -81,6 +81,7 @@ import {
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerImageAttachmentMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
+  createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -5281,6 +5282,47 @@ describe("session presentation semantics", () => {
     })
     expect(messageThreadStyle.message.surface.paddingHorizontal).toBe("sm")
     expect(messageThreadStyle.message.colors.tones.assistant_final.backgroundColor).toBe("rgba(22, 163, 74, 0.08)")
+    expect(createChatRuntimeMessageMobileStyleSlots({
+      renderState: messageThreadStyle.message,
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        md: 8,
+      },
+      borderWidths: {
+        hairline: 0.5,
+      },
+    })).toMatchObject({
+      message: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        marginBottom: 4,
+        width: "100%",
+        borderWidth: 0.5,
+        borderRadius: 8,
+      },
+      user: {
+        borderColor: "rgba(14, 165, 233, 0.36)",
+        backgroundColor: "rgba(14, 165, 233, 0.08)",
+      },
+      assistantFinal: {
+        borderColor: "rgba(22, 163, 74, 0.36)",
+        backgroundColor: "rgba(22, 163, 74, 0.08)",
+      },
+      contentRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 4,
+        width: "100%",
+      },
+      collapsedPreview: {
+        color: "#0f172a",
+        fontSize: 13,
+        lineHeight: 18,
+      },
+    })
     expect(messageThreadStyle.action.row).toMatchObject({
       flexDirection: "row",
       justifyContent: "flex-end",
