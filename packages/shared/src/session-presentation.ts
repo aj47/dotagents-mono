@@ -4455,6 +4455,40 @@ export interface ChatComposerMobileStyleSlotsInput {
   borderWidths: Readonly<Record<ChatComposerMobileStyleBorderWidthToken, number>>
 }
 
+type ChatConversationHomePromptLibraryMobileStyleRenderState =
+  ReturnType<typeof getPromptLibraryMobileSurfaceRenderState>
+type ChatConversationHomePromptLibraryMobileStyleSurface =
+  ChatConversationHomePromptLibraryMobileStyleRenderState["surface"]
+
+export type ChatConversationHomePromptLibraryMobileStyleSpacingToken =
+  | ChatConversationHomePromptLibraryMobileStyleSurface["quickStartCard"]["marginHorizontal"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["quickStartCard"]["marginTop"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["quickStartCard"]["padding"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["quickStartCard"]["gap"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["emptyText"]["paddingVertical"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutGrid"]["gap"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutCard"]["paddingHorizontal"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutCard"]["paddingVertical"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutCard"]["gap"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutSourcePill"]["gap"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutSourcePill"]["paddingHorizontal"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutActions"]["gap"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutActions"]["marginTop"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutActionButton"]["paddingHorizontal"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutActionButton"]["gap"]
+
+export type ChatConversationHomePromptLibraryMobileStyleRadiusToken =
+  | ChatConversationHomePromptLibraryMobileStyleSurface["quickStartCard"]["borderRadius"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutCard"]["borderRadius"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutSourcePill"]["borderRadius"]
+  | ChatConversationHomePromptLibraryMobileStyleSurface["shortcutActionButton"]["borderRadius"]
+
+export interface ChatConversationHomePromptLibraryMobileStyleSlotsInput {
+  renderState: ChatConversationHomePromptLibraryMobileStyleRenderState
+  spacing: Readonly<Record<ChatConversationHomePromptLibraryMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<ChatConversationHomePromptLibraryMobileStyleRadiusToken, number>>
+}
+
 export type ChatComposerRuntimeChromeMobileStyleColorPalette =
   & ChatComposerMobileSurfaceRenderStateColorPalette
   & ChatImageAttachmentMobileSurfaceColorPalette
@@ -8843,6 +8877,134 @@ export function createChatComposerMobileStyleSlots({
       fontSize: surface.voiceOverlay.transcriptFontSize,
       lineHeight: surface.voiceOverlay.transcriptLineHeight,
       opacity: surface.voiceOverlay.transcriptOpacity,
+    },
+  }
+}
+
+export function createChatConversationHomePromptLibraryMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatConversationHomePromptLibraryMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    chatHomeCard: {
+      marginHorizontal: spacing[surface.quickStartCard.marginHorizontal],
+      marginTop: spacing[surface.quickStartCard.marginTop],
+      padding: spacing[surface.quickStartCard.padding],
+      borderRadius: radius[surface.quickStartCard.borderRadius],
+      borderWidth: surface.quickStartCard.borderWidth,
+      borderColor: colors.quickStartCard.borderColor,
+      backgroundColor: colors.quickStartCard.backgroundColor,
+      gap: spacing[surface.quickStartCard.gap],
+    },
+    chatHomeEmptyText: {
+      color: colors.emptyText.color,
+      fontSize: surface.emptyText.fontSize,
+      lineHeight: surface.emptyText.lineHeight,
+      textAlign: surface.emptyText.textAlign,
+      paddingVertical: spacing[surface.emptyText.paddingVertical],
+    },
+    chatHomeShortcutGrid: {
+      flexDirection: surface.shortcutGrid.flexDirection,
+      flexWrap: surface.shortcutGrid.flexWrap,
+      gap: spacing[surface.shortcutGrid.gap],
+    },
+    chatHomeShortcutCard: {
+      minHeight: surface.shortcutCard.minHeight,
+      minWidth: surface.shortcutCard.minWidth,
+      flexGrow: surface.shortcutCard.flexGrow,
+      flexBasis: surface.shortcutCard.flexBasis,
+      paddingHorizontal: spacing[surface.shortcutCard.paddingHorizontal],
+      paddingVertical: spacing[surface.shortcutCard.paddingVertical],
+      borderRadius: radius[surface.shortcutCard.borderRadius],
+      borderWidth: surface.shortcutCard.borderWidth,
+      borderColor: colors.shortcutCard.borderColor,
+      backgroundColor: colors.shortcutCard.backgroundColor,
+      justifyContent: surface.shortcutCard.justifyContent,
+      gap: spacing[surface.shortcutCard.gap],
+    },
+    chatHomeShortcutCardAdd: {
+      borderStyle: surface.addShortcutCard.borderStyle,
+      borderColor: colors.addShortcutCard.borderColor,
+      backgroundColor: colors.addShortcutCard.backgroundColor,
+      alignItems: surface.addShortcutCard.alignItems,
+    },
+    chatHomeShortcutAddIcon: {
+      marginBottom: surface.addShortcutIcon.marginBottom,
+    },
+    chatHomeShortcutCardDisabled: {
+      opacity: surface.shortcutCard.disabledOpacity,
+    },
+    chatHomeShortcutCardPressed: {
+      opacity: surface.shortcutCard.pressedOpacity,
+      transform: [{ scale: surface.shortcutCard.pressedScale }],
+    },
+    chatHomeShortcutSourcePill: {
+      alignSelf: surface.shortcutSourcePill.alignSelf,
+      flexDirection: surface.shortcutSourcePill.flexDirection,
+      alignItems: surface.shortcutSourcePill.alignItems,
+      gap: spacing[surface.shortcutSourcePill.gap],
+      paddingHorizontal: spacing[surface.shortcutSourcePill.paddingHorizontal],
+      paddingVertical: surface.shortcutSourcePill.paddingVertical,
+      borderRadius: radius[surface.shortcutSourcePill.borderRadius],
+      backgroundColor: colors.shortcutSourcePill.backgroundColor,
+    },
+    chatHomeShortcutSourceLabel: {
+      color: colors.shortcutSourceLabel.color,
+      fontSize: surface.shortcutSourceLabel.fontSize,
+      fontWeight: surface.shortcutSourceLabel.fontWeight,
+      letterSpacing: surface.shortcutSourceLabel.letterSpacing,
+      textTransform: surface.shortcutSourceLabel.textTransform,
+    },
+    chatHomeShortcutTitle: {
+      color: colors.shortcutTitle.color,
+      fontSize: surface.shortcutTitle.fontSize,
+      lineHeight: surface.shortcutTitle.lineHeight,
+      fontWeight: surface.shortcutTitle.fontWeight,
+    },
+    chatHomeShortcutTitleAdd: {
+      color: colors.addShortcutCard.titleColor,
+      textAlign: surface.addShortcutCard.titleTextAlign,
+    },
+    chatHomeShortcutDescription: {
+      color: colors.shortcutDescription.color,
+      fontSize: surface.shortcutDescription.fontSize,
+      marginTop: surface.shortcutDescription.marginTop,
+      lineHeight: surface.shortcutDescription.lineHeight,
+    },
+    chatHomeShortcutActions: {
+      flexDirection: surface.shortcutActions.flexDirection,
+      flexWrap: surface.shortcutActions.flexWrap,
+      gap: spacing[surface.shortcutActions.gap],
+      marginTop: spacing[surface.shortcutActions.marginTop],
+    },
+    chatHomeShortcutActionButton: {
+      minHeight: surface.shortcutActionButton.minHeight,
+      paddingHorizontal: spacing[surface.shortcutActionButton.paddingHorizontal],
+      paddingVertical: surface.shortcutActionButton.paddingVertical,
+      borderRadius: radius[surface.shortcutActionButton.borderRadius],
+      borderWidth: surface.shortcutActionButton.borderWidth,
+      borderColor: colors.shortcutActionButton.borderColor,
+      backgroundColor: colors.shortcutActionButton.backgroundColor,
+      flexDirection: surface.shortcutActionButton.flexDirection,
+      alignItems: surface.shortcutActionButton.alignItems,
+      justifyContent: surface.shortcutActionButton.justifyContent,
+      gap: spacing[surface.shortcutActionButton.gap],
+    },
+    chatHomeShortcutActionButtonPressed: {
+      opacity: surface.shortcutActionButton.pressedOpacity,
+    },
+    chatHomeShortcutActionText: {
+      color: colors.shortcutActionText.color,
+      fontSize: surface.shortcutActionText.fontSize,
+      lineHeight: surface.shortcutActionText.lineHeight,
+      fontWeight: surface.shortcutActionText.fontWeight,
+    },
+    chatHomeShortcutActionDangerText: {
+      color: colors.shortcutActionText.destructiveColor,
     },
   }
 }

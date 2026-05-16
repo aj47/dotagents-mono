@@ -152,6 +152,7 @@ import {
   createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
   createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
   createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
+  createChatConversationHomePromptLibraryMobileStyleSlots,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeFollowUpPresentationState,
   getChatComposerRuntimeHandsFreeDebugMessage,
@@ -2273,6 +2274,130 @@ describe("session presentation semantics", () => {
       },
     })
     expect(composerChromeStyle.promptLibrary.colors.editorModal.saveButton.backgroundColor).toBe("#2563eb")
+    expect(createChatConversationHomePromptLibraryMobileStyleSlots({
+      renderState: composerChromeStyle.promptLibrary,
+      spacing: {
+        xs: 4,
+        sm: 8,
+        md: 12,
+      },
+      radius: {
+        sm: 4,
+        md: 8,
+        lg: 12,
+      },
+    })).toMatchObject({
+      chatHomeCard: {
+        marginHorizontal: 8,
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        backgroundColor: "#ffffff",
+        gap: 8,
+      },
+      chatHomeEmptyText: {
+        color: "#64748b",
+        fontSize: 12,
+        lineHeight: 16,
+        textAlign: "center",
+        paddingVertical: 12,
+      },
+      chatHomeShortcutGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+      },
+      chatHomeShortcutCard: {
+        minHeight: 84,
+        minWidth: "47%",
+        flexGrow: 1,
+        flexBasis: "47%",
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        backgroundColor: "#f8fafc",
+        justifyContent: "center",
+        gap: 4,
+      },
+      chatHomeShortcutCardAdd: {
+        borderStyle: "dashed",
+        borderColor: "#2563eb",
+        backgroundColor: "transparent",
+        alignItems: "center",
+      },
+      chatHomeShortcutCardPressed: {
+        opacity: 0.88,
+        transform: [{ scale: 0.99 }],
+      },
+      chatHomeShortcutSourcePill: {
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 4,
+        backgroundColor: "rgba(226, 232, 240, 0.45)",
+      },
+      chatHomeShortcutSourceLabel: {
+        color: "#64748b",
+        fontSize: 10,
+        fontWeight: "700",
+        letterSpacing: 0,
+        textTransform: "uppercase",
+      },
+      chatHomeShortcutTitle: {
+        color: "#0f172a",
+        fontSize: 16,
+        lineHeight: 24,
+        fontWeight: "600",
+      },
+      chatHomeShortcutTitleAdd: {
+        color: "#2563eb",
+        textAlign: "center",
+      },
+      chatHomeShortcutDescription: {
+        color: "#64748b",
+        fontSize: 12,
+        marginTop: 3,
+        lineHeight: 15,
+      },
+      chatHomeShortcutActions: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 4,
+        marginTop: 4,
+      },
+      chatHomeShortcutActionButton: {
+        minHeight: 32,
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        backgroundColor: "#ffffff",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 4,
+      },
+      chatHomeShortcutActionButtonPressed: {
+        opacity: 0.78,
+      },
+      chatHomeShortcutActionText: {
+        color: "#2563eb",
+        fontSize: 12,
+        lineHeight: 16,
+        fontWeight: "600",
+      },
+      chatHomeShortcutActionDangerText: {
+        color: "#dc2626",
+      },
+    })
     expect(composerChromeStyle.promptEditorInputPaddingVertical).toBe(10)
     expect(composerChromeStyle.handsFree.colors.controlButton.borderColor).toBe("#cbd5e1")
     expect(createChatComposerHandsFreeMobileStyleSlots({
