@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   CHAT_COMPOSER_PRESENTATION,
+  CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   CHAT_COMPOSER_SURFACE_PRESENTATION,
   CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION,
   CHAT_RUNTIME_SURFACE_PRESENTATION,
@@ -15,6 +16,7 @@ import {
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
+  createChatComposerRuntimeImagePickerLaunchOptions,
   deriveAttentionState,
   deriveLifecycleState,
   formatChatRuntimeActivityContent,
@@ -73,14 +75,17 @@ import {
   getChatComposerQueueMobileIconState,
   getChatComposerQueueMobileRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
+  getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
+  getChatComposerRuntimeImageDataUrlBytes,
   getChatComposerRuntimeDockMobileRenderState,
   getChatComposerSubmitMobileActionState,
   getChatComposerSubmitMobileIconState,
   getChatComposerSubmitMobileRenderState,
   getChatComposerTextToSpeechMobileIconState,
   getChatComposerTextToSpeechMobileRenderState,
+  inferChatComposerRuntimeImageMimeType,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageCopyFeedbackState,
@@ -715,6 +720,25 @@ describe("session presentation semantics", () => {
       content: "",
       hasContent: false,
     })
+    expect(CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS).toEqual({
+      maxImages: 4,
+      maxFileBytes: 4 * 1024 * 1024,
+      maxTotalEmbeddedBytes: 900 * 1024,
+    })
+    expect(createChatComposerRuntimeImagePickerLaunchOptions({
+      mediaTypes: "images",
+      selectionLimit: 3,
+    })).toEqual({
+      mediaTypes: "images",
+      allowsMultipleSelection: true,
+      selectionLimit: 3,
+      quality: 0.8,
+      base64: true,
+    })
+    expect(getChatComposerRuntimeImageDataUrlBytes("data:image/png;base64,YWJj")).toBe(3)
+    expect(getChatComposerRuntimeImageDataUrlBytes("not-data")).toBe(0)
+    expect(getChatComposerRuntimeBase64ImageBytes("YWJj")).toBe(3)
+    expect(inferChatComposerRuntimeImageMimeType({ fileName: "sample.webp" })).toBe("image/webp")
     expect(CHAT_COMPOSER_PRESENTATION.field.accessibilityLabel).toBe("Message composer")
     expect(CHAT_COMPOSER_PRESENTATION.imageAttachment.glyph).toBe("🖼️")
     expect(CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon).toMatchObject({

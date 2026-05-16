@@ -27,9 +27,16 @@ import {
 } from "./hands-free-controller"
 import {
   buildChatImageAttachmentMessage,
+  getDataImageBytesFromUrl,
+  getDecodedBase64ByteLength,
   getChatImageAttachmentMobileRenderState,
+  inferImageMimeTypeFromSource,
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileSurfaceColorPalette,
+  type ImageMimeTypeSource,
+  MAX_CHAT_IMAGE_ATTACHMENTS,
+  MAX_CHAT_IMAGE_FILE_BYTES,
+  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
 } from "./conversation-media-assets"
 import {
   buildPromptLibraryShortcutItems,
@@ -2658,6 +2665,25 @@ export interface ChatComposerRuntimeDraftMessageState {
   hasContent: boolean
 }
 
+export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS = {
+  maxImages: MAX_CHAT_IMAGE_ATTACHMENTS,
+  maxFileBytes: MAX_CHAT_IMAGE_FILE_BYTES,
+  maxTotalEmbeddedBytes: MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+} as const
+
+export interface ChatComposerRuntimeImagePickerLaunchOptionsInput<TMediaTypes> {
+  mediaTypes: TMediaTypes
+  selectionLimit: number
+}
+
+export interface ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> {
+  mediaTypes: TMediaTypes
+  allowsMultipleSelection: true
+  selectionLimit: number
+  quality: number
+  base64: true
+}
+
 export type ChatComposerMobileIconName =
   | typeof CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon.name
   | typeof CHAT_COMPOSER_PRESENTATION.textToSpeech.mobileIcon.enabledName
@@ -5204,6 +5230,31 @@ export function getChatComposerRuntimeDraftMessageState({
     content,
     hasContent: content.trim().length > 0,
   }
+}
+
+export function createChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes>({
+  mediaTypes,
+  selectionLimit,
+}: ChatComposerRuntimeImagePickerLaunchOptionsInput<TMediaTypes>): ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> {
+  return {
+    mediaTypes,
+    allowsMultipleSelection: true,
+    selectionLimit,
+    quality: 0.8,
+    base64: true,
+  }
+}
+
+export function getChatComposerRuntimeImageDataUrlBytes(dataUrl: string): number {
+  return getDataImageBytesFromUrl(dataUrl) ?? 0
+}
+
+export function getChatComposerRuntimeBase64ImageBytes(rawBase64: string): number {
+  return getDecodedBase64ByteLength(rawBase64)
+}
+
+export function inferChatComposerRuntimeImageMimeType(source: ImageMimeTypeSource): string | null {
+  return inferImageMimeTypeFromSource(source)
 }
 
 export function getChatComposerMobileVisibilityRenderState({

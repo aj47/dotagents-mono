@@ -67,14 +67,8 @@ import {
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
   extractDataImageMarkdownReferences,
-  getDataImageBytesFromUrl,
-  getDecodedBase64ByteLength,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
-  inferImageMimeTypeFromSource,
-  MAX_CHAT_IMAGE_ATTACHMENTS,
-  MAX_CHAT_IMAGE_FILE_BYTES,
-  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
   type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
@@ -139,10 +133,15 @@ import {
   type RecoveryState,
 } from '@dotagents/shared/connection-recovery';
 import {
+  CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
+  createChatComposerRuntimeImagePickerLaunchOptions,
   getChatComposerMobileControlState,
   getChatComposerQueueMobileActionState,
+  getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
+  getChatComposerRuntimeImageDataUrlBytes,
+  inferChatComposerRuntimeImageMimeType,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantErrorContent,
   formatChatRuntimeAssistantFeedbackContent,
@@ -279,12 +278,6 @@ export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput
 };
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
-
-export const CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS = {
-  maxImages: MAX_CHAT_IMAGE_ATTACHMENTS,
-  maxFileBytes: MAX_CHAT_IMAGE_FILE_BYTES,
-  maxTotalEmbeddedBytes: MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
-} as const;
 
 export interface ChatMessageRuntimeLogMeta {
   length: number;
@@ -486,19 +479,6 @@ type ChatComposerRuntimeImagePickerAsset = ImageMimeTypeSource & {
 type ChatComposerRuntimeImagePickerResult = {
   canceled: boolean;
   assets?: ChatComposerRuntimeImagePickerAsset[] | null;
-};
-
-type ChatComposerRuntimeImagePickerLaunchOptionsInput<TMediaTypes> = {
-  mediaTypes: TMediaTypes;
-  selectionLimit: number;
-};
-
-export type ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> = {
-  mediaTypes: TMediaTypes;
-  allowsMultipleSelection: true;
-  selectionLimit: number;
-  quality: number;
-  base64: true;
 };
 
 type ChatComposerRuntimeImageAttachmentPickerStateInput = {
@@ -3675,19 +3655,6 @@ export function useChatMessageRuntimeScrollController({
     onScrollBeginDrag,
     onScrollEndDrag,
     scrollToBottom,
-  };
-}
-
-export function createChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes>({
-  mediaTypes,
-  selectionLimit,
-}: ChatComposerRuntimeImagePickerLaunchOptionsInput<TMediaTypes>): ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> {
-  return {
-    mediaTypes,
-    allowsMultipleSelection: true,
-    selectionLimit,
-    quality: 0.8,
-    base64: true,
   };
 }
 
@@ -8766,20 +8733,6 @@ export function mergeChatComposerRuntimeVoiceText(
   finalizedText?: string | null,
 ): string {
   return mergeVoiceText(currentText, finalizedText);
-}
-
-export function getChatComposerRuntimeImageDataUrlBytes(dataUrl: string): number {
-  return getDataImageBytesFromUrl(dataUrl) ?? 0;
-}
-
-export function getChatComposerRuntimeBase64ImageBytes(rawBase64: string): number {
-  return getDecodedBase64ByteLength(rawBase64);
-}
-
-export function inferChatComposerRuntimeImageMimeType(
-  source: ImageMimeTypeSource,
-): string | null {
-  return inferImageMimeTypeFromSource(source);
 }
 
 export function resolveChatRuntimeMobileFontFamily(
