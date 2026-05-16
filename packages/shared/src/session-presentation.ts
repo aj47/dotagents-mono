@@ -2125,6 +2125,22 @@ export interface ChatRuntimeHeaderIconContainerMobileStyleSlot<
   justifyContent: TJustifyContent
 }
 
+export interface ChatRuntimeHeaderPinButtonMobileStyleSlotInput {
+  touchTarget: ReturnType<typeof createMinimumTouchTargetStyle>
+  borderRadius: number
+  borderWidth: number
+  colors: ChatRuntimePinMobileColors["button"]
+}
+
+export type ChatRuntimeHeaderPinButtonMobileStyleSlot =
+  & ReturnType<typeof createMinimumTouchTargetStyle>
+  & {
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+
 export interface ChatRuntimeHeaderChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeHeaderMobileStyleColorPalette
@@ -10496,6 +10512,21 @@ export function createChatRuntimeHeaderIconContainerMobileStyleSlot<
     ...(backgroundColor == null ? {} : { backgroundColor }),
     alignItems,
     justifyContent,
+  }
+}
+
+export function createChatRuntimeHeaderPinButtonMobileStyleSlot({
+  touchTarget,
+  borderRadius,
+  borderWidth,
+  colors,
+}: ChatRuntimeHeaderPinButtonMobileStyleSlotInput): ChatRuntimeHeaderPinButtonMobileStyleSlot {
+  return {
+    ...touchTarget,
+    borderRadius,
+    borderWidth,
+    borderColor: colors.borderColor,
+    backgroundColor: colors.backgroundColor,
   }
 }
 

@@ -1200,11 +1200,14 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /const inactiveHeaderPinRenderState = getChatRuntimePinMobileRenderState/);
   assert.doesNotMatch(screenSource, /const activeHeaderPinRenderState = getChatRuntimePinMobileRenderState/);
   assert.doesNotMatch(screenSource, /const headerKillSwitchRenderState = getChatRuntimeKillSwitchMobileRenderState/);
-  assert.match(screenSource, /const createChatRuntimeMobileHeaderPinButtonStyle = \(\s+colors: typeof inactiveHeaderPinButtonColors,/);
-  assert.match(screenSource, /createChatRuntimeMobileHeaderPinButtonStyle[\s\S]*?\.\.\.headerPinButton,[\s\S]*?borderRadius: radius\[headerSurface\.pinButton\.borderRadius\],[\s\S]*?borderColor: colors\.button\.borderColor,[\s\S]*?backgroundColor: colors\.button\.backgroundColor/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderPinButtonMobileStyleSlot/);
+  assert.match(screenSource, /createChatRuntimeHeaderPinButtonMobileStyleSlot,/);
+  assert.doesNotMatch(screenSource, /const createChatRuntimeMobileHeaderPinButtonStyle =/);
+  assert.match(screenSource, /const inactiveHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot\(\{\s+touchTarget: headerPinButton,\s+borderRadius: radius\[headerSurface\.pinButton\.borderRadius\],\s+borderWidth: headerSurface\.pinButton\.borderWidth,\s+colors: inactiveHeaderPinButtonColors\.button,/);
+  assert.match(screenSource, /const activeHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot\(\{\s+touchTarget: headerPinButton,\s+borderRadius: radius\[headerSurface\.pinButton\.borderRadius\],\s+borderWidth: headerSurface\.pinButton\.borderWidth,\s+colors: activeHeaderPinButtonColors\.button,/);
   assert.match(sessionPresentationSource, /headerPinButton: createMinimumTouchTargetStyle\(\{\s+horizontalPadding: header\.header\.surface\.pinButton\.horizontalPadding,\s+verticalPadding: header\.header\.surface\.pinButton\.verticalPadding,\s+\}\),/);
-  assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderPinButtonStyle\(inactiveHeaderPinButtonColors\)/);
-  assert.match(screenSource, /headerPinButtonActive:\s*\{[\s\S]*?\.\.\.createChatRuntimeMobileHeaderPinButtonStyle\(activeHeaderPinButtonColors\)/);
+  assert.match(screenSource, /headerPinButton:\s*\{[\s\S]*?\.\.\.inactiveHeaderPinButtonStyleSlot/);
+  assert.match(screenSource, /headerPinButtonActive:\s*\{[\s\S]*?\.\.\.activeHeaderPinButtonStyleSlot/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderIconContainerMobileStyleSlot/);
   assert.match(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlot,/);
   assert.doesNotMatch(screenSource, /const createChatRuntimeMobileHeaderIconContainerStyle =/);

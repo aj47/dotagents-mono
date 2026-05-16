@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
+  createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
@@ -182,15 +183,18 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
-  const createChatRuntimeMobileHeaderPinButtonStyle = (
-    colors: typeof inactiveHeaderPinButtonColors,
-  ) => ({
-    ...headerPinButton,
+  const inactiveHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot({
+    touchTarget: headerPinButton,
     borderRadius: radius[headerSurface.pinButton.borderRadius],
     borderWidth: headerSurface.pinButton.borderWidth,
-    borderColor: colors.button.borderColor,
-    backgroundColor: colors.button.backgroundColor,
-  } as const);
+    colors: inactiveHeaderPinButtonColors.button,
+  });
+  const activeHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot({
+    touchTarget: headerPinButton,
+    borderRadius: radius[headerSurface.pinButton.borderRadius],
+    borderWidth: headerSurface.pinButton.borderWidth,
+    colors: activeHeaderPinButtonColors.button,
+  });
   return StyleSheet.create({
     keyboardAvoidingContainer: {
       flex: viewportSurface.flex,
@@ -338,10 +342,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
-      ...createChatRuntimeMobileHeaderPinButtonStyle(inactiveHeaderPinButtonColors),
+      ...inactiveHeaderPinButtonStyleSlot,
     },
     headerPinButtonActive: {
-      ...createChatRuntimeMobileHeaderPinButtonStyle(activeHeaderPinButtonColors),
+      ...activeHeaderPinButtonStyleSlot,
     },
     headerKillSwitchIconContainer: {
       ...createChatRuntimeHeaderIconContainerMobileStyleSlot({
