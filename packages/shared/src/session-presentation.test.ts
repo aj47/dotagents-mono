@@ -4013,8 +4013,16 @@ describe("session presentation semantics", () => {
     })
     expect(shouldRenderChatRuntimeConversationThread({
       renderContext: { shouldRenderSurface: false },
-      body: { inlineActivity: { renderState: "thinking" } },
+      body: { bodyDisplayMode: "inlineActivity" },
     })).toBe(true)
+    expect(shouldRenderChatRuntimeConversationThread({
+      renderContext: { shouldRenderSurface: false },
+      body: { bodyDisplayMode: "toolApproval" },
+    })).toBe(true)
+    expect(shouldRenderChatRuntimeConversationThread({
+      renderContext: { shouldRenderSurface: false },
+      body: { bodyDisplayMode: "conversation" },
+    })).toBe(false)
     expect(getChatRuntimeConversationThreadBodyMobileDisplayMode({
       retryStatus: { renderState: { shouldRender: true } as never },
       delegationCard: { isDelegation: true, delegation: { runId: "run-1" } },
@@ -4055,7 +4063,7 @@ describe("session presentation semantics", () => {
         onToggleGroup: () => {},
       }),
       renderContext: { shouldRenderSurface: false },
-      body: { inlineActivity: { renderState: "thinking" } },
+      body: { bodyDisplayMode: "inlineActivity" },
     })).toMatchObject({
       threadKey: 5,
       shouldRenderThread: true,

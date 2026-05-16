@@ -2990,7 +2990,7 @@ export type ChatMessageThreadBodyPropsInput =
   };
 
 type ChatMessageConversationThreadVisibilityInput =
-  ChatRuntimeConversationThreadVisibilityInput<Pick<ChatMessageThreadBodyPropsInput, 'inlineActivity'>>;
+  ChatRuntimeConversationThreadVisibilityInput<Pick<ChatMessageThreadBodyPropsInput, 'bodyDisplayMode'>>;
 
 type ChatMessageConversationThreadBodySharedInput =
   ChatRuntimeConversationThreadBodyMobileStateInput<

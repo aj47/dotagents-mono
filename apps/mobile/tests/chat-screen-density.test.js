@@ -2274,7 +2274,8 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /const lastConversationContentMessageIndex = findLastChatMessageConversationContentIndex\(\s+allMessages,\s+\(message\) => message,\s+\(message\) => hasVisibleChatMessageContent\(message\),\s+\);/);
   assert.match(chatMessageChromeSource, /return createChatMessageConversationItemThreadRenderState\(\{\s+\.\.\.threadInput,\s+lastConversationContentMessageIndex,\s+group: groupByIndex\.get\(messageIndex\),\s+itemIndex: messageIndex,\s+itemKey: messageIndex,\s+message,\s+messageIndex,/);
   assert.match(chatMessageChromeSource, /export function shouldRenderChatMessageConversationThread\(\{[\s\S]*?return shouldRenderChatRuntimeConversationThread\(\{ renderContext, body \}\);/);
-  assert.match(sessionPresentationSource, /export function shouldRenderChatRuntimeConversationThread[\s\S]*?\(\{[\s\S]*?return renderContext\.shouldRenderSurface \|\| !!body\.inlineActivity/);
+  assert.match(sessionPresentationSource, /export function shouldRenderChatRuntimeConversationThread[\s\S]*?\(\{[\s\S]*?return renderContext\.shouldRenderSurface \|\| body\.bodyDisplayMode !== "conversation"/);
+  assert.doesNotMatch(sessionPresentationSource, /return renderContext\.shouldRenderSurface \|\| !!body\.inlineActivity/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationMessageRuntimeThreadState/);
   assert.match(chatMessageChromeSource, /threadState: getChatRuntimeConversationMessageRuntimeThreadState\(\{\s+itemKey,\s+groupRenderState,\s+groupThreadState,\s+renderContext,\s+body,/);
   assert.match(sessionPresentationSource, /shouldRenderThread: shouldRenderChatRuntimeConversationThread\(\{\s+renderContext,\s+body: runtimeThreadInput\.body,\s+\}\),/);

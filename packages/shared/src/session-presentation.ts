@@ -625,19 +625,30 @@ export interface ChatRuntimeConversationToolActivityGroupThreadRenderState {
   groupOnlyThreadState: ChatRuntimeConversationToolActivityGroupRuntimeThreadState
 }
 
-export interface ChatRuntimeConversationThreadVisibilityInput<TBody extends { inlineActivity?: unknown | null }> {
+export type ChatRuntimeConversationThreadBodyMobileDisplayMode =
+  | "retryStatus"
+  | "delegationCard"
+  | "toolApproval"
+  | "inlineActivity"
+  | "conversation"
+
+export interface ChatRuntimeConversationThreadVisibilityInput<
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+> {
   renderContext: Pick<ChatRuntimeConversationMessageRenderContextMobileState, "shouldRenderSurface">
   body: TBody
 }
 
 export interface ChatRuntimeConversationMessageRuntimeThreadStateInput<
-  TBody extends { inlineActivity?: unknown | null },
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
 > extends ChatRuntimeConversationToolActivityGroupRuntimeThreadStateInput {
   renderContext: ChatRuntimeConversationThreadVisibilityInput<TBody>["renderContext"]
   body: TBody
 }
 
-export type ChatRuntimeConversationMessageRuntimeThreadState<TBody extends { inlineActivity?: unknown | null }> =
+export type ChatRuntimeConversationMessageRuntimeThreadState<
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+> =
   ChatRuntimeConversationRenderableRuntimeThreadState<TBody>
 
 export type ChatRuntimeConversationContentMobileRenderState = Pick<
@@ -1142,13 +1153,6 @@ export interface ChatRuntimeConversationThreadBodyMobileStateInput<
     TExpansionStyle
   >["onToggleMessageExpansion"]
 }
-
-export type ChatRuntimeConversationThreadBodyMobileDisplayMode =
-  | "retryStatus"
-  | "delegationCard"
-  | "toolApproval"
-  | "inlineActivity"
-  | "conversation"
 
 export interface ChatRuntimeConversationThreadBodyMobileDisplayModeInput<
   TInlineActivity,
@@ -6766,15 +6770,17 @@ export function getChatRuntimeConversationToolActivityGroupThreadRenderState({
   }
 }
 
-export function shouldRenderChatRuntimeConversationThread<TBody extends { inlineActivity?: unknown | null }>({
+export function shouldRenderChatRuntimeConversationThread<
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
+>({
   renderContext,
   body,
 }: ChatRuntimeConversationThreadVisibilityInput<TBody>): boolean {
-  return renderContext.shouldRenderSurface || !!body.inlineActivity
+  return renderContext.shouldRenderSurface || body.bodyDisplayMode !== "conversation"
 }
 
 export function getChatRuntimeConversationMessageRuntimeThreadState<
-  TBody extends { inlineActivity?: unknown | null },
+  TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
 >({
   renderContext,
   ...runtimeThreadInput
