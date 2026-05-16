@@ -56,6 +56,7 @@ import {
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatRuntimeCompletedDebugState,
+  createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeNoSessionAvailableDebugState,
@@ -2376,6 +2377,34 @@ describe("session presentation semantics", () => {
       },
       icon: {
         color: "#2563eb",
+      },
+    })
+    expect(createChatRuntimeAgentSelectorMobileStyleSlots({
+      surface: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile,
+      colors: getChatRuntimeAgentSelectorMobileColors({
+        primary: "#2563eb",
+      }),
+    })).toEqual({
+      button: {
+        alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.alignItems,
+        justifyContent: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.justifyContent,
+        height: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.height,
+        minHeight: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.minHeight,
+      },
+      chip: {
+        flexDirection: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.flexDirection,
+        alignItems: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.alignItems,
+        backgroundColor: "rgba(37, 99, 235, 0.2)",
+        maxWidth: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.maxWidth,
+        paddingHorizontal: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.paddingHorizontal,
+        paddingVertical: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.paddingVertical,
+        borderRadius: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.borderRadius,
+        gap: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorChip.gap,
+      },
+      text: {
+        fontSize: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorText.fontSize,
+        color: "#2563eb",
+        fontWeight: CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorText.fontWeight,
       },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.edgeActionButton.accessibilityRole).toBe("button")

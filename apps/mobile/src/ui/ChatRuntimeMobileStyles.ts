@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -56,6 +57,10 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerStyleState = headerChromeStyleState.header;
   const headerSurface = headerStyleState.surface;
   const headerAgentSelectorColors = headerStyleState.agentSelector;
+  const headerAgentSelectorStyleSlots = createChatRuntimeAgentSelectorMobileStyleSlots({
+    surface: headerSurface,
+    colors: headerAgentSelectorColors,
+  });
   const inactiveHeaderPinButtonColors = headerStyleState.pinButton.inactive;
   const activeHeaderPinButtonColors = headerStyleState.pinButton.active;
   const headerKillSwitchButtonColors = headerStyleState.killSwitchButton;
@@ -283,25 +288,13 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       paddingTop: spacing[messageQueuePanelWrapper.paddingTop],
     },
     headerAgentSelectorButton: {
-      alignItems: headerSurface.agentSelectorButton.alignItems,
-      justifyContent: headerSurface.agentSelectorButton.justifyContent,
-      height: headerSurface.agentSelectorButton.height,
-      minHeight: headerSurface.agentSelectorButton.minHeight,
+      ...headerAgentSelectorStyleSlots.button,
     },
     headerAgentSelectorChip: {
-      flexDirection: headerSurface.agentSelectorChip.flexDirection,
-      alignItems: headerSurface.agentSelectorChip.alignItems,
-      backgroundColor: headerAgentSelectorColors.chip.backgroundColor,
-      maxWidth: headerSurface.agentSelectorChip.maxWidth,
-      paddingHorizontal: headerSurface.agentSelectorChip.paddingHorizontal,
-      paddingVertical: headerSurface.agentSelectorChip.paddingVertical,
-      borderRadius: headerSurface.agentSelectorChip.borderRadius,
-      gap: headerSurface.agentSelectorChip.gap,
+      ...headerAgentSelectorStyleSlots.chip,
     },
     headerAgentSelectorText: {
-      fontSize: headerSurface.agentSelectorText.fontSize,
-      color: headerAgentSelectorColors.text.color,
-      fontWeight: headerSurface.agentSelectorText.fontWeight,
+      ...headerAgentSelectorStyleSlots.text,
     },
     headerActionsRow: {
       flexDirection: headerSurface.actionsRow.flexDirection,

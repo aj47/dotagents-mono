@@ -2106,6 +2106,40 @@ export interface ChatRuntimeHeaderMobileStyleRenderState {
   killSwitchButton: ChatRuntimeKillSwitchMobileColors
 }
 
+type ChatRuntimeHeaderMobileSurfaceState = typeof CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile
+
+export interface ChatRuntimeAgentSelectorMobileStyleSlotsInput {
+  surface: Pick<
+    ChatRuntimeHeaderMobileSurfaceState,
+    "agentSelectorButton" | "agentSelectorChip" | "agentSelectorText"
+  >
+  colors: ChatRuntimeAgentSelectorMobileColors
+}
+
+export interface ChatRuntimeAgentSelectorMobileStyleSlots {
+  button: {
+    alignItems: ChatRuntimeHeaderMobileSurfaceState["agentSelectorButton"]["alignItems"]
+    justifyContent: ChatRuntimeHeaderMobileSurfaceState["agentSelectorButton"]["justifyContent"]
+    height: ChatRuntimeHeaderMobileSurfaceState["agentSelectorButton"]["height"]
+    minHeight: number
+  }
+  chip: {
+    flexDirection: ChatRuntimeHeaderMobileSurfaceState["agentSelectorChip"]["flexDirection"]
+    alignItems: ChatRuntimeHeaderMobileSurfaceState["agentSelectorChip"]["alignItems"]
+    backgroundColor: string
+    maxWidth: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    gap: number
+  }
+  text: {
+    fontSize: number
+    color: string
+    fontWeight: ChatRuntimeHeaderMobileSurfaceState["agentSelectorText"]["fontWeight"]
+  }
+}
+
 export interface ChatRuntimeHeaderIconContainerMobileStyleSlotInput<
   TAlignItems extends string = string,
   TJustifyContent extends string = string,
@@ -10494,6 +10528,35 @@ export function getChatRuntimeAgentSelectorMobileRenderState(
 
 export function getChatRuntimeHeaderMobileSurfaceState() {
   return CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile
+}
+
+export function createChatRuntimeAgentSelectorMobileStyleSlots({
+  surface,
+  colors,
+}: ChatRuntimeAgentSelectorMobileStyleSlotsInput): ChatRuntimeAgentSelectorMobileStyleSlots {
+  return {
+    button: {
+      alignItems: surface.agentSelectorButton.alignItems,
+      justifyContent: surface.agentSelectorButton.justifyContent,
+      height: surface.agentSelectorButton.height,
+      minHeight: surface.agentSelectorButton.minHeight,
+    },
+    chip: {
+      flexDirection: surface.agentSelectorChip.flexDirection,
+      alignItems: surface.agentSelectorChip.alignItems,
+      backgroundColor: colors.chip.backgroundColor,
+      maxWidth: surface.agentSelectorChip.maxWidth,
+      paddingHorizontal: surface.agentSelectorChip.paddingHorizontal,
+      paddingVertical: surface.agentSelectorChip.paddingVertical,
+      borderRadius: surface.agentSelectorChip.borderRadius,
+      gap: surface.agentSelectorChip.gap,
+    },
+    text: {
+      fontSize: surface.agentSelectorText.fontSize,
+      color: colors.text.color,
+      fontWeight: surface.agentSelectorText.fontWeight,
+    },
+  }
 }
 
 export function createChatRuntimeHeaderIconContainerMobileStyleSlot<
