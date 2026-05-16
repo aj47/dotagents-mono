@@ -28,8 +28,10 @@ describe("agent progress text selection", () => {
       "desktopChatMessageSurface.markdownClassName",
     )
     expect(agentProgressSource).toContain("normalizeMarkdownThoughtContent")
+    expect(agentProgressSource).toContain("getChatMessageDesktopSurfaceState")
     expect(agentProgressSource).toContain('from "@dotagents/shared/session-presentation"')
     expect(agentProgressSource).not.toContain('from "@dotagents/shared/markdown-render-parts"')
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/message-display-utils"')
     expect(agentProgressSource).toContain(
       "<MarkdownRenderer content={effectiveContent.trim()} collapsed={messageContentRenderState.isCollapsed} />",
     )

@@ -116,7 +116,7 @@ import {
   sanitizeMessageContentForSpeech,
   setChatDisplayExpansionState,
   stripMarkdownMediaPayloads,
-} from "@dotagents/shared/message-display-utils"
+} from "@dotagents/shared/session-presentation"
 import { toast } from "sonner"
 import {
   formatChatRuntimeActivityContent,
