@@ -194,7 +194,9 @@ import {
   getChatRuntimeMessageHistoryBannerMobileRenderState,
   getChatRuntimeMessageHistoryBannerMobileState,
   getChatRuntimeMessageHistoryLoadEarlierMobileIconState,
+  getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
+  getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -2280,6 +2282,31 @@ describe("session presentation semantics", () => {
       visibleMessages: ["one", "two"],
       hiddenMessageCount: 0,
     })
+    expect(getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount({
+      currentVisibleCount: 80,
+      messageCount: 220,
+      loadIncrement: 60,
+    })).toBe(140)
+    expect(getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount({
+      currentVisibleCount: 190,
+      messageCount: 220,
+      loadIncrement: 60,
+    })).toBe(220)
+    expect(getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount({
+      currentVisibleCount: 20,
+      messageCount: 140,
+      initialVisibleCount: 80,
+    })).toBe(80)
+    expect(getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount({
+      currentVisibleCount: 120,
+      messageCount: 90,
+      initialVisibleCount: 80,
+    })).toBe(90)
+    expect(getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount({
+      currentVisibleCount: 120,
+      messageCount: 0,
+      initialVisibleCount: 80,
+    })).toBe(80)
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.reconnecting.backgroundColorToken).toBe("info")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.reconnecting.spinnerSize).toBe("small")
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.contentFlexDirection).toBe("row")

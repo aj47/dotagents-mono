@@ -167,6 +167,8 @@ import {
   getChatRuntimeHomeQuickStartItemMobileRenderState,
   getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeLatestStepSummary,
+  getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount,
+  getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeConversationItemThreadMobileState,
   getChatRuntimeConversationMessageThreadMobileState,
@@ -3520,8 +3522,12 @@ export function useChatMessageRuntimeHistoryWindowState({
     historyWindow.initialVisibleCount,
   );
   const loadEarlierMessages = useCallback(() => {
-    setVisibleMessageCount((current) =>
-      Math.min(messageCount, current + historyWindow.loadIncrement),
+    setVisibleMessageCount((currentVisibleCount) =>
+      getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount({
+        currentVisibleCount,
+        messageCount,
+        loadIncrement: historyWindow.loadIncrement,
+      }),
     );
   }, [historyWindow.loadIncrement, messageCount]);
 
@@ -3530,11 +3536,13 @@ export function useChatMessageRuntimeHistoryWindowState({
   }, [historyWindow.initialVisibleCount, sessionId]);
 
   useEffect(() => {
-    setVisibleMessageCount((current) => {
-      if (messageCount === 0) return historyWindow.initialVisibleCount;
-      const next = Math.max(historyWindow.initialVisibleCount, current);
-      return Math.min(messageCount, next);
-    });
+    setVisibleMessageCount((currentVisibleCount) =>
+      getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount({
+        currentVisibleCount,
+        messageCount,
+        initialVisibleCount: historyWindow.initialVisibleCount,
+      }),
+    );
   }, [historyWindow.initialVisibleCount, messageCount]);
 
   return {

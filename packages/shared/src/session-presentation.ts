@@ -2353,6 +2353,18 @@ export interface ChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage> {
   hiddenMessageCount: number
 }
 
+export interface ChatRuntimeMessageHistoryWindowMobileVisibleCountInput {
+  currentVisibleCount: number
+  messageCount: number
+  initialVisibleCount?: number
+}
+
+export interface ChatRuntimeMessageHistoryWindowMobileExpandedVisibleCountInput {
+  currentVisibleCount: number
+  messageCount: number
+  loadIncrement?: number
+}
+
 export interface ChatRuntimeConversationChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeViewportMobileColorPalette
@@ -8893,6 +8905,24 @@ export function getChatRuntimeMessageHistoryWindowMobileDisplayState<TMessage>({
     visibleMessages: messages.slice(firstVisibleMessageIndex),
     hiddenMessageCount: firstVisibleMessageIndex,
   }
+}
+
+export function getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount({
+  currentVisibleCount,
+  messageCount,
+  loadIncrement = getChatRuntimeMessageHistoryWindowMobileState().loadIncrement,
+}: ChatRuntimeMessageHistoryWindowMobileExpandedVisibleCountInput): number {
+  return Math.min(messageCount, currentVisibleCount + loadIncrement)
+}
+
+export function getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount({
+  currentVisibleCount,
+  messageCount,
+  initialVisibleCount = getChatRuntimeMessageHistoryWindowMobileState().initialVisibleCount,
+}: ChatRuntimeMessageHistoryWindowMobileVisibleCountInput): number {
+  if (messageCount === 0) return initialVisibleCount
+  const nextVisibleCount = Math.max(initialVisibleCount, currentVisibleCount)
+  return Math.min(messageCount, nextVisibleCount)
 }
 
 export function getChatRuntimeMessageHistoryBannerMobileState() {
