@@ -86,6 +86,7 @@ import {
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
+  createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeConversationToolExecutionStackMobileProps,
@@ -7009,6 +7010,74 @@ describe("session presentation semantics", () => {
       shouldSkipThread: true,
       collapsedBoundary: null,
       bodySurface: null,
+    })
+    const viewportParts = createChatRuntimeConversationViewportMobilePropsParts({
+      loadingState: {
+        renderState: "loading-render-state",
+        spinnerSource: "spinner-source",
+      },
+      homeQuickStarts: {
+        shouldRender: true,
+        items: ["quick-start-item"],
+      },
+      historyBanner: {
+        renderState: "history-banner-state",
+      },
+      stepSummary: {
+        renderState: "step-summary-state",
+      },
+      debugPanels: {
+        requestRows: ["request-row"],
+        voiceRows: ["voice-row"],
+      },
+      styles: {
+        scrollViewport: {
+          style: "scroll-viewport-style",
+          contentContainerStyle: "scroll-content-style",
+        },
+        loadingState: {
+          style: "loading-state-style",
+          spinnerStyle: "loading-spinner-style",
+        },
+        homeQuickStarts: "home-quick-starts-styles",
+        historyBanner: "history-banner-styles",
+        stepSummary: "step-summary-styles",
+        debugPanels: {
+          panelStyle: "debug-panel-style",
+          textStyle: "debug-text-style",
+        },
+      },
+    })
+    expect(viewportParts).toEqual({
+      scrollViewport: {
+        style: "scroll-viewport-style",
+        contentContainerStyle: "scroll-content-style",
+      },
+      loadingState: {
+        renderState: "loading-render-state",
+        spinnerSource: "spinner-source",
+        style: "loading-state-style",
+        spinnerStyle: "loading-spinner-style",
+      },
+      homeQuickStarts: {
+        shouldRender: true,
+        items: ["quick-start-item"],
+        styles: "home-quick-starts-styles",
+      },
+      historyBanner: {
+        renderState: "history-banner-state",
+        styles: "history-banner-styles",
+      },
+      stepSummary: {
+        renderState: "step-summary-state",
+        styles: "step-summary-styles",
+      },
+      debugPanels: {
+        requestRows: ["request-row"],
+        voiceRows: ["voice-row"],
+        panelStyle: "debug-panel-style",
+        textStyle: "debug-text-style",
+      },
     })
     const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
       retryStatus: {

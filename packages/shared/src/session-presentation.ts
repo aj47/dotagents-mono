@@ -2076,6 +2076,85 @@ export interface ChatRuntimeConversationRuntimeThreadMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
+  TLoadingState extends object = Record<string, never>,
+  THomeQuickStarts extends object = Record<string, never>,
+  THistoryBanner extends object = Record<string, never>,
+  TStepSummary extends object = Record<string, never>,
+  TDebugPanels extends object = Record<string, never>,
+  TScrollViewportStyle = unknown,
+  TScrollViewportContentContainerStyle = unknown,
+  TLoadingStateStyle = unknown,
+  TLoadingStateSpinnerStyle = unknown,
+  THomeQuickStartsStyles = unknown,
+  THistoryBannerStyles = unknown,
+  TStepSummaryStyles = unknown,
+  TDebugPanelStyle = unknown,
+  TDebugPanelTextStyle = unknown,
+> {
+  loadingState: TLoadingState
+  homeQuickStarts: THomeQuickStarts
+  historyBanner: THistoryBanner
+  stepSummary: TStepSummary
+  debugPanels: TDebugPanels
+  styles: {
+    scrollViewport: {
+      style: TScrollViewportStyle
+      contentContainerStyle: TScrollViewportContentContainerStyle
+    }
+    loadingState: {
+      style: TLoadingStateStyle
+      spinnerStyle: TLoadingStateSpinnerStyle
+    }
+    homeQuickStarts: THomeQuickStartsStyles
+    historyBanner: THistoryBannerStyles
+    stepSummary: TStepSummaryStyles
+    debugPanels: {
+      panelStyle: TDebugPanelStyle
+      textStyle: TDebugPanelTextStyle
+    }
+  }
+}
+
+export interface ChatRuntimeConversationViewportMobilePropsParts<
+  TLoadingState extends object = Record<string, never>,
+  THomeQuickStarts extends object = Record<string, never>,
+  THistoryBanner extends object = Record<string, never>,
+  TStepSummary extends object = Record<string, never>,
+  TDebugPanels extends object = Record<string, never>,
+  TScrollViewportStyle = unknown,
+  TScrollViewportContentContainerStyle = unknown,
+  TLoadingStateStyle = unknown,
+  TLoadingStateSpinnerStyle = unknown,
+  THomeQuickStartsStyles = unknown,
+  THistoryBannerStyles = unknown,
+  TStepSummaryStyles = unknown,
+  TDebugPanelStyle = unknown,
+  TDebugPanelTextStyle = unknown,
+> {
+  scrollViewport: {
+    style: TScrollViewportStyle
+    contentContainerStyle: TScrollViewportContentContainerStyle
+  }
+  loadingState: TLoadingState & {
+    style: TLoadingStateStyle
+    spinnerStyle: TLoadingStateSpinnerStyle
+  }
+  homeQuickStarts: THomeQuickStarts & {
+    styles: THomeQuickStartsStyles
+  }
+  historyBanner: THistoryBanner & {
+    styles: THistoryBannerStyles
+  }
+  stepSummary: TStepSummary & {
+    styles: TStepSummaryStyles
+  }
+  debugPanels: TDebugPanels & {
+    panelStyle: TDebugPanelStyle
+    textStyle: TDebugPanelTextStyle
+  }
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13781,6 +13860,89 @@ export function createChatRuntimeConversationRuntimeThreadMobilePropsParts<
       },
       bodyStyles: styles.body,
     } : null,
+  }
+}
+
+export function createChatRuntimeConversationViewportMobilePropsParts<
+  TLoadingState extends object,
+  THomeQuickStarts extends object,
+  THistoryBanner extends object,
+  TStepSummary extends object,
+  TDebugPanels extends object,
+  TScrollViewportStyle,
+  TScrollViewportContentContainerStyle,
+  TLoadingStateStyle,
+  TLoadingStateSpinnerStyle,
+  THomeQuickStartsStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyle,
+  TDebugPanelTextStyle,
+>({
+  loadingState,
+  homeQuickStarts,
+  historyBanner,
+  stepSummary,
+  debugPanels,
+  styles,
+}: ChatRuntimeConversationViewportMobilePropsPartsInput<
+  TLoadingState,
+  THomeQuickStarts,
+  THistoryBanner,
+  TStepSummary,
+  TDebugPanels,
+  TScrollViewportStyle,
+  TScrollViewportContentContainerStyle,
+  TLoadingStateStyle,
+  TLoadingStateSpinnerStyle,
+  THomeQuickStartsStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyle,
+  TDebugPanelTextStyle
+>): ChatRuntimeConversationViewportMobilePropsParts<
+  TLoadingState,
+  THomeQuickStarts,
+  THistoryBanner,
+  TStepSummary,
+  TDebugPanels,
+  TScrollViewportStyle,
+  TScrollViewportContentContainerStyle,
+  TLoadingStateStyle,
+  TLoadingStateSpinnerStyle,
+  THomeQuickStartsStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyle,
+  TDebugPanelTextStyle
+> {
+  return {
+    scrollViewport: {
+      style: styles.scrollViewport.style,
+      contentContainerStyle: styles.scrollViewport.contentContainerStyle,
+    },
+    loadingState: {
+      ...loadingState,
+      style: styles.loadingState.style,
+      spinnerStyle: styles.loadingState.spinnerStyle,
+    },
+    homeQuickStarts: {
+      ...homeQuickStarts,
+      styles: styles.homeQuickStarts,
+    },
+    historyBanner: {
+      ...historyBanner,
+      styles: styles.historyBanner,
+    },
+    stepSummary: {
+      ...stepSummary,
+      styles: styles.stepSummary,
+    },
+    debugPanels: {
+      ...debugPanels,
+      panelStyle: styles.debugPanels.panelStyle,
+      textStyle: styles.debugPanels.textStyle,
+    },
   }
 }
 

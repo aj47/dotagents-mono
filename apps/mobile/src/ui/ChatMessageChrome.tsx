@@ -82,6 +82,7 @@ import {
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
+  createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
@@ -8751,41 +8752,42 @@ export function ChatMessageRuntimeViewport<
   styles,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportProps<TPrompt, TTask>) {
+  const viewportParts = createChatRuntimeConversationViewportMobilePropsParts({
+    loadingState,
+    homeQuickStarts,
+    historyBanner,
+    stepSummary,
+    debugPanels,
+    styles,
+  });
+
   return (
     <ChatMessageConversationViewport
       {...scrollViewportProps}
-      style={styles.scrollViewport.style}
-      contentContainerStyle={styles.scrollViewport.contentContainerStyle}
+      {...viewportParts.scrollViewport}
       loadingState={(
         <ChatMessageLoadingState
-          {...loadingState}
-          style={styles.loadingState.style}
-          spinnerStyle={styles.loadingState.spinnerStyle}
+          {...viewportParts.loadingState}
         />
       )}
       homeState={(
         <ChatConversationHomeQuickStarts
-          {...homeQuickStarts}
-          styles={styles.homeQuickStarts}
+          {...viewportParts.homeQuickStarts}
         />
       )}
       historyBanner={(
         <ChatMessageHistoryBanner
-          {...historyBanner}
-          styles={styles.historyBanner}
+          {...viewportParts.historyBanner}
         />
       )}
       stepSummary={(
         <ChatMessageStepSummaryCard
-          {...stepSummary}
-          styles={styles.stepSummary}
+          {...viewportParts.stepSummary}
         />
       )}
       debugPanels={(
         <ChatMessageDebugPanelStack
-          {...debugPanels}
-          panelStyle={styles.debugPanels.panelStyle}
-          textStyle={styles.debugPanels.textStyle}
+          {...viewportParts.debugPanels}
         />
       )}
     >
