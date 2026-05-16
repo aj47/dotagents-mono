@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProgressUpdate, AgentStepSummary } from "@dotagents/shared/agent-progress"
+import { getChatRuntimeStepSummaryState } from "@dotagents/shared/session-presentation"
 import {
   ChevronDown,
   ChevronRight,
@@ -60,10 +61,11 @@ function SummaryCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isSavedToKnowledgeNote, setIsSavedToKnowledgeNote] = useState(summary.savedToKnowledgeNote ?? false)
-  
+  const summaryState = getChatRuntimeStepSummaryState({ summary })
+
   const handleSaveAsKnowledgeNote = async () => {
     if (isSaving || isSavedToKnowledgeNote) return
-    
+
     setIsSaving(true)
     try {
       const result = await desktopKnowledgeClient.saveNoteFromSummary({
@@ -71,7 +73,7 @@ function SummaryCard({
         conversationTitle,
         conversationId,
       })
-      
+
       if (result.success && result.note) {
         setIsSavedToKnowledgeNote(true)
         onSaved?.(summary)
@@ -82,12 +84,12 @@ function SummaryCard({
       setIsSaving(false)
     }
   }
-  
+
   const formattedTime = new Date(summary.timestamp).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   })
-  
+
   return (
     <div
       className={cn(
@@ -120,16 +122,16 @@ function SummaryCard({
                 {formattedTime}
               </span>
               <span className="text-xs text-muted-foreground">
-                Step {summary.stepNumber}
+                {summaryState.stepLabel}
               </span>
               {summary.importance && <ImportanceBadge importance={summary.importance} />}
             </div>
 
-            <p className="line-clamp-2 text-sm font-medium leading-snug">{summary.actionSummary}</p>
+            <p className="line-clamp-2 text-sm font-medium leading-snug">{summaryState.actionSummary}</p>
 
-            {!isExpanded && (summary.keyFindings?.length ?? 0) > 0 && (
+            {!isExpanded && summaryState.keyFindingsLabel && (
               <p className="mt-1 break-words text-xs text-muted-foreground">
-                {summary.keyFindings!.length} key finding{summary.keyFindings!.length > 1 ? "s" : ""}
+                {summaryState.keyFindingsLabel}
               </p>
             )}
           </div>
@@ -246,6 +248,7 @@ export function AgentSummaryView({
 }: AgentSummaryViewProps) {
   const summaries = progress?.stepSummaries || []
   const latestSummary = progress?.latestSummary
+  const latestSummaryState = getChatRuntimeStepSummaryState({ summary: latestSummary })
 
   if (summaries.length === 0) {
     return (
@@ -307,8 +310,8 @@ export function AgentSummaryView({
       {latestSummary && progress && !progress.isComplete && (
         <div className="sticky bottom-0 bg-gradient-to-t from-background via-background px-1 pt-2 to-transparent">
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
-            <p className="text-xs font-medium text-primary mb-1">Latest Activity</p>
-            <p className="break-words text-sm leading-snug">{latestSummary.actionSummary}</p>
+            <p className="text-xs font-medium text-primary mb-1">{latestSummaryState.title}</p>
+            <p className="break-words text-sm leading-snug">{latestSummaryState.actionSummary}</p>
           </div>
         </div>
       )}

@@ -5,6 +5,13 @@ const agentSummaryViewSource = readFileSync(new URL("./agent-summary-view.tsx", 
 
 describe("agent summary view layout", () => {
   it("wraps summary card header chrome and keeps the expand affordance in one accessible toggle region", () => {
+    expect(agentSummaryViewSource).toContain('getChatRuntimeStepSummaryState')
+    expect(agentSummaryViewSource).toContain('const summaryState = getChatRuntimeStepSummaryState({ summary })')
+    expect(agentSummaryViewSource).toContain('{summaryState.stepLabel}')
+    expect(agentSummaryViewSource).toContain('{summaryState.actionSummary}')
+    expect(agentSummaryViewSource).toContain('summaryState.keyFindingsLabel')
+    expect(agentSummaryViewSource).not.toContain('Step {summary.stepNumber}')
+    expect(agentSummaryViewSource).not.toContain('key finding{summary.keyFindings!.length > 1 ? "s" : ""}')
     expect(agentSummaryViewSource).toContain('className="flex flex-wrap items-start gap-2.5 p-3"')
     expect(agentSummaryViewSource).toContain(
       'className="flex min-w-0 flex-1 items-start gap-3 rounded-md text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"'
@@ -23,5 +30,10 @@ describe("agent summary view layout", () => {
     expect(agentSummaryViewSource).toContain(
       'className="sticky bottom-0 bg-gradient-to-t from-background via-background px-1 pt-2 to-transparent"'
     )
+    expect(agentSummaryViewSource).toContain('const latestSummaryState = getChatRuntimeStepSummaryState({ summary: latestSummary })')
+    expect(agentSummaryViewSource).toContain('{latestSummaryState.title}')
+    expect(agentSummaryViewSource).toContain('{latestSummaryState.actionSummary}')
+    expect(agentSummaryViewSource).not.toContain('Latest Activity</p>')
+    expect(agentSummaryViewSource).not.toContain('{latestSummary.actionSummary}')
   })
 })

@@ -2015,6 +2015,22 @@ export interface ChatRuntimeStepSummaryMobileRenderStateInput {
   colors: ChatRuntimeStepSummaryMobileColorPalette
 }
 
+export interface ChatRuntimeStepSummaryStateInput {
+  summary?: ChatRuntimeStepSummaryLike | null
+}
+
+export interface ChatRuntimeStepSummaryState {
+  shouldRender: boolean
+  title: string
+  badgeLabel: string
+  stepLabel: string
+  actionSummary: string
+  meta: string
+  preview: string
+  keyFindingsLabel: string
+  accessibilityLabel: string
+}
+
 export interface ChatRuntimeStepSummaryMobileRenderState {
   shouldRender: boolean
   surface: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.stepSummary
@@ -7801,6 +7817,10 @@ export function formatChatRuntimeStepSummaryTitle(summary: Pick<ChatRuntimeStepS
   return `${CHAT_RUNTIME_PRESENTATION.stepSummary.summaryTitle} · ${CHAT_RUNTIME_PRESENTATION.stepSummary.stepLabel} ${summary.stepNumber}`
 }
 
+export function formatChatRuntimeStepSummaryStepLabel(summary: Pick<ChatRuntimeStepSummaryLike, "stepNumber">): string {
+  return `${CHAT_RUNTIME_PRESENTATION.stepSummary.stepLabel} ${summary.stepNumber}`
+}
+
 function formatChatRuntimeImportanceLabel(importance: NonNullable<ChatRuntimeStepSummaryLike["importance"]>): string {
   return `${importance.charAt(0).toUpperCase()}${importance.slice(1)} ${CHAT_RUNTIME_PRESENTATION.stepSummary.importanceSuffix}`
 }
@@ -7812,14 +7832,19 @@ export function formatChatRuntimeStepSummaryMeta(summary: ChatRuntimeStepSummary
     parts.push(formatChatRuntimeImportanceLabel(summary.importance))
   }
 
-  const findingCount = summary.keyFindings?.length ?? 0
-  if (findingCount > 0) {
-    parts.push(`${findingCount} ${findingCount === 1
-      ? CHAT_RUNTIME_PRESENTATION.stepSummary.keyFindingSingular
-      : CHAT_RUNTIME_PRESENTATION.stepSummary.keyFindingPlural}`)
-  }
+  const keyFindingsLabel = formatChatRuntimeStepSummaryKeyFindingsLabel(summary)
+  if (keyFindingsLabel) parts.push(keyFindingsLabel)
 
   return parts.join(" · ")
+}
+
+export function formatChatRuntimeStepSummaryKeyFindingsLabel(summary: Pick<ChatRuntimeStepSummaryLike, "keyFindings">): string {
+  const findingCount = summary.keyFindings?.length ?? 0
+  if (findingCount <= 0) return ""
+
+  return `${findingCount} ${findingCount === 1
+    ? CHAT_RUNTIME_PRESENTATION.stepSummary.keyFindingSingular
+    : CHAT_RUNTIME_PRESENTATION.stepSummary.keyFindingPlural}`
 }
 
 export function formatChatRuntimeStepSummaryPreview(summary: ChatRuntimeStepSummaryLike): string {
@@ -7837,6 +7862,36 @@ export function formatChatRuntimeStepSummaryAccessibilityLabel(summary: ChatRunt
     summary.actionSummary,
     preview,
   ].filter(Boolean).join(". ")
+}
+
+export function getChatRuntimeStepSummaryState({
+  summary = null,
+}: ChatRuntimeStepSummaryStateInput = {}): ChatRuntimeStepSummaryState {
+  if (!summary) {
+    return {
+      shouldRender: false,
+      title: CHAT_RUNTIME_PRESENTATION.stepSummary.latestTitle,
+      badgeLabel: "",
+      stepLabel: "",
+      actionSummary: "",
+      meta: "",
+      preview: "",
+      keyFindingsLabel: "",
+      accessibilityLabel: "",
+    }
+  }
+
+  return {
+    shouldRender: true,
+    title: CHAT_RUNTIME_PRESENTATION.stepSummary.latestTitle,
+    badgeLabel: formatChatRuntimeStepSummaryTitle(summary),
+    stepLabel: formatChatRuntimeStepSummaryStepLabel(summary),
+    actionSummary: summary.actionSummary,
+    meta: formatChatRuntimeStepSummaryMeta(summary),
+    preview: formatChatRuntimeStepSummaryPreview(summary),
+    keyFindingsLabel: formatChatRuntimeStepSummaryKeyFindingsLabel(summary),
+    accessibilityLabel: formatChatRuntimeStepSummaryAccessibilityLabel(summary),
+  }
 }
 
 export function formatChatRuntimeDelegationMessageCount(messageCount: number): string {
@@ -10470,18 +10525,19 @@ export function getChatRuntimeStepSummaryMobileRenderState({
 }: ChatRuntimeStepSummaryMobileRenderStateInput): ChatRuntimeStepSummaryMobileRenderState {
   const surface = getChatRuntimeStepSummaryMobileState()
   const resolvedColors = getChatRuntimeStepSummaryMobileColors(colors)
+  const stepSummary = getChatRuntimeStepSummaryState({ summary })
 
   return {
-    shouldRender: !!summary,
+    shouldRender: stepSummary.shouldRender,
     surface,
     colors: resolvedColors,
-    title: CHAT_RUNTIME_PRESENTATION.stepSummary.latestTitle,
-    badgeLabel: summary ? formatChatRuntimeStepSummaryTitle(summary) : "",
-    actionSummary: summary?.actionSummary ?? "",
-    meta: summary ? formatChatRuntimeStepSummaryMeta(summary) : "",
-    preview: summary ? formatChatRuntimeStepSummaryPreview(summary) : "",
+    title: stepSummary.title,
+    badgeLabel: stepSummary.badgeLabel,
+    actionSummary: stepSummary.actionSummary,
+    meta: stepSummary.meta,
+    preview: stepSummary.preview,
     accessibilityRole: surface.accessibilityRole,
-    accessibilityLabel: summary ? formatChatRuntimeStepSummaryAccessibilityLabel(summary) : "",
+    accessibilityLabel: stepSummary.accessibilityLabel,
   }
 }
 

@@ -89,8 +89,10 @@ import {
   formatChatRuntimeRetryCountdownLabel,
   formatChatRuntimeThinkingPickerTitle,
   formatChatRuntimeStepSummaryAccessibilityLabel,
+  formatChatRuntimeStepSummaryKeyFindingsLabel,
   formatChatRuntimeStepSummaryMeta,
   formatChatRuntimeStepSummaryPreview,
+  formatChatRuntimeStepSummaryStepLabel,
   formatChatRuntimeStepSummaryTitle,
   formatChatRuntimeStartingRequestDebugMessage,
   formatChatRuntimeToolApprovalRequiredContent,
@@ -278,6 +280,7 @@ import {
   getChatRuntimeStepSummaryMobileColors,
   getChatRuntimeStepSummaryMobileRenderState,
   getChatRuntimeStepSummaryMobileState,
+  getChatRuntimeStepSummaryState,
   getChatRuntimeStreamingContentMobileColors,
   getChatRuntimeStreamingContentMobileRenderState,
   getChatRuntimeStreamingContentMobileState,
@@ -3440,6 +3443,24 @@ describe("session presentation semantics", () => {
       accessibilityRole: "text",
       accessibilityLabel: "Latest activity. Step 3 · High importance · 1 key finding. Compared mobile and desktop chat chrome. Mobile did not surface generated step summaries",
     })
+    expect(getChatRuntimeStepSummaryState({
+      summary: {
+        stepNumber: 3,
+        actionSummary: "Compared mobile and desktop chat chrome",
+        importance: "high",
+        keyFindings: ["Mobile did not surface generated step summaries"],
+      },
+    })).toEqual({
+      shouldRender: true,
+      title: "Latest activity",
+      badgeLabel: "Summary · Step 3",
+      stepLabel: "Step 3",
+      actionSummary: "Compared mobile and desktop chat chrome",
+      meta: "Step 3 · High importance · 1 key finding",
+      preview: "Mobile did not surface generated step summaries",
+      keyFindingsLabel: "1 key finding",
+      accessibilityLabel: "Latest activity. Step 3 · High importance · 1 key finding. Compared mobile and desktop chat chrome. Mobile did not surface generated step summaries",
+    })
     expect(getChatRuntimeStepSummaryMobileRenderState({
       colors: {
         info: "#2563eb",
@@ -5503,11 +5524,27 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeLatestStepSummary({ stepSummaries: [stepSummary] })).toBe(stepSummary)
     expect(getChatRuntimeLatestStepSummary({ latestSummary: stepSummary, stepSummaries: [] })).toBe(stepSummary)
     expect(formatChatRuntimeStepSummaryTitle(stepSummary)).toBe("Summary · Step 3")
+    expect(formatChatRuntimeStepSummaryStepLabel(stepSummary)).toBe("Step 3")
     expect(formatChatRuntimeStepSummaryMeta(stepSummary)).toBe("Step 3 · High importance · 1 key finding")
+    expect(formatChatRuntimeStepSummaryKeyFindingsLabel(stepSummary)).toBe("1 key finding")
     expect(formatChatRuntimeStepSummaryPreview(stepSummary)).toBe("Mobile did not surface generated step summaries")
     expect(formatChatRuntimeStepSummaryAccessibilityLabel(stepSummary)).toContain(
       "Compared mobile and desktop chat chrome",
     )
+    expect(getChatRuntimeStepSummaryState({ summary: stepSummary })).toMatchObject({
+      shouldRender: true,
+      title: CHAT_RUNTIME_PRESENTATION.stepSummary.latestTitle,
+      stepLabel: "Step 3",
+      keyFindingsLabel: "1 key finding",
+      actionSummary: "Compared mobile and desktop chat chrome",
+    })
+    expect(getChatRuntimeStepSummaryState()).toMatchObject({
+      shouldRender: false,
+      title: CHAT_RUNTIME_PRESENTATION.stepSummary.latestTitle,
+      stepLabel: "",
+      keyFindingsLabel: "",
+      actionSummary: "",
+    })
     expect(formatChatRuntimeDelegationMessageCount(4)).toBe("4m")
     expect(formatChatRuntimeDelegationMessagesLabel(1)).toBe("1 message")
     expect(formatChatRuntimeDelegationMessagesLabel(4)).toBe("4 messages")
