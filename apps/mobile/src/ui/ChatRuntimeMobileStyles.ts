@@ -15,6 +15,7 @@ import {
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
+  createChatRuntimeViewportActivityMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -73,8 +74,9 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const conversationChromeStyleState = chatChromeStyleState.conversation;
   const viewportStyleState = conversationChromeStyleState.viewport;
   const viewportSurface = viewportStyleState.surface;
-  const loadingStateSurface = viewportStyleState.loadingState;
-  const inlineActivitySurface = viewportStyleState.inlineActivity;
+  const viewportActivityStyleSlots = createChatRuntimeViewportActivityMobileStyleSlots({
+    renderState: viewportStyleState,
+  });
   const streamingContentStyleState = conversationChromeStyleState.streamingContent;
   const streamingContentSurface = streamingContentStyleState.surface;
   const streamingContentSurfaceColors = streamingContentStyleState.colors;
@@ -230,22 +232,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       gap: spacing[viewportSurface.contentGap],
     },
     loadingState: {
-      flex: loadingStateSurface.flex,
-      justifyContent: loadingStateSurface.justifyContent,
-      alignItems: loadingStateSurface.alignItems,
-      paddingVertical: loadingStateSurface.paddingVertical,
+      ...viewportActivityStyleSlots.loadingState,
     },
     loadingSpinner: {
-      width: loadingStateSurface.spinnerSize,
-      height: loadingStateSurface.spinnerSize,
+      ...viewportActivityStyleSlots.loadingSpinner,
     },
     inlineActivityIndicator: {
-      flexDirection: inlineActivitySurface.flexDirection,
-      alignItems: inlineActivitySurface.alignItems,
+      ...viewportActivityStyleSlots.inlineActivityIndicator,
     },
     inlineActivitySpinner: {
-      width: inlineActivitySurface.spinnerSize,
-      height: inlineActivitySurface.spinnerSize,
+      ...viewportActivityStyleSlots.inlineActivitySpinner,
     },
     streamingContentHeader: {
       flexDirection: streamingContentSurface.headerFlexDirection,

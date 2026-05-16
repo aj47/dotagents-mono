@@ -67,6 +67,7 @@ import {
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
+  createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
@@ -2823,6 +2824,32 @@ describe("session presentation semantics", () => {
       colors: getChatRuntimeViewportMobileColors({
         background: "#ffffff",
       }),
+    })
+    expect(createChatRuntimeViewportActivityMobileStyleSlots({
+      renderState: getChatRuntimeViewportMobileRenderState({
+        colors: {
+          background: "#ffffff",
+        },
+      }),
+    })).toEqual({
+      loadingState: {
+        flex: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.flex,
+        justifyContent: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.justifyContent,
+        alignItems: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.alignItems,
+        paddingVertical: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.paddingVertical,
+      },
+      loadingSpinner: {
+        width: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerSize,
+        height: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerSize,
+      },
+      inlineActivityIndicator: {
+        flexDirection: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.flexDirection,
+        alignItems: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.alignItems,
+      },
+      inlineActivitySpinner: {
+        width: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize,
+        height: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize,
+      },
     })
     const conversationChromeStyleColors = {
       background: "#ffffff",

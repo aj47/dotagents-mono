@@ -500,6 +500,34 @@ export interface ChatRuntimeViewportMobileRenderState {
   colors: ChatRuntimeViewportMobileColors
 }
 
+type ChatRuntimeLoadingStateMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState
+type ChatRuntimeInlineActivityMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity
+
+export interface ChatRuntimeViewportActivityMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeViewportMobileRenderState, "loadingState" | "inlineActivity">
+}
+
+export interface ChatRuntimeViewportActivityMobileStyleSlots {
+  loadingState: {
+    flex: number
+    justifyContent: ChatRuntimeLoadingStateMobileSurface["justifyContent"]
+    alignItems: ChatRuntimeLoadingStateMobileSurface["alignItems"]
+    paddingVertical: number
+  }
+  loadingSpinner: {
+    width: number
+    height: number
+  }
+  inlineActivityIndicator: {
+    flexDirection: ChatRuntimeInlineActivityMobileSurface["flexDirection"]
+    alignItems: ChatRuntimeInlineActivityMobileSurface["alignItems"]
+  }
+  inlineActivitySpinner: {
+    width: number
+    height: number
+  }
+}
+
 export interface ChatRuntimeSurfaceChromeMobileRenderStateInput {
   platform?: string | null
   colors: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0]["colors"]
@@ -11558,6 +11586,34 @@ export function getChatRuntimeViewportMobileRenderState({
     loadingState: getChatRuntimeLoadingStateMobileState(),
     inlineActivity: getChatRuntimeInlineActivityMobileState(),
     colors: getChatRuntimeViewportMobileColors(colors),
+  }
+}
+
+export function createChatRuntimeViewportActivityMobileStyleSlots({
+  renderState,
+}: ChatRuntimeViewportActivityMobileStyleSlotsInput): ChatRuntimeViewportActivityMobileStyleSlots {
+  const loadingState = renderState.loadingState
+  const inlineActivity = renderState.inlineActivity
+
+  return {
+    loadingState: {
+      flex: loadingState.flex,
+      justifyContent: loadingState.justifyContent,
+      alignItems: loadingState.alignItems,
+      paddingVertical: loadingState.paddingVertical,
+    },
+    loadingSpinner: {
+      width: loadingState.spinnerSize,
+      height: loadingState.spinnerSize,
+    },
+    inlineActivityIndicator: {
+      flexDirection: inlineActivity.flexDirection,
+      alignItems: inlineActivity.alignItems,
+    },
+    inlineActivitySpinner: {
+      width: inlineActivity.spinnerSize,
+      height: inlineActivity.spinnerSize,
+    },
   }
 }
 
