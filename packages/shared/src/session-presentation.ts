@@ -704,6 +704,35 @@ export interface ChatRuntimeTurnDurationHeaderMobileRenderState {
   }
 }
 
+export interface ChatRuntimeTurnDurationHeaderMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeTurnDurationHeaderMobileRenderState, "badge" | "colors">
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeTurnDurationHeaderMobileStyleSlots {
+  chip: {
+    flexDirection: ChatRuntimeTurnDurationHeaderMobileBadgeState["flexDirection"]
+    alignItems: ChatRuntimeTurnDurationHeaderMobileBadgeState["alignItems"]
+    justifyContent: ChatRuntimeTurnDurationHeaderMobileBadgeState["justifyContent"]
+    gap: number
+    minHeight: number
+    maxWidth: number
+    paddingHorizontal: number
+    borderRadius: number
+    backgroundColor: string
+    marginHorizontal: number
+    flexShrink: number
+    opacity: number
+  }
+  text: {
+    fontFamily: string
+    fontSize: number
+    lineHeight: number
+    fontWeight: ChatRuntimeTurnDurationHeaderMobileBadgeState["fontWeight"]
+    color: string
+  }
+}
+
 export interface ChatRuntimeTurnDurationMessageMobileRenderStateInput {
   role?: string | null
   durationMs?: number | null
@@ -8685,6 +8714,40 @@ export function getChatRuntimeTurnDurationHeaderMobileRenderState({
       name: icon.name,
       size: icon.size,
       color: resolvedColors.icon.color,
+    },
+  }
+}
+
+export function createChatRuntimeTurnDurationHeaderMobileStyleSlots({
+  renderState,
+  platform,
+}: ChatRuntimeTurnDurationHeaderMobileStyleSlotsInput): ChatRuntimeTurnDurationHeaderMobileStyleSlots {
+  const { badge, colors } = renderState
+
+  return {
+    chip: {
+      flexDirection: badge.flexDirection,
+      alignItems: badge.alignItems,
+      justifyContent: badge.justifyContent,
+      gap: badge.gap,
+      minHeight: badge.minHeight,
+      maxWidth: badge.maxWidth,
+      paddingHorizontal: badge.paddingHorizontal,
+      borderRadius: badge.borderRadius,
+      backgroundColor: colors.chip.backgroundColor,
+      marginHorizontal: badge.marginHorizontal,
+      flexShrink: badge.flexShrink,
+      opacity: badge.opacity,
+    },
+    text: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        badge.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: badge.fontSize,
+      lineHeight: badge.lineHeight,
+      fontWeight: badge.fontWeight,
+      color: colors.text.color,
     },
   }
 }

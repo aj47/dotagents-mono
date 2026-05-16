@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -139,10 +140,14 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const toolExecutionDetailContentColors = toolExecutionDetailStyleColors.content;
   const headerTurnDurationStyleState = headerChromeStyleState.turnDuration.standard;
   const headerTurnDurationLiveStyleState = headerChromeStyleState.turnDuration.live;
-  const headerTurnDurationBadge = headerTurnDurationStyleState.badge;
-  const headerTurnDurationLiveBadge = headerTurnDurationLiveStyleState.badge;
-  const headerTurnDurationColors = headerTurnDurationStyleState.colors;
-  const headerTurnDurationLiveColors = headerTurnDurationLiveStyleState.colors;
+  const headerTurnDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
+    renderState: headerTurnDurationStyleState,
+    platform: mobilePlatform,
+  });
+  const headerTurnDurationLiveStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
+    renderState: headerTurnDurationLiveStyleState,
+    platform: mobilePlatform,
+  });
   const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
   const mobileMessageActionRow = mobileMessageActionStyleState.row;
   const mobileMessageExpansionButton = mobileMessageActionStyleState.slotButtons.expansion.button;
@@ -165,33 +170,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobileMessageTurnDurationLiveBadgeColors = mobileMessageTurnDurationLiveRenderState.colors;
   const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
-  const createChatRuntimeMobileHeaderDurationChipStyle = (
-    badge: typeof headerTurnDurationBadge,
-    colors: typeof headerTurnDurationColors,
-  ) => ({
-    flexDirection: badge.flexDirection,
-    alignItems: badge.alignItems,
-    justifyContent: badge.justifyContent,
-    gap: badge.gap,
-    minHeight: badge.minHeight,
-    maxWidth: badge.maxWidth,
-    paddingHorizontal: badge.paddingHorizontal,
-    borderRadius: badge.borderRadius,
-    backgroundColor: colors.chip.backgroundColor,
-    marginHorizontal: badge.marginHorizontal,
-    flexShrink: badge.flexShrink,
-    opacity: badge.opacity,
-  } as const);
-  const createChatRuntimeMobileHeaderDurationTextStyle = (
-    badge: typeof headerTurnDurationBadge,
-    colors: typeof headerTurnDurationColors,
-  ) => ({
-    fontFamily: resolveChatRuntimeMobileFontFamily(badge.fontFamilyByPlatform, mobilePlatform),
-    fontSize: badge.fontSize,
-    lineHeight: badge.lineHeight,
-    fontWeight: badge.fontWeight,
-    color: colors.text.color,
-  } as const);
   const createChatRuntimeMobileHeaderPinButtonStyle = (
     colors: typeof inactiveHeaderPinButtonColors,
   ) => ({
@@ -406,28 +384,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       height: sessionStatusSurface.runningIndicator.size,
     },
     headerDurationChip: {
-      ...createChatRuntimeMobileHeaderDurationChipStyle(
-        headerTurnDurationBadge,
-        headerTurnDurationColors,
-      ),
+      ...headerTurnDurationStyleSlots.chip,
     },
     headerDurationChipLive: {
-      ...createChatRuntimeMobileHeaderDurationChipStyle(
-        headerTurnDurationLiveBadge,
-        headerTurnDurationLiveColors,
-      ),
+      ...headerTurnDurationLiveStyleSlots.chip,
     },
     headerDurationChipText: {
-      ...createChatRuntimeMobileHeaderDurationTextStyle(
-        headerTurnDurationBadge,
-        headerTurnDurationColors,
-      ),
+      ...headerTurnDurationStyleSlots.text,
     },
     headerDurationChipTextLive: {
-      ...createChatRuntimeMobileHeaderDurationTextStyle(
-        headerTurnDurationLiveBadge,
-        headerTurnDurationLiveColors,
-      ),
+      ...headerTurnDurationLiveStyleSlots.text,
     },
     headerActionButton,
     headerEdgeActionButton,

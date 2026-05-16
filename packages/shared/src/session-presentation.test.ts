@@ -63,6 +63,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatComposerRuntimeImagePickerLaunchOptions,
+  createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   deriveAttentionState,
   deriveLifecycleState,
@@ -2489,6 +2490,22 @@ describe("session presentation semantics", () => {
       isLive: true,
       colors: headerMobileStyleColors,
     }))
+    const headerDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
+      renderState: navigationHeaderState.turnDurationRenderState,
+      platform: "ios",
+    })
+    const headerDurationLiveColors = getChatRuntimeTurnDurationHeaderMobileBadgeColors(
+      { isLive: true },
+      headerMobileStyleColors,
+    )
+    expect(headerDurationStyleSlots.chip.backgroundColor).toBe(headerDurationLiveColors.chip.backgroundColor)
+    expect(headerDurationStyleSlots.chip.maxWidth).toBe(
+      CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth,
+    )
+    expect(headerDurationStyleSlots.text.fontFamily).toBe(
+      CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.turnDurationBadge.fontFamilyByPlatform.ios,
+    )
+    expect(headerDurationStyleSlots.text.color).toBe(headerDurationLiveColors.text.color)
     expect(navigationHeaderState.killSwitchButtonShouldRender).toBe(true)
     expect(navigationHeaderState.handsFreeButtonRenderState.isEnabled).toBe(true)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
