@@ -83,6 +83,7 @@ import {
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
+  createChatRuntimeHeaderStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
@@ -3265,6 +3266,19 @@ describe("session presentation semantics", () => {
       actionStyles: "message-actions",
       threadStyles: "message-thread",
       promptEditorStyles: "prompt-editor",
+    })
+    expect(createChatRuntimeHeaderStyleSlots({
+      actionsRowStyle: "actions-row",
+      agentSelectorStyles: "agent-selector",
+      conversationStatusStyles: "conversation-status",
+      turnDurationStyles: "turn-duration",
+      iconButtonStyles: "icon-buttons",
+    })).toEqual({
+      actionsRowStyle: "actions-row",
+      agentSelector: "agent-selector",
+      conversationStatus: "conversation-status",
+      turnDuration: "turn-duration",
+      iconButtons: "icon-buttons",
     })
     expect(createChatRuntimeHeaderChromeSlots({
       colors: "theme-colors",

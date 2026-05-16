@@ -6508,38 +6508,6 @@ export function createChatMessageActionStyleSlots(
   } as ChatMessageActionStyleSlots;
 }
 
-export function createChatRuntimeHeaderStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatRuntimeHeaderStyleSlots {
-  return {
-    actionsRowStyle: styles.headerActionsRow,
-    agentSelector: {
-      button: styles.headerAgentSelectorButton,
-      chip: styles.headerAgentSelectorChip,
-      label: styles.headerAgentSelectorText,
-    },
-    conversationStatus: {
-      chip: styles.headerConversationChip,
-      text: styles.headerConversationChipText,
-      spinner: styles.headerConversationSpinner,
-    },
-    turnDuration: {
-      chip: styles.headerDurationChip,
-      liveChip: styles.headerDurationChipLive,
-      text: styles.headerDurationChipText,
-      liveText: styles.headerDurationChipTextLive,
-    },
-    iconButtons: {
-      edgeStyle: styles.headerEdgeActionButton,
-      pinStyle: styles.headerPinButton,
-      pinActiveStyle: styles.headerPinButtonActive,
-      actionStyle: styles.headerActionButton,
-      killSwitchIconContainerStyle: styles.headerKillSwitchIconContainer,
-      handsFreeIconContainerStyle: styles.headerHandsFreeIconContainer,
-    },
-  } as ChatRuntimeHeaderStyleSlots;
-}
-
 export function useChatRuntimeNavigationHeaderRenderState({
   agentName,
   isPinned = false,

@@ -14832,6 +14832,40 @@ export function createChatMessageRuntimeChromeStyleSlots<
   }
 }
 
+export function createChatRuntimeHeaderStyleSlots<
+  TActionsRowStyle,
+  TAgentSelectorStyles,
+  TConversationStatusStyles,
+  TTurnDurationStyles,
+  TIconButtonStyles,
+>({
+  actionsRowStyle,
+  agentSelectorStyles,
+  conversationStatusStyles,
+  turnDurationStyles,
+  iconButtonStyles,
+}: {
+  actionsRowStyle: TActionsRowStyle
+  agentSelectorStyles: TAgentSelectorStyles
+  conversationStatusStyles: TConversationStatusStyles
+  turnDurationStyles: TTurnDurationStyles
+  iconButtonStyles: TIconButtonStyles
+}): {
+  actionsRowStyle: TActionsRowStyle
+  agentSelector: TAgentSelectorStyles
+  conversationStatus: TConversationStatusStyles
+  turnDuration: TTurnDurationStyles
+  iconButtons: TIconButtonStyles
+} {
+  return {
+    actionsRowStyle,
+    agentSelector: agentSelectorStyles,
+    conversationStatus: conversationStatusStyles,
+    turnDuration: turnDurationStyles,
+    iconButtons: iconButtonStyles,
+  }
+}
+
 export function createChatRuntimeHeaderChromeSlots<TColors, TSpinnerSource, TStyles>({
   colors,
   spinnerSource,
