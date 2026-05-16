@@ -70,15 +70,8 @@ import type {
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
-import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
-import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
-import type {
-  Loop,
-  PredefinedPromptSummary,
-} from '@dotagents/shared/api-types';
 import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
@@ -111,6 +104,11 @@ import {
   hasChatMessageRuntimeRequestSessionChanged,
   isChatMessageRuntimeActiveRequest,
   isChatMessageRuntimeLatestSessionRequest,
+  type AgentConversationState,
+  type AgentProgressUpdate,
+  type AgentUserResponseEvent,
+  type Loop,
+  type PredefinedPromptSummary,
 } from '@dotagents/shared/session-presentation';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';

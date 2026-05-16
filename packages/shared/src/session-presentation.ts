@@ -3,6 +3,7 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "./conversation-state"
+export type { AgentConversationState } from "./conversation-state"
 import {
   applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
@@ -32,6 +33,13 @@ import {
   type AgentUserResponseEvent,
   type AgentDelegationConversationPreviewRow,
   type AgentDelegationPresentation,
+} from "./agent-progress"
+export type {
+  ACPDelegationProgress,
+  AgentProgressUpdate,
+  AgentRetryInfo,
+  AgentStepSummary,
+  AgentUserResponseEvent,
 } from "./agent-progress"
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
@@ -132,8 +140,11 @@ export {
   type PromptLibraryTaskLike,
 } from "./predefined-prompts"
 import type { PredefinedPromptSummary } from "./api-types"
+export type { Loop, PredefinedPromptSummary, Settings, Skill } from "./api-types"
 import type { ToolCall, ToolResult } from "./types"
+export type { HandsFreePhase } from "./types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
+export type { VoiceDebugEntry, VoiceDebugLog } from "./voice-debug-log"
 import { mergeVoiceText } from "./voice-text-utils"
 import {
   CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION,

@@ -70,6 +70,16 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.match(chatRuntimeMobileStylesSource, /return StyleSheet\.create\(\{/);
 });
 
+test('keeps mobile chat shared domain types routed through session presentation', () => {
+  assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|api-types)';/);
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|voice-debug-log|types|api-types)';/);
+  assert.match(sessionPresentationSource, /export type \{ AgentConversationState \} from "\.\/conversation-state"/);
+  assert.match(sessionPresentationSource, /export type \{[\s\S]*?AgentProgressUpdate,[\s\S]*?AgentUserResponseEvent,[\s\S]*?\} from "\.\/agent-progress"/);
+  assert.match(sessionPresentationSource, /export type \{ Loop, PredefinedPromptSummary, Settings, Skill \} from "\.\/api-types"/);
+  assert.match(sessionPresentationSource, /export type \{ HandsFreePhase \} from "\.\/types"/);
+  assert.match(sessionPresentationSource, /export type \{ VoiceDebugEntry, VoiceDebugLog \} from "\.\/voice-debug-log"/);
+});
+
 test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.doesNotMatch(screenSource, /from '\.\.\/ui\/mobileTypography'/);
   assert.match(screenSource, /resolveChatRuntimeMobileFontFamily,/);

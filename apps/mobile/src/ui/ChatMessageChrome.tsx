@@ -30,19 +30,6 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
-  type ACPDelegationProgress,
-  type AgentRetryInfo,
-  type AgentStepSummary,
-  type AgentUserResponseEvent,
-} from '@dotagents/shared/agent-progress';
-import type { AgentConversationState } from '@dotagents/shared/conversation-state';
-import {
-  type VoiceDebugEntry,
-  type VoiceDebugLog,
-} from '@dotagents/shared/voice-debug-log';
-import type { HandsFreePhase } from '@dotagents/shared/types';
-import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
-import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
@@ -132,7 +119,19 @@ import {
   createChatRuntimeRemoteSpeechSettingsState,
   DEFAULT_EDGE_TTS_VOICE,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
+  type ACPDelegationProgress,
+  type AgentConversationState,
+  type AgentRetryInfo,
+  type AgentStepSummary,
+  type AgentUserResponseEvent,
+  type HandsFreePhase,
+  type Loop,
+  type PredefinedPromptSummary,
   type RecoveryState,
+  type Settings,
+  type Skill,
+  type VoiceDebugEntry,
+  type VoiceDebugLog,
   type ChatRuntimeRemoteSpeechProvider,
   type ChatRuntimeRemoteSpeechSettingsState,
   type ChatConversationHomePromptDeleteConfirmAlertState,
