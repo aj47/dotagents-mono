@@ -150,6 +150,7 @@ import {
   getChatConversationHomePromptTaskStartedAlertState,
   getChatRuntimeCopyState,
   getChatRuntimeCurrentAgentLabel,
+  getChatRuntimePrimaryAgentLabel,
   getChatRuntimeAgentSelectorMobileActionState,
   getChatRuntimeAgentSelectorMobileColors,
   getChatRuntimeAgentSelectorMobileIconState,
@@ -3716,6 +3717,26 @@ describe("session presentation semantics", () => {
     expect(getChatRuntimeCurrentAgentLabel("  Research  ")).toBe("Research")
     expect(getChatRuntimeCurrentAgentLabel("")).toBe(CHAT_RUNTIME_PRESENTATION.header.defaultAgentLabel)
     expect(getChatRuntimeCurrentAgentLabel(null)).toBe(CHAT_RUNTIME_PRESENTATION.header.defaultAgentLabel)
+    expect(getChatRuntimePrimaryAgentLabel({
+      agentTitle: "  ACP Agent  ",
+      agentName: "Internal",
+      profileName: "Profile",
+    })).toBe("ACP Agent")
+    expect(getChatRuntimePrimaryAgentLabel({
+      agentTitle: "",
+      agentName: "  Internal  ",
+      profileName: "Profile",
+    })).toBe("Internal")
+    expect(getChatRuntimePrimaryAgentLabel({
+      agentTitle: null,
+      agentName: "",
+      profileName: "  Profile  ",
+    })).toBe("Profile")
+    expect(getChatRuntimePrimaryAgentLabel({
+      agentTitle: "",
+      agentName: "",
+      profileName: "",
+    })).toBe(CHAT_RUNTIME_PRESENTATION.header.defaultAgentLabel)
     expect(formatChatRuntimeAgentSelectorAccessibilityLabel("Research")).toBe(
       "Current agent: Research. Tap to change.",
     )

@@ -6587,9 +6587,31 @@ export function formatChatRuntimeAgentSelectorLabel(agentLabel: string): string 
   return `${agentLabel} ${CHAT_RUNTIME_PRESENTATION.header.agentSelectorDropdownGlyph}`
 }
 
+export interface ChatRuntimePrimaryAgentLabelInput {
+  agentTitle?: string | null
+  agentName?: string | null
+  profileName?: string | null
+}
+
+function normalizeChatRuntimeAgentLabelCandidate(value?: string | null): string {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+export function getChatRuntimePrimaryAgentLabel({
+  agentTitle,
+  agentName,
+  profileName,
+}: ChatRuntimePrimaryAgentLabelInput): string {
+  return (
+    normalizeChatRuntimeAgentLabelCandidate(agentTitle) ||
+    normalizeChatRuntimeAgentLabelCandidate(agentName) ||
+    normalizeChatRuntimeAgentLabelCandidate(profileName) ||
+    CHAT_RUNTIME_PRESENTATION.header.defaultAgentLabel
+  )
+}
+
 export function getChatRuntimeCurrentAgentLabel(agentName?: string | null): string {
-  const normalizedName = typeof agentName === "string" ? agentName.trim() : ""
-  return normalizedName || CHAT_RUNTIME_PRESENTATION.header.defaultAgentLabel
+  return getChatRuntimePrimaryAgentLabel({ agentName })
 }
 
 export function formatChatRuntimeAgentSelectorAccessibilityLabel(agentLabel: string): string {

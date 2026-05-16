@@ -137,6 +137,7 @@ import {
   getChatRuntimeDesktopSurfaceState,
   getChatRuntimeMessageHistoryBannerState,
   getChatRuntimePinAccessibilityLabel,
+  getChatRuntimePrimaryAgentLabel,
   getChatRuntimeRetryStatusState,
   getChatRuntimeStreamingContentState,
   getChatRuntimeToolApprovalDesktopSurfaceState,
@@ -3812,7 +3813,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [turnDurations.hasLive, turnDurations.totalMs],
   )
   const primaryAgentLabel = useMemo(
-    () => acpSessionInfo?.agentTitle ?? acpSessionInfo?.agentName ?? profileName ?? "Agent",
+    () => getChatRuntimePrimaryAgentLabel({
+      agentTitle: acpSessionInfo?.agentTitle,
+      agentName: acpSessionInfo?.agentName,
+      profileName,
+    }),
     [acpSessionInfo?.agentName, acpSessionInfo?.agentTitle, profileName],
   )
   const toolCallSteps = useMemo(
