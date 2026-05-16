@@ -13759,6 +13759,126 @@ export function createChatRuntimeSafeAreaMergedStyleSlots<
   }
 }
 
+export function createChatComposerRuntimeDockStyleSlots<
+  TChatComposerStyles extends { inputDock: unknown },
+  TSafeAreaStyles extends { inputDock: unknown },
+>({
+  chatComposerStyles,
+  safeAreaStyles,
+}: {
+  chatComposerStyles: TChatComposerStyles
+  safeAreaStyles: TSafeAreaStyles
+}): Omit<TChatComposerStyles, "inputDock"> & {
+  inputDock: TSafeAreaStyles["inputDock"]
+} {
+  return {
+    ...chatComposerStyles,
+    inputDock: safeAreaStyles.inputDock,
+  }
+}
+
+export function createChatMessageRuntimeDockStyleSlots<
+  TConversationDockStyles extends {
+    queuePanelStyle: unknown
+    connectionBanner: unknown
+  },
+  TComposerStyles,
+  TSafeAreaStyles extends {
+    scrollToBottomButtonStyle: unknown
+    voiceOverlay: unknown
+  },
+>({
+  conversationDockStyles,
+  composerStyles,
+  safeAreaStyles,
+}: {
+  conversationDockStyles: TConversationDockStyles
+  composerStyles: TComposerStyles
+  safeAreaStyles: TSafeAreaStyles
+}): {
+  scrollToBottomButtonStyle: TSafeAreaStyles["scrollToBottomButtonStyle"]
+  voiceOverlay: TSafeAreaStyles["voiceOverlay"]
+  queuePanelStyle: TConversationDockStyles["queuePanelStyle"]
+  connectionBanner: TConversationDockStyles["connectionBanner"]
+  composer: TComposerStyles
+} {
+  return {
+    scrollToBottomButtonStyle: safeAreaStyles.scrollToBottomButtonStyle,
+    voiceOverlay: safeAreaStyles.voiceOverlay,
+    queuePanelStyle: conversationDockStyles.queuePanelStyle,
+    connectionBanner: conversationDockStyles.connectionBanner,
+    composer: composerStyles,
+  }
+}
+
+export function createChatMessageRuntimeViewportStyleSlots<
+  TConversationViewportStyles extends {
+    scrollViewport: {
+      style: unknown
+    }
+    loadingState: unknown
+    homeQuickStarts: unknown
+    historyBanner: unknown
+    stepSummary: unknown
+    debugPanels: unknown
+  },
+  TSafeAreaStyles extends {
+    scrollViewportContentContainerStyle: unknown
+  },
+>({
+  conversationViewportStyles,
+  safeAreaStyles,
+}: {
+  conversationViewportStyles: TConversationViewportStyles
+  safeAreaStyles: TSafeAreaStyles
+}): {
+  scrollViewport: {
+    style: TConversationViewportStyles["scrollViewport"]["style"]
+    contentContainerStyle: TSafeAreaStyles["scrollViewportContentContainerStyle"]
+  }
+  loadingState: TConversationViewportStyles["loadingState"]
+  homeQuickStarts: TConversationViewportStyles["homeQuickStarts"]
+  historyBanner: TConversationViewportStyles["historyBanner"]
+  stepSummary: TConversationViewportStyles["stepSummary"]
+  debugPanels: TConversationViewportStyles["debugPanels"]
+} {
+  return {
+    scrollViewport: {
+      style: conversationViewportStyles.scrollViewport.style,
+      contentContainerStyle: safeAreaStyles.scrollViewportContentContainerStyle,
+    },
+    loadingState: conversationViewportStyles.loadingState,
+    homeQuickStarts: conversationViewportStyles.homeQuickStarts,
+    historyBanner: conversationViewportStyles.historyBanner,
+    stepSummary: conversationViewportStyles.stepSummary,
+    debugPanels: conversationViewportStyles.debugPanels,
+  }
+}
+
+export function createChatMessageRuntimeSurfaceStyleSlots<
+  TConversationViewportStyles extends { frame: unknown },
+  TDockStyles,
+  TViewportStyles,
+>({
+  conversationViewportStyles,
+  dockStyles,
+  viewportStyles,
+}: {
+  conversationViewportStyles: TConversationViewportStyles
+  dockStyles: TDockStyles
+  viewportStyles: TViewportStyles
+}): {
+  frame: TConversationViewportStyles["frame"]
+  dock: TDockStyles
+  viewport: TViewportStyles
+} {
+  return {
+    frame: conversationViewportStyles.frame,
+    dock: dockStyles,
+    viewport: viewportStyles,
+  }
+}
+
 export function getChatRuntimeRetryStatusMobileRenderState({
   retryInfo,
   colors,

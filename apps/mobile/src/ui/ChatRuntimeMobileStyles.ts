@@ -8,8 +8,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createChatComposerHandsFreeMobileStyleSlots,
   createChatComposerImageAttachmentMobileStyleSlots,
+  createChatComposerRuntimeDockStyleSlots,
   createChatComposerMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
+  createChatMessageRuntimeDockStyleSlots,
+  createChatMessageRuntimeSurfaceStyleSlots,
+  createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
@@ -42,15 +46,11 @@ import {
   getChatRuntimeMobileSafeAreaLayoutState,
 } from '@dotagents/shared/session-presentation';
 import {
-  createChatComposerRuntimeDockStyleSlots,
   createChatComposerStyleSlots,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatMessageConversationDockStyleSlots,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageConversationViewportStyleSlots,
-  createChatMessageRuntimeDockStyleSlots,
-  createChatMessageRuntimeSurfaceStyleSlots,
-  createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeHeaderStyleSlots,
 } from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';

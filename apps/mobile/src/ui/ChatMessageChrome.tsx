@@ -177,7 +177,6 @@ import {
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
-  type ChatRuntimeSafeAreaMergedStyleSlots as SharedChatRuntimeSafeAreaMergedStyleSlots,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatComposerRuntimeControlMobileRenderStateInput,
@@ -2400,13 +2399,6 @@ export type ChatMessageRuntimeChromeSurfaceProps<
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask> & {
   surfaceStyles: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['styles'];
 };
-
-type ChatRuntimeSafeAreaMergedStyleSlots = SharedChatRuntimeSafeAreaMergedStyleSlots<
-  ChatMessageScrollToBottomButtonProps['style'],
-  ChatMessageScrollViewportProps['contentContainerStyle'],
-  ChatComposerVoiceOverlayStyles,
-  ChatComposerInputDockStyles
->;
 
 type ChatComposerSpeechPreviewStyles = {
   box: StyleProp<ViewStyle>;
@@ -7308,19 +7300,6 @@ export function createChatComposerStyleSlots(
   } as ChatComposerStyleSlots;
 }
 
-export function createChatComposerRuntimeDockStyleSlots({
-  chatComposerStyles,
-  safeAreaStyles,
-}: {
-  chatComposerStyles: ChatComposerStyleSlots;
-  safeAreaStyles: Pick<ChatRuntimeSafeAreaMergedStyleSlots, 'inputDock'>;
-}): ChatComposerRuntimeDockStyleSlots {
-  return {
-    ...chatComposerStyles,
-    inputDock: safeAreaStyles.inputDock,
-  } as ChatComposerRuntimeDockStyleSlots;
-}
-
 export function createChatComposerRuntimeDockChromeProps({
   colors,
   platform,
@@ -7518,24 +7497,6 @@ export function createChatMessageConversationDockStyleSlots(
   } as ChatMessageConversationDockStyleSlots;
 }
 
-export function createChatMessageRuntimeDockStyleSlots({
-  conversationDockStyles,
-  composerStyles,
-  safeAreaStyles,
-}: {
-  conversationDockStyles: ChatMessageConversationDockStyleSlots;
-  composerStyles: ChatComposerRuntimeDockStyleSlots;
-  safeAreaStyles: Pick<ChatRuntimeSafeAreaMergedStyleSlots, 'scrollToBottomButtonStyle' | 'voiceOverlay'>;
-}): ChatMessageRuntimeDockStyleSlots {
-  return {
-    scrollToBottomButtonStyle: safeAreaStyles.scrollToBottomButtonStyle,
-    voiceOverlay: safeAreaStyles.voiceOverlay,
-    queuePanelStyle: conversationDockStyles.queuePanelStyle,
-    connectionBanner: conversationDockStyles.connectionBanner,
-    composer: composerStyles,
-  } as ChatMessageRuntimeDockStyleSlots;
-}
-
 export function createChatMessageToolActivityGroupBoundaryStyles(
   styles: ChatMessageChromeStyleSource,
 ): ChatMessageToolActivityGroupBoundaryStyles {
@@ -7652,42 +7613,6 @@ export function createChatMessageConversationViewportStyleSlots(
       textStyle: styles.debugText,
     },
   } as ChatMessageConversationViewportStyleSlots;
-}
-
-export function createChatMessageRuntimeViewportStyleSlots({
-  conversationViewportStyles,
-  safeAreaStyles,
-}: {
-  conversationViewportStyles: ChatMessageConversationViewportStyleSlots;
-  safeAreaStyles: Pick<ChatRuntimeSafeAreaMergedStyleSlots, 'scrollViewportContentContainerStyle'>;
-}): ChatMessageRuntimeViewportStyleSlots {
-  return {
-    scrollViewport: {
-      style: conversationViewportStyles.scrollViewport.style,
-      contentContainerStyle: safeAreaStyles.scrollViewportContentContainerStyle,
-    },
-    loadingState: conversationViewportStyles.loadingState,
-    homeQuickStarts: conversationViewportStyles.homeQuickStarts,
-    historyBanner: conversationViewportStyles.historyBanner,
-    stepSummary: conversationViewportStyles.stepSummary,
-    debugPanels: conversationViewportStyles.debugPanels,
-  } as ChatMessageRuntimeViewportStyleSlots;
-}
-
-export function createChatMessageRuntimeSurfaceStyleSlots({
-  conversationViewportStyles,
-  dockStyles,
-  viewportStyles,
-}: {
-  conversationViewportStyles: Pick<ChatMessageConversationViewportStyleSlots, 'frame'>;
-  dockStyles: ChatMessageRuntimeDockStyleSlots;
-  viewportStyles: ChatMessageRuntimeViewportStyleSlots;
-}): ChatMessageRuntimeSurfaceStyleSlots {
-  return {
-    frame: conversationViewportStyles.frame,
-    dock: dockStyles,
-    viewport: viewportStyles,
-  } as ChatMessageRuntimeSurfaceStyleSlots;
 }
 
 export function createChatConversationHomePromptEditorModalStyleSlots(

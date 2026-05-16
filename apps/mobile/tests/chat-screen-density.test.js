@@ -1329,11 +1329,14 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.doesNotMatch(screenSource, /const scrollToBottomRenderState = useMemo/);
   assert.match(screenSource, /createChatMessageConversationDockStyleSlots,/);
   assert.match(screenSource, /createChatMessageRuntimeDockStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatMessageRuntimeDockStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatMessageRuntimeDockStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
   assert.match(screenSource, /const conversationDockStyles = useMemo\(\s+\(\) => createChatMessageConversationDockStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(screenSource, /const chatMessageRuntimeDockStyles = useMemo\(\s+\(\) => createChatMessageRuntimeDockStyleSlots\(\{/);
   assert.match(screenSource, /composerStyles: chatComposerRuntimeDockStyles/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationDockStyleSlots/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatMessageRuntimeDockStyleSlots/);
   assert.doesNotMatch(screenSource, /const handleScrollToBottomPress = \(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollViewRef\.current\?\.scrollToEnd\(\{ animated: true \}\);\s+\};/);
   assert.match(screenSource, /scrollToBottom: handleScrollToBottomPress,/);
   assert.match(chatMessageChromeSource, /const scrollToBottom = useCallback\(\(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollRef\.current\?\.scrollToEnd\(\{ animated: true \}\);/);
@@ -1345,7 +1348,7 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /scrollToBottomButton: \{\s+renderState: dockChromeRenderState\.scrollToBottom,\s+onPress: onScrollToBottom,\s+\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButton\s+\{\.\.\.scrollToBottomButton\}\s+style=\{styles\.scrollToBottomButtonStyle\}/);
   assert.match(sessionPresentationSource, /scrollToBottomButtonStyle: \[\s+conversationDockStyles\.scrollToBottomButtonStyle,\s+safeAreaStyles\.scrollToBottomButton,\s+\]/);
-  assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: safeAreaStyles\.scrollToBottomButtonStyle,/);
+  assert.match(sessionPresentationSource, /scrollToBottomButtonStyle: safeAreaStyles\.scrollToBottomButtonStyle,/);
   assert.match(chatMessageChromeSource, /scrollToBottomButtonStyle: styles\.scrollToBottomButton,/);
   assert.doesNotMatch(screenSource, /style=\{\[conversationDockStyles\.scrollToBottomButtonStyle,\s*mobileSafeAreaStyles\.scrollToBottomButton\]\}/);
   assert.doesNotMatch(screenSource, /style=\{\[styles\.scrollToBottomButton,\s*mobileSafeAreaStyles\.scrollToBottomButton\]\}/);
@@ -1453,6 +1456,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeChromePropsInput</);
   assert.match(screenSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatMessageRuntimeSurfaceStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatMessageRuntimeSurfaceStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
+  assert.match(sessionPresentationSource, /export function createChatMessageRuntimeSurfaceStyleSlots/);
   assert.match(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo\(\s+\(\) => createChatMessageRuntimeSurfaceStyleSlots\(\{\s+conversationViewportStyles,\s+dockStyles: chatMessageRuntimeDockStyles,\s+viewportStyles: chatMessageRuntimeViewportStyles,\s+\}\),\s+\[conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles\],\s+\);/);
   assert.match(chatRuntimeMobileStylesSource, /const chatMessageRuntimeSurfaceChrome = useMemo\(\s+\(\) => \(\{\s+surfaceStyles: chatMessageRuntimeSurfaceStyles,\s+\}\),\s+\[chatMessageRuntimeSurfaceStyles\],\s+\);/);
   assert.match(chatRuntimeMobileStylesSource, /surface: chatMessageRuntimeSurfaceChrome,/);
@@ -1499,6 +1505,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /\{agentSelector\}[\s\S]*?\{promptEditor\}/);
   assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
   assert.match(screenSource, /createChatMessageRuntimeViewportStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatMessageRuntimeViewportStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatMessageRuntimeViewportStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
   assert.match(screenSource, /const chatMessageRuntimeViewportStyles = useMemo\(\s+\(\) => createChatMessageRuntimeViewportStyleSlots\(\{\s+conversationViewportStyles,\s+safeAreaStyles: chatSafeAreaStyles,\s+\}\),\s+\[conversationViewportStyles, chatSafeAreaStyles\],\s+\);/);
   assert.match(screenSource, /viewport: \{\s+scrollRef: scrollViewRef,/);
   assert.match(chatMessageChromeSource, /const chatMessageRuntimeViewport = createChatMessageRuntimeViewportChromeProps\(\{\s+\.\.\.viewport,\s+colors,\s+loadingSpinnerSource: spinnerSource,\s+visibleMessageCount: conversationThreadListState\.visibleMessageCount,/);
@@ -1552,8 +1560,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /debugPanels=\{\(\s*<ChatMessageDebugPanelStack/);
   assert.match(screenSource, /const conversationViewportStyles = useMemo\(\s+\(\) => createChatMessageConversationViewportStyleSlots\(styles\),\s+\[styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function createChatMessageConversationViewportStyleSlots/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeViewportStyleSlots/);
-  assert.match(chatMessageChromeSource, /contentContainerStyle: safeAreaStyles\.scrollViewportContentContainerStyle,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeViewportStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatMessageRuntimeViewportStyleSlots/);
+  assert.match(sessionPresentationSource, /contentContainerStyle: safeAreaStyles\.scrollViewportContentContainerStyle,/);
   assert.match(chatMessageChromeSource, /frame: \{\s+keyboardAvoidingStyle: styles\.keyboardAvoidingContainer,\s+rootStyle: styles\.chatRoot,\s+\}/);
   assert.match(chatMessageChromeSource, /scrollViewport: \{\s+style: styles\.chatScroll,\s+contentContainerStyle: styles\.chatScrollContent,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewportContent/);
@@ -1793,6 +1802,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState,/);
   assert.match(screenSource, /createChatComposerStyleSlots,/);
   assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatComposerRuntimeDockStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatComposerRuntimeDockStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatComposerRuntimeDockChromeProps,/);
   assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
@@ -1825,7 +1836,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export function getChatRuntimeMobileChromeStyleRenderState\(\{/);
   assert.doesNotMatch(screenSource, /const isWebPlatform = Platform\.OS === 'web';/);
   assert.match(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
-  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatComposerRuntimeDockStyleSlots/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
   assert.match(chatMessageChromeSource, /getChatComposerRuntimeControlMobileRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeControlMobileRenderState/);
@@ -2067,7 +2079,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /composerStyles: chatComposerRuntimeDockStyles/);
   assert.doesNotMatch(screenSource, /chatComposerStyles\.inputDock\.area,\s*mobileSafeAreaStyles\.inputArea,/);
   assert.match(sessionPresentationSource, /inputDock: \{[\s\S]*?area: \[\s+chatComposerStyles\.inputDock\.area,\s+safeAreaStyles\.inputArea,\s+\]/);
-  assert.match(chatMessageChromeSource, /inputDock: safeAreaStyles\.inputDock,/);
+  assert.match(sessionPresentationSource, /inputDock: safeAreaStyles\.inputDock,/);
   assert.match(chatMessageChromeSource, /inputDock: \{\s+area: styles\.inputArea,\s+row: styles\.inputRow,\s+micWrapper: styles\.micWrapper,\s+\}/);
   assert.match(screenSource, /inputArea:\s*\{\s+\.\.\.composerStyleSlots\.inputArea,\s+\}/);
   assert.match(screenSource, /sttPreviewBox:\s*\{\s+\.\.\.composerStyleSlots\.sttPreviewBox,\s+\}/);
@@ -2261,7 +2273,7 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(chatMessageChromeSource, /<ChatComposerVoiceOverlay\s+\{\.\.\.voiceOverlay\}\s+styles=\{styles\.voiceOverlay\}/);
   assert.doesNotMatch(screenSource, /\.\.\.chatComposerStyles\.voiceOverlay,\s+overlay: \[chatComposerStyles\.voiceOverlay\.overlay,\s*mobileSafeAreaStyles\.voiceOverlay\],/);
   assert.match(sessionPresentationSource, /voiceOverlay: \{[\s\S]*?\.\.\.chatComposerStyles\.voiceOverlay,[\s\S]*?overlay: \[\s+chatComposerStyles\.voiceOverlay\.overlay,\s+safeAreaStyles\.voiceOverlay,\s+\]/);
-  assert.match(chatMessageChromeSource, /voiceOverlay: safeAreaStyles\.voiceOverlay,/);
+  assert.match(sessionPresentationSource, /voiceOverlay: safeAreaStyles\.voiceOverlay,/);
   assert.match(chatMessageChromeSource, /voiceOverlay: \{\s+overlay: styles\.overlay,\s+card: styles\.overlayCard,\s+label: styles\.overlayText,\s+transcript: styles\.overlayTranscript,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerVoiceOverlay/);
   assert.match(chatMessageChromeSource, /if \(!isVisible\) return null;/);
@@ -3673,7 +3685,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(screenSource, /shouldRender: messageQueueEnabled && queuedMessages\.length > 0/);
   assert.match(chatMessageChromeSource, /<ChatMessageQueuePanelDock\s+\{\.\.\.queuePanel\}\s+style=\{styles\.queuePanelStyle\}/);
   assert.match(chatMessageChromeSource, /queuePanelStyle: styles\.messageQueuePanelWrapper,/);
-  assert.match(chatMessageChromeSource, /queuePanelStyle: conversationDockStyles\.queuePanelStyle,/);
+  assert.match(sessionPresentationSource, /queuePanelStyle: conversationDockStyles\.queuePanelStyle,/);
   assert.doesNotMatch(screenSource, /style=\{styles\.messageQueuePanelWrapper\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageQueuePanelDock/);
   assert.match(chatMessageChromeSource, /type ChatMessageQueuePanelViewProps = ComponentProps<typeof MessageQueuePanel>;/);

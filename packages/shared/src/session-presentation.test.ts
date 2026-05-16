@@ -56,6 +56,10 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatComposerRuntimeDockStyleSlots,
+  createChatMessageRuntimeDockStyleSlots,
+  createChatMessageRuntimeSurfaceStyleSlots,
+  createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeCompletedDebugState,
@@ -3018,6 +3022,72 @@ describe("session presentation semantics", () => {
         ],
         row: "input-row",
       },
+    })
+    expect(createChatComposerRuntimeDockStyleSlots({
+      chatComposerStyles: {
+        inputDock: "composer-input-base",
+        controls: "composer-controls",
+      },
+      safeAreaStyles: {
+        inputDock: "composer-input-safe",
+      },
+    })).toEqual({
+      inputDock: "composer-input-safe",
+      controls: "composer-controls",
+    })
+    expect(createChatMessageRuntimeDockStyleSlots({
+      conversationDockStyles: {
+        queuePanelStyle: "queue-panel",
+        connectionBanner: "connection-banner",
+      },
+      composerStyles: "composer-dock",
+      safeAreaStyles: {
+        scrollToBottomButtonStyle: "scroll-safe",
+        voiceOverlay: "voice-safe",
+      },
+    })).toEqual({
+      scrollToBottomButtonStyle: "scroll-safe",
+      voiceOverlay: "voice-safe",
+      queuePanelStyle: "queue-panel",
+      connectionBanner: "connection-banner",
+      composer: "composer-dock",
+    })
+    expect(createChatMessageRuntimeViewportStyleSlots({
+      conversationViewportStyles: {
+        scrollViewport: {
+          style: "scroll-frame",
+          contentContainerStyle: "scroll-content-base",
+        },
+        loadingState: "loading-state",
+        homeQuickStarts: "home-quick-starts",
+        historyBanner: "history-banner",
+        stepSummary: "step-summary",
+        debugPanels: "debug-panels",
+      },
+      safeAreaStyles: {
+        scrollViewportContentContainerStyle: "scroll-content-safe",
+      },
+    })).toEqual({
+      scrollViewport: {
+        style: "scroll-frame",
+        contentContainerStyle: "scroll-content-safe",
+      },
+      loadingState: "loading-state",
+      homeQuickStarts: "home-quick-starts",
+      historyBanner: "history-banner",
+      stepSummary: "step-summary",
+      debugPanels: "debug-panels",
+    })
+    expect(createChatMessageRuntimeSurfaceStyleSlots({
+      conversationViewportStyles: {
+        frame: "conversation-frame",
+      },
+      dockStyles: "runtime-dock",
+      viewportStyles: "runtime-viewport",
+    })).toEqual({
+      frame: "conversation-frame",
+      dock: "runtime-dock",
+      viewport: "runtime-viewport",
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.justifyContent).toBe("center")
