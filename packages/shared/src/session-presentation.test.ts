@@ -102,6 +102,7 @@ import {
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeDockChromeMobileProps,
+  createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -9247,6 +9248,38 @@ describe("session presentation semantics", () => {
         renderState: "copy-result-state",
         onPress: "copy-result",
         styles: "result-copy-button",
+      },
+    })
+    const errorBlockParts = createChatRuntimeToolExecutionErrorBlockMobilePropsParts({
+      renderState: {
+        label: "Error",
+      },
+      error: "failed",
+      copyButtonRenderState: "copy-error-state",
+      onCopyPress: "copy-error",
+      styles: {
+        section: "error-section",
+        headerRow: "error-header-row",
+        label: "error-label-style",
+        text: "error-text-style",
+        copyButton: "error-copy-button",
+      },
+    })
+    expect(errorBlockParts).toEqual({
+      sectionStyle: "error-section",
+      headerRowStyle: "error-header-row",
+      label: {
+        text: "Error",
+        style: "error-label-style",
+      },
+      copyButton: {
+        renderState: "copy-error-state",
+        onPress: "copy-error",
+        styles: "error-copy-button",
+      },
+      error: {
+        text: "failed",
+        style: "error-text-style",
       },
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({

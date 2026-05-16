@@ -2078,6 +2078,66 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput<
+  TRenderState extends { label: string } = { label: string },
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TStyles extends {
+    section: unknown
+    headerRow: unknown
+    label: unknown
+    text: unknown
+    copyButton: unknown
+  } = {
+    section: unknown
+    headerRow: unknown
+    label: unknown
+    text: unknown
+    copyButton: unknown
+  },
+> {
+  renderState: TRenderState
+  error: string
+  copyButtonRenderState: TCopyButtonRenderState
+  onCopyPress?: TOnCopyPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
+  TRenderState extends { label: string } = { label: string },
+  TCopyButtonRenderState = unknown,
+  TOnCopyPress = unknown,
+  TStyles extends {
+    section: unknown
+    headerRow: unknown
+    label: unknown
+    text: unknown
+    copyButton: unknown
+  } = {
+    section: unknown
+    headerRow: unknown
+    label: unknown
+    text: unknown
+    copyButton: unknown
+  },
+> {
+  sectionStyle: TStyles["section"]
+  headerRowStyle: TStyles["headerRow"]
+  label: {
+    text: TRenderState["label"]
+    style: TStyles["label"]
+  }
+  copyButton: {
+    renderState: TCopyButtonRenderState
+    onPress: TOnCopyPress | undefined
+    styles: TStyles["copyButton"]
+  }
+  error: {
+    text: string
+    style: TStyles["text"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
   TExpanded extends object = Record<string, never>,
@@ -14549,6 +14609,53 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
       renderState: copyButtonRenderState,
       onPress: onCopyPress,
       styles: styles.copyButton,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
+  TRenderState extends { label: string },
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles extends {
+    section: unknown
+    headerRow: unknown
+    label: unknown
+    text: unknown
+    copyButton: unknown
+  },
+>({
+  renderState,
+  error,
+  copyButtonRenderState,
+  onCopyPress,
+  styles,
+}: ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput<
+  TRenderState,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles
+>): ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
+  TRenderState,
+  TCopyButtonRenderState,
+  TOnCopyPress,
+  TStyles
+> {
+  return {
+    sectionStyle: styles.section,
+    headerRowStyle: styles.headerRow,
+    label: {
+      text: renderState.label,
+      style: styles.label,
+    },
+    copyButton: {
+      renderState: copyButtonRenderState,
+      onPress: onCopyPress,
+      styles: styles.copyButton,
+    },
+    error: {
+      text: error,
+      style: styles.text,
     },
   }
 }

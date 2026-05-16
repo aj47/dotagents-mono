@@ -92,6 +92,7 @@ import {
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
@@ -8472,20 +8473,26 @@ export function ChatMessageToolExecutionErrorBlock({
   onCopyPress,
   styles,
 }: ChatMessageToolExecutionErrorBlockProps) {
+  const errorBlockParts = createChatRuntimeToolExecutionErrorBlockMobilePropsParts({
+    renderState,
+    error,
+    copyButtonRenderState,
+    onCopyPress,
+    styles,
+  });
+
   return (
-    <View style={styles.section}>
-      <View style={styles.headerRow}>
-        <Text style={styles.label}>
-          {renderState.label}
+    <View style={errorBlockParts.sectionStyle}>
+      <View style={errorBlockParts.headerRowStyle}>
+        <Text style={errorBlockParts.label.style}>
+          {errorBlockParts.label.text}
         </Text>
         <ChatMessageToolExecutionCopyButton
-          renderState={copyButtonRenderState}
-          onPress={onCopyPress}
-          styles={styles.copyButton}
+          {...errorBlockParts.copyButton}
         />
       </View>
-      <Text style={styles.text}>
-        {error}
+      <Text style={errorBlockParts.error.style}>
+        {errorBlockParts.error.text}
       </Text>
     </View>
   );
