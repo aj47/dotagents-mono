@@ -13,6 +13,7 @@ import {
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
+  createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
@@ -89,8 +90,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const connectionBannerSurface = connectionBannerStyleState.surface;
   const connectionBannerSurfaceColors = connectionBannerStyleState.colors;
   const retryStatusStyleState = conversationChromeStyleState.retryStatus;
-  const retryStatusSurface = retryStatusStyleState.surface;
-  const retryStatusSurfaceColors = retryStatusStyleState.colors;
+  const retryStatusStyleSlots = createChatRuntimeRetryStatusMobileStyleSlots({
+    renderState: retryStatusStyleState,
+    spacing,
+    radius,
+  });
   const stepSummaryStyleState = conversationChromeStyleState.stepSummary;
   const stepSummarySurface = stepSummaryStyleState.surface;
   const stepSummarySurfaceColors = stepSummaryStyleState.colors;
@@ -362,51 +366,25 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     assistantFinal: mobileMessageToneColors.assistant_final,
     tool: mobileMessageToneColors.tool,
     retryStatusCard: {
-      gap: spacing[retryStatusSurface.gap],
-      padding: spacing[retryStatusSurface.padding],
-      borderRadius: radius[retryStatusSurface.borderRadius],
-      borderWidth: retryStatusSurface.borderWidth,
-      borderColor: retryStatusSurfaceColors.card.borderColor,
-      backgroundColor: retryStatusSurfaceColors.card.backgroundColor,
+      ...retryStatusStyleSlots.card,
     },
     retryStatusHeader: {
-      flexDirection: retryStatusSurface.headerFlexDirection,
-      alignItems: retryStatusSurface.headerAlignItems,
-      gap: spacing[retryStatusSurface.headerGap],
+      ...retryStatusStyleSlots.header,
     },
     retryStatusTitle: {
-      flex: retryStatusSurface.titleFlex,
-      minWidth: retryStatusSurface.titleMinWidth,
-      color: retryStatusSurfaceColors.title.color,
-      fontSize: retryStatusSurface.titleFontSize,
-      fontWeight: retryStatusSurface.titleFontWeight,
+      ...retryStatusStyleSlots.title,
     },
     retryStatusMetaRow: {
-      flexDirection: retryStatusSurface.metaFlexDirection,
-      flexWrap: retryStatusSurface.metaFlexWrap,
-      alignItems: retryStatusSurface.metaAlignItems,
-      gap: spacing[retryStatusSurface.metaGap],
-      marginTop: retryStatusSurface.metaMarginTop,
+      ...retryStatusStyleSlots.metaRow,
     },
     retryStatusAttempt: {
-      color: retryStatusSurfaceColors.attempt.color,
-      fontSize: retryStatusSurface.attemptFontSize,
+      ...retryStatusStyleSlots.attempt,
     },
     retryStatusCountdown: {
-      color: retryStatusSurfaceColors.countdown.color,
-      fontSize: retryStatusSurface.countdownFontSize,
-      fontWeight: retryStatusSurface.countdownFontWeight,
-      paddingHorizontal: spacing[retryStatusSurface.countdownPaddingHorizontal],
-      paddingVertical: retryStatusSurface.countdownPaddingVertical,
-      borderRadius: radius[retryStatusSurface.countdownBorderRadius],
-      backgroundColor: retryStatusSurfaceColors.countdown.backgroundColor,
-      overflow: retryStatusSurface.countdownOverflow,
+      ...retryStatusStyleSlots.countdown,
     },
     retryStatusDescription: {
-      color: retryStatusSurfaceColors.description.color,
-      fontSize: retryStatusSurface.descriptionFontSize,
-      lineHeight: retryStatusSurface.descriptionLineHeight,
-      marginTop: retryStatusSurface.descriptionMarginTop,
+      ...retryStatusStyleSlots.description,
     },
     stepSummaryCard: {
       gap: spacing[stepSummarySurface.gap],

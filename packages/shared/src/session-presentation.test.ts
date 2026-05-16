@@ -67,6 +67,7 @@ import {
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
+  createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
@@ -2701,6 +2702,72 @@ describe("session presentation semantics", () => {
       spinner: {
         size: "small",
         color: "#d97706",
+      },
+    })
+    expect(createChatRuntimeRetryStatusMobileStyleSlots({
+      renderState: getChatRuntimeRetryStatusMobileRenderState({
+        retryInfo: {
+          attempt: 2,
+          maxAttempts: 5,
+          delaySeconds: 7,
+          reason: "Rate limit reached",
+        },
+        colors: retryStatusPalette,
+      }),
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        sm: 6,
+      },
+    })).toEqual({
+      card: {
+        gap: 4,
+        padding: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(217, 119, 6, 0.35)",
+        backgroundColor: "rgba(217, 119, 6, 0.1)",
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
+      title: {
+        flex: 1,
+        minWidth: 0,
+        color: "#d97706",
+        fontSize: 13,
+        fontWeight: "700",
+      },
+      metaRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 2,
+      },
+      attempt: {
+        color: "#64748b",
+        fontSize: 11,
+      },
+      countdown: {
+        color: "#d97706",
+        fontSize: 11,
+        fontWeight: "700",
+        paddingHorizontal: 4,
+        paddingVertical: 3,
+        borderRadius: 6,
+        backgroundColor: "rgba(217, 119, 6, 0.14)",
+        overflow: "hidden",
+      },
+      description: {
+        color: "#64748b",
+        fontSize: 11,
+        lineHeight: 15,
+        marginTop: 2,
       },
     })
     expect(getChatRuntimeRetryStatusMobileRenderState({

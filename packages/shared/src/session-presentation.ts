@@ -2392,6 +2392,75 @@ export interface ChatRuntimeRetryStatusMobileRenderState {
   }
 }
 
+type ChatRuntimeRetryStatusMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus
+
+export type ChatRuntimeRetryStatusMobileSpacingToken =
+  | ChatRuntimeRetryStatusMobileSurface["gap"]
+  | ChatRuntimeRetryStatusMobileSurface["padding"]
+  | ChatRuntimeRetryStatusMobileSurface["headerGap"]
+  | ChatRuntimeRetryStatusMobileSurface["metaGap"]
+  | ChatRuntimeRetryStatusMobileSurface["countdownPaddingHorizontal"]
+
+export type ChatRuntimeRetryStatusMobileRadiusToken =
+  | ChatRuntimeRetryStatusMobileSurface["borderRadius"]
+  | ChatRuntimeRetryStatusMobileSurface["countdownBorderRadius"]
+
+export interface ChatRuntimeRetryStatusMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeRetryStatusMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeRetryStatusMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeRetryStatusMobileRadiusToken, number>>
+}
+
+export interface ChatRuntimeRetryStatusMobileStyleSlots {
+  card: {
+    gap: number
+    padding: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  header: {
+    flexDirection: ChatRuntimeRetryStatusMobileSurface["headerFlexDirection"]
+    alignItems: ChatRuntimeRetryStatusMobileSurface["headerAlignItems"]
+    gap: number
+  }
+  title: {
+    flex: number
+    minWidth: number
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeRetryStatusMobileSurface["titleFontWeight"]
+  }
+  metaRow: {
+    flexDirection: ChatRuntimeRetryStatusMobileSurface["metaFlexDirection"]
+    flexWrap: ChatRuntimeRetryStatusMobileSurface["metaFlexWrap"]
+    alignItems: ChatRuntimeRetryStatusMobileSurface["metaAlignItems"]
+    gap: number
+    marginTop: number
+  }
+  attempt: {
+    color: string
+    fontSize: number
+  }
+  countdown: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeRetryStatusMobileSurface["countdownFontWeight"]
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    backgroundColor: string
+    overflow: ChatRuntimeRetryStatusMobileSurface["countdownOverflow"]
+  }
+  description: {
+    color: string
+    fontSize: number
+    lineHeight: number
+    marginTop: number
+  }
+}
+
 export type ChatRuntimeStepSummaryMobileColorToken =
   | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.stepSummary.borderColorToken
   | typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.stepSummary.backgroundColorToken
@@ -11281,6 +11350,65 @@ export function getChatRuntimeRetryStatusMobileRenderState({
     spinner: {
       size: surface.spinner.size,
       color: resolvedColors.spinner.color,
+    },
+  }
+}
+
+export function createChatRuntimeRetryStatusMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatRuntimeRetryStatusMobileStyleSlotsInput): ChatRuntimeRetryStatusMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    card: {
+      gap: spacing[surface.gap],
+      padding: spacing[surface.padding],
+      borderRadius: radius[surface.borderRadius],
+      borderWidth: surface.borderWidth,
+      borderColor: colors.card.borderColor,
+      backgroundColor: colors.card.backgroundColor,
+    },
+    header: {
+      flexDirection: surface.headerFlexDirection,
+      alignItems: surface.headerAlignItems,
+      gap: spacing[surface.headerGap],
+    },
+    title: {
+      flex: surface.titleFlex,
+      minWidth: surface.titleMinWidth,
+      color: colors.title.color,
+      fontSize: surface.titleFontSize,
+      fontWeight: surface.titleFontWeight,
+    },
+    metaRow: {
+      flexDirection: surface.metaFlexDirection,
+      flexWrap: surface.metaFlexWrap,
+      alignItems: surface.metaAlignItems,
+      gap: spacing[surface.metaGap],
+      marginTop: surface.metaMarginTop,
+    },
+    attempt: {
+      color: colors.attempt.color,
+      fontSize: surface.attemptFontSize,
+    },
+    countdown: {
+      color: colors.countdown.color,
+      fontSize: surface.countdownFontSize,
+      fontWeight: surface.countdownFontWeight,
+      paddingHorizontal: spacing[surface.countdownPaddingHorizontal],
+      paddingVertical: surface.countdownPaddingVertical,
+      borderRadius: radius[surface.countdownBorderRadius],
+      backgroundColor: colors.countdown.backgroundColor,
+      overflow: surface.countdownOverflow,
+    },
+    description: {
+      color: colors.description.color,
+      fontSize: surface.descriptionFontSize,
+      lineHeight: surface.descriptionLineHeight,
+      marginTop: surface.descriptionMarginTop,
     },
   }
 }
