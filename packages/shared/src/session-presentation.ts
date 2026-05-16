@@ -2764,6 +2764,73 @@ export interface ChatRuntimeStreamingContentMobileRenderState {
   }
 }
 
+type ChatRuntimeStreamingContentMobileSurface = typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent
+
+export type ChatRuntimeStreamingContentMobileSpacingToken =
+  | ChatRuntimeStreamingContentMobileSurface["headerGap"]
+  | ChatRuntimeStreamingContentMobileSurface["headerMarginBottom"]
+  | ChatRuntimeStreamingContentMobileSurface["badgePaddingHorizontal"]
+
+export type ChatRuntimeStreamingContentMobileRadiusToken =
+  ChatRuntimeStreamingContentMobileSurface["badgeBorderRadius"]
+
+export interface ChatRuntimeStreamingContentMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeStreamingContentMobileRenderState, "surface" | "colors" | "spinner">
+  spacing: Readonly<Record<ChatRuntimeStreamingContentMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeStreamingContentMobileRadiusToken, number>>
+}
+
+export interface ChatRuntimeStreamingContentMobileStyleSlots {
+  header: {
+    flexDirection: ChatRuntimeStreamingContentMobileSurface["headerFlexDirection"]
+    alignItems: ChatRuntimeStreamingContentMobileSurface["headerAlignItems"]
+    gap: number
+    marginBottom: number
+  }
+  title: {
+    minWidth: number
+    flexShrink: number
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeStreamingContentMobileSurface["titleFontWeight"]
+  }
+  spinner: {
+    width: number
+    height: number
+  }
+  badge: {
+    marginLeft: ChatRuntimeStreamingContentMobileSurface["badgeMarginLeft"]
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    backgroundColor: string
+  }
+  badgeText: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeStreamingContentMobileSurface["badgeTextFontWeight"]
+  }
+  bodyRow: {
+    flexDirection: ChatRuntimeStreamingContentMobileSurface["bodyRowFlexDirection"]
+    alignItems: ChatRuntimeStreamingContentMobileSurface["bodyRowAlignItems"]
+    minWidth: number
+  }
+  text: {
+    flex: number
+    minWidth: number
+    color: string
+    fontSize: number
+    lineHeight: number
+  }
+  caret: {
+    width: number
+    height: number
+    marginLeft: number
+    borderRadius: number
+    backgroundColor: string
+  }
+}
+
 export interface ChatRuntimeMessageHistoryLoadEarlierMobileIconState {
   name: typeof CHAT_RUNTIME_PRESENTATION.messageHistory.mobileIcon.loadEarlierName
   size: number
@@ -11426,6 +11493,67 @@ export function getChatRuntimeStreamingContentMobileRenderState({
     spinner: {
       size: surface.spinnerSize,
       resizeMode: surface.spinnerResizeMode,
+    },
+  }
+}
+
+export function createChatRuntimeStreamingContentMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatRuntimeStreamingContentMobileStyleSlotsInput): ChatRuntimeStreamingContentMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+  const spinnerSize = renderState.spinner.size
+
+  return {
+    header: {
+      flexDirection: surface.headerFlexDirection,
+      alignItems: surface.headerAlignItems,
+      gap: spacing[surface.headerGap],
+      marginBottom: spacing[surface.headerMarginBottom],
+    },
+    title: {
+      minWidth: surface.titleMinWidth,
+      flexShrink: surface.titleFlexShrink,
+      color: colors.title.color,
+      fontSize: surface.titleFontSize,
+      fontWeight: surface.titleFontWeight,
+    },
+    spinner: {
+      width: spinnerSize,
+      height: spinnerSize,
+    },
+    badge: {
+      marginLeft: surface.badgeMarginLeft,
+      paddingHorizontal: spacing[surface.badgePaddingHorizontal],
+      paddingVertical: surface.badgePaddingVertical,
+      borderRadius: radius[surface.badgeBorderRadius],
+      backgroundColor: colors.badge.backgroundColor,
+    },
+    badgeText: {
+      color: colors.badgeText.color,
+      fontSize: surface.badgeTextFontSize,
+      fontWeight: surface.badgeTextFontWeight,
+    },
+    bodyRow: {
+      flexDirection: surface.bodyRowFlexDirection,
+      alignItems: surface.bodyRowAlignItems,
+      minWidth: surface.bodyRowMinWidth,
+    },
+    text: {
+      flex: surface.textFlex,
+      minWidth: surface.textMinWidth,
+      color: colors.text.color,
+      fontSize: surface.textFontSize,
+      lineHeight: surface.textLineHeight,
+    },
+    caret: {
+      width: surface.caretWidth,
+      height: surface.caretHeight,
+      marginLeft: surface.caretMarginLeft,
+      borderRadius: surface.caretBorderRadius,
+      backgroundColor: colors.caret.backgroundColor,
     },
   }
 }

@@ -12,6 +12,7 @@ import {
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
+  createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -78,9 +79,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     renderState: viewportStyleState,
   });
   const streamingContentStyleState = conversationChromeStyleState.streamingContent;
-  const streamingContentSurface = streamingContentStyleState.surface;
-  const streamingContentSurfaceColors = streamingContentStyleState.colors;
-  const streamingContentSpinnerSize = streamingContentStyleState.spinner.size;
+  const streamingContentStyleSlots = createChatRuntimeStreamingContentMobileStyleSlots({
+    renderState: streamingContentStyleState,
+    spacing,
+    radius,
+  });
   const connectionBannerStyleState = conversationChromeStyleState.connectionBanner;
   const connectionBannerSurface = connectionBannerStyleState.surface;
   const connectionBannerSurfaceColors = connectionBannerStyleState.colors;
@@ -244,52 +247,28 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...viewportActivityStyleSlots.inlineActivitySpinner,
     },
     streamingContentHeader: {
-      flexDirection: streamingContentSurface.headerFlexDirection,
-      alignItems: streamingContentSurface.headerAlignItems,
-      gap: spacing[streamingContentSurface.headerGap],
-      marginBottom: spacing[streamingContentSurface.headerMarginBottom],
+      ...streamingContentStyleSlots.header,
     },
     streamingContentTitle: {
-      minWidth: streamingContentSurface.titleMinWidth,
-      flexShrink: streamingContentSurface.titleFlexShrink,
-      color: streamingContentSurfaceColors.title.color,
-      fontSize: streamingContentSurface.titleFontSize,
-      fontWeight: streamingContentSurface.titleFontWeight,
+      ...streamingContentStyleSlots.title,
     },
     streamingContentSpinner: {
-      width: streamingContentSpinnerSize,
-      height: streamingContentSpinnerSize,
+      ...streamingContentStyleSlots.spinner,
     },
     streamingContentBadge: {
-      marginLeft: streamingContentSurface.badgeMarginLeft,
-      paddingHorizontal: spacing[streamingContentSurface.badgePaddingHorizontal],
-      paddingVertical: streamingContentSurface.badgePaddingVertical,
-      borderRadius: radius[streamingContentSurface.badgeBorderRadius],
-      backgroundColor: streamingContentSurfaceColors.badge.backgroundColor,
+      ...streamingContentStyleSlots.badge,
     },
     streamingContentBadgeText: {
-      color: streamingContentSurfaceColors.badgeText.color,
-      fontSize: streamingContentSurface.badgeTextFontSize,
-      fontWeight: streamingContentSurface.badgeTextFontWeight,
+      ...streamingContentStyleSlots.badgeText,
     },
     streamingContentBodyRow: {
-      flexDirection: streamingContentSurface.bodyRowFlexDirection,
-      alignItems: streamingContentSurface.bodyRowAlignItems,
-      minWidth: streamingContentSurface.bodyRowMinWidth,
+      ...streamingContentStyleSlots.bodyRow,
     },
     streamingContentText: {
-      flex: streamingContentSurface.textFlex,
-      minWidth: streamingContentSurface.textMinWidth,
-      color: streamingContentSurfaceColors.text.color,
-      fontSize: streamingContentSurface.textFontSize,
-      lineHeight: streamingContentSurface.textLineHeight,
+      ...streamingContentStyleSlots.text,
     },
     streamingContentCaret: {
-      width: streamingContentSurface.caretWidth,
-      height: streamingContentSurface.caretHeight,
-      marginLeft: streamingContentSurface.caretMarginLeft,
-      borderRadius: streamingContentSurface.caretBorderRadius,
-      backgroundColor: streamingContentSurfaceColors.caret.backgroundColor,
+      ...streamingContentStyleSlots.caret,
     },
     messageQueuePanelWrapper: {
       ...messageQueuePanelWrapperStyleSlots.wrapper,

@@ -3272,6 +3272,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
 
 test('uses desktop-style streaming response chrome while mobile assistant content is live', () => {
   assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeStreamingContentMobileStyleSlots/);
   assert.doesNotMatch(screenSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.doesNotMatch(chatMessageChromeSource, /isChatMessageLiveStreamingConversationContent,/);
   assert.match(sessionPresentationSource, /isChatMessageLiveStreamingConversationContent,/);
@@ -3369,22 +3370,25 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /streamingStyles: \{\s+header: styles\.streamingContentHeader,\s+title: styles\.streamingContentTitle,\s+spinner: styles\.streamingContentSpinner,\s+badge: styles\.streamingContentBadge,\s+badgeText: styles\.streamingContentBadgeText,\s+bodyRow: styles\.streamingContentBodyRow,\s+text: styles\.streamingContentText,\s+caret: styles\.streamingContentCaret,\s+\}/);
   assert.doesNotMatch(screenSource, /<MarkdownRenderer[\s\S]*?content=\{visibleMessageContent\}/);
   assert.match(screenSource, /const streamingContentStyleState = conversationChromeStyleState\.streamingContent;/);
-  assert.match(screenSource, /const streamingContentSurface = streamingContentStyleState\.surface;/);
-  assert.match(screenSource, /const streamingContentSurfaceColors = streamingContentStyleState\.colors;/);
-  assert.match(screenSource, /const streamingContentSpinnerSize = streamingContentStyleState\.spinner\.size;/);
-  assert.match(screenSource, /streamingContentHeader:\s*\{[\s\S]*?flexDirection:\s*streamingContentSurface\.headerFlexDirection,[\s\S]*?alignItems:\s*streamingContentSurface\.headerAlignItems,[\s\S]*?gap:\s*spacing\[streamingContentSurface\.headerGap\]/);
-  assert.match(screenSource, /streamingContentTitle:\s*\{[\s\S]*?minWidth:\s*streamingContentSurface\.titleMinWidth,[\s\S]*?flexShrink:\s*streamingContentSurface\.titleFlexShrink,[\s\S]*?color:\s*streamingContentSurfaceColors\.title\.color/);
-  assert.match(screenSource, /streamingContentSpinner:\s*\{[\s\S]*?width:\s*streamingContentSpinnerSize,[\s\S]*?height:\s*streamingContentSpinnerSize/);
-  assert.match(screenSource, /streamingContentBadge:\s*\{[\s\S]*?marginLeft:\s*streamingContentSurface\.badgeMarginLeft,[\s\S]*?backgroundColor:\s*streamingContentSurfaceColors\.badge\.backgroundColor/);
-  assert.match(screenSource, /streamingContentBodyRow:\s*\{[\s\S]*?flexDirection:\s*streamingContentSurface\.bodyRowFlexDirection,[\s\S]*?alignItems:\s*streamingContentSurface\.bodyRowAlignItems,[\s\S]*?minWidth:\s*streamingContentSurface\.bodyRowMinWidth/);
-  assert.match(screenSource, /streamingContentText:\s*\{[\s\S]*?flex:\s*streamingContentSurface\.textFlex,[\s\S]*?minWidth:\s*streamingContentSurface\.textMinWidth,[\s\S]*?color:\s*streamingContentSurfaceColors\.text\.color/);
-  assert.match(screenSource, /streamingContentBadgeText:\s*\{[\s\S]*?color:\s*streamingContentSurfaceColors\.badgeText\.color,[\s\S]*?fontWeight:\s*streamingContentSurface\.badgeTextFontWeight/);
+  assert.match(screenSource, /createChatRuntimeStreamingContentMobileStyleSlots,/);
+  assert.match(screenSource, /const streamingContentStyleSlots = createChatRuntimeStreamingContentMobileStyleSlots\(\{\s+renderState: streamingContentStyleState,\s+spacing,\s+radius,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const streamingContentSurface = streamingContentStyleState\.surface;/);
+  assert.doesNotMatch(screenSource, /const streamingContentSurfaceColors = streamingContentStyleState\.colors;/);
+  assert.doesNotMatch(screenSource, /const streamingContentSpinnerSize = streamingContentStyleState\.spinner\.size;/);
+  assert.match(screenSource, /streamingContentHeader:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.header/);
+  assert.match(screenSource, /streamingContentTitle:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.title/);
+  assert.match(screenSource, /streamingContentSpinner:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.spinner/);
+  assert.match(screenSource, /streamingContentBadge:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.badge/);
+  assert.match(screenSource, /streamingContentBodyRow:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.bodyRow/);
+  assert.match(screenSource, /streamingContentText:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.text/);
+  assert.match(screenSource, /streamingContentBadgeText:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.badgeText/);
   assert.doesNotMatch(screenSource, /resizeMode="contain"/);
   assert.doesNotMatch(screenSource, /mobileRuntimeSurface\.streamingContent\./);
   assert.doesNotMatch(screenSource, /runtimeSurface\.streamingContent/);
   assert.doesNotMatch(screenSource, /mobileRuntimeSurface\.streamingContent\.mobileIcon\./);
   assert.doesNotMatch(screenSource, /color=\{theme\.colors\[mobileRuntimeSurface\.streamingContent\.titleColorToken\]\}/);
-  assert.match(screenSource, /streamingContentCaret:\s*\{[\s\S]*?backgroundColor:\s*streamingContentSurfaceColors\.caret\.backgroundColor/);
+  assert.match(screenSource, /streamingContentCaret:\s*\{[\s\S]*?\.\.\.streamingContentStyleSlots\.caret/);
+  assert.doesNotMatch(screenSource, /backgroundColor:\s*streamingContentSurfaceColors\.caret\.backgroundColor/);
   assert.doesNotMatch(screenSource, /theme\.colors\[streamingContentSurface\./);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileRuntimeStreamingContentIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /getChatRuntimeStreamingContentTitle,/);

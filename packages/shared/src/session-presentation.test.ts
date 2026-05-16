@@ -67,6 +67,7 @@ import {
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
+  createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -3265,6 +3266,56 @@ describe("session presentation semantics", () => {
       spinner: {
         size: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.spinnerSize,
         resizeMode: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.spinnerResizeMode,
+      },
+    })
+    expect(createChatRuntimeStreamingContentMobileStyleSlots({
+      renderState: getChatRuntimeStreamingContentMobileRenderState({
+        isStreaming: true,
+        content: "Hello live",
+        colors: {
+          info: "#2563eb",
+          foreground: "#0f172a",
+        },
+      }),
+      spacing: {
+        xs: 4,
+      },
+      radius: {
+        sm: 6,
+      },
+    })).toMatchObject({
+      header: {
+        flexDirection: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.headerFlexDirection,
+        alignItems: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.headerAlignItems,
+        gap: 4,
+        marginBottom: 4,
+      },
+      title: {
+        color: "#2563eb",
+        fontWeight: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.titleFontWeight,
+      },
+      spinner: {
+        width: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.spinnerSize,
+        height: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.spinnerSize,
+      },
+      badge: {
+        paddingHorizontal: 4,
+        borderRadius: 6,
+        backgroundColor: "rgba(37, 99, 235, 0.12)",
+      },
+      badgeText: {
+        color: "#2563eb",
+        fontWeight: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.badgeTextFontWeight,
+      },
+      bodyRow: {
+        flexDirection: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.bodyRowFlexDirection,
+        alignItems: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.bodyRowAlignItems,
+      },
+      text: {
+        color: "#0f172a",
+      },
+      caret: {
+        backgroundColor: "#2563eb",
       },
     })
     expect(getChatRuntimeStreamingContentMobileRenderState({
