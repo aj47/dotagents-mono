@@ -86,6 +86,7 @@ import {
   createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
+  createChatRuntimeSurfaceChromeMobileProps,
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
@@ -3968,6 +3969,39 @@ describe("session presentation semantics", () => {
     expect(surfaceChrome.frame.keyboardAvoidingBehavior).toBe("padding")
     expect(surfaceChrome.promptEditor.renderState.keyboardAvoidingBehavior).toBe("padding")
     expect(surfaceChrome.promptEditor.renderState.copy.nameLabel).toBe("Name")
+    const surfaceChromeProps = createChatRuntimeSurfaceChromeMobileProps({
+      platform: "ios",
+      colors: viewportChromeColors,
+      keyboardVerticalOffset: 24,
+      dock: "runtime-dock",
+      viewport: "runtime-viewport",
+      threadStates: ["thread-state"],
+      threadStyles: "thread-styles",
+      agentSelectorVisible: true,
+      onAgentSelectorClose: "close-agent-selector",
+      promptEditorVisible: true,
+      promptEditorIsEditing: false,
+      promptEditorNameValue: "Saved prompt",
+      onPromptEditorNameChange: "change-prompt-name",
+      promptEditorContentValue: "Prompt body",
+      onPromptEditorContentChange: "change-prompt-content",
+      promptEditorIsSaving: false,
+      onPromptEditorClose: "close-prompt-editor",
+      onPromptEditorSave: "save-prompt",
+      promptEditorStyles: "prompt-editor-styles",
+    })
+    expect(surfaceChromeProps.frame.keyboardAvoidingBehavior).toBe("padding")
+    expect(surfaceChromeProps.frame.keyboardVerticalOffset).toBe(24)
+    expect(surfaceChromeProps.dock).toBe("runtime-dock")
+    expect(surfaceChromeProps.viewport).toBe("runtime-viewport")
+    expect(surfaceChromeProps.threadList).toEqual({
+      threadStates: ["thread-state"],
+      styles: "thread-styles",
+    })
+    expect(surfaceChromeProps.overlays.agentSelector.visible).toBe(true)
+    expect(surfaceChromeProps.overlays.agentSelector.onClose).toBe("close-agent-selector")
+    expect(surfaceChromeProps.overlays.promptEditor.renderState.copy.nameLabel).toBe("Name")
+    expect(surfaceChromeProps.overlays.promptEditor.styles).toBe("prompt-editor-styles")
     const dockChrome = getChatRuntimeDockChromeMobileRenderState({
       scrollToBottomVisible: true,
       voiceOverlayListening: true,

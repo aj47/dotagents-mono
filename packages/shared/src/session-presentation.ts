@@ -14801,6 +14801,117 @@ export function getChatRuntimeSurfaceChromeMobileRenderState({
   }
 }
 
+export function createChatRuntimeSurfaceChromeMobileProps<
+  TInput extends {
+    platform: ChatRuntimeSurfaceChromeMobileRenderStateInput["platform"]
+    colors: ChatRuntimeSurfaceChromeMobileRenderStateInput["colors"]
+    keyboardVerticalOffset: unknown
+    dock: unknown
+    viewport: unknown
+    threadStates: unknown
+    threadStyles: unknown
+    agentSelectorVisible: unknown
+    onAgentSelectorClose: unknown
+    promptEditorVisible: unknown
+    promptEditorIsEditing: unknown
+    promptEditorNameValue: unknown
+    onPromptEditorNameChange: unknown
+    promptEditorContentValue: unknown
+    onPromptEditorContentChange: unknown
+    promptEditorIsSaving: unknown
+    onPromptEditorClose: unknown
+    onPromptEditorSave: unknown
+    promptEditorStyles: unknown
+  },
+>({
+  platform,
+  colors,
+  keyboardVerticalOffset,
+  dock,
+  viewport,
+  threadStates,
+  threadStyles,
+  agentSelectorVisible,
+  onAgentSelectorClose,
+  promptEditorVisible,
+  promptEditorIsEditing,
+  promptEditorNameValue,
+  onPromptEditorNameChange,
+  promptEditorContentValue,
+  onPromptEditorContentChange,
+  promptEditorIsSaving,
+  onPromptEditorClose,
+  onPromptEditorSave,
+  promptEditorStyles,
+}: TInput): {
+  frame: {
+    keyboardAvoidingBehavior: ChatRuntimeSurfaceChromeMobileRenderState["frame"]["keyboardAvoidingBehavior"]
+    keyboardVerticalOffset: TInput["keyboardVerticalOffset"]
+  }
+  dock: TInput["dock"]
+  overlays: {
+    agentSelector: {
+      visible: TInput["agentSelectorVisible"]
+      onClose: TInput["onAgentSelectorClose"]
+    }
+    promptEditor: {
+      visible: TInput["promptEditorVisible"]
+      renderState: ChatRuntimeSurfaceChromeMobileRenderState["promptEditor"]["renderState"]
+      isEditing: TInput["promptEditorIsEditing"]
+      nameValue: TInput["promptEditorNameValue"]
+      onNameChange: TInput["onPromptEditorNameChange"]
+      contentValue: TInput["promptEditorContentValue"]
+      onContentChange: TInput["onPromptEditorContentChange"]
+      isSaving: TInput["promptEditorIsSaving"]
+      onClose: TInput["onPromptEditorClose"]
+      onSave: TInput["onPromptEditorSave"]
+      styles: TInput["promptEditorStyles"]
+    }
+  }
+  viewport: TInput["viewport"]
+  threadList: {
+    threadStates: TInput["threadStates"]
+    styles: TInput["threadStyles"]
+  }
+} {
+  const surfaceChromeRenderState = getChatRuntimeSurfaceChromeMobileRenderState({
+    colors,
+    platform,
+  })
+
+  return {
+    frame: {
+      keyboardAvoidingBehavior: surfaceChromeRenderState.frame.keyboardAvoidingBehavior,
+      keyboardVerticalOffset,
+    },
+    dock,
+    overlays: {
+      agentSelector: {
+        visible: agentSelectorVisible,
+        onClose: onAgentSelectorClose,
+      },
+      promptEditor: {
+        visible: promptEditorVisible,
+        renderState: surfaceChromeRenderState.promptEditor.renderState,
+        isEditing: promptEditorIsEditing,
+        nameValue: promptEditorNameValue,
+        onNameChange: onPromptEditorNameChange,
+        contentValue: promptEditorContentValue,
+        onContentChange: onPromptEditorContentChange,
+        isSaving: promptEditorIsSaving,
+        onClose: onPromptEditorClose,
+        onSave: onPromptEditorSave,
+        styles: promptEditorStyles,
+      },
+    },
+    viewport,
+    threadList: {
+      threadStates,
+      styles: threadStyles,
+    },
+  }
+}
+
 export function getChatRuntimeDockChromeMobileRenderState({
   scrollToBottomVisible,
   voiceOverlayListening,

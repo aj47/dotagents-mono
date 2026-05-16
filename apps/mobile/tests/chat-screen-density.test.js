@@ -1487,9 +1487,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeSurfaceChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeChromeProps/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeChromeSurface/);
-  assert.match(chatMessageChromeSource, /const surfaceChromeRenderState = getChatRuntimeSurfaceChromeMobileRenderState\(\{\s+colors,\s+platform,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /frame: \{\s+keyboardAvoidingBehavior: surfaceChromeRenderState\.frame\.keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+\}/);
-  assert.match(chatMessageChromeSource, /overlays: \{\s+agentSelector: \{\s+visible: agentSelectorVisible,\s+onClose: onAgentSelectorClose,\s+\},[\s\S]*?promptEditor: \{\s+visible: promptEditorVisible,/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeSurfaceChromeMobileProps,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeSurfaceChromeMobileProps/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeSurfaceChromeMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeSurfaceChromeMobileProps\(\{\s+platform,\s+colors,\s+keyboardVerticalOffset,\s+dock,\s+viewport,\s+threadStates,\s+threadStyles,\s+agentSelectorVisible,\s+onAgentSelectorClose,\s+promptEditorVisible,\s+promptEditorIsEditing,\s+promptEditorNameValue,\s+onPromptEditorNameChange,\s+promptEditorContentValue,\s+onPromptEditorContentChange,\s+promptEditorIsSaving,\s+onPromptEditorClose,\s+onPromptEditorSave,\s+promptEditorStyles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageConversationRuntimeThreadList \{\.\.\.threadList\} \/>/);
   assert.doesNotMatch(screenSource, /<ChatMessageConversationOverlays\s+agentSelector=\{\(\s*<AgentSelectorSheet/);
   assert.doesNotMatch(screenSource, /promptEditor=\{\(\s*<ChatConversationHomePromptEditorModal/);
@@ -5641,7 +5642,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
   assert.match(screenSource, /surface: \{\s+keyboardVerticalOffset: headerHeight,/);
   assert.doesNotMatch(screenSource, /surface: \{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
-  assert.match(chatMessageChromeSource, /renderState: surfaceChromeRenderState\.promptEditor\.renderState,/);
+  assert.match(sessionPresentationSource, /renderState: surfaceChromeRenderState\.promptEditor\.renderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);

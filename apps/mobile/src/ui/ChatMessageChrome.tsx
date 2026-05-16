@@ -81,7 +81,7 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
-  getChatRuntimeSurfaceChromeMobileRenderState,
+  createChatRuntimeSurfaceChromeMobileProps,
   getChatRuntimeViewportChromeMobileRenderState,
   getChatRuntimeDelegationCardMobilePresentationState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
@@ -4036,42 +4036,27 @@ export function createChatMessageRuntimeSurfaceChromeProps<
   onPromptEditorSave,
   promptEditorStyles,
 }: ChatMessageRuntimeSurfaceChromePropsInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask> {
-  const surfaceChromeRenderState = getChatRuntimeSurfaceChromeMobileRenderState({
-    colors,
+  return createChatRuntimeSurfaceChromeMobileProps({
     platform,
-  });
-
-  return {
-    frame: {
-      keyboardAvoidingBehavior: surfaceChromeRenderState.frame.keyboardAvoidingBehavior,
-      keyboardVerticalOffset,
-    },
+    colors,
+    keyboardVerticalOffset,
     dock,
-    overlays: {
-      agentSelector: {
-        visible: agentSelectorVisible,
-        onClose: onAgentSelectorClose,
-      },
-      promptEditor: {
-        visible: promptEditorVisible,
-        renderState: surfaceChromeRenderState.promptEditor.renderState,
-        isEditing: promptEditorIsEditing,
-        nameValue: promptEditorNameValue,
-        onNameChange: onPromptEditorNameChange,
-        contentValue: promptEditorContentValue,
-        onContentChange: onPromptEditorContentChange,
-        isSaving: promptEditorIsSaving,
-        onClose: onPromptEditorClose,
-        onSave: onPromptEditorSave,
-        styles: promptEditorStyles,
-      },
-    },
     viewport,
-    threadList: {
-      threadStates,
-      styles: threadStyles,
-    },
-  };
+    threadStates,
+    threadStyles,
+    agentSelectorVisible,
+    onAgentSelectorClose,
+    promptEditorVisible,
+    promptEditorIsEditing,
+    promptEditorNameValue,
+    onPromptEditorNameChange,
+    promptEditorContentValue,
+    onPromptEditorContentChange,
+    promptEditorIsSaving,
+    onPromptEditorClose,
+    onPromptEditorSave,
+    promptEditorStyles,
+  });
 }
 
 export function createChatMessageRuntimeChromeProps<
