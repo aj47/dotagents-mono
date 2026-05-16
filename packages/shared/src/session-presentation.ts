@@ -1724,6 +1724,19 @@ export interface ChatRuntimeConversationToolExecutionStackMobileState {
   }
 }
 
+export interface ChatRuntimeConversationToolExecutionStackMobileProps {
+  shouldRender: boolean
+  isExpanded: boolean
+  compact: ChatRuntimeToolExecutionStackMobileRenderState["compact"] & {
+    rows: readonly ChatRuntimeToolExecutionCompactPreviewMobileRowState[]
+    onPress: () => void
+  }
+  expanded: ChatRuntimeToolExecutionStackMobileRenderState["expanded"] & {
+    onCollapsePress: () => void
+  }
+  detailRows: readonly ChatRuntimeConversationToolExecutionDetailMobileRowState[]
+}
+
 export type ChatRuntimeConversationTurnDurationMobileState =
   Pick<ChatRuntimeTurnDurationMessageMobileRenderStateInput, "durationMs" | "isLive">
 
@@ -12822,6 +12835,30 @@ export function getChatRuntimeConversationToolExecutionStackMobileState<
     expanded: {
       onToggle: () => onToggleMessageExpansion(messageIndex),
     },
+  }
+}
+
+export function createChatRuntimeConversationToolExecutionStackMobileProps({
+  isExpanded,
+  renderState,
+  compactRows,
+  detailRows,
+  compact,
+  expanded,
+}: ChatRuntimeConversationToolExecutionStackMobileState): ChatRuntimeConversationToolExecutionStackMobileProps {
+  return {
+    shouldRender: renderState.shouldRender,
+    isExpanded,
+    compact: {
+      ...renderState.compact,
+      rows: compactRows,
+      onPress: compact.onToggle,
+    },
+    expanded: {
+      ...renderState.expanded,
+      onCollapsePress: expanded.onToggle,
+    },
+    detailRows,
   }
 }
 

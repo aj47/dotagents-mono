@@ -2744,8 +2744,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const toolExecutionRows = createChatMessageToolExecutionRows/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionRows/);
   assert.doesNotMatch(chatMessageChromeSource, /const executionRows = createChatMessageToolExecutionRows/);
-  assert.match(chatMessageChromeSource, /rows: compactRows,/);
-  assert.match(chatMessageChromeSource, /detailRows,/);
+  assert.doesNotMatch(chatMessageChromeSource, /compactRows,/);
+  assert.match(sessionPresentationSource, /rows: compactRows,/);
+  assert.match(sessionPresentationSource, /detailRows,/);
   assert.match(sessionPresentationSource, /const compactRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result \}\) =>\s+getChatRuntimeToolExecutionCompactPreviewMobileRowState\(\{/);
   assert.doesNotMatch(screenSource, /const tcState = getToolExecutionCallDisplayState\(tcResult\);/);
   assert.doesNotMatch(screenSource, /getToolExecutionDisplayState\(\[result\]\)/);
@@ -2772,11 +2773,13 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /compact: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},\s+expanded: \{\s+onToggle: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\},/);
   assert.match(chatMessageChromeSource, /export function createChatMessageToolExecutionStackProps/);
   assert.match(chatMessageChromeSource, /toolExecutionStack: createChatMessageToolExecutionStackProps\(toolExecutionStack\),/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeConversationToolExecutionStackMobileProps\(input\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationToolExecutionStackMobileProps/);
   assert.doesNotMatch(chatMessageChromeSource, /const stackRenderState = getChatRuntimeToolExecutionStackMobileRenderState\(\{/);
   assert.match(sessionPresentationSource, /const visibility = getToolExecutionMobileVisibilityRenderState\(\{\s+toolCallCount: displayToolCallCount,\s+\}\)/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeDelegationToolPreviewMobileVisibilityRenderState/);
   assert.match(sessionPresentationSource, /const compactRenderState = getToolExecutionDetailMobileExpandControlRenderState\(\)/);
-  assert.match(chatMessageChromeSource, /shouldRender: renderState\.shouldRender,[\s\S]*?\.\.\.renderState\.compact,[\s\S]*?\.\.\.renderState\.expanded,/);
+  assert.match(sessionPresentationSource, /shouldRender: renderState\.shouldRender,[\s\S]*?\.\.\.renderState\.compact,[\s\S]*?\.\.\.renderState\.expanded,/);
   assert.match(sessionPresentationSource, /shouldRender: visibility\.toolExecutionStack\.shouldRender,[\s\S]*?emptyState: \{\s+shouldRender: visibility\.emptyState\.shouldRender,\s+renderState: emptyStateRenderState,/);
   assert.doesNotMatch(screenSource, /shouldRender: toolExecutionVisibilityRenderState\.toolExecutionStack\.shouldRender/);
   assert.doesNotMatch(screenSource, /shouldRender: toolExecutionVisibilityRenderState\.emptyState\.shouldRender/);

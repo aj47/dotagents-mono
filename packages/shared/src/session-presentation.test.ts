@@ -70,6 +70,7 @@ import {
   createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
+  createChatRuntimeConversationToolExecutionStackMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
@@ -6840,13 +6841,28 @@ describe("session presentation semantics", () => {
         renderState: toolExecutionPresentation.pendingToolResultRenderState,
       },
     })
+    const toolExecutionStackProps = createChatRuntimeConversationToolExecutionStackMobileProps(
+      conversationToolExecutionStackState,
+    )
+    expect(toolExecutionStackProps).toMatchObject({
+      shouldRender: true,
+      isExpanded: false,
+      compact: {
+        rows: conversationToolExecutionStackState.compactRows,
+      },
+      detailRows: conversationToolExecutionStackState.detailRows,
+    })
     conversationToolExecutionStackState.detailRows[0].onHeaderPress()
     conversationToolExecutionStackState.detailRows[0].input?.onCopyPress()
     conversationToolExecutionStackState.compact.onToggle()
     conversationToolExecutionStackState.expanded.onToggle()
+    toolExecutionStackProps.compact.onPress()
+    toolExecutionStackProps.expanded.onCollapsePress()
     expect(toolExecutionStackEvents).toEqual([
       "tool:4:2",
       "copy-payload:{\n  \"path\": \"/tmp/file\"\n}",
+      "toggle-message:4",
+      "toggle-message:4",
       "toggle-message:4",
       "toggle-message:4",
     ])

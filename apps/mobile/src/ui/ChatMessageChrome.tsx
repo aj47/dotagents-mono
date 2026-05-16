@@ -81,6 +81,7 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
+  createChatRuntimeConversationToolExecutionStackMobileProps,
   getChatRuntimeMessageThreadMobileStyleRenderState,
   getChatComposerRuntimeDockMobileRenderState,
   createChatRuntimeSurfaceChromeMobileProps,
@@ -6817,28 +6818,10 @@ export function createChatMessageCollapsedPreviewProps({
   };
 }
 
-export function createChatMessageToolExecutionStackProps({
-  isExpanded,
-  renderState,
-  compactRows,
-  detailRows,
-  compact,
-  expanded,
-}: ChatMessageToolExecutionStackPropsInput): ChatMessageConversationBodyProps['toolExecutionStack'] {
-  return {
-    shouldRender: renderState.shouldRender,
-    isExpanded,
-    compact: {
-      ...renderState.compact,
-      rows: compactRows,
-      onPress: compact.onToggle,
-    },
-    expanded: {
-      ...renderState.expanded,
-      onCollapsePress: expanded.onToggle,
-    },
-    detailRows,
-  };
+export function createChatMessageToolExecutionStackProps(
+  input: ChatMessageToolExecutionStackPropsInput,
+): ChatMessageConversationBodyProps['toolExecutionStack'] {
+  return createChatRuntimeConversationToolExecutionStackMobileProps(input);
 }
 
 export function createChatMessageActionStyleSlots(
