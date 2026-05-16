@@ -2249,6 +2249,81 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    icon: unknown
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    icon: unknown
+    label: string
+  },
+  TOnPress = unknown,
+  TStyles extends {
+    button: unknown
+    pressed: unknown
+    placement?: unknown
+    text: unknown
+  } = {
+    button: unknown
+    pressed: unknown
+    placement?: unknown
+    text: unknown
+  },
+> {
+  renderState: TRenderState
+  onPress?: TOnPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    icon: unknown
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    icon: unknown
+    label: string
+  },
+  TOnPress = unknown,
+  TStyles extends {
+    button: unknown
+    pressed: unknown
+    placement?: unknown
+    text: unknown
+  } = {
+    button: unknown
+    pressed: unknown
+    placement?: unknown
+    text: unknown
+  },
+> {
+  container: {
+    onPress: TOnPress | undefined
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string
+    style: (state: { pressed: boolean }) => Array<
+      TStyles["button"] | TStyles["pressed"] | TStyles["placement"] | false | undefined
+    >
+  }
+  icon: TRenderState["icon"]
+  label: {
+    text: string
+    style: TStyles["text"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -15120,6 +15195,54 @@ export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
       style: ({ pressed }) => [
         styles.button,
         pressed && styles.pressed,
+      ],
+    },
+    icon: renderState.icon,
+    label: {
+      text: renderState.label,
+      style: styles.text,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint: string
+    icon: unknown
+    label: string
+  },
+  TOnPress,
+  TStyles extends {
+    button: unknown
+    pressed: unknown
+    placement?: unknown
+    text: unknown
+  },
+>({
+  renderState,
+  onPress,
+  styles,
+}: ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TStyles
+>): ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TStyles
+> {
+  return {
+    container: {
+      onPress,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint,
+      style: ({ pressed }) => [
+        styles.button,
+        pressed && styles.pressed,
+        styles.placement,
       ],
     },
     icon: renderState.icon,

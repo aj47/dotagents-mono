@@ -131,6 +131,7 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
@@ -9132,6 +9133,53 @@ describe("session presentation semantics", () => {
       },
       emptyState: "empty-state-node",
     })
+    const collapseControlParts = createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
+      renderState: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Collapse tool details",
+        accessibilityHint: "Hides tool details",
+        icon: {
+          name: "chevron-up",
+          size: 12,
+          color: "#555",
+        },
+        label: "Collapse",
+      },
+      onPress: "collapse-expanded",
+      styles: {
+        button: "collapse-button",
+        pressed: "collapse-pressed",
+        placement: "collapse-top",
+        text: "collapse-text",
+      },
+    })
+    expect(collapseControlParts).toMatchObject({
+      container: {
+        onPress: "collapse-expanded",
+        accessibilityRole: "button",
+        accessibilityLabel: "Collapse tool details",
+        accessibilityHint: "Hides tool details",
+      },
+      icon: {
+        name: "chevron-up",
+        size: 12,
+        color: "#555",
+      },
+      label: {
+        text: "Collapse",
+        style: "collapse-text",
+      },
+    })
+    expect(collapseControlParts.container.style({ pressed: false })).toEqual([
+      "collapse-button",
+      false,
+      "collapse-top",
+    ])
+    expect(collapseControlParts.container.style({ pressed: true })).toEqual([
+      "collapse-button",
+      "collapse-pressed",
+      "collapse-top",
+    ])
     const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
       renderState: "detail-header-state",
       toolName: "read_file",

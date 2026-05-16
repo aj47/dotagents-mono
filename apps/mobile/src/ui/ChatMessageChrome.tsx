@@ -92,6 +92,7 @@ import {
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
@@ -8055,25 +8056,27 @@ export function ChatMessageToolExecutionCollapseControl({
   onPress,
   styles,
 }: ChatMessageToolExecutionCollapseControlProps) {
+  const collapseControlParts = createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
+    renderState,
+    onPress,
+    styles,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.pressed,
-        styles.placement,
-      ]}
+      onPress={collapseControlParts.container.onPress}
+      accessibilityRole={collapseControlParts.container.accessibilityRole}
+      accessibilityLabel={collapseControlParts.container.accessibilityLabel}
+      accessibilityHint={collapseControlParts.container.accessibilityHint}
+      style={collapseControlParts.container.style}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={collapseControlParts.icon.name}
+        size={collapseControlParts.icon.size}
+        color={collapseControlParts.icon.color}
       />
-      <Text style={styles.text}>
-        {renderState.label}
+      <Text style={collapseControlParts.label.style}>
+        {collapseControlParts.label.text}
       </Text>
     </Pressable>
   );
