@@ -783,6 +783,18 @@ export interface MessageQueuePanelMobileRenderState<T extends Pick<QueuedMessage
   copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
 }
 
+export interface MessageQueuePanelDesktopRenderStateInput<T extends Pick<QueuedMessage, 'id' | 'status'>>
+  extends MessageQueuePanelStateInput {
+  messages: readonly T[];
+}
+
+export interface MessageQueuePanelDesktopRenderState<T extends Pick<QueuedMessage, 'id' | 'status'>> {
+  shouldRender: boolean;
+  panel: MessageQueuePanelState<T>;
+  surface: typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -874,6 +886,26 @@ export function getMessageQueuePanelMobileRenderState<T extends Pick<QueuedMessa
   };
 }
 
+export function getMessageQueuePanelDesktopRenderState<T extends Pick<QueuedMessage, 'id' | 'status'>>({
+  messages,
+  isPaused,
+  isListCollapsed,
+  canProcessNext,
+}: MessageQueuePanelDesktopRenderStateInput<T>): MessageQueuePanelDesktopRenderState<T> {
+  const panel = getMessageQueuePanelState(messages, {
+    isPaused,
+    isListCollapsed,
+    canProcessNext,
+  });
+
+  return {
+    shouldRender: panel.messageCount > 0,
+    panel,
+    surface: getMessageQueuePanelDesktopSurfaceState(),
+    copy: getMessageQueuePanelCopyState(),
+  };
+}
+
 export type QueuedMessageItemPresentation = {
   isLongMessage: boolean;
   isFailed: boolean;
@@ -908,6 +940,17 @@ export interface QueuedMessageItemMobileRenderState {
   copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
   statusColor: string;
   statusMetaColor: string;
+}
+
+export interface QueuedMessageItemDesktopRenderStateInput {
+  message: Pick<QueuedMessage, 'status' | 'addedToHistory' | 'text' | 'errorMessage'>;
+  isExpanded: boolean;
+}
+
+export interface QueuedMessageItemDesktopRenderState {
+  presentation: QueuedMessageItemPresentation;
+  surface: typeof MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
 }
 
 export function getQueuedMessageEditSaveActionState(text: string): QueuedMessageEditSaveActionState {
@@ -992,6 +1035,17 @@ export function getQueuedMessageItemMobileRenderState({
       : presentation.isProcessing
         ? itemColors.processingMetaColor
         : itemColors.metaColor,
+  };
+}
+
+export function getQueuedMessageItemDesktopRenderState({
+  message,
+  isExpanded,
+}: QueuedMessageItemDesktopRenderStateInput): QueuedMessageItemDesktopRenderState {
+  return {
+    presentation: getQueuedMessageItemPresentation(message, isExpanded),
+    surface: getMessageQueuePanelDesktopSurfaceState().item,
+    copy: getMessageQueuePanelCopyState(),
   };
 }
 

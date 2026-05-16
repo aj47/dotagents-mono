@@ -3,21 +3,13 @@ import { cn } from "@renderer/lib/utils"
 import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import {
-  getMessageQueuePanelCopyState,
-  getMessageQueuePanelDesktopSurfaceState,
-  getMessageQueuePanelState,
+  getMessageQueuePanelDesktopRenderState,
   getQueuedMessageEditDraftState,
-  getQueuedMessageItemPresentation,
+  getQueuedMessageItemDesktopRenderState,
   type QueuedMessage,
 } from "@dotagents/shared/message-queue-utils"
 import { useMutation } from "@tanstack/react-query"
 import { desktopMessageQueueClient } from "@renderer/lib/desktop-message-queue-client"
-
-const desktopMessageQueuePanelCopy = getMessageQueuePanelCopyState()
-const desktopMessageQueuePanelSurface = getMessageQueuePanelDesktopSurfaceState()
-const desktopMessageQueueItemSurface = desktopMessageQueuePanelSurface.item
-const desktopMessageQueueCompactSurface = desktopMessageQueuePanelSurface.compact
-const desktopMessageQueueChromeSurface = desktopMessageQueuePanelSurface.panel
 
 interface MessageQueuePanelProps {
   conversationId: string
@@ -40,7 +32,13 @@ function QueuedMessageItem({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editText, setEditText] = useState(message.text)
-  const messagePresentation = getQueuedMessageItemPresentation(message, isExpanded)
+  const desktopQueueItemRenderState = getQueuedMessageItemDesktopRenderState({
+    message,
+    isExpanded,
+  })
+  const messagePresentation = desktopQueueItemRenderState.presentation
+  const desktopMessageQueueItemSurface = desktopQueueItemRenderState.surface
+  const desktopMessageQueuePanelCopy = desktopQueueItemRenderState.copy
   const {
     isLongMessage,
     isFailed,
@@ -280,10 +278,15 @@ export function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const [isListCollapsed, setIsListCollapsed] = useState(false)
   const messageListId = `message-queue-list-${conversationId}`
-  const queuePanelState = getMessageQueuePanelState(messages, {
+  const queuePanelRenderState = getMessageQueuePanelDesktopRenderState({
+    messages,
     isPaused,
     isListCollapsed,
   })
+  const queuePanelState = queuePanelRenderState.panel
+  const desktopMessageQueueCompactSurface = queuePanelRenderState.surface.compact
+  const desktopMessageQueueChromeSurface = queuePanelRenderState.surface.panel
+  const desktopMessageQueuePanelCopy = queuePanelRenderState.copy
 
   // Reset collapse state when switching to a different conversation.
   useEffect(() => {
@@ -308,7 +311,7 @@ export function MessageQueuePanel({
     },
   })
 
-  if (messages.length === 0) {
+  if (!queuePanelRenderState.shouldRender) {
     return null
   }
 

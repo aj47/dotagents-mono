@@ -19,6 +19,7 @@ import {
   getAllMessageQueues,
   getMessageQueueListToggleLabel,
   getMessageQueuePanelCopyState,
+  getMessageQueuePanelDesktopRenderState,
   getMessageQueuePanelDesktopSurfaceState,
   getMessageQueuePanelMobileDockRenderState,
   getMessageQueuePanelMobileIconState,
@@ -33,6 +34,7 @@ import {
   getOperatorMessageQueueTotalMessageCount,
   getQueuedMessageEditDraftState,
   getQueuedMessageEditSubmitState,
+  getQueuedMessageItemDesktopRenderState,
   getQueuedMessageItemPresentation,
   getQueuedMessageItemMobileRenderState,
   getQueuedMessageEditSaveActionState,
@@ -307,6 +309,27 @@ describe('message-queue-utils', () => {
       messageCount: 0,
     }).shouldRender).toBe(false);
     expect(getMessageQueuePanelDesktopSurfaceState()).toBe(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop);
+    const queuedDesktopRenderMessage = makeMessage('desktop-render-message');
+    expect(getMessageQueuePanelDesktopRenderState({
+      messages: [queuedDesktopRenderMessage],
+      isPaused: true,
+      isListCollapsed: true,
+    })).toMatchObject({
+      shouldRender: true,
+      panel: {
+        messageCount: 1,
+        isPaused: true,
+        statusKey: 'paused',
+        compactLabel: '1 queued message (paused)',
+        title: 'Paused Messages (1)',
+        shouldRenderList: false,
+      },
+      surface: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop,
+      copy: MESSAGE_QUEUE_PANEL_PRESENTATION,
+    });
+    expect(getMessageQueuePanelDesktopRenderState({
+      messages: [],
+    }).shouldRender).toBe(false);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingHorizontal).toBe('md');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.wrapper.paddingTop).toBe('sm');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.paddingHorizontal).toBe(12);
@@ -616,6 +639,19 @@ describe('message-queue-utils', () => {
       expansionLabel: 'More',
       expansionAccessibilityLabel: 'Expand queued message',
       errorText: 'Error: timeout',
+    });
+    expect(getQueuedMessageItemDesktopRenderState({
+      message: longFailedMessage,
+      isExpanded: false,
+    })).toMatchObject({
+      presentation: {
+        isLongMessage: true,
+        isFailed: true,
+        statusLabel: 'Failed',
+        errorText: 'Error: timeout',
+      },
+      surface: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item,
+      copy: MESSAGE_QUEUE_PANEL_PRESENTATION,
     });
     expect(getQueuedMessageItemMobileRenderState({
       message: longFailedMessage,

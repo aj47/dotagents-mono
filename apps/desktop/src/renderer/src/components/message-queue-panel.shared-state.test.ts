@@ -5,9 +5,11 @@ const messageQueuePanelSource = readFileSync(new URL("./message-queue-panel.tsx"
 
 describe("desktop message queue panel shared state predicates", () => {
   it("uses shared queued-message eligibility rules instead of local status checks", () => {
-    expect(messageQueuePanelSource).toContain("getQueuedMessageItemPresentation(message, isExpanded)")
+    expect(messageQueuePanelSource).toContain("getQueuedMessageItemDesktopRenderState({")
     expect(messageQueuePanelSource).toContain("getQueuedMessageEditDraftState(editText, message.text)")
-    expect(messageQueuePanelSource).toContain("getMessageQueuePanelState(messages, {")
+    expect(messageQueuePanelSource).toContain("getMessageQueuePanelDesktopRenderState({")
+    expect(messageQueuePanelSource).toContain("const queuePanelState = queuePanelRenderState.panel")
+    expect(messageQueuePanelSource).toContain("!queuePanelRenderState.shouldRender")
     expect(messageQueuePanelSource).toContain("queuePanelState.clearActionState.isDisabled")
     expect(messageQueuePanelSource).toContain("queuePanelState.pauseActionState.isDisabled")
     expect(messageQueuePanelSource).toContain("queuePanelState.items.map")
@@ -20,6 +22,9 @@ describe("desktop message queue panel shared state predicates", () => {
     expect(messageQueuePanelSource).not.toContain('message.status === "failed"')
     expect(messageQueuePanelSource).not.toContain("hasProcessingQueuedMessage(messages)")
     expect(messageQueuePanelSource).not.toContain('messages.some((m) => m.status === "processing")')
+    expect(messageQueuePanelSource).not.toContain("getQueuedMessageItemPresentation")
+    expect(messageQueuePanelSource).not.toContain("getMessageQueuePanelState")
+    expect(messageQueuePanelSource).not.toContain("messages.length === 0")
     expect(messageQueuePanelSource).not.toContain("getQueuedMessageEditSaveActionState(editText)")
     expect(messageQueuePanelSource).not.toContain("getQueuedMessageEditSubmitState(editText, message.text)")
     expect(messageQueuePanelSource).not.toContain("!queuePanelState.canClear")
