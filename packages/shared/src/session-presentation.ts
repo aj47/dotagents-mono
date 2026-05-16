@@ -313,6 +313,7 @@ import {
   getToolExecutionSummaryDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
+  type ToolExecutionCompactMobileStyleRenderState,
   type ToolExecutionDetailMobileCopyButtonRenderState,
   type ToolExecutionDetailCopyFailureAlertState,
   type ToolExecutionDetailMobileHeaderRenderState,
@@ -891,6 +892,80 @@ export interface ChatRuntimeThreadChromeMobileStyleRenderState {
   toolActivityGroup: ReturnType<typeof getToolActivityGroupMobileSurfaceRenderState>
   toolApproval: ReturnType<typeof getChatRuntimeToolApprovalMobileRenderState>
   messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
+}
+
+type ChatRuntimeToolExecutionCompactMobileSurface = ToolExecutionCompactMobileStyleRenderState["surface"]
+
+export type ChatRuntimeToolExecutionCompactMobileRadiusToken =
+  ChatRuntimeToolExecutionCompactMobileSurface["container"]["borderRadius"]
+
+export interface ChatRuntimeToolExecutionCompactMobileStyleSlotsInput {
+  renderState: Pick<ToolExecutionCompactMobileStyleRenderState, "surface" | "statusColors">
+  radius: Readonly<Record<ChatRuntimeToolExecutionCompactMobileRadiusToken, number>>
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeToolExecutionCompactMobileStyleSlots {
+  container: {
+    paddingVertical: number
+    paddingHorizontal: number
+    borderRadius: number
+    gap: number
+  }
+  line: {
+    flexDirection: ChatRuntimeToolExecutionCompactMobileSurface["line"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionCompactMobileSurface["line"]["alignItems"]
+    gap: number
+    paddingVertical: number
+    overflow: ChatRuntimeToolExecutionCompactMobileSurface["line"]["overflow"]
+  }
+  leadingIcon: {
+    width: number
+    alignItems: ChatRuntimeToolExecutionCompactMobileSurface["iconCell"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionCompactMobileSurface["iconCell"]["justifyContent"]
+    flexShrink: number
+  }
+  pressed: {
+    opacity: number
+  }
+  name: {
+    fontFamily: string
+    fontSize: number
+    fontWeight: ChatRuntimeToolExecutionCompactMobileSurface["name"]["fontWeight"]
+    flexShrink: number
+    minWidth: number
+    color: string
+  }
+  namePending: {
+    color: string
+  }
+  nameSuccess: {
+    color: string
+  }
+  nameError: {
+    color: string
+  }
+  statusIndicator: {
+    width: number
+    alignItems: ChatRuntimeToolExecutionCompactMobileSurface["iconCell"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionCompactMobileSurface["iconCell"]["justifyContent"]
+    flexShrink: number
+  }
+  toggleIcon: {
+    width: number
+    alignItems: ChatRuntimeToolExecutionCompactMobileSurface["iconCell"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionCompactMobileSurface["iconCell"]["justifyContent"]
+    flexShrink: number
+  }
+  statusPending: {
+    color: string
+  }
+  statusSuccess: {
+    color: string
+  }
+  statusError: {
+    color: string
+  }
 }
 
 type ChatRuntimeToolActivityGroupMobileSurface = ToolActivityGroupMobileSurfaceRenderState["surface"]
@@ -10126,6 +10201,81 @@ export function createChatRuntimeMessageActionButtonMobileStyleSlots({
     },
     disabled: {
       opacity: button.disabledOpacity,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionCompactMobileStyleSlots({
+  renderState,
+  radius,
+  platform,
+}: ChatRuntimeToolExecutionCompactMobileStyleSlotsInput): ChatRuntimeToolExecutionCompactMobileStyleSlots {
+  const surface = renderState.surface
+  const statusColors = renderState.statusColors
+
+  return {
+    container: {
+      paddingVertical: surface.container.paddingVertical,
+      paddingHorizontal: surface.container.paddingHorizontal,
+      borderRadius: radius[surface.container.borderRadius],
+      gap: surface.container.gap,
+    },
+    line: {
+      flexDirection: surface.line.flexDirection,
+      alignItems: surface.line.alignItems,
+      gap: surface.line.gap,
+      paddingVertical: surface.line.paddingVertical,
+      overflow: surface.line.overflow,
+    },
+    leadingIcon: {
+      width: surface.toolIcon.width,
+      alignItems: surface.iconCell.alignItems,
+      justifyContent: surface.iconCell.justifyContent,
+      flexShrink: surface.iconCell.flexShrink,
+    },
+    pressed: {
+      opacity: surface.pressedOpacity,
+    },
+    name: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.name.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.name.fontSize,
+      fontWeight: surface.name.fontWeight,
+      flexShrink: surface.name.flexShrink,
+      minWidth: surface.name.minWidth,
+      color: statusColors.idle,
+    },
+    namePending: {
+      color: statusColors.pending,
+    },
+    nameSuccess: {
+      color: statusColors.success,
+    },
+    nameError: {
+      color: statusColors.error,
+    },
+    statusIndicator: {
+      width: surface.statusIcon.width,
+      alignItems: surface.iconCell.alignItems,
+      justifyContent: surface.iconCell.justifyContent,
+      flexShrink: surface.iconCell.flexShrink,
+    },
+    toggleIcon: {
+      width: surface.toggleIcon.width,
+      alignItems: surface.iconCell.alignItems,
+      justifyContent: surface.iconCell.justifyContent,
+      flexShrink: surface.iconCell.flexShrink,
+    },
+    statusPending: {
+      color: statusColors.pending,
+    },
+    statusSuccess: {
+      color: statusColors.success,
+    },
+    statusError: {
+      color: statusColors.error,
     },
   }
 }

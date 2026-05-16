@@ -75,6 +75,7 @@ import {
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
+  createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -6226,6 +6227,72 @@ describe("session presentation semantics", () => {
       },
     })
     expect(threadChromeStyle.compactToolExecution.statusColors.success).toBe("#16a34a")
+    expect(createChatRuntimeToolExecutionCompactMobileStyleSlots({
+      renderState: threadChromeStyle.compactToolExecution,
+      radius: { sm: 6 },
+      platform: "android",
+    })).toEqual({
+      container: {
+        paddingVertical: 1,
+        paddingHorizontal: 2,
+        borderRadius: 6,
+        gap: 1,
+      },
+      line: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingVertical: 1,
+        overflow: "hidden",
+      },
+      leadingIcon: {
+        width: 14,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      },
+      pressed: {
+        opacity: 0.7,
+      },
+      name: {
+        fontFamily: "monospace",
+        fontSize: 10,
+        fontWeight: "500",
+        flexShrink: 1,
+        minWidth: 0,
+        color: "#64748b",
+      },
+      namePending: {
+        color: "#0ea5e9",
+      },
+      nameSuccess: {
+        color: "#16a34a",
+      },
+      nameError: {
+        color: "#dc2626",
+      },
+      statusIndicator: {
+        width: 14,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      },
+      toggleIcon: {
+        width: 12,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      },
+      statusPending: {
+        color: "#0ea5e9",
+      },
+      statusSuccess: {
+        color: "#16a34a",
+      },
+      statusError: {
+        color: "#dc2626",
+      },
+    })
     expect(threadChromeStyle.toolExecutionDetail.payloadPreview.numberOfLines).toBe(2)
     expect(threadChromeStyle.toolActivityGroup.colors.countBadge.color).toBe("#0ea5e9")
     expect(threadChromeStyle.toolApproval.title).toBe("Tool Approval Required")

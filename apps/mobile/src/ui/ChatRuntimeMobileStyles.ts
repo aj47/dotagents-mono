@@ -21,6 +21,7 @@ import {
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
+  createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -161,7 +162,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const threadChromeStyleState = chatChromeStyleState.thread;
   const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
-  const compactToolExecution = compactToolExecutionStyleState.surface;
+  const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots({
+    renderState: compactToolExecutionStyleState,
+    radius,
+    platform: mobilePlatform,
+  });
   const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;
   const detailedToolExecution = toolExecutionDetailStyleState.surface;
   const viewportSurfaceColors = viewportStyleState.colors;
@@ -235,7 +240,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     renderState: mobileMessageTurnDurationLiveRenderState,
     platform: mobilePlatform,
   });
-  const toolExecutionStatusColors = compactToolExecutionStyleState.statusColors;
   const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors.byState;
   const inactiveHeaderPinButtonStyleSlot = createChatRuntimeHeaderPinButtonMobileStyleSlot({
     touchTarget: headerPinButton,
@@ -496,7 +500,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...delegationCardStyleSlots.toolPreviewLine,
     },
     delegationToolPreviewStatusIcon: {
-      width: compactToolExecution.statusIcon.width,
+      width: compactToolExecutionStyleSlots.statusIndicator.width,
       ...delegationCardStyleSlots.toolPreviewStatusIcon,
     },
     delegationToolPreviewName: {
@@ -1071,64 +1075,43 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       marginTop: detailedToolExecution.collapseButton.bottomMarginTop,
     },
     toolCallCompactContainer: {
-      paddingVertical: compactToolExecution.container.paddingVertical,
-      paddingHorizontal: compactToolExecution.container.paddingHorizontal,
-      borderRadius: radius[compactToolExecution.container.borderRadius],
-      gap: compactToolExecution.container.gap,
+      ...compactToolExecutionStyleSlots.container,
     },
     toolCallCompactLine: {
-      flexDirection: compactToolExecution.line.flexDirection,
-      alignItems: compactToolExecution.line.alignItems,
-      gap: compactToolExecution.line.gap,
-      paddingVertical: compactToolExecution.line.paddingVertical,
-      overflow: compactToolExecution.line.overflow,
+      ...compactToolExecutionStyleSlots.line,
     },
     toolCallCompactLeadingIcon: {
-      width: compactToolExecution.toolIcon.width,
-      alignItems: compactToolExecution.iconCell.alignItems,
-      justifyContent: compactToolExecution.iconCell.justifyContent,
-      flexShrink: compactToolExecution.iconCell.flexShrink,
+      ...compactToolExecutionStyleSlots.leadingIcon,
     },
     toolCallCompactPressed: {
-      opacity: compactToolExecution.pressedOpacity,
+      ...compactToolExecutionStyleSlots.pressed,
     },
     toolCallCompactName: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(compactToolExecution.name.fontFamilyByPlatform, mobilePlatform),
-      fontSize: compactToolExecution.name.fontSize,
-      fontWeight: compactToolExecution.name.fontWeight,
-      flexShrink: compactToolExecution.name.flexShrink,
-      minWidth: compactToolExecution.name.minWidth,
-      color: toolExecutionStatusColors.idle,
+      ...compactToolExecutionStyleSlots.name,
     },
     toolCallCompactNamePending: {
-      color: toolExecutionStatusColors.pending,
+      ...compactToolExecutionStyleSlots.namePending,
     },
     toolCallCompactNameSuccess: {
-      color: toolExecutionStatusColors.success,
+      ...compactToolExecutionStyleSlots.nameSuccess,
     },
     toolCallCompactNameError: {
-      color: toolExecutionStatusColors.error,
+      ...compactToolExecutionStyleSlots.nameError,
     },
     toolCallCompactStatusIndicator: {
-      width: compactToolExecution.statusIcon.width,
-      alignItems: compactToolExecution.iconCell.alignItems,
-      justifyContent: compactToolExecution.iconCell.justifyContent,
-      flexShrink: compactToolExecution.iconCell.flexShrink,
+      ...compactToolExecutionStyleSlots.statusIndicator,
     },
     toolCallCompactToggleIcon: {
-      width: compactToolExecution.toggleIcon.width,
-      alignItems: compactToolExecution.iconCell.alignItems,
-      justifyContent: compactToolExecution.iconCell.justifyContent,
-      flexShrink: compactToolExecution.iconCell.flexShrink,
+      ...compactToolExecutionStyleSlots.toggleIcon,
     },
     toolCallCompactStatusPending: {
-      color: toolExecutionStatusColors.pending,
+      ...compactToolExecutionStyleSlots.statusPending,
     },
     toolCallCompactStatusSuccess: {
-      color: toolExecutionStatusColors.success,
+      ...compactToolExecutionStyleSlots.statusSuccess,
     },
     toolCallCompactStatusError: {
-      color: toolExecutionStatusColors.error,
+      ...compactToolExecutionStyleSlots.statusError,
     },
     // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
     toolActivityGroupCollapsed: {

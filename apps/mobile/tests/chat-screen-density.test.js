@@ -129,7 +129,10 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.match(screenSource, /toolApprovalTool:\s*\{\s+\.\.\.toolApprovalStyleSlots\.tool,/);
   assert.match(screenSource, /toolApprovalArgumentsPreview:\s*\{\s+\.\.\.toolApprovalStyleSlots\.argumentsPreview,/);
   assert.match(screenSource, /toolApprovalArgumentsFull:\s*\{\s+\.\.\.toolApprovalStyleSlots\.argumentsFull,/);
-  assert.match(screenSource, /toolCallCompactName:\s*\{[\s\S]*?fontFamily:\s*resolveChatRuntimeMobileFontFamily\(compactToolExecution\.name\.fontFamilyByPlatform,\s*mobilePlatform\)/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactMobileStyleSlots\(\{/);
+  assert.match(screenSource, /const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots\(\{\s+renderState: compactToolExecutionStyleState,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.match(sessionPresentationSource, /name:\s*\{[\s\S]*?fontFamily: resolveChatRuntimeMobileFontFamily\(\s+surface\.name\.fontFamilyByPlatform,\s+platform \?\? "",\s+\)/);
+  assert.match(screenSource, /toolCallCompactName:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.name,/);
   assert.match(sessionPresentationSource, /countBadgeText:\s*\{[\s\S]*?fontFamily: resolveChatRuntimeMobileFontFamily\(\s+surface\.countBadge\.fontFamilyByPlatform,\s+platform \?\? "",\s+\)/);
   assert.match(sessionPresentationSource, /previewLine:\s*\{[\s\S]*?fontFamily: resolveChatRuntimeMobileFontFamily\(\s+surface\.preview\.fontFamilyByPlatform,\s+platform \?\? "",\s+\)/);
   assert.match(screenSource, /toolActivityGroupCountBadgeText:\s*\{\s+\.\.\.toolActivityGroupStyleSlots\.countBadgeText,/);
@@ -1022,7 +1025,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /delegationToolPreview:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreview,/);
   assert.match(screenSource, /delegationToolPreviewLabel:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewLabel,/);
   assert.match(screenSource, /delegationToolPreviewLine:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewLine,/);
-  assert.match(screenSource, /delegationToolPreviewStatusIcon:\s*\{\s+width:\s*compactToolExecution\.statusIcon\.width,\s+\.\.\.delegationCardStyleSlots\.toolPreviewStatusIcon,/);
+  assert.match(screenSource, /delegationToolPreviewStatusIcon:\s*\{\s+width:\s*compactToolExecutionStyleSlots\.statusIndicator\.width,\s+\.\.\.delegationCardStyleSlots\.toolPreviewStatusIcon,/);
   assert.match(screenSource, /delegationToolPreviewName:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewName,/);
   assert.match(screenSource, /delegationToolPreviewMoreButton:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewMoreButton,/);
   assert.match(screenSource, /delegationToolPreviewMoreButtonPressed:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewMoreButtonPressed,/);
@@ -2744,11 +2747,16 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /\{tcPresentation\.compactLabel\}/);
   assert.match(screenSource, /const threadChromeStyleState = chatChromeStyleState\.thread;/);
   assert.match(screenSource, /const compactToolExecutionStyleState = threadChromeStyleState\.compactToolExecution;/);
-  assert.match(screenSource, /const compactToolExecution = compactToolExecutionStyleState\.surface;/);
+  assert.match(screenSource, /const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots\(\{\s+renderState: compactToolExecutionStyleState,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const compactToolExecution = compactToolExecutionStyleState\.surface;/);
   assert.match(screenSource, /const detailedToolExecution = toolExecutionDetailStyleState\.surface;/);
-  assert.match(screenSource, /const toolExecutionStatusColors = compactToolExecutionStyleState\.statusColors;/);
+  assert.doesNotMatch(screenSource, /const toolExecutionStatusColors = compactToolExecutionStyleState\.statusColors;/);
   assert.match(screenSource, /const toolExecutionDetailStyleColors = toolExecutionDetailStyleState\.colors;/);
   assert.match(screenSource, /const toolExecutionDetailColorsByState = toolExecutionDetailStyleColors\.byState;/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?radius,[\s\S]*?platform,/);
+  assert.match(sessionPresentationSource, /container:\s*\{[\s\S]*?borderRadius: radius\[surface\.container\.borderRadius\],[\s\S]*?gap: surface\.container\.gap/);
+  assert.match(sessionPresentationSource, /name:\s*\{[\s\S]*?color: statusColors\.idle/);
+  assert.match(sessionPresentationSource, /statusIndicator:\s*\{[\s\S]*?width: surface\.statusIcon\.width,[\s\S]*?alignItems: surface\.iconCell\.alignItems/);
   assert.match(screenSource, /toolExecutionCard:\s*\{[\s\S]*?marginTop:\s*detailedToolExecution\.card\.marginTop,[\s\S]*?\.\.\.toolExecutionDetailColorsByState\.idle/);
   assert.match(screenSource, /toolExecutionPending:\s*toolExecutionDetailColorsByState\.pending/);
   assert.match(screenSource, /toolExecutionSuccess:\s*toolExecutionDetailColorsByState\.success/);
@@ -2796,12 +2804,20 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /toolExecutionExpandedContainer:\s*\{[\s\S]*?position:\s*detailedToolExecution\.expandedContainer\.position/);
   assert.match(screenSource, /toolExecutionCollapseTopButton:\s*\{[\s\S]*?marginBottom:\s*detailedToolExecution\.collapseButton\.topMarginBottom/);
   assert.match(screenSource, /toolExecutionCollapseBottomButton:\s*\{[\s\S]*?marginTop:\s*detailedToolExecution\.collapseButton\.bottomMarginTop/);
-  assert.match(screenSource, /toolCallCompactContainer:\s*\{[\s\S]*?paddingVertical:\s*compactToolExecution\.container\.paddingVertical,[\s\S]*?borderRadius:\s*radius\[compactToolExecution\.container\.borderRadius\]/);
-  assert.match(screenSource, /toolCallCompactLine:\s*\{[\s\S]*?flexDirection:\s*compactToolExecution\.line\.flexDirection,[\s\S]*?alignItems:\s*compactToolExecution\.line\.alignItems,[\s\S]*?overflow:\s*compactToolExecution\.line\.overflow/);
+  assert.match(screenSource, /toolCallCompactContainer:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.container,/);
+  assert.match(screenSource, /toolCallCompactLine:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.line,/);
   assert.doesNotMatch(screenSource, /toolCallCompactLine:\s*\{[^}]*overflow:\s*'hidden'/);
-  assert.match(screenSource, /toolCallCompactLeadingIcon:\s*\{[\s\S]*?width:\s*compactToolExecution\.toolIcon\.width,[\s\S]*?alignItems:\s*compactToolExecution\.iconCell\.alignItems,[\s\S]*?flexShrink:\s*compactToolExecution\.iconCell\.flexShrink/);
-  assert.match(screenSource, /toolCallCompactStatusIndicator:\s*\{[\s\S]*?width:\s*compactToolExecution\.statusIcon\.width,[\s\S]*?justifyContent:\s*compactToolExecution\.iconCell\.justifyContent,[\s\S]*?flexShrink:\s*compactToolExecution\.iconCell\.flexShrink/);
-  assert.match(screenSource, /toolCallCompactToggleIcon:\s*\{[\s\S]*?width:\s*compactToolExecution\.toggleIcon\.width,[\s\S]*?alignItems:\s*compactToolExecution\.iconCell\.alignItems,[\s\S]*?flexShrink:\s*compactToolExecution\.iconCell\.flexShrink/);
+  assert.match(screenSource, /toolCallCompactLeadingIcon:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.leadingIcon,/);
+  assert.match(screenSource, /toolCallCompactPressed:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.pressed,/);
+  assert.match(screenSource, /toolCallCompactName:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.name,/);
+  assert.match(screenSource, /toolCallCompactNamePending:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.namePending,/);
+  assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.nameSuccess,/);
+  assert.match(screenSource, /toolCallCompactNameError:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.nameError,/);
+  assert.match(screenSource, /toolCallCompactStatusIndicator:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.statusIndicator,/);
+  assert.match(screenSource, /toolCallCompactToggleIcon:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.toggleIcon,/);
+  assert.match(screenSource, /toolCallCompactStatusPending:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.statusPending,/);
+  assert.match(screenSource, /toolCallCompactStatusSuccess:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.statusSuccess,/);
+  assert.match(screenSource, /toolCallCompactStatusError:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.statusError,/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.name\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /ellipsizeMode=\{renderState\.name\.ellipsizeMode\}/);
   assert.doesNotMatch(screenSource, /toolCallCompact(LeadingIcon|StatusIndicator|ToggleIcon):\s*\{[^}]*flexShrink:\s*0/);
@@ -3693,8 +3709,10 @@ test('colors compact tool call labels by result status', () => {
   assert.match(chatMessageChromeSource, /nameError: styles\.toolCallCompactNameError/);
   assert.match(chatMessageChromeSource, /renderState\.isSuccess && styles\.nameSuccess/);
   assert.match(chatMessageChromeSource, /renderState\.isError && styles\.nameError/);
-  assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{[\s\S]*?color:\s*toolExecutionStatusColors\.success/);
-  assert.match(screenSource, /toolCallCompactNameError:\s*\{[\s\S]*?color:\s*toolExecutionStatusColors\.error/);
+  assert.match(sessionPresentationSource, /nameSuccess:\s*\{[\s\S]*?color: statusColors\.success/);
+  assert.match(sessionPresentationSource, /nameError:\s*\{[\s\S]*?color: statusColors\.error/);
+  assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.nameSuccess,/);
+  assert.match(screenSource, /toolCallCompactNameError:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.nameError,/);
 });
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
