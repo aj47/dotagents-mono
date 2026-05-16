@@ -5141,6 +5141,22 @@ export interface ChatMessageRuntimeConnectionErrorTurnStateInput {
   partialContent?: string | null
 }
 
+export interface ChatMessageRuntimeRequestSessionChangedInput {
+  currentSessionId?: string | null
+  requestSessionId?: string | null
+}
+
+export interface ChatMessageRuntimeLatestSessionRequestInput {
+  requestSessionId?: string | null
+  requestId: number
+  latestRequestId?: number | null
+}
+
+export interface ChatMessageRuntimeActiveRequestInput {
+  requestId: number
+  activeRequestId: number
+}
+
 export function createChatMessageRuntimeUserTextMessage(
   content: string,
 ): ChatMessageRuntimeUserTextMessage {
@@ -5402,6 +5418,28 @@ export function applyChatMessageRuntimeSettledTurnStatusState(
 ): void {
   statusSetters.setResponding(false)
   statusSetters.setConnectionState(null)
+}
+
+export function hasChatMessageRuntimeRequestSessionChanged({
+  currentSessionId,
+  requestSessionId,
+}: ChatMessageRuntimeRequestSessionChangedInput): boolean {
+  return currentSessionId !== requestSessionId
+}
+
+export function isChatMessageRuntimeLatestSessionRequest({
+  requestSessionId,
+  requestId,
+  latestRequestId,
+}: ChatMessageRuntimeLatestSessionRequestInput): boolean {
+  return requestSessionId ? latestRequestId === requestId : true
+}
+
+export function isChatMessageRuntimeActiveRequest({
+  requestId,
+  activeRequestId,
+}: ChatMessageRuntimeActiveRequestInput): boolean {
+  return activeRequestId === requestId
 }
 
 export function formatChatRuntimeWebConfirmMessage(title: string, message: string): string {

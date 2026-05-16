@@ -297,7 +297,10 @@ import {
   getChatRuntimeViewportMobileRenderState,
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
+  hasChatMessageRuntimeRequestSessionChanged,
   isLastChatMessageRuntimeConversationContent,
+  isChatMessageRuntimeActiveRequest,
+  isChatMessageRuntimeLatestSessionRequest,
   removeChatMessageRuntimePendingTurnMessages,
   replaceChatMessageRuntimeTurnMessages,
   updateLastChatMessageRuntimeAssistantErrorMessage,
@@ -840,6 +843,36 @@ describe("session presentation semantics", () => {
       { role: "user", content: "Next" },
       { role: "assistant", content: "Error: Queue failed" },
     ])
+    expect(hasChatMessageRuntimeRequestSessionChanged({
+      currentSessionId: "session-a",
+      requestSessionId: "session-b",
+    })).toBe(true)
+    expect(hasChatMessageRuntimeRequestSessionChanged({
+      currentSessionId: "session-a",
+      requestSessionId: "session-a",
+    })).toBe(false)
+    expect(isChatMessageRuntimeLatestSessionRequest({
+      requestId: 2,
+      latestRequestId: 1,
+    })).toBe(true)
+    expect(isChatMessageRuntimeLatestSessionRequest({
+      requestSessionId: "session-a",
+      requestId: 2,
+      latestRequestId: 2,
+    })).toBe(true)
+    expect(isChatMessageRuntimeLatestSessionRequest({
+      requestSessionId: "session-a",
+      requestId: 2,
+      latestRequestId: 1,
+    })).toBe(false)
+    expect(isChatMessageRuntimeActiveRequest({
+      requestId: 3,
+      activeRequestId: 3,
+    })).toBe(true)
+    expect(isChatMessageRuntimeActiveRequest({
+      requestId: 3,
+      activeRequestId: 4,
+    })).toBe(false)
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.buttonGlyph).toBe("⏹")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.mobileIcon).toMatchObject({
       name: "stop-circle-outline",

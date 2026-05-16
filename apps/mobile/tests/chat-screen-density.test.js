@@ -4795,9 +4795,12 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /const \{\s+activeRequestIdRef,\s+currentSessionIdRef,\s+\} = useChatRuntimeRequestTrackingState\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestDebugState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestTrackingState/);
-  assert.match(chatMessageChromeSource, /export function hasChatMessageRuntimeRequestSessionChanged/);
-  assert.match(chatMessageChromeSource, /export function isChatMessageRuntimeLatestSessionRequest/);
-  assert.match(chatMessageChromeSource, /export function isChatMessageRuntimeActiveRequest/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function hasChatMessageRuntimeRequestSessionChanged/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function isChatMessageRuntimeLatestSessionRequest/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function isChatMessageRuntimeActiveRequest/);
+  assert.match(sessionPresentationSource, /export function hasChatMessageRuntimeRequestSessionChanged/);
+  assert.match(sessionPresentationSource, /export function isChatMessageRuntimeLatestSessionRequest/);
+  assert.match(sessionPresentationSource, /export function isChatMessageRuntimeActiveRequest/);
   assert.match(chatMessageChromeSource, /const \[requestDebugText, setRequestDebugText\] = useState\(''\);/);
   assert.match(chatMessageChromeSource, /const clearRequestDebugText = useCallback\(\(\) => \{\s+setRequestDebugText\(''\);\s+\}, \[\]\);/);
   assert.match(chatMessageChromeSource, /const activeRequestIdRef = useRef<number>\(0\);/);

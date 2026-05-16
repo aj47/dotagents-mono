@@ -39,9 +39,6 @@ import {
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeProgressTurnState,
   applyChatMessageRuntimeProgressTurnStatusState,
-  hasChatMessageRuntimeRequestSessionChanged,
-  isChatMessageRuntimeLatestSessionRequest,
-  isChatMessageRuntimeActiveRequest,
   useChatMessageRuntimeTurnDurations,
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
@@ -115,6 +112,9 @@ import {
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
+  hasChatMessageRuntimeRequestSessionChanged,
+  isChatMessageRuntimeActiveRequest,
+  isChatMessageRuntimeLatestSessionRequest,
 } from '@dotagents/shared/session-presentation';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';

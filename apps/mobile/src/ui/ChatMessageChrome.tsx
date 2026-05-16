@@ -900,22 +900,6 @@ type ChatRuntimeRequestTrackingStateInput = {
   currentSessionId: string | null;
 };
 
-type ChatMessageRuntimeRequestSessionChangedInput = {
-  currentSessionId?: string | null;
-  requestSessionId?: string | null;
-};
-
-type ChatMessageRuntimeLatestSessionRequestInput = {
-  requestSessionId?: string | null;
-  requestId: number;
-  latestRequestId?: number | null;
-};
-
-type ChatMessageRuntimeActiveRequestInput = {
-  requestId: number;
-  activeRequestId: number;
-};
-
 type ChatRuntimeRequestTrackingState = {
   activeRequestIdRef: ChatRuntimeMutableRef<number>;
   currentSessionIdRef: ChatRuntimeMutableRef<string | null>;
@@ -4298,28 +4282,6 @@ export function applyChatMessageRuntimeProgressTurnStatusState(
 ): void {
   statusSetters.setConversationState(progressTurnState.conversationState);
   statusSetters.setLatestStepSummary(progressTurnState.latestStepSummary ?? null);
-}
-
-export function hasChatMessageRuntimeRequestSessionChanged({
-  currentSessionId,
-  requestSessionId,
-}: ChatMessageRuntimeRequestSessionChangedInput): boolean {
-  return currentSessionId !== requestSessionId;
-}
-
-export function isChatMessageRuntimeLatestSessionRequest({
-  requestSessionId,
-  requestId,
-  latestRequestId,
-}: ChatMessageRuntimeLatestSessionRequestInput): boolean {
-  return requestSessionId ? latestRequestId === requestId : true;
-}
-
-export function isChatMessageRuntimeActiveRequest({
-  requestId,
-  activeRequestId,
-}: ChatMessageRuntimeActiveRequestInput): boolean {
-  return activeRequestId === requestId;
 }
 
 export function createChatMessageRuntimeSessionDisplayMessages<
