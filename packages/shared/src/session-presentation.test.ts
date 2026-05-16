@@ -133,6 +133,7 @@ import {
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
+  createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
@@ -9454,6 +9455,22 @@ describe("session presentation semantics", () => {
       label: {
         text: "Waiting...",
         style: "pending-text",
+      },
+    })
+    const emptyStateParts = createChatRuntimeToolExecutionEmptyStateMobilePropsParts({
+      renderState: {
+        accessibilityRole: "text",
+        accessibilityLabel: "No tool calls",
+        label: "No tool calls",
+      },
+      style: "empty-state-text",
+    })
+    expect(emptyStateParts).toEqual({
+      label: {
+        accessibilityRole: "text",
+        accessibilityLabel: "No tool calls",
+        style: "empty-state-text",
+        text: "No tool calls",
       },
     })
     const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({

@@ -3375,9 +3375,15 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{toolExecutionDetailEmptyState\}\s+style=\{styles\.toolResponsePendingText\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{emptyState\.renderState\}\s+style=\{emptyStateTextStyle\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionEmptyStateMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const emptyStateParts = createChatRuntimeToolExecutionEmptyStateMobilePropsParts\(\{\s+renderState,\s+style,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{emptyStateParts\.label\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{emptyStateParts\.label\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /style=\{emptyStateParts\.label\.style\}/);
+  assert.match(chatMessageChromeSource, /\{emptyStateParts\.label\.text\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageToolExecutionPayloadMeta/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState[\s\S]*?\{renderState\.label\}[\s\S]*?export function ChatMessageToolExecutionPayloadMeta/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{toolExecutionDetailEmptyState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{toolExecutionDetailEmptyState\.accessibilityLabel\}/);
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailEmptyState\.label\}/);

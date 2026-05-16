@@ -2306,6 +2306,42 @@ export interface ChatRuntimeToolExecutionPendingResultMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    label: string
+  },
+  TStyle = unknown,
+> {
+  renderState: TRenderState
+  style: TStyle
+}
+
+export interface ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    label: string
+  },
+  TStyle = unknown,
+> {
+  label: {
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStyle
+    text: string
+  }
+}
+
 export interface ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TResultBadge = unknown,
@@ -15126,6 +15162,33 @@ export function createChatRuntimeToolExecutionPendingResultMobilePropsParts<
     label: {
       text: renderState.label,
       style: styles.text,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    label: string
+  },
+  TStyle,
+>({
+  renderState,
+  style,
+}: ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput<
+  TRenderState,
+  TStyle
+>): ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
+  TRenderState,
+  TStyle
+> {
+  return {
+    label: {
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      style,
+      text: renderState.label,
     },
   }
 }

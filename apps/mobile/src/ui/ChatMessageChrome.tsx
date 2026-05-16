@@ -93,6 +93,7 @@ import {
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
+  createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
@@ -8336,13 +8337,18 @@ export function ChatMessageToolExecutionEmptyState({
   renderState,
   style,
 }: ChatMessageToolExecutionEmptyStateProps) {
+  const emptyStateParts = createChatRuntimeToolExecutionEmptyStateMobilePropsParts({
+    renderState,
+    style,
+  });
+
   return (
     <Text
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      style={style}
+      accessibilityRole={emptyStateParts.label.accessibilityRole}
+      accessibilityLabel={emptyStateParts.label.accessibilityLabel}
+      style={emptyStateParts.label.style}
     >
-      {renderState.label}
+      {emptyStateParts.label.text}
     </Text>
   );
 }
