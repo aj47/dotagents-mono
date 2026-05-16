@@ -26,7 +26,9 @@ import {
   type HandsFreeComposerMobileSurfaceColorPalette,
 } from "./hands-free-controller"
 import {
+  buildChatImageAttachmentMessage,
   getChatImageAttachmentMobileRenderState,
+  type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileSurfaceColorPalette,
 } from "./conversation-media-assets"
 import {
@@ -2646,6 +2648,16 @@ export interface ChatRuntimeToolApprovalCardMobileRenderState {
   argumentsContent: string
 }
 
+export interface ChatComposerRuntimeDraftMessageStateInput {
+  input?: string | null
+  pendingImages?: readonly ChatImageAttachmentMessageInput[]
+}
+
+export interface ChatComposerRuntimeDraftMessageState {
+  content: string
+  hasContent: boolean
+}
+
 export type ChatComposerMobileIconName =
   | typeof CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon.name
   | typeof CHAT_COMPOSER_PRESENTATION.textToSpeech.mobileIcon.enabledName
@@ -5181,6 +5193,17 @@ export function getChatComposerVoiceOverlayLabel({
   return willCancel
     ? CHAT_COMPOSER_PRESENTATION.voiceOverlay.releaseToEditLabel
     : CHAT_COMPOSER_PRESENTATION.voiceOverlay.releaseToSendLabel
+}
+
+export function getChatComposerRuntimeDraftMessageState({
+  input = "",
+  pendingImages = [],
+}: ChatComposerRuntimeDraftMessageStateInput): ChatComposerRuntimeDraftMessageState {
+  const content = buildChatImageAttachmentMessage(input ?? "", pendingImages)
+  return {
+    content,
+    hasContent: content.trim().length > 0,
+  }
 }
 
 export function getChatComposerMobileVisibilityRenderState({

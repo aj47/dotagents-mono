@@ -74,6 +74,7 @@ import {
   getChatComposerQueueMobileRenderState,
   getChatComposerRuntimeChromeMobileStyleRenderState,
   getChatComposerRuntimeControlMobileRenderState,
+  getChatComposerRuntimeDraftMessageState,
   getChatComposerRuntimeDockMobileRenderState,
   getChatComposerSubmitMobileActionState,
   getChatComposerSubmitMobileIconState,
@@ -697,6 +698,23 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.sessionActionLabel).toBe("Stop Agent")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.sessionPendingActionLabel).toBe("Stopping...")
     expect(getChatComposerCopyState()).toBe(CHAT_COMPOSER_PRESENTATION)
+    expect(getChatComposerRuntimeDraftMessageState({
+      input: "  Describe this  ",
+      pendingImages: [{
+        name: "Diagram [v1]",
+        dataUrl: "data:image/png;base64,abc",
+      }],
+    })).toEqual({
+      content: "Describe this\n\n![Diagram v1](data:image/png;base64,abc)",
+      hasContent: true,
+    })
+    expect(getChatComposerRuntimeDraftMessageState({
+      input: "  ",
+      pendingImages: [],
+    })).toEqual({
+      content: "",
+      hasContent: false,
+    })
     expect(CHAT_COMPOSER_PRESENTATION.field.accessibilityLabel).toBe("Message composer")
     expect(CHAT_COMPOSER_PRESENTATION.imageAttachment.glyph).toBe("🖼️")
     expect(CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon).toMatchObject({

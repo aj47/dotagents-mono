@@ -66,7 +66,6 @@ import {
 } from '@dotagents/shared/agent-progress';
 import type { AgentConversationState } from '@dotagents/shared/conversation-state';
 import {
-  buildChatImageAttachmentMessage,
   extractDataImageMarkdownReferences,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
@@ -143,6 +142,7 @@ import {
   getChatComposerMobileControlState,
   getChatComposerQueueMobileActionState,
   getChatComposerRuntimeControlMobileRenderState,
+  getChatComposerRuntimeDraftMessageState,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantErrorContent,
   formatChatRuntimeAssistantFeedbackContent,
@@ -6159,22 +6159,29 @@ export function useChatComposerRuntimeSubmissionActionsState({
   clearComposerDraft,
   setDebugInfo,
 }: ChatComposerRuntimeSubmissionActionsStateInput): ChatComposerRuntimeSubmissionActionsState {
-  const composerHasContent = hasChatComposerRuntimeMessageContent(input, pendingImages);
+  const draftMessageState = useMemo(
+    () => getChatComposerRuntimeDraftMessageState({
+      input,
+      pendingImages,
+    }),
+    [input, pendingImages],
+  );
+  const composerHasContent = draftMessageState.hasContent;
 
   const sendComposerInput = useCallback(() => {
-    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
+    const composedMessage = draftMessageState.content;
     if (!composedMessage.trim()) return;
     void send(composedMessage, { fromComposer: true });
-  }, [input, pendingImages, send]);
+  }, [draftMessageState.content, send]);
 
   const queueComposerInput = useCallback(() => {
-    const composedMessage = buildChatComposerRuntimeMessageContent(input, pendingImages);
+    const composedMessage = draftMessageState.content;
     if (!composedMessage.trim()) return;
 
     queue.enqueue(currentConversationId, composedMessage, currentConversationId);
     clearComposerDraft();
     setDebugInfo(getChatComposerQueueMobileActionState().debugMessage);
-  }, [clearComposerDraft, currentConversationId, input, pendingImages, queue, setDebugInfo]);
+  }, [clearComposerDraft, currentConversationId, draftMessageState.content, queue, setDebugInfo]);
 
   return {
     composerHasContent,
@@ -8754,13 +8761,6 @@ export function createChatComposerRuntimeDockChromeProps({
   };
 }
 
-export function hasChatComposerRuntimeMessageContent(
-  input: string,
-  pendingImages: readonly ChatComposerRuntimeImageAttachment[],
-): boolean {
-  return input.trim().length > 0 || pendingImages.length > 0;
-}
-
 export function mergeChatComposerRuntimeVoiceText(
   currentText?: string | null,
   finalizedText?: string | null,
@@ -8780,13 +8780,6 @@ export function inferChatComposerRuntimeImageMimeType(
   source: ImageMimeTypeSource,
 ): string | null {
   return inferImageMimeTypeFromSource(source);
-}
-
-export function buildChatComposerRuntimeMessageContent(
-  input: string,
-  pendingImages: readonly ChatComposerRuntimeImageAttachment[],
-): string {
-  return buildChatImageAttachmentMessage(input, pendingImages);
 }
 
 export function resolveChatRuntimeMobileFontFamily(
