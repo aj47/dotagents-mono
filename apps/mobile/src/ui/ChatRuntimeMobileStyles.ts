@@ -19,6 +19,7 @@ import {
   createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
+  createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -164,8 +165,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const detailedToolExecution = toolExecutionDetailStyleState.surface;
   const viewportSurfaceColors = viewportStyleState.colors;
   const toolActivityGroupStyleState = threadChromeStyleState.toolActivityGroup;
-  const toolActivityGroupSurface = toolActivityGroupStyleState.surface;
-  const toolActivityGroupSurfaceColors = toolActivityGroupStyleState.colors;
+  const toolActivityGroupStyleSlots = createChatRuntimeToolActivityGroupMobileStyleSlots({
+    renderState: toolActivityGroupStyleState,
+    spacing,
+    radius,
+    platform: mobilePlatform,
+  });
   const imageAttachmentSurfaceColors = imageAttachmentStyleState.colors;
   const handsFreeSurfaceColors = handsFreeStyleState.colors;
   const toolApprovalStyleState = threadChromeStyleState.toolApproval;
@@ -1184,62 +1189,28 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     },
     // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
     toolActivityGroupCollapsed: {
-      paddingVertical: toolActivityGroupSurface.collapsed.paddingVertical,
-      paddingHorizontal: spacing[toolActivityGroupSurface.collapsed.paddingHorizontal],
-      borderRadius: radius[toolActivityGroupSurface.collapsed.borderRadius],
-      borderWidth: toolActivityGroupSurface.collapsed.borderWidth,
-      borderColor: toolActivityGroupSurfaceColors.collapsed.borderColor,
-      borderLeftWidth: toolActivityGroupSurface.collapsed.borderLeftWidth,
-      borderLeftColor: toolActivityGroupSurfaceColors.collapsed.borderLeftColor,
-      backgroundColor: toolActivityGroupSurfaceColors.collapsed.backgroundColor,
-      marginBottom: toolActivityGroupSurface.collapsed.marginBottom,
+      ...toolActivityGroupStyleSlots.collapsed,
     },
     toolActivityGroupPressed: {
-      opacity: toolActivityGroupSurface.pressedOpacity,
+      ...toolActivityGroupStyleSlots.pressed,
     },
     toolActivityGroupHeaderRow: {
-      flexDirection: toolActivityGroupSurface.headerRow.flexDirection,
-      alignItems: toolActivityGroupSurface.headerRow.alignItems,
-      gap: toolActivityGroupSurface.headerRow.gap,
-      overflow: toolActivityGroupSurface.headerRow.overflow,
+      ...toolActivityGroupStyleSlots.headerRow,
     },
     toolActivityGroupCountBadge: {
-      minWidth: toolActivityGroupSurface.countBadge.minWidth,
-      paddingHorizontal: toolActivityGroupSurface.countBadge.paddingHorizontal,
-      paddingVertical: toolActivityGroupSurface.countBadge.paddingVertical,
-      borderRadius: radius[toolActivityGroupSurface.countBadge.borderRadius],
-      alignItems: toolActivityGroupSurface.countBadge.alignItems,
-      justifyContent: toolActivityGroupSurface.countBadge.justifyContent,
-      backgroundColor: toolActivityGroupSurfaceColors.countBadge.backgroundColor,
+      ...toolActivityGroupStyleSlots.countBadge,
     },
     toolActivityGroupCountBadgeText: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.countBadge.fontFamilyByPlatform, mobilePlatform),
-      fontSize: toolActivityGroupSurface.countBadge.fontSize,
-      fontWeight: toolActivityGroupSurface.countBadge.fontWeight,
-      color: toolActivityGroupSurfaceColors.countBadge.color,
+      ...toolActivityGroupStyleSlots.countBadgeText,
     },
     toolActivityGroupPreviewLine: {
-      fontFamily: resolveChatRuntimeMobileFontFamily(toolActivityGroupSurface.preview.fontFamilyByPlatform, mobilePlatform),
-      fontSize: toolActivityGroupSurface.preview.fontSize,
-      color: toolActivityGroupSurfaceColors.preview.color,
-      flexShrink: toolActivityGroupSurface.preview.flexShrink,
-      minWidth: toolActivityGroupSurface.preview.minWidth,
+      ...toolActivityGroupStyleSlots.previewLine,
     },
     toolActivityGroupFooterButton: {
-      alignSelf: toolActivityGroupSurface.footerButton.alignSelf,
-      flexDirection: toolActivityGroupSurface.footerButton.flexDirection,
-      alignItems: toolActivityGroupSurface.footerButton.alignItems,
-      gap: toolActivityGroupSurface.footerButton.gap,
-      marginTop: toolActivityGroupSurface.footerButton.marginTop,
-      marginBottom: toolActivityGroupSurface.footerButton.marginBottom,
-      paddingHorizontal: spacing[toolActivityGroupSurface.footerButton.paddingHorizontal],
-      paddingVertical: toolActivityGroupSurface.footerButton.paddingVertical,
-      borderRadius: radius[toolActivityGroupSurface.footerButton.borderRadius],
+      ...toolActivityGroupStyleSlots.footerButton,
     },
     toolActivityGroupFooterText: {
-      fontSize: toolActivityGroupSurface.footerText.fontSize,
-      fontWeight: toolActivityGroupSurface.footerText.fontWeight,
-      color: toolActivityGroupSurfaceColors.footerText.color,
+      ...toolActivityGroupStyleSlots.footerText,
     },
     toolParamsSection: {
       paddingHorizontal: spacing[detailedToolExecution.blockSection.paddingHorizontal],

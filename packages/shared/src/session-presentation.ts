@@ -366,6 +366,7 @@ import {
   type ToolActivityGroupMobileColorPalette,
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
+  type ToolActivityGroupMobileSurfaceRenderState,
 } from "./tool-activity-grouping"
 export {
   TOOL_GROUP_MIN_SIZE,
@@ -890,6 +891,85 @@ export interface ChatRuntimeThreadChromeMobileStyleRenderState {
   toolActivityGroup: ReturnType<typeof getToolActivityGroupMobileSurfaceRenderState>
   toolApproval: ReturnType<typeof getChatRuntimeToolApprovalMobileRenderState>
   messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
+}
+
+type ChatRuntimeToolActivityGroupMobileSurface = ToolActivityGroupMobileSurfaceRenderState["surface"]
+
+export type ChatRuntimeToolActivityGroupMobileSpacingToken =
+  | ChatRuntimeToolActivityGroupMobileSurface["collapsed"]["paddingHorizontal"]
+  | ChatRuntimeToolActivityGroupMobileSurface["footerButton"]["paddingHorizontal"]
+
+export type ChatRuntimeToolActivityGroupMobileRadiusToken =
+  | ChatRuntimeToolActivityGroupMobileSurface["collapsed"]["borderRadius"]
+  | ChatRuntimeToolActivityGroupMobileSurface["countBadge"]["borderRadius"]
+  | ChatRuntimeToolActivityGroupMobileSurface["footerButton"]["borderRadius"]
+
+export interface ChatRuntimeToolActivityGroupMobileStyleSlotsInput {
+  renderState: Pick<ToolActivityGroupMobileSurfaceRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeToolActivityGroupMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeToolActivityGroupMobileRadiusToken, number>>
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeToolActivityGroupMobileStyleSlots {
+  collapsed: {
+    paddingVertical: number
+    paddingHorizontal: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    borderLeftWidth: number
+    borderLeftColor: string
+    backgroundColor: string
+    marginBottom: number
+  }
+  pressed: {
+    opacity: number
+  }
+  headerRow: {
+    flexDirection: ChatRuntimeToolActivityGroupMobileSurface["headerRow"]["flexDirection"]
+    alignItems: ChatRuntimeToolActivityGroupMobileSurface["headerRow"]["alignItems"]
+    gap: number
+    overflow: ChatRuntimeToolActivityGroupMobileSurface["headerRow"]["overflow"]
+  }
+  countBadge: {
+    minWidth: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    alignItems: ChatRuntimeToolActivityGroupMobileSurface["countBadge"]["alignItems"]
+    justifyContent: ChatRuntimeToolActivityGroupMobileSurface["countBadge"]["justifyContent"]
+    backgroundColor: string
+  }
+  countBadgeText: {
+    fontFamily: string
+    fontSize: number
+    fontWeight: ChatRuntimeToolActivityGroupMobileSurface["countBadge"]["fontWeight"]
+    color: string
+  }
+  previewLine: {
+    fontFamily: string
+    fontSize: number
+    color: string
+    flexShrink: number
+    minWidth: number
+  }
+  footerButton: {
+    alignSelf: ChatRuntimeToolActivityGroupMobileSurface["footerButton"]["alignSelf"]
+    flexDirection: ChatRuntimeToolActivityGroupMobileSurface["footerButton"]["flexDirection"]
+    alignItems: ChatRuntimeToolActivityGroupMobileSurface["footerButton"]["alignItems"]
+    gap: number
+    marginTop: number
+    marginBottom: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+  }
+  footerText: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolActivityGroupMobileSurface["footerText"]["fontWeight"]
+    color: string
+  }
 }
 
 export type ChatRuntimeConversationMessageMobileRenderStateInput =
@@ -9743,6 +9823,83 @@ export function createChatRuntimeMessageActionButtonMobileStyleSlots({
     },
     disabled: {
       opacity: button.disabledOpacity,
+    },
+  }
+}
+
+export function createChatRuntimeToolActivityGroupMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  platform,
+}: ChatRuntimeToolActivityGroupMobileStyleSlotsInput): ChatRuntimeToolActivityGroupMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    collapsed: {
+      paddingVertical: surface.collapsed.paddingVertical,
+      paddingHorizontal: spacing[surface.collapsed.paddingHorizontal],
+      borderRadius: radius[surface.collapsed.borderRadius],
+      borderWidth: surface.collapsed.borderWidth,
+      borderColor: colors.collapsed.borderColor,
+      borderLeftWidth: surface.collapsed.borderLeftWidth,
+      borderLeftColor: colors.collapsed.borderLeftColor,
+      backgroundColor: colors.collapsed.backgroundColor,
+      marginBottom: surface.collapsed.marginBottom,
+    },
+    pressed: {
+      opacity: surface.pressedOpacity,
+    },
+    headerRow: {
+      flexDirection: surface.headerRow.flexDirection,
+      alignItems: surface.headerRow.alignItems,
+      gap: surface.headerRow.gap,
+      overflow: surface.headerRow.overflow,
+    },
+    countBadge: {
+      minWidth: surface.countBadge.minWidth,
+      paddingHorizontal: surface.countBadge.paddingHorizontal,
+      paddingVertical: surface.countBadge.paddingVertical,
+      borderRadius: radius[surface.countBadge.borderRadius],
+      alignItems: surface.countBadge.alignItems,
+      justifyContent: surface.countBadge.justifyContent,
+      backgroundColor: colors.countBadge.backgroundColor,
+    },
+    countBadgeText: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.countBadge.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.countBadge.fontSize,
+      fontWeight: surface.countBadge.fontWeight,
+      color: colors.countBadge.color,
+    },
+    previewLine: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.preview.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.preview.fontSize,
+      color: colors.preview.color,
+      flexShrink: surface.preview.flexShrink,
+      minWidth: surface.preview.minWidth,
+    },
+    footerButton: {
+      alignSelf: surface.footerButton.alignSelf,
+      flexDirection: surface.footerButton.flexDirection,
+      alignItems: surface.footerButton.alignItems,
+      gap: surface.footerButton.gap,
+      marginTop: surface.footerButton.marginTop,
+      marginBottom: surface.footerButton.marginBottom,
+      paddingHorizontal: spacing[surface.footerButton.paddingHorizontal],
+      paddingVertical: surface.footerButton.paddingVertical,
+      borderRadius: radius[surface.footerButton.borderRadius],
+    },
+    footerText: {
+      fontSize: surface.footerText.fontSize,
+      fontWeight: surface.footerText.fontWeight,
+      color: colors.footerText.color,
     },
   }
 }

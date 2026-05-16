@@ -73,6 +73,7 @@ import {
   createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
+  createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
@@ -2075,6 +2076,75 @@ describe("session presentation semantics", () => {
     expect(runtimeChromeStyle.messageQueuePanelWrapper.wrapper.paddingHorizontal).toBe("md")
     expect(runtimeChromeStyle.headerActionButton.minWidth).toBe(44)
     expect(runtimeChromeStyle.thread.toolApproval.title).toBe("Tool Approval Required")
+    expect(createChatRuntimeToolActivityGroupMobileStyleSlots({
+      renderState: runtimeChromeStyle.thread.toolActivityGroup,
+      spacing: {
+        xs: 4,
+      },
+      radius: {
+        sm: 6,
+      },
+      platform: "android",
+    })).toEqual({
+      collapsed: {
+        paddingVertical: 4,
+        paddingHorizontal: 4,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: "rgba(14, 165, 233, 0.18)",
+        borderLeftWidth: 2,
+        borderLeftColor: "rgba(14, 165, 233, 0.42)",
+        backgroundColor: "rgba(14, 165, 233, 0.04)",
+        marginBottom: 2,
+      },
+      pressed: {
+        opacity: 0.7,
+      },
+      headerRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        overflow: "hidden",
+      },
+      countBadge: {
+        minWidth: 18,
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        borderRadius: 6,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(14, 165, 233, 0.12)",
+      },
+      countBadgeText: {
+        fontFamily: "monospace",
+        fontSize: 9,
+        fontWeight: "700",
+        color: "#0ea5e9",
+      },
+      previewLine: {
+        fontFamily: "monospace",
+        fontSize: 10,
+        color: "#64748b",
+        flexShrink: 1,
+        minWidth: 0,
+      },
+      footerButton: {
+        alignSelf: "flex-end",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 2,
+        marginBottom: 2,
+        paddingHorizontal: 4,
+        paddingVertical: 3,
+        borderRadius: 6,
+      },
+      footerText: {
+        fontSize: 10,
+        fontWeight: "600",
+        color: "#0ea5e9",
+      },
+    })
     expect(getChatComposerMobileTextInputPlatformState("ios")).toEqual({ paddingVertical: 10 })
     expect(getChatComposerMobileTextInputPlatformState("android")).toEqual({ paddingVertical: 8 })
     expect(getChatComposerMobileTextInputPlatformState("web")).toEqual({ paddingVertical: 10 })
