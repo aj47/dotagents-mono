@@ -7,6 +7,8 @@ const useStoreSyncSource = readFileSync(new URL("../hooks/use-store-sync.ts", im
 
 describe("desktop message queue renderer client", () => {
   it("centralizes message queue IPC channels", () => {
+    expect(clientSource).toContain('from "@dotagents/shared/session-presentation"')
+    expect(clientSource).not.toContain('from "@dotagents/shared/message-queue-utils"')
     expect(clientSource).toContain("rendererHandlers.onMessageQueueUpdate.listen(listener)")
     expect(clientSource).toContain("tipcClient.getAllMessageQueues()")
     expect(clientSource).toContain("tipcClient.removeFromMessageQueue({ conversationId, messageId })")

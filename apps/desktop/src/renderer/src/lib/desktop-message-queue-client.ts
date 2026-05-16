@@ -1,4 +1,4 @@
-import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
+import type { QueuedMessage } from "@dotagents/shared/session-presentation"
 import type { RendererHandlers } from "@shared/renderer-handlers"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
