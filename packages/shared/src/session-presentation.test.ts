@@ -24,6 +24,7 @@ import {
   createChatMessageRuntimeCompletedTextTurnMessages,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeConnectionErrorTurnState,
+  computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeFinalResponseTextState,
   createChatMessageRuntimePendingTurnState,
   createChatMessageRuntimePendingTurnStatusState,
@@ -31,6 +32,7 @@ import {
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeStreamingText,
   createChatMessageRuntimeStreamingTurnState,
+  createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
   createChatRuntimeCompletedDebugState,
@@ -303,6 +305,7 @@ import {
   getChatRuntimeViewportMobileState,
   getChatRuntimeAlertMessage,
   getChatMessageRuntimeNextResponseEventOrdinal,
+  hasChatMessageRuntimeLiveAgentTurn,
   hasChatMessageRuntimeRequestSessionChanged,
   isLastChatMessageRuntimeConversationContent,
   isChatMessageRuntimeActiveRequest,
@@ -1048,6 +1051,39 @@ describe("session presentation semantics", () => {
       lastUserResponse: "Previous",
       legacyResponseText: undefined,
     })
+    const turnDurationMessages = createChatMessageRuntimeTurnDurationMessages([
+      { role: "user", content: "Question", timestamp: 1_000 },
+      { role: "assistant", content: "Answer", timestamp: 1_500 },
+      { role: "assistant", content: "", timestamp: undefined },
+    ])
+    expect(turnDurationMessages).toEqual([
+      { role: "user", timestamp: 1_000, isThinking: false },
+      { role: "assistant", timestamp: 1_500, isThinking: false },
+    ])
+    const completedTurnDurations = computeChatMessageRuntimeTurnDurations(
+      turnDurationMessages,
+      true,
+      2_500,
+    )
+    expect(completedTurnDurations.totalMs).toBe(500)
+    expect(completedTurnDurations.hasLive).toBe(false)
+    expect(completedTurnDurations.byUserTimestamp.get(1_000)).toEqual({
+      durationMs: 500,
+      isLive: false,
+    })
+    const liveTurnDurations = computeChatMessageRuntimeTurnDurations(
+      createChatMessageRuntimeTurnDurationMessages([
+        { role: "user", content: "Question", timestamp: 1_000 },
+      ]),
+      false,
+      2_500,
+    )
+    expect(liveTurnDurations.totalMs).toBe(1_500)
+    expect(liveTurnDurations.hasLive).toBe(true)
+    expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "running" })).toBe(true)
+    expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "needs_input" })).toBe(true)
+    expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete", isResponding: true })).toBe(true)
+    expect(hasChatMessageRuntimeLiveAgentTurn({ conversationState: "complete" })).toBe(false)
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.buttonGlyph).toBe("⏹")
     expect(CHAT_RUNTIME_PRESENTATION.killSwitch.mobileIcon).toMatchObject({
       name: "stop-circle-outline",

@@ -160,7 +160,12 @@ import {
   type MessageQueuePanelMobileDockRenderState,
   type MessageQueuePanelMobileDockRenderStateInput,
 } from "./message-queue-utils"
-import { formatTurnDuration } from "./turn-duration"
+import {
+  computeTurnDurations,
+  createTurnDurationMessages,
+  formatTurnDuration,
+  type TurnDurationMessage,
+} from "./turn-duration"
 
 export type SessionLifecycleState = AgentConversationState
 export type SessionAttentionState = "foreground" | "background"
@@ -5189,6 +5194,20 @@ export interface ChatMessageRuntimeProgressResponseStateInput {
   createFallbackResponseEvent: ChatMessageRuntimeProgressResponseEventFactory
 }
 
+export interface ChatMessageRuntimeTurnDurationSourceMessage {
+  role: "user" | "assistant" | "tool"
+  content?: string
+  timestamp?: number
+  toolCalls?: unknown[]
+  toolResults?: unknown[]
+}
+
+export interface ChatMessageRuntimeTurnDurationStateInput {
+  messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[]
+  conversationState?: AgentConversationState | null
+  isResponding?: boolean
+}
+
 export interface ChatMessageRuntimeStreamingTurnState<
   TMessage extends ChatMessageRuntimeConversationContentUpdateMessage,
 > {
@@ -5582,6 +5601,31 @@ export function createChatMessageRuntimeProgressResponseState({
     lastUserResponse,
     legacyResponseText: undefined,
   }
+}
+
+export function createChatMessageRuntimeTurnDurationMessages(
+  messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[],
+): TurnDurationMessage[] {
+  return createTurnDurationMessages(messages)
+}
+
+export function computeChatMessageRuntimeTurnDurations(
+  messages: TurnDurationMessage[],
+  isComplete: boolean,
+  nowMs: number,
+): ReturnType<typeof computeTurnDurations> {
+  return computeTurnDurations(messages, isComplete, nowMs)
+}
+
+export function hasChatMessageRuntimeLiveAgentTurn({
+  conversationState,
+  isResponding = false,
+}: Pick<ChatMessageRuntimeTurnDurationStateInput, "conversationState" | "isResponding">): boolean {
+  return (
+    isResponding ||
+    conversationState === "running" ||
+    conversationState === "needs_input"
+  )
 }
 
 export function hasChatMessageRuntimeRequestSessionChanged({

@@ -89,11 +89,6 @@ import {
   createChatComposerAccessibilityHint,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
-import {
-  computeTurnDurations,
-  createTurnDurationMessages,
-  type TurnDurationMessage,
-} from '@dotagents/shared/turn-duration';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
@@ -136,9 +131,11 @@ import {
   getChatComposerRuntimeDraftMessageState,
   getChatComposerRuntimeImageDataUrlBytes,
   inferChatComposerRuntimeImageMimeType,
+  computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeAssistantTextMessage,
   createChatMessageRuntimeCompletedTurnMessages,
   createChatMessageRuntimeCompletedTextTurnMessages,
+  createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   formatChatRuntimeActivityContent,
   formatChatRuntimeAssistantFeedbackContent,
@@ -184,6 +181,7 @@ import {
   getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState,
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
+  hasChatMessageRuntimeLiveAgentTurn,
   isLastChatMessageRuntimeConversationContent,
   preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
@@ -253,6 +251,7 @@ import {
   type ChatMessageRuntimeAssistantTextMessage,
   type ChatMessageRuntimeConversationContentUpdateMessage,
   type ChatMessageRuntimePendingTurnMessage,
+  type ChatMessageRuntimeTurnDurationStateInput,
 } from '@dotagents/shared/session-presentation';
 import {
   type ToolExecutionCompactMobileRenderState,
@@ -4055,20 +4054,6 @@ export type ChatMessageRuntimeResponseHistorySourceMessage = {
   toolCalls?: Array<{ name: string; arguments: unknown }>;
 };
 
-export type ChatMessageRuntimeTurnDurationSourceMessage = {
-  role: 'user' | 'assistant' | 'tool';
-  content?: string;
-  timestamp?: number;
-  toolCalls?: unknown[];
-  toolResults?: unknown[];
-};
-
-type ChatMessageRuntimeTurnDurationStateInput = {
-  messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[];
-  conversationState?: AgentConversationState | null;
-  isResponding?: boolean;
-};
-
 type ChatMessageRuntimeSessionDisplayMessagesOptions = {
   includeId?: boolean;
 };
@@ -4169,31 +4154,6 @@ export function createChatMessageRuntimeResponseHistoryEvents(
   messages: ChatMessageRuntimeResponseHistorySourceMessage[],
 ): AgentUserResponseEvent[] {
   return extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
-}
-
-export function createChatMessageRuntimeTurnDurationMessages(
-  messages: readonly ChatMessageRuntimeTurnDurationSourceMessage[],
-): TurnDurationMessage[] {
-  return createTurnDurationMessages(messages);
-}
-
-export function computeChatMessageRuntimeTurnDurations(
-  messages: TurnDurationMessage[],
-  isComplete: boolean,
-  nowMs: number,
-): ReturnType<typeof computeTurnDurations> {
-  return computeTurnDurations(messages, isComplete, nowMs);
-}
-
-export function hasChatMessageRuntimeLiveAgentTurn({
-  conversationState,
-  isResponding = false,
-}: Pick<ChatMessageRuntimeTurnDurationStateInput, 'conversationState' | 'isResponding'>): boolean {
-  return (
-    isResponding ||
-    conversationState === 'running' ||
-    conversationState === 'needs_input'
-  );
 }
 
 export function useChatMessageRuntimeTurnDurations({
