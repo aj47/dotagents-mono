@@ -40,10 +40,6 @@ import {
   type VoiceDebugEntry,
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
-import {
-  CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
-  createChatRuntimeSpeechTextState,
-} from '@dotagents/shared/tts-preprocessing';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import {
@@ -146,6 +142,8 @@ import {
   mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
   formatConnectionStatus,
+  CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
+  createChatRuntimeSpeechTextState,
   type RecoveryState,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,

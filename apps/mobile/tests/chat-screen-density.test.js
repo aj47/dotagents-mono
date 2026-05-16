@@ -4483,7 +4483,6 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeSpeechTextState,/);
   assert.doesNotMatch(screenSource, /const speechText = createChatMessageRuntimeSpeechTextState\(content\);/);
   assert.doesNotMatch(screenSource, /const ttsTextKey = speechText\.autoTextKey;/);
-  assert.match(chatMessageChromeSource, /from '@dotagents\/shared\/tts-preprocessing';/);
   assert.match(screenSource, /useChatMessageRuntimeResponseHistoryState,/);
   assert.match(screenSource, /const \{\s+respondToUserHistory,\s+playedResponseEventIdsRef,\s+queuedResponseEventsRef,\s+activeAutoSpeechEventIdRef,\s+recentAutoSpeechByTextRef,\s+replaceResponseHistory,\s+createFallbackResponseEvent,\s+mergeResponseEvents,\s+clearQueuedResponseSpeech,\s+resetResponseSpeechPlaybackState,\s+\} = useChatMessageRuntimeResponseHistoryState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeAssistantSpeechChromeActionsState,/);
@@ -4497,6 +4496,8 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(chatMessageChromeSource, /speakNative: Speech\.speak,[\s\S]*?speakRemote: speakRemoteTts,/);
   assert.match(ttsPreprocessingSource, /export const CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000/);
   assert.match(ttsPreprocessingSource, /export function createChatRuntimeSpeechTextState/);
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/tts-preprocessing';/);
+  assert.match(sessionPresentationSource, /export \{\s+CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,\s+createChatRuntimeSpeechTextState,\s+\} from "\.\/tts-preprocessing"/);
   assert.match(ttsPreprocessingSource, /preprocessTextForTTS\(content\)/);
   assert.match(ttsPreprocessingSource, /normalizeAutoTtsTextKey\(processedText\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export const CHAT_MESSAGE_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;/);

@@ -37,6 +37,10 @@ import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 export { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
+export {
+  CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
+  createChatRuntimeSpeechTextState,
+} from "./tts-preprocessing"
 import {
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,
