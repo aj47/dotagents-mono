@@ -102,6 +102,7 @@ import {
   getChatRuntimeKillSwitchResultMobileResolvedAlertState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   createChatRuntimeNavigationHeaderOptionsParts,
+  createChatRuntimeNavigationHeaderOptionsMobilePropsParts,
   hasChatMessageRuntimeLiveAgentTurn,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
@@ -6533,15 +6534,7 @@ export function createChatRuntimeNavigationHeaderOptions({
   onHandsFreeButtonPress,
   styles,
 }: ChatRuntimeNavigationHeaderOptionsInput): ChatRuntimeNavigationHeaderOptions {
-  const {
-    agentSelector,
-    backButton,
-    pinButton,
-    conversationStatus,
-    turnDuration,
-    killSwitchButton,
-    handsFreeButton,
-  } = createChatRuntimeNavigationHeaderOptionsParts({
+  const headerOptionParts = createChatRuntimeNavigationHeaderOptionsParts({
     agentSelectorRenderState,
     onAgentSelectorPress,
     agentSelectorLabelNumberOfLines,
@@ -6559,46 +6552,40 @@ export function createChatRuntimeNavigationHeaderOptions({
     handsFreeButtonRenderState,
     onHandsFreeButtonPress,
   });
+  const headerParts = createChatRuntimeNavigationHeaderOptionsMobilePropsParts({
+    ...headerOptionParts,
+    styles,
+  });
 
   return {
     headerTitle: () => (
       <ChatRuntimeHeaderAgentSelector
-        {...agentSelector}
-        styles={styles.agentSelector}
+        {...headerParts.agentSelector}
       />
     ),
     headerLeft: () => (
-      <ChatRuntimeHeaderActionsRow style={styles.actionsRowStyle}>
+      <ChatRuntimeHeaderActionsRow {...headerParts.actionsRow}>
         <ChatRuntimeHeaderIconButton
-          {...backButton}
-          style={styles.iconButtons.edgeStyle}
+          {...headerParts.backButton}
         />
         <ChatRuntimeHeaderIconButton
-          {...pinButton}
-          style={styles.iconButtons.pinStyle}
-          activeStyle={styles.iconButtons.pinActiveStyle}
+          {...headerParts.pinButton}
         />
       </ChatRuntimeHeaderActionsRow>
     ),
     headerRight: () => (
-      <ChatRuntimeHeaderActionsRow style={styles.actionsRowStyle}>
+      <ChatRuntimeHeaderActionsRow {...headerParts.actionsRow}>
         <ChatRuntimeHeaderConversationStatus
-          {...conversationStatus}
-          styles={styles.conversationStatus}
+          {...headerParts.conversationStatus}
         />
         <ChatRuntimeHeaderTurnDuration
-          {...turnDuration}
-          styles={styles.turnDuration}
+          {...headerParts.turnDuration}
         />
         <ChatRuntimeHeaderIconButton
-          {...killSwitchButton}
-          style={styles.iconButtons.actionStyle}
-          iconContainerStyle={styles.iconButtons.killSwitchIconContainerStyle}
+          {...headerParts.killSwitchButton}
         />
         <ChatRuntimeHeaderIconButton
-          {...handsFreeButton}
-          style={styles.iconButtons.actionStyle}
-          iconContainerStyle={styles.iconButtons.handsFreeIconContainerStyle}
+          {...headerParts.handsFreeButton}
         />
       </ChatRuntimeHeaderActionsRow>
     ),

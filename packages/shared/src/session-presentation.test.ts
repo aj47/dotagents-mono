@@ -353,6 +353,7 @@ import {
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeNavigationHeaderMobileRenderState,
   createChatRuntimeNavigationHeaderOptionsParts,
+  createChatRuntimeNavigationHeaderOptionsMobilePropsParts,
   getChatRuntimePinAccessibilityHint,
   getChatRuntimePinAccessibilityLabel,
   getChatRuntimePinDisplayLabel,
@@ -3883,6 +3884,57 @@ describe("session presentation semantics", () => {
     expect(navigationHeaderOptionParts.handsFreeButton).toEqual({
       renderState: navigationHeaderState.handsFreeButtonRenderState,
       onPress: "toggle-hands-free",
+    })
+    const navigationHeaderMobileParts = createChatRuntimeNavigationHeaderOptionsMobilePropsParts({
+      ...navigationHeaderOptionParts,
+      styles: {
+        actionsRowStyle: "header-actions-row",
+        agentSelector: "agent-selector-styles",
+        conversationStatus: "conversation-status-styles",
+        turnDuration: "turn-duration-styles",
+        iconButtons: {
+          edgeStyle: "edge-button-style",
+          pinStyle: "pin-button-style",
+          pinActiveStyle: "pin-active-style",
+          actionStyle: "action-button-style",
+          killSwitchIconContainerStyle: "kill-switch-icon-container",
+          handsFreeIconContainerStyle: "hands-free-icon-container",
+        },
+      },
+    })
+    expect(navigationHeaderMobileParts.actionsRow).toEqual({
+      style: "header-actions-row",
+    })
+    expect(navigationHeaderMobileParts.agentSelector).toEqual({
+      ...navigationHeaderOptionParts.agentSelector,
+      styles: "agent-selector-styles",
+    })
+    expect(navigationHeaderMobileParts.backButton).toEqual({
+      ...navigationHeaderOptionParts.backButton,
+      style: "edge-button-style",
+    })
+    expect(navigationHeaderMobileParts.pinButton).toEqual({
+      ...navigationHeaderOptionParts.pinButton,
+      style: "pin-button-style",
+      activeStyle: "pin-active-style",
+    })
+    expect(navigationHeaderMobileParts.conversationStatus).toEqual({
+      ...navigationHeaderOptionParts.conversationStatus,
+      styles: "conversation-status-styles",
+    })
+    expect(navigationHeaderMobileParts.turnDuration).toEqual({
+      ...navigationHeaderOptionParts.turnDuration,
+      styles: "turn-duration-styles",
+    })
+    expect(navigationHeaderMobileParts.killSwitchButton).toEqual({
+      ...navigationHeaderOptionParts.killSwitchButton,
+      style: "action-button-style",
+      iconContainerStyle: "kill-switch-icon-container",
+    })
+    expect(navigationHeaderMobileParts.handsFreeButton).toEqual({
+      ...navigationHeaderOptionParts.handsFreeButton,
+      style: "action-button-style",
+      iconContainerStyle: "hands-free-icon-container",
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)

@@ -3478,6 +3478,62 @@ export type ChatRuntimeNavigationHeaderOptionsParts<
   }
 }
 
+export type ChatRuntimeNavigationHeaderOptionsMobilePropsPartsInput = {
+  agentSelector: object
+  backButton: object
+  pinButton: object
+  conversationStatus: object
+  turnDuration: object
+  killSwitchButton: object
+  handsFreeButton: object
+  styles: {
+    actionsRowStyle: unknown
+    agentSelector: unknown
+    conversationStatus: unknown
+    turnDuration: unknown
+    iconButtons: {
+      edgeStyle: unknown
+      pinStyle: unknown
+      pinActiveStyle?: unknown
+      actionStyle: unknown
+      killSwitchIconContainerStyle: unknown
+      handsFreeIconContainerStyle: unknown
+    }
+  }
+}
+
+export type ChatRuntimeNavigationHeaderOptionsMobilePropsParts<
+  TInput extends ChatRuntimeNavigationHeaderOptionsMobilePropsPartsInput,
+> = {
+  actionsRow: {
+    style: TInput["styles"]["actionsRowStyle"]
+  }
+  agentSelector: TInput["agentSelector"] & {
+    styles: TInput["styles"]["agentSelector"]
+  }
+  backButton: TInput["backButton"] & {
+    style: TInput["styles"]["iconButtons"]["edgeStyle"]
+  }
+  pinButton: TInput["pinButton"] & {
+    style: TInput["styles"]["iconButtons"]["pinStyle"]
+    activeStyle: TInput["styles"]["iconButtons"]["pinActiveStyle"]
+  }
+  conversationStatus: TInput["conversationStatus"] & {
+    styles: TInput["styles"]["conversationStatus"]
+  }
+  turnDuration: TInput["turnDuration"] & {
+    styles: TInput["styles"]["turnDuration"]
+  }
+  killSwitchButton: TInput["killSwitchButton"] & {
+    style: TInput["styles"]["iconButtons"]["actionStyle"]
+    iconContainerStyle: TInput["styles"]["iconButtons"]["killSwitchIconContainerStyle"]
+  }
+  handsFreeButton: TInput["handsFreeButton"] & {
+    style: TInput["styles"]["iconButtons"]["actionStyle"]
+    iconContainerStyle: TInput["styles"]["iconButtons"]["handsFreeIconContainerStyle"]
+  }
+}
+
 export interface ChatRuntimeKillSwitchMobileAlertState {
   confirmation: {
     title: string
@@ -15772,6 +15828,56 @@ export function createChatRuntimeNavigationHeaderOptionsParts<
     handsFreeButton: {
       renderState: handsFreeButtonRenderState,
       onPress: onHandsFreeButtonPress,
+    },
+  }
+}
+
+export function createChatRuntimeNavigationHeaderOptionsMobilePropsParts<
+  TInput extends ChatRuntimeNavigationHeaderOptionsMobilePropsPartsInput,
+>({
+  agentSelector,
+  backButton,
+  pinButton,
+  conversationStatus,
+  turnDuration,
+  killSwitchButton,
+  handsFreeButton,
+  styles,
+}: TInput): ChatRuntimeNavigationHeaderOptionsMobilePropsParts<TInput> {
+  return {
+    actionsRow: {
+      style: styles.actionsRowStyle,
+    },
+    agentSelector: {
+      ...agentSelector,
+      styles: styles.agentSelector,
+    },
+    backButton: {
+      ...backButton,
+      style: styles.iconButtons.edgeStyle,
+    },
+    pinButton: {
+      ...pinButton,
+      style: styles.iconButtons.pinStyle,
+      activeStyle: styles.iconButtons.pinActiveStyle,
+    },
+    conversationStatus: {
+      ...conversationStatus,
+      styles: styles.conversationStatus,
+    },
+    turnDuration: {
+      ...turnDuration,
+      styles: styles.turnDuration,
+    },
+    killSwitchButton: {
+      ...killSwitchButton,
+      style: styles.iconButtons.actionStyle,
+      iconContainerStyle: styles.iconButtons.killSwitchIconContainerStyle,
+    },
+    handsFreeButton: {
+      ...handsFreeButton,
+      style: styles.iconButtons.actionStyle,
+      iconContainerStyle: styles.iconButtons.handsFreeIconContainerStyle,
     },
   }
 }
