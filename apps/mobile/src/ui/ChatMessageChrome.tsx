@@ -34,6 +34,7 @@ import {
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerRuntimeDockMobileProps,
+  createChatComposerRuntimeDockMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9239,76 +9240,75 @@ export function ChatComposerRuntimeDock({
   micWrapperRef,
   styles,
 }: ChatComposerRuntimeDockProps) {
-  const { status: handsFreeStatus, ...handsFreeControlProps } = handsFreeControls;
+  const composerDockParts = createChatComposerRuntimeDockMobilePropsParts({
+    speechPreview,
+    pendingImagesRail,
+    handsFreeControls,
+    imageAttachmentControl,
+    textToSpeechControl,
+    editBeforeSendControl,
+    textEntry,
+    queueAction,
+    submitAction,
+    micButton,
+    micWrapperRef,
+    styles,
+  });
 
   return (
     <ChatComposerInputDock
       speechPreview={(
         <ChatComposerSpeechPreview
-          {...speechPreview}
-          styles={styles.speechPreview}
+          {...composerDockParts.speechPreview}
         />
       )}
       pendingImagesRail={(
         <ChatComposerPendingImagesRail
-          {...pendingImagesRail}
-          styles={styles.pendingImagesRail}
+          {...composerDockParts.pendingImagesRail}
         />
       )}
       handsFreeControls={(
         <ChatComposerHandsFreeControls
-          {...handsFreeControlProps}
-          status={<HandsFreeStatusChip {...handsFreeStatus} />}
-          styles={styles.handsFreeControls}
+          {...composerDockParts.handsFreeControls}
+          status={<HandsFreeStatusChip {...composerDockParts.handsFreeStatus} />}
         />
       )}
       imageAttachmentControl={(
         <ChatComposerIconButton
-          {...imageAttachmentControl}
-          style={styles.accessoryButton.style}
-          activeStyle={styles.accessoryButton.activeStyle}
+          {...composerDockParts.imageAttachmentControl}
         />
       )}
       textToSpeechControl={(
         <ChatComposerIconButton
-          {...textToSpeechControl}
-          style={styles.accessoryButton.style}
-          activeStyle={styles.accessoryButton.activeStyle}
+          {...composerDockParts.textToSpeechControl}
         />
       )}
       editBeforeSendControl={(
         <ChatComposerIconButton
-          {...editBeforeSendControl}
-          style={styles.accessoryButton.style}
-          activeStyle={styles.accessoryButton.activeStyle}
+          {...composerDockParts.editBeforeSendControl}
         />
       )}
       textEntry={(
         <ChatComposerTextEntry
-          {...textEntry}
-          styles={styles.textEntry}
+          {...composerDockParts.textEntry}
         />
       )}
       queueAction={(
         <ChatComposerLabeledActionButton
-          {...queueAction}
-          styles={styles.queueAction}
+          {...composerDockParts.queueAction}
         />
       )}
       submitAction={(
         <ChatComposerLabeledActionButton
-          {...submitAction}
-          styles={styles.submitAction}
+          {...composerDockParts.submitAction}
         />
       )}
       micButton={(
         <ChatComposerMicButton
-          {...micButton}
-          styles={styles.micButton}
+          {...composerDockParts.micButton}
         />
       )}
-      micWrapperRef={micWrapperRef}
-      styles={styles.inputDock}
+      {...composerDockParts.inputDock}
     />
   );
 }

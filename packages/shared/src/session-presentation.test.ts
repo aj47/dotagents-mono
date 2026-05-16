@@ -64,6 +64,7 @@ import {
   createChatComposerStyleSlotsFromStyleSource,
   getChatMessageActionMobileButtonStatesBySlot,
   createChatComposerRuntimeDockMobileProps,
+  createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageConnectionBannerStyleSlots,
   createChatMessageConversationDockStyleSlots,
@@ -7131,6 +7132,110 @@ describe("session presentation semantics", () => {
       composer: {
         value: "composer-value",
         styles: "composer-styles",
+      },
+    })
+    const composerDockParts = createChatComposerRuntimeDockMobilePropsParts({
+      speechPreview: {
+        text: "voice draft",
+      },
+      pendingImagesRail: {
+        images: ["image-1"],
+      },
+      handsFreeControls: {
+        status: {
+          phase: "listening",
+          label: "Listening",
+        },
+        controlState: "hands-free-controls",
+      },
+      imageAttachmentControl: {
+        renderState: "image-attachment-state",
+      },
+      textToSpeechControl: {
+        renderState: "tts-state",
+      },
+      editBeforeSendControl: {
+        renderState: "edit-state",
+      },
+      textEntry: {
+        value: "hello",
+      },
+      queueAction: {
+        renderState: "queue-state",
+      },
+      submitAction: {
+        renderState: "submit-state",
+      },
+      micButton: {
+        renderState: "mic-state",
+      },
+      micWrapperRef: "mic-wrapper",
+      styles: {
+        speechPreview: "speech-preview-styles",
+        pendingImagesRail: "pending-images-styles",
+        handsFreeControls: "hands-free-control-styles",
+        accessoryButton: {
+          style: "accessory-style",
+          activeStyle: "accessory-active-style",
+        },
+        textEntry: "text-entry-styles",
+        queueAction: "queue-action-styles",
+        submitAction: "submit-action-styles",
+        micButton: "mic-button-styles",
+        inputDock: "input-dock-styles",
+      },
+    })
+    expect(composerDockParts).toEqual({
+      speechPreview: {
+        text: "voice draft",
+        styles: "speech-preview-styles",
+      },
+      pendingImagesRail: {
+        images: ["image-1"],
+        styles: "pending-images-styles",
+      },
+      handsFreeStatus: {
+        phase: "listening",
+        label: "Listening",
+      },
+      handsFreeControls: {
+        controlState: "hands-free-controls",
+        styles: "hands-free-control-styles",
+      },
+      imageAttachmentControl: {
+        renderState: "image-attachment-state",
+        style: "accessory-style",
+        activeStyle: "accessory-active-style",
+      },
+      textToSpeechControl: {
+        renderState: "tts-state",
+        style: "accessory-style",
+        activeStyle: "accessory-active-style",
+      },
+      editBeforeSendControl: {
+        renderState: "edit-state",
+        style: "accessory-style",
+        activeStyle: "accessory-active-style",
+      },
+      textEntry: {
+        value: "hello",
+        styles: "text-entry-styles",
+      },
+      queueAction: {
+        renderState: "queue-state",
+        styles: "queue-action-styles",
+      },
+      submitAction: {
+        renderState: "submit-state",
+        styles: "submit-action-styles",
+      },
+      micButton: {
+        renderState: "mic-state",
+        styles: "mic-button-styles",
+      },
+      inputDock: {
+        micWrapperRef: "mic-wrapper",
+        styles: "input-dock-styles",
       },
     })
     const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({

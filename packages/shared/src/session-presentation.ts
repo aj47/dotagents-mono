@@ -1836,6 +1836,119 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   callDetailStyles: TCallDetailStyles
 }
 
+export interface ChatComposerRuntimeDockMobilePropsPartsInput<
+  TSpeechPreview extends object = Record<string, never>,
+  TPendingImagesRail extends object = Record<string, never>,
+  THandsFreeControls extends { status: object } = { status: Record<string, never> },
+  TImageAttachmentControl extends object = Record<string, never>,
+  TTextToSpeechControl extends object = Record<string, never>,
+  TEditBeforeSendControl extends object = Record<string, never>,
+  TTextEntry extends object = Record<string, never>,
+  TQueueAction extends object = Record<string, never>,
+  TSubmitAction extends object = Record<string, never>,
+  TMicButton extends object = Record<string, never>,
+  TMicWrapperRef = unknown,
+  TSpeechPreviewStyles = unknown,
+  TPendingImagesRailStyles = unknown,
+  THandsFreeControlsStyles = unknown,
+  TAccessoryButtonStyle = unknown,
+  TAccessoryButtonActiveStyle = unknown,
+  TTextEntryStyles = unknown,
+  TQueueActionStyles = unknown,
+  TSubmitActionStyles = unknown,
+  TMicButtonStyles = unknown,
+  TInputDockStyles = unknown,
+> {
+  speechPreview: TSpeechPreview
+  pendingImagesRail: TPendingImagesRail
+  handsFreeControls: THandsFreeControls
+  imageAttachmentControl: TImageAttachmentControl
+  textToSpeechControl: TTextToSpeechControl
+  editBeforeSendControl: TEditBeforeSendControl
+  textEntry: TTextEntry
+  queueAction: TQueueAction
+  submitAction: TSubmitAction
+  micButton: TMicButton
+  micWrapperRef?: TMicWrapperRef
+  styles: {
+    speechPreview: TSpeechPreviewStyles
+    pendingImagesRail: TPendingImagesRailStyles
+    handsFreeControls: THandsFreeControlsStyles
+    accessoryButton: {
+      style: TAccessoryButtonStyle
+      activeStyle?: TAccessoryButtonActiveStyle
+    }
+    textEntry: TTextEntryStyles
+    queueAction: TQueueActionStyles
+    submitAction: TSubmitActionStyles
+    micButton: TMicButtonStyles
+    inputDock: TInputDockStyles
+  }
+}
+
+export interface ChatComposerRuntimeDockMobilePropsParts<
+  TSpeechPreview extends object = Record<string, never>,
+  TPendingImagesRail extends object = Record<string, never>,
+  THandsFreeControls extends { status: object } = { status: Record<string, never> },
+  TImageAttachmentControl extends object = Record<string, never>,
+  TTextToSpeechControl extends object = Record<string, never>,
+  TEditBeforeSendControl extends object = Record<string, never>,
+  TTextEntry extends object = Record<string, never>,
+  TQueueAction extends object = Record<string, never>,
+  TSubmitAction extends object = Record<string, never>,
+  TMicButton extends object = Record<string, never>,
+  TMicWrapperRef = unknown,
+  TSpeechPreviewStyles = unknown,
+  TPendingImagesRailStyles = unknown,
+  THandsFreeControlsStyles = unknown,
+  TAccessoryButtonStyle = unknown,
+  TAccessoryButtonActiveStyle = unknown,
+  TTextEntryStyles = unknown,
+  TQueueActionStyles = unknown,
+  TSubmitActionStyles = unknown,
+  TMicButtonStyles = unknown,
+  TInputDockStyles = unknown,
+> {
+  speechPreview: TSpeechPreview & {
+    styles: TSpeechPreviewStyles
+  }
+  pendingImagesRail: TPendingImagesRail & {
+    styles: TPendingImagesRailStyles
+  }
+  handsFreeStatus: THandsFreeControls["status"]
+  handsFreeControls: Omit<THandsFreeControls, "status"> & {
+    styles: THandsFreeControlsStyles
+  }
+  imageAttachmentControl: TImageAttachmentControl & {
+    style: TAccessoryButtonStyle
+    activeStyle: TAccessoryButtonActiveStyle | undefined
+  }
+  textToSpeechControl: TTextToSpeechControl & {
+    style: TAccessoryButtonStyle
+    activeStyle: TAccessoryButtonActiveStyle | undefined
+  }
+  editBeforeSendControl: TEditBeforeSendControl & {
+    style: TAccessoryButtonStyle
+    activeStyle: TAccessoryButtonActiveStyle | undefined
+  }
+  textEntry: TTextEntry & {
+    styles: TTextEntryStyles
+  }
+  queueAction: TQueueAction & {
+    styles: TQueueActionStyles
+  }
+  submitAction: TSubmitAction & {
+    styles: TSubmitActionStyles
+  }
+  micButton: TMicButton & {
+    styles: TMicButtonStyles
+  }
+  inputDock: {
+    micWrapperRef: TMicWrapperRef | undefined
+    styles: TInputDockStyles
+  }
+}
+
 export interface ChatRuntimeConversationBodyPanelMobilePropsPartsInput<
   TContent extends { expanded: object; collapsed: object } = { expanded: object; collapsed: object },
   TToolExecutionStack extends object = Record<string, never>,
@@ -13759,6 +13872,140 @@ export function createChatRuntimeToolExecutionExpandedGroupCollapseControlMobile
     bottom: {
       ...collapseControlStyles,
       placement: collapseBottomPlacement,
+    },
+  }
+}
+
+export function createChatComposerRuntimeDockMobilePropsParts<
+  TSpeechPreview extends object,
+  TPendingImagesRail extends object,
+  THandsFreeControls extends { status: object },
+  TImageAttachmentControl extends object,
+  TTextToSpeechControl extends object,
+  TEditBeforeSendControl extends object,
+  TTextEntry extends object,
+  TQueueAction extends object,
+  TSubmitAction extends object,
+  TMicButton extends object,
+  TMicWrapperRef,
+  TSpeechPreviewStyles,
+  TPendingImagesRailStyles,
+  THandsFreeControlsStyles,
+  TAccessoryButtonStyle,
+  TAccessoryButtonActiveStyle,
+  TTextEntryStyles,
+  TQueueActionStyles,
+  TSubmitActionStyles,
+  TMicButtonStyles,
+  TInputDockStyles,
+>({
+  speechPreview,
+  pendingImagesRail,
+  handsFreeControls,
+  imageAttachmentControl,
+  textToSpeechControl,
+  editBeforeSendControl,
+  textEntry,
+  queueAction,
+  submitAction,
+  micButton,
+  micWrapperRef,
+  styles,
+}: ChatComposerRuntimeDockMobilePropsPartsInput<
+  TSpeechPreview,
+  TPendingImagesRail,
+  THandsFreeControls,
+  TImageAttachmentControl,
+  TTextToSpeechControl,
+  TEditBeforeSendControl,
+  TTextEntry,
+  TQueueAction,
+  TSubmitAction,
+  TMicButton,
+  TMicWrapperRef,
+  TSpeechPreviewStyles,
+  TPendingImagesRailStyles,
+  THandsFreeControlsStyles,
+  TAccessoryButtonStyle,
+  TAccessoryButtonActiveStyle,
+  TTextEntryStyles,
+  TQueueActionStyles,
+  TSubmitActionStyles,
+  TMicButtonStyles,
+  TInputDockStyles
+>): ChatComposerRuntimeDockMobilePropsParts<
+  TSpeechPreview,
+  TPendingImagesRail,
+  THandsFreeControls,
+  TImageAttachmentControl,
+  TTextToSpeechControl,
+  TEditBeforeSendControl,
+  TTextEntry,
+  TQueueAction,
+  TSubmitAction,
+  TMicButton,
+  TMicWrapperRef,
+  TSpeechPreviewStyles,
+  TPendingImagesRailStyles,
+  THandsFreeControlsStyles,
+  TAccessoryButtonStyle,
+  TAccessoryButtonActiveStyle,
+  TTextEntryStyles,
+  TQueueActionStyles,
+  TSubmitActionStyles,
+  TMicButtonStyles,
+  TInputDockStyles
+> {
+  const { status: handsFreeStatus, ...handsFreeControlProps } = handsFreeControls
+
+  return {
+    speechPreview: {
+      ...speechPreview,
+      styles: styles.speechPreview,
+    },
+    pendingImagesRail: {
+      ...pendingImagesRail,
+      styles: styles.pendingImagesRail,
+    },
+    handsFreeStatus,
+    handsFreeControls: {
+      ...handsFreeControlProps,
+      styles: styles.handsFreeControls,
+    },
+    imageAttachmentControl: {
+      ...imageAttachmentControl,
+      style: styles.accessoryButton.style,
+      activeStyle: styles.accessoryButton.activeStyle,
+    },
+    textToSpeechControl: {
+      ...textToSpeechControl,
+      style: styles.accessoryButton.style,
+      activeStyle: styles.accessoryButton.activeStyle,
+    },
+    editBeforeSendControl: {
+      ...editBeforeSendControl,
+      style: styles.accessoryButton.style,
+      activeStyle: styles.accessoryButton.activeStyle,
+    },
+    textEntry: {
+      ...textEntry,
+      styles: styles.textEntry,
+    },
+    queueAction: {
+      ...queueAction,
+      styles: styles.queueAction,
+    },
+    submitAction: {
+      ...submitAction,
+      styles: styles.submitAction,
+    },
+    micButton: {
+      ...micButton,
+      styles: styles.micButton,
+    },
+    inputDock: {
+      micWrapperRef,
+      styles: styles.inputDock,
     },
   }
 }
