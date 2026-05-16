@@ -124,10 +124,15 @@ import {
 } from "./conversation-media-assets"
 export {
   buildConversationImageAssetHttpUrl,
+  buildConversationVideoAssetHttpUrl,
+  formatVideoAttachmentRequestFailedMessage,
+  getChatVideoAttachmentMobileRenderState,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
   isAllowedMarkdownImageUrl,
+  isRenderableVideoUrl,
   parseConversationImageAssetUrl,
+  parseConversationVideoAssetUrl,
   type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,

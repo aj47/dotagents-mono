@@ -9,7 +9,7 @@ import {
   formatVideoAttachmentRequestFailedMessage,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
-} from '@dotagents/shared/conversation-media-assets';
+} from '@dotagents/shared/session-presentation';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing } from './theme';

@@ -32,6 +32,10 @@ const markdownRendererSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MarkdownRenderer.tsx'),
   'utf8'
 );
+const videoAttachmentCardSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'VideoAttachmentCard.tsx'),
+  'utf8'
+);
 const sessionPresentationSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
   'utf8'
@@ -2021,7 +2025,7 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.doesNotMatch(chatMessageChromeSource, /ChatComposerImageAttachmentAlertInput/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/conversation-media-assets'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildConversationImageAssetHttpUrl,[\s\S]*?getChatImageAttachmentMobileAlertState,[\s\S]*?getChatImageAttachmentMobileRenderState,[\s\S]*?isAllowedMarkdownImageUrl,[\s\S]*?parseConversationImageAssetUrl,[\s\S]*?type ChatImageAttachmentMobileAlertInput,[\s\S]*?type ChatImageAttachmentMessageInput,[\s\S]*?type ChatImageAttachmentMobileRenderState,[\s\S]*?type ImageMimeTypeSource,[\s\S]*?\} from "\.\/conversation-media-assets"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildConversationImageAssetHttpUrl,[\s\S]*?buildConversationVideoAssetHttpUrl,[\s\S]*?formatVideoAttachmentRequestFailedMessage,[\s\S]*?getChatVideoAttachmentMobileRenderState,[\s\S]*?getChatImageAttachmentMobileAlertState,[\s\S]*?getChatImageAttachmentMobileRenderState,[\s\S]*?isAllowedMarkdownImageUrl,[\s\S]*?isRenderableVideoUrl,[\s\S]*?parseConversationImageAssetUrl,[\s\S]*?parseConversationVideoAssetUrl,[\s\S]*?type ChatImageAttachmentMobileAlertInput,[\s\S]*?type ChatImageAttachmentMessageInput,[\s\S]*?type ChatImageAttachmentMobileRenderState,[\s\S]*?type ImageMimeTypeSource,[\s\S]*?\} from "\.\/conversation-media-assets"/);
   assert.doesNotMatch(chatScreenSource, /import \* as ImagePicker from 'expo-image-picker';/);
   assert.doesNotMatch(screenSource, /createChatComposerRuntimeImagePickerLaunchOptions,/);
   assert.match(screenSource, /useChatComposerRuntimeImageLibraryPickerState,/);
@@ -3312,7 +3316,9 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+streamingRenderState=\{expanded\.streamingRenderState\}[\s\S]*?markdownContent=\{expanded\.markdownContent\}[\s\S]*?spinnerSource=\{expanded\.spinnerSource\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.doesNotMatch(markdownRendererSource, /from '@dotagents\/shared\/(conversation-media-assets|markdown-render-parts)'/);
+  assert.doesNotMatch(videoAttachmentCardSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(markdownRendererSource, /from '@dotagents\/shared\/session-presentation'/);
+  assert.match(videoAttachmentCardSource, /from '@dotagents\/shared\/session-presentation'/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?formatMarkdownImageRequestFailedMessage,[\s\S]*?getMarkdownCodeBlockFeedbackResetDelayMs,[\s\S]*?getMarkdownCodeBlockCopyMobileRenderState,[\s\S]*?getMarkdownContentMobileSurfaceRenderState,[\s\S]*?getMarkdownThinkSectionMobileSurfaceRenderState,[\s\S]*?isAllowedMarkdownContentLinkUrl,[\s\S]*?splitMarkdownContent,[\s\S]*?type MarkdownContentMobileSurfaceRenderState,[\s\S]*?type MarkdownThinkSectionControlOptions,[\s\S]*?type MarkdownThinkSectionMobileSurfaceRenderState,[\s\S]*?\} from "\.\/markdown-render-parts"/);
   assert.match(chatMessageChromeSource, /if \(!streamingRenderState\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /<MarkdownRenderer[\s\S]*?content=\{markdownContent\}/);
