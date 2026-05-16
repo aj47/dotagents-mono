@@ -128,6 +128,7 @@ import {
   getChatComposerRuntimeControlMobileRenderState,
   getChatComposerRuntimeDraftMessageState,
   getChatComposerRuntimeFollowUpPresentationState,
+  getChatComposerRuntimeHandsFreeControlsMobileRenderState,
   getChatComposerRuntimeTextEntryMobileRenderState,
   getChatComposerRuntimeImageDataUrlBytes,
   getChatComposerRuntimeDockMobileRenderState,
@@ -470,6 +471,23 @@ describe("session presentation semantics", () => {
     expect(textEntryRenderState.placeholder).toBe("Continue conversation...")
     expect(textEntryRenderState.voiceStatusLiveRegionAnnouncement)
       .toBe("Voice input captured. Transcript: draft transcript")
+
+    const handsFreeControlsRenderState = getChatComposerRuntimeHandsFreeControlsMobileRenderState({
+      phase: "listening",
+      label: "Listening",
+      isEnabled: true,
+      wakePhrase: "hey agent",
+      sleepPhrase: "sleep agent",
+      lastError: null,
+      foregroundOnly: false,
+    })
+    expect(handsFreeControlsRenderState.status).toMatchObject({
+      phase: "listening",
+      label: "Listening",
+    })
+    expect(handsFreeControlsRenderState.status.subtitle).toContain("sleep agent")
+    expect(handsFreeControlsRenderState.controlState.primary.action).toBe("sleep")
+    expect(handsFreeControlsRenderState.controlState.secondary.action).toBe("pause")
   })
 
   it("treats active attention signals as foreground without changing lifecycle", () => {

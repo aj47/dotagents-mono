@@ -60,10 +60,7 @@ import {
 } from '@dotagents/shared/conversation-media-assets';
 import {
   formatHandsFreeSleepingDebugMessage,
-  getHandsFreeComposerControlState,
   getHandsFreeComposerDebugMessage,
-  getHandsFreeStatusSubtitle,
-  type HandsFreeComposerControlState,
 } from '@dotagents/shared/hands-free-controller';
 import {
   type VoiceDebugEntry,
@@ -172,6 +169,7 @@ import {
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
   getChatComposerRuntimeFollowUpPresentationState,
+  getChatComposerRuntimeHandsFreeControlsMobileRenderState,
   getChatComposerRuntimeTextEntryMobileRenderState,
   mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
@@ -191,6 +189,8 @@ import {
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeFollowUpPresentationStateInput,
+  type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
+  type ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput,
   type ChatComposerRuntimeTextEntryMobileRenderStateInput,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
@@ -2495,7 +2495,7 @@ type ChatComposerHandsFreeControlsStyles = {
 type ChatComposerHandsFreeControlsProps = {
   isVisible: boolean;
   status: ReactNode;
-  controlState: HandsFreeComposerControlState;
+  controlState: ChatComposerRuntimeHandsFreeControlsRenderState['controlState'];
   onWake: (event: GestureResponderEvent) => void;
   onSleep: (event: GestureResponderEvent) => void;
   onResume: (event: GestureResponderEvent) => void;
@@ -2765,6 +2765,12 @@ type ChatComposerRuntimeControlRenderStateInput =
 type ChatComposerRuntimeTextEntryRenderStateInput =
   ChatComposerRuntimeTextEntryMobileRenderStateInput;
 
+type ChatComposerRuntimeHandsFreeControlsRenderState =
+  ChatComposerRuntimeHandsFreeControlsMobileRenderState;
+
+type ChatComposerRuntimeHandsFreeControlsRenderStateInput =
+  ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput;
+
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
   speechPreviewText: ChatComposerSpeechPreviewProps['text'];
@@ -2773,11 +2779,11 @@ type ChatComposerRuntimeDockChromePropsInput = {
   onRemovePendingImage: ChatComposerPendingImagesRailProps['onRemove'];
   handsFreeStatusPhase: ChatComposerRuntimeHandsFreeControlsProps['status']['phase'];
   handsFreeStatusLabel: ChatComposerRuntimeHandsFreeControlsProps['status']['label'];
-  handsFreeStatusEnabled: boolean;
-  handsFreeStatusWakePhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]['wakePhrase'];
-  handsFreeStatusSleepPhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]['sleepPhrase'];
-  handsFreeStatusLastError: Parameters<typeof getHandsFreeStatusSubtitle>[0]['lastError'];
-  handsFreeStatusForegroundOnly: Parameters<typeof getHandsFreeStatusSubtitle>[0]['foregroundOnly'];
+  handsFreeStatusEnabled: ChatComposerRuntimeHandsFreeControlsRenderStateInput['isEnabled'];
+  handsFreeStatusWakePhrase: ChatComposerRuntimeHandsFreeControlsRenderStateInput['wakePhrase'];
+  handsFreeStatusSleepPhrase: ChatComposerRuntimeHandsFreeControlsRenderStateInput['sleepPhrase'];
+  handsFreeStatusLastError: ChatComposerRuntimeHandsFreeControlsRenderStateInput['lastError'];
+  handsFreeStatusForegroundOnly: ChatComposerRuntimeHandsFreeControlsRenderStateInput['foregroundOnly'];
   onWakeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onWake'];
   onSleepHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onSleep'];
   onResumeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onResume'];
@@ -7431,16 +7437,15 @@ export function createChatComposerRuntimeDockProps({
   const pendingImagesRenderState = getChatImageAttachmentMobileRenderState({
     colors: pendingImagesColors,
   });
-  const handsFreeControlState = getHandsFreeComposerControlState(handsFreeStatusPhase);
-  const handsFreeStatusSubtitle = handsFreeStatusEnabled
-    ? getHandsFreeStatusSubtitle({
-        phase: handsFreeStatusPhase,
-        wakePhrase: handsFreeStatusWakePhrase,
-        sleepPhrase: handsFreeStatusSleepPhrase,
-        lastError: handsFreeStatusLastError,
-        foregroundOnly: handsFreeStatusForegroundOnly,
-      })
-    : undefined;
+  const handsFreeControlsRenderState = getChatComposerRuntimeHandsFreeControlsMobileRenderState({
+    phase: handsFreeStatusPhase,
+    label: handsFreeStatusLabel,
+    isEnabled: handsFreeStatusEnabled,
+    wakePhrase: handsFreeStatusWakePhrase,
+    sleepPhrase: handsFreeStatusSleepPhrase,
+    lastError: handsFreeStatusLastError,
+    foregroundOnly: handsFreeStatusForegroundOnly,
+  });
   const textEntryRenderState = getChatComposerRuntimeTextEntryMobileRenderState({
     presentation: composerControlPresentation,
     handsFree: textEntryHandsFree,
@@ -7466,12 +7471,8 @@ export function createChatComposerRuntimeDockProps({
     },
     handsFreeControls: {
       isVisible: controlRenderState.visibility.handsFreeControls.isVisible,
-      status: {
-        phase: handsFreeStatusPhase,
-        label: handsFreeStatusLabel,
-        subtitle: handsFreeStatusSubtitle,
-      },
-      controlState: handsFreeControlState,
+      status: handsFreeControlsRenderState.status,
+      controlState: handsFreeControlsRenderState.controlState,
       onWake: onWakeHandsFree,
       onSleep: onSleepHandsFree,
       onResume: onResumeHandsFree,

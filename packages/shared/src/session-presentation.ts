@@ -34,9 +34,11 @@ import { formatConnectionStatus, type RecoveryState } from "./connection-recover
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 import {
   getHandsFreeComposerCopyState,
+  getHandsFreeComposerControlState,
   getHandsFreeComposerMobileSurfaceRenderState,
   getHandsFreeComposerPlaceholder,
   getHandsFreeMicButtonLabel,
+  getHandsFreeStatusSubtitle,
   type HandsFreeComposerMobileSurfaceColorPalette,
 } from "./hands-free-controller"
 import {
@@ -3287,6 +3289,25 @@ export interface ChatComposerRuntimeTextEntryMobileRenderState {
   accessibilityHint: string
   placeholder: string
   voiceStatusLiveRegionAnnouncement: string
+}
+
+export interface ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput {
+  phase: Parameters<typeof getHandsFreeStatusSubtitle>[0]["phase"]
+  label: string
+  isEnabled?: boolean
+  wakePhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]["wakePhrase"]
+  sleepPhrase: Parameters<typeof getHandsFreeStatusSubtitle>[0]["sleepPhrase"]
+  lastError: Parameters<typeof getHandsFreeStatusSubtitle>[0]["lastError"]
+  foregroundOnly: Parameters<typeof getHandsFreeStatusSubtitle>[0]["foregroundOnly"]
+}
+
+export interface ChatComposerRuntimeHandsFreeControlsMobileRenderState {
+  status: {
+    phase: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput["phase"]
+    label: string
+    subtitle: string | undefined
+  }
+  controlState: ReturnType<typeof getHandsFreeComposerControlState>
 }
 
 export interface ChatComposerMicMobileWebPressStyleState {
@@ -7340,6 +7361,33 @@ export function getChatComposerRuntimeTextEntryMobileRenderState({
       liveTranscript,
       sttPreview: speechPreviewText ?? undefined,
     }),
+  }
+}
+
+export function getChatComposerRuntimeHandsFreeControlsMobileRenderState({
+  phase,
+  label,
+  isEnabled = false,
+  wakePhrase,
+  sleepPhrase,
+  lastError,
+  foregroundOnly,
+}: ChatComposerRuntimeHandsFreeControlsMobileRenderStateInput): ChatComposerRuntimeHandsFreeControlsMobileRenderState {
+  return {
+    status: {
+      phase,
+      label,
+      subtitle: isEnabled
+        ? getHandsFreeStatusSubtitle({
+            phase,
+            wakePhrase,
+            sleepPhrase,
+            lastError,
+            foregroundOnly,
+          })
+        : undefined,
+    },
+    controlState: getHandsFreeComposerControlState(phase),
   }
 }
 
