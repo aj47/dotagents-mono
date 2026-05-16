@@ -85,6 +85,7 @@ import {
   createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
+  createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeConversationToolExecutionStackMobileProps,
@@ -6929,6 +6930,85 @@ describe("session presentation semantics", () => {
       },
       leadingBoundary: null,
       trailingBoundary: null,
+    })
+    const runtimeThreadSurfaceStyles = {
+      surfaceStyle: "thread-surface",
+      boundary: "activity-boundary",
+      getToneStyle: (toneStyleSlot: string) => `tone:${toneStyleSlot}`,
+    }
+    const runtimeThreadBody = {
+      conversation: {
+        surfaceToneStyleSlot: "assistant",
+      },
+    }
+    const runtimeThreadParts = createChatRuntimeConversationRuntimeThreadMobilePropsParts({
+      groupRenderState: {
+        groupKey: "group-1",
+        shouldSkipCollapsedItem: false,
+        shouldRenderCollapsedHeader: false,
+      },
+      onToggleGroup: "toggle-group",
+      body: runtimeThreadBody,
+      styles: {
+        surface: runtimeThreadSurfaceStyles,
+        body: "thread-body-styles",
+      },
+    })
+    expect(runtimeThreadParts.shouldSkipThread).toBe(false)
+    expect(runtimeThreadParts.collapsedBoundary).toBeNull()
+    expect(runtimeThreadParts.bodySurface?.body).toBe(runtimeThreadBody)
+    expect(runtimeThreadParts.bodySurface?.bodyStyles).toBe("thread-body-styles")
+    expect(runtimeThreadParts.bodySurface?.surface).toEqual({
+      surfaceToneStyle: "tone:assistant",
+      groupRenderState: {
+        groupKey: "group-1",
+        shouldSkipCollapsedItem: false,
+        shouldRenderCollapsedHeader: false,
+      },
+      onToggleGroup: "toggle-group",
+      styles: runtimeThreadSurfaceStyles,
+    })
+    expect(createChatRuntimeConversationRuntimeThreadMobilePropsParts({
+      groupRenderState: {
+        groupKey: "group-1",
+        shouldSkipCollapsedItem: false,
+        shouldRenderCollapsedHeader: true,
+      },
+      onToggleGroup: "toggle-group",
+      body: runtimeThreadBody,
+      styles: {
+        surface: runtimeThreadSurfaceStyles,
+        body: "thread-body-styles",
+      },
+    })).toEqual({
+      shouldSkipThread: false,
+      collapsedBoundary: {
+        renderState: {
+          groupKey: "group-1",
+          shouldSkipCollapsedItem: false,
+          shouldRenderCollapsedHeader: true,
+        },
+        kind: "collapsed",
+        onPress: "toggle-group",
+        styles: "activity-boundary",
+      },
+      bodySurface: null,
+    })
+    expect(createChatRuntimeConversationRuntimeThreadMobilePropsParts({
+      groupRenderState: {
+        groupKey: "group-1",
+        shouldSkipCollapsedItem: true,
+        shouldRenderCollapsedHeader: true,
+      },
+      body: runtimeThreadBody,
+      styles: {
+        surface: runtimeThreadSurfaceStyles,
+        body: "thread-body-styles",
+      },
+    })).toEqual({
+      shouldSkipThread: true,
+      collapsedBoundary: null,
+      bodySurface: null,
     })
     const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
       retryStatus: {

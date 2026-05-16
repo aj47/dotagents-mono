@@ -80,6 +80,7 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
+  createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
@@ -7313,34 +7314,34 @@ export function ChatMessageRuntimeThread({
   body,
   styles,
 }: ChatMessageRuntimeThreadProps) {
-  if (groupRenderState?.shouldSkipCollapsedItem) return null;
+  const runtimeThreadParts = createChatRuntimeConversationRuntimeThreadMobilePropsParts({
+    groupRenderState,
+    onToggleGroup,
+    body,
+    styles,
+  });
 
-  if (groupRenderState?.shouldRenderCollapsedHeader) {
+  if (runtimeThreadParts.shouldSkipThread) return null;
+
+  if (runtimeThreadParts.collapsedBoundary) {
     return (
       <ChatMessageToolActivityGroupBoundary
-        renderState={groupRenderState}
-        kind="collapsed"
-        onPress={onToggleGroup}
-        styles={styles.surface.boundary}
+        {...runtimeThreadParts.collapsedBoundary}
       />
     );
   }
 
-  if (!body) return null;
+  if (!runtimeThreadParts.bodySurface) return null;
 
-  const resolvedBody = createChatMessageThreadBodyProps(body);
-  const surfaceToneStyle = styles.surface.getToneStyle(body.conversation.surfaceToneStyleSlot);
+  const resolvedBody = createChatMessageThreadBodyProps(runtimeThreadParts.bodySurface.body);
 
   return (
     <ChatMessageToolActivityGroupThreadSurface
-      surfaceToneStyle={surfaceToneStyle}
-      groupRenderState={groupRenderState}
-      onToggleGroup={onToggleGroup}
-      styles={styles.surface}
+      {...runtimeThreadParts.bodySurface.surface}
     >
       <ChatMessageThreadBody
         {...resolvedBody}
-        styles={styles.body}
+        styles={runtimeThreadParts.bodySurface.bodyStyles}
       />
     </ChatMessageToolActivityGroupThreadSurface>
   );

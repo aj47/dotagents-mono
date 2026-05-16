@@ -2008,6 +2008,74 @@ export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeConversationRuntimeThreadMobilePropsPartsInput<
+  TGroupRenderState extends {
+    shouldSkipCollapsedItem?: boolean
+    shouldRenderCollapsedHeader?: boolean
+  } = {
+    shouldSkipCollapsedItem?: boolean
+    shouldRenderCollapsedHeader?: boolean
+  },
+  TBody extends { conversation: { surfaceToneStyleSlot: unknown } } = { conversation: { surfaceToneStyleSlot: unknown } },
+  TOnToggleGroup = unknown,
+  TBodyStyles = unknown,
+  TSurfaceStyles extends {
+    boundary: unknown
+    getToneStyle: (toneStyleSlot: TBody["conversation"]["surfaceToneStyleSlot"]) => unknown
+  } = {
+    boundary: unknown
+    getToneStyle: (toneStyleSlot: TBody["conversation"]["surfaceToneStyleSlot"]) => unknown
+  },
+  TToneStyle = ReturnType<TSurfaceStyles["getToneStyle"]>,
+> {
+  groupRenderState?: TGroupRenderState | null
+  onToggleGroup?: TOnToggleGroup
+  body?: TBody | null
+  styles: {
+    surface: TSurfaceStyles
+    body: TBodyStyles
+  }
+}
+
+export interface ChatRuntimeConversationRuntimeThreadMobilePropsParts<
+  TGroupRenderState extends {
+    shouldSkipCollapsedItem?: boolean
+    shouldRenderCollapsedHeader?: boolean
+  } = {
+    shouldSkipCollapsedItem?: boolean
+    shouldRenderCollapsedHeader?: boolean
+  },
+  TBody extends { conversation: { surfaceToneStyleSlot: unknown } } = { conversation: { surfaceToneStyleSlot: unknown } },
+  TOnToggleGroup = unknown,
+  TBodyStyles = unknown,
+  TSurfaceStyles extends {
+    boundary: unknown
+    getToneStyle: (toneStyleSlot: TBody["conversation"]["surfaceToneStyleSlot"]) => unknown
+  } = {
+    boundary: unknown
+    getToneStyle: (toneStyleSlot: TBody["conversation"]["surfaceToneStyleSlot"]) => unknown
+  },
+  TToneStyle = ReturnType<TSurfaceStyles["getToneStyle"]>,
+> {
+  shouldSkipThread: boolean
+  collapsedBoundary: ({
+    renderState: TGroupRenderState
+    kind: "collapsed"
+    onPress: TOnToggleGroup | undefined
+    styles: TSurfaceStyles["boundary"]
+  }) | null
+  bodySurface: ({
+    body: TBody
+    surface: {
+      surfaceToneStyle: TToneStyle
+      groupRenderState: TGroupRenderState | null | undefined
+      onToggleGroup: TOnToggleGroup | undefined
+      styles: TSurfaceStyles
+    }
+    bodyStyles: TBodyStyles
+  }) | null
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13654,6 +13722,64 @@ export function createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
       kind: "footer",
       onPress: onToggleGroup,
       styles: styles.boundary,
+    } : null,
+  }
+}
+
+export function createChatRuntimeConversationRuntimeThreadMobilePropsParts<
+  TGroupRenderState extends {
+    shouldSkipCollapsedItem?: boolean
+    shouldRenderCollapsedHeader?: boolean
+  },
+  TBody extends { conversation: { surfaceToneStyleSlot: unknown } },
+  TOnToggleGroup,
+  TBodyStyles,
+  TSurfaceStyles extends {
+    boundary: unknown
+    getToneStyle: (toneStyleSlot: TBody["conversation"]["surfaceToneStyleSlot"]) => unknown
+  },
+  TToneStyle = ReturnType<TSurfaceStyles["getToneStyle"]>,
+>({
+  groupRenderState,
+  onToggleGroup,
+  body,
+  styles,
+}: ChatRuntimeConversationRuntimeThreadMobilePropsPartsInput<
+  TGroupRenderState,
+  TBody,
+  TOnToggleGroup,
+  TBodyStyles,
+  TSurfaceStyles,
+  TToneStyle
+>): ChatRuntimeConversationRuntimeThreadMobilePropsParts<
+  TGroupRenderState,
+  TBody,
+  TOnToggleGroup,
+  TBodyStyles,
+  TSurfaceStyles,
+  TToneStyle
+> {
+  const shouldSkipThread = Boolean(groupRenderState?.shouldSkipCollapsedItem)
+  const collapsedBoundary = !shouldSkipThread && groupRenderState?.shouldRenderCollapsedHeader ? {
+    renderState: groupRenderState,
+    kind: "collapsed" as const,
+    onPress: onToggleGroup,
+    styles: styles.surface.boundary,
+  } : null
+  const shouldRenderBodySurface = !shouldSkipThread && !collapsedBoundary && !!body
+
+  return {
+    shouldSkipThread,
+    collapsedBoundary,
+    bodySurface: shouldRenderBodySurface ? {
+      body,
+      surface: {
+        surfaceToneStyle: styles.surface.getToneStyle(body.conversation.surfaceToneStyleSlot) as TToneStyle,
+        groupRenderState,
+        onToggleGroup,
+        styles: styles.surface,
+      },
+      bodyStyles: styles.body,
     } : null,
   }
 }
