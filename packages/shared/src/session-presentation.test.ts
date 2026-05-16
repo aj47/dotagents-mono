@@ -275,6 +275,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageHistoryBannerState,
+  createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeMobileActivityAccessibilityState,
@@ -3364,6 +3365,59 @@ describe("session presentation semantics", () => {
       },
       loadIcon: {
         color: "#0f172a",
+      },
+    })
+    expect(createChatRuntimeMessageHistoryBannerMobileStyleSlots({
+      renderState: getChatRuntimeMessageHistoryBannerMobileRenderState({
+        visibleCount: 40,
+        totalCount: 100,
+        hiddenCount: 60,
+        loadIncrement: 30,
+        colors: {
+          mutedForeground: "#64748b",
+          border: "#e2e8f0",
+          muted: "#f1f5f9",
+          foreground: "#0f172a",
+        },
+      }),
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        sm: 6,
+      },
+    })).toMatchObject({
+      container: {
+        flexDirection: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.flexDirection,
+        flexWrap: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.flexWrap,
+        justifyContent: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.justifyContent,
+        alignItems: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.alignItems,
+        gap: 4,
+        paddingVertical: 4,
+      },
+      summaryText: {
+        color: "#64748b",
+        fontSize: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.summaryFontSize,
+        lineHeight: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.summaryLineHeight,
+        textAlign: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.textAlign,
+      },
+      loadButton: {
+        flexDirection: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.flexDirection,
+        alignItems: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.alignItems,
+        justifyContent: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.justifyContent,
+        gap: 4,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        borderColor: "#e2e8f0",
+        backgroundColor: "rgba(241, 245, 249, 0.35)",
+      },
+      loadButtonPressed: {
+        opacity: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.pressedOpacity,
+      },
+      loadButtonText: {
+        color: "#0f172a",
+        fontWeight: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.fontWeight,
       },
     })
     expect(getChatRuntimeMessageHistoryBannerState({

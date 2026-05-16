@@ -2907,6 +2907,61 @@ export interface ChatRuntimeMessageHistoryBannerMobileRenderState {
   }
 }
 
+type ChatRuntimeMessageHistoryBannerMobileSurface =
+  typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner
+
+export type ChatRuntimeMessageHistoryBannerMobileSpacingToken =
+  | ChatRuntimeMessageHistoryBannerMobileSurface["gap"]
+  | ChatRuntimeMessageHistoryBannerMobileSurface["paddingVertical"]
+  | ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["gap"]
+  | ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["paddingHorizontal"]
+
+export type ChatRuntimeMessageHistoryBannerMobileRadiusToken =
+  ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["borderRadius"]
+
+export interface ChatRuntimeMessageHistoryBannerMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeMessageHistoryBannerMobileRenderState, "surface" | "colors" | "loadButton">
+  spacing: Readonly<Record<ChatRuntimeMessageHistoryBannerMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeMessageHistoryBannerMobileRadiusToken, number>>
+}
+
+export interface ChatRuntimeMessageHistoryBannerMobileStyleSlots {
+  container: {
+    flexDirection: ChatRuntimeMessageHistoryBannerMobileSurface["flexDirection"]
+    flexWrap: ChatRuntimeMessageHistoryBannerMobileSurface["flexWrap"]
+    justifyContent: ChatRuntimeMessageHistoryBannerMobileSurface["justifyContent"]
+    alignItems: ChatRuntimeMessageHistoryBannerMobileSurface["alignItems"]
+    gap: number
+    paddingVertical: number
+  }
+  summaryText: {
+    color: string
+    fontSize: number
+    lineHeight: number
+    textAlign: ChatRuntimeMessageHistoryBannerMobileSurface["textAlign"]
+  }
+  loadButton: {
+    flexDirection: ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["flexDirection"]
+    alignItems: ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["alignItems"]
+    justifyContent: ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["justifyContent"]
+    gap: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    borderWidth: number
+    borderColor: string
+    backgroundColor: string
+  }
+  loadButtonPressed: {
+    opacity: number
+  }
+  loadButtonText: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeMessageHistoryBannerMobileSurface["loadButton"]["fontWeight"]
+  }
+}
+
 export interface ChatRuntimeViewportAffordanceMobileRenderStateInput {
   visibleMessageCount: number
   totalMessageCount: number
@@ -11683,6 +11738,52 @@ export function getChatRuntimeMessageHistoryBannerMobileRenderState({
         color: resolvedColors.loadIcon.color,
       },
       pressedOpacity: surface.loadButton.pressedOpacity,
+    },
+  }
+}
+
+export function createChatRuntimeMessageHistoryBannerMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatRuntimeMessageHistoryBannerMobileStyleSlotsInput): ChatRuntimeMessageHistoryBannerMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    container: {
+      flexDirection: surface.flexDirection,
+      flexWrap: surface.flexWrap,
+      justifyContent: surface.justifyContent,
+      alignItems: surface.alignItems,
+      gap: spacing[surface.gap],
+      paddingVertical: spacing[surface.paddingVertical],
+    },
+    summaryText: {
+      color: colors.summary.color,
+      fontSize: surface.summaryFontSize,
+      lineHeight: surface.summaryLineHeight,
+      textAlign: surface.textAlign,
+    },
+    loadButton: {
+      flexDirection: surface.loadButton.flexDirection,
+      alignItems: surface.loadButton.alignItems,
+      justifyContent: surface.loadButton.justifyContent,
+      gap: spacing[surface.loadButton.gap],
+      paddingHorizontal: spacing[surface.loadButton.paddingHorizontal],
+      paddingVertical: surface.loadButton.paddingVertical,
+      borderRadius: radius[surface.loadButton.borderRadius],
+      borderWidth: surface.loadButton.borderWidth,
+      borderColor: colors.loadButton.borderColor,
+      backgroundColor: colors.loadButton.backgroundColor,
+    },
+    loadButtonPressed: {
+      opacity: renderState.loadButton.pressedOpacity,
+    },
+    loadButtonText: {
+      color: colors.loadButton.color,
+      fontSize: surface.loadButton.fontSize,
+      fontWeight: surface.loadButton.fontWeight,
     },
   }
 }

@@ -11,6 +11,7 @@ import {
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
+  createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
@@ -100,9 +101,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const scrollToBottomSurface = scrollToBottomStyleState.surface;
   const scrollToBottomSurfaceColors = scrollToBottomStyleState.colors;
   const messageHistoryBannerStyleState = conversationChromeStyleState.messageHistoryBanner;
-  const messageHistoryBannerSurface = messageHistoryBannerStyleState.surface;
-  const messageHistoryBannerSurfaceColors = messageHistoryBannerStyleState.colors;
-  const messageHistoryLoadButtonPressedOpacity = messageHistoryBannerStyleState.loadButton.pressedOpacity;
+  const messageHistoryBannerStyleSlots = createChatRuntimeMessageHistoryBannerMobileStyleSlots({
+    renderState: messageHistoryBannerStyleState,
+    spacing,
+    radius,
+  });
   const composerChromeStyleState = chatChromeStyleState.composer;
   const composerStyleState = composerChromeStyleState.composer;
   const composerSurface = composerStyleState.surface;
@@ -331,38 +334,19 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       }),
     },
     loadOlderContainer: {
-      flexDirection: messageHistoryBannerSurface.flexDirection,
-      flexWrap: messageHistoryBannerSurface.flexWrap,
-      justifyContent: messageHistoryBannerSurface.justifyContent,
-      alignItems: messageHistoryBannerSurface.alignItems,
-      gap: spacing[messageHistoryBannerSurface.gap],
-      paddingVertical: spacing[messageHistoryBannerSurface.paddingVertical],
+      ...messageHistoryBannerStyleSlots.container,
     },
     loadOlderText: {
-      color: messageHistoryBannerSurfaceColors.summary.color,
-      fontSize: messageHistoryBannerSurface.summaryFontSize,
-      lineHeight: messageHistoryBannerSurface.summaryLineHeight,
-      textAlign: messageHistoryBannerSurface.textAlign,
+      ...messageHistoryBannerStyleSlots.summaryText,
     },
     loadOlderButton: {
-      flexDirection: messageHistoryBannerSurface.loadButton.flexDirection,
-      alignItems: messageHistoryBannerSurface.loadButton.alignItems,
-      justifyContent: messageHistoryBannerSurface.loadButton.justifyContent,
-      gap: spacing[messageHistoryBannerSurface.loadButton.gap],
-      paddingHorizontal: spacing[messageHistoryBannerSurface.loadButton.paddingHorizontal],
-      paddingVertical: messageHistoryBannerSurface.loadButton.paddingVertical,
-      borderRadius: radius[messageHistoryBannerSurface.loadButton.borderRadius],
-      borderWidth: messageHistoryBannerSurface.loadButton.borderWidth,
-      borderColor: messageHistoryBannerSurfaceColors.loadButton.borderColor,
-      backgroundColor: messageHistoryBannerSurfaceColors.loadButton.backgroundColor,
+      ...messageHistoryBannerStyleSlots.loadButton,
     },
     loadOlderButtonPressed: {
-      opacity: messageHistoryLoadButtonPressedOpacity,
+      ...messageHistoryBannerStyleSlots.loadButtonPressed,
     },
     loadOlderButtonText: {
-      color: messageHistoryBannerSurfaceColors.loadButton.color,
-      fontSize: messageHistoryBannerSurface.loadButton.fontSize,
-      fontWeight: messageHistoryBannerSurface.loadButton.fontWeight,
+      ...messageHistoryBannerStyleSlots.loadButtonText,
     },
     // Compact desktop-style messages: full-width role cards with shared tone semantics.
     msg: {
