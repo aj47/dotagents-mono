@@ -3831,7 +3831,6 @@ describe("session presentation semantics", () => {
       assetBaseUrl: "https://assets.local",
       assetAuthToken: "asset-token",
       spinnerSource: "spinner",
-      inlineActivity: { state: "inline" },
       presentation: threadBodyPresentation,
       expandedDelegationConversationPreviews: bodyExpandedDelegationConversationPreviews,
       expandedDelegationToolPreviews: bodyExpandedDelegationToolPreviews,
@@ -3870,7 +3869,7 @@ describe("session presentation semantics", () => {
       },
     })
     expect(threadBodyState).toMatchObject({
-      bodyDisplayMode: "inlineActivity",
+      bodyDisplayMode: "conversation",
       retryStatus: {
         renderState: null,
       },
@@ -3881,7 +3880,7 @@ describe("session presentation semantics", () => {
       toolApproval: {
         cardState: null,
       },
-      inlineActivity: { state: "inline" },
+      inlineActivity: null,
       conversation: {
         surfaceToneStyleSlot: successfulConversationMessage.toneStyleSlot,
         actionSet: {

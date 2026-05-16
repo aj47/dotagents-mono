@@ -985,7 +985,6 @@ export type ChatRuntimeConversationThreadBodyMobileMessageLike<
   }
 
 export interface ChatRuntimeConversationThreadBodyMobileStateInput<
-  TInlineActivity,
   TTurnDurationStyle extends object = Record<string, never>,
   TSpeechStyle extends object = Record<string, never>,
   TBranchStyle extends object = Record<string, never>,
@@ -1094,7 +1093,6 @@ export interface ChatRuntimeConversationThreadBodyMobileStateInput<
     TAssetAuthToken
   >["assetAuthToken"]
   spinnerSource: TSpinnerSource
-  inlineActivity: TInlineActivity
   presentation: ChatRuntimeMessageThreadPresentationMobileRenderState
   expandedDelegationConversationPreviews: ChatRuntimeConversationDelegationCardMobileStateInput<
     TDelegation
@@ -1168,7 +1166,6 @@ export interface ChatRuntimeConversationThreadBodyMobileDisplayModeInput<
 }
 
 export interface ChatRuntimeConversationThreadBodyMobileState<
-  TInlineActivity,
   TTurnDurationStyle extends object = Record<string, never>,
   TSpeechStyle extends object = Record<string, never>,
   TBranchStyle extends object = Record<string, never>,
@@ -1186,7 +1183,7 @@ export interface ChatRuntimeConversationThreadBodyMobileState<
   retryStatus: ChatRuntimeConversationRetryStatusMobileState
   delegationCard: ChatRuntimeConversationDelegationCardMobileState<TDelegation>
   toolApproval: ChatRuntimeConversationToolApprovalMobileState
-  inlineActivity: TInlineActivity
+  inlineActivity: ChatRuntimeInlineActivityMobileIndicatorState<TSpinnerSource>
   conversation: ChatRuntimeConversationContentMobileState<
     TSpinnerSource,
     TAssetBaseUrl,
@@ -7260,7 +7257,6 @@ export function getChatRuntimeConversationTurnDurationMobileState<
 }
 
 export function getChatRuntimeConversationThreadBodyMobileState<
-  TInlineActivity,
   TTurnDurationStyle extends object = Record<string, never>,
   TSpeechStyle extends object = Record<string, never>,
   TBranchStyle extends object = Record<string, never>,
@@ -7289,7 +7285,6 @@ export function getChatRuntimeConversationThreadBodyMobileState<
   assetBaseUrl,
   assetAuthToken,
   spinnerSource,
-  inlineActivity,
   presentation,
   expandedDelegationConversationPreviews,
   expandedDelegationToolPreviews,
@@ -7307,7 +7302,6 @@ export function getChatRuntimeConversationThreadBodyMobileState<
   onCopyMessage,
   onToggleMessageExpansion,
 }: ChatRuntimeConversationThreadBodyMobileStateInput<
-  TInlineActivity,
   TTurnDurationStyle,
   TSpeechStyle,
   TBranchStyle,
@@ -7320,7 +7314,6 @@ export function getChatRuntimeConversationThreadBodyMobileState<
   TRetryInfo,
   TDelegation
 >): ChatRuntimeConversationThreadBodyMobileState<
-  TInlineActivity,
   TTurnDurationStyle,
   TSpeechStyle,
   TBranchStyle,
@@ -7368,6 +7361,11 @@ export function getChatRuntimeConversationThreadBodyMobileState<
     colors,
     onToggleArguments: onToggleToolApprovalArguments,
     onRespondToToolApproval,
+  })
+  const inlineActivity = getChatRuntimeInlineActivityMobileIndicatorState({
+    message,
+    isResponding,
+    spinnerSource,
   })
 
   return {

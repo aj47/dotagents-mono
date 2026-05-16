@@ -168,7 +168,6 @@ import {
   getChatRuntimeHomeQuickStartEmptyMobileRenderState,
   getChatRuntimeHomeQuickStartItemMobileRenderState,
   getChatRuntimeHomeQuickStartPressIntent,
-  getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeLatestStepSummary,
   getChatRuntimeMessageHistoryWindowMobileDisplayState,
   getChatRuntimeMessageHistoryWindowMobileState,
@@ -2994,7 +2993,6 @@ type ChatMessageConversationThreadVisibilityInput =
 
 type ChatMessageConversationThreadBodySharedInput =
   ChatRuntimeConversationThreadBodyMobileStateInput<
-    ChatMessageThreadBodyPropsInput['inlineActivity'],
     ChatMessageActionStyleSlots['turnDuration'],
     ChatMessageActionStyleSlots['speech'],
     ChatMessageActionStyleSlots['branch'],
@@ -3008,12 +3006,10 @@ type ChatMessageConversationThreadBodySharedInput =
     ACPDelegationProgress | null | undefined
   >;
 
-type ChatMessageConversationThreadBodyInput =
-  Omit<ChatMessageConversationThreadBodySharedInput, 'inlineActivity'>;
+type ChatMessageConversationThreadBodyInput = ChatMessageConversationThreadBodySharedInput;
 
 type ChatMessageConversationThreadBodyState =
   ChatRuntimeConversationThreadBodyMobileState<
-    ChatMessageThreadBodyPropsInput['inlineActivity'],
     ChatMessageActionStyleSlots['turnDuration'],
     ChatMessageActionStyleSlots['speech'],
     ChatMessageActionStyleSlots['branch'],
@@ -5650,21 +5646,10 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
 }
 
 export function createChatMessageConversationThreadBodyInput({
-  message,
-  isResponding,
-  spinnerSource,
   ...input
 }: ChatMessageConversationThreadBodyInput): ChatMessageConversationThreadBodyState {
   return getChatRuntimeConversationThreadBodyMobileState({
-    message,
-    isResponding,
-    spinnerSource,
     ...input,
-    inlineActivity: getChatRuntimeInlineActivityMobileIndicatorState({
-      message,
-      isResponding,
-      spinnerSource,
-    }),
   });
 }
 
