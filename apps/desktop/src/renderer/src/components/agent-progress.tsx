@@ -127,8 +127,6 @@ import {
   formatChatRuntimeEarlierDelegationMessagesLabel,
   formatChatRuntimeLoadEarlierLabel,
   formatChatRuntimeModelPickerTitle,
-  formatChatRuntimeRetryAttemptLabel,
-  formatChatRuntimeRetryCountdownLabel,
   formatChatRuntimeThinkingPickerTitle,
   formatChatRuntimeToolApprovalFailureMessage,
   formatChatRuntimeVerbosityPickerTitle,
@@ -140,6 +138,7 @@ import {
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeDesktopSurfaceState,
   getChatRuntimePinAccessibilityLabel,
+  getChatRuntimeRetryStatusState,
   getChatRuntimeStreamingContentTitle,
   getChatRuntimeToolApprovalDesktopSurfaceState,
   getChatRuntimeToolApprovalInteractionState,
@@ -2216,15 +2215,21 @@ const RetryStatusBanner: React.FC<{
 
   if (!retryInfo.isRetrying) return null
 
-  const attemptText = formatChatRuntimeRetryAttemptLabel(retryInfo)
+  const retryStatus = getChatRuntimeRetryStatusState({
+    retryInfo,
+    countdownSeconds: countdown,
+  })
 
   return (
-    <div className={desktopRetryStatusSurface.containerClassName}>
+    <div
+      className={desktopRetryStatusSurface.containerClassName}
+      aria-label={retryStatus.accessibilityLabel}
+    >
       {/* Header */}
       <div className={desktopRetryStatusSurface.headerClassName}>
         <Clock className={desktopRetryStatusSurface.iconClassName} />
         <span className={desktopRetryStatusSurface.titleClassName}>
-          {retryInfo.reason}
+          {retryStatus.title}
         </span>
         <Loader2 className={desktopRetryStatusSurface.spinnerClassName} />
       </div>
@@ -2233,14 +2238,14 @@ const RetryStatusBanner: React.FC<{
       <div className={desktopRetryStatusSurface.contentClassName}>
         <div className={desktopRetryStatusSurface.metaRowClassName}>
           <span className={desktopRetryStatusSurface.attemptClassName}>
-            {attemptText}
+            {retryStatus.attemptLabel}
           </span>
           <span className={desktopRetryStatusSurface.countdownClassName}>
-            {formatChatRuntimeRetryCountdownLabel(countdown)}
+            {retryStatus.countdownLabel}
           </span>
         </div>
         <p className={desktopRetryStatusSurface.descriptionClassName}>
-          {desktopRuntimeCopy.retryStatus.autoRetryDescription}
+          {retryStatus.description}
         </p>
       </div>
     </div>

@@ -1934,6 +1934,20 @@ export interface ChatRuntimeRetryStatusMobileColors {
   }
 }
 
+export interface ChatRuntimeRetryStatusStateInput {
+  retryInfo?: ChatRuntimeRetryInfoLike | null
+  countdownSeconds?: number | null
+}
+
+export interface ChatRuntimeRetryStatusState {
+  shouldRender: boolean
+  title: string
+  attemptLabel: string
+  countdownLabel: string
+  description: string
+  accessibilityLabel: string
+}
+
 export interface ChatRuntimeRetryStatusMobileRenderStateInput {
   retryInfo?: ChatRuntimeRetryInfoLike | null
   colors: ChatRuntimeRetryStatusMobileColorPalette
@@ -7686,6 +7700,37 @@ export function formatChatRuntimeRetryAccessibilityLabel(
   ].join(". ")
 }
 
+export function getChatRuntimeRetryStatusState({
+  retryInfo,
+  countdownSeconds,
+}: ChatRuntimeRetryStatusStateInput = {}): ChatRuntimeRetryStatusState {
+  if (!retryInfo) {
+    return {
+      shouldRender: false,
+      title: "",
+      attemptLabel: "",
+      countdownLabel: "",
+      description: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+      accessibilityLabel: "",
+    }
+  }
+
+  const resolvedCountdownSeconds = countdownSeconds ?? retryInfo.delaySeconds
+  const retryAccessibilityInfo = {
+    ...retryInfo,
+    delaySeconds: resolvedCountdownSeconds,
+  }
+
+  return {
+    shouldRender: true,
+    title: retryInfo.reason,
+    attemptLabel: formatChatRuntimeRetryAttemptLabel(retryInfo),
+    countdownLabel: formatChatRuntimeRetryCountdownLabel(resolvedCountdownSeconds),
+    description: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+    accessibilityLabel: formatChatRuntimeRetryAccessibilityLabel(retryAccessibilityInfo),
+  }
+}
+
 export function getChatRuntimeStreamingContentTitle(isStreaming: boolean): string {
   return isStreaming
     ? CHAT_RUNTIME_PRESENTATION.streamingContent.generatingTitle
@@ -10173,18 +10218,18 @@ export function getChatRuntimeRetryStatusMobileRenderState({
   const surface = getChatRuntimeRetryStatusMobileState()
   const resolvedColors = getChatRuntimeRetryStatusMobileColors(colors)
   const icon = getChatRuntimeRetryStatusMobileIconState()
-  const shouldRender = !!retryInfo
+  const retryStatus = getChatRuntimeRetryStatusState({ retryInfo })
 
   return {
-    shouldRender,
+    shouldRender: retryStatus.shouldRender,
     surface,
     colors: resolvedColors,
-    title: retryInfo?.reason ?? "",
-    attemptLabel: retryInfo ? formatChatRuntimeRetryAttemptLabel(retryInfo) : "",
-    countdownLabel: retryInfo ? formatChatRuntimeRetryCountdownLabel(retryInfo.delaySeconds) : "",
-    description: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+    title: retryStatus.title,
+    attemptLabel: retryStatus.attemptLabel,
+    countdownLabel: retryStatus.countdownLabel,
+    description: retryStatus.description,
     accessibilityRole: surface.accessibilityRole,
-    accessibilityLabel: retryInfo ? formatChatRuntimeRetryAccessibilityLabel(retryInfo) : "",
+    accessibilityLabel: retryStatus.accessibilityLabel,
     icon: {
       name: icon.name,
       size: icon.size,

@@ -265,6 +265,7 @@ import {
   getChatRuntimePinMobileColors,
   getChatRuntimePinMobileIconState,
   getChatRuntimePinMobileRenderState,
+  getChatRuntimeRetryStatusState,
   getChatRuntimeRetryStatusMobileColors,
   getChatRuntimeRetryStatusMobileState,
   getChatRuntimeRetryStatusMobileIconState,
@@ -5407,6 +5408,30 @@ describe("session presentation semantics", () => {
       delaySeconds: 7,
       reason: "Rate limit",
     })).toContain("Rate limit")
+    expect(getChatRuntimeRetryStatusState({
+      retryInfo: {
+        attempt: 2,
+        maxAttempts: 5,
+        delaySeconds: 7,
+        reason: "Rate limit",
+      },
+      countdownSeconds: 3,
+    })).toEqual({
+      shouldRender: true,
+      title: "Rate limit",
+      attemptLabel: "Attempt 2/5",
+      countdownLabel: "Retrying in 3s",
+      description: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+      accessibilityLabel: "Rate limit. Attempt 2/5. Retrying in 3s. The agent will automatically retry when the API is available.",
+    })
+    expect(getChatRuntimeRetryStatusState()).toEqual({
+      shouldRender: false,
+      title: "",
+      attemptLabel: "",
+      countdownLabel: "",
+      description: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+      accessibilityLabel: "",
+    })
     expect(getChatRuntimeStreamingContentTitle(true)).toBe("Generating response...")
     expect(getChatRuntimeStreamingContentTitle(false)).toBe("Response")
     const stepSummary = {
