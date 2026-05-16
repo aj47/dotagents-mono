@@ -4281,8 +4281,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /const renderState = getChatRuntimeConversationMessageActionsMobileRenderState\(\{\s+message: messageRenderState,[\s\S]*?copy: \{\s+role: message\.role,\s+content: visibleMessageContent,\s+isAssistantComplete: !isResponding,\s+isCopied,\s+colors,\s+\},\s+\}\)/);
   assert.match(sessionPresentationSource, /return \{\s+renderState,\s+turnDuration: \{/);
   assert.match(sessionPresentationSource, /turnDuration: \{\s+role: message\.role,\s+durationMs: turnDuration\?\.durationMs,\s+isLive: turnDuration\?\.isLive,\s+colors,\s+\.\.\.styles\.turnDuration,\s+\},/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageActionComponents/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageActionSet/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageActionComponents/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageActionSet/);
+  assert.match(chatMessageChromeSource, /function createChatMessageActionComponents\(\{/);
+  assert.match(chatMessageChromeSource, /function createChatMessageActionSet\(\{/);
   assert.match(chatMessageChromeSource, /const actionSet = createChatMessageActionSet\(actionSetInput\);/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationBodyProps/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageDelegationCardProps/);
@@ -4320,7 +4322,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /components: Record<ChatMessageActionSlot, ReactNode>;/);
   assert.match(chatMessageChromeSource, /turnDuration: \(\) => \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
   assert.match(chatMessageChromeSource, /speech: \(\) => renderChatMessageActionButton\(speech\),/);
-  assert.match(chatMessageChromeSource, /export function createChatMessageActionSet\(\{\s+renderState: actionRenderState,/);
+  assert.match(chatMessageChromeSource, /function createChatMessageActionSet\(\{\s+renderState: actionRenderState,/);
   assert.match(sessionPresentationSource, /const availability = getChatMessageActionAvailabilityRenderState\(\{\s+turnDuration: turnDurationRenderState\.shouldRender,\s+speech: speechRenderState\.canSpeak,\s+branch: branchRenderState\.canBranch,\s+copy: copyRenderState\.canCopy,\s+expansion: expansionRenderState\.canToggle,\s+\}\)/);
   assert.doesNotMatch(screenSource, /isVisible: messageContentRenderState\.speech\.isVisible,/);
   assert.doesNotMatch(chatMessageChromeSource, /isVisible: contentRenderState\.speech\.isVisible,/);

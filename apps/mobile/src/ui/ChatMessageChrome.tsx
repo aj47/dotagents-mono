@@ -3979,7 +3979,7 @@ function createChatMessageActionRenderers({
   };
 }
 
-export function createChatMessageActionComponents({
+function createChatMessageActionComponents({
   availability,
   ...input
 }: ChatMessageActionComponentsInput): ChatMessageActionComponentMap {
@@ -3989,7 +3989,7 @@ export function createChatMessageActionComponents({
   );
 }
 
-export function createChatMessageActionSet({
+function createChatMessageActionSet({
   renderState: actionRenderState,
   turnDuration,
   speech,
