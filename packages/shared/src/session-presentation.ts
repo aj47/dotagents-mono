@@ -73,6 +73,11 @@ import {
   type HandsFreeComposerMobileSurfaceColorPalette,
   type HandsFreeComposerDebugMessageKey,
 } from "./hands-free-controller"
+export {
+  getHandsFreeStatusChipMobileRenderState,
+  type HandsFreeStatusChipMobileColors,
+  type HandsFreeStatusChipMobileRenderState,
+} from "./hands-free-controller"
 import {
   extractDataImageMarkdownReferences,
   buildChatImageAttachmentMessage,

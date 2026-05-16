@@ -16,6 +16,10 @@ const chatMessageChromeSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatMessageChrome.tsx'),
   'utf8'
 );
+const handsFreeStatusChipSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'HandsFreeStatusChip.tsx'),
+  'utf8'
+);
 const messageQueuePanelSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MessageQueuePanel.tsx'),
   'utf8'
@@ -73,11 +77,13 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
 test('keeps mobile chat shared domain types routed through session presentation', () => {
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|api-types)';/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|voice-debug-log|types|api-types)';/);
+  assert.doesNotMatch(handsFreeStatusChipSource, /from '@dotagents\/shared\/(hands-free-controller|types)';/);
   assert.match(sessionPresentationSource, /export type \{ AgentConversationState \} from "\.\/conversation-state"/);
   assert.match(sessionPresentationSource, /export type \{[\s\S]*?AgentProgressUpdate,[\s\S]*?AgentUserResponseEvent,[\s\S]*?\} from "\.\/agent-progress"/);
   assert.match(sessionPresentationSource, /export type \{ Loop, PredefinedPromptSummary, Settings, Skill \} from "\.\/api-types"/);
   assert.match(sessionPresentationSource, /export type \{ HandsFreePhase \} from "\.\/types"/);
   assert.match(sessionPresentationSource, /export type \{ VoiceDebugEntry, VoiceDebugLog \} from "\.\/voice-debug-log"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileColors,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?\} from "\.\/hands-free-controller"/);
 });
 
 test('resolves mobile monospace typography from shared surface tokens', () => {

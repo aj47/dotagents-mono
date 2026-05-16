@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import type { HandsFreePhase } from '@dotagents/shared/types';
 import {
   getHandsFreeStatusChipMobileRenderState,
+  type HandsFreePhase,
   type HandsFreeStatusChipMobileColors,
   type HandsFreeStatusChipMobileRenderState,
-} from '@dotagents/shared/hands-free-controller';
+} from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 
