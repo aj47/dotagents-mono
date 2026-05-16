@@ -41,7 +41,6 @@ import {
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
 import type { HandsFreePhase } from '@dotagents/shared/types';
-import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
@@ -131,6 +130,7 @@ import {
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
   createChatRuntimeRemoteSpeechSettingsState,
+  DEFAULT_EDGE_TTS_VOICE,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
   type RecoveryState,
   type ChatRuntimeRemoteSpeechProvider,

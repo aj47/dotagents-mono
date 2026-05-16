@@ -49,6 +49,7 @@ export {
   type ChatRuntimeRemoteSpeechSettingsState,
 } from "./text-to-speech-settings"
 export { createChatRuntimeMobileConfigState } from "./mobile-app-config"
+export { DEFAULT_EDGE_TTS_VOICE } from "./providers"
 import {
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,
