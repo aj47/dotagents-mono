@@ -95,6 +95,7 @@ import {
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
+  createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
@@ -8407,22 +8408,30 @@ export function ChatMessageToolExecutionPayloadBlock({
   previewNumberOfLines,
   styles,
 }: ChatMessageToolExecutionPayloadBlockProps) {
+  const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
+    compactText,
+    content,
+    isExpanded,
+    previewNumberOfLines,
+    styles,
+  });
+
   return (
     <>
-      {compactText ? (
+      {payloadBlockParts.preview ? (
         <Text
-          style={styles.preview}
-          numberOfLines={previewNumberOfLines}
+          style={payloadBlockParts.preview.style}
+          numberOfLines={payloadBlockParts.preview.numberOfLines}
         >
-          {compactText}
+          {payloadBlockParts.preview.text}
         </Text>
       ) : null}
       <ScrollView
-        style={isExpanded ? styles.scrollExpanded : styles.scroll}
-        nestedScrollEnabled
+        style={payloadBlockParts.scroll.style}
+        nestedScrollEnabled={payloadBlockParts.scroll.nestedScrollEnabled}
       >
-        <Text style={styles.code}>
-          {content}
+        <Text style={payloadBlockParts.code.style}>
+          {payloadBlockParts.code.text}
         </Text>
       </ScrollView>
     </>

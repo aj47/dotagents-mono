@@ -134,6 +134,7 @@ import {
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
+  createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
@@ -9213,6 +9214,51 @@ describe("session presentation semantics", () => {
         isExpanded: true,
         previewNumberOfLines: 3,
         styles: "payload-block-styles",
+      },
+    })
+    const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
+      compactText: "preview",
+      content: "payload-content",
+      isExpanded: true,
+      previewNumberOfLines: 3,
+      styles: {
+        preview: "payload-preview",
+        scroll: "payload-scroll",
+        scrollExpanded: "payload-scroll-expanded",
+        code: "payload-code",
+      },
+    })
+    expect(payloadBlockParts).toEqual({
+      preview: {
+        text: "preview",
+        style: "payload-preview",
+        numberOfLines: 3,
+      },
+      scroll: {
+        style: "payload-scroll-expanded",
+        nestedScrollEnabled: true,
+      },
+      code: {
+        text: "payload-content",
+        style: "payload-code",
+      },
+    })
+    expect(createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
+      compactText: null,
+      content: "payload-content",
+      isExpanded: false,
+      previewNumberOfLines: 2,
+      styles: {
+        preview: "payload-preview",
+        scroll: "payload-scroll",
+        scrollExpanded: "payload-scroll-expanded",
+        code: "payload-code",
+      },
+    })).toMatchObject({
+      preview: null,
+      scroll: {
+        style: "payload-scroll",
+        nestedScrollEnabled: true,
       },
     })
     const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({

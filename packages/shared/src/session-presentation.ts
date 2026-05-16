@@ -2007,6 +2007,54 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
+  TStyles extends {
+    preview: unknown
+    scroll: unknown
+    scrollExpanded: unknown
+    code: unknown
+  } = {
+    preview: unknown
+    scroll: unknown
+    scrollExpanded: unknown
+    code: unknown
+  },
+> {
+  compactText?: string | null
+  content: string
+  isExpanded: boolean
+  previewNumberOfLines: number
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
+  TStyles extends {
+    preview: unknown
+    scroll: unknown
+    scrollExpanded: unknown
+    code: unknown
+  } = {
+    preview: unknown
+    scroll: unknown
+    scrollExpanded: unknown
+    code: unknown
+  },
+> {
+  preview: ({
+    text: string
+    style: TStyles["preview"]
+    numberOfLines: number
+  }) | null
+  scroll: {
+    style: TStyles["scroll"] | TStyles["scrollExpanded"]
+    nestedScrollEnabled: true
+  }
+  code: {
+    text: string
+    style: TStyles["code"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TResultBadge = unknown,
@@ -14634,6 +14682,37 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
       isExpanded,
       previewNumberOfLines,
       styles: styles.payloadBlock,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
+  TStyles extends {
+    preview: unknown
+    scroll: unknown
+    scrollExpanded: unknown
+    code: unknown
+  },
+>({
+  compactText,
+  content,
+  isExpanded,
+  previewNumberOfLines,
+  styles,
+}: ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<TStyles>): ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<TStyles> {
+  return {
+    preview: compactText ? {
+      text: compactText,
+      style: styles.preview,
+      numberOfLines: previewNumberOfLines,
+    } : null,
+    scroll: {
+      style: isExpanded ? styles.scrollExpanded : styles.scroll,
+      nestedScrollEnabled: true,
+    },
+    code: {
+      text: content,
+      style: styles.code,
     },
   }
 }
