@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createChatComposerHandsFreeMobileStyleSlots,
   createChatComposerImageAttachmentMobileStyleSlots,
+  createChatComposerMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
@@ -134,13 +135,15 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const composerChromeStyleState = chatChromeStyleState.composer;
   const composerStyleState = composerChromeStyleState.composer;
   const composerSurface = composerStyleState.surface;
-  const composerTextInputSurface = composerSurface.input;
-  const composerTextInputPlatform = composerStyleState.input;
   const mobileComposerSurfaceColors = composerStyleState.colors.surface;
   const mobileComposerTextColors = composerStyleState.colors.text;
-  const inputAreaSurface = composerSurface.inputArea;
-  const sttPreviewSurface = composerSurface.sttPreview;
   const voiceOverlaySurface = composerSurface.voiceOverlay;
+  const composerStyleSlots = createChatComposerMobileStyleSlots({
+    renderState: composerStyleState,
+    spacing,
+    radius,
+    borderWidths: theme,
+  });
   const imageAttachmentStyleState = composerChromeStyleState.imageAttachment;
   const imageAttachmentStyleSlots = createChatComposerImageAttachmentMobileStyleSlots({
     renderState: imageAttachmentStyleState,
@@ -519,9 +522,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...delegationCardStyleSlots.toolPreviewMore,
     },
     inputArea: {
-      borderTopWidth: theme[inputAreaSurface.borderTopWidthToken],
-      borderColor: mobileComposerSurfaceColors.inputArea.borderColor,
-      backgroundColor: mobileComposerSurfaceColors.inputArea.backgroundColor,
+      ...composerStyleSlots.inputArea,
     },
     pendingImagesRow: {
       ...imageAttachmentStyleSlots.row,
@@ -536,33 +537,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...imageAttachmentStyleSlots.removeButton,
     },
     sttPreviewBox: {
-      marginHorizontal: spacing[sttPreviewSurface.marginHorizontal],
-      marginTop: spacing[sttPreviewSurface.marginTop],
-      borderWidth: sttPreviewSurface.borderWidth,
-      borderColor: mobileComposerSurfaceColors.sttPreview.borderColor,
-      backgroundColor: mobileComposerSurfaceColors.sttPreview.backgroundColor,
-      borderRadius: radius[sttPreviewSurface.borderRadius],
-      paddingHorizontal: spacing[sttPreviewSurface.paddingHorizontal],
-      paddingVertical: spacing[sttPreviewSurface.paddingVertical],
+      ...composerStyleSlots.sttPreviewBox,
     },
     sttPreviewLabel: {
-      color: mobileComposerTextColors.sttPreview.labelColor,
-      marginBottom: sttPreviewSurface.labelMarginBottom,
-      fontSize: sttPreviewSurface.labelFontSize,
-      lineHeight: sttPreviewSurface.labelLineHeight,
-      fontWeight: sttPreviewSurface.labelFontWeight,
+      ...composerStyleSlots.sttPreviewLabel,
     },
     sttPreviewText: {
-      color: mobileComposerTextColors.sttPreview.textColor,
-      fontSize: sttPreviewSurface.textFontSize,
-      lineHeight: sttPreviewSurface.textLineHeight,
+      ...composerStyleSlots.sttPreviewText,
     },
     inputRow: {
-      flexDirection: composerSurface.inputRow.flexDirection,
-      alignItems: composerSurface.inputRow.alignItems,
-      gap: spacing[composerSurface.inputRow.gap],
-      paddingHorizontal: spacing[composerSurface.inputRow.paddingHorizontal],
-      paddingVertical: spacing[composerSurface.inputRow.paddingVertical],
+      ...composerStyleSlots.inputRow,
     },
     handsFreeStatusRow: {
       ...handsFreeStyleSlots.statusRow,
@@ -784,103 +768,46 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       fontWeight: promptEditorModalSurface.actionText.fontWeight,
     },
     input: {
-      borderWidth: composerTextInputSurface.borderWidth,
-      borderColor: mobileComposerSurfaceColors.input.borderColor,
-      borderRadius: radius[composerTextInputSurface.borderRadius],
-      paddingHorizontal: spacing[composerTextInputSurface.paddingHorizontal],
-      paddingVertical: composerTextInputPlatform.paddingVertical,
-      backgroundColor: mobileComposerSurfaceColors.input.backgroundColor,
-      color: mobileComposerTextColors.input.color,
-      fontSize: composerTextInputSurface.fontSize,
-      flex: composerTextInputSurface.flex,
-      maxHeight: composerTextInputSurface.maxHeight,
+      ...composerStyleSlots.input,
     },
     visuallyHiddenComposerHint: {
-      position: composerSurface.visuallyHiddenComposerHint.position,
-      left: composerSurface.visuallyHiddenComposerHint.left,
-      width: composerSurface.visuallyHiddenComposerHint.width,
-      height: composerSurface.visuallyHiddenComposerHint.height,
+      ...composerStyleSlots.visuallyHiddenComposerHint,
     },
     micWrapper: {
-      paddingHorizontal: spacing[inputAreaSurface.micWrapperPaddingHorizontal],
-      paddingBottom: spacing[inputAreaSurface.micWrapperPaddingBottom],
+      ...composerStyleSlots.micWrapper,
     },
     mic: {
-      width: composerSurface.micButton.width,
-      height: composerSurface.micButton.height,
-      flexDirection: composerSurface.micButton.flexDirection,
-      borderRadius: radius[composerSurface.micButton.borderRadius],
-      borderWidth: composerSurface.micButton.borderWidth,
-      borderColor: mobileComposerSurfaceColors.micButton.borderColor,
-      backgroundColor: mobileComposerSurfaceColors.micButton.backgroundColor,
-      alignItems: composerSurface.micButton.alignItems,
-      justifyContent: composerSurface.micButton.justifyContent,
-      gap: spacing[composerSurface.micButton.gap],
+      ...composerStyleSlots.mic,
     },
     micOn: {
-      backgroundColor: mobileComposerSurfaceColors.micButton.activeBackgroundColor,
-      borderColor: mobileComposerSurfaceColors.micButton.activeBorderColor,
+      ...composerStyleSlots.micOn,
     },
     micLabel: {
-      fontSize: composerSurface.micButton.labelFontSize,
-      color: mobileComposerTextColors.micButton.color,
-      fontWeight: composerSurface.micButton.labelFontWeight,
+      ...composerStyleSlots.micLabel,
     },
     micLabelOn: {
-      color: mobileComposerTextColors.micButton.activeColor,
+      ...composerStyleSlots.micLabelOn,
     },
     ttsToggle: {
-      width: composerSurface.accessoryButton.size,
-      height: composerSurface.accessoryButton.size,
-      borderRadius: composerSurface.accessoryButton.borderRadius,
-      borderWidth: composerSurface.accessoryButton.borderWidth,
-      borderColor: mobileComposerSurfaceColors.accessoryButton.borderColor,
-      backgroundColor: mobileComposerSurfaceColors.accessoryButton.backgroundColor,
-      alignItems: composerSurface.accessoryButton.alignItems,
-      justifyContent: composerSurface.accessoryButton.justifyContent,
+      ...composerStyleSlots.accessoryButton,
     },
     ttsToggleOn: {
-      backgroundColor: mobileComposerSurfaceColors.accessoryButton.activeBackgroundColor,
-      borderColor: mobileComposerSurfaceColors.accessoryButton.activeBorderColor,
+      ...composerStyleSlots.accessoryButtonActive,
     },
     sendButton: {
-      backgroundColor: mobileComposerSurfaceColors.submitButton.backgroundColor,
-      minHeight: composerSurface.submitButton.minHeight,
-      minWidth: composerSurface.submitButton.minWidth,
-      paddingHorizontal: spacing[composerSurface.submitButton.paddingHorizontal],
-      paddingVertical: spacing[composerSurface.submitButton.paddingVertical],
-      borderRadius: radius[composerSurface.submitButton.borderRadius],
-      flexDirection: composerSurface.submitButton.flexDirection,
-      alignItems: composerSurface.submitButton.alignItems,
-      justifyContent: composerSurface.submitButton.justifyContent,
-      gap: composerSurface.submitButton.gap,
+      ...composerStyleSlots.submitButton,
     },
     queueButton: {
-      borderWidth: composerSurface.queueButton.borderWidth,
-      borderColor: mobileComposerSurfaceColors.queueButton.borderColor,
-      backgroundColor: mobileComposerSurfaceColors.queueButton.backgroundColor,
-      minHeight: composerSurface.submitButton.minHeight,
-      minWidth: composerSurface.submitButton.minWidth,
-      paddingHorizontal: spacing[composerSurface.submitButton.paddingHorizontal],
-      paddingVertical: spacing[composerSurface.submitButton.paddingVertical],
-      borderRadius: radius[composerSurface.submitButton.borderRadius],
-      flexDirection: composerSurface.submitButton.flexDirection,
-      alignItems: composerSurface.submitButton.alignItems,
-      justifyContent: composerSurface.submitButton.justifyContent,
-      gap: composerSurface.submitButton.gap,
+      ...composerStyleSlots.queueButton,
     },
     sendButtonDisabled: {
-      opacity: composerSurface.submitButton.disabledOpacity,
+      ...composerStyleSlots.submitButtonDisabled,
     },
     queueButtonText: {
-      color: mobileComposerTextColors.queueButton.color,
-      fontWeight: composerSurface.submitButton.fontWeight,
-      fontSize: composerSurface.submitButton.fontSize,
+      ...composerStyleSlots.queueButtonText,
     },
     sendButtonText: {
-      color: mobileComposerTextColors.submitButton.color,
-      fontWeight: composerSurface.submitButton.fontWeight,
-      fontSize: composerSurface.submitButton.fontSize,
+      ...composerStyleSlots.submitButtonText,
     },
     debugInfo: {
       ...handsFreeStyleSlots.debugPanel,

@@ -4418,6 +4418,40 @@ export interface ChatComposerMobileSurfaceRenderState {
   }
 }
 
+type ChatComposerMobileStyleRenderState = ChatComposerMobileSurfaceRenderState
+type ChatComposerMobileStyleSurface = ChatComposerMobileStyleRenderState["surface"]
+
+export type ChatComposerMobileStyleSpacingToken =
+  | ChatComposerMobileStyleSurface["sttPreview"]["marginHorizontal"]
+  | ChatComposerMobileStyleSurface["sttPreview"]["marginTop"]
+  | ChatComposerMobileStyleSurface["sttPreview"]["paddingHorizontal"]
+  | ChatComposerMobileStyleSurface["sttPreview"]["paddingVertical"]
+  | ChatComposerMobileStyleSurface["inputRow"]["gap"]
+  | ChatComposerMobileStyleSurface["inputRow"]["paddingHorizontal"]
+  | ChatComposerMobileStyleSurface["inputRow"]["paddingVertical"]
+  | ChatComposerMobileStyleSurface["input"]["paddingHorizontal"]
+  | ChatComposerMobileStyleSurface["inputArea"]["micWrapperPaddingHorizontal"]
+  | ChatComposerMobileStyleSurface["inputArea"]["micWrapperPaddingBottom"]
+  | ChatComposerMobileStyleSurface["micButton"]["gap"]
+  | ChatComposerMobileStyleSurface["submitButton"]["paddingHorizontal"]
+  | ChatComposerMobileStyleSurface["submitButton"]["paddingVertical"]
+
+export type ChatComposerMobileStyleRadiusToken =
+  | ChatComposerMobileStyleSurface["sttPreview"]["borderRadius"]
+  | ChatComposerMobileStyleSurface["input"]["borderRadius"]
+  | ChatComposerMobileStyleSurface["micButton"]["borderRadius"]
+  | ChatComposerMobileStyleSurface["submitButton"]["borderRadius"]
+
+export type ChatComposerMobileStyleBorderWidthToken =
+  ChatComposerMobileStyleSurface["inputArea"]["borderTopWidthToken"]
+
+export interface ChatComposerMobileStyleSlotsInput {
+  renderState: ChatComposerMobileStyleRenderState
+  spacing: Readonly<Record<ChatComposerMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<ChatComposerMobileStyleRadiusToken, number>>
+  borderWidths: Readonly<Record<ChatComposerMobileStyleBorderWidthToken, number>>
+}
+
 export type ChatComposerRuntimeChromeMobileStyleColorPalette =
   & ChatComposerMobileSurfaceRenderStateColorPalette
   & ChatImageAttachmentMobileSurfaceColorPalette
@@ -8628,6 +8662,153 @@ export function getChatComposerMobileSurfaceRenderState({
     colors: {
       surface: getChatComposerMobileSurfaceColors(colors),
       text: getChatComposerMobileTextColors(colors),
+    },
+  }
+}
+
+export function createChatComposerMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  borderWidths,
+}: ChatComposerMobileStyleSlotsInput) {
+  const surface = renderState.surface
+  const colors = renderState.colors.surface
+  const textColors = renderState.colors.text
+
+  return {
+    inputArea: {
+      borderTopWidth: borderWidths[surface.inputArea.borderTopWidthToken],
+      borderColor: colors.inputArea.borderColor,
+      backgroundColor: colors.inputArea.backgroundColor,
+    },
+    sttPreviewBox: {
+      marginHorizontal: spacing[surface.sttPreview.marginHorizontal],
+      marginTop: spacing[surface.sttPreview.marginTop],
+      borderWidth: surface.sttPreview.borderWidth,
+      borderColor: colors.sttPreview.borderColor,
+      backgroundColor: colors.sttPreview.backgroundColor,
+      borderRadius: radius[surface.sttPreview.borderRadius],
+      paddingHorizontal: spacing[surface.sttPreview.paddingHorizontal],
+      paddingVertical: spacing[surface.sttPreview.paddingVertical],
+    },
+    sttPreviewLabel: {
+      color: textColors.sttPreview.labelColor,
+      marginBottom: surface.sttPreview.labelMarginBottom,
+      fontSize: surface.sttPreview.labelFontSize,
+      lineHeight: surface.sttPreview.labelLineHeight,
+      fontWeight: surface.sttPreview.labelFontWeight,
+    },
+    sttPreviewText: {
+      color: textColors.sttPreview.textColor,
+      fontSize: surface.sttPreview.textFontSize,
+      lineHeight: surface.sttPreview.textLineHeight,
+    },
+    inputRow: {
+      flexDirection: surface.inputRow.flexDirection,
+      alignItems: surface.inputRow.alignItems,
+      gap: spacing[surface.inputRow.gap],
+      paddingHorizontal: spacing[surface.inputRow.paddingHorizontal],
+      paddingVertical: spacing[surface.inputRow.paddingVertical],
+    },
+    input: {
+      borderWidth: surface.input.borderWidth,
+      borderColor: colors.input.borderColor,
+      borderRadius: radius[surface.input.borderRadius],
+      paddingHorizontal: spacing[surface.input.paddingHorizontal],
+      paddingVertical: renderState.input.paddingVertical,
+      backgroundColor: colors.input.backgroundColor,
+      color: textColors.input.color,
+      fontSize: surface.input.fontSize,
+      flex: surface.input.flex,
+      maxHeight: surface.input.maxHeight,
+    },
+    visuallyHiddenComposerHint: {
+      position: surface.visuallyHiddenComposerHint.position,
+      left: surface.visuallyHiddenComposerHint.left,
+      width: surface.visuallyHiddenComposerHint.width,
+      height: surface.visuallyHiddenComposerHint.height,
+    },
+    micWrapper: {
+      paddingHorizontal: spacing[surface.inputArea.micWrapperPaddingHorizontal],
+      paddingBottom: spacing[surface.inputArea.micWrapperPaddingBottom],
+    },
+    mic: {
+      width: surface.micButton.width,
+      height: surface.micButton.height,
+      flexDirection: surface.micButton.flexDirection,
+      borderRadius: radius[surface.micButton.borderRadius],
+      borderWidth: surface.micButton.borderWidth,
+      borderColor: colors.micButton.borderColor,
+      backgroundColor: colors.micButton.backgroundColor,
+      alignItems: surface.micButton.alignItems,
+      justifyContent: surface.micButton.justifyContent,
+      gap: spacing[surface.micButton.gap],
+    },
+    micOn: {
+      backgroundColor: colors.micButton.activeBackgroundColor,
+      borderColor: colors.micButton.activeBorderColor,
+    },
+    micLabel: {
+      fontSize: surface.micButton.labelFontSize,
+      color: textColors.micButton.color,
+      fontWeight: surface.micButton.labelFontWeight,
+    },
+    micLabelOn: {
+      color: textColors.micButton.activeColor,
+    },
+    accessoryButton: {
+      width: surface.accessoryButton.size,
+      height: surface.accessoryButton.size,
+      borderRadius: surface.accessoryButton.borderRadius,
+      borderWidth: surface.accessoryButton.borderWidth,
+      borderColor: colors.accessoryButton.borderColor,
+      backgroundColor: colors.accessoryButton.backgroundColor,
+      alignItems: surface.accessoryButton.alignItems,
+      justifyContent: surface.accessoryButton.justifyContent,
+    },
+    accessoryButtonActive: {
+      backgroundColor: colors.accessoryButton.activeBackgroundColor,
+      borderColor: colors.accessoryButton.activeBorderColor,
+    },
+    submitButton: {
+      backgroundColor: colors.submitButton.backgroundColor,
+      minHeight: surface.submitButton.minHeight,
+      minWidth: surface.submitButton.minWidth,
+      paddingHorizontal: spacing[surface.submitButton.paddingHorizontal],
+      paddingVertical: spacing[surface.submitButton.paddingVertical],
+      borderRadius: radius[surface.submitButton.borderRadius],
+      flexDirection: surface.submitButton.flexDirection,
+      alignItems: surface.submitButton.alignItems,
+      justifyContent: surface.submitButton.justifyContent,
+      gap: surface.submitButton.gap,
+    },
+    queueButton: {
+      borderWidth: surface.queueButton.borderWidth,
+      borderColor: colors.queueButton.borderColor,
+      backgroundColor: colors.queueButton.backgroundColor,
+      minHeight: surface.submitButton.minHeight,
+      minWidth: surface.submitButton.minWidth,
+      paddingHorizontal: spacing[surface.submitButton.paddingHorizontal],
+      paddingVertical: spacing[surface.submitButton.paddingVertical],
+      borderRadius: radius[surface.submitButton.borderRadius],
+      flexDirection: surface.submitButton.flexDirection,
+      alignItems: surface.submitButton.alignItems,
+      justifyContent: surface.submitButton.justifyContent,
+      gap: surface.submitButton.gap,
+    },
+    submitButtonDisabled: {
+      opacity: surface.submitButton.disabledOpacity,
+    },
+    queueButtonText: {
+      color: textColors.queueButton.color,
+      fontWeight: surface.submitButton.fontWeight,
+      fontSize: surface.submitButton.fontSize,
+    },
+    submitButtonText: {
+      color: textColors.submitButton.color,
+      fontWeight: surface.submitButton.fontWeight,
+      fontSize: surface.submitButton.fontSize,
     },
   }
 }
