@@ -50,7 +50,6 @@ import {
   getChatMessageRuntimeNextResponseEventOrdinal,
   createChatMessageActionSlotRenderMap,
   getChatMessageActionMobileButtonStatesBySlot,
-  getChatMessageActionSlotRenderEntries,
   getChatMessageCopyFailureAlertState,
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
@@ -79,6 +78,7 @@ import {
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
+  createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationThreadBodyMobileProps,
   getChatRuntimeMessageThreadMobileStyleRenderState,
@@ -1125,7 +1125,7 @@ type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;
 type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;
 
 export type ChatMessageActionSet = {
-  entries: ChatMessageActionEntry[];
+  entries: readonly ChatMessageActionEntry[];
   shouldRenderActionSlots: boolean;
   shouldRenderStandaloneActions: boolean;
 };
@@ -4204,11 +4204,10 @@ export function createChatMessageActionSet({
     ...actionInput,
   });
 
-  return {
-    entries: getChatMessageActionSlotRenderEntries(actionRenderState.layout.visibleSlots, components),
-    shouldRenderActionSlots: actionRenderState.layout.shouldRenderActionSlots,
-    shouldRenderStandaloneActions: actionRenderState.layout.shouldRenderStandaloneRow,
-  };
+  return createChatRuntimeConversationActionSetMobileProps({
+    renderState: actionRenderState,
+    components,
+  });
 }
 
 export function useChatConversationHomePromptEditorSaveActionsState<

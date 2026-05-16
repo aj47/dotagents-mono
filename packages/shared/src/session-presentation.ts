@@ -225,6 +225,7 @@ import {
   getChatMessageActionMobileStyleRenderState,
   getChatMessageActionMobileTurnDurationBadgeColors,
   getChatMessageActionMobileTurnDurationBadgeState,
+  getChatMessageActionSlotRenderEntries,
   getChatMessageCopyMobileRenderState,
   getChatMessageMobileRenderState,
   getChatMessageSpeechMobileRenderState,
@@ -244,6 +245,8 @@ import {
   type ChatMessageContentRenderState,
   type ChatMessageActionMobileColors,
   type ChatMessageActionMobileColorPalette,
+  type ChatMessageActionSlotRenderEntry,
+  type ChatMessageActionSlotRenderMap,
   type ChatMessageCopyMobileRenderState,
   type ChatMessageCopyMobileRenderStateInput,
   type ChatMessageMobileRenderColorPalette,
@@ -1760,6 +1763,11 @@ export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
   shouldRenderStandaloneActions: boolean
+}
+
+export interface ChatRuntimeConversationActionSetMobilePropsInput<TActionContent> {
+  renderState: Pick<ChatRuntimeConversationMessageActionsMobileRenderState, "layout">
+  components: ChatMessageActionSlotRenderMap<TActionContent>
 }
 
 export interface ChatRuntimeConversationBodyContentMobileProps<
@@ -12901,6 +12909,18 @@ export function getChatRuntimeConversationActionSetMobileState<
       onPress: () => onToggleMessageExpansion(messageIndex),
       ...styles.expansion,
     },
+  }
+}
+
+export function createChatRuntimeConversationActionSetMobileProps<TActionContent>({
+  renderState,
+  components,
+}: ChatRuntimeConversationActionSetMobilePropsInput<TActionContent>):
+  ChatRuntimeConversationActionSetMobileProps<ChatMessageActionSlotRenderEntry<TActionContent>> {
+  return {
+    entries: getChatMessageActionSlotRenderEntries(renderState.layout.visibleSlots, components),
+    shouldRenderActionSlots: renderState.layout.shouldRenderActionSlots,
+    shouldRenderStandaloneActions: renderState.layout.shouldRenderStandaloneRow,
   }
 }
 

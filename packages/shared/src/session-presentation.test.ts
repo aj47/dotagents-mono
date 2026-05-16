@@ -68,6 +68,7 @@ import {
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeDelegationCardMobileProps,
+  createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
   createChatRuntimeConversationToolExecutionStackMobileProps,
@@ -6787,6 +6788,25 @@ describe("session presentation semantics", () => {
       "copy:4:Working",
       "expand:4",
     ])
+    const actionSetProps = createChatRuntimeConversationActionSetMobileProps({
+      renderState: actionSetState.renderState,
+      components: {
+        turnDuration: "duration",
+        speech: "speech",
+        branch: "branch",
+        copy: "copy",
+        expansion: "expansion",
+      },
+    })
+    expect(actionSetProps).toMatchObject({
+      shouldRenderActionSlots: true,
+      shouldRenderStandaloneActions: false,
+      entries: [
+        { slot: "speech", item: "speech" },
+        { slot: "branch", item: "branch" },
+        { slot: "copy", item: "copy" },
+      ],
+    })
     const toolExecutionStackEvents: string[] = []
     const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: threadBodyColors,
@@ -6856,11 +6876,7 @@ describe("session presentation semantics", () => {
     })
     const conversationBodyProps = createChatRuntimeConversationBodyMobileProps({
       contentDisplayMode: contentState.contentDisplayMode,
-      actionSet: {
-        entries: ["speech", "copy"],
-        shouldRenderActionSlots: true,
-        shouldRenderStandaloneActions: false,
-      },
+      actionSet: actionSetProps,
       expanded: contentState.expanded,
       collapsed: contentState.collapsed,
       toolExecutionStack: conversationToolExecutionStackState,
@@ -6869,14 +6885,14 @@ describe("session presentation semantics", () => {
       content: {
         contentDisplayMode: "expanded",
         shouldRenderActionSlots: true,
-        entries: ["speech", "copy"],
+        entries: actionSetProps.entries,
         expanded: {
           markdownContent: "Working",
         },
       },
       standaloneActions: {
         shouldRender: false,
-        entries: ["speech", "copy"],
+        entries: actionSetProps.entries,
       },
       toolExecutionStack: {
         shouldRender: true,

@@ -4305,12 +4305,14 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /turnDuration: \{\s+style: styles\.messageTurnDurationBadge,\s+liveStyle: styles\.messageTurnDurationBadgeLive,\s+textStyle: styles\.messageTurnDurationText,\s+liveTextStyle: styles\.messageTurnDurationTextLive,\s+\}/);
   assert.match(chatMessageChromeSource, /function createChatMessageActionRenderers\(\{/);
   assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(\s+availability,\s+createChatMessageActionRenderers\(input\),\s+\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationActionSetMobileProps/);
   assert.match(sessionPresentationSource, /export \{\s+createChatMessageActionSlotRenderMap,\s+getChatMessageActionMobileButtonStatesBySlot,\s+getChatMessageActionSlotRenderEntries,\s+type ChatMessageCollapsedPreviewMobileActionState,\s+type ChatMessageExpansionMobileRenderState,\s+type ChatMessageActionSlotRenderEntry,\s+type ChatMessageActionSlotRenderMap,\s+\} from "\.\/message-display-utils"/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/message-display-utils';/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderMap,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;/);
-  assert.match(chatMessageChromeSource, /entries: ChatMessageActionEntry\[\];/);
+  assert.match(chatMessageChromeSource, /entries: readonly ChatMessageActionEntry\[\];/);
   assert.doesNotMatch(chatMessageChromeSource, /components: Record<ChatMessageActionSlot, ReactNode>;/);
   assert.match(chatMessageChromeSource, /turnDuration: \(\) => \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
   assert.match(chatMessageChromeSource, /speech: \(\) => renderChatMessageActionButton\(speech\),/);
@@ -4320,8 +4322,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /isVisible: contentRenderState\.speech\.isVisible,/);
   assert.match(chatMessageChromeSource, /expansion: \{\s+\.\.\.expansion,\s+renderState: actionRenderState\.expansion,\s+\},/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderState,/);
-  assert.match(chatMessageChromeSource, /entries: getChatMessageActionSlotRenderEntries\(actionRenderState\.layout\.visibleSlots, components\),/);
-  assert.match(chatMessageChromeSource, /shouldRenderActionSlots: actionRenderState\.layout\.shouldRenderActionSlots,/);
+  assert.match(chatMessageChromeSource, /return createChatRuntimeConversationActionSetMobileProps\(\{\s+renderState: actionRenderState,\s+components,\s+\}\);/);
+  assert.match(sessionPresentationSource, /entries: getChatMessageActionSlotRenderEntries\(renderState\.layout\.visibleSlots, components\),/);
+  assert.match(sessionPresentationSource, /shouldRenderActionSlots: renderState\.layout\.shouldRenderActionSlots,/);
   assert.match(sessionPresentationSource, /shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,/);
   assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+shouldRender=\{shouldRenderActionSlots\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageActionSlotList\(\{\s+shouldRender = true,/);
@@ -4377,7 +4380,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /rowStyle=\{styles\.content\.rowStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
-  assert.match(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
+  assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
   assert.match(chatMessageChromeSource, /const content = entries\.map\(\(\{ slot, item \}\) => \(/);
   assert.equal((screenSource.match(/visibleMessageActionSlots\.map\(\(actionSlot\) => \(/g) ?? []).length, 0);
