@@ -432,6 +432,33 @@ export interface MarkdownContentMobileSurfaceRenderState {
   colors: MarkdownContentMobileSurfaceColors
 }
 
+export interface MarkdownCodeBlockCopyMobileRenderStateInput {
+  isCopied?: boolean
+  colors: Pick<MarkdownContentMobileSurfaceColors, "codeBlockCopyButton" | "codeBlockCopyIcon">
+}
+
+export interface MarkdownCodeBlockCopyDesktopRenderState {
+  label: string
+  surface: typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop
+  iconClassName:
+    | typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop.codeBlockCopyIconClassName
+    | typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop.codeBlockCopiedIconClassName
+}
+
+export interface MarkdownCodeBlockCopyMobileRenderState {
+  label: string
+  button: ReturnType<typeof getMarkdownCodeBlockCopyMobileButtonState>
+  buttonColors: {
+    borderColor: string
+    backgroundColor: string
+  }
+  icon: {
+    name: ReturnType<typeof getMarkdownCodeBlockCopyMobileIconState>["name"]
+    size: number
+    color: string
+  }
+}
+
 export interface MarkdownThinkSectionMobileSurfaceColors {
   collapsedContainer: {
     borderColor: string
@@ -767,6 +794,47 @@ export function getMarkdownCodeBlockCopyMobileButtonState(isCopied = false) {
     accessibilityRole: button.accessibilityRole,
     pressedOpacity: button.pressedOpacity,
   } as const
+}
+
+export function getMarkdownCodeBlockCopyDesktopRenderState(
+  isCopied = false,
+): MarkdownCodeBlockCopyDesktopRenderState {
+  const surface = getMarkdownContentDesktopSurfaceState()
+
+  return {
+    label: getMarkdownCodeBlockCopyLabel(isCopied),
+    surface,
+    iconClassName: isCopied
+      ? surface.codeBlockCopiedIconClassName
+      : surface.codeBlockCopyIconClassName,
+  }
+}
+
+export function getMarkdownCodeBlockCopyMobileRenderState({
+  isCopied = false,
+  colors,
+}: MarkdownCodeBlockCopyMobileRenderStateInput): MarkdownCodeBlockCopyMobileRenderState {
+  const icon = getMarkdownCodeBlockCopyMobileIconState(isCopied)
+
+  return {
+    label: getMarkdownCodeBlockCopyLabel(isCopied),
+    button: getMarkdownCodeBlockCopyMobileButtonState(isCopied),
+    buttonColors: {
+      borderColor: isCopied
+        ? colors.codeBlockCopyButton.copiedBorderColor
+        : colors.codeBlockCopyButton.borderColor,
+      backgroundColor: isCopied
+        ? colors.codeBlockCopyButton.copiedBackgroundColor
+        : colors.codeBlockCopyButton.backgroundColor,
+    },
+    icon: {
+      name: icon.name,
+      size: icon.size,
+      color: isCopied
+        ? colors.codeBlockCopyIcon.copiedColor
+        : colors.codeBlockCopyIcon.color,
+    },
+  }
 }
 
 export function formatMarkdownImageRequestFailedMessage(status: number): string {

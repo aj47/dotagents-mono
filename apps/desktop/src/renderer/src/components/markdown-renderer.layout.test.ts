@@ -7,10 +7,12 @@ describe("markdown renderer layout", () => {
   it("keeps long links, inline code, and fenced code blocks readable in narrow tiles", () => {
     expect(markdownRendererSource).toContain("className={markdownContentSurface.linkClassName}")
     expect(markdownRendererSource).toContain("className={markdownContentSurface.inlineCodeClassName}")
-    expect(markdownRendererSource).toContain("className={markdownContentSurface.codeBlockPreClassName}")
-    expect(markdownRendererSource).toContain("className={markdownContentSurface.codeBlockCopyButtonClassName}")
-    expect(markdownRendererSource).toContain("className={markdownContentSurface.codeBlockCopiedIconClassName}")
-    expect(markdownRendererSource).toContain("className={markdownContentSurface.codeBlockCopyIconClassName}")
+    expect(markdownRendererSource).toContain("getMarkdownCodeBlockCopyDesktopRenderState")
+    expect(markdownRendererSource).toContain("const codeBlockCopyRenderState = getMarkdownCodeBlockCopyDesktopRenderState(copied)")
+    expect(markdownRendererSource).toContain("const codeBlockCopySurface = codeBlockCopyRenderState.surface")
+    expect(markdownRendererSource).toContain("className={codeBlockCopySurface.codeBlockPreClassName}")
+    expect(markdownRendererSource).toContain("className={codeBlockCopySurface.codeBlockCopyButtonClassName}")
+    expect(markdownRendererSource).toContain("className={codeBlockCopyRenderState.iconClassName}")
     expect(markdownRendererSource).not.toContain(
       'className="break-words text-primary underline underline-offset-2 hover:text-primary/80 [overflow-wrap:anywhere]"'
     )
@@ -97,9 +99,10 @@ describe("markdown renderer layout", () => {
       'className={SELECTABLE_MARKDOWN_CLASS_NAME}'
     )
     expect(markdownRendererSource).toContain("SELECTABLE_MARKDOWN_CLASS_NAME")
-    expect(markdownRendererSource).toContain("getMarkdownCodeBlockCopyLabel(copied)")
+    expect(markdownRendererSource).toContain("codeBlockCopyRenderState.label")
     expect(markdownRendererSource).toContain("getMarkdownCodeBlockFeedbackResetDelayMs()")
     expect(markdownRendererSource).not.toContain("MARKDOWN_CONTENT_PRESENTATION")
+    expect(markdownRendererSource).not.toContain("getMarkdownCodeBlockCopyLabel(copied)")
     expect(markdownRendererSource).not.toContain('title={copied ? "Copied!" : "Copy code"}')
     expect(markdownRendererSource).not.toContain("setCopied(false), 2000")
   })

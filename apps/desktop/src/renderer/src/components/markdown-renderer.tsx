@@ -8,7 +8,7 @@ import {
   isAllowedMarkdownImageUrl as isSharedAllowedMarkdownImageUrl,
 } from "@dotagents/shared/conversation-media-assets"
 import {
-  getMarkdownCodeBlockCopyLabel,
+  getMarkdownCodeBlockCopyDesktopRenderState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownContentDesktopSurfaceState,
   getMarkdownImageFallbackLabel,
@@ -183,7 +183,8 @@ function extractTextContent(node: React.ReactNode): string {
 const CodeBlockWithCopy: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [copied, setCopied] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const copyLabel = getMarkdownCodeBlockCopyLabel(copied)
+  const codeBlockCopyRenderState = getMarkdownCodeBlockCopyDesktopRenderState(copied)
+  const codeBlockCopySurface = codeBlockCopyRenderState.surface
 
   const handleCopy = useCallback(async () => {
     const text = extractTextContent(children).replace(/\n$/, "")
@@ -201,18 +202,18 @@ const CodeBlockWithCopy: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [children])
 
   return (
-    <pre className={markdownContentSurface.codeBlockPreClassName}>
+    <pre className={codeBlockCopySurface.codeBlockPreClassName}>
       <button
         type="button"
         onClick={handleCopy}
-        className={markdownContentSurface.codeBlockCopyButtonClassName}
-        title={copyLabel}
-        aria-label={copyLabel}
+        className={codeBlockCopySurface.codeBlockCopyButtonClassName}
+        title={codeBlockCopyRenderState.label}
+        aria-label={codeBlockCopyRenderState.label}
       >
         {copied ? (
-          <CheckCheck className={markdownContentSurface.codeBlockCopiedIconClassName} />
+          <CheckCheck className={codeBlockCopyRenderState.iconClassName} />
         ) : (
-          <Copy className={markdownContentSurface.codeBlockCopyIconClassName} />
+          <Copy className={codeBlockCopyRenderState.iconClassName} />
         )}
       </button>
       {children}

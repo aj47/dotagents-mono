@@ -13,10 +13,8 @@ import { spacing, radius } from './theme';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
 import {
   formatMarkdownImageRequestFailedMessage,
-  getMarkdownCodeBlockCopyLabel,
-  getMarkdownCodeBlockCopyMobileButtonState,
-  getMarkdownCodeBlockCopyMobileIconState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
+  getMarkdownCodeBlockCopyMobileRenderState,
   getMarkdownContentMobileSurfaceRenderState,
   getMarkdownImageFallbackLabel,
   getMarkdownImageInvalidAssetUrlMessage,
@@ -44,9 +42,6 @@ interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   assetBaseUrl?: string;
   assetAuthToken?: string;
 }
-
-const codeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState();
-const copiedCodeBlockCopyButtonState = getMarkdownCodeBlockCopyMobileButtonState(true);
 
 const ThinkSection: React.FC<{
   content: string;
@@ -228,11 +223,10 @@ const MarkdownCodeBlock: React.FC<{
   const [copied, setCopied] = React.useState(false);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const codeContent = getMarkdownCodeContent(node);
-  const copyLabel = getMarkdownCodeBlockCopyLabel(copied);
-  const codeBlockCopyIcon = getMarkdownCodeBlockCopyMobileIconState(copied);
-  const codeBlockCopyIconColor = copied
-    ? colors.codeBlockCopyIcon.copiedColor
-    : colors.codeBlockCopyIcon.color;
+  const codeBlockCopyRenderState = getMarkdownCodeBlockCopyMobileRenderState({
+    isCopied: copied,
+    colors,
+  });
 
   React.useEffect(() => () => {
     if (timeoutRef.current) {
@@ -263,8 +257,8 @@ const MarkdownCodeBlock: React.FC<{
         {codeContent}
       </Text>
       <Pressable
-        accessibilityRole={codeBlockCopyButtonState.accessibilityRole}
-        accessibilityLabel={copyLabel}
+        accessibilityRole={codeBlockCopyRenderState.button.accessibilityRole}
+        accessibilityLabel={codeBlockCopyRenderState.label}
         onPress={handleCopy}
         style={({ pressed }) => [
           styles.codeBlockCopyButton,
@@ -273,9 +267,9 @@ const MarkdownCodeBlock: React.FC<{
         ]}
       >
         <Ionicons
-          name={codeBlockCopyIcon.name}
-          size={codeBlockCopyIcon.size}
-          color={codeBlockCopyIconColor}
+          name={codeBlockCopyRenderState.icon.name}
+          size={codeBlockCopyRenderState.icon.size}
+          color={codeBlockCopyRenderState.icon.color}
         />
       </Pressable>
     </View>
@@ -344,6 +338,19 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   );
   const markdownContentSurface = markdownContentRenderState.surface;
   const markdownContentColors = markdownContentRenderState.colors;
+  const codeBlockCopyButtonRenderState = React.useMemo(
+    () => getMarkdownCodeBlockCopyMobileRenderState({
+      colors: markdownContentColors,
+    }),
+    [markdownContentColors],
+  );
+  const copiedCodeBlockCopyButtonRenderState = React.useMemo(
+    () => getMarkdownCodeBlockCopyMobileRenderState({
+      isCopied: true,
+      colors: markdownContentColors,
+    }),
+    [markdownContentColors],
+  );
   const thinkSectionRenderState = React.useMemo(
     () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
     [isDark],
@@ -469,24 +476,24 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       overflow: markdownContentSurface.codeBlock.overflow,
     },
     codeBlockCopyButton: {
-      position: codeBlockCopyButtonState.position,
-      top: codeBlockCopyButtonState.top,
-      right: codeBlockCopyButtonState.right,
-      width: codeBlockCopyButtonState.size,
-      height: codeBlockCopyButtonState.size,
-      borderRadius: radius[codeBlockCopyButtonState.borderRadius],
-      borderWidth: codeBlockCopyButtonState.borderWidth,
-      borderColor: markdownContentColors.codeBlockCopyButton.borderColor,
-      backgroundColor: markdownContentColors.codeBlockCopyButton.backgroundColor,
-      alignItems: codeBlockCopyButtonState.alignItems,
-      justifyContent: codeBlockCopyButtonState.justifyContent,
+      position: codeBlockCopyButtonRenderState.button.position,
+      top: codeBlockCopyButtonRenderState.button.top,
+      right: codeBlockCopyButtonRenderState.button.right,
+      width: codeBlockCopyButtonRenderState.button.size,
+      height: codeBlockCopyButtonRenderState.button.size,
+      borderRadius: radius[codeBlockCopyButtonRenderState.button.borderRadius],
+      borderWidth: codeBlockCopyButtonRenderState.button.borderWidth,
+      borderColor: codeBlockCopyButtonRenderState.buttonColors.borderColor,
+      backgroundColor: codeBlockCopyButtonRenderState.buttonColors.backgroundColor,
+      alignItems: codeBlockCopyButtonRenderState.button.alignItems,
+      justifyContent: codeBlockCopyButtonRenderState.button.justifyContent,
     },
     codeBlockCopyButtonCopied: {
-      borderColor: markdownContentColors.codeBlockCopyButton.copiedBorderColor,
-      backgroundColor: markdownContentColors.codeBlockCopyButton.copiedBackgroundColor,
+      borderColor: copiedCodeBlockCopyButtonRenderState.buttonColors.borderColor,
+      backgroundColor: copiedCodeBlockCopyButtonRenderState.buttonColors.backgroundColor,
     },
     codeBlockCopyButtonPressed: {
-      opacity: codeBlockCopyButtonState.pressedOpacity,
+      opacity: codeBlockCopyButtonRenderState.button.pressedOpacity,
     },
     blockquote: {
       backgroundColor: markdownContentColors.blockquote.backgroundColor,

@@ -6,9 +6,11 @@ import {
   MARKDOWN_THINK_SECTION_PRESENTATION,
   MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION,
   formatMarkdownImageRequestFailedMessage,
+  getMarkdownCodeBlockCopyDesktopRenderState,
   getMarkdownCodeBlockCopyLabel,
   getMarkdownCodeBlockCopyMobileButtonState,
   getMarkdownCodeBlockCopyMobileIconState,
+  getMarkdownCodeBlockCopyMobileRenderState,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownContentMobileSurfaceColors,
   getMarkdownContentMobileSurfaceRenderState,
@@ -79,6 +81,16 @@ describe("markdown render parts", () => {
       borderColorToken: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.copiedBorderColorToken,
       backgroundColorToken: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.copiedBackgroundColorToken,
       backgroundAlpha: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyButton.copiedBackgroundAlpha,
+    })
+    expect(getMarkdownCodeBlockCopyDesktopRenderState()).toEqual({
+      label: "Copy code",
+      surface: MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop,
+      iconClassName: MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop.codeBlockCopyIconClassName,
+    })
+    expect(getMarkdownCodeBlockCopyDesktopRenderState(true)).toEqual({
+      label: "Copied!",
+      surface: MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop,
+      iconClassName: MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop.codeBlockCopiedIconClassName,
     })
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop.compactProseClassName).toContain("prose-p:my-1")
     expect(MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop.selectableClassName).toBe("markdown-selectable")
@@ -156,6 +168,37 @@ describe("markdown render parts", () => {
       horizontalRule: { backgroundColor: "#d4d4d4" },
     }
     expect(getMarkdownContentMobileSurfaceColors(markdownContentPalette, { isDark: false })).toEqual(markdownContentSurfaceColors)
+    expect(getMarkdownCodeBlockCopyMobileRenderState({
+      colors: markdownContentSurfaceColors,
+    })).toEqual({
+      label: "Copy code",
+      button: getMarkdownCodeBlockCopyMobileButtonState(),
+      buttonColors: {
+        borderColor: "#d4d4d4",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+      },
+      icon: {
+        name: "copy-outline",
+        size: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyIcon.size,
+        color: "#737373",
+      },
+    })
+    expect(getMarkdownCodeBlockCopyMobileRenderState({
+      isCopied: true,
+      colors: markdownContentSurfaceColors,
+    })).toEqual({
+      label: "Copied!",
+      button: getMarkdownCodeBlockCopyMobileButtonState(true),
+      buttonColors: {
+        borderColor: "#16a34a",
+        backgroundColor: "rgba(22, 163, 74, 0.16)",
+      },
+      icon: {
+        name: "checkmark-done-outline",
+        size: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyIcon.size,
+        color: "#16a34a",
+      },
+    })
     expect(getMarkdownContentMobileSurfaceRenderState({
       colors: markdownContentPalette,
       isDark: false,
