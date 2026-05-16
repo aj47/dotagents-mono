@@ -5,13 +5,6 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationImageAssetHttpUrl,
-  isAllowedMarkdownImageUrl,
-  parseConversationImageAssetUrl,
-} from '@dotagents/shared/conversation-media-assets';
-import { useTheme } from './ThemeProvider';
-import { spacing, radius } from './theme';
-import { VideoAttachmentCard } from './VideoAttachmentCard';
-import {
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownCodeBlockCopyMobileRenderState,
@@ -28,13 +21,18 @@ import {
   getMarkdownThinkSectionMobileChevronIconState,
   getMarkdownThinkSectionMobileLeadingIconState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
+  isAllowedMarkdownImageUrl,
   isAllowedMarkdownContentLinkUrl,
+  parseConversationImageAssetUrl,
+  resolveChatRuntimeMobileFontFamily,
   splitMarkdownContent,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionControlOptions,
   type MarkdownThinkSectionMobileSurfaceRenderState,
-} from '@dotagents/shared/markdown-render-parts';
-import { resolveChatRuntimeMobileFontFamily } from '@dotagents/shared/session-presentation';
+} from '@dotagents/shared/session-presentation';
+import { useTheme } from './ThemeProvider';
+import { spacing, radius } from './theme';
+import { VideoAttachmentCard } from './VideoAttachmentCard';
 import { SettingsApiClient } from '../lib/settingsApi';
 
 interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {

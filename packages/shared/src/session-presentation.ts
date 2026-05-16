@@ -50,6 +50,29 @@ import { formatConnectionStatus, type RecoveryState } from "./connection-recover
 export { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
+  formatMarkdownImageRequestFailedMessage,
+  getMarkdownCodeBlockFeedbackResetDelayMs,
+  getMarkdownCodeBlockCopyMobileRenderState,
+  getMarkdownContentMobileSurfaceRenderState,
+  getMarkdownImageFallbackLabel,
+  getMarkdownImageInvalidAssetUrlMessage,
+  getMarkdownImageLoadErrorFallback,
+  getMarkdownImageUnavailableLabel,
+  getMarkdownRenderOptions,
+  getMarkdownThinkSectionAccessibilityLabel,
+  getMarkdownThinkSectionAccessibilityState,
+  getMarkdownThinkSectionControlState,
+  getMarkdownThinkSectionDisplayLabel,
+  getMarkdownThinkSectionMobileChevronIconState,
+  getMarkdownThinkSectionMobileLeadingIconState,
+  getMarkdownThinkSectionMobileSurfaceRenderState,
+  isAllowedMarkdownContentLinkUrl,
+  splitMarkdownContent,
+  type MarkdownContentMobileSurfaceRenderState,
+  type MarkdownThinkSectionControlOptions,
+  type MarkdownThinkSectionMobileSurfaceRenderState,
+} from "./markdown-render-parts"
+export {
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
 } from "./tts-preprocessing"
@@ -100,8 +123,11 @@ import {
   MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
 } from "./conversation-media-assets"
 export {
+  buildConversationImageAssetHttpUrl,
   getChatImageAttachmentMobileAlertState,
   getChatImageAttachmentMobileRenderState,
+  isAllowedMarkdownImageUrl,
+  parseConversationImageAssetUrl,
   type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
