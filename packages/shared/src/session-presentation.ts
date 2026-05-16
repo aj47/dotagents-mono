@@ -2132,6 +2132,63 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    spinner: unknown
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    spinner: unknown
+    label: string
+  },
+  TStyles extends {
+    row: unknown
+    text: unknown
+  } = {
+    row: unknown
+    text: unknown
+  },
+> {
+  renderState: TRenderState
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionPendingResultMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    spinner: unknown
+    label: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    spinner: unknown
+    label: string
+  },
+  TStyles extends {
+    row: unknown
+    text: unknown
+  } = {
+    row: unknown
+    text: unknown
+  },
+> {
+  container: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStyles["row"]
+  }
+  spinner: TRenderState["spinner"]
+  label: {
+    text: string
+    style: TStyles["text"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TResultBadge = unknown,
@@ -14837,6 +14894,42 @@ export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
         styles.text,
         badge.isSuccess ? styles.textSuccess : styles.textError,
       ],
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionPendingResultMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    spinner: unknown
+    label: string
+  },
+  TStyles extends {
+    row: unknown
+    text: unknown
+  },
+>({
+  renderState,
+  styles,
+}: ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
+  TRenderState,
+  TStyles
+>): ChatRuntimeToolExecutionPendingResultMobilePropsParts<
+  TRenderState,
+  TStyles
+> {
+  return {
+    container: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      style: styles.row,
+    },
+    spinner: renderState.spinner,
+    label: {
+      text: renderState.label,
+      style: styles.text,
     },
   }
 }

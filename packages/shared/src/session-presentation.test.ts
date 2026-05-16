@@ -136,6 +136,7 @@ import {
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  createChatRuntimeToolExecutionPendingResultMobilePropsParts,
   createChatRuntimeToolExecutionResultBadgeMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
@@ -9338,6 +9339,37 @@ describe("session presentation semantics", () => {
           "result-badge-text",
           "result-badge-text-error",
         ],
+      },
+    })
+    const pendingResultParts = createChatRuntimeToolExecutionPendingResultMobilePropsParts({
+      renderState: {
+        accessibilityRole: "text",
+        accessibilityLabel: "Waiting for tool result",
+        spinner: {
+          size: "small",
+          color: "#888",
+        },
+        label: "Waiting...",
+      },
+      styles: {
+        row: "pending-row",
+        text: "pending-text",
+      },
+    })
+    expect(pendingResultParts).toEqual({
+      container: {
+        accessible: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Waiting for tool result",
+        style: "pending-row",
+      },
+      spinner: {
+        size: "small",
+        color: "#888",
+      },
+      label: {
+        text: "Waiting...",
+        style: "pending-text",
       },
     })
     const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({

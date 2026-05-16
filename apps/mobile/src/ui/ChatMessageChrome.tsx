@@ -97,6 +97,7 @@ import {
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  createChatRuntimeToolExecutionPendingResultMobilePropsParts,
   createChatRuntimeToolExecutionResultBadgeMobilePropsParts,
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
@@ -8303,19 +8304,24 @@ export function ChatMessageToolExecutionPendingResult({
   renderState,
   styles,
 }: ChatMessageToolExecutionPendingResultProps) {
+  const pendingResultParts = createChatRuntimeToolExecutionPendingResultMobilePropsParts({
+    renderState,
+    styles,
+  });
+
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      style={styles.row}
+      accessible={pendingResultParts.container.accessible}
+      accessibilityRole={pendingResultParts.container.accessibilityRole}
+      accessibilityLabel={pendingResultParts.container.accessibilityLabel}
+      style={pendingResultParts.container.style}
     >
       <ActivityIndicator
-        size={renderState.spinner.size}
-        color={renderState.spinner.color}
+        size={pendingResultParts.spinner.size}
+        color={pendingResultParts.spinner.color}
       />
-      <Text style={styles.text}>
-        {renderState.label}
+      <Text style={pendingResultParts.label.style}>
+        {pendingResultParts.label.text}
       </Text>
     </View>
   );
