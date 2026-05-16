@@ -241,6 +241,7 @@ import {
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
   type ChatRuntimeConversationThreadBodyMobileState,
+  type ChatRuntimeConversationThreadBodyMobileDisplayMode,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
@@ -2955,6 +2956,7 @@ type ChatMessageExpandedContentPropsInput = Pick<
 >;
 
 type ChatMessageThreadBodyProps = {
+  bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode;
   styles: ChatMessageThreadBodyStyleSlots;
   retryStatus?: Omit<ChatMessageRetryStatusProps, 'styles'> | null;
   delegationCard?: Omit<ChatMessageDelegationCardProps, 'styles'> | null;
@@ -2979,7 +2981,7 @@ export type ChatMessageConversationBodyPropsInput = {
 };
 
 export type ChatMessageThreadBodyPropsInput =
-  Pick<ChatMessageThreadBodyProps, 'inlineActivity'>
+  Pick<ChatMessageThreadBodyProps, 'bodyDisplayMode' | 'inlineActivity'>
   & {
     retryStatus: ChatMessageRetryStatusPropsInput;
     delegationCard: ChatMessageDelegationCardPropsInput;
@@ -8285,6 +8287,7 @@ export function createChatMessageConversationBodyProps({
 }
 
 export function createChatMessageThreadBodyProps({
+  bodyDisplayMode,
   retryStatus,
   delegationCard,
   toolApproval,
@@ -8292,6 +8295,7 @@ export function createChatMessageThreadBodyProps({
   conversation,
 }: ChatMessageThreadBodyPropsInput): Omit<ChatMessageThreadBodyProps, 'styles'> {
   return {
+    bodyDisplayMode,
     retryStatus: createChatMessageRetryStatusProps(retryStatus),
     delegationCard: createChatMessageDelegationCardProps(delegationCard),
     toolApproval: createChatMessageToolApprovalProps(toolApproval),
@@ -10051,6 +10055,7 @@ export function ChatMessageConversationRuntimeThreadList({
 }
 
 export function ChatMessageThreadBody({
+  bodyDisplayMode,
   styles,
   retryStatus,
   delegationCard,
@@ -10058,7 +10063,8 @@ export function ChatMessageThreadBody({
   inlineActivity,
   conversation,
 }: ChatMessageThreadBodyProps) {
-  if (retryStatus) {
+  if (bodyDisplayMode === 'retryStatus') {
+    if (!retryStatus) return null;
     return (
       <ChatMessageRetryStatus
         {...retryStatus}
@@ -10067,7 +10073,8 @@ export function ChatMessageThreadBody({
     );
   }
 
-  if (delegationCard) {
+  if (bodyDisplayMode === 'delegationCard') {
+    if (!delegationCard) return null;
     return (
       <ChatMessageDelegationCard
         {...delegationCard}
@@ -10076,7 +10083,8 @@ export function ChatMessageThreadBody({
     );
   }
 
-  if (toolApproval) {
+  if (bodyDisplayMode === 'toolApproval') {
+    if (!toolApproval) return null;
     return (
       <ChatMessageToolApproval
         {...toolApproval}
@@ -10085,7 +10093,8 @@ export function ChatMessageThreadBody({
     );
   }
 
-  if (inlineActivity) {
+  if (bodyDisplayMode === 'inlineActivity') {
+    if (!inlineActivity) return null;
     return (
       <ChatMessageInlineActivity
         {...inlineActivity}

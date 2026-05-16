@@ -1143,6 +1143,26 @@ export interface ChatRuntimeConversationThreadBodyMobileStateInput<
   >["onToggleMessageExpansion"]
 }
 
+export type ChatRuntimeConversationThreadBodyMobileDisplayMode =
+  | "retryStatus"
+  | "delegationCard"
+  | "toolApproval"
+  | "inlineActivity"
+  | "conversation"
+
+export interface ChatRuntimeConversationThreadBodyMobileDisplayModeInput<
+  TInlineActivity,
+  TDelegation = unknown,
+> {
+  retryStatus: ChatRuntimeConversationRetryStatusMobileState
+  delegationCard: Pick<
+    ChatRuntimeConversationDelegationCardMobileState<TDelegation>,
+    "isDelegation" | "delegation"
+  >
+  toolApproval: ChatRuntimeConversationToolApprovalMobileState
+  inlineActivity: TInlineActivity
+}
+
 export interface ChatRuntimeConversationThreadBodyMobileState<
   TInlineActivity,
   TTurnDurationStyle extends object = Record<string, never>,
@@ -1158,6 +1178,7 @@ export interface ChatRuntimeConversationThreadBodyMobileState<
     ChatRuntimeRetryInfoLike | null | undefined,
   TDelegation = unknown,
 > {
+  bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode
   retryStatus: ChatRuntimeConversationRetryStatusMobileState
   delegationCard: ChatRuntimeConversationDelegationCardMobileState<TDelegation>
   toolApproval: ChatRuntimeConversationToolApprovalMobileState
@@ -6826,6 +6847,25 @@ export function getChatRuntimeConversationContentMobileDisplayMode(
   return "hidden"
 }
 
+export function getChatRuntimeConversationThreadBodyMobileDisplayMode<
+  TInlineActivity,
+  TDelegation = unknown,
+>({
+  retryStatus,
+  delegationCard,
+  toolApproval,
+  inlineActivity,
+}: ChatRuntimeConversationThreadBodyMobileDisplayModeInput<
+  TInlineActivity,
+  TDelegation
+>): ChatRuntimeConversationThreadBodyMobileDisplayMode {
+  if (retryStatus.renderState) return "retryStatus"
+  if (delegationCard.isDelegation && delegationCard.delegation) return "delegationCard"
+  if (toolApproval.cardState) return "toolApproval"
+  if (inlineActivity) return "inlineActivity"
+  return "conversation"
+}
+
 export function getChatRuntimeConversationRetryStatusMobileState<
   TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
     ChatRuntimeRetryInfoLike | null | undefined,
@@ -7299,32 +7339,41 @@ export function getChatRuntimeConversationThreadBodyMobileState<
     message,
     byUserTimestamp: turnDurationsByUserTimestamp,
   })
+  const retryStatus = getChatRuntimeConversationRetryStatusMobileState({
+    message,
+    colors,
+  })
+  const delegationCard = getChatRuntimeConversationDelegationCardMobileState({
+    message,
+    surface: presentation.delegationSurface,
+    toolEntries: renderedToolEntries,
+    displayToolCallCount,
+    expandedDelegationConversationPreviews,
+    expandedDelegationToolPreviews,
+    roleStyles: presentation.delegationRoleStyles,
+    colors,
+    setExpandedDelegationConversationPreviews,
+    setExpandedDelegationToolPreviews,
+  })
+  const toolApproval = getChatRuntimeConversationToolApprovalMobileState({
+    message,
+    expandedToolApprovals,
+    pendingApprovalResponseId,
+    colors,
+    onToggleArguments: onToggleToolApprovalArguments,
+    onRespondToToolApproval,
+  })
 
   return {
-    retryStatus: getChatRuntimeConversationRetryStatusMobileState({
-      message,
-      colors,
+    bodyDisplayMode: getChatRuntimeConversationThreadBodyMobileDisplayMode({
+      retryStatus,
+      delegationCard,
+      toolApproval,
+      inlineActivity,
     }),
-    delegationCard: getChatRuntimeConversationDelegationCardMobileState({
-      message,
-      surface: presentation.delegationSurface,
-      toolEntries: renderedToolEntries,
-      displayToolCallCount,
-      expandedDelegationConversationPreviews,
-      expandedDelegationToolPreviews,
-      roleStyles: presentation.delegationRoleStyles,
-      colors,
-      setExpandedDelegationConversationPreviews,
-      setExpandedDelegationToolPreviews,
-    }),
-    toolApproval: getChatRuntimeConversationToolApprovalMobileState({
-      message,
-      expandedToolApprovals,
-      pendingApprovalResponseId,
-      colors,
-      onToggleArguments: onToggleToolApprovalArguments,
-      onRespondToToolApproval,
-    }),
+    retryStatus,
+    delegationCard,
+    toolApproval,
     inlineActivity,
     conversation: {
       surfaceToneStyleSlot: messageRenderState.toneStyleSlot,

@@ -127,6 +127,7 @@ import {
   getChatRuntimeConversationRuntimeThreadState,
   getChatRuntimeConversationDelegationCardMobileState,
   getChatRuntimeConversationRetryStatusMobileState,
+  getChatRuntimeConversationThreadBodyMobileDisplayMode,
   getChatRuntimeConversationThreadBodyMobileState,
   getChatRuntimeConversationToolApprovalMobileState,
   getChatRuntimeConversationToolExecutionStackMobileState,
@@ -3869,6 +3870,7 @@ describe("session presentation semantics", () => {
       },
     })
     expect(threadBodyState).toMatchObject({
+      bodyDisplayMode: "inlineActivity",
       retryStatus: {
         renderState: null,
       },
@@ -4013,6 +4015,36 @@ describe("session presentation semantics", () => {
       renderContext: { shouldRenderSurface: false },
       body: { inlineActivity: { renderState: "thinking" } },
     })).toBe(true)
+    expect(getChatRuntimeConversationThreadBodyMobileDisplayMode({
+      retryStatus: { renderState: { shouldRender: true } as never },
+      delegationCard: { isDelegation: true, delegation: { runId: "run-1" } },
+      toolApproval: { cardState: { approvalId: "approval-1" } as never },
+      inlineActivity: { renderState: "thinking" },
+    })).toBe("retryStatus")
+    expect(getChatRuntimeConversationThreadBodyMobileDisplayMode({
+      retryStatus: { renderState: null },
+      delegationCard: { isDelegation: true, delegation: { runId: "run-1" } },
+      toolApproval: { cardState: { approvalId: "approval-1" } as never },
+      inlineActivity: { renderState: "thinking" },
+    })).toBe("delegationCard")
+    expect(getChatRuntimeConversationThreadBodyMobileDisplayMode({
+      retryStatus: { renderState: null },
+      delegationCard: { isDelegation: false, delegation: null },
+      toolApproval: { cardState: { approvalId: "approval-1" } as never },
+      inlineActivity: { renderState: "thinking" },
+    })).toBe("toolApproval")
+    expect(getChatRuntimeConversationThreadBodyMobileDisplayMode({
+      retryStatus: { renderState: null },
+      delegationCard: { isDelegation: false, delegation: null },
+      toolApproval: { cardState: null },
+      inlineActivity: { renderState: "thinking" },
+    })).toBe("inlineActivity")
+    expect(getChatRuntimeConversationThreadBodyMobileDisplayMode({
+      retryStatus: { renderState: null },
+      delegationCard: { isDelegation: false, delegation: null },
+      toolApproval: { cardState: null },
+      inlineActivity: null,
+    })).toBe("conversation")
     expect(getChatRuntimeConversationMessageRuntimeThreadState({
       itemKey: 5,
       groupRenderState: null,
