@@ -42,18 +42,6 @@ import {
 } from '@dotagents/shared/voice-debug-log';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
-import {
-  createPredefinedPromptRecord,
-  deletePredefinedPromptFromList,
-  sortPredefinedPromptsByUpdatedAt,
-  updatePredefinedPromptList,
-  type PromptLibraryEditorMobileRenderState,
-  type PromptLibraryLauncherShortcutSource,
-  type PromptLibrarySkillLike,
-  type PromptLibraryMobileShortcutRenderState,
-  type PromptLibraryShortcutItem,
-  type PromptLibraryTaskLike,
-} from '@dotagents/shared/predefined-prompts';
 import type { Loop, PredefinedPromptSummary, Settings, Skill } from '@dotagents/shared/api-types';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
@@ -82,6 +70,8 @@ import {
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   createChatConversationHomePromptEditorSaveActionState,
+  createPredefinedPromptRecord,
+  deletePredefinedPromptFromList,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
   getChatConversationHomePromptEditorDismissActionState,
@@ -135,6 +125,8 @@ import {
   getChatComposerRuntimeTextEntryMobileRenderState,
   mergeChatComposerRuntimeVoiceText,
   shouldRenderChatRuntimeConversationThread,
+  sortPredefinedPromptsByUpdatedAt,
+  updatePredefinedPromptList,
   formatConnectionStatus,
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
@@ -146,6 +138,12 @@ import {
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
   type ChatRuntimeDelegationCardMobilePresentationState,
+  type PromptLibraryEditorMobileRenderState,
+  type PromptLibraryLauncherShortcutSource,
+  type PromptLibrarySkillLike,
+  type PromptLibraryMobileShortcutRenderState,
+  type PromptLibraryShortcutItem,
+  type PromptLibraryTaskLike,
   type ChatRuntimeAgentSelectorMobileRenderState,
   type ChatRuntimeActivityStepLike,
   type ChatRuntimeBackMobileRenderState,

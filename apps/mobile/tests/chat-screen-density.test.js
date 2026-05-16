@@ -5163,6 +5163,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
 });
 
 test('loads saved prompts from the settings API for the mobile quick-start launcher', () => {
+  assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/predefined-prompts';/);
+  assert.match(sessionPresentationSource, /export \{\s+createPredefinedPromptRecord,\s+deletePredefinedPromptFromList,\s+sortPredefinedPromptsByUpdatedAt,\s+updatePredefinedPromptList,\s+type PromptLibraryEditorMobileRenderState,[\s\S]*?type PromptLibraryTaskLike,\s+\} from "\.\/predefined-prompts"/);
   assert.match(screenSource, /useChatConversationHomeQuickStartCatalogState,/);
   assert.match(screenSource, /useChatConversationHomeQuickStartCatalogLoadState,/);
   assert.match(screenSource, /const quickStartCatalog = useChatConversationHomeQuickStartCatalogState\(\);/);

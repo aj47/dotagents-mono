@@ -118,6 +118,18 @@ import {
   type PromptLibraryMobileSurfaceColorPalette,
   type PromptLibraryTaskLike,
 } from "./predefined-prompts"
+export {
+  createPredefinedPromptRecord,
+  deletePredefinedPromptFromList,
+  sortPredefinedPromptsByUpdatedAt,
+  updatePredefinedPromptList,
+  type PromptLibraryEditorMobileRenderState,
+  type PromptLibraryLauncherShortcutSource,
+  type PromptLibraryMobileShortcutRenderState,
+  type PromptLibraryShortcutItem,
+  type PromptLibrarySkillLike,
+  type PromptLibraryTaskLike,
+} from "./predefined-prompts"
 import type { PredefinedPromptSummary } from "./api-types"
 import type { ToolCall, ToolResult } from "./types"
 import { formatVoiceDebugEntry, type VoiceDebugEntry } from "./voice-debug-log"
