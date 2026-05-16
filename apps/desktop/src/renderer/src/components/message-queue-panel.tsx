@@ -353,7 +353,7 @@ export function MessageQueuePanel({
               size="sm-icon"
               className={desktopMessageQueueCompactSurface.pauseButtonClassName}
               onClick={() => pauseMutation.mutate()}
-              disabled={pauseMutation.isPending || !queuePanelState.canPause}
+              disabled={pauseMutation.isPending || queuePanelState.pauseActionState.isDisabled}
               title={desktopMessageQueuePanelCopy.actions.pauseTitle}
             >
               <Pause className={desktopMessageQueueCompactSurface.actionIconClassName} />
@@ -368,9 +368,9 @@ export function MessageQueuePanel({
                 : desktopMessageQueueCompactSurface.clearQueuedButtonClassName,
             )}
             onClick={() => clearMutation.mutate()}
-            disabled={clearMutation.isPending || !queuePanelState.canClear}
+            disabled={clearMutation.isPending || queuePanelState.clearActionState.isDisabled}
             title={
-              !queuePanelState.canClear
+              queuePanelState.clearActionState.isDisabled
                 ? desktopMessageQueuePanelCopy.actions.clearWhileProcessingTitle
                 : desktopMessageQueuePanelCopy.actions.clearQueueTitle
             }
@@ -434,7 +434,7 @@ export function MessageQueuePanel({
               size="sm"
               className={desktopMessageQueueChromeSurface.pauseButtonClassName}
               onClick={() => pauseMutation.mutate()}
-              disabled={pauseMutation.isPending || !queuePanelState.canPause}
+              disabled={pauseMutation.isPending || queuePanelState.pauseActionState.isDisabled}
               title={desktopMessageQueuePanelCopy.actions.pauseTitle}
             >
               <Pause className={desktopMessageQueueChromeSurface.inlineActionIconClassName} />
@@ -452,8 +452,8 @@ export function MessageQueuePanel({
                   : desktopMessageQueueChromeSurface.queuedControlButtonClassName,
               )}
               onClick={() => clearMutation.mutate()}
-              disabled={clearMutation.isPending || !queuePanelState.canClear}
-              title={!queuePanelState.canClear ? desktopMessageQueuePanelCopy.actions.clearWhileProcessingTitle : undefined}
+              disabled={clearMutation.isPending || queuePanelState.clearActionState.isDisabled}
+              title={queuePanelState.clearActionState.isDisabled ? desktopMessageQueuePanelCopy.actions.clearWhileProcessingTitle : undefined}
             >
               {desktopMessageQueuePanelCopy.actions.clearAllLabel}
             </Button>
