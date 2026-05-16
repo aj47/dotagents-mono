@@ -76,7 +76,11 @@ export function ConnectionStatusIndicator({
   }, [connectionStatusState.isPulsing, pulseAnim]);
 
   return (
-    <View style={[styles.container, compact && styles.containerCompact]} accessibilityLabel={connectionStatusState.accessibilityLabel} accessibilityRole="text">
+    <View
+      style={[styles.container, compact && styles.containerCompact]}
+      accessibilityLabel={connectionStatusState.accessibilityLabel}
+      accessibilityRole={connectionStatusState.accessibilityRole}
+    >
       <View style={styles.dotContainer}>
         <View
           style={[

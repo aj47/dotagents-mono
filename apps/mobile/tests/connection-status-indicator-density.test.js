@@ -19,6 +19,8 @@ test('uses shared connection status indicator presentation and labels', () => {
   assert.match(indicatorSource, /connectionStatusState\.shouldRenderPulse/);
   assert.match(indicatorSource, /connectionStatusState\.shouldRenderText/);
   assert.match(indicatorSource, /\{connectionStatusState\.statusText\}/);
+  assert.match(indicatorSource, /accessibilityRole=\{connectionStatusState\.accessibilityRole\}/);
+  assert.doesNotMatch(indicatorSource, /accessibilityRole="text"/);
   assert.doesNotMatch(indicatorSource, /formatConnectionStatusIndicatorLabel\(state, retryCount\)/);
   assert.doesNotMatch(indicatorSource, /isConnectionStatusIndicatorPulsing\(state\)/);
   assert.doesNotMatch(indicatorSource, /getConnectionStatusIndicatorMobileVisualColors\(state, theme\.colors\)/);

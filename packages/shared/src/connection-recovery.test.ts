@@ -247,6 +247,7 @@ describe('connection status indicator presentation', () => {
   it('centralizes compact mobile indicator copy and surface tokens', () => {
     expect(CONNECTION_STATUS_INDICATOR_PRESENTATION.labels.connected).toBe('Connected')
     expect(CONNECTION_STATUS_INDICATOR_PRESENTATION.labels.failed).toBe('Connection failed')
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.accessibilityRole).toBe('text')
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.flexDirection).toBe('row')
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.alignItems).toBe('center')
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.dotContainer.position).toBe('relative')
@@ -322,6 +323,7 @@ describe('connection status indicator presentation', () => {
     })).toEqual({
       statusText: 'Reconnecting (2)...',
       accessibilityLabel: 'Reconnecting (2)...',
+      accessibilityRole: 'text',
       isPulsing: true,
       shouldRenderPulse: true,
       shouldRenderText: true,

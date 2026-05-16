@@ -26,6 +26,7 @@ export const CONNECTION_STATUS_INDICATOR_PRESENTATION = {
 export const CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION = {
   mobile: {
     container: {
+      accessibilityRole: 'text',
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 4,
@@ -107,6 +108,7 @@ export interface ConnectionStatusIndicatorMobileRenderStateInput {
 export interface ConnectionStatusIndicatorMobileRenderState {
   statusText: string;
   accessibilityLabel: string;
+  accessibilityRole: typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.container.accessibilityRole;
   isPulsing: boolean;
   shouldRenderPulse: boolean;
   shouldRenderText: boolean;
@@ -166,6 +168,7 @@ export function getConnectionStatusIndicatorMobileRenderState({
   return {
     statusText,
     accessibilityLabel: statusText,
+    accessibilityRole: getConnectionStatusIndicatorMobileSurfaceState().container.accessibilityRole,
     isPulsing,
     shouldRenderPulse: isPulsing,
     shouldRenderText: !compact,
