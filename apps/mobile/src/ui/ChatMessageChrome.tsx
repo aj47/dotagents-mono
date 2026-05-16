@@ -189,7 +189,6 @@ import {
   type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
-  type ChatRuntimeConversationThreadBodyMobileState,
   type ChatRuntimeConversationThreadBodyMobileDisplayMode,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationThreadVisibilityInput,
@@ -2857,21 +2856,6 @@ type ChatMessageConversationThreadBodySharedInput =
 
 type ChatMessageConversationThreadBodyInput = ChatMessageConversationThreadBodySharedInput;
 
-type ChatMessageConversationThreadBodyState =
-  ChatRuntimeConversationThreadBodyMobileState<
-    ChatMessageActionStyleSlots['turnDuration'],
-    ChatMessageActionStyleSlots['speech'],
-    ChatMessageActionStyleSlots['branch'],
-    ChatMessageActionStyleSlots['copy'],
-    ChatMessageActionStyleSlots['expansion'],
-    ChatRuntimeStreamingContentMobileRenderStateInput['colors'],
-    ChatMessageExpandedContentPropsInput['spinnerSource'],
-    NonNullable<ChatMessageExpandedContentPropsInput['assetBaseUrl']>,
-    NonNullable<ChatMessageExpandedContentPropsInput['assetAuthToken']>,
-    AgentRetryInfo | null | undefined,
-    ACPDelegationProgress | null | undefined
-  >;
-
 type ChatMessageRuntimeThreadStyleSlots = {
   surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
   body: ChatMessageThreadBodyStyleSlots;
@@ -3328,7 +3312,7 @@ export function createChatMessageConversationMessageThreadRenderState({
       expandedMessages,
       resultOnlyToolLabel,
       bodyInput,
-      createBodyState: createChatMessageConversationThreadBodyInput,
+      createBodyState: getChatRuntimeConversationThreadBodyMobileState,
     }),
   };
 }
@@ -4117,14 +4101,6 @@ export function createChatMessageConversationRuntimeThreadListRenderState({
       ...threadListInput,
       ...itemState,
     }).threadState,
-  });
-}
-
-export function createChatMessageConversationThreadBodyInput({
-  ...input
-}: ChatMessageConversationThreadBodyInput): ChatMessageConversationThreadBodyState {
-  return getChatRuntimeConversationThreadBodyMobileState({
-    ...input,
   });
 }
 
