@@ -2237,12 +2237,6 @@ type ChatMessageConnectionBannerProps = {
   styles: ChatMessageConnectionBannerStyles;
 };
 
-type ChatMessageConversationDockStyleSlots = {
-  scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps['style'];
-  queuePanelStyle: ChatMessageQueuePanelDockProps['style'];
-  connectionBanner: ChatMessageConnectionBannerStyles;
-};
-
 type ChatMessageRuntimeDockStyleSlots = {
   scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps['style'];
   voiceOverlay: ChatComposerVoiceOverlayStyles;
@@ -6949,27 +6943,6 @@ export function createChatComposerRuntimeDockProps({
     onMicPress,
     micWrapperRef,
   });
-}
-
-export function createChatMessageConversationDockStyleSlots(
-  styles: ChatMessageChromeStyleSource,
-): ChatMessageConversationDockStyleSlots {
-  return {
-    scrollToBottomButtonStyle: styles.scrollToBottomButton,
-    queuePanelStyle: styles.messageQueuePanelWrapper,
-    connectionBanner: {
-      banner: styles.connectionBanner,
-      reconnecting: styles.connectionBannerReconnecting,
-      failed: styles.connectionBannerFailed,
-      content: styles.connectionBannerContent,
-      icon: styles.connectionBannerIcon,
-      textContainer: styles.connectionBannerTextContainer,
-      title: styles.connectionBannerText,
-      subtitle: styles.connectionBannerSubtext,
-      retryButton: styles.retryButton,
-      retryButtonText: styles.retryButtonText,
-    },
-  } as ChatMessageConversationDockStyleSlots;
 }
 
 export function createChatMessageToolActivityGroupBoundaryStyles(

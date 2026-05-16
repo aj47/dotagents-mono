@@ -11,6 +11,8 @@ import {
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerMobileStyleSlots,
   createChatSessionStatusMobileChromeStyleSlots,
+  createChatMessageConnectionBannerStyleSlots,
+  createChatMessageConversationDockStyleSlots,
   createChatMessageConversationThreadStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeChromeSlots,
@@ -55,7 +57,6 @@ import {
   createChatComposerStyleSlots,
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatMessageActionStyleSlots,
-  createChatMessageConversationDockStyleSlots,
   createChatMessageConversationViewportStyleSlots,
   createChatMessageThreadBodyStyleSlots,
   createChatMessageToolActivityGroupThreadSurfaceStyleSlots,
@@ -1102,7 +1103,22 @@ export function useChatRuntimeMobileStyleSlots() {
     [styles],
   );
   const conversationDockStyles = useMemo(
-    () => createChatMessageConversationDockStyleSlots(styles),
+    () => createChatMessageConversationDockStyleSlots({
+      scrollToBottomButtonStyle: styles.scrollToBottomButton,
+      queuePanelStyle: styles.messageQueuePanelWrapper,
+      connectionBannerStyles: createChatMessageConnectionBannerStyleSlots({
+        bannerStyle: styles.connectionBanner,
+        reconnectingStyle: styles.connectionBannerReconnecting,
+        failedStyle: styles.connectionBannerFailed,
+        contentStyle: styles.connectionBannerContent,
+        iconStyle: styles.connectionBannerIcon,
+        textContainerStyle: styles.connectionBannerTextContainer,
+        titleStyle: styles.connectionBannerText,
+        subtitleStyle: styles.connectionBannerSubtext,
+        retryButtonStyle: styles.retryButton,
+        retryButtonTextStyle: styles.retryButtonText,
+      }),
+    }),
     [styles],
   );
   const conversationViewportStyles = useMemo(

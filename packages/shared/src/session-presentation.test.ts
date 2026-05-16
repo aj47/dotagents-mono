@@ -59,6 +59,8 @@ import {
   createChatMessageRuntimeUserTextMessage,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockStyleSlots,
+  createChatMessageConnectionBannerStyleSlots,
+  createChatMessageConversationDockStyleSlots,
   createChatMessageRuntimeDockStyleSlots,
   createChatMessageRuntimeThreadStyleSlots,
   createChatMessageRuntimeSurfaceStyleSlots,
@@ -3130,6 +3132,38 @@ describe("session presentation semantics", () => {
     })).toEqual({
       inputDock: "composer-input-safe",
       controls: "composer-controls",
+    })
+    expect(createChatMessageConnectionBannerStyleSlots({
+      bannerStyle: "banner",
+      reconnectingStyle: "reconnecting",
+      failedStyle: "failed",
+      contentStyle: "content",
+      iconStyle: "icon",
+      textContainerStyle: "text-container",
+      titleStyle: "title",
+      subtitleStyle: "subtitle",
+      retryButtonStyle: "retry-button",
+      retryButtonTextStyle: "retry-button-text",
+    })).toEqual({
+      banner: "banner",
+      reconnecting: "reconnecting",
+      failed: "failed",
+      content: "content",
+      icon: "icon",
+      textContainer: "text-container",
+      title: "title",
+      subtitle: "subtitle",
+      retryButton: "retry-button",
+      retryButtonText: "retry-button-text",
+    })
+    expect(createChatMessageConversationDockStyleSlots({
+      scrollToBottomButtonStyle: "scroll-button",
+      queuePanelStyle: "queue-panel",
+      connectionBannerStyles: "connection-banner",
+    })).toEqual({
+      scrollToBottomButtonStyle: "scroll-button",
+      queuePanelStyle: "queue-panel",
+      connectionBanner: "connection-banner",
     })
     expect(createChatMessageRuntimeDockStyleSlots({
       conversationDockStyles: {

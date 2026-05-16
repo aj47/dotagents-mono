@@ -14535,6 +14535,89 @@ export function createChatComposerRuntimeDockStyleSlots<
   }
 }
 
+export function createChatMessageConnectionBannerStyleSlots<
+  TBannerStyle,
+  TReconnectingStyle,
+  TFailedStyle,
+  TContentStyle,
+  TIconStyle,
+  TTextContainerStyle,
+  TTitleStyle,
+  TSubtitleStyle,
+  TRetryButtonStyle,
+  TRetryButtonTextStyle,
+>({
+  bannerStyle,
+  reconnectingStyle,
+  failedStyle,
+  contentStyle,
+  iconStyle,
+  textContainerStyle,
+  titleStyle,
+  subtitleStyle,
+  retryButtonStyle,
+  retryButtonTextStyle,
+}: {
+  bannerStyle: TBannerStyle
+  reconnectingStyle: TReconnectingStyle
+  failedStyle: TFailedStyle
+  contentStyle: TContentStyle
+  iconStyle: TIconStyle
+  textContainerStyle: TTextContainerStyle
+  titleStyle: TTitleStyle
+  subtitleStyle: TSubtitleStyle
+  retryButtonStyle: TRetryButtonStyle
+  retryButtonTextStyle: TRetryButtonTextStyle
+}): {
+  banner: TBannerStyle
+  reconnecting: TReconnectingStyle
+  failed: TFailedStyle
+  content: TContentStyle
+  icon: TIconStyle
+  textContainer: TTextContainerStyle
+  title: TTitleStyle
+  subtitle: TSubtitleStyle
+  retryButton: TRetryButtonStyle
+  retryButtonText: TRetryButtonTextStyle
+} {
+  return {
+    banner: bannerStyle,
+    reconnecting: reconnectingStyle,
+    failed: failedStyle,
+    content: contentStyle,
+    icon: iconStyle,
+    textContainer: textContainerStyle,
+    title: titleStyle,
+    subtitle: subtitleStyle,
+    retryButton: retryButtonStyle,
+    retryButtonText: retryButtonTextStyle,
+  }
+}
+
+export function createChatMessageConversationDockStyleSlots<
+  TScrollToBottomButtonStyle,
+  TQueuePanelStyle,
+  TConnectionBannerStyles,
+>({
+  scrollToBottomButtonStyle,
+  queuePanelStyle,
+  connectionBannerStyles,
+}: {
+  scrollToBottomButtonStyle: TScrollToBottomButtonStyle
+  queuePanelStyle: TQueuePanelStyle
+  connectionBannerStyles: TConnectionBannerStyles
+}): {
+  scrollToBottomButtonStyle: TScrollToBottomButtonStyle
+  queuePanelStyle: TQueuePanelStyle
+  connectionBanner: TConnectionBannerStyles
+} {
+  return {
+    scrollToBottomButtonStyle,
+    queuePanelStyle,
+    connectionBanner: connectionBannerStyles,
+  }
+}
+
 export function createChatMessageRuntimeDockStyleSlots<
   TConversationDockStyles extends {
     queuePanelStyle: unknown
