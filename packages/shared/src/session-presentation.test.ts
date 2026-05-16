@@ -56,6 +56,7 @@ import {
   createChatMessageRuntimeTurnDurationMessages,
   createChatMessageRuntimeUserResponseMessages,
   createChatMessageRuntimeUserTextMessage,
+  createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
@@ -3738,6 +3739,65 @@ describe("session presentation semantics", () => {
         accessibilityRole: "button",
         accessibilityLabel: "Retry",
         pressedOpacity: 0.7,
+      },
+    })
+    expect(createChatRuntimeConnectionBannerMobileStyleSlots({
+      renderState: failedBanner,
+      spacing: {
+        sm: 8,
+        md: 12,
+      },
+      radius: {
+        md: 10,
+      },
+    })).toEqual({
+      banner: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginHorizontal: 12,
+        marginBottom: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+      },
+      reconnecting: {
+        backgroundColor: "rgba(37, 99, 235, 0.1)",
+        borderColor: "rgba(37, 99, 235, 0.3)",
+      },
+      failed: {
+        backgroundColor: "rgba(220, 38, 38, 0.1)",
+        borderColor: "rgba(220, 38, 38, 0.3)",
+      },
+      content: {
+        flexDirection: "row",
+        alignItems: "center",
+      },
+      icon: {
+        marginRight: 8,
+      },
+      textContainer: {
+        flex: 1,
+      },
+      title: {
+        fontSize: 13,
+        fontWeight: "500",
+        color: "#0f172a",
+      },
+      subtitle: {
+        fontSize: 11,
+        color: "#64748b",
+        marginTop: 2,
+      },
+      retryButton: {
+        backgroundColor: "#111827",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        marginLeft: 8,
+      },
+      retryButtonText: {
+        color: "#f8fafc",
+        fontSize: 13,
+        fontWeight: "600",
       },
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.borderColorToken).toBe("warning")

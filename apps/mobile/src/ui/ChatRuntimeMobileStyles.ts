@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createChatSessionStatusMobileChromeStyleSlots,
   createChatRuntimeAgentSelectorMobileStyleSlots,
+  createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeHeaderActionsRowMobileStyleSlot,
   createChatRuntimeHeaderIconContainerMobileStyleSlot,
   createChatRuntimeHeaderPinButtonMobileStyleSlot,
@@ -88,8 +89,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
   });
   const connectionBannerStyleState = conversationChromeStyleState.connectionBanner;
-  const connectionBannerSurface = connectionBannerStyleState.surface;
-  const connectionBannerSurfaceColors = connectionBannerStyleState.colors;
+  const connectionBannerStyleSlots = createChatRuntimeConnectionBannerMobileStyleSlots({
+    renderState: connectionBannerStyleState,
+    spacing,
+    radius,
+  });
   const retryStatusStyleState = conversationChromeStyleState.retryStatus;
   const retryStatusStyleSlots = createChatRuntimeRetryStatusMobileStyleSlots({
     renderState: retryStatusStyleState,
@@ -975,52 +979,34 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       fontFamily: resolveChatRuntimeMobileFontFamily(handsFreeSurface.debugText.fontFamilyByPlatform, mobilePlatform),
     },
     connectionBanner: {
-      paddingHorizontal: spacing[connectionBannerSurface.paddingHorizontal],
-      paddingVertical: spacing[connectionBannerSurface.paddingVertical],
-      marginHorizontal: spacing[connectionBannerSurface.marginHorizontal],
-      marginBottom: spacing[connectionBannerSurface.marginBottom],
-      borderRadius: radius[connectionBannerSurface.borderRadius],
-      borderWidth: connectionBannerSurface.borderWidth,
+      ...connectionBannerStyleSlots.banner,
     },
     connectionBannerReconnecting: {
-      backgroundColor: connectionBannerSurfaceColors.reconnecting.backgroundColor,
-      borderColor: connectionBannerSurfaceColors.reconnecting.borderColor,
+      ...connectionBannerStyleSlots.reconnecting,
     },
     connectionBannerFailed: {
-      backgroundColor: connectionBannerSurfaceColors.failed.backgroundColor,
-      borderColor: connectionBannerSurfaceColors.failed.borderColor,
+      ...connectionBannerStyleSlots.failed,
     },
     connectionBannerContent: {
-      flexDirection: connectionBannerSurface.contentFlexDirection,
-      alignItems: connectionBannerSurface.contentAlignItems,
+      ...connectionBannerStyleSlots.content,
     },
     connectionBannerIcon: {
-      marginRight: spacing[connectionBannerSurface.iconMarginRight],
+      ...connectionBannerStyleSlots.icon,
     },
     connectionBannerTextContainer: {
-      flex: connectionBannerSurface.textContainerFlex,
+      ...connectionBannerStyleSlots.textContainer,
     },
     connectionBannerText: {
-      fontSize: connectionBannerSurface.titleFontSize,
-      fontWeight: connectionBannerSurface.titleFontWeight,
-      color: connectionBannerSurfaceColors.title.color,
+      ...connectionBannerStyleSlots.title,
     },
     connectionBannerSubtext: {
-      fontSize: connectionBannerSurface.subtitleFontSize,
-      color: connectionBannerSurfaceColors.subtitle.color,
-      marginTop: connectionBannerSurface.subtitleMarginTop,
+      ...connectionBannerStyleSlots.subtitle,
     },
     retryButton: {
-      backgroundColor: connectionBannerSurfaceColors.retryButton.backgroundColor,
-      paddingHorizontal: spacing[connectionBannerSurface.retryButton.paddingHorizontal],
-      paddingVertical: spacing[connectionBannerSurface.retryButton.paddingVertical],
-      borderRadius: radius[connectionBannerSurface.retryButton.borderRadius],
-      marginLeft: spacing[connectionBannerSurface.retryButton.marginLeft],
+      ...connectionBannerStyleSlots.retryButton,
     },
     retryButtonText: {
-      color: connectionBannerSurfaceColors.retryButton.color,
-      fontSize: connectionBannerSurface.retryButton.fontSize,
-      fontWeight: connectionBannerSurface.retryButton.fontWeight,
+      ...connectionBannerStyleSlots.retryButtonText,
     },
     scrollToBottomButton: {
       position: scrollToBottomSurface.position,

@@ -2829,6 +2829,80 @@ export interface ChatRuntimeConnectionBannerMobileRenderState {
   }
 }
 
+type ChatRuntimeConnectionBannerMobileSurface =
+  typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner
+
+export type ChatRuntimeConnectionBannerMobileSpacingToken =
+  | ChatRuntimeConnectionBannerMobileSurface["paddingHorizontal"]
+  | ChatRuntimeConnectionBannerMobileSurface["paddingVertical"]
+  | ChatRuntimeConnectionBannerMobileSurface["marginHorizontal"]
+  | ChatRuntimeConnectionBannerMobileSurface["marginBottom"]
+  | ChatRuntimeConnectionBannerMobileSurface["iconMarginRight"]
+  | ChatRuntimeConnectionBannerMobileSurface["retryButton"]["paddingHorizontal"]
+  | ChatRuntimeConnectionBannerMobileSurface["retryButton"]["paddingVertical"]
+  | ChatRuntimeConnectionBannerMobileSurface["retryButton"]["marginLeft"]
+
+export type ChatRuntimeConnectionBannerMobileRadiusToken =
+  | ChatRuntimeConnectionBannerMobileSurface["borderRadius"]
+  | ChatRuntimeConnectionBannerMobileSurface["retryButton"]["borderRadius"]
+
+export interface ChatRuntimeConnectionBannerMobileStyleSlotsInput {
+  renderState: Pick<ChatRuntimeConnectionBannerMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<ChatRuntimeConnectionBannerMobileSpacingToken, number>>
+  radius: Readonly<Record<ChatRuntimeConnectionBannerMobileRadiusToken, number>>
+}
+
+export interface ChatRuntimeConnectionBannerMobileStyleSlots {
+  banner: {
+    paddingHorizontal: number
+    paddingVertical: number
+    marginHorizontal: number
+    marginBottom: number
+    borderRadius: number
+    borderWidth: number
+  }
+  reconnecting: {
+    backgroundColor: string
+    borderColor: string
+  }
+  failed: {
+    backgroundColor: string
+    borderColor: string
+  }
+  content: {
+    flexDirection: ChatRuntimeConnectionBannerMobileSurface["contentFlexDirection"]
+    alignItems: ChatRuntimeConnectionBannerMobileSurface["contentAlignItems"]
+  }
+  icon: {
+    marginRight: number
+  }
+  textContainer: {
+    flex: number
+  }
+  title: {
+    fontSize: number
+    fontWeight: ChatRuntimeConnectionBannerMobileSurface["titleFontWeight"]
+    color: string
+  }
+  subtitle: {
+    fontSize: number
+    color: string
+    marginTop: number
+  }
+  retryButton: {
+    backgroundColor: string
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    marginLeft: number
+  }
+  retryButtonText: {
+    color: string
+    fontSize: number
+    fontWeight: ChatRuntimeConnectionBannerMobileSurface["retryButton"]["fontWeight"]
+  }
+}
+
 export interface ChatRuntimeStreamingContentMobileIconState {
   name: typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.streamingContent.mobileIcon.name
   size: number
@@ -11589,6 +11663,66 @@ export function getChatRuntimeConnectionBannerMobileRenderState({
         accessibilityLabel: CHAT_RUNTIME_PRESENTATION.connectionBanner.retryLabel,
         pressedOpacity: surface.retryButton.pressedOpacity,
       },
+    },
+  }
+}
+
+export function createChatRuntimeConnectionBannerMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatRuntimeConnectionBannerMobileStyleSlotsInput): ChatRuntimeConnectionBannerMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    banner: {
+      paddingHorizontal: spacing[surface.paddingHorizontal],
+      paddingVertical: spacing[surface.paddingVertical],
+      marginHorizontal: spacing[surface.marginHorizontal],
+      marginBottom: spacing[surface.marginBottom],
+      borderRadius: radius[surface.borderRadius],
+      borderWidth: surface.borderWidth,
+    },
+    reconnecting: {
+      backgroundColor: colors.reconnecting.backgroundColor,
+      borderColor: colors.reconnecting.borderColor,
+    },
+    failed: {
+      backgroundColor: colors.failed.backgroundColor,
+      borderColor: colors.failed.borderColor,
+    },
+    content: {
+      flexDirection: surface.contentFlexDirection,
+      alignItems: surface.contentAlignItems,
+    },
+    icon: {
+      marginRight: spacing[surface.iconMarginRight],
+    },
+    textContainer: {
+      flex: surface.textContainerFlex,
+    },
+    title: {
+      fontSize: surface.titleFontSize,
+      fontWeight: surface.titleFontWeight,
+      color: colors.title.color,
+    },
+    subtitle: {
+      fontSize: surface.subtitleFontSize,
+      color: colors.subtitle.color,
+      marginTop: surface.subtitleMarginTop,
+    },
+    retryButton: {
+      backgroundColor: colors.retryButton.backgroundColor,
+      paddingHorizontal: spacing[surface.retryButton.paddingHorizontal],
+      paddingVertical: spacing[surface.retryButton.paddingVertical],
+      borderRadius: radius[surface.retryButton.borderRadius],
+      marginLeft: spacing[surface.retryButton.marginLeft],
+    },
+    retryButtonText: {
+      color: colors.retryButton.color,
+      fontSize: surface.retryButton.fontSize,
+      fontWeight: surface.retryButton.fontWeight,
     },
   }
 }
