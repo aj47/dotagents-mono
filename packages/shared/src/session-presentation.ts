@@ -1903,6 +1903,58 @@ export interface ChatRuntimeConversationBodyPanelMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsPartsInput<
+  TRetryStatus extends object = Record<string, never>,
+  TDelegationCard extends object = Record<string, never>,
+  TToolApproval extends object = Record<string, never>,
+  TInlineActivity extends object = Record<string, never>,
+  TRetryStatusStyles = unknown,
+  TDelegationCardStyles = unknown,
+  TToolApprovalStyles = unknown,
+  TInlineActivityStyle = unknown,
+  TInlineActivitySpinnerStyle = unknown,
+> {
+  retryStatus?: TRetryStatus | null
+  delegationCard?: TDelegationCard | null
+  toolApproval?: TToolApproval | null
+  inlineActivity?: TInlineActivity | null
+  styles: {
+    retryStatus: TRetryStatusStyles
+    delegationCard: TDelegationCardStyles
+    toolApproval: TToolApprovalStyles
+    inlineActivity: {
+      style: TInlineActivityStyle
+      spinnerStyle: TInlineActivitySpinnerStyle
+    }
+  }
+}
+
+export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+  TRetryStatus extends object = Record<string, never>,
+  TDelegationCard extends object = Record<string, never>,
+  TToolApproval extends object = Record<string, never>,
+  TInlineActivity extends object = Record<string, never>,
+  TRetryStatusStyles = unknown,
+  TDelegationCardStyles = unknown,
+  TToolApprovalStyles = unknown,
+  TInlineActivityStyle = unknown,
+  TInlineActivitySpinnerStyle = unknown,
+> {
+  retryStatus: (TRetryStatus & {
+    styles: TRetryStatusStyles
+  }) | null
+  delegationCard: (TDelegationCard & {
+    styles: TDelegationCardStyles
+  }) | null
+  toolApproval: (TToolApproval & {
+    styles: TToolApprovalStyles
+  }) | null
+  inlineActivity: (TInlineActivity & {
+    style: TInlineActivityStyle
+    spinnerStyle: TInlineActivitySpinnerStyle
+  }) | null
+}
+
 export interface ChatRuntimeConversationActionSetMobileProps<TActionEntry> {
   entries: readonly TActionEntry[]
   shouldRenderActionSlots: boolean
@@ -13445,6 +13497,64 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
     emptyState,
     emptyStateTextStyle: styles.emptyStateText,
     callDetailStyles: styles.callDetail,
+  }
+}
+
+export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+  TRetryStatus extends object,
+  TDelegationCard extends object,
+  TToolApproval extends object,
+  TInlineActivity extends object,
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyle,
+  TInlineActivitySpinnerStyle,
+>({
+  retryStatus,
+  delegationCard,
+  toolApproval,
+  inlineActivity,
+  styles,
+}: ChatRuntimeConversationThreadBodyStatusPanelMobilePropsPartsInput<
+  TRetryStatus,
+  TDelegationCard,
+  TToolApproval,
+  TInlineActivity,
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyle,
+  TInlineActivitySpinnerStyle
+>): ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+  TRetryStatus,
+  TDelegationCard,
+  TToolApproval,
+  TInlineActivity,
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyle,
+  TInlineActivitySpinnerStyle
+> {
+  return {
+    retryStatus: retryStatus ? {
+      ...retryStatus,
+      styles: styles.retryStatus,
+    } : null,
+    delegationCard: delegationCard ? {
+      ...delegationCard,
+      styles: styles.delegationCard,
+    } : null,
+    toolApproval: toolApproval ? {
+      ...toolApproval,
+      styles: styles.toolApproval,
+    } : null,
+    inlineActivity: inlineActivity ? {
+      ...inlineActivity,
+      style: styles.inlineActivity.style,
+      spinnerStyle: styles.inlineActivity.spinnerStyle,
+    } : null,
   }
 }
 

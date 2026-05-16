@@ -80,6 +80,7 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
+  createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
@@ -7386,43 +7387,46 @@ export function ChatMessageThreadBody({
   inlineActivity,
   conversation,
 }: ChatMessageThreadBodyProps) {
+  const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
+    retryStatus,
+    delegationCard,
+    toolApproval,
+    inlineActivity,
+    styles,
+  });
+
   if (bodyDisplayMode === 'retryStatus') {
-    if (!retryStatus) return null;
+    if (!statusPanelParts.retryStatus) return null;
     return (
       <ChatMessageRetryStatus
-        {...retryStatus}
-        styles={styles.retryStatus}
+        {...statusPanelParts.retryStatus}
       />
     );
   }
 
   if (bodyDisplayMode === 'delegationCard') {
-    if (!delegationCard) return null;
+    if (!statusPanelParts.delegationCard) return null;
     return (
       <ChatMessageDelegationCard
-        {...delegationCard}
-        styles={styles.delegationCard}
+        {...statusPanelParts.delegationCard}
       />
     );
   }
 
   if (bodyDisplayMode === 'toolApproval') {
-    if (!toolApproval) return null;
+    if (!statusPanelParts.toolApproval) return null;
     return (
       <ChatMessageToolApproval
-        {...toolApproval}
-        styles={styles.toolApproval}
+        {...statusPanelParts.toolApproval}
       />
     );
   }
 
   if (bodyDisplayMode === 'inlineActivity') {
-    if (!inlineActivity) return null;
+    if (!statusPanelParts.inlineActivity) return null;
     return (
       <ChatMessageInlineActivity
-        {...inlineActivity}
-        style={styles.inlineActivity.style}
-        spinnerStyle={styles.inlineActivity.spinnerStyle}
+        {...statusPanelParts.inlineActivity}
       />
     );
   }

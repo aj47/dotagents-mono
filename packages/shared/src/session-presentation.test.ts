@@ -90,6 +90,7 @@ import {
   createChatRuntimeConversationToolExecutionStackMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
+  createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeCompletedDebugState,
@@ -6875,6 +6876,70 @@ describe("session presentation semantics", () => {
       threadBodyStyleSlots.toolExecutionStack.callDetail.resultSection.header.badge.textError,
     ).toBe("toolResultBadgeTextError")
     expect(threadBodyStyleSlots.standaloneActions.rowStyle).toBe("messageActionsRow")
+    const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
+      retryStatus: {
+        renderState: "retry-render-state",
+      },
+      delegationCard: {
+        renderState: "delegation-render-state",
+      },
+      toolApproval: {
+        renderState: "approval-render-state",
+      },
+      inlineActivity: {
+        renderState: "inline-activity-render-state",
+        spinnerSource: "spinner-source",
+      },
+      styles: {
+        retryStatus: "retry-status-styles",
+        delegationCard: "delegation-card-styles",
+        toolApproval: "tool-approval-styles",
+        inlineActivity: {
+          style: "inline-activity-style",
+          spinnerStyle: "inline-activity-spinner-style",
+        },
+      },
+    })
+    expect(statusPanelParts).toEqual({
+      retryStatus: {
+        renderState: "retry-render-state",
+        styles: "retry-status-styles",
+      },
+      delegationCard: {
+        renderState: "delegation-render-state",
+        styles: "delegation-card-styles",
+      },
+      toolApproval: {
+        renderState: "approval-render-state",
+        styles: "tool-approval-styles",
+      },
+      inlineActivity: {
+        renderState: "inline-activity-render-state",
+        spinnerSource: "spinner-source",
+        style: "inline-activity-style",
+        spinnerStyle: "inline-activity-spinner-style",
+      },
+    })
+    expect(createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+      styles: {
+        retryStatus: "retry-status-styles",
+        delegationCard: "delegation-card-styles",
+        toolApproval: "tool-approval-styles",
+        inlineActivity: {
+          style: "inline-activity-style",
+          spinnerStyle: "inline-activity-spinner-style",
+        },
+      },
+    })).toEqual({
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+    })
     const conversationBodyPanelParts = createChatRuntimeConversationBodyPanelMobilePropsParts({
       conversation: {
         content: {
