@@ -137,8 +137,10 @@ describe("desktop follow-up input submit guardrails", () => {
   it("uses the shared image attachment message builder for desktop follow-up submissions", () => {
     expect(messageImageUtilsSource).toContain("buildChatImageAttachmentMessage")
     expect(messageImageUtilsSource).toContain("return buildChatImageAttachmentMessage(trimmed, attachments)")
+    expect(messageImageUtilsSource).toContain('from "@dotagents/shared/session-presentation"')
+    expect(messageImageUtilsSource).not.toContain('from "@dotagents/shared/conversation-media-assets"')
     expect(messageImageUtilsSource).not.toContain("buildConversationImageMarkdownMessage(")
     expect(messageImageUtilsSource).not.toContain("fallbackAltText: `Image ${index + 1}`")
-    expect(mediaPresentationSource).toContain("buildChatImageAttachmentMessage")
+    expect(presentationSource).toContain("buildChatImageAttachmentMessage")
   })
 })

@@ -12,7 +12,7 @@ import {
   MAX_CHAT_IMAGE_ATTACHMENTS,
   MAX_CHAT_IMAGE_FILE_BYTES,
   MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
-} from "@dotagents/shared/conversation-media-assets"
+} from "@dotagents/shared/session-presentation"
 
 export interface MessageImageAttachment {
   id: string
