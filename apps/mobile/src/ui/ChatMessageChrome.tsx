@@ -10907,35 +10907,35 @@ export function ChatComposerInputDock({
 }
 
 export function ChatComposerInputDockArea({
-  style,
   children,
+  ...props
 }: ChatComposerInputDockAreaProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatComposerInputDockRow({
-  style,
   children,
+  ...props
 }: ChatComposerInputDockRowProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export const ChatComposerInputDockMicWrapper = forwardRef<View, ChatComposerInputDockMicWrapperProps>(function ChatComposerInputDockMicWrapper({
-  style,
   children,
+  ...props
 }, ref) {
   return (
     <View
       ref={ref}
-      style={style}
+      {...props}
     >
       {children}
     </View>
@@ -10970,33 +10970,33 @@ export function ChatComposerSpeechPreview({
 }
 
 export function ChatComposerSpeechPreviewContainer({
-  style,
   children,
+  ...props
 }: ChatComposerSpeechPreviewContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatComposerSpeechPreviewLabel({
-  style,
   text,
+  ...props
 }: ChatComposerSpeechPreviewLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatComposerSpeechPreviewText({
-  style,
   text,
+  ...props
 }: ChatComposerSpeechPreviewTextProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -11043,77 +11043,47 @@ export function ChatComposerPendingImagesRail({
 }
 
 export function ChatComposerPendingImagesRailScrollView({
-  horizontal,
-  showsHorizontalScrollIndicator,
-  contentContainerStyle,
   children,
+  ...props
 }: ChatComposerPendingImagesRailScrollViewProps) {
   return (
-    <ScrollView
-      horizontal={horizontal}
-      showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
-      contentContainerStyle={contentContainerStyle}
-    >
+    <ScrollView {...props}>
       {children}
     </ScrollView>
   );
 }
 
 export function ChatComposerPendingImageCard({
-  style,
   children,
+  ...props
 }: ChatComposerPendingImageCardProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatComposerPendingImagePreview({
-  source,
-  style,
-}: ChatComposerPendingImagePreviewProps) {
+export function ChatComposerPendingImagePreview(props: ChatComposerPendingImagePreviewProps) {
   return (
-    <Image
-      source={source}
-      style={style}
-    />
+    <Image {...props} />
   );
 }
 
 export function ChatComposerPendingImageRemoveButton({
-  style,
-  onPress,
-  activeOpacity,
-  accessibilityRole,
-  accessibilityLabel,
   children,
+  ...props
 }: ChatComposerPendingImageRemoveButtonProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
-export function ChatComposerPendingImageRemoveIcon({
-  name,
-  size,
-  color,
-}: ChatComposerPendingImageRemoveIconProps) {
+export function ChatComposerPendingImageRemoveIcon(props: ChatComposerPendingImageRemoveIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -11155,52 +11125,44 @@ export function ChatComposerVoiceOverlay({
 }
 
 export function ChatComposerVoiceOverlayContainer({
-  style,
-  pointerEvents,
   children,
+  ...props
 }: ChatComposerVoiceOverlayContainerProps) {
   return (
-    <View
-      style={style}
-      pointerEvents={pointerEvents}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatComposerVoiceOverlayCard({
-  style,
   children,
+  ...props
 }: ChatComposerVoiceOverlayCardProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatComposerVoiceOverlayLabel({
-  style,
   text,
+  ...props
 }: ChatComposerVoiceOverlayLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatComposerVoiceOverlayTranscript({
-  style,
-  numberOfLines,
   text,
+  ...props
 }: ChatComposerVoiceOverlayTranscriptProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -11261,54 +11223,44 @@ export function ChatComposerHandsFreeControls({
 }
 
 export function ChatComposerHandsFreeStatusRow({
-  style,
   children,
+  ...props
 }: ChatComposerHandsFreeStatusRowProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatComposerHandsFreeControlsRow({
-  style,
   children,
+  ...props
 }: ChatComposerHandsFreeControlsRowProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatComposerHandsFreeControlButton({
-  style,
-  onPress,
-  activeOpacity,
-  accessibilityRole,
-  accessibilityLabel,
   children,
+  ...props
 }: ChatComposerHandsFreeControlButtonProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
 export function ChatComposerHandsFreeControlLabel({
-  style,
   text,
+  ...props
 }: ChatComposerHandsFreeControlLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -11345,43 +11297,19 @@ export function ChatComposerIconButton({
 }
 
 export function ChatComposerIconButtonTouchable({
-  style,
-  onPress,
-  activeOpacity,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
-  'aria-checked': ariaChecked,
   children,
+  ...props
 }: ChatComposerIconButtonTouchableProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={accessibilityState}
-      aria-checked={ariaChecked}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
-export function ChatComposerIconButtonIcon({
-  name,
-  size,
-  color,
-}: ChatComposerIconButtonIconProps) {
+export function ChatComposerIconButtonIcon(props: ChatComposerIconButtonIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -11419,52 +11347,28 @@ export function ChatComposerLabeledActionButton({
 }
 
 export function ChatComposerLabeledActionButtonTouchable({
-  style,
-  onPress,
-  activeOpacity,
-  disabled,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
   children,
+  ...props
 }: ChatComposerLabeledActionButtonTouchableProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      disabled={disabled}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={accessibilityState}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
-export function ChatComposerLabeledActionButtonIcon({
-  name,
-  size,
-  color,
-}: ChatComposerLabeledActionButtonIconProps) {
+export function ChatComposerLabeledActionButtonIcon(props: ChatComposerLabeledActionButtonIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
 export function ChatComposerLabeledActionButtonLabel({
-  style,
   text,
+  ...props
 }: ChatComposerLabeledActionButtonLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -11502,58 +11406,28 @@ export function ChatComposerMicButton({
 }
 
 export function ChatComposerMicButtonPressable({
-  style,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
-  'aria-busy': ariaBusy,
-  onPressIn,
-  onPressOut,
-  onPress,
   children,
+  ...props
 }: ChatComposerMicButtonPressableProps) {
   return (
-    <Pressable
-      style={style}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={accessibilityState}
-      aria-busy={ariaBusy}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={onPress}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
 }
 
-export function ChatComposerMicButtonIcon({
-  name,
-  size,
-  color,
-}: ChatComposerMicButtonIconProps) {
+export function ChatComposerMicButtonIcon(props: ChatComposerMicButtonIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
 export function ChatComposerMicButtonLabel({
-  style,
-  selectable,
   text,
+  ...props
 }: ChatComposerMicButtonLabelProps) {
   return (
-    <Text
-      style={style}
-      selectable={selectable}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -11605,64 +11479,32 @@ export function ChatComposerTextEntry({
   );
 }
 
-export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>(function ChatComposerTextEntryInput({
-  style,
-  value,
-  onChangeText,
-  onKeyPress,
-  accessibilityLabel,
-  accessibilityHint,
-  'aria-describedby': ariaDescribedBy,
-  placeholder,
-  placeholderTextColor,
-  multiline,
-}, ref) {
+export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>(function ChatComposerTextEntryInput(props, ref) {
   return (
     <TextInput
       ref={ref}
-      style={style}
-      value={value}
-      onChangeText={onChangeText}
-      onKeyPress={onKeyPress}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      aria-describedby={ariaDescribedBy}
-      placeholder={placeholder}
-      placeholderTextColor={placeholderTextColor}
-      multiline={multiline}
+      {...props}
     />
   );
 });
 
 export function ChatComposerTextEntryInputDescription({
-  nativeID,
-  style,
   text,
+  ...props
 }: ChatComposerTextEntryInputDescriptionProps) {
   return (
-    <Text
-      nativeID={nativeID}
-      style={style}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatComposerTextEntryVoiceStatusLiveRegion({
-  nativeID,
-  style,
-  accessibilityLiveRegion,
-  'aria-live': ariaLive,
   text,
+  ...props
 }: ChatComposerTextEntryVoiceStatusLiveRegionProps) {
   return (
-    <Text
-      nativeID={nativeID}
-      style={style}
-      accessibilityLiveRegion={accessibilityLiveRegion}
-      aria-live={ariaLive}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );

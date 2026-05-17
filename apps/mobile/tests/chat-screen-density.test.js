@@ -2543,15 +2543,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(inputDockSource, /\{inputDockParts\.micWrapper\.micButton\}/);
   assert.match(
     inputDockSource,
-    /export function ChatComposerInputDockArea\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerInputDockRow/
+    /export function ChatComposerInputDockArea\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerInputDockRow/
   );
   assert.match(
     inputDockSource,
-    /export function ChatComposerInputDockRow\([\s\S]*?<View style=\{style\}>[\s\S]*?export const ChatComposerInputDockMicWrapper/
+    /export function ChatComposerInputDockRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export const ChatComposerInputDockMicWrapper/
   );
   assert.match(
     inputDockSource,
-    /export const ChatComposerInputDockMicWrapper[\s\S]*?ref=\{ref\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatComposerSpeechPreview/
+    /export const ChatComposerInputDockMicWrapper[\s\S]*?ref=\{ref\}[\s\S]*?\{\.\.\.props\}[\s\S]*?export function ChatComposerSpeechPreview/
   );
   assert.match(sessionPresentationSource, /area: \{\s+props: \{\s+style: styles\.area,/);
   assert.match(sessionPresentationSource, /row: \{\s+props: \{\s+style: styles\.row,/);
@@ -2581,19 +2581,19 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.handsFreeControlsParts\.secondaryControl\.label\.props\}/);
   assert.match(
     handsFreeControlsSource,
-    /export function ChatComposerHandsFreeStatusRow\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerHandsFreeControlsRow/
+    /export function ChatComposerHandsFreeStatusRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeControlsRow/
   );
   assert.match(
     handsFreeControlsSource,
-    /export function ChatComposerHandsFreeControlsRow\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerHandsFreeControlButton/
+    /export function ChatComposerHandsFreeControlsRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeControlButton/
   );
   assert.match(
     handsFreeControlsSource,
-    /export function ChatComposerHandsFreeControlButton\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?export function ChatComposerHandsFreeControlLabel/
+    /export function ChatComposerHandsFreeControlButton\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeControlLabel/
   );
   assert.match(
     handsFreeControlsSource,
-    /export function ChatComposerHandsFreeControlLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerIconButton/
+    /export function ChatComposerHandsFreeControlLabel\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerIconButton/
   );
   assert.match(sessionPresentationSource, /statusRow: \{\s+props: \{\s+style: styles\.statusRow,/);
   assert.match(sessionPresentationSource, /controlsRow: \{\s+props: \{\s+style: styles\.controlsRow,/);
@@ -2693,11 +2693,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(composerIconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.iconButtonParts\.icon\.props\}/);
   assert.match(
     composerIconButtonSource,
-    /export function ChatComposerIconButtonTouchable\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-checked=\{ariaChecked\}[\s\S]*?export function ChatComposerIconButtonIcon/
+    /export function ChatComposerIconButtonTouchable\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerIconButtonIcon/
   );
   assert.match(
     composerIconButtonSource,
-    /export function ChatComposerIconButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerLabeledActionButton/
+    /export function ChatComposerIconButtonIcon\([\s\S]*?<Ionicons \{\.\.\.props\} \/>[\s\S]*?export function ChatComposerLabeledActionButton/
   );
   assert.match(
     sessionPresentationSource,
@@ -2729,15 +2729,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(speechPreviewSource, /<ChatComposerSpeechPreviewText\s+\{\.\.\.speechPreviewParts\.text\.props\}/);
   assert.match(
     speechPreviewSource,
-    /export function ChatComposerSpeechPreviewContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerSpeechPreviewLabel/
+    /export function ChatComposerSpeechPreviewContainer\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerSpeechPreviewLabel/
   );
   assert.match(
     speechPreviewSource,
-    /export function ChatComposerSpeechPreviewLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerSpeechPreviewText/
+    /export function ChatComposerSpeechPreviewLabel\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerSpeechPreviewText/
   );
   assert.match(
     speechPreviewSource,
-    /export function ChatComposerSpeechPreviewText\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerPendingImagesRail/
+    /export function ChatComposerSpeechPreviewText\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerPendingImagesRail/
   );
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.box,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+text: label,/);
@@ -2783,15 +2783,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.actionButtonParts\.label\.props\}/);
   assert.match(
     composerLabeledActionButtonSource,
-    /export function ChatComposerLabeledActionButtonTouchable\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?disabled=\{disabled\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?export function ChatComposerLabeledActionButtonIcon/
+    /export function ChatComposerLabeledActionButtonTouchable\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerLabeledActionButtonIcon/
   );
   assert.match(
     composerLabeledActionButtonSource,
-    /export function ChatComposerLabeledActionButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerLabeledActionButtonLabel/
+    /export function ChatComposerLabeledActionButtonIcon\([\s\S]*?<Ionicons \{\.\.\.props\} \/>[\s\S]*?export function ChatComposerLabeledActionButtonLabel/
   );
   assert.match(
     composerLabeledActionButtonSource,
-    /export function ChatComposerLabeledActionButtonLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerMicButton/
+    /export function ChatComposerLabeledActionButtonLabel\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerMicButton/
   );
   assert.match(
     sessionPresentationSource,
@@ -2852,15 +2852,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(composerMicButtonSource, /<ChatComposerMicButtonLabel\s+\{\.\.\.micButtonParts\.label\.props\}/);
   assert.match(
     composerMicButtonSource,
-    /export function ChatComposerMicButtonPressable\([\s\S]*?style=\{style\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-busy=\{ariaBusy\}[\s\S]*?onPressIn=\{onPressIn\}[\s\S]*?onPressOut=\{onPressOut\}[\s\S]*?onPress=\{onPress\}[\s\S]*?export function ChatComposerMicButtonIcon/
+    /export function ChatComposerMicButtonPressable\([\s\S]*?<Pressable \{\.\.\.props\}>[\s\S]*?export function ChatComposerMicButtonIcon/
   );
   assert.match(
     composerMicButtonSource,
-    /export function ChatComposerMicButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerMicButtonLabel/
+    /export function ChatComposerMicButtonIcon\([\s\S]*?<Ionicons \{\.\.\.props\} \/>[\s\S]*?export function ChatComposerMicButtonLabel/
   );
   assert.match(
     composerMicButtonSource,
-    /export function ChatComposerMicButtonLabel\([\s\S]*?style=\{style\}[\s\S]*?selectable=\{selectable\}[\s\S]*?\{text\}[\s\S]*?export function ChatComposerTextEntry/
+    /export function ChatComposerMicButtonLabel\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerTextEntry/
   );
   assert.match(
     sessionPresentationSource,
@@ -2933,15 +2933,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(textEntrySource, /<ChatComposerTextEntryVoiceStatusLiveRegion\s+\{\.\.\.textEntryParts\.voiceStatusLiveRegion\.props\}/);
   assert.match(
     textEntrySource,
-    /export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>\(function ChatComposerTextEntryInput\([\s\S]*?ref=\{ref\}[\s\S]*?style=\{style\}[\s\S]*?value=\{value\}[\s\S]*?onChangeText=\{onChangeText\}[\s\S]*?onKeyPress=\{onKeyPress\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?aria-describedby=\{ariaDescribedBy\}[\s\S]*?placeholder=\{placeholder\}[\s\S]*?placeholderTextColor=\{placeholderTextColor\}[\s\S]*?multiline=\{multiline\}[\s\S]*?export function ChatComposerTextEntryInputDescription/
+    /export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>\(function ChatComposerTextEntryInput\(props, ref\)[\s\S]*?ref=\{ref\}[\s\S]*?\{\.\.\.props\}[\s\S]*?export function ChatComposerTextEntryInputDescription/
   );
   assert.match(
     textEntrySource,
-    /export function ChatComposerTextEntryInputDescription\([\s\S]*?nativeID=\{nativeID\}[\s\S]*?style=\{style\}[\s\S]*?\{text\}[\s\S]*?export function ChatComposerTextEntryVoiceStatusLiveRegion/
+    /export function ChatComposerTextEntryInputDescription\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerTextEntryVoiceStatusLiveRegion/
   );
   assert.match(
     textEntrySource,
-    /export function ChatComposerTextEntryVoiceStatusLiveRegion\([\s\S]*?nativeID=\{nativeID\}[\s\S]*?style=\{style\}[\s\S]*?accessibilityLiveRegion=\{accessibilityLiveRegion\}[\s\S]*?aria-live=\{ariaLive\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageInlineActivity/
+    /export function ChatComposerTextEntryVoiceStatusLiveRegion\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatMessageInlineActivity/
   );
   assert.match(
     sessionPresentationSource,
@@ -3138,23 +3138,23 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(pendingImagesRailSource, /<ChatComposerPendingImageRemoveIcon\s+\{\.\.\.item\.removeIcon\.props\}/);
   assert.match(
     pendingImagesRailSource,
-    /export function ChatComposerPendingImagesRailScrollView\([\s\S]*?horizontal=\{horizontal\}[\s\S]*?showsHorizontalScrollIndicator=\{showsHorizontalScrollIndicator\}[\s\S]*?contentContainerStyle=\{contentContainerStyle\}[\s\S]*?export function ChatComposerPendingImageCard/
+    /export function ChatComposerPendingImagesRailScrollView\([\s\S]*?<ScrollView \{\.\.\.props\}>[\s\S]*?export function ChatComposerPendingImageCard/
   );
   assert.match(
     pendingImagesRailSource,
-    /export function ChatComposerPendingImageCard\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerPendingImagePreview/
+    /export function ChatComposerPendingImageCard\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerPendingImagePreview/
   );
   assert.match(
     pendingImagesRailSource,
-    /export function ChatComposerPendingImagePreview\([\s\S]*?source=\{source\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatComposerPendingImageRemoveButton/
+    /export function ChatComposerPendingImagePreview\(props: ChatComposerPendingImagePreviewProps\)[\s\S]*?<Image \{\.\.\.props\} \/>[\s\S]*?export function ChatComposerPendingImageRemoveButton/
   );
   assert.match(
     pendingImagesRailSource,
-    /export function ChatComposerPendingImageRemoveButton\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?export function ChatComposerPendingImageRemoveIcon/
+    /export function ChatComposerPendingImageRemoveButton\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerPendingImageRemoveIcon/
   );
   assert.match(
     pendingImagesRailSource,
-    /export function ChatComposerPendingImageRemoveIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerVoiceOverlay/
+    /export function ChatComposerPendingImageRemoveIcon\(props: ChatComposerPendingImageRemoveIconProps\)[\s\S]*?<Ionicons \{\.\.\.props\} \/>[\s\S]*?export function ChatComposerVoiceOverlay/
   );
   assert.match(sessionPresentationSource, /scrollView: \{\s+props: \{\s+horizontal: true,\s+showsHorizontalScrollIndicator: renderState\.surface\.row\.showsHorizontalScrollIndicator,\s+contentContainerStyle: styles\.row,/);
   assert.match(sessionPresentationSource, /card: \{\s+props: \{\s+style: styles\.card,/);
@@ -3242,19 +3242,19 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayTranscript\s+\{\.\.\.voiceOverlayParts\.transcript\.props\}/);
   assert.match(
     voiceOverlaySource,
-    /export function ChatComposerVoiceOverlayContainer\([\s\S]*?style=\{style\}[\s\S]*?pointerEvents=\{pointerEvents\}[\s\S]*?export function ChatComposerVoiceOverlayCard/
+    /export function ChatComposerVoiceOverlayContainer\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerVoiceOverlayCard/
   );
   assert.match(
     voiceOverlaySource,
-    /export function ChatComposerVoiceOverlayCard\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerVoiceOverlayLabel/
+    /export function ChatComposerVoiceOverlayCard\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerVoiceOverlayLabel/
   );
   assert.match(
     voiceOverlaySource,
-    /export function ChatComposerVoiceOverlayLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerVoiceOverlayTranscript/
+    /export function ChatComposerVoiceOverlayLabel\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerVoiceOverlayTranscript/
   );
   assert.match(
     voiceOverlaySource,
-    /export function ChatComposerVoiceOverlayTranscript\([\s\S]*?style=\{style\}[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatComposerHandsFreeControls/
+    /export function ChatComposerVoiceOverlayTranscript\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerHandsFreeControls/
   );
   assert.match(sessionPresentationSource, /overlay: \{\s+props: \{\s+style: styles\.overlay,\s+pointerEvents: "none",/);
   assert.match(sessionPresentationSource, /card: \{\s+props: \{\s+style: styles\.card,/);
