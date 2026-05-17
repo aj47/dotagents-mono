@@ -186,6 +186,7 @@ import {
   getPromptLibraryShortcutPressIntent,
   type PredefinedPromptDraft,
   type PromptLibraryEditorDismissActionState,
+  type PromptLibraryEditorMobileRenderState,
   type PromptLibraryEditorSaveActionState,
   type PromptLibraryMobileShortcutEmptyRenderState,
   type PromptLibraryMobileShortcutItemRenderState,
@@ -7348,6 +7349,139 @@ export interface ChatConversationHomePromptEditorSaveActionInput {
   isSaving: boolean
 }
 
+export interface ChatConversationHomePromptEditorModalMobileStylesLike {
+  keyboardAvoidingView: unknown
+  overlay: unknown
+  content: unknown
+  header: unknown
+  title: unknown
+  closeButton: unknown
+  label: unknown
+  input: unknown
+  inputMultiline: unknown
+  actions: unknown
+  cancelButton: unknown
+  cancelButtonText: unknown
+  saveButton: unknown
+  saveButtonDisabled: unknown
+  saveButtonText: unknown
+}
+
+export interface ChatConversationHomePromptEditorModalMobilePropsPartsInput<
+  TStyles extends ChatConversationHomePromptEditorModalMobileStylesLike =
+    ChatConversationHomePromptEditorModalMobileStylesLike,
+> {
+  visible: boolean
+  isEditing: boolean
+  nameValue: string
+  onNameChange: (value: string) => void
+  contentValue: string
+  onContentChange: (value: string) => void
+  isSaving: boolean
+  onClose: () => void
+  onSave: () => void
+  renderState: PromptLibraryEditorMobileRenderState
+  styles: TStyles
+}
+
+export interface ChatConversationHomePromptEditorModalMobilePropsParts<
+  TStyles extends ChatConversationHomePromptEditorModalMobileStylesLike =
+    ChatConversationHomePromptEditorModalMobileStylesLike,
+> {
+  modal: {
+    visible: boolean
+    transparent: PromptLibraryEditorMobileRenderState["surface"]["modal"]["transparent"]
+    animationType: PromptLibraryEditorMobileRenderState["surface"]["modal"]["animationType"]
+    onRequestClose: () => void
+  }
+  keyboardAvoidingView: {
+    style: TStyles["keyboardAvoidingView"]
+    behavior: PromptLibraryEditorMobileRenderState["keyboardAvoidingBehavior"]
+  }
+  overlay: {
+    style: TStyles["overlay"]
+  }
+  content: {
+    style: TStyles["content"]
+  }
+  header: {
+    style: TStyles["header"]
+  }
+  title: {
+    style: TStyles["title"]
+    text: string
+  }
+  closeButton: {
+    style: TStyles["closeButton"]
+    onPress: () => void
+    disabled: PromptLibraryEditorDismissActionState["isDisabled"]
+    activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["closeButton"]["pressedOpacity"]
+    accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["closeButton"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: PromptLibraryEditorDismissActionState["accessibilityState"]
+  }
+  closeIcon: {
+    name: PromptLibraryEditorMobileRenderState["chrome"]["closeIcon"]["name"]
+    size: PromptLibraryEditorMobileRenderState["chrome"]["closeIcon"]["size"]
+    color: string
+  }
+  nameLabel: {
+    style: TStyles["label"]
+    text: string
+  }
+  nameInput: {
+    style: TStyles["input"]
+    value: string
+    onChangeText: (value: string) => void
+    accessibilityLabel: string
+    placeholder: string
+    placeholderTextColor: string
+  }
+  contentLabel: {
+    style: TStyles["label"]
+    text: string
+  }
+  contentInput: {
+    style: Array<TStyles["input"] | TStyles["inputMultiline"]>
+    value: string
+    onChangeText: (value: string) => void
+    accessibilityLabel: string
+    placeholder: string
+    placeholderTextColor: string
+    multiline: PromptLibraryEditorMobileRenderState["surface"]["multilineInput"]["multiline"]
+    textAlignVertical: PromptLibraryEditorMobileRenderState["surface"]["multilineInput"]["textAlignVertical"]
+  }
+  actions: {
+    style: TStyles["actions"]
+  }
+  cancelButton: {
+    style: TStyles["cancelButton"]
+    onPress: () => void
+    disabled: PromptLibraryEditorDismissActionState["isDisabled"]
+    activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["cancelButton"]["pressedOpacity"]
+    accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["cancelButton"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: PromptLibraryEditorDismissActionState["accessibilityState"]
+  }
+  cancelLabel: {
+    style: TStyles["cancelButtonText"]
+    text: string
+  }
+  saveButton: {
+    style: Array<TStyles["saveButton"] | TStyles["saveButtonDisabled"] | false>
+    onPress: () => void
+    disabled: PromptLibraryEditorSaveActionState["isDisabled"]
+    activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["saveButton"]["pressedOpacity"]
+    accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["saveButton"]["accessibilityRole"]
+    accessibilityLabel: PromptLibraryEditorSaveActionState["accessibilityLabel"]
+    accessibilityState: PromptLibraryEditorSaveActionState["accessibilityState"]
+  }
+  saveLabel: {
+    style: TStyles["saveButtonText"]
+    text: PromptLibraryEditorSaveActionState["label"]
+  }
+}
+
 export interface ChatRuntimeBranchMobileAlertState {
   unavailable: {
     title: string
@@ -12686,6 +12820,130 @@ export function createChatConversationHomePromptEditorSaveActionState({
     isEditing,
     isSaving,
   )
+}
+
+export function createChatConversationHomePromptEditorModalMobilePropsParts<
+  TStyles extends ChatConversationHomePromptEditorModalMobileStylesLike =
+    ChatConversationHomePromptEditorModalMobileStylesLike,
+>({
+  visible,
+  isEditing,
+  nameValue,
+  onNameChange,
+  contentValue,
+  onContentChange,
+  isSaving,
+  onClose,
+  onSave,
+  renderState,
+  styles,
+}: ChatConversationHomePromptEditorModalMobilePropsPartsInput<TStyles>):
+  ChatConversationHomePromptEditorModalMobilePropsParts<TStyles> {
+  const editorDismissActionState = getChatConversationHomePromptEditorDismissActionState(isSaving)
+  const editorSaveActionState = createChatConversationHomePromptEditorSaveActionState({
+    draft: { name: nameValue, content: contentValue },
+    isEditing,
+    isSaving,
+  })
+  const { chrome, colors, copy, keyboardAvoidingBehavior, surface } = renderState
+
+  return {
+    modal: {
+      visible,
+      transparent: surface.modal.transparent,
+      animationType: surface.modal.animationType,
+      onRequestClose: onClose,
+    },
+    keyboardAvoidingView: {
+      style: styles.keyboardAvoidingView,
+      behavior: keyboardAvoidingBehavior,
+    },
+    overlay: {
+      style: styles.overlay,
+    },
+    content: {
+      style: styles.content,
+    },
+    header: {
+      style: styles.header,
+    },
+    title: {
+      style: styles.title,
+      text: getChatConversationHomePromptEditorTitle(isEditing),
+    },
+    closeButton: {
+      style: styles.closeButton,
+      onPress: onClose,
+      disabled: editorDismissActionState.isDisabled,
+      activeOpacity: surface.closeButton.pressedOpacity,
+      accessibilityRole: surface.closeButton.accessibilityRole,
+      accessibilityLabel: copy.closeAccessibilityLabel,
+      accessibilityState: editorDismissActionState.accessibilityState,
+    },
+    closeIcon: {
+      name: chrome.closeIcon.name,
+      size: chrome.closeIcon.size,
+      color: chrome.closeIconColors.color,
+    },
+    nameLabel: {
+      style: styles.label,
+      text: copy.nameLabel,
+    },
+    nameInput: {
+      style: styles.input,
+      value: nameValue,
+      onChangeText: onNameChange,
+      accessibilityLabel: copy.nameAccessibilityLabel,
+      placeholder: copy.namePlaceholder,
+      placeholderTextColor: colors.input.placeholderColor,
+    },
+    contentLabel: {
+      style: styles.label,
+      text: copy.contentLabel,
+    },
+    contentInput: {
+      style: [styles.input, styles.inputMultiline],
+      value: contentValue,
+      onChangeText: onContentChange,
+      accessibilityLabel: copy.contentAccessibilityLabel,
+      placeholder: copy.contentPlaceholder,
+      placeholderTextColor: colors.input.placeholderColor,
+      multiline: surface.multilineInput.multiline,
+      textAlignVertical: surface.multilineInput.textAlignVertical,
+    },
+    actions: {
+      style: styles.actions,
+    },
+    cancelButton: {
+      style: styles.cancelButton,
+      onPress: onClose,
+      disabled: editorDismissActionState.isDisabled,
+      activeOpacity: surface.cancelButton.pressedOpacity,
+      accessibilityRole: surface.cancelButton.accessibilityRole,
+      accessibilityLabel: copy.cancelAccessibilityLabel,
+      accessibilityState: editorDismissActionState.accessibilityState,
+    },
+    cancelLabel: {
+      style: styles.cancelButtonText,
+      text: copy.cancelLabel,
+    },
+    saveButton: {
+      style: [
+        styles.saveButton,
+        editorSaveActionState.isDisabled && styles.saveButtonDisabled,
+      ],
+      onPress: onSave,
+      disabled: editorSaveActionState.isDisabled,
+      activeOpacity: surface.saveButton.pressedOpacity,
+      accessibilityRole: surface.saveButton.accessibilityRole,
+      accessibilityLabel: editorSaveActionState.accessibilityLabel,
+      accessibilityState: editorSaveActionState.accessibilityState,
+    },
+    saveLabel: {
+      style: styles.saveButtonText,
+      text: editorSaveActionState.label,
+    },
+  }
 }
 
 export function getChatMessageCopyFeedbackState(): ChatMessageCopyFeedbackState {

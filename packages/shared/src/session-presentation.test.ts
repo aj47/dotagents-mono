@@ -270,6 +270,7 @@ import {
   createChatConversationHomePromptEditorModalStyleSlots,
   createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource,
   createChatConversationHomePromptEditorMobileStyleSlots,
+  createChatConversationHomePromptEditorModalMobilePropsParts,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeFollowUpPresentationState,
@@ -4989,6 +4990,108 @@ describe("session presentation semantics", () => {
     expect(surfaceChromeProps.overlays.agentSelector.onClose).toBe("close-agent-selector")
     expect(surfaceChromeProps.overlays.promptEditor.renderState.copy.nameLabel).toBe("Name")
     expect(surfaceChromeProps.overlays.promptEditor.styles).toBe("prompt-editor-styles")
+    const promptEditorModalStyles = {
+      keyboardAvoidingView: "keyboardAvoidingView",
+      overlay: "overlay",
+      content: "content",
+      header: "header",
+      title: "title",
+      closeButton: "closeButton",
+      label: "label",
+      input: "input",
+      inputMultiline: "inputMultiline",
+      actions: "actions",
+      cancelButton: "cancelButton",
+      cancelButtonText: "cancelButtonText",
+      saveButton: "saveButton",
+      saveButtonDisabled: "saveButtonDisabled",
+      saveButtonText: "saveButtonText",
+    }
+    const onPromptEditorNameChange = (value: string) => value
+    const onPromptEditorContentChange = (value: string) => value
+    const onPromptEditorClose = () => undefined
+    const onPromptEditorSave = () => undefined
+    const promptEditorModalPropsParts = createChatConversationHomePromptEditorModalMobilePropsParts({
+      visible: true,
+      isEditing: true,
+      nameValue: "Saved prompt",
+      onNameChange: onPromptEditorNameChange,
+      contentValue: "Prompt body",
+      onContentChange: onPromptEditorContentChange,
+      isSaving: false,
+      onClose: onPromptEditorClose,
+      onSave: onPromptEditorSave,
+      renderState: surfaceChrome.promptEditor.renderState,
+      styles: promptEditorModalStyles,
+    })
+    expect(promptEditorModalPropsParts.modal).toEqual({
+      visible: true,
+      transparent: true,
+      animationType: "slide",
+      onRequestClose: onPromptEditorClose,
+    })
+    expect(promptEditorModalPropsParts.keyboardAvoidingView).toEqual({
+      style: "keyboardAvoidingView",
+      behavior: "padding",
+    })
+    expect(promptEditorModalPropsParts.title).toEqual({
+      style: "title",
+      text: "Edit Prompt",
+    })
+    expect(promptEditorModalPropsParts.closeButton.disabled).toBe(false)
+    expect(promptEditorModalPropsParts.closeButton.accessibilityLabel).toBe("Close prompt editor")
+    expect(promptEditorModalPropsParts.closeIcon.name).toBe("close")
+    expect(promptEditorModalPropsParts.nameInput).toMatchObject({
+      style: "input",
+      value: "Saved prompt",
+      onChangeText: onPromptEditorNameChange,
+      accessibilityLabel: "Name input",
+      placeholder: "e.g., Code Review Request",
+    })
+    expect(promptEditorModalPropsParts.contentInput).toMatchObject({
+      style: ["input", "inputMultiline"],
+      value: "Prompt body",
+      onChangeText: onPromptEditorContentChange,
+      accessibilityLabel: "Prompt Content input",
+      multiline: true,
+      textAlignVertical: "top",
+    })
+    expect(promptEditorModalPropsParts.cancelButton).toMatchObject({
+      style: "cancelButton",
+      onPress: onPromptEditorClose,
+      disabled: false,
+      accessibilityLabel: "Cancel button",
+    })
+    expect(promptEditorModalPropsParts.saveButton.style).toEqual([
+      "saveButton",
+      false,
+    ])
+    expect(promptEditorModalPropsParts.saveButton.disabled).toBe(false)
+    expect(promptEditorModalPropsParts.saveButton.onPress).toBe(onPromptEditorSave)
+    expect(promptEditorModalPropsParts.saveLabel).toEqual({
+      style: "saveButtonText",
+      text: "Save Changes",
+    })
+    const savingPromptEditorModalPropsParts = createChatConversationHomePromptEditorModalMobilePropsParts({
+      visible: true,
+      isEditing: false,
+      nameValue: "",
+      onNameChange: onPromptEditorNameChange,
+      contentValue: "",
+      onContentChange: onPromptEditorContentChange,
+      isSaving: true,
+      onClose: onPromptEditorClose,
+      onSave: onPromptEditorSave,
+      renderState: surfaceChrome.promptEditor.renderState,
+      styles: promptEditorModalStyles,
+    })
+    expect(savingPromptEditorModalPropsParts.closeButton.disabled).toBe(true)
+    expect(savingPromptEditorModalPropsParts.closeButton.accessibilityState).toEqual({ disabled: true })
+    expect(savingPromptEditorModalPropsParts.saveButton.style).toEqual([
+      "saveButton",
+      "saveButtonDisabled",
+    ])
+    expect(savingPromptEditorModalPropsParts.saveLabel.text).toBe("Saving...")
     const dockChrome = getChatRuntimeDockChromeMobileRenderState({
       scrollToBottomVisible: true,
       voiceOverlayListening: true,

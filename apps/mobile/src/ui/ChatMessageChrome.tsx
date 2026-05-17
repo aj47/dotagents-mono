@@ -63,13 +63,12 @@ import {
   getChatMessageCopyFeedbackResetDelayMs,
   getChatMessageToolExecutionCopyFailureResolvedAlertState,
   createChatConversationHomePromptEditorSaveActionState,
+  createChatConversationHomePromptEditorModalMobilePropsParts,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   createChatRuntimeDockChromeMobileProps,
   getChatConversationHomePromptDeleteConfirmAlertState,
   getChatConversationHomePromptDeleteFailedAlertState,
-  getChatConversationHomePromptEditorDismissActionState,
-  getChatConversationHomePromptEditorTitle,
   getChatConversationHomePromptSaveFailedAlertState,
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
@@ -7173,100 +7172,96 @@ export function ChatConversationHomePromptEditorModal({
   renderState,
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
-  const editorDismissActionState = getChatConversationHomePromptEditorDismissActionState(isSaving);
-  const editorSaveActionState = createChatConversationHomePromptEditorSaveActionState({
-    draft: { name: nameValue, content: contentValue },
+  const modalParts = createChatConversationHomePromptEditorModalMobilePropsParts({
+    visible,
     isEditing,
+    nameValue,
+    onNameChange,
+    contentValue,
+    onContentChange,
     isSaving,
+    onClose,
+    onSave,
+    renderState,
+    styles,
   });
-  const {
-    chrome: editorChrome,
-    colors,
-    copy,
-    keyboardAvoidingBehavior,
-    surface,
-  } = renderState;
-  const title = getChatConversationHomePromptEditorTitle(isEditing);
 
   return (
     <Modal
-      visible={visible}
-      transparent={surface.modal.transparent}
-      animationType={surface.modal.animationType}
-      onRequestClose={onClose}
+      visible={modalParts.modal.visible}
+      transparent={modalParts.modal.transparent}
+      animationType={modalParts.modal.animationType}
+      onRequestClose={modalParts.modal.onRequestClose}
     >
       <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
-        behavior={keyboardAvoidingBehavior}
+        style={modalParts.keyboardAvoidingView.style}
+        behavior={modalParts.keyboardAvoidingView.behavior}
       >
-        <View style={styles.overlay}>
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
+        <View style={modalParts.overlay.style}>
+          <View style={modalParts.content.style}>
+            <View style={modalParts.header.style}>
+              <Text style={modalParts.title.style}>{modalParts.title.text}</Text>
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={onClose}
-                disabled={editorDismissActionState.isDisabled}
-                activeOpacity={surface.closeButton.pressedOpacity}
-                accessibilityRole={surface.closeButton.accessibilityRole}
-                accessibilityLabel={copy.closeAccessibilityLabel}
-                accessibilityState={editorDismissActionState.accessibilityState}
+                style={modalParts.closeButton.style}
+                onPress={modalParts.closeButton.onPress}
+                disabled={modalParts.closeButton.disabled}
+                activeOpacity={modalParts.closeButton.activeOpacity}
+                accessibilityRole={modalParts.closeButton.accessibilityRole}
+                accessibilityLabel={modalParts.closeButton.accessibilityLabel}
+                accessibilityState={modalParts.closeButton.accessibilityState}
               >
                 <Ionicons
-                  name={editorChrome.closeIcon.name}
-                  size={editorChrome.closeIcon.size}
-                  color={editorChrome.closeIconColors.color}
+                  name={modalParts.closeIcon.name}
+                  size={modalParts.closeIcon.size}
+                  color={modalParts.closeIcon.color}
                 />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>{copy.nameLabel}</Text>
+            <Text style={modalParts.nameLabel.style}>{modalParts.nameLabel.text}</Text>
             <TextInput
-              style={styles.input}
-              value={nameValue}
-              onChangeText={onNameChange}
-              accessibilityLabel={copy.nameAccessibilityLabel}
-              placeholder={copy.namePlaceholder}
-              placeholderTextColor={colors.input.placeholderColor}
+              style={modalParts.nameInput.style}
+              value={modalParts.nameInput.value}
+              onChangeText={modalParts.nameInput.onChangeText}
+              accessibilityLabel={modalParts.nameInput.accessibilityLabel}
+              placeholder={modalParts.nameInput.placeholder}
+              placeholderTextColor={modalParts.nameInput.placeholderTextColor}
             />
 
-            <Text style={styles.label}>{copy.contentLabel}</Text>
+            <Text style={modalParts.contentLabel.style}>{modalParts.contentLabel.text}</Text>
             <TextInput
-              style={[styles.input, styles.inputMultiline]}
-              value={contentValue}
-              onChangeText={onContentChange}
-              accessibilityLabel={copy.contentAccessibilityLabel}
-              placeholder={copy.contentPlaceholder}
-              placeholderTextColor={colors.input.placeholderColor}
-              multiline={surface.multilineInput.multiline}
-              textAlignVertical={surface.multilineInput.textAlignVertical}
+              style={modalParts.contentInput.style}
+              value={modalParts.contentInput.value}
+              onChangeText={modalParts.contentInput.onChangeText}
+              accessibilityLabel={modalParts.contentInput.accessibilityLabel}
+              placeholder={modalParts.contentInput.placeholder}
+              placeholderTextColor={modalParts.contentInput.placeholderTextColor}
+              multiline={modalParts.contentInput.multiline}
+              textAlignVertical={modalParts.contentInput.textAlignVertical}
             />
 
-            <View style={styles.actions}>
+            <View style={modalParts.actions.style}>
               <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={onClose}
-                disabled={editorDismissActionState.isDisabled}
-                activeOpacity={surface.cancelButton.pressedOpacity}
-                accessibilityRole={surface.cancelButton.accessibilityRole}
-                accessibilityLabel={copy.cancelAccessibilityLabel}
-                accessibilityState={editorDismissActionState.accessibilityState}
+                style={modalParts.cancelButton.style}
+                onPress={modalParts.cancelButton.onPress}
+                disabled={modalParts.cancelButton.disabled}
+                activeOpacity={modalParts.cancelButton.activeOpacity}
+                accessibilityRole={modalParts.cancelButton.accessibilityRole}
+                accessibilityLabel={modalParts.cancelButton.accessibilityLabel}
+                accessibilityState={modalParts.cancelButton.accessibilityState}
               >
-                <Text style={styles.cancelButtonText}>{copy.cancelLabel}</Text>
+                <Text style={modalParts.cancelLabel.style}>{modalParts.cancelLabel.text}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  editorSaveActionState.isDisabled && styles.saveButtonDisabled,
-                ]}
-                onPress={onSave}
-                disabled={editorSaveActionState.isDisabled}
-                activeOpacity={surface.saveButton.pressedOpacity}
-                accessibilityRole={surface.saveButton.accessibilityRole}
-                accessibilityLabel={editorSaveActionState.accessibilityLabel}
-                accessibilityState={editorSaveActionState.accessibilityState}
+                style={modalParts.saveButton.style}
+                onPress={modalParts.saveButton.onPress}
+                disabled={modalParts.saveButton.disabled}
+                activeOpacity={modalParts.saveButton.activeOpacity}
+                accessibilityRole={modalParts.saveButton.accessibilityRole}
+                accessibilityLabel={modalParts.saveButton.accessibilityLabel}
+                accessibilityState={modalParts.saveButton.accessibilityState}
               >
-                <Text style={styles.saveButtonText}>{editorSaveActionState.label}</Text>
+                <Text style={modalParts.saveLabel.style}>{modalParts.saveLabel.text}</Text>
               </TouchableOpacity>
             </View>
           </View>
