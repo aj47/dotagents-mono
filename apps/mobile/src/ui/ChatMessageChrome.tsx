@@ -2127,6 +2127,10 @@ type ChatMessageDelegationToolPreviewProps =
 type ChatMessageDelegationToolPreviewRowProps =
   ChatMessageDelegationToolPreviewProps['container']['content']['rows'][number]['props'];
 
+type ChatMessageDelegationToolPreviewStatusIconProps = {
+  statusIcon: ChatMessageDelegationToolPreviewRowProps['statusIcon'];
+};
+
 type ChatMessageDelegationToolPreviewLabelProps =
   ChatMessageDelegationToolPreviewProps['container']['content']['label']['props'];
 
@@ -9303,24 +9307,34 @@ export function ChatMessageDelegationToolPreviewRow({
     <View
       {...line.props}
     >
-      <View
-        {...statusIcon.props}
-      >
-        {statusIcon.spinner.shouldRender ? (
-          <ActivityIndicator
-            {...statusIcon.spinner.props}
-          />
-        ) : statusIcon.icon.shouldRender ? (
-          <Ionicons
-            {...statusIcon.icon.props}
-          />
-        ) : null}
-      </View>
+      <ChatMessageDelegationToolPreviewStatusIcon
+        statusIcon={statusIcon}
+      />
       <Text
         {...name.props}
       >
         {name.text}
       </Text>
+    </View>
+  );
+}
+
+export function ChatMessageDelegationToolPreviewStatusIcon({
+  statusIcon,
+}: ChatMessageDelegationToolPreviewStatusIconProps) {
+  return (
+    <View
+      {...statusIcon.props}
+    >
+      {statusIcon.spinner.shouldRender ? (
+        <ActivityIndicator
+          {...statusIcon.spinner.props}
+        />
+      ) : statusIcon.icon.shouldRender ? (
+        <Ionicons
+          {...statusIcon.icon.props}
+        />
+      ) : null}
     </View>
   );
 }
