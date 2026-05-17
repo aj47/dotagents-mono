@@ -12666,7 +12666,33 @@ describe("session presentation semantics", () => {
           text: "collapse-text",
         },
       },
-      emptyState: "empty-state-node",
+      emptyState: {
+        shouldRender: true,
+        props: "empty-state-node",
+      },
+    })
+    expect(createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
+      topCollapseRenderState: "top-collapse",
+      bottomCollapseRenderState: "bottom-collapse",
+      onCollapsePress: "collapse-expanded",
+      isPending: false,
+      allSuccess: false,
+      hasErrors: false,
+      styles: {
+        container: "expanded-container",
+        card: "expanded-card",
+        pending: "expanded-pending",
+        success: "expanded-success",
+        error: "expanded-error",
+        collapseButton: "collapse-button",
+        collapsePressed: "collapse-pressed",
+        collapseTopPlacement: "collapse-top",
+        collapseBottomPlacement: "collapse-bottom",
+        collapseText: "collapse-text",
+      },
+    }).emptyState).toEqual({
+      shouldRender: false,
+      props: null,
     })
     const collapseControlParts = createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
       renderState: {

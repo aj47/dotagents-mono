@@ -3483,7 +3483,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<View style=\{expandedGroupParts\.cardStyle\}>/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControl\s+\{\.\.\.expandedGroupParts\.topCollapseControl\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControl\s+\{\.\.\.expandedGroupParts\.bottomCollapseControl\}/);
-  assert.match(chatMessageChromeSource, /\{expandedGroupParts\.emptyState\}/);
+  assert.match(chatMessageChromeSource, /expandedGroupParts\.emptyState\.shouldRender \? expandedGroupParts\.emptyState\.props : null/);
+  assert.match(sessionPresentationSource, /emptyState: emptyState != null \? \{\s+shouldRender: true,\s+props: emptyState as NonNullable<TEmptyState>,/);
   assert.doesNotMatch(chatMessageChromeSource, /const collapseControlStyles = \{/);
   assert.doesNotMatch(chatMessageChromeSource, /const collapseControlStyleSlots =\s+createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots\(styles\);/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{collapseControlStyleSlots\.top\}/);
@@ -3505,7 +3506,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /emptyState: emptyState\?\.shouldRender \? \{\s+shouldRender: true,\s+props: \{\s+renderState: emptyState\.renderState,\s+style: styles\.emptyStateText,/);
   assert.match(sessionPresentationSource, /callList: \{\s+rows: detailRows,\s+styles: styles\.callDetail,/);
   assert.match(sessionPresentationSource, /styles\.card,[\s\S]*?isPending && styles\.pending,[\s\S]*?allSuccess && styles\.success,[\s\S]*?hasErrors && styles\.error/);
-  assert.match(chatMessageChromeSource, /\{expandedGroupParts\.emptyState\}/);
+  assert.match(chatMessageChromeSource, /expandedGroupParts\.emptyState\.shouldRender \? expandedGroupParts\.emptyState\.props : null/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControl/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCollapseControlMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts/);

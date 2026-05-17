@@ -2986,7 +2986,7 @@ export interface ChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
       TStyles["collapseText"]
     >["bottom"]
   }
-  emptyState: TEmptyState | undefined
+  emptyState: ChatRuntimeMobilePropsPart<NonNullable<TEmptyState>>
 }
 
 export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
@@ -20211,7 +20211,13 @@ export function createChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
       onPress: onCollapsePress,
       styles: collapseControlStyleSlots.bottom,
     },
-    emptyState,
+    emptyState: emptyState != null ? {
+      shouldRender: true,
+      props: emptyState as NonNullable<TEmptyState>,
+    } : {
+      shouldRender: false,
+      props: null,
+    },
   }
 }
 

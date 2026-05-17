@@ -7936,7 +7936,7 @@ export function ChatMessageToolExecutionExpandedGroup({
       />
       <View style={expandedGroupParts.cardStyle}>
         {children}
-        {expandedGroupParts.emptyState}
+        {expandedGroupParts.emptyState.shouldRender ? expandedGroupParts.emptyState.props : null}
       </View>
       <ChatMessageToolExecutionCollapseControl
         {...expandedGroupParts.bottomCollapseControl}
