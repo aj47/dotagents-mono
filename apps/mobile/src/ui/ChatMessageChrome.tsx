@@ -2470,8 +2470,8 @@ type ChatMessageToolExecutionErrorBlockViewProps =
   };
 
 type ChatMessageToolExecutionErrorBlockTextProps =
-  | ChatMessageToolExecutionErrorBlockParts['label']['props']
-  | ChatMessageToolExecutionErrorBlockParts['error']['props'];
+  | ChatMessageToolExecutionErrorBlockParts['content']['label']['props']
+  | ChatMessageToolExecutionErrorBlockParts['content']['error']['props'];
 
 type ChatMessageToolExecutionResultSectionStyles = {
   item: StyleProp<ViewStyle>;
@@ -9896,6 +9896,7 @@ export function ChatMessageToolExecutionErrorBlock({
     onCopyPress,
     styles,
   });
+  const errorBlockContent = errorBlockParts.content;
 
   return (
     <ChatMessageToolExecutionErrorBlockView
@@ -9905,14 +9906,14 @@ export function ChatMessageToolExecutionErrorBlock({
         {...errorBlockParts.headerRow.props}
       >
         <ChatMessageToolExecutionErrorBlockText
-          {...errorBlockParts.label.props}
+          {...errorBlockContent.label.props}
         />
         <ChatMessageToolExecutionCopyButton
-          {...errorBlockParts.copyButton.props}
+          {...errorBlockContent.copyButton.props}
         />
       </ChatMessageToolExecutionErrorBlockView>
       <ChatMessageToolExecutionErrorBlockText
-        {...errorBlockParts.error.props}
+        {...errorBlockContent.error.props}
       />
     </ChatMessageToolExecutionErrorBlockView>
   );

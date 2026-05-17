@@ -4501,27 +4501,29 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
       style: TStyles["headerRow"]
     }
   }
-  label: {
-    props: {
+  content: {
+    label: {
       props: {
-        style: TStyles["label"]
+        props: {
+          style: TStyles["label"]
+        }
+        text: TRenderState["label"]
       }
-      text: TRenderState["label"]
     }
-  }
-  copyButton: {
-    props: {
-      renderState: TCopyButtonRenderState
-      onPress: TOnCopyPress | undefined
-      styles: TStyles["copyButton"]
-    }
-  }
-  error: {
-    props: {
+    copyButton: {
       props: {
-        style: TStyles["text"]
+        renderState: TCopyButtonRenderState
+        onPress: TOnCopyPress | undefined
+        styles: TStyles["copyButton"]
       }
-      text: string
+    }
+    error: {
+      props: {
+        props: {
+          style: TStyles["text"]
+        }
+        text: string
+      }
     }
   }
 }
@@ -22141,27 +22143,29 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
         style: styles.headerRow,
       },
     },
-    label: {
-      props: {
+    content: {
+      label: {
         props: {
-          style: styles.label,
+          props: {
+            style: styles.label,
+          },
+          text: renderState.label,
         },
-        text: renderState.label,
       },
-    },
-    copyButton: {
-      props: {
-        renderState: copyButtonRenderState,
-        onPress: onCopyPress,
-        styles: styles.copyButton,
-      },
-    },
-    error: {
-      props: {
+      copyButton: {
         props: {
-          style: styles.text,
+          renderState: copyButtonRenderState,
+          onPress: onCopyPress,
+          styles: styles.copyButton,
         },
-        text: error,
+      },
+      error: {
+        props: {
+          props: {
+            style: styles.text,
+          },
+          text: error,
+        },
       },
     },
   }
