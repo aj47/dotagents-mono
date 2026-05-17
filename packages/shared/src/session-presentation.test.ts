@@ -13794,8 +13794,8 @@ describe("session presentation semantics", () => {
       rowStyles: "compact-row-styles",
     })
     expect(compactListParts).toEqual({
-      shouldRenderList: true,
       group: {
+        shouldRender: true,
         props: {
           renderState: "compact-expand-state",
           onPress: "expand-tools",
@@ -13827,7 +13827,7 @@ describe("session presentation semantics", () => {
       rows: [],
       groupStyles: "compact-group-styles",
       rowStyles: "compact-row-styles",
-    }).shouldRenderList).toBe(false)
+    }).group.shouldRender).toBe(false)
     const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
       renderState: "detail-header-state",
       toolName: "read_file",

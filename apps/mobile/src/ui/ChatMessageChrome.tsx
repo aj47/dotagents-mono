@@ -9165,7 +9165,7 @@ export function ChatMessageToolExecutionCompactList({
   });
   const compactListContent = compactListParts.group.content;
 
-  if (!compactListParts.shouldRenderList) return null;
+  if (!compactListParts.group.shouldRender) return null;
 
   return (
     <ChatMessageToolExecutionCompactGroup

@@ -4257,8 +4257,8 @@ export interface ChatRuntimeToolExecutionCompactListMobilePropsParts<
   TCompactGroupStyles = unknown,
   TCompactRowStyles = unknown,
 > {
-  shouldRenderList: boolean
   group: {
+    shouldRender: boolean
     props: {
       renderState: TRenderState
       onPress: TOnPress | undefined
@@ -22051,8 +22051,8 @@ export function createChatRuntimeToolExecutionCompactListMobilePropsParts<
   TCompactRowStyles
 > {
   return {
-    shouldRenderList: shouldRender,
     group: {
+      shouldRender,
       props: {
         renderState,
         onPress,

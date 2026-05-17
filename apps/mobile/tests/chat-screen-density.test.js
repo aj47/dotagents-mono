@@ -3851,10 +3851,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const compactListParts = createChatRuntimeToolExecutionCompactListMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+rows,\s+onPress,\s+groupStyles,\s+rowStyles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const compactListContent = compactListParts\.group\.content;/);
-  assert.match(chatMessageChromeSource, /if \(!compactListParts\.shouldRenderList\) return null;/);
+  assert.match(chatMessageChromeSource, /if \(!compactListParts\.group\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactGroup\s+\{\.\.\.compactListParts\.group\.props\}/);
-  assert.match(sessionPresentationSource, /shouldRenderList: shouldRender,/);
-  assert.match(sessionPresentationSource, /group: \{\s+props: \{\s+renderState,\s+onPress,\s+styles: groupStyles,/);
+  assert.match(sessionPresentationSource, /group: \{\s+shouldRender,\s+props: \{\s+renderState,\s+onPress,\s+styles: groupStyles,/);
+  assert.doesNotMatch(chatMessageChromeSource, /compactListParts\.shouldRenderList/);
   assert.doesNotMatch(chatMessageChromeSource, /compactListParts\.group\.(renderState|onPress|styles)/);
   assert.match(sessionPresentationSource, /content: \{\s+rows: rows\.map\(\(row\) => \(\{[\s\S]*?key: row\.key,[\s\S]*?props: \{[\s\S]*?renderState: row\.renderState,[\s\S]*?styles: rowStyles,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactList[\s\S]*?if \(!shouldRender\) return null;[\s\S]*?export function ChatMessageToolExecutionCollapseControl/);
