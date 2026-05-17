@@ -91,6 +91,7 @@ import {
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
+  createChatRuntimeToolExecutionCallSectionMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
@@ -8284,13 +8285,17 @@ export function ChatMessageToolExecutionCallSection({
   styles,
   children,
 }: ChatMessageToolExecutionCallSectionProps) {
+  const callSectionParts = createChatRuntimeToolExecutionCallSectionMobilePropsParts({
+    renderState,
+    toolName,
+    onHeaderPress,
+    styles,
+  });
+
   return (
-    <View style={styles.section}>
+    <View style={callSectionParts.container.style}>
       <ChatMessageToolExecutionDetailHeader
-        renderState={renderState}
-        toolName={toolName}
-        onPress={onHeaderPress}
-        styles={styles.header}
+        {...callSectionParts.header}
       />
       {children}
     </View>

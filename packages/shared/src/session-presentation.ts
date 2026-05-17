@@ -2344,6 +2344,45 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput<
+  TRenderState = unknown,
+  TOnHeaderPress = unknown,
+  TStyles extends {
+    section: unknown
+    header: unknown
+  } = {
+    section: unknown
+    header: unknown
+  },
+> {
+  renderState: TRenderState
+  toolName: string
+  onHeaderPress?: TOnHeaderPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionCallSectionMobilePropsParts<
+  TRenderState = unknown,
+  TOnHeaderPress = unknown,
+  TStyles extends {
+    section: unknown
+    header: unknown
+  } = {
+    section: unknown
+    header: unknown
+  },
+> {
+  container: {
+    style: TStyles["section"]
+  }
+  header: {
+    renderState: TRenderState
+    toolName: string
+    onPress: TOnHeaderPress | undefined
+    styles: TStyles["header"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -15608,6 +15647,40 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
         text: renderState.toggleLabel,
         style: styles.expandHintText,
       },
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionCallSectionMobilePropsParts<
+  TRenderState,
+  TOnHeaderPress,
+  TStyles extends {
+    section: unknown
+    header: unknown
+  },
+>({
+  renderState,
+  toolName,
+  onHeaderPress,
+  styles,
+}: ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput<
+  TRenderState,
+  TOnHeaderPress,
+  TStyles
+>): ChatRuntimeToolExecutionCallSectionMobilePropsParts<
+  TRenderState,
+  TOnHeaderPress,
+  TStyles
+> {
+  return {
+    container: {
+      style: styles.section,
+    },
+    header: {
+      renderState,
+      toolName,
+      onPress: onHeaderPress,
+      styles: styles.header,
     },
   }
 }

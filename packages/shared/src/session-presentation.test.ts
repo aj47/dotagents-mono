@@ -137,6 +137,7 @@ import {
   createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
+  createChatRuntimeToolExecutionCallSectionMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
@@ -9472,6 +9473,25 @@ describe("session presentation semantics", () => {
       "detail-header",
       "detail-header-pressed",
     ])
+    expect(createChatRuntimeToolExecutionCallSectionMobilePropsParts({
+      renderState: "detail-header-state",
+      toolName: "read_file",
+      onHeaderPress: "toggle-detail",
+      styles: {
+        section: "call-section",
+        header: "detail-header-styles",
+      },
+    })).toEqual({
+      container: {
+        style: "call-section",
+      },
+      header: {
+        renderState: "detail-header-state",
+        toolName: "read_file",
+        onPress: "toggle-detail",
+        styles: "detail-header-styles",
+      },
+    })
     const copyButtonParts = createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
       renderState: {
         accessibilityRole: "button",
