@@ -8862,14 +8862,10 @@ export function ChatMessageDelegationMorePreviewAction({
 }: ChatMessageDelegationMorePreviewActionProps) {
   return (
     <Pressable
-      onPress={button.onPress}
-      accessibilityRole={button.accessibilityRole}
-      accessibilityLabel={button.accessibilityLabel}
-      style={button.style}
+      {...button.props}
     >
       <Text
-        style={label.style}
-        numberOfLines={label.numberOfLines}
+        {...label.props}
       >
         {label.text}
       </Text>

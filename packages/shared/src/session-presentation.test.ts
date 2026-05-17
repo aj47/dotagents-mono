@@ -11282,11 +11282,15 @@ describe("session presentation semantics", () => {
     if (!delegationCardParts.conversationPreview.props.moreAction.shouldRender) {
       throw new Error("Expected delegation conversation preview more action")
     }
-    expect(delegationCardParts.conversationPreview.props.moreAction.props.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.conversationPreview.props.moreAction.props.button.props.style({ pressed: true })).toEqual([
       "delegation-conversation-preview-more-button-style",
       "delegation-conversation-preview-more-button-pressed-style",
     ])
-    delegationCardParts.conversationPreview.props.moreAction.props.button.onPress()
+    expect(delegationCardParts.conversationPreview.props.moreAction.props.label.props).toEqual({
+      style: "delegation-conversation-preview-more-style",
+      numberOfLines: delegationCardProps.conversationPreview.moreAction.numberOfLines,
+    })
+    delegationCardParts.conversationPreview.props.moreAction.props.button.props.onPress()
     expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
     expect(delegationCardParts.toolPreview.props.container).toEqual({
       style: "delegation-tool-preview-style",
@@ -11335,11 +11339,15 @@ describe("session presentation semantics", () => {
     if (!delegationCardParts.toolPreview.props.moreAction.shouldRender) {
       throw new Error("Expected delegation tool preview more action")
     }
-    expect(delegationCardParts.toolPreview.props.moreAction.props.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.toolPreview.props.moreAction.props.button.props.style({ pressed: true })).toEqual([
       "delegation-tool-preview-more-button-style",
       "delegation-tool-preview-more-button-pressed-style",
     ])
-    delegationCardParts.toolPreview.props.moreAction.props.button.onPress()
+    expect(delegationCardParts.toolPreview.props.moreAction.props.label.props).toEqual({
+      style: "delegation-tool-preview-more-style",
+      numberOfLines: delegationCardProps.toolPreview.moreAction.numberOfLines,
+    })
+    delegationCardParts.toolPreview.props.moreAction.props.button.props.onPress()
     expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")
