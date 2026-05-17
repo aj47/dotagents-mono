@@ -4444,17 +4444,19 @@ export interface ChatComposerTextEntryMobilePropsParts<
     multiline: true
   }
   inputDescription: {
+    shouldRender: boolean
     nativeID: TWebAccessibility["inputDescriptionNativeId"]
     style: TStyles["visuallyHiddenHint"]
     text: string
-  } | null
+  }
   voiceStatusLiveRegion: {
+    shouldRender: boolean
     nativeID: TWebAccessibility["voiceStatusLiveRegionNativeId"]
     style: TStyles["visuallyHiddenHint"]
     accessibilityLiveRegion: TWebAccessibility["voiceStatusLiveRegionPoliteness"]
     ariaLive: ChatComposerTextEntryMobileAriaLive
     text: string
-  } | null
+  }
 }
 
 export interface ChatComposerIconButtonMobileRenderStateLike {
@@ -21067,12 +21069,14 @@ export function createChatComposerTextEntryMobilePropsParts<
       placeholderTextColor,
       multiline: true,
     },
-    inputDescription: webAccessibility.isWebPlatform ? {
+    inputDescription: {
+      shouldRender: webAccessibility.isWebPlatform,
       nativeID: webAccessibility.inputDescriptionNativeId,
       style: styles.visuallyHiddenHint,
       text: accessibilityHint,
-    } : null,
-    voiceStatusLiveRegion: webAccessibility.isWebPlatform ? {
+    },
+    voiceStatusLiveRegion: {
+      shouldRender: webAccessibility.isWebPlatform,
       nativeID: webAccessibility.voiceStatusLiveRegionNativeId,
       style: styles.visuallyHiddenHint,
       accessibilityLiveRegion: webAccessibility.voiceStatusLiveRegionPoliteness,
@@ -21080,7 +21084,7 @@ export function createChatComposerTextEntryMobilePropsParts<
         webAccessibility.voiceStatusLiveRegionPoliteness,
       ),
       text: voiceStatusLiveRegionAnnouncement,
-    } : null,
+    },
   }
 }
 

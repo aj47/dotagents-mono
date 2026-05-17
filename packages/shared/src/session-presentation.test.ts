@@ -9583,11 +9583,13 @@ describe("session presentation semantics", () => {
         multiline: true,
       },
       inputDescription: {
+        shouldRender: true,
         nativeID: "chat-composer-hint",
         style: "visually-hidden-hint",
         text: "Press Enter to send.",
       },
       voiceStatusLiveRegion: {
+        shouldRender: true,
         nativeID: "chat-composer-voice-status",
         style: "visually-hidden-hint",
         accessibilityLiveRegion: "none",
@@ -9618,8 +9620,20 @@ describe("session presentation semantics", () => {
         ariaDescribedBy: undefined,
         multiline: true,
       },
-      inputDescription: null,
-      voiceStatusLiveRegion: null,
+      inputDescription: {
+        shouldRender: false,
+        nativeID: "chat-composer-hint",
+        style: "visually-hidden-hint",
+        text: "Press Enter to send.",
+      },
+      voiceStatusLiveRegion: {
+        shouldRender: false,
+        nativeID: "chat-composer-voice-status",
+        style: "visually-hidden-hint",
+        accessibilityLiveRegion: "polite",
+        ariaLive: "polite",
+        text: "Voice transcript ready.",
+      },
     })
     const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({
       shouldRender: true,

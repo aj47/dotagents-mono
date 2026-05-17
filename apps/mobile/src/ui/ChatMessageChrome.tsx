@@ -9644,15 +9644,15 @@ export function ChatComposerTextEntry({
         placeholderTextColor={textEntryParts.input.placeholderTextColor}
         multiline={textEntryParts.input.multiline}
       />
-      {textEntryParts.inputDescription && (
+      {textEntryParts.inputDescription.shouldRender ? (
         <Text
           nativeID={textEntryParts.inputDescription.nativeID}
           style={textEntryParts.inputDescription.style}
         >
           {textEntryParts.inputDescription.text}
         </Text>
-      )}
-      {textEntryParts.voiceStatusLiveRegion && (
+      ) : null}
+      {textEntryParts.voiceStatusLiveRegion.shouldRender ? (
         <Text
           nativeID={textEntryParts.voiceStatusLiveRegion.nativeID}
           style={textEntryParts.voiceStatusLiveRegion.style}
@@ -9661,7 +9661,7 @@ export function ChatComposerTextEntry({
         >
           {textEntryParts.voiceStatusLiveRegion.text}
         </Text>
-      )}
+      ) : null}
     </>
   );
 }
