@@ -3999,6 +3999,84 @@ export interface ChatComposerVoiceOverlayMobilePropsParts<
   } | null
 }
 
+export type ChatComposerTextEntryMobileLiveRegionPoliteness = "none" | "polite" | "assertive"
+
+export type ChatComposerTextEntryMobileAriaLive =
+  | "off"
+  | Exclude<ChatComposerTextEntryMobileLiveRegionPoliteness, "none">
+
+export interface ChatComposerTextEntryMobileWebAccessibilityLike<
+  TPoliteness extends ChatComposerTextEntryMobileLiveRegionPoliteness = ChatComposerTextEntryMobileLiveRegionPoliteness,
+> {
+  isWebPlatform: boolean
+  inputDescriptionNativeId: unknown
+  voiceStatusLiveRegionNativeId: unknown
+  voiceStatusLiveRegionPoliteness: TPoliteness
+}
+
+export interface ChatComposerTextEntryMobileStylesLike {
+  input: unknown
+  visuallyHiddenHint: unknown
+}
+
+export interface ChatComposerTextEntryMobilePropsPartsInput<
+  TInputRef = unknown,
+  TValue = unknown,
+  TOnChangeText = unknown,
+  TOnKeyPress = unknown,
+  TPlaceholderTextColor = unknown,
+  TWebAccessibility extends ChatComposerTextEntryMobileWebAccessibilityLike = ChatComposerTextEntryMobileWebAccessibilityLike,
+  TStyles extends ChatComposerTextEntryMobileStylesLike = ChatComposerTextEntryMobileStylesLike,
+> {
+  inputRef?: TInputRef
+  value: TValue
+  onChangeText: TOnChangeText
+  onKeyPress?: TOnKeyPress
+  accessibilityLabel: string
+  accessibilityHint: string
+  placeholder: string
+  placeholderTextColor: TPlaceholderTextColor
+  voiceStatusLiveRegionAnnouncement: string
+  webAccessibility: TWebAccessibility
+  styles: TStyles
+}
+
+export interface ChatComposerTextEntryMobilePropsParts<
+  TInputRef = unknown,
+  TValue = unknown,
+  TOnChangeText = unknown,
+  TOnKeyPress = unknown,
+  TPlaceholderTextColor = unknown,
+  TWebAccessibility extends ChatComposerTextEntryMobileWebAccessibilityLike = ChatComposerTextEntryMobileWebAccessibilityLike,
+  TStyles extends ChatComposerTextEntryMobileStylesLike = ChatComposerTextEntryMobileStylesLike,
+> {
+  input: {
+    ref: TInputRef | undefined
+    style: TStyles["input"]
+    value: TValue
+    onChangeText: TOnChangeText
+    onKeyPress: TOnKeyPress | undefined
+    accessibilityLabel: string
+    accessibilityHint: string
+    ariaDescribedBy: TWebAccessibility["inputDescriptionNativeId"] | undefined
+    placeholder: string
+    placeholderTextColor: TPlaceholderTextColor
+    multiline: true
+  }
+  inputDescription: {
+    nativeID: TWebAccessibility["inputDescriptionNativeId"]
+    style: TStyles["visuallyHiddenHint"]
+    text: string
+  } | null
+  voiceStatusLiveRegion: {
+    nativeID: TWebAccessibility["voiceStatusLiveRegionNativeId"]
+    style: TStyles["visuallyHiddenHint"]
+    accessibilityLiveRegion: TWebAccessibility["voiceStatusLiveRegionPoliteness"]
+    ariaLive: ChatComposerTextEntryMobileAriaLive
+    text: string
+  } | null
+}
+
 export interface ChatComposerIconButtonMobileRenderStateLike {
   isActive?: boolean
   accessibilityRole: unknown
@@ -19245,6 +19323,82 @@ export function createChatComposerVoiceOverlayMobilePropsParts<
       style: styles.transcript,
       numberOfLines: transcriptNumberOfLines,
       text: transcript,
+    } : null,
+  }
+}
+
+export function createChatComposerTextEntryMobileAriaLive(
+  politeness: ChatComposerTextEntryMobileLiveRegionPoliteness,
+): ChatComposerTextEntryMobileAriaLive {
+  return politeness === "none" ? "off" : politeness
+}
+
+export function createChatComposerTextEntryMobilePropsParts<
+  TInputRef,
+  TValue,
+  TOnChangeText,
+  TOnKeyPress,
+  TPlaceholderTextColor,
+  TWebAccessibility extends ChatComposerTextEntryMobileWebAccessibilityLike,
+  TStyles extends ChatComposerTextEntryMobileStylesLike,
+>({
+  inputRef,
+  value,
+  onChangeText,
+  onKeyPress,
+  accessibilityLabel,
+  accessibilityHint,
+  placeholder,
+  placeholderTextColor,
+  voiceStatusLiveRegionAnnouncement,
+  webAccessibility,
+  styles,
+}: ChatComposerTextEntryMobilePropsPartsInput<
+  TInputRef,
+  TValue,
+  TOnChangeText,
+  TOnKeyPress,
+  TPlaceholderTextColor,
+  TWebAccessibility,
+  TStyles
+>): ChatComposerTextEntryMobilePropsParts<
+  TInputRef,
+  TValue,
+  TOnChangeText,
+  TOnKeyPress,
+  TPlaceholderTextColor,
+  TWebAccessibility,
+  TStyles
+> {
+  return {
+    input: {
+      ref: inputRef,
+      style: styles.input,
+      value,
+      onChangeText,
+      onKeyPress,
+      accessibilityLabel,
+      accessibilityHint,
+      ariaDescribedBy: webAccessibility.isWebPlatform
+        ? webAccessibility.inputDescriptionNativeId
+        : undefined,
+      placeholder,
+      placeholderTextColor,
+      multiline: true,
+    },
+    inputDescription: webAccessibility.isWebPlatform ? {
+      nativeID: webAccessibility.inputDescriptionNativeId,
+      style: styles.visuallyHiddenHint,
+      text: accessibilityHint,
+    } : null,
+    voiceStatusLiveRegion: webAccessibility.isWebPlatform ? {
+      nativeID: webAccessibility.voiceStatusLiveRegionNativeId,
+      style: styles.visuallyHiddenHint,
+      accessibilityLiveRegion: webAccessibility.voiceStatusLiveRegionPoliteness,
+      ariaLive: createChatComposerTextEntryMobileAriaLive(
+        webAccessibility.voiceStatusLiveRegionPoliteness,
+      ),
+      text: voiceStatusLiveRegionAnnouncement,
     } : null,
   }
 }

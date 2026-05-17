@@ -41,6 +41,7 @@ import {
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
   createChatComposerSpeechPreviewMobilePropsParts,
+  createChatComposerTextEntryMobilePropsParts,
   createChatComposerVoiceOverlayMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
@@ -2595,7 +2596,7 @@ type ChatComposerTextEntryWebAccessibility = {
   isWebPlatform: boolean;
   inputDescriptionNativeId: string;
   voiceStatusLiveRegionNativeId: string;
-  voiceStatusLiveRegionPoliteness: ComponentProps<typeof Text>['accessibilityLiveRegion'];
+  voiceStatusLiveRegionPoliteness: NonNullable<ComponentProps<typeof Text>['accessibilityLiveRegion']>;
 };
 
 type ChatComposerTextEntryProps = {
@@ -9755,42 +9756,51 @@ export function ChatComposerTextEntry({
   webAccessibility,
   styles,
 }: ChatComposerTextEntryProps) {
-  const voiceStatusAriaLive: ComponentProps<typeof Text>['aria-live'] =
-    webAccessibility.voiceStatusLiveRegionPoliteness === 'none'
-      ? 'off'
-      : webAccessibility.voiceStatusLiveRegionPoliteness;
+  const textEntryParts = createChatComposerTextEntryMobilePropsParts({
+    inputRef,
+    value,
+    onChangeText,
+    onKeyPress,
+    accessibilityLabel,
+    accessibilityHint,
+    placeholder,
+    placeholderTextColor,
+    voiceStatusLiveRegionAnnouncement,
+    webAccessibility,
+    styles,
+  });
 
   return (
     <>
       <TextInput
-        ref={inputRef}
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        onKeyPress={onKeyPress}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityHint={accessibilityHint}
-        aria-describedby={webAccessibility.isWebPlatform ? webAccessibility.inputDescriptionNativeId : undefined}
-        placeholder={placeholder}
-        placeholderTextColor={placeholderTextColor}
-        multiline
+        ref={textEntryParts.input.ref}
+        style={textEntryParts.input.style}
+        value={textEntryParts.input.value}
+        onChangeText={textEntryParts.input.onChangeText}
+        onKeyPress={textEntryParts.input.onKeyPress}
+        accessibilityLabel={textEntryParts.input.accessibilityLabel}
+        accessibilityHint={textEntryParts.input.accessibilityHint}
+        aria-describedby={textEntryParts.input.ariaDescribedBy}
+        placeholder={textEntryParts.input.placeholder}
+        placeholderTextColor={textEntryParts.input.placeholderTextColor}
+        multiline={textEntryParts.input.multiline}
       />
-      {webAccessibility.isWebPlatform && (
+      {textEntryParts.inputDescription && (
         <Text
-          nativeID={webAccessibility.inputDescriptionNativeId}
-          style={styles.visuallyHiddenHint}
+          nativeID={textEntryParts.inputDescription.nativeID}
+          style={textEntryParts.inputDescription.style}
         >
-          {accessibilityHint}
+          {textEntryParts.inputDescription.text}
         </Text>
       )}
-      {webAccessibility.isWebPlatform && (
+      {textEntryParts.voiceStatusLiveRegion && (
         <Text
-          nativeID={webAccessibility.voiceStatusLiveRegionNativeId}
-          style={styles.visuallyHiddenHint}
-          accessibilityLiveRegion={webAccessibility.voiceStatusLiveRegionPoliteness}
-          aria-live={voiceStatusAriaLive}
+          nativeID={textEntryParts.voiceStatusLiveRegion.nativeID}
+          style={textEntryParts.voiceStatusLiveRegion.style}
+          accessibilityLiveRegion={textEntryParts.voiceStatusLiveRegion.accessibilityLiveRegion}
+          aria-live={textEntryParts.voiceStatusLiveRegion.ariaLive}
         >
-          {voiceStatusLiveRegionAnnouncement}
+          {textEntryParts.voiceStatusLiveRegion.text}
         </Text>
       )}
     </>

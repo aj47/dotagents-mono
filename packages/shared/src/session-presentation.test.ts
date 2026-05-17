@@ -69,6 +69,7 @@ import {
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
   createChatComposerSpeechPreviewMobilePropsParts,
+  createChatComposerTextEntryMobilePropsParts,
   createChatComposerVoiceOverlayMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
@@ -8624,6 +8625,79 @@ describe("session presentation semantics", () => {
     })).toMatchObject({
       shouldRender: false,
       transcript: null,
+    })
+    expect(createChatComposerTextEntryMobilePropsParts({
+      inputRef: "input-ref",
+      value: "hello",
+      onChangeText: "change-text",
+      onKeyPress: "key-press",
+      accessibilityLabel: "Message",
+      accessibilityHint: "Press Enter to send.",
+      placeholder: "Message agent",
+      placeholderTextColor: "#64748b",
+      voiceStatusLiveRegionAnnouncement: "Voice transcript ready.",
+      webAccessibility: {
+        isWebPlatform: true,
+        inputDescriptionNativeId: "chat-composer-hint",
+        voiceStatusLiveRegionNativeId: "chat-composer-voice-status",
+        voiceStatusLiveRegionPoliteness: "none",
+      },
+      styles: {
+        input: "text-entry-input",
+        visuallyHiddenHint: "visually-hidden-hint",
+      },
+    })).toEqual({
+      input: {
+        ref: "input-ref",
+        style: "text-entry-input",
+        value: "hello",
+        onChangeText: "change-text",
+        onKeyPress: "key-press",
+        accessibilityLabel: "Message",
+        accessibilityHint: "Press Enter to send.",
+        ariaDescribedBy: "chat-composer-hint",
+        placeholder: "Message agent",
+        placeholderTextColor: "#64748b",
+        multiline: true,
+      },
+      inputDescription: {
+        nativeID: "chat-composer-hint",
+        style: "visually-hidden-hint",
+        text: "Press Enter to send.",
+      },
+      voiceStatusLiveRegion: {
+        nativeID: "chat-composer-voice-status",
+        style: "visually-hidden-hint",
+        accessibilityLiveRegion: "none",
+        ariaLive: "off",
+        text: "Voice transcript ready.",
+      },
+    })
+    expect(createChatComposerTextEntryMobilePropsParts({
+      value: "hello",
+      onChangeText: "change-text",
+      accessibilityLabel: "Message",
+      accessibilityHint: "Press Enter to send.",
+      placeholder: "Message agent",
+      placeholderTextColor: "#64748b",
+      voiceStatusLiveRegionAnnouncement: "Voice transcript ready.",
+      webAccessibility: {
+        isWebPlatform: false,
+        inputDescriptionNativeId: "chat-composer-hint",
+        voiceStatusLiveRegionNativeId: "chat-composer-voice-status",
+        voiceStatusLiveRegionPoliteness: "polite",
+      },
+      styles: {
+        input: "text-entry-input",
+        visuallyHiddenHint: "visually-hidden-hint",
+      },
+    })).toMatchObject({
+      input: {
+        ariaDescribedBy: undefined,
+        multiline: true,
+      },
+      inputDescription: null,
+      voiceStatusLiveRegion: null,
     })
     const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({
       shouldRender: true,
