@@ -8059,11 +8059,11 @@ export function ChatMessageSurface({
 }
 
 export function ChatMessageSurfaceContainer({
-  style,
   children,
+  ...props
 }: ChatMessageSurfaceContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -11910,22 +11910,22 @@ export function ChatMessageContentRow({
 }
 
 export function ChatMessageContentRowContainer({
-  style,
   children,
+  ...props
 }: ChatMessageContentRowContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatMessageContentBody({
-  style,
   children,
+  ...props
 }: ChatMessageContentBodyProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -11982,11 +11982,11 @@ export function ChatMessageActionSlotList({
 }
 
 export function ChatMessageActionSlotListRow({
-  style,
   children,
+  ...props
 }: ChatMessageActionSlotListRowProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );

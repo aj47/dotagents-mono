@@ -5479,10 +5479,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /<ChatMessageSurfaceContainer\s+\{\.\.\.surfaceParts\.container\.props\}/);
   assert.match(
     chatMessageChromeSource,
-    /export function ChatMessageSurfaceContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageThreadItem/
+    /export function ChatMessageSurfaceContainer\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageThreadItem/
   );
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: \[style, toneStyle\],/);
   assert.doesNotMatch(chatMessageChromeSource, /surfaceParts\.container\.style/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageSurfaceContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageThreadItem/);
   assert.match(chatMessageChromeSource, /const threadItemParts = createChatRuntimeMessageThreadItemMobilePropsParts\(\{\s+leadingActivity,\s+trailingActivity,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<View>[\s\S]*?\{threadItemParts\.leadingActivity\}[\s\S]*?\{children\}[\s\S]*?\{threadItemParts\.trailingActivity\}[\s\S]*?<\/View>/);
   assert.match(chatMessageChromeSource, /const threadSurfaceParts = createChatRuntimeMessageThreadSurfaceMobilePropsParts\(\{\s+leadingActivity,\s+trailingActivity,\s+surfaceStyle,\s+surfaceToneStyle,\s+\}\);/);
@@ -5827,7 +5828,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(actionSlotListSource, /<ChatMessageActionSlotListRow\s+\{\.\.\.actionSlotListParts\.row\.props\}[\s\S]*?>[\s\S]*?\{content\}[\s\S]*?<\/ChatMessageActionSlotListRow>/);
   assert.match(
     actionSlotListSource,
-    /export function ChatMessageActionSlotListRow\([\s\S]*?<View style=\{style\}>/
+    /export function ChatMessageActionSlotListRow\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>/
   );
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageContentRowMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
@@ -5838,11 +5839,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(contentRowSource, /<ChatMessageContentBody\s+\{\.\.\.contentRowParts\.body\.props\}[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\}/);
   assert.match(
     contentRowSource,
-    /export function ChatMessageContentRowContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageContentBody/
+    /export function ChatMessageContentRowContainer\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageContentBody/
   );
   assert.match(
     contentRowSource,
-    /export function ChatMessageContentBody\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageStandaloneActions/
+    /export function ChatMessageContentBody\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageStandaloneActions/
   );
   assert.match(standaloneActionsSource, /const standaloneActionsParts = createChatRuntimeMessageStandaloneActionsMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
   assert.match(standaloneActionsSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\}/);
@@ -5850,6 +5851,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /body: \{\s+shouldRender: Boolean\(bodyStyle\),\s+props: \{\s+style: bodyStyle,/);
   assert.match(sessionPresentationSource, /actionSlotList: \{\s+shouldRender,/);
   assert.doesNotMatch(contentRowSource, /contentRowParts\.(row|body)\.style/);
+  assert.doesNotMatch(contentRowSource, /export function ChatMessageContent(RowContainer|Body)\([\s\S]*?<View style=\{style\}>/);
+  assert.doesNotMatch(actionSlotListSource, /export function ChatMessageActionSlotListRow\([\s\S]*?<View style=\{style\}>/);
   assert.doesNotMatch(contentRowSource, /contentRowParts\.body \? \(/);
   assert.doesNotMatch(contentRowSource, /<View style=\{rowStyle\}>/);
   assert.doesNotMatch(contentRowSource, /<View style=\{bodyStyle\}>/);
