@@ -2121,6 +2121,10 @@ type ChatMessageDelegationConversationPreviewProps =
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationConversationPreviewProps['container']['content']['rows'][number]['props'];
 
+type ChatMessageDelegationConversationPreviewTimestampProps = {
+  timestamp: ChatMessageDelegationConversationPreviewRowProps['timestamp'];
+};
+
 type ChatMessageDelegationToolPreviewProps =
   ChatMessageDelegationCardParts['card']['content']['toolPreview']['props'];
 
@@ -9265,14 +9269,24 @@ export function ChatMessageDelegationConversationPreviewRow({
       >
         {content.text}
       </Text>
-      {timestamp.shouldRender ? (
-        <Text
-          {...timestamp.props}
-        >
-          {timestamp.text}
-        </Text>
-      ) : null}
+      <ChatMessageDelegationConversationPreviewTimestamp
+        timestamp={timestamp}
+      />
     </View>
+  );
+}
+
+export function ChatMessageDelegationConversationPreviewTimestamp({
+  timestamp,
+}: ChatMessageDelegationConversationPreviewTimestampProps) {
+  if (!timestamp.shouldRender) return null;
+
+  return (
+    <Text
+      {...timestamp.props}
+    >
+      {timestamp.text}
+    </Text>
   );
 }
 

@@ -1287,10 +1287,15 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /styles\.conversationPreviewRole/);
   assert.match(sessionPresentationSource, /numberOfLines: surface\.conversationPreviewRoleNumberOfLines/);
   assert.match(sessionPresentationSource, /ellipsizeMode: surface\.conversationPreviewRoleEllipsizeMode/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow[\s\S]*?<View\s+\{\.\.\.line\.props\}[\s\S]*?export function ChatMessageDelegationConversationPreview/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow[\s\S]*?<Text\s+\{\.\.\.role\.props\}[\s\S]*?\{role\.text\}[\s\S]*?export function ChatMessageDelegationConversationPreview/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow[\s\S]*?<Text\s+\{\.\.\.content\.props\}[\s\S]*?\{content\.text\}[\s\S]*?export function ChatMessageDelegationConversationPreview/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow[\s\S]*?(line|role|content)\.(style|numberOfLines|ellipsizeMode)[\s\S]*?export function ChatMessageDelegationConversationPreview/);
+  const delegationConversationPreviewRowSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewRow[\s\S]*?export function ChatMessageDelegationConversationPreviewTimestamp/)?.[0] ?? '';
+  const delegationConversationPreviewTimestampSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewTimestamp[\s\S]*?export function ChatMessageDelegationConversationPreview/)?.[0] ?? '';
+  assert.match(delegationConversationPreviewRowSource, /<View\s+\{\.\.\.line\.props\}/);
+  assert.match(delegationConversationPreviewRowSource, /<Text\s+\{\.\.\.role\.props\}[\s\S]*?\{role\.text\}/);
+  assert.match(delegationConversationPreviewRowSource, /<Text\s+\{\.\.\.content\.props\}[\s\S]*?\{content\.text\}/);
+  assert.match(delegationConversationPreviewRowSource, /<ChatMessageDelegationConversationPreviewTimestamp\s+timestamp=\{timestamp\}/);
+  assert.doesNotMatch(delegationConversationPreviewRowSource, /(line|role|content)\.(style|numberOfLines|ellipsizeMode)/);
   assert.doesNotMatch(delegationCardComponentSource, /style=\{row\.role\.style\}/);
   assert.doesNotMatch(delegationCardComponentSource, /style=\{row\.content\.style\}/);
   assert.match(sessionPresentationSource, /timestamp: row\.timestampLabel \? \{/);
@@ -1301,8 +1306,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /conversationPreview\.hiddenCount > 0 && conversationPreview\.onShowAll \? \{\s+shouldRender: true,/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{surface\.conversationPreviewRoleNumberOfLines\}/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{surface\.conversationPreviewContentNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow[\s\S]*?timestamp\.shouldRender \? \([\s\S]*?<Text\s+\{\.\.\.timestamp\.props\}[\s\S]*?export function ChatMessageDelegationConversationPreview/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow[\s\S]*?timestamp\.(style|numberOfLines)[\s\S]*?export function ChatMessageDelegationConversationPreview/);
+  assert.match(delegationConversationPreviewTimestampSource, /if \(!timestamp\.shouldRender\) return null;/);
+  assert.match(delegationConversationPreviewTimestampSource, /<Text\s+\{\.\.\.timestamp\.props\}[\s\S]*?\{timestamp\.text\}/);
+  assert.doesNotMatch(delegationConversationPreviewRowSource, /timestamp\.shouldRender \? \(/);
+  assert.doesNotMatch(delegationConversationPreviewTimestampSource, /timestamp\.(style|numberOfLines)/);
   assert.doesNotMatch(delegationCardComponentSource, /row\.timestamp\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /row\.timestamp \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /row\.timestampLabel \? \(/);
