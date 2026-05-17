@@ -80,6 +80,7 @@ import {
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
+  createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -9819,12 +9820,21 @@ export function ChatMessageExpandedContent({
   spinnerSource,
   streamingStyles,
 }: ChatMessageExpandedContentProps) {
-  if (!streamingRenderState.shouldRender) {
+  const expandedContentParts = createChatRuntimeConversationExpandedContentMobilePropsParts({
+    streamingRenderState,
+    markdownContent,
+    assetBaseUrl,
+    assetAuthToken,
+    spinnerSource,
+    streamingStyles,
+  });
+
+  if (!expandedContentParts.shouldRenderStreamingContent) {
     return (
       <MarkdownRenderer
-        content={markdownContent}
-        assetBaseUrl={assetBaseUrl}
-        assetAuthToken={assetAuthToken}
+        content={expandedContentParts.markdown.content}
+        assetBaseUrl={expandedContentParts.markdown.assetBaseUrl}
+        assetAuthToken={expandedContentParts.markdown.assetAuthToken}
       />
     );
   }
@@ -9832,38 +9842,38 @@ export function ChatMessageExpandedContent({
   return (
     <>
       <View
-        accessible
-        accessibilityRole={streamingRenderState.accessibilityRole}
-        accessibilityLabel={streamingRenderState.accessibilityLabel}
-        style={streamingStyles.header}
+        accessible={expandedContentParts.header.accessible}
+        accessibilityRole={expandedContentParts.header.accessibilityRole}
+        accessibilityLabel={expandedContentParts.header.accessibilityLabel}
+        style={expandedContentParts.header.style}
       >
         <Ionicons
-          name={streamingRenderState.icon.name}
-          size={streamingRenderState.icon.size}
-          color={streamingRenderState.icon.color}
+          name={expandedContentParts.icon.name}
+          size={expandedContentParts.icon.size}
+          color={expandedContentParts.icon.color}
         />
         <Text
-          style={streamingStyles.title}
-          numberOfLines={streamingRenderState.surface.titleNumberOfLines}
+          style={expandedContentParts.title.style}
+          numberOfLines={expandedContentParts.title.numberOfLines}
         >
-          {streamingRenderState.title}
+          {expandedContentParts.title.text}
         </Text>
         <Image
-          source={spinnerSource}
-          style={streamingStyles.spinner}
-          resizeMode={streamingRenderState.spinner.resizeMode}
+          source={expandedContentParts.spinner.source}
+          style={expandedContentParts.spinner.style}
+          resizeMode={expandedContentParts.spinner.resizeMode}
         />
-        <View style={streamingStyles.badge}>
-          <Text style={streamingStyles.badgeText}>
-            {streamingRenderState.badgeLabel}
+        <View style={expandedContentParts.badge.style}>
+          <Text style={expandedContentParts.badgeLabel.style}>
+            {expandedContentParts.badgeLabel.text}
           </Text>
         </View>
       </View>
-      <View style={streamingStyles.bodyRow}>
-        <Text style={streamingStyles.text}>
-          {streamingRenderState.content}
+      <View style={expandedContentParts.body.style}>
+        <Text style={expandedContentParts.text.style}>
+          {expandedContentParts.text.text}
         </Text>
-        <View style={streamingStyles.caret} />
+        <View style={expandedContentParts.caret.style} />
       </View>
     </>
   );

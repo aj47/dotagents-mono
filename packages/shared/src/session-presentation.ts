@@ -3775,6 +3775,180 @@ export interface ChatRuntimeTurnDurationBadgeMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
+  TStreamingRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    content: string
+    icon: {
+      name: unknown
+      size: unknown
+      color: unknown
+    }
+    spinner: {
+      resizeMode: unknown
+    }
+    surface: {
+      titleNumberOfLines: unknown
+    }
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    content: string
+    icon: {
+      name: unknown
+      size: unknown
+      color: unknown
+    }
+    spinner: {
+      resizeMode: unknown
+    }
+    surface: {
+      titleNumberOfLines: unknown
+    }
+  },
+  TMarkdownContent = unknown,
+  TAssetBaseUrl = unknown,
+  TAssetAuthToken = unknown,
+  TSpinnerSource = unknown,
+  TStreamingStyles extends {
+    header: unknown
+    title: unknown
+    spinner: unknown
+    badge: unknown
+    badgeText: unknown
+    bodyRow: unknown
+    text: unknown
+    caret: unknown
+  } = {
+    header: unknown
+    title: unknown
+    spinner: unknown
+    badge: unknown
+    badgeText: unknown
+    bodyRow: unknown
+    text: unknown
+    caret: unknown
+  },
+> {
+  streamingRenderState: TStreamingRenderState
+  markdownContent: TMarkdownContent
+  assetBaseUrl?: TAssetBaseUrl
+  assetAuthToken?: TAssetAuthToken
+  spinnerSource: TSpinnerSource
+  streamingStyles: TStreamingStyles
+}
+
+export interface ChatRuntimeConversationExpandedContentMobilePropsParts<
+  TStreamingRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    content: string
+    icon: {
+      name: unknown
+      size: unknown
+      color: unknown
+    }
+    spinner: {
+      resizeMode: unknown
+    }
+    surface: {
+      titleNumberOfLines: unknown
+    }
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    content: string
+    icon: {
+      name: unknown
+      size: unknown
+      color: unknown
+    }
+    spinner: {
+      resizeMode: unknown
+    }
+    surface: {
+      titleNumberOfLines: unknown
+    }
+  },
+  TMarkdownContent = unknown,
+  TAssetBaseUrl = unknown,
+  TAssetAuthToken = unknown,
+  TSpinnerSource = unknown,
+  TStreamingStyles extends {
+    header: unknown
+    title: unknown
+    spinner: unknown
+    badge: unknown
+    badgeText: unknown
+    bodyRow: unknown
+    text: unknown
+    caret: unknown
+  } = {
+    header: unknown
+    title: unknown
+    spinner: unknown
+    badge: unknown
+    badgeText: unknown
+    bodyRow: unknown
+    text: unknown
+    caret: unknown
+  },
+> {
+  shouldRenderStreamingContent: boolean
+  markdown: {
+    content: TMarkdownContent
+    assetBaseUrl?: TAssetBaseUrl
+    assetAuthToken?: TAssetAuthToken
+  }
+  header: {
+    accessible: true
+    accessibilityRole: TStreamingRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStreamingStyles["header"]
+  }
+  icon: TStreamingRenderState["icon"]
+  title: {
+    style: TStreamingStyles["title"]
+    numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
+    text: string
+  }
+  spinner: {
+    source: TSpinnerSource
+    style: TStreamingStyles["spinner"]
+    resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
+  }
+  badge: {
+    style: TStreamingStyles["badge"]
+  }
+  badgeLabel: {
+    style: TStreamingStyles["badgeText"]
+    text: string
+  }
+  body: {
+    style: TStreamingStyles["bodyRow"]
+  }
+  text: {
+    style: TStreamingStyles["text"]
+    text: string
+  }
+  caret: {
+    style: TStreamingStyles["caret"]
+  }
+}
+
 export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -17333,6 +17507,106 @@ export function createChatRuntimeTurnDurationBadgeMobilePropsParts<
       isLive: renderState.isLive,
       numberOfLines: renderState.badge.numberOfLines,
       text: renderState.label,
+    },
+  }
+}
+
+export function createChatRuntimeConversationExpandedContentMobilePropsParts<
+  TStreamingRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    content: string
+    icon: {
+      name: unknown
+      size: unknown
+      color: unknown
+    }
+    spinner: {
+      resizeMode: unknown
+    }
+    surface: {
+      titleNumberOfLines: unknown
+    }
+  },
+  TMarkdownContent,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TSpinnerSource,
+  TStreamingStyles extends {
+    header: unknown
+    title: unknown
+    spinner: unknown
+    badge: unknown
+    badgeText: unknown
+    bodyRow: unknown
+    text: unknown
+    caret: unknown
+  },
+>({
+  streamingRenderState,
+  markdownContent,
+  assetBaseUrl,
+  assetAuthToken,
+  spinnerSource,
+  streamingStyles,
+}: ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
+  TStreamingRenderState,
+  TMarkdownContent,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TSpinnerSource,
+  TStreamingStyles
+>): ChatRuntimeConversationExpandedContentMobilePropsParts<
+  TStreamingRenderState,
+  TMarkdownContent,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TSpinnerSource,
+  TStreamingStyles
+> {
+  return {
+    shouldRenderStreamingContent: streamingRenderState.shouldRender,
+    markdown: {
+      content: markdownContent,
+      assetBaseUrl,
+      assetAuthToken,
+    },
+    header: {
+      accessible: true,
+      accessibilityRole: streamingRenderState.accessibilityRole,
+      accessibilityLabel: streamingRenderState.accessibilityLabel,
+      style: streamingStyles.header,
+    },
+    icon: streamingRenderState.icon,
+    title: {
+      style: streamingStyles.title,
+      numberOfLines: streamingRenderState.surface.titleNumberOfLines,
+      text: streamingRenderState.title,
+    },
+    spinner: {
+      source: spinnerSource,
+      style: streamingStyles.spinner,
+      resizeMode: streamingRenderState.spinner.resizeMode,
+    },
+    badge: {
+      style: streamingStyles.badge,
+    },
+    badgeLabel: {
+      style: streamingStyles.badgeText,
+      text: streamingRenderState.badgeLabel,
+    },
+    body: {
+      style: streamingStyles.bodyRow,
+    },
+    text: {
+      style: streamingStyles.text,
+      text: streamingRenderState.content,
+    },
+    caret: {
+      style: streamingStyles.caret,
     },
   }
 }

@@ -3853,6 +3853,9 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+streamingRenderState=\{expanded\.streamingRenderState\}[\s\S]*?markdownContent=\{expanded\.markdownContent\}[\s\S]*?spinnerSource=\{expanded\.spinnerSource\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeConversationExpandedContentMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const expandedContentParts = createChatRuntimeConversationExpandedContentMobilePropsParts\(\{\s+streamingRenderState,\s+markdownContent,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+streamingStyles,\s+\}\);/);
   assert.doesNotMatch(markdownRendererSource, /from '@dotagents\/shared\/(conversation-media-assets|markdown-render-parts)'/);
   assert.doesNotMatch(videoAttachmentCardSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(markdownRendererSource, /from '@dotagents\/shared\/session-presentation'/);
@@ -3868,20 +3871,38 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(markdownRendererSource, /resolveMobileMarkdownSpacing/);
   assert.doesNotMatch(markdownRendererSource, /resolveChatRuntimeMobileFontFamily/);
   assert.doesNotMatch(markdownRendererSource, /color: markdownContentColors\.body\.color/);
-  assert.match(chatMessageChromeSource, /if \(!streamingRenderState\.shouldRender\) \{/);
-  assert.match(chatMessageChromeSource, /<MarkdownRenderer[\s\S]*?content=\{markdownContent\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{streamingRenderState\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{streamingRenderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /name=\{streamingRenderState\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{streamingRenderState\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{streamingRenderState\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{streamingRenderState\.surface\.titleNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /\{streamingRenderState\.title\}/);
-  assert.match(chatMessageChromeSource, /\{streamingRenderState\.badgeLabel\}/);
-  assert.match(chatMessageChromeSource, /resizeMode=\{streamingRenderState\.spinner\.resizeMode\}/);
-  assert.match(chatMessageChromeSource, /\{streamingRenderState\.content\}/);
-  assert.match(chatMessageChromeSource, /<Text style=\{streamingStyles\.text\}>/);
+  assert.match(chatMessageChromeSource, /if \(!expandedContentParts\.shouldRenderStreamingContent\) \{/);
+  assert.match(chatMessageChromeSource, /<MarkdownRenderer[\s\S]*?content=\{expandedContentParts\.markdown\.content\}[\s\S]*?assetBaseUrl=\{expandedContentParts\.markdown\.assetBaseUrl\}[\s\S]*?assetAuthToken=\{expandedContentParts\.markdown\.assetAuthToken\}/);
+  assert.match(chatMessageChromeSource, /accessible=\{expandedContentParts\.header\.accessible\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{expandedContentParts\.header\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{expandedContentParts\.header\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /style=\{expandedContentParts\.header\.style\}/);
+  assert.match(chatMessageChromeSource, /name=\{expandedContentParts\.icon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{expandedContentParts\.icon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{expandedContentParts\.icon\.color\}/);
+  assert.match(chatMessageChromeSource, /style=\{expandedContentParts\.title\.style\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{expandedContentParts\.title\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /\{expandedContentParts\.title\.text\}/);
+  assert.match(chatMessageChromeSource, /source=\{expandedContentParts\.spinner\.source\}/);
+  assert.match(chatMessageChromeSource, /style=\{expandedContentParts\.spinner\.style\}/);
+  assert.match(chatMessageChromeSource, /resizeMode=\{expandedContentParts\.spinner\.resizeMode\}/);
+  assert.match(chatMessageChromeSource, /<View style=\{expandedContentParts\.badge\.style\}>/);
+  assert.match(chatMessageChromeSource, /<Text style=\{expandedContentParts\.badgeLabel\.style\}>/);
+  assert.match(chatMessageChromeSource, /\{expandedContentParts\.badgeLabel\.text\}/);
+  assert.match(chatMessageChromeSource, /<View style=\{expandedContentParts\.body\.style\}>/);
+  assert.match(chatMessageChromeSource, /<Text style=\{expandedContentParts\.text\.style\}>/);
+  assert.match(chatMessageChromeSource, /\{expandedContentParts\.text\.text\}/);
+  assert.match(chatMessageChromeSource, /<View style=\{expandedContentParts\.caret\.style\} \/>/);
   assert.match(sessionPresentationSource, /streamingStyles: \{\s+header: styles\.streamingContentHeader,\s+title: styles\.streamingContentTitle,\s+spinner: styles\.streamingContentSpinner,\s+badge: styles\.streamingContentBadge,\s+badgeText: styles\.streamingContentBadgeText,\s+bodyRow: styles\.streamingContentBodyRow,\s+text: styles\.streamingContentText,\s+caret: styles\.streamingContentCaret,\s+\}/);
+  assert.match(sessionPresentationSource, /shouldRenderStreamingContent: streamingRenderState\.shouldRender/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageExpandedContent[\s\S]*?accessibilityRole=\{streamingRenderState\.accessibilityRole\}[\s\S]*?export function ChatMessageCollapsedPreview/
+  );
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageExpandedContent[\s\S]*?numberOfLines=\{streamingRenderState\.surface\.titleNumberOfLines\}[\s\S]*?export function ChatMessageCollapsedPreview/
+  );
   assert.doesNotMatch(screenSource, /<MarkdownRenderer[\s\S]*?content=\{visibleMessageContent\}/);
   assert.match(screenSource, /const streamingContentStyleState = conversationChromeStyleState\.streamingContent;/);
   assert.match(screenSource, /createChatRuntimeStreamingContentMobileStyleSlots,/);

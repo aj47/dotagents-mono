@@ -125,6 +125,7 @@ import {
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
+  createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -5030,6 +5031,112 @@ describe("session presentation semantics", () => {
         backgroundColor: "#2563eb",
       },
     })
+    const expandedContentStyles = {
+      header: "header-style",
+      title: "title-style",
+      spinner: "spinner-style",
+      badge: "badge-style",
+      badgeText: "badge-text-style",
+      bodyRow: "body-row-style",
+      text: "text-style",
+      caret: "caret-style",
+    }
+    const expandedContentParts = createChatRuntimeConversationExpandedContentMobilePropsParts({
+      streamingRenderState: {
+        shouldRender: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Generating response...",
+        title: "Generating response...",
+        badgeLabel: "Streaming",
+        content: "Hello live",
+        icon: {
+          name: "sparkles",
+          size: 14,
+          color: "#2563eb",
+        },
+        spinner: {
+          resizeMode: "contain",
+        },
+        surface: {
+          titleNumberOfLines: 1,
+        },
+      },
+      markdownContent: "Markdown content",
+      assetBaseUrl: "asset-base",
+      assetAuthToken: "asset-token",
+      spinnerSource: "spinner-source",
+      streamingStyles: expandedContentStyles,
+    })
+    expect(expandedContentParts).toEqual({
+      shouldRenderStreamingContent: true,
+      markdown: {
+        content: "Markdown content",
+        assetBaseUrl: "asset-base",
+        assetAuthToken: "asset-token",
+      },
+      header: {
+        accessible: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Generating response...",
+        style: "header-style",
+      },
+      icon: {
+        name: "sparkles",
+        size: 14,
+        color: "#2563eb",
+      },
+      title: {
+        style: "title-style",
+        numberOfLines: 1,
+        text: "Generating response...",
+      },
+      spinner: {
+        source: "spinner-source",
+        style: "spinner-style",
+        resizeMode: "contain",
+      },
+      badge: {
+        style: "badge-style",
+      },
+      badgeLabel: {
+        style: "badge-text-style",
+        text: "Streaming",
+      },
+      body: {
+        style: "body-row-style",
+      },
+      text: {
+        style: "text-style",
+        text: "Hello live",
+      },
+      caret: {
+        style: "caret-style",
+      },
+    })
+    expect(createChatRuntimeConversationExpandedContentMobilePropsParts({
+      streamingRenderState: {
+        shouldRender: false,
+        accessibilityRole: "text",
+        accessibilityLabel: "Response",
+        title: "Response",
+        badgeLabel: "Streaming",
+        content: "",
+        icon: {
+          name: "sparkles",
+          size: 14,
+          color: "#2563eb",
+        },
+        spinner: {
+          resizeMode: "contain",
+        },
+        surface: {
+          titleNumberOfLines: 1,
+        },
+      },
+      markdownContent: "Markdown content",
+      spinnerSource: "spinner-source",
+      streamingStyles: expandedContentStyles,
+    }).shouldRenderStreamingContent).toBe(false)
     expect(getChatRuntimeStreamingContentMobileRenderState({
       colors: {
         info: "#2563eb",
