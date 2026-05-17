@@ -11088,7 +11088,10 @@ describe("session presentation semantics", () => {
     ])
     delegationCardParts.conversationPreview.props.moreAction.props.button.onPress()
     expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
-    expect(delegationCardParts.toolPreview.label.props).toMatchObject({
+    expect(delegationCardParts.toolPreview.props.container).toEqual({
+      style: "delegation-tool-preview-style",
+    })
+    expect(delegationCardParts.toolPreview.props.label.props).toMatchObject({
       style: "delegation-tool-preview-label-style",
       numberOfLines: delegationCardProps.surface.toolPreviewLabelNumberOfLines,
       text: "Tool activity · 1 tool call",
@@ -11097,7 +11100,7 @@ describe("session presentation semantics", () => {
     if (!delegationToolPreviewRow) {
       throw new Error("Expected a delegation tool preview row")
     }
-    expect(delegationCardParts.toolPreview.rows[0]).toMatchObject({
+    expect(delegationCardParts.toolPreview.props.rows[0]).toMatchObject({
       key: delegationToolPreviewRow.key,
       props: {
         line: {
@@ -11128,15 +11131,15 @@ describe("session presentation semantics", () => {
         },
       },
     })
-    expect(delegationCardParts.toolPreview.moreAction.shouldRender).toBe(true)
-    if (!delegationCardParts.toolPreview.moreAction.shouldRender) {
+    expect(delegationCardParts.toolPreview.props.moreAction.shouldRender).toBe(true)
+    if (!delegationCardParts.toolPreview.props.moreAction.shouldRender) {
       throw new Error("Expected delegation tool preview more action")
     }
-    expect(delegationCardParts.toolPreview.moreAction.props.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.toolPreview.props.moreAction.props.button.style({ pressed: true })).toEqual([
       "delegation-tool-preview-more-button-style",
       "delegation-tool-preview-more-button-pressed-style",
     ])
-    delegationCardParts.toolPreview.moreAction.props.button.onPress()
+    delegationCardParts.toolPreview.props.moreAction.props.button.onPress()
     expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")

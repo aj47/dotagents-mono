@@ -1650,17 +1650,20 @@ type ChatMessageDelegationConversationPreviewProps =
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationConversationPreviewProps['rows'][number]['props'];
 
+type ChatMessageDelegationToolPreviewProps =
+  ChatMessageDelegationCardParts['toolPreview']['props'];
+
 type ChatMessageDelegationToolPreviewRowProps =
-  ChatMessageDelegationCardParts['toolPreview']['rows'][number]['props'];
+  ChatMessageDelegationToolPreviewProps['rows'][number]['props'];
 
 type ChatMessageDelegationToolPreviewLabelProps =
-  ChatMessageDelegationCardParts['toolPreview']['label']['props'];
+  ChatMessageDelegationToolPreviewProps['label']['props'];
 
 type ChatMessageDelegationConversationMorePreviewActionProps =
   Extract<ChatMessageDelegationConversationPreviewProps['moreAction'], { shouldRender: true }>['props'];
 
 type ChatMessageDelegationToolMorePreviewActionProps =
-  Extract<ChatMessageDelegationCardParts['toolPreview']['moreAction'], { shouldRender: true }>['props'];
+  Extract<ChatMessageDelegationToolPreviewProps['moreAction'], { shouldRender: true }>['props'];
 
 type ChatMessageDelegationMorePreviewActionProps =
   | ChatMessageDelegationConversationMorePreviewActionProps
@@ -7716,6 +7719,32 @@ export function ChatMessageDelegationToolPreviewLabel({
   );
 }
 
+export function ChatMessageDelegationToolPreview({
+  container,
+  label,
+  rows,
+  moreAction,
+}: ChatMessageDelegationToolPreviewProps) {
+  return (
+    <View style={container.style}>
+      <ChatMessageDelegationToolPreviewLabel
+        {...label.props}
+      />
+      {rows.map((row) => (
+        <ChatMessageDelegationToolPreviewRow
+          key={row.key}
+          {...row.props}
+        />
+      ))}
+      {moreAction.shouldRender ? (
+        <ChatMessageDelegationMorePreviewAction
+          {...moreAction.props}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7763,22 +7792,9 @@ export function ChatMessageDelegationCard({
         />
       ) : null}
       {delegationCardParts.toolPreview.shouldRender ? (
-        <View style={delegationCardParts.toolPreview.style}>
-          <ChatMessageDelegationToolPreviewLabel
-            {...delegationCardParts.toolPreview.label.props}
-          />
-          {delegationCardParts.toolPreview.rows.map((row) => (
-            <ChatMessageDelegationToolPreviewRow
-              key={row.key}
-              {...row.props}
-            />
-          ))}
-          {delegationCardParts.toolPreview.moreAction.shouldRender ? (
-            <ChatMessageDelegationMorePreviewAction
-              {...delegationCardParts.toolPreview.moreAction.props}
-            />
-          ) : null}
-        </View>
+        <ChatMessageDelegationToolPreview
+          {...delegationCardParts.toolPreview.props}
+        />
       ) : null}
     </View>
   );
