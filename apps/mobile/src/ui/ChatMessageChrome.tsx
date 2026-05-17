@@ -7383,7 +7383,7 @@ export function ChatMessageToolApproval({
             {toolApprovalParts.toolName.text}
           </Text>
         </View>
-        {toolApprovalParts.argumentsPreview ? (
+        {toolApprovalParts.argumentsPreview.shouldRender ? (
           <Text
             style={toolApprovalParts.argumentsPreview.style}
             numberOfLines={toolApprovalParts.argumentsPreview.numberOfLines}
@@ -7409,7 +7409,7 @@ export function ChatMessageToolApproval({
             {toolApprovalParts.argumentsToggle.label.text}
           </Text>
         </Pressable>
-        {toolApprovalParts.fullArguments ? (
+        {toolApprovalParts.fullArguments.shouldRender ? (
           <ScrollView
             style={toolApprovalParts.fullArguments.scroll.style}
             nestedScrollEnabled={toolApprovalParts.fullArguments.scroll.nestedScrollEnabled}

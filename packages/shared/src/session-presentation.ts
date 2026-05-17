@@ -1971,10 +1971,11 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     text: string
   }
   argumentsPreview: {
+    shouldRender: boolean
     style: TStyles["argumentsPreview"]
     numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["argumentsPreview"]["numberOfLines"]
     text: string
-  } | null
+  }
   argumentsToggle: {
     onPress: TOnToggleArguments
     disabled: boolean
@@ -1995,6 +1996,7 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
   }
   fullArguments: {
+    shouldRender: boolean
     scroll: {
       style: TStyles["argumentsScroll"]
       nestedScrollEnabled: true
@@ -2003,7 +2005,7 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       style: TStyles["argumentsFull"]
       text: string
     }
-  } | null
+  }
   actions: {
     style: TStyles["actions"]
   }
@@ -22465,11 +22467,12 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       numberOfLines: renderState.surface.toolName.numberOfLines,
       text: toolName,
     },
-    argumentsPreview: argumentsPreview ? {
+    argumentsPreview: {
+      shouldRender: Boolean(argumentsPreview),
       style: styles.argumentsPreview,
       numberOfLines: renderState.surface.argumentsPreview.numberOfLines,
       text: argumentsPreview,
-    } : null,
+    },
     argumentsToggle: {
       onPress: onToggleArguments,
       disabled: renderState.argumentsToggle.isDisabled,
@@ -22488,7 +22491,8 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         text: renderState.argumentsToggle.label,
       },
     },
-    fullArguments: renderState.argumentsToggle.ariaExpanded ? {
+    fullArguments: {
+      shouldRender: renderState.argumentsToggle.ariaExpanded,
       scroll: {
         style: styles.argumentsScroll,
         nestedScrollEnabled: true,
@@ -22497,7 +22501,7 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         style: styles.argumentsFull,
         text: argumentsContent,
       },
-    } : null,
+    },
     actions: {
       style: styles.actions,
     },

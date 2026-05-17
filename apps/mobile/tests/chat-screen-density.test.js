@@ -627,12 +627,16 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /renderState\.argumentsToggle\.isDisabled && styles\.buttonDisabled/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ expanded: isToolApprovalExpanded, disabled: isToolApprovalResponding \}\}/);
   assert.doesNotMatch(screenSource, /aria-expanded=\{isToolApprovalExpanded\}/);
+  assert.match(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.argumentsPreview\.numberOfLines\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview \? \(/);
   assert.match(toolApprovalComponentSource, /name=\{toolApprovalParts\.argumentsToggle\.icon\.name\}/);
   assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.argumentsToggle\.icon\.size\}/);
   assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.argumentsToggle\.icon\.color\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.argumentsToggle\.label\.text\}/);
+  assert.match(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /<ScrollView[\s\S]*?style=\{toolApprovalParts\.fullArguments\.scroll\.style\}[\s\S]*?nestedScrollEnabled=\{toolApprovalParts\.fullArguments\.scroll\.nestedScrollEnabled\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments \? \(/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.denyButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.approveButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /<View style=\{toolApprovalParts\.header\.style\}>/);

@@ -8147,6 +8147,7 @@ describe("session presentation semantics", () => {
       text: "write_file",
     })
     expect(toolApprovalParts.argumentsPreview).toEqual({
+      shouldRender: true,
       style: "tool-approval-arguments-preview-style",
       numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.numberOfLines,
       text: "path: /test",
@@ -8172,6 +8173,7 @@ describe("session presentation semantics", () => {
       },
     })
     expect(toolApprovalParts.fullArguments).toEqual({
+      shouldRender: true,
       scroll: {
         style: "tool-approval-arguments-scroll-style",
         nestedScrollEnabled: true,
