@@ -42,8 +42,8 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
-  createChatRuntimeTurnDurationHeaderMobileStyleSlots,
-  createChatRuntimeTurnDurationMessageMobileStyleSlots,
+  createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants,
+  createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
   createChatRuntimeThemeSpinnerSource,
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatRuntimeViewportMobileStyleSlots,
@@ -237,14 +237,8 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     radius,
     borderWidths: theme,
   });
-  const headerTurnDurationStyleState = headerChromeStyleState.turnDuration.standard;
-  const headerTurnDurationLiveStyleState = headerChromeStyleState.turnDuration.live;
-  const headerTurnDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
-    renderState: headerTurnDurationStyleState,
-    platform: mobilePlatform,
-  });
-  const headerTurnDurationLiveStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlots({
-    renderState: headerTurnDurationLiveStyleState,
+  const headerTurnDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants({
+    renderState: headerChromeStyleState.turnDuration,
     platform: mobilePlatform,
   });
   const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
@@ -254,14 +248,8 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const mobileMessageActionButtonStyleSlots = mobileMessageActionStyleSlots.buttons;
   const mobileMessageActiveActionButtonStyleSlots = mobileMessageActionStyleSlots.activeButtons;
-  const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState.turnDuration.standard;
-  const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState.turnDuration.live;
-  const mobileMessageTurnDurationStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
-    renderState: mobileMessageTurnDurationRenderState,
-    platform: mobilePlatform,
-  });
-  const mobileMessageTurnDurationLiveStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
-    renderState: mobileMessageTurnDurationLiveRenderState,
+  const mobileMessageTurnDurationStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlotVariants({
+    renderState: mobileMessageThreadStyleState.turnDuration,
     platform: mobilePlatform,
   });
   return StyleSheet.create({
@@ -338,16 +326,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...sessionStatusStyleSlots.spinner,
     },
     headerDurationChip: {
-      ...headerTurnDurationStyleSlots.chip,
+      ...headerTurnDurationStyleSlots.standard.chip,
     },
     headerDurationChipLive: {
-      ...headerTurnDurationLiveStyleSlots.chip,
+      ...headerTurnDurationStyleSlots.live.chip,
     },
     headerDurationChipText: {
-      ...headerTurnDurationStyleSlots.text,
+      ...headerTurnDurationStyleSlots.standard.text,
     },
     headerDurationChipTextLive: {
-      ...headerTurnDurationLiveStyleSlots.text,
+      ...headerTurnDurationStyleSlots.live.text,
     },
     headerActionButton,
     headerEdgeActionButton,
@@ -1011,16 +999,16 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...mobileMessageActionStyleSlots.row,
     },
     messageTurnDurationBadge: {
-      ...mobileMessageTurnDurationStyleSlots.badge,
+      ...mobileMessageTurnDurationStyleSlots.standard.badge,
     },
     messageTurnDurationBadgeLive: {
-      ...mobileMessageTurnDurationLiveStyleSlots.badge,
+      ...mobileMessageTurnDurationStyleSlots.live.badge,
     },
     messageTurnDurationText: {
-      ...mobileMessageTurnDurationStyleSlots.text,
+      ...mobileMessageTurnDurationStyleSlots.standard.text,
     },
     messageTurnDurationTextLive: {
-      ...mobileMessageTurnDurationLiveStyleSlots.text,
+      ...mobileMessageTurnDurationStyleSlots.live.text,
     },
     messageBranchButton: {
       ...mobileMessageActionButtonStyleSlots.branch.button,

@@ -1021,6 +1021,19 @@ export interface ChatRuntimeTurnDurationHeaderMobileStyleSlots {
   }
 }
 
+export interface ChatRuntimeTurnDurationHeaderMobileStyleSlotVariantsInput {
+  renderState: {
+    standard: ChatRuntimeTurnDurationHeaderMobileStyleSlotsInput["renderState"]
+    live: ChatRuntimeTurnDurationHeaderMobileStyleSlotsInput["renderState"]
+  }
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeTurnDurationHeaderMobileStyleSlotVariants {
+  standard: ChatRuntimeTurnDurationHeaderMobileStyleSlots
+  live: ChatRuntimeTurnDurationHeaderMobileStyleSlots
+}
+
 export interface ChatRuntimeTurnDurationMessageMobileRenderStateInput {
   role?: string | null
   durationMs?: number | null
@@ -1070,6 +1083,19 @@ export interface ChatRuntimeTurnDurationMessageMobileStyleSlots {
     fontWeight: ChatRuntimeTurnDurationMessageMobileRenderState["badge"]["fontWeight"]
     color: string
   }
+}
+
+export interface ChatRuntimeTurnDurationMessageMobileStyleSlotVariantsInput {
+  renderState: {
+    standard: ChatRuntimeTurnDurationMessageMobileStyleSlotsInput["renderState"]
+    live: ChatRuntimeTurnDurationMessageMobileStyleSlotsInput["renderState"]
+  }
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeTurnDurationMessageMobileStyleSlotVariants {
+  standard: ChatRuntimeTurnDurationMessageMobileStyleSlots
+  live: ChatRuntimeTurnDurationMessageMobileStyleSlots
 }
 
 export interface ChatRuntimeMessageActionButtonMobileStyleSlotsInput {
@@ -17315,6 +17341,23 @@ export function createChatRuntimeTurnDurationHeaderMobileStyleSlots({
   }
 }
 
+export function createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants({
+  renderState,
+  platform,
+}: ChatRuntimeTurnDurationHeaderMobileStyleSlotVariantsInput):
+  ChatRuntimeTurnDurationHeaderMobileStyleSlotVariants {
+  return {
+    standard: createChatRuntimeTurnDurationHeaderMobileStyleSlots({
+      renderState: renderState.standard,
+      platform,
+    }),
+    live: createChatRuntimeTurnDurationHeaderMobileStyleSlots({
+      renderState: renderState.live,
+      platform,
+    }),
+  }
+}
+
 export function getChatRuntimeTurnDurationMessageMobileRenderState({
   role,
   durationMs,
@@ -17379,6 +17422,23 @@ export function createChatRuntimeTurnDurationMessageMobileStyleSlots({
       fontWeight: badge.fontWeight,
       color: colors.color,
     },
+  }
+}
+
+export function createChatRuntimeTurnDurationMessageMobileStyleSlotVariants({
+  renderState,
+  platform,
+}: ChatRuntimeTurnDurationMessageMobileStyleSlotVariantsInput):
+  ChatRuntimeTurnDurationMessageMobileStyleSlotVariants {
+  return {
+    standard: createChatRuntimeTurnDurationMessageMobileStyleSlots({
+      renderState: renderState.standard,
+      platform,
+    }),
+    live: createChatRuntimeTurnDurationMessageMobileStyleSlots({
+      renderState: renderState.live,
+      platform,
+    }),
   }
 }
 

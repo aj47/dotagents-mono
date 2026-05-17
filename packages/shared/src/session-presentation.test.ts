@@ -198,7 +198,9 @@ import {
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeMessageActionRowMobileStyleSlot,
   createChatRuntimeMessageMobileStyleSlots,
+  createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants,
   createChatRuntimeTurnDurationHeaderMobileStyleSlots,
+  createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   deriveAttentionState,
@@ -3913,6 +3915,19 @@ describe("session presentation semantics", () => {
       CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.turnDurationBadge.fontFamilyByPlatform.ios,
     )
     expect(headerDurationStyleSlots.text.color).toBe(headerDurationLiveColors.text.color)
+    const headerDurationStyleSlotVariants = createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants({
+      renderState: getChatRuntimeHeaderChromeMobileStyleRenderState({
+        colors: headerMobileStyleColors,
+      }).turnDuration,
+      platform: "ios",
+    })
+    expect(headerDurationStyleSlotVariants.live).toEqual(headerDurationStyleSlots)
+    expect(headerDurationStyleSlotVariants.standard.chip.backgroundColor).toBe(
+      getChatRuntimeTurnDurationHeaderMobileBadgeColors(
+        {},
+        headerMobileStyleColors,
+      ).chip.backgroundColor,
+    )
     expect(navigationHeaderState.killSwitchButtonShouldRender).toBe(true)
     expect(navigationHeaderState.handsFreeButtonRenderState.isEnabled).toBe(true)
     const navigationHeaderOptionParts = createChatRuntimeNavigationHeaderOptionsParts({
@@ -9945,6 +9960,17 @@ describe("session presentation semantics", () => {
       CHAT_MESSAGE_ACTION_SURFACE_PRESENTATION.mobile.turnDurationBadge.fontFamilyByPlatform.ios,
     )
     expect(messageDurationStyleSlots.text.color).toBe(messageDurationLiveColors.color)
+    const messageDurationStyleSlotVariants = createChatRuntimeTurnDurationMessageMobileStyleSlotVariants({
+      renderState: messageThreadStyle.turnDuration,
+      platform: "ios",
+    })
+    expect(messageDurationStyleSlotVariants.live).toEqual(messageDurationStyleSlots)
+    expect(messageDurationStyleSlotVariants.standard.badge.backgroundColor).toBe(
+      getChatMessageActionMobileTurnDurationBadgeColors(
+        {},
+        messageThreadStyleColors,
+      ).backgroundColor,
+    )
     const successfulConversationMessage = getChatRuntimeConversationMessageMobileRenderState({
       role: "assistant",
       isComplete: true,
