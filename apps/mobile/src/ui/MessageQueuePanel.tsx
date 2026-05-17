@@ -596,7 +596,10 @@ export function MessageQueuePanel({
         </View>
       )}
       {panelChromeParts.list && (
-        <ScrollView style={panelChromeParts.list.style}>
+        <ScrollView
+          style={panelChromeParts.list.style}
+          showsVerticalScrollIndicator={panelChromeParts.list.showsVerticalScrollIndicator}
+        >
           {panelListParts.items.map((item) => (
             <React.Fragment key={item.key}>
               {item.separator && <View style={item.separator.style} />}

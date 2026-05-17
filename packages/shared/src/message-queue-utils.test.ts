@@ -419,6 +419,7 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionAccessibilityRole).toBe('button');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity).toBe(0.78);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.listMaxHeight).toBe(200);
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.listShowsVerticalScrollIndicator).toBe(true);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactFlexDirection).toBe('row');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactAlignItems).toBe('center');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactTextFlex).toBe(1);
@@ -834,6 +835,7 @@ describe('message-queue-utils', () => {
       },
       list: {
         style: 'list',
+        showsVerticalScrollIndicator: true,
       },
     });
     expect(createMessageQueuePanelChromeMobilePropsParts({

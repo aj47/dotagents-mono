@@ -311,6 +311,7 @@ export const MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION = {
       processReadyColorToken: 'primary',
       toggleIconColorToken: 'mutedForeground',
       listMaxHeight: 200,
+      listShowsVerticalScrollIndicator: true,
       separatorHeight: 1,
       compactFlexDirection: 'row',
       compactAlignItems: 'center',
@@ -1177,6 +1178,7 @@ export interface MessageQueuePanelChromeMobilePropsParts<
   } | null;
   list: {
     style: TStyles['list'];
+    showsVerticalScrollIndicator: MessageQueuePanelMobilePanelSurface['listShowsVerticalScrollIndicator'];
   } | null;
 }
 
@@ -1692,6 +1694,7 @@ export function createMessageQueuePanelChromeMobilePropsParts<
     list: panel.shouldRenderList
       ? {
           style: styles.list,
+          showsVerticalScrollIndicator: surface.listShowsVerticalScrollIndicator,
         }
       : null,
   };

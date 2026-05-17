@@ -231,6 +231,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /accessibilityRole=\{action\.accessibilityRole\}/);
   assert.match(source, /style=\{panelChromeParts\.compactContainer\.style\}/);
   assert.match(source, /style=\{panelChromeParts\.list\.style\}/);
+  assert.match(source, /showsVerticalScrollIndicator=\{panelChromeParts\.list\.showsVerticalScrollIndicator\}/);
   assert.doesNotMatch(source, /import \{ hexToRgba \} from '\.\/theme';/);
   assert.doesNotMatch(source, /hexToRgba\(/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);
