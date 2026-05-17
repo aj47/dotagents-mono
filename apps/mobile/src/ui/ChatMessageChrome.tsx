@@ -7226,34 +7226,34 @@ export function ChatMessageThreadBody({
     styles,
   });
 
-  if (threadBodyParts.retryStatus) {
+  if (threadBodyParts.retryStatus.shouldRender) {
     return (
       <ChatMessageRetryStatus
-        {...threadBodyParts.retryStatus}
+        {...threadBodyParts.retryStatus.props}
       />
     );
   }
 
-  if (threadBodyParts.delegationCard) {
+  if (threadBodyParts.delegationCard.shouldRender) {
     return (
       <ChatMessageDelegationCard
-        {...threadBodyParts.delegationCard}
+        {...threadBodyParts.delegationCard.props}
       />
     );
   }
 
-  if (threadBodyParts.toolApproval) {
+  if (threadBodyParts.toolApproval.shouldRender) {
     return (
       <ChatMessageToolApproval
-        {...threadBodyParts.toolApproval}
+        {...threadBodyParts.toolApproval.props}
       />
     );
   }
 
-  if (threadBodyParts.inlineActivity) {
+  if (threadBodyParts.inlineActivity.shouldRender) {
     return (
       <ChatMessageInlineActivity
-        {...threadBodyParts.inlineActivity}
+        {...threadBodyParts.inlineActivity.props}
       />
     );
   }

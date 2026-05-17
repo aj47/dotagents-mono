@@ -5107,19 +5107,43 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   TInlineActivityStyle = unknown,
   TInlineActivitySpinnerStyle = unknown,
 > {
-  retryStatus: (TRetryStatus & {
-    styles: TRetryStatusStyles
-  }) | null
-  delegationCard: (TDelegationCard & {
-    styles: TDelegationCardStyles
-  }) | null
-  toolApproval: (TToolApproval & {
-    styles: TToolApprovalStyles
-  }) | null
-  inlineActivity: (TInlineActivity & {
-    style: TInlineActivityStyle
-    spinnerStyle: TInlineActivitySpinnerStyle
-  }) | null
+  retryStatus: {
+    shouldRender: true
+    props: TRetryStatus & {
+      styles: TRetryStatusStyles
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
+  delegationCard: {
+    shouldRender: true
+    props: TDelegationCard & {
+      styles: TDelegationCardStyles
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
+  toolApproval: {
+    shouldRender: true
+    props: TToolApproval & {
+      styles: TToolApprovalStyles
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
+  inlineActivity: {
+    shouldRender: true
+    props: TInlineActivity & {
+      style: TInlineActivityStyle
+      spinnerStyle: TInlineActivitySpinnerStyle
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
 }
 
 export interface ChatRuntimeConversationThreadBodyMobilePropsPartsInput<
@@ -21815,22 +21839,46 @@ export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsPar
 > {
   return {
     retryStatus: retryStatus ? {
-      ...retryStatus,
-      styles: styles.retryStatus,
-    } : null,
+      shouldRender: true,
+      props: {
+        ...retryStatus,
+        styles: styles.retryStatus,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
     delegationCard: delegationCard ? {
-      ...delegationCard,
-      styles: styles.delegationCard,
-    } : null,
+      shouldRender: true,
+      props: {
+        ...delegationCard,
+        styles: styles.delegationCard,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
     toolApproval: toolApproval ? {
-      ...toolApproval,
-      styles: styles.toolApproval,
-    } : null,
+      shouldRender: true,
+      props: {
+        ...toolApproval,
+        styles: styles.toolApproval,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
     inlineActivity: inlineActivity ? {
-      ...inlineActivity,
-      style: styles.inlineActivity.style,
-      spinnerStyle: styles.inlineActivity.spinnerStyle,
-    } : null,
+      shouldRender: true,
+      props: {
+        ...inlineActivity,
+        style: styles.inlineActivity.style,
+        spinnerStyle: styles.inlineActivity.spinnerStyle,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
   }
 }
 
@@ -21913,6 +21961,10 @@ export function createChatRuntimeConversationThreadBodyMobilePropsParts<
     inlineActivity,
     styles,
   })
+  const hiddenStatusPanelPart = {
+    shouldRender: false as const,
+    props: null,
+  }
   const emptyConversationBodyParts = {
     conversation: null,
     toolExecutionStack: null,
@@ -21922,38 +21974,38 @@ export function createChatRuntimeConversationThreadBodyMobilePropsParts<
   if (bodyDisplayMode === "retryStatus") {
     return {
       retryStatus: statusPanelParts.retryStatus,
-      delegationCard: null,
-      toolApproval: null,
-      inlineActivity: null,
+      delegationCard: hiddenStatusPanelPart,
+      toolApproval: hiddenStatusPanelPart,
+      inlineActivity: hiddenStatusPanelPart,
       ...emptyConversationBodyParts,
     }
   }
 
   if (bodyDisplayMode === "delegationCard") {
     return {
-      retryStatus: null,
+      retryStatus: hiddenStatusPanelPart,
       delegationCard: statusPanelParts.delegationCard,
-      toolApproval: null,
-      inlineActivity: null,
+      toolApproval: hiddenStatusPanelPart,
+      inlineActivity: hiddenStatusPanelPart,
       ...emptyConversationBodyParts,
     }
   }
 
   if (bodyDisplayMode === "toolApproval") {
     return {
-      retryStatus: null,
-      delegationCard: null,
+      retryStatus: hiddenStatusPanelPart,
+      delegationCard: hiddenStatusPanelPart,
       toolApproval: statusPanelParts.toolApproval,
-      inlineActivity: null,
+      inlineActivity: hiddenStatusPanelPart,
       ...emptyConversationBodyParts,
     }
   }
 
   if (bodyDisplayMode === "inlineActivity") {
     return {
-      retryStatus: null,
-      delegationCard: null,
-      toolApproval: null,
+      retryStatus: hiddenStatusPanelPart,
+      delegationCard: hiddenStatusPanelPart,
+      toolApproval: hiddenStatusPanelPart,
       inlineActivity: statusPanelParts.inlineActivity,
       ...emptyConversationBodyParts,
     }
@@ -21965,10 +22017,10 @@ export function createChatRuntimeConversationThreadBodyMobilePropsParts<
   })
 
   return {
-    retryStatus: null,
-    delegationCard: null,
-    toolApproval: null,
-    inlineActivity: null,
+    retryStatus: hiddenStatusPanelPart,
+    delegationCard: hiddenStatusPanelPart,
+    toolApproval: hiddenStatusPanelPart,
+    inlineActivity: hiddenStatusPanelPart,
     conversation: conversationBodyParts.content,
     toolExecutionStack: conversationBodyParts.toolExecutionStack,
     standaloneActions: conversationBodyParts.standaloneActions,

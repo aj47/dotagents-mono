@@ -10123,22 +10123,34 @@ describe("session presentation semantics", () => {
     })
     expect(statusPanelParts).toEqual({
       retryStatus: {
-        renderState: "retry-render-state",
-        styles: "retry-status-styles",
+        shouldRender: true,
+        props: {
+          renderState: "retry-render-state",
+          styles: "retry-status-styles",
+        },
       },
       delegationCard: {
-        renderState: "delegation-render-state",
-        styles: "delegation-card-styles",
+        shouldRender: true,
+        props: {
+          renderState: "delegation-render-state",
+          styles: "delegation-card-styles",
+        },
       },
       toolApproval: {
-        renderState: "approval-render-state",
-        styles: "tool-approval-styles",
+        shouldRender: true,
+        props: {
+          renderState: "approval-render-state",
+          styles: "tool-approval-styles",
+        },
       },
       inlineActivity: {
-        renderState: "inline-activity-render-state",
-        spinnerSource: "spinner-source",
-        style: "inline-activity-style",
-        spinnerStyle: "inline-activity-spinner-style",
+        shouldRender: true,
+        props: {
+          renderState: "inline-activity-render-state",
+          spinnerSource: "spinner-source",
+          style: "inline-activity-style",
+          spinnerStyle: "inline-activity-spinner-style",
+        },
       },
     })
     expect(createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
@@ -10156,10 +10168,22 @@ describe("session presentation semantics", () => {
         },
       },
     })).toEqual({
-      retryStatus: null,
-      delegationCard: null,
-      toolApproval: null,
-      inlineActivity: null,
+      retryStatus: {
+        shouldRender: false,
+        props: null,
+      },
+      delegationCard: {
+        shouldRender: false,
+        props: null,
+      },
+      toolApproval: {
+        shouldRender: false,
+        props: null,
+      },
+      inlineActivity: {
+        shouldRender: false,
+        props: null,
+      },
     })
     const conversationBodyPanelParts = createChatRuntimeConversationBodyPanelMobilePropsParts({
       conversation: {
@@ -10287,12 +10311,24 @@ describe("session presentation semantics", () => {
       styles: threadBodyPartsStyles,
     })).toEqual({
       retryStatus: {
-        renderState: "retry-render-state",
-        styles: "retry-status-styles",
+        shouldRender: true,
+        props: {
+          renderState: "retry-render-state",
+          styles: "retry-status-styles",
+        },
       },
-      delegationCard: null,
-      toolApproval: null,
-      inlineActivity: null,
+      delegationCard: {
+        shouldRender: false,
+        props: null,
+      },
+      toolApproval: {
+        shouldRender: false,
+        props: null,
+      },
+      inlineActivity: {
+        shouldRender: false,
+        props: null,
+      },
       conversation: null,
       toolExecutionStack: null,
       standaloneActions: null,
@@ -10309,14 +10345,26 @@ describe("session presentation semantics", () => {
       conversation: threadBodyConversation,
       styles: threadBodyPartsStyles,
     })).toEqual({
-      retryStatus: null,
-      delegationCard: null,
-      toolApproval: null,
+      retryStatus: {
+        shouldRender: false,
+        props: null,
+      },
+      delegationCard: {
+        shouldRender: false,
+        props: null,
+      },
+      toolApproval: {
+        shouldRender: false,
+        props: null,
+      },
       inlineActivity: {
-        renderState: "inline-activity-render-state",
-        spinnerSource: "spinner-source",
-        style: "inline-activity-style",
-        spinnerStyle: "inline-activity-spinner-style",
+        shouldRender: true,
+        props: {
+          renderState: "inline-activity-render-state",
+          spinnerSource: "spinner-source",
+          style: "inline-activity-style",
+          spinnerStyle: "inline-activity-spinner-style",
+        },
       },
       conversation: null,
       toolExecutionStack: null,
@@ -10331,10 +10379,22 @@ describe("session presentation semantics", () => {
       conversation: threadBodyConversation,
       styles: threadBodyPartsStyles,
     })).toEqual({
-      retryStatus: null,
-      delegationCard: null,
-      toolApproval: null,
-      inlineActivity: null,
+      retryStatus: {
+        shouldRender: false,
+        props: null,
+      },
+      delegationCard: {
+        shouldRender: false,
+        props: null,
+      },
+      toolApproval: {
+        shouldRender: false,
+        props: null,
+      },
+      inlineActivity: {
+        shouldRender: false,
+        props: null,
+      },
       conversation: {
         contentDisplayMode: "expanded",
         shouldRenderActionSlots: true,
