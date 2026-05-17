@@ -97,6 +97,7 @@ import {
   createChatRuntimeToolExecutionCompactListMobilePropsParts,
   createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
+  createChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
@@ -8242,30 +8243,34 @@ export function ChatMessageToolExecutionDetailHeader({
   onPress,
   styles,
 }: ChatMessageToolExecutionDetailHeaderProps) {
+  const detailHeaderParts = createChatRuntimeToolExecutionDetailHeaderMobilePropsParts({
+    renderState,
+    toolName,
+    onPress,
+    styles,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.header,
-        pressed && styles.headerPressed,
-      ]}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityState={renderState.accessibilityState}
-      aria-expanded={renderState.ariaExpanded}
-      accessibilityHint={renderState.accessibilityHint}
+      onPress={detailHeaderParts.container.onPress}
+      style={detailHeaderParts.container.style}
+      accessibilityRole={detailHeaderParts.container.accessibilityRole}
+      accessibilityLabel={detailHeaderParts.container.accessibilityLabel}
+      accessibilityState={detailHeaderParts.container.accessibilityState}
+      aria-expanded={detailHeaderParts.container.ariaExpanded}
+      accessibilityHint={detailHeaderParts.container.accessibilityHint}
     >
-      <Text style={styles.toolName}>
-        {toolName}
+      <Text style={detailHeaderParts.toolName.style}>
+        {detailHeaderParts.toolName.text}
       </Text>
-      <View style={styles.expandHint}>
+      <View style={detailHeaderParts.expandHint.style}>
         <Ionicons
-          name={renderState.toggleIcon.name}
-          size={renderState.toggleIcon.size}
-          color={renderState.toggleIcon.color}
+          name={detailHeaderParts.expandHint.icon.name}
+          size={detailHeaderParts.expandHint.icon.size}
+          color={detailHeaderParts.expandHint.icon.color}
         />
-        <Text style={styles.expandHintText}>
-          {renderState.toggleLabel}
+        <Text style={detailHeaderParts.expandHint.label.style}>
+          {detailHeaderParts.expandHint.label.text}
         </Text>
       </View>
     </Pressable>

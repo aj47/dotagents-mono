@@ -2249,6 +2249,101 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+    accessibilityHint: string
+    toggleIcon: unknown
+    toggleLabel: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+    accessibilityHint: string
+    toggleIcon: unknown
+    toggleLabel: string
+  },
+  TOnPress = unknown,
+  TStyles extends {
+    header: unknown
+    headerPressed: unknown
+    toolName: unknown
+    expandHint: unknown
+    expandHintText: unknown
+  } = {
+    header: unknown
+    headerPressed: unknown
+    toolName: unknown
+    expandHint: unknown
+    expandHintText: unknown
+  },
+> {
+  renderState: TRenderState
+  toolName: string
+  onPress?: TOnPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+    accessibilityHint: string
+    toggleIcon: unknown
+    toggleLabel: string
+  } = {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+    accessibilityHint: string
+    toggleIcon: unknown
+    toggleLabel: string
+  },
+  TOnPress = unknown,
+  TStyles extends {
+    header: unknown
+    headerPressed: unknown
+    toolName: unknown
+    expandHint: unknown
+    expandHintText: unknown
+  } = {
+    header: unknown
+    headerPressed: unknown
+    toolName: unknown
+    expandHint: unknown
+    expandHintText: unknown
+  },
+> {
+  container: {
+    onPress: TOnPress | undefined
+    style: (state: { pressed: boolean }) => Array<TStyles["header"] | TStyles["headerPressed"] | false>
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: TRenderState["accessibilityState"]
+    ariaExpanded: TRenderState["ariaExpanded"]
+    accessibilityHint: string
+  }
+  toolName: {
+    text: string
+    style: TStyles["toolName"]
+  }
+  expandHint: {
+    style: TStyles["expandHint"]
+    icon: TRenderState["toggleIcon"]
+    label: {
+      text: string
+      style: TStyles["expandHintText"]
+    }
+  }
+}
+
 export interface ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -15453,6 +15548,66 @@ export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
     label: {
       text: renderState.label,
       style: styles.text,
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+    accessibilityHint: string
+    toggleIcon: unknown
+    toggleLabel: string
+  },
+  TOnPress,
+  TStyles extends {
+    header: unknown
+    headerPressed: unknown
+    toolName: unknown
+    expandHint: unknown
+    expandHintText: unknown
+  },
+>({
+  renderState,
+  toolName,
+  onPress,
+  styles,
+}: ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TStyles
+>): ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TStyles
+> {
+  return {
+    container: {
+      onPress,
+      style: ({ pressed }) => [
+        styles.header,
+        pressed && styles.headerPressed,
+      ],
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityState: renderState.accessibilityState,
+      ariaExpanded: renderState.ariaExpanded,
+      accessibilityHint: renderState.accessibilityHint,
+    },
+    toolName: {
+      text: toolName,
+      style: styles.toolName,
+    },
+    expandHint: {
+      style: styles.expandHint,
+      icon: renderState.toggleIcon,
+      label: {
+        text: renderState.toggleLabel,
+        style: styles.expandHintText,
+      },
     },
   }
 }

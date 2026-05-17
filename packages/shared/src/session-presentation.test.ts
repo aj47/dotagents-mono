@@ -136,6 +136,7 @@ import {
   createChatRuntimeToolExecutionCompactListMobilePropsParts,
   createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
+  createChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
@@ -9409,6 +9410,68 @@ describe("session presentation semantics", () => {
         pendingResult: "pending-result-styles",
       },
     }).pendingResult).toBeNull()
+    const detailHeaderParts = createChatRuntimeToolExecutionDetailHeaderMobilePropsParts({
+      renderState: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Expand read_file",
+        accessibilityState: {
+          expanded: false,
+        },
+        ariaExpanded: false,
+        accessibilityHint: "Shows tool details",
+        toggleIcon: {
+          name: "chevron-down",
+          size: 12,
+          color: "#777",
+        },
+        toggleLabel: "Show",
+      },
+      toolName: "read_file",
+      onPress: "toggle-detail",
+      styles: {
+        header: "detail-header",
+        headerPressed: "detail-header-pressed",
+        toolName: "detail-tool-name",
+        expandHint: "detail-expand-hint",
+        expandHintText: "detail-expand-hint-text",
+      },
+    })
+    expect(detailHeaderParts).toMatchObject({
+      container: {
+        onPress: "toggle-detail",
+        accessibilityRole: "button",
+        accessibilityLabel: "Expand read_file",
+        accessibilityState: {
+          expanded: false,
+        },
+        ariaExpanded: false,
+        accessibilityHint: "Shows tool details",
+      },
+      toolName: {
+        text: "read_file",
+        style: "detail-tool-name",
+      },
+      expandHint: {
+        style: "detail-expand-hint",
+        icon: {
+          name: "chevron-down",
+          size: 12,
+          color: "#777",
+        },
+        label: {
+          text: "Show",
+          style: "detail-expand-hint-text",
+        },
+      },
+    })
+    expect(detailHeaderParts.container.style({ pressed: false })).toEqual([
+      "detail-header",
+      false,
+    ])
+    expect(detailHeaderParts.container.style({ pressed: true })).toEqual([
+      "detail-header",
+      "detail-header-pressed",
+    ])
     const copyButtonParts = createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
       renderState: {
         accessibilityRole: "button",
