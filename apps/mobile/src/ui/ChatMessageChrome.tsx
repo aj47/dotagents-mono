@@ -7977,7 +7977,7 @@ export function ChatMessageToolExecutionPanel({
   return (
     <>
       {panelShellParts.compactList}
-      {panelShellParts.expandedGroup}
+      {panelShellParts.expandedGroup.shouldRender ? panelShellParts.expandedGroup.props : null}
     </>
   );
 }
