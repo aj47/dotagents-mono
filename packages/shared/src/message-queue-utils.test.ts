@@ -860,8 +860,10 @@ describe('message-queue-utils', () => {
         },
       },
       compactLabel: {
-        style: 'compactText',
         text: '1 queued message (paused)',
+        props: {
+          style: 'compactText',
+        },
       },
       headerContainer: {
         style: ['header', false],
@@ -880,8 +882,10 @@ describe('message-queue-utils', () => {
         },
       },
       headerTitle: {
-        style: 'headerTitle',
         text: 'Paused Messages (1)',
+        props: {
+          style: 'headerTitle',
+        },
       },
       pausedNotice: {
         shouldRender: true,
@@ -889,8 +893,10 @@ describe('message-queue-utils', () => {
           style: 'pausedNotice',
         },
         message: {
-          style: 'pausedNoticeText',
           text: MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice,
+          props: {
+            style: 'pausedNoticeText',
+          },
         },
       },
       list: {
@@ -1020,8 +1026,10 @@ describe('message-queue-utils', () => {
         style: 'container',
       },
       compactLabel: {
-        style: 'compactText',
         text: '2 queued messages',
+        props: {
+          style: 'compactText',
+        },
       },
       list: {
         shouldRender: true,

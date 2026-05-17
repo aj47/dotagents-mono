@@ -1162,8 +1162,10 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     };
   };
   compactLabel: {
-    style: TStyles['compactText'];
     text: string;
+    props: {
+      style: TStyles['compactText'];
+    };
   };
   headerContainer: {
     style: Array<TStyles['header'] | TStyles['headerCollapsed'] | false>;
@@ -1182,8 +1184,10 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     };
   };
   headerTitle: {
-    style: TStyles['headerTitle'];
     text: string;
+    props: {
+      style: TStyles['headerTitle'];
+    };
   };
   pausedNotice:
     | {
@@ -1192,8 +1196,10 @@ export interface MessageQueuePanelChromeMobilePropsParts<
           style: TStyles['pausedNotice'];
         };
         message: {
-          style: TStyles['pausedNoticeText'];
           text: string;
+          props: {
+            style: TStyles['pausedNoticeText'];
+          };
         };
       }
     | {
@@ -1760,8 +1766,10 @@ export function createMessageQueuePanelChromeMobilePropsParts<
       },
     },
     compactLabel: {
-      style: styles.compactText,
       text: panel.compactLabel,
+      props: {
+        style: styles.compactText,
+      },
     },
     headerContainer: {
       style: [styles.header, panel.isListCollapsed && styles.headerCollapsed],
@@ -1780,8 +1788,10 @@ export function createMessageQueuePanelChromeMobilePropsParts<
       },
     },
     headerTitle: {
-      style: styles.headerTitle,
       text: panel.title,
+      props: {
+        style: styles.headerTitle,
+      },
     },
     pausedNotice: panel.shouldRenderPausedNotice
       ? {
@@ -1790,8 +1800,10 @@ export function createMessageQueuePanelChromeMobilePropsParts<
             style: styles.pausedNotice,
           },
           message: {
-            style: styles.pausedNoticeText,
             text: copy.pausedNotice,
+            props: {
+              style: styles.pausedNoticeText,
+            },
           },
         }
       : {

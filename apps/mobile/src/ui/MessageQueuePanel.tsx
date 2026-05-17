@@ -306,7 +306,7 @@ export function MessageQueuePanel({
         <Ionicons
           {...panelChromeParts.compactStatusIcon.props}
         />
-        <Text style={panelChromeParts.compactLabel.style}>
+        <Text {...panelChromeParts.compactLabel.props}>
           {panelChromeParts.compactLabel.text}
         </Text>
         {compactActionParts.actions.map((action) => (
@@ -338,7 +338,7 @@ export function MessageQueuePanel({
           <Ionicons
             {...panelChromeParts.headerStatusIcon.props}
           />
-          <Text style={panelChromeParts.headerTitle.style}>
+          <Text {...panelChromeParts.headerTitle.props}>
             {panelChromeParts.headerTitle.text}
           </Text>
         </View>
@@ -370,7 +370,7 @@ export function MessageQueuePanel({
       </View>
       {panelChromeParts.pausedNotice.shouldRender ? (
         <View style={panelChromeParts.pausedNotice.container.style}>
-          <Text style={panelChromeParts.pausedNotice.message.style}>
+          <Text {...panelChromeParts.pausedNotice.message.props}>
             {panelChromeParts.pausedNotice.message.text}
           </Text>
         </View>
