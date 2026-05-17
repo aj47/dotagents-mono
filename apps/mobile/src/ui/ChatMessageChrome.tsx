@@ -1862,25 +1862,25 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
 >>;
 
 type ChatMessageDelegationHeaderProps =
-  ChatMessageDelegationCardParts['header']['props'];
+  ChatMessageDelegationCardParts['card']['content']['header']['props'];
 
 type ChatMessageDelegationSubtitleProps =
-  ChatMessageDelegationCardParts['subtitle']['props'];
+  ChatMessageDelegationCardParts['card']['content']['subtitle']['props'];
 
 type ChatMessageDelegationMetaRowProps =
-  ChatMessageDelegationCardParts['meta']['props'];
+  ChatMessageDelegationCardParts['card']['content']['meta']['props'];
 
 type ChatMessageDelegationMetaItemProps =
   ChatMessageDelegationMetaRowProps['items'][number]['props'];
 
 type ChatMessageDelegationConversationPreviewProps =
-  ChatMessageDelegationCardParts['conversationPreview']['props'];
+  ChatMessageDelegationCardParts['card']['content']['conversationPreview']['props'];
 
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationConversationPreviewProps['rows'][number]['props'];
 
 type ChatMessageDelegationToolPreviewProps =
-  ChatMessageDelegationCardParts['toolPreview']['props'];
+  ChatMessageDelegationCardParts['card']['content']['toolPreview']['props'];
 
 type ChatMessageDelegationToolPreviewRowProps =
   ChatMessageDelegationToolPreviewProps['rows'][number]['props'];
@@ -8809,30 +8809,31 @@ export function ChatMessageDelegationCard({
     toolPreview,
     styles,
   });
+  const cardContent = delegationCardParts.card.content;
 
   return (
     <View
       {...delegationCardParts.card.props}
     >
       <ChatMessageDelegationHeader
-        {...delegationCardParts.header.props}
+        {...cardContent.header.props}
       />
-      {delegationCardParts.subtitle.shouldRender ? (
+      {cardContent.subtitle.shouldRender ? (
         <ChatMessageDelegationSubtitle
-          {...delegationCardParts.subtitle.props}
+          {...cardContent.subtitle.props}
         />
       ) : null}
       <ChatMessageDelegationMetaRow
-        {...delegationCardParts.meta.props}
+        {...cardContent.meta.props}
       />
-      {delegationCardParts.conversationPreview.shouldRender ? (
+      {cardContent.conversationPreview.shouldRender ? (
         <ChatMessageDelegationConversationPreview
-          {...delegationCardParts.conversationPreview.props}
+          {...cardContent.conversationPreview.props}
         />
       ) : null}
-      {delegationCardParts.toolPreview.shouldRender ? (
+      {cardContent.toolPreview.shouldRender ? (
         <ChatMessageDelegationToolPreview
-          {...delegationCardParts.toolPreview.props}
+          {...cardContent.toolPreview.props}
         />
       ) : null}
     </View>

@@ -11571,23 +11571,24 @@ describe("session presentation semantics", () => {
       accessibilityLabel: delegationCardProps.accessibilityLabel,
       style: "delegation-card-style",
     })
-    expect(delegationCardParts.header.props.container).toEqual({
+    const delegationCardContent = delegationCardParts.card.content
+    expect(delegationCardContent.header.props.container).toEqual({
       props: {
         style: "delegation-header-style",
       },
     })
-    expect(delegationCardParts.header.props.title).toEqual({
+    expect(delegationCardContent.header.props.title).toEqual({
       props: {
         style: "delegation-title-style",
         numberOfLines: delegationCardProps.surface.titleNumberOfLines,
       },
       text: "Worker",
     })
-    expect(delegationCardParts.header.props.statusBadge.props.style).toEqual([
+    expect(delegationCardContent.header.props.statusBadge.props.style).toEqual([
       "delegation-status-badge-style",
       delegationCardProps.statusStyles.chip,
     ])
-    expect(delegationCardParts.header.props.statusText).toEqual({
+    expect(delegationCardContent.header.props.statusText).toEqual({
       props: {
         style: [
           "delegation-status-text-style",
@@ -11597,14 +11598,14 @@ describe("session presentation semantics", () => {
       },
       text: delegationCardProps.presentation.statusLabel,
     })
-    expect(delegationCardParts.header.props.liveText).toEqual({
+    expect(delegationCardContent.header.props.liveText).toEqual({
       shouldRender: true,
       props: {
         style: "delegation-live-text-style",
       },
       text: delegationCardProps.surface.liveLabel,
     })
-    expect(delegationCardParts.subtitle).toEqual({
+    expect(delegationCardContent.subtitle).toEqual({
       shouldRender: true,
       props: {
         props: {
@@ -11614,17 +11615,17 @@ describe("session presentation semantics", () => {
         text: delegationCardProps.presentation.subtitle,
       },
     })
-    expect(delegationCardParts.meta.props.items.map((item) => item.props.text)).toEqual([
+    expect(delegationCardContent.meta.props.items.map((item) => item.props.text)).toEqual([
       delegationCardProps.presentation.sourceLabel,
       delegationCardProps.presentation.trackingLabel,
       delegationCardProps.messageCountLabel,
     ].filter(Boolean))
-    expect(delegationCardParts.meta.props.container).toEqual({
+    expect(delegationCardContent.meta.props.container).toEqual({
       props: {
         style: "delegation-meta-row-style",
       },
     })
-    expect(delegationCardParts.meta.props.items[0]).toMatchObject({
+    expect(delegationCardContent.meta.props.items[0]).toMatchObject({
       key: "source",
       props: {
         props: {
@@ -11637,13 +11638,13 @@ describe("session presentation semantics", () => {
     if (!delegationConversationPreviewRow) {
       throw new Error("Expected a delegation conversation preview row")
     }
-    expect(delegationCardParts.conversationPreview.shouldRender).toBe(true)
-    expect(delegationCardParts.conversationPreview.props.container).toEqual({
+    expect(delegationCardContent.conversationPreview.shouldRender).toBe(true)
+    expect(delegationCardContent.conversationPreview.props.container).toEqual({
       props: {
         style: "delegation-conversation-preview-style",
       },
     })
-    const delegationConversationPreviewRowParts = delegationCardParts.conversationPreview.props.rows[0]
+    const delegationConversationPreviewRowParts = delegationCardContent.conversationPreview.props.rows[0]
     if (!delegationConversationPreviewRowParts) {
       throw new Error("Expected delegation conversation preview row parts")
     }
@@ -11687,26 +11688,26 @@ describe("session presentation semantics", () => {
       },
       text: delegationConversationPreviewRow.timestampLabel,
     })
-    expect(delegationCardParts.conversationPreview.props.moreAction.shouldRender).toBe(true)
-    if (!delegationCardParts.conversationPreview.props.moreAction.shouldRender) {
+    expect(delegationCardContent.conversationPreview.props.moreAction.shouldRender).toBe(true)
+    if (!delegationCardContent.conversationPreview.props.moreAction.shouldRender) {
       throw new Error("Expected delegation conversation preview more action")
     }
-    expect(delegationCardParts.conversationPreview.props.moreAction.props.button.props.style({ pressed: true })).toEqual([
+    expect(delegationCardContent.conversationPreview.props.moreAction.props.button.props.style({ pressed: true })).toEqual([
       "delegation-conversation-preview-more-button-style",
       "delegation-conversation-preview-more-button-pressed-style",
     ])
-    expect(delegationCardParts.conversationPreview.props.moreAction.props.label.props).toEqual({
+    expect(delegationCardContent.conversationPreview.props.moreAction.props.label.props).toEqual({
       style: "delegation-conversation-preview-more-style",
       numberOfLines: delegationCardProps.conversationPreview.moreAction.numberOfLines,
     })
-    delegationCardParts.conversationPreview.props.moreAction.props.button.props.onPress()
-    expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
-    expect(delegationCardParts.toolPreview.props.container).toEqual({
+    delegationCardContent.conversationPreview.props.moreAction.props.button.props.onPress()
+    expect(delegationCardContent.toolPreview.shouldRender).toBe(true)
+    expect(delegationCardContent.toolPreview.props.container).toEqual({
       props: {
         style: "delegation-tool-preview-style",
       },
     })
-    expect(delegationCardParts.toolPreview.props.label.props).toMatchObject({
+    expect(delegationCardContent.toolPreview.props.label.props).toMatchObject({
       props: {
         style: "delegation-tool-preview-label-style",
         numberOfLines: delegationCardProps.surface.toolPreviewLabelNumberOfLines,
@@ -11717,7 +11718,7 @@ describe("session presentation semantics", () => {
     if (!delegationToolPreviewRow) {
       throw new Error("Expected a delegation tool preview row")
     }
-    expect(delegationCardParts.toolPreview.props.rows[0]).toMatchObject({
+    expect(delegationCardContent.toolPreview.props.rows[0]).toMatchObject({
       key: delegationToolPreviewRow.key,
       props: {
         line: {
@@ -11763,19 +11764,19 @@ describe("session presentation semantics", () => {
         },
       },
     })
-    expect(delegationCardParts.toolPreview.props.moreAction.shouldRender).toBe(true)
-    if (!delegationCardParts.toolPreview.props.moreAction.shouldRender) {
+    expect(delegationCardContent.toolPreview.props.moreAction.shouldRender).toBe(true)
+    if (!delegationCardContent.toolPreview.props.moreAction.shouldRender) {
       throw new Error("Expected delegation tool preview more action")
     }
-    expect(delegationCardParts.toolPreview.props.moreAction.props.button.props.style({ pressed: true })).toEqual([
+    expect(delegationCardContent.toolPreview.props.moreAction.props.button.props.style({ pressed: true })).toEqual([
       "delegation-tool-preview-more-button-style",
       "delegation-tool-preview-more-button-pressed-style",
     ])
-    expect(delegationCardParts.toolPreview.props.moreAction.props.label.props).toEqual({
+    expect(delegationCardContent.toolPreview.props.moreAction.props.label.props).toEqual({
       style: "delegation-tool-preview-more-style",
       numberOfLines: delegationCardProps.toolPreview.moreAction.numberOfLines,
     })
-    delegationCardParts.toolPreview.props.moreAction.props.button.props.onPress()
+    delegationCardContent.toolPreview.props.moreAction.props.button.props.onPress()
     expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")
