@@ -8701,20 +8701,28 @@ describe("session presentation semantics", () => {
     expect(turnDurationBadgeParts).toEqual({
       shouldRenderBadge: true,
       container: {
-        accessible: true,
-        accessibilityRole: "text",
-        accessibilityLabel: "Agent turn in progress: 12s",
-        style: ["badge-style", "badge-live-style"],
+        props: {
+          accessible: true,
+          accessibilityRole: "text",
+          accessibilityLabel: "Agent turn in progress: 12s",
+          style: ["badge-style", "badge-live-style"],
+        },
       },
       icon: {
-        name: "time",
-        size: 12,
-        color: "#d97706",
+        props: {
+          name: "time",
+          size: 12,
+          color: "#d97706",
+        },
       },
       label: {
-        style: ["text-style", "text-live-style"],
-        numberOfLines: 1,
-        text: "12s",
+        props: {
+          text: "12s",
+          props: {
+            style: ["text-style", "text-live-style"],
+            numberOfLines: 1,
+          },
+        },
       },
     })
     expect(createChatRuntimeTurnDurationBadgeMobilePropsParts({

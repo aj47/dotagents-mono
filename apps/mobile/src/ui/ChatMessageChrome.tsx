@@ -1616,6 +1616,25 @@ type ChatMessageTurnDurationBadgeProps = {
   liveTextStyle?: StyleProp<TextStyle>;
 };
 
+type ChatMessageTurnDurationBadgeParts = ReturnType<typeof createChatRuntimeTurnDurationBadgeMobilePropsParts<
+  ChatMessageTurnDurationBadgeProps['renderState'],
+  ChatMessageTurnDurationBadgeProps['style'],
+  ChatMessageTurnDurationBadgeProps['liveStyle'],
+  ChatMessageTurnDurationBadgeProps['textStyle'],
+  ChatMessageTurnDurationBadgeProps['liveTextStyle']
+>>;
+
+type ChatMessageTurnDurationBadgeContainerProps =
+  ChatMessageTurnDurationBadgeParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageTurnDurationBadgeIconProps =
+  ChatMessageTurnDurationBadgeParts['icon']['props'];
+
+type ChatMessageTurnDurationBadgeLabelProps =
+  ChatMessageTurnDurationBadgeParts['label']['props'];
+
 type ChatMessageActionSlotListProps = {
   shouldRender?: boolean;
   entries: readonly ChatMessageActionEntry[];
@@ -11667,24 +11686,44 @@ export function ChatMessageTurnDurationBadge({
   if (!turnDurationBadgeParts.shouldRenderBadge) return null;
 
   return (
-    <View
-      accessible={turnDurationBadgeParts.container.accessible}
-      accessibilityRole={turnDurationBadgeParts.container.accessibilityRole}
-      accessibilityLabel={turnDurationBadgeParts.container.accessibilityLabel}
-      style={turnDurationBadgeParts.container.style}
+    <ChatMessageTurnDurationBadgeContainer
+      {...turnDurationBadgeParts.container.props}
     >
-      <Ionicons
-        name={turnDurationBadgeParts.icon.name}
-        size={turnDurationBadgeParts.icon.size}
-        color={turnDurationBadgeParts.icon.color}
+      <ChatMessageTurnDurationBadgeIcon
+        {...turnDurationBadgeParts.icon.props}
       />
-      <Text
-        style={turnDurationBadgeParts.label.style}
-        numberOfLines={turnDurationBadgeParts.label.numberOfLines}
-      >
-        {turnDurationBadgeParts.label.text}
-      </Text>
+      <ChatMessageTurnDurationBadgeLabel
+        {...turnDurationBadgeParts.label.props}
+      />
+    </ChatMessageTurnDurationBadgeContainer>
+  );
+}
+
+export function ChatMessageTurnDurationBadgeContainer({
+  children,
+  ...props
+}: ChatMessageTurnDurationBadgeContainerProps) {
+  return (
+    <View {...props}>
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageTurnDurationBadgeIcon(props: ChatMessageTurnDurationBadgeIconProps) {
+  return (
+    <Ionicons {...props} />
+  );
+}
+
+export function ChatMessageTurnDurationBadgeLabel({
+  props,
+  text,
+}: ChatMessageTurnDurationBadgeLabelProps) {
+  return (
+    <Text {...props}>
+      {text}
+    </Text>
   );
 }
 

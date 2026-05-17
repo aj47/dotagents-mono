@@ -6752,16 +6752,24 @@ export interface ChatRuntimeTurnDurationBadgeMobilePropsParts<
 > {
   shouldRenderBadge: boolean
   container: {
-    accessible: true
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: [TStyle, false | TLiveStyle]
+    props: {
+      accessible: true
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: [TStyle, false | TLiveStyle]
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   label: {
-    style: [TTextStyle, false | TLiveTextStyle]
-    numberOfLines: TRenderState["badge"]["numberOfLines"]
-    text: string
+    props: {
+      text: string
+      props: {
+        style: [TTextStyle, false | TLiveTextStyle]
+        numberOfLines: TRenderState["badge"]["numberOfLines"]
+      }
+    }
   }
 }
 
@@ -24099,16 +24107,24 @@ export function createChatRuntimeTurnDurationBadgeMobilePropsParts<
   return {
     shouldRenderBadge: renderState.shouldRender,
     container: {
-      accessible: true,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style: [style, renderState.isLive && liveStyle],
+      props: {
+        accessible: true,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style: [style, renderState.isLive && liveStyle],
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     label: {
-      style: [textStyle, renderState.isLive && liveTextStyle],
-      numberOfLines: renderState.badge.numberOfLines,
-      text: renderState.label,
+      props: {
+        text: renderState.label,
+        props: {
+          style: [textStyle, renderState.isLive && liveTextStyle],
+          numberOfLines: renderState.badge.numberOfLines,
+        },
+      },
     },
   }
 }

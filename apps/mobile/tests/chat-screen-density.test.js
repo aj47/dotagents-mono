@@ -6420,19 +6420,19 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /const turnDurationBadgeParts = createChatRuntimeTurnDurationBadgeMobilePropsParts\(\{\s+renderState,\s+style,\s+liveStyle,\s+textStyle,\s+liveTextStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.shouldRenderBadge\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}\s+style=\{turnDuration\.style\}\s+liveStyle=\{turnDuration\.liveStyle\}\s+textStyle=\{turnDuration\.textStyle\}\s+liveTextStyle=\{turnDuration\.liveTextStyle\}/);
-  assert.match(chatMessageChromeSource, /accessible=\{turnDurationBadgeParts\.container\.accessible\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{turnDurationBadgeParts\.container\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{turnDurationBadgeParts\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /style=\{turnDurationBadgeParts\.container\.style\}/);
-  assert.match(chatMessageChromeSource, /name=\{turnDurationBadgeParts\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{turnDurationBadgeParts\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{turnDurationBadgeParts\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /style=\{turnDurationBadgeParts\.label\.style\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{turnDurationBadgeParts\.label\.numberOfLines\}/);
-  assert.match(chatMessageChromeSource, /\{turnDurationBadgeParts\.label\.text\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainer\s+\{\.\.\.turnDurationBadgeParts\.container\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeIcon\s+\{\.\.\.turnDurationBadgeParts\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeLabel\s+\{\.\.\.turnDurationBadgeParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeContainer[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeIcon\(props: ChatMessageTurnDurationBadgeIconProps\)[\s\S]*?<Ionicons \{\.\.\.props\} \/>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeLabel[\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}/);
   assert.match(sessionPresentationSource, /shouldRenderBadge: renderState\.shouldRender/);
   assert.match(sessionPresentationSource, /style: \[style, renderState\.isLive && liveStyle\]/);
   assert.match(sessionPresentationSource, /style: \[textStyle, renderState\.isLive && liveTextStyle\]/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /turnDurationBadgeParts\.(container|icon|label)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/
+  );
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageTurnDurationBadge[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageExpandedContent/
