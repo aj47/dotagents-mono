@@ -7204,6 +7204,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /const quickStartsParts = createChatRuntimeHomeQuickStartsMobilePropsParts</);
   assert.match(chatMessageChromeSource, /if \(!quickStartsParts\.shouldRender\) return null;/);
+  assert.match(chatMessageChromeSource, /<View \{\.\.\.quickStartsParts\.container\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /style=\{quickStartsParts\.container\.style\}/);
   assert.doesNotMatch(chatMessageChromeSource, /const \{ surface: shortcutSurface \} = shortcutRenderState;/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutEmptyRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getPromptLibraryMobileShortcutItemRenderState\(/);
@@ -7217,6 +7219,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /const shortcutSourceIconColors = shortcutChrome\.sourceIconColors\[item\.source\];/);
   assert.match(chatMessageChromeSource, /quickStartsParts\.grid\.shouldRender \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /quickStartsParts\.grid \? \(/);
+  assert.match(chatMessageChromeSource, /<View \{\.\.\.quickStartsParts\.grid\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /style=\{quickStartsParts\.grid\.style\}/);
   assert.match(chatMessageChromeSource, /quickStartsParts\.grid\.items\.map/);
   assert.match(chatMessageChromeSource, /style=\{\(\{ pressed \}\) => item\.pressable\.getStyle\(pressed\)\}/);
   assert.match(chatMessageChromeSource, /item\.sourcePill\.shouldRender \? \(/);
@@ -7249,6 +7253,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
   assert.match(chatMessageChromeSource, /quickStartsParts\.emptyState\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /<Text \{\.\.\.quickStartsParts\.emptyState\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /style=\{quickStartsParts\.emptyState\.style\}/);
   assert.match(chatMessageChromeSource, /\{quickStartsParts\.emptyState\.text\}/);
   assert.doesNotMatch(screenSource, /const promptLibraryStyleState = composerChromeStyleState\.promptLibrary;/);
   assert.doesNotMatch(screenSource, /const promptLibrarySurface = promptLibraryStyleState\.surface;/);

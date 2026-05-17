@@ -7838,9 +7838,9 @@ export function ChatConversationHomeQuickStarts<
   if (!quickStartsParts.shouldRender) return null;
 
   return (
-    <View style={quickStartsParts.container.style}>
+    <View {...quickStartsParts.container.props}>
       {quickStartsParts.grid.shouldRender ? (
-        <View style={quickStartsParts.grid.style}>
+        <View {...quickStartsParts.grid.props}>
           {quickStartsParts.grid.items.map((item) => {
             const actions = item.actions;
 
@@ -7926,7 +7926,7 @@ export function ChatConversationHomeQuickStarts<
           })}
         </View>
       ) : quickStartsParts.emptyState.shouldRender ? (
-        <Text style={quickStartsParts.emptyState.style}>
+        <Text {...quickStartsParts.emptyState.props}>
           {quickStartsParts.emptyState.text}
         </Text>
       ) : null}

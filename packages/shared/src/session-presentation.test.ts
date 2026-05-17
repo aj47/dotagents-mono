@@ -5298,10 +5298,10 @@ describe("session presentation semantics", () => {
       shortcutRenderState: viewportChrome.shortcutRenderState,
       styles: quickStartStyles,
     })
-    expect(quickStartPropsParts.container.style).toBe("card")
+    expect(quickStartPropsParts.container.props.style).toBe("card")
     expect(quickStartPropsParts.emptyState.shouldRender).toBe(false)
     expect(quickStartPropsParts.grid.shouldRender).toBe(true)
-    expect(quickStartPropsParts.grid.style).toBe("grid")
+    expect(quickStartPropsParts.grid.props.style).toBe("grid")
     const promptItemParts = quickStartPropsParts.grid.items[0]!
     expect(promptItemParts.key).toBe("prompt-1")
     expect(promptItemParts.pressable.getStyle(true)).toEqual([
@@ -5373,6 +5373,7 @@ describe("session presentation semantics", () => {
     })
     expect(emptyQuickStartPropsParts.grid.shouldRender).toBe(false)
     expect(emptyQuickStartPropsParts.emptyState.shouldRender).toBe(true)
+    expect(emptyQuickStartPropsParts.emptyState.props.style).toBe("emptyText")
     expect(emptyQuickStartPropsParts.emptyState.text).toBe(
       "No prompts, skills, or tasks available from your connected desktop app.",
     )

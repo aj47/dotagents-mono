@@ -865,17 +865,23 @@ export interface ChatRuntimeHomeQuickStartsMobilePropsParts<
 > {
   shouldRender: boolean
   container: {
-    style: TStyles["card"]
+    props: {
+      style: TStyles["card"]
+    }
   }
   grid: {
     shouldRender: boolean
-    style: TStyles["grid"]
+    props: {
+      style: TStyles["grid"]
+    }
     items: Array<ChatRuntimeHomeQuickStartsMobileItemPropsParts<TPrompt, TTask, TEvent, TStyles>>
   }
   emptyState: {
     shouldRender: boolean
-    style: TStyles["emptyText"]
     text: string
+    props: {
+      style: TStyles["emptyText"]
+    }
   }
 }
 
@@ -30392,17 +30398,23 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
     return {
       shouldRender: false,
       container: {
-        style: styles.card,
+        props: {
+          style: styles.card,
+        },
       },
       grid: {
         shouldRender: false,
-        style: styles.grid,
+        props: {
+          style: styles.grid,
+        },
         items: [],
       },
       emptyState: {
         shouldRender: false,
-        style: styles.emptyText,
         text: "",
+        props: {
+          style: styles.emptyText,
+        },
       },
     }
   }
@@ -30416,17 +30428,23 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
     return {
       shouldRender: true,
       container: {
-        style: styles.card,
+        props: {
+          style: styles.card,
+        },
       },
       grid: {
         shouldRender: false,
-        style: styles.grid,
+        props: {
+          style: styles.grid,
+        },
         items: [],
       },
       emptyState: {
         shouldRender: true,
-        style: styles.emptyText,
         text: shortcutEmptyRenderState.label,
+        props: {
+          style: styles.emptyText,
+        },
       },
     }
   }
@@ -30434,11 +30452,15 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
   return {
     shouldRender: true,
     container: {
-      style: styles.card,
+      props: {
+        style: styles.card,
+      },
     },
     grid: {
       shouldRender: true,
-      style: styles.grid,
+      props: {
+        style: styles.grid,
+      },
       items: items.map((item) => {
         const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
           item,
@@ -30564,8 +30586,10 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
     },
     emptyState: {
       shouldRender: false,
-      style: styles.emptyText,
       text: "",
+      props: {
+        style: styles.emptyText,
+      },
     },
   }
 }
