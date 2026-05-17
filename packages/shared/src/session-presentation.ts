@@ -3043,16 +3043,9 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   inputSection: ChatRuntimeMobilePropsPart<TInput & {
     styles: TStyles["payloadSection"]
   }>
-  resultSection: (
-    | (TResult & {
-      shouldRender: true
-      styles: TStyles["resultSection"]
-    })
-    | {
-      shouldRender: false
-      styles: TStyles["resultSection"]
-    }
-  )
+  resultSection: ChatRuntimeMobilePropsPart<TResult & {
+    styles: TStyles["resultSection"]
+  }>
   pendingResult: ChatRuntimeMobilePropsPart<{
     renderState: TPendingResult["renderState"]
     styles: TStyles["pendingResult"]
@@ -20252,12 +20245,14 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
     props: null,
   }
   const resultSection = result ? {
-    ...result,
     shouldRender: true as const,
-    styles: styles.resultSection,
+    props: {
+      ...result,
+      styles: styles.resultSection,
+    },
   } : {
     shouldRender: false as const,
-    styles: styles.resultSection,
+    props: null,
   }
 
   return {

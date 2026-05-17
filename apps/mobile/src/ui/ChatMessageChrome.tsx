@@ -8446,7 +8446,7 @@ export function ChatMessageToolExecutionCallDetail({
       ) : null}
       {callDetailParts.resultSection.shouldRender ? (
         <ChatMessageToolExecutionResultSection
-          {...callDetailParts.resultSection}
+          {...callDetailParts.resultSection.props}
         />
       ) : callDetailParts.pendingResult.shouldRender ? (
         <ChatMessageToolExecutionPendingResult

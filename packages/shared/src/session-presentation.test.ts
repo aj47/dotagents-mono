@@ -13010,7 +13010,7 @@ describe("session presentation semantics", () => {
       },
       resultSection: {
         shouldRender: false,
-        styles: "result-section-styles",
+        props: null,
       },
       pendingResult: {
         shouldRender: true,
@@ -13020,7 +13020,7 @@ describe("session presentation semantics", () => {
         },
       },
     })
-    expect(createChatRuntimeToolExecutionCallDetailMobilePropsParts({
+    const resultCallDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
       renderState: "detail-header-state",
       toolName: "read_file",
       result: {
@@ -13035,7 +13035,15 @@ describe("session presentation semantics", () => {
         resultSection: "result-section-styles",
         pendingResult: "pending-result-styles",
       },
-    }).pendingResult).toEqual({
+    })
+    expect(resultCallDetailParts.resultSection).toEqual({
+      shouldRender: true,
+      props: {
+        resultContent: "result-content",
+        styles: "result-section-styles",
+      },
+    })
+    expect(resultCallDetailParts.pendingResult).toEqual({
       shouldRender: false,
       props: null,
     })
