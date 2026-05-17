@@ -9929,12 +9929,7 @@ export function ChatMessageCollapsedPreview({
       accessibilityState={collapsedPreviewParts.pressable.accessibilityState}
       aria-expanded={collapsedPreviewParts.pressable.ariaExpanded}
       hitSlop={collapsedPreviewParts.pressable.hitSlop}
-      style={({ pressed }) => [
-        collapsedPreviewParts.pressable.style,
-        pressed
-          && !collapsedPreviewParts.pressable.disabled
-          && collapsedPreviewParts.pressable.pressedStyle,
-      ]}
+      style={collapsedPreviewParts.pressable.style}
     >
       <Text
         style={collapsedPreviewParts.text.style}

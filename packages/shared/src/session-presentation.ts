@@ -5059,8 +5059,12 @@ export interface ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
     accessibilityState: TActionState["accessibilityState"]
     ariaExpanded: TActionState["ariaExpanded"]
     hitSlop: TRenderState["hitSlop"]
-    style: TStyle
-    pressedStyle?: TPressedStyle
+    style: (state: { pressed: boolean }) => Array<
+      | TStyle
+      | TPressedStyle
+      | false
+      | undefined
+    >
   }
   text: {
     style: TTextStyle
@@ -19583,8 +19587,10 @@ export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts<
       accessibilityState: actionState.accessibilityState,
       ariaExpanded: actionState.ariaExpanded,
       hitSlop: renderState.hitSlop,
-      style,
-      pressedStyle,
+      style: ({ pressed }: { pressed: boolean }) => [
+        style,
+        pressed && !actionState.disabled && pressedStyle,
+      ],
     },
     text: {
       style: textStyle,

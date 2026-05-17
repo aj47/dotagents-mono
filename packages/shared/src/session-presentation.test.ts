@@ -5210,7 +5210,7 @@ describe("session presentation semantics", () => {
       spinnerSource: "spinner-source",
       streamingStyles: expandedContentStyles,
     }).shouldRenderStreamingContent).toBe(false)
-    expect(createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
+    const collapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
       renderState: {
         accessibilityRole: "button",
         hitSlop: 8,
@@ -5230,7 +5230,8 @@ describe("session presentation semantics", () => {
       style: "preview-style",
       pressedStyle: "preview-pressed-style",
       textStyle: "preview-text-style",
-    })).toEqual({
+    })
+    expect(collapsedPreviewParts).toMatchObject({
       pressable: {
         onPress: "on-press",
         disabled: false,
@@ -5242,8 +5243,6 @@ describe("session presentation semantics", () => {
         },
         ariaExpanded: false,
         hitSlop: 8,
-        style: "preview-style",
-        pressedStyle: "preview-pressed-style",
       },
       text: {
         style: "preview-text-style",
@@ -5251,6 +5250,37 @@ describe("session presentation semantics", () => {
         text: "Preview text",
       },
     })
+    expect(collapsedPreviewParts.pressable.style({ pressed: false })).toEqual([
+      "preview-style",
+      false,
+    ])
+    expect(collapsedPreviewParts.pressable.style({ pressed: true })).toEqual([
+      "preview-style",
+      "preview-pressed-style",
+    ])
+    const disabledCollapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
+      renderState: {
+        accessibilityRole: "button",
+        hitSlop: 8,
+        numberOfLines: 2,
+        text: "Preview text",
+      },
+      actionState: {
+        disabled: true,
+        accessibilityLabel: "Expand message",
+        accessibilityState: {
+          disabled: true,
+        },
+        ariaExpanded: false,
+      },
+      style: "preview-style",
+      pressedStyle: "preview-pressed-style",
+      textStyle: "preview-text-style",
+    })
+    expect(disabledCollapsedPreviewParts.pressable.style({ pressed: true })).toEqual([
+      "preview-style",
+      false,
+    ])
     expect(getChatRuntimeStreamingContentMobileRenderState({
       colors: {
         info: "#2563eb",

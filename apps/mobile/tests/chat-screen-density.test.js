@@ -5168,7 +5168,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /accessibilityState=\{collapsedPreviewParts\.pressable\.accessibilityState\}/);
   assert.match(chatMessageChromeSource, /aria-expanded=\{collapsedPreviewParts\.pressable\.ariaExpanded\}/);
   assert.match(chatMessageChromeSource, /hitSlop=\{collapsedPreviewParts\.pressable\.hitSlop\}/);
-  assert.match(chatMessageChromeSource, /collapsedPreviewParts\.pressable\.style,\s+pressed\s+&&\s+!collapsedPreviewParts\.pressable\.disabled\s+&&\s+collapsedPreviewParts\.pressable\.pressedStyle,/);
+  assert.match(chatMessageChromeSource, /style=\{collapsedPreviewParts\.pressable\.style\}/);
+  assert.match(sessionPresentationSource, /style: \(\{ pressed \}: \{ pressed: boolean \}\) => \[\s+style,\s+pressed && !actionState\.disabled && pressedStyle,/);
+  assert.doesNotMatch(chatMessageChromeSource, /collapsedPreviewParts\.pressable\.pressedStyle/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageCollapsedPreview[\s\S]*?style=\{\(\{ pressed \}\) => \[[\s\S]*?export function ChatMessageConversationContent/
+  );
   assert.match(chatMessageChromeSource, /style=\{collapsedPreviewParts\.text\.style\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{collapsedPreviewParts\.text\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /onPress: actionState\.canToggle \? onToggle : undefined,/);
