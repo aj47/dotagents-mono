@@ -1613,6 +1613,9 @@ type ChatMessageToolApprovalToolNameProps =
 type ChatMessageToolApprovalArgumentsPreviewProps =
   ChatMessageToolApprovalParts['argumentsPreview']['props'];
 
+type ChatMessageToolApprovalFullArgumentsProps =
+  ChatMessageToolApprovalParts['fullArguments']['text']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7504,9 +7507,9 @@ export function ChatMessageToolApproval({
             style={toolApprovalParts.fullArguments.scroll.style}
             nestedScrollEnabled={toolApprovalParts.fullArguments.scroll.nestedScrollEnabled}
           >
-            <Text style={toolApprovalParts.fullArguments.text.style}>
-              {toolApprovalParts.fullArguments.text.text}
-            </Text>
+            <ChatMessageToolApprovalFullArguments
+              {...toolApprovalParts.fullArguments.text.props}
+            />
           </ScrollView>
         ) : null}
         <View style={toolApprovalParts.actions.style}>
@@ -7629,6 +7632,17 @@ export function ChatMessageToolApprovalArgumentsPreview({
       style={style}
       numberOfLines={numberOfLines}
     >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolApprovalFullArguments({
+  style,
+  text,
+}: ChatMessageToolApprovalFullArgumentsProps) {
+  return (
+    <Text style={style}>
       {text}
     </Text>
   );

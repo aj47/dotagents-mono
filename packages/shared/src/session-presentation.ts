@@ -2039,8 +2039,10 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       nestedScrollEnabled: true
     }
     text: {
-      style: TStyles["argumentsFull"]
-      text: string
+      props: {
+        style: TStyles["argumentsFull"]
+        text: string
+      }
     }
   }
   actions: {
@@ -22879,8 +22881,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         nestedScrollEnabled: true,
       },
       text: {
-        style: styles.argumentsFull,
-        text: argumentsContent,
+        props: {
+          style: styles.argumentsFull,
+          text: argumentsContent,
+        },
       },
     },
     actions: {

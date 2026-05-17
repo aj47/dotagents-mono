@@ -8232,8 +8232,10 @@ describe("session presentation semantics", () => {
         nestedScrollEnabled: true,
       },
       text: {
-        style: "tool-approval-arguments-full-style",
-        text: '{\n  "path": "/test"\n}',
+        props: {
+          style: "tool-approval-arguments-full-style",
+          text: '{\n  "path": "/test"\n}',
+        },
       },
     })
     expect(toolApprovalParts.actions.style).toBe("tool-approval-actions-style")

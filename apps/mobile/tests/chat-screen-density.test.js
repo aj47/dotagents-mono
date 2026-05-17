@@ -645,6 +645,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsToggle\.label\.text/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /<ScrollView[\s\S]*?style=\{toolApprovalParts\.fullArguments\.scroll\.style\}[\s\S]*?nestedScrollEnabled=\{toolApprovalParts\.fullArguments\.scroll\.nestedScrollEnabled\}/);
+  assert.match(sessionPresentationSource, /fullArguments: \{[\s\S]*?text: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsFull,[\s\S]*?text: argumentsContent,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalFullArguments/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalFullArguments\s+\{\.\.\.toolApprovalParts\.fullArguments\.text\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalFullArguments[\s\S]*?style=\{style\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.text\.(style|text)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments \? \(/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.denyButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.approveButton\.onPress\}/);
