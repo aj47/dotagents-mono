@@ -10,9 +10,10 @@ const source = fs.readFileSync(
 
 test('mobile queued-message rows use text-first actions with explicit accessibility labels', () => {
   assert.match(source, /getQueuedMessageItemMobileRenderState/);
-  assert.match(source, /const queuePanelCopy = queuedMessageRenderState\.copy;/);
-  assert.match(source, /createQueuedMessageActionButtonMobilePropsParts/);
-  assert.match(source, /const actionParts = createQueuedMessageActionButtonMobilePropsParts\(\{[\s\S]*?copy: queuePanelCopy,[\s\S]*?onRetry,[\s\S]*?onEdit: \(\) => setIsEditing\(true\),[\s\S]*?onRemove,/);
+  assert.match(source, /renderState: queuedMessageRenderState,/);
+  assert.match(source, /createQueuedMessageItemMobilePropsParts/);
+  assert.match(source, /actions: actionParts,/);
+  assert.match(source, /createQueuedMessageItemMobilePropsParts\(\{[\s\S]*?renderState: queuedMessageRenderState,[\s\S]*?message,[\s\S]*?editDraftState,[\s\S]*?isExpanded,[\s\S]*?styles,[\s\S]*?onRetry,[\s\S]*?onEdit: \(\) => setIsEditing\(true\),[\s\S]*?onRemove,[\s\S]*?onToggleExpanded: \(\) => setIsExpanded\(!isExpanded\),[\s\S]*?onCancelEdit: handleCancelEdit,[\s\S]*?onSaveEdit: handleSaveEdit,/);
   assert.match(source, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
   assert.match(source, /accessibilityLabel=\{action\.accessibilityLabel\}/);
   assert.match(source, /accessibilityLabel=\{editParts\.input\.accessibilityLabel\}/);
@@ -49,8 +50,8 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /const actionSurface = queuedMessageRenderState\.surface\.actions;/);
   assert.match(source, /const actionRowStyleSlot = createQueuedMessageActionRowMobileStyleSlot\(\{\s+surface: actionSurface,\s+\}\);/);
   assert.match(source, /const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots\(\{\s+surface: actionSurface,\s+colors: actionColors,\s+\}\);/);
-  assert.match(source, /createQueuedMessageItemChromeMobilePropsParts/);
-  assert.match(source, /const itemChromeParts = createQueuedMessageItemChromeMobilePropsParts\(\{[\s\S]*?statusIndicatorPart,[\s\S]*?actionParts,[\s\S]*?styles,[\s\S]*?\}\);/);
+  assert.match(source, /createQueuedMessageItemMobilePropsParts/);
+  assert.match(source, /chrome: itemChromeParts,/);
   assert.match(source, /actions:\s*\{[\s\S]*?\.\.\.actionRowStyleSlot/);
   assert.match(source, /actionButton:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.button/);
   assert.match(source, /style=\{itemChromeParts\.actions\.style\}/);
@@ -94,7 +95,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?icons: queuePanelIcons,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,/);
   assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
   assert.match(source, /const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,[\s\S]*?onToggleListCollapsed,/);
-  assert.match(source, /const contentParts = createQueuedMessageContentMobilePropsParts\(\{[\s\S]*?message,[\s\S]*?presentation: messagePresentation,[\s\S]*?isExpanded,[\s\S]*?styles,/);
+  assert.match(source, /content: contentParts,/);
   assert.match(source, /\{contentParts\.metaText\.text\}/);
   assert.match(source, /const queuePanelIcons = queuePanelRenderState\.icons;/);
   assert.match(source, /name=\{itemChromeParts\.failedStatusIcon\.name\}/);
@@ -142,7 +143,7 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
   assert.match(source, /createMessageQueuePanelChromeMobilePropsParts/);
   assert.match(source, /createMessageQueuePanelListMobilePropsParts/);
-  assert.match(source, /createQueuedMessageItemChromeMobilePropsParts/);
+  assert.match(source, /createQueuedMessageItemMobilePropsParts/);
   assert.doesNotMatch(source, /queuePanelState\.shouldRenderPausedNotice &&/);
   assert.doesNotMatch(source, /queuePanelState\.shouldRenderList &&/);
   assert.doesNotMatch(source, /statusIndicatorPart\?\.type ===/);
@@ -152,7 +153,7 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /item\.separator && <View style=\{item\.separator\.style\} \/>/);
   assert.doesNotMatch(source, /item\.shouldRenderSeparator/);
   assert.match(source, /const messagePresentation = queuedMessageRenderState\.presentation;/);
-  assert.match(source, /createQueuedMessageContentMobilePropsParts/);
+  assert.match(source, /content: contentParts,/);
   assert.match(source, /contentParts\.errorText/);
 
   assert.doesNotMatch(source, /Queued Messages \(\{messages\.length\}\)/);

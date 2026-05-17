@@ -2190,6 +2190,45 @@ export interface QueuedMessageEditMobilePropsParts<
   };
 }
 
+export interface QueuedMessageItemMobilePropsPartsStylesLike
+  extends QueuedMessageEditMobileStylesLike,
+    QueuedMessageActionButtonMobilePropsPartsStylesLike,
+    QueuedMessageExpandButtonMobilePropsPartsStylesLike,
+    QueuedMessageContentMobilePropsPartsStylesLike,
+    QueuedMessageItemChromeMobilePropsPartsStylesLike {}
+
+export interface QueuedMessageItemMobilePropsPartsInput<
+  TStyles extends QueuedMessageItemMobilePropsPartsStylesLike =
+    QueuedMessageItemMobilePropsPartsStylesLike,
+> {
+  renderState: Pick<
+    QueuedMessageItemMobileRenderState,
+    'surface' | 'colors' | 'icons' | 'copy' | 'presentation'
+  >;
+  message: Pick<QueuedMessage, 'text' | 'createdAt'>;
+  editDraftState: QueuedMessageEditDraftState;
+  isExpanded: boolean;
+  styles: TStyles;
+  onRetry: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+  onToggleExpanded: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+}
+
+export interface QueuedMessageItemMobilePropsParts<
+  TStyles extends QueuedMessageItemMobilePropsPartsStylesLike =
+    QueuedMessageItemMobilePropsPartsStylesLike,
+> {
+  edit: QueuedMessageEditMobilePropsParts<TStyles, () => void, () => void>;
+  actions: QueuedMessageActionButtonMobilePropsParts<TStyles>;
+  expandButton: QueuedMessageExpandButtonMobilePropsParts<TStyles, () => void> | null;
+  statusIndicator: QueuedMessageStatusIndicatorMobilePropsPart | null;
+  content: QueuedMessageContentMobilePropsParts<TStyles>;
+  chrome: QueuedMessageItemChromeMobilePropsParts<TStyles>;
+}
+
 export interface QueuedMessageItemDesktopRenderStateInput {
   message: Pick<QueuedMessage, 'status' | 'addedToHistory' | 'text' | 'errorMessage'>;
   isExpanded: boolean;
@@ -2698,6 +2737,78 @@ export function createQueuedMessageEditMobilePropsParts<
         value: copy.actions.saveLabel,
       },
     },
+  };
+}
+
+export function createQueuedMessageItemMobilePropsParts<
+  TStyles extends QueuedMessageItemMobilePropsPartsStylesLike,
+>({
+  renderState,
+  message,
+  editDraftState,
+  isExpanded,
+  styles,
+  onRetry,
+  onEdit,
+  onRemove,
+  onToggleExpanded,
+  onCancelEdit,
+  onSaveEdit,
+}: QueuedMessageItemMobilePropsPartsInput<TStyles>): QueuedMessageItemMobilePropsParts<TStyles> {
+  const edit = createQueuedMessageEditMobilePropsParts({
+    surface: renderState.surface.edit,
+    copy: renderState.copy,
+    editDraftState,
+    styles,
+    onCancel: onCancelEdit,
+    onSave: onSaveEdit,
+  });
+  const actions = createQueuedMessageActionButtonMobilePropsParts({
+    surface: renderState.surface.actions,
+    colors: renderState.colors.actions,
+    icons: renderState.icons,
+    copy: renderState.copy,
+    presentation: renderState.presentation,
+    styles,
+    onRetry,
+    onEdit,
+    onRemove,
+  });
+  const expandButton = createQueuedMessageExpandButtonMobilePropsParts({
+    surface: renderState.surface.item,
+    colors: renderState.colors.item,
+    icons: renderState.icons,
+    presentation: renderState.presentation,
+    isExpanded,
+    styles,
+    onToggleExpanded,
+  });
+  const statusIndicator = createQueuedMessageStatusIndicatorMobilePropsPart({
+    surface: renderState.surface.item,
+    colors: renderState.colors.item,
+    icons: renderState.icons,
+    presentation: renderState.presentation,
+  });
+  const content = createQueuedMessageContentMobilePropsParts({
+    surface: renderState.surface.item,
+    message,
+    presentation: renderState.presentation,
+    isExpanded,
+    styles,
+  });
+  const chrome = createQueuedMessageItemChromeMobilePropsParts({
+    statusIndicatorPart: statusIndicator,
+    actionParts: actions,
+    styles,
+  });
+
+  return {
+    edit,
+    actions,
+    expandButton,
+    statusIndicator,
+    content,
+    chrome,
   };
 }
 

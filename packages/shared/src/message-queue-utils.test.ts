@@ -13,6 +13,7 @@ import {
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
   createMessageQueuePanelListMobilePropsParts,
+  createQueuedMessageItemMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageItemChromeMobilePropsParts,
   createQueuedMessageContentMobilePropsParts,
@@ -1358,6 +1359,110 @@ describe('message-queue-utils', () => {
     editParts.cancelButton.onPress();
     editParts.saveButton.onPress();
     expect(editPartCalls).toEqual(['cancel', 'save']);
+    const bundledPartCalls: string[] = [];
+    const bundledMessage = makeMessage('bundled-message', {
+      status: 'failed',
+      errorMessage: 'offline',
+      text: 'x'.repeat(MESSAGE_QUEUE_PANEL_PRESENTATION.longMessagePreviewCharacterLimit + 1),
+    });
+    const bundledParts = createQueuedMessageItemMobilePropsParts({
+      renderState: getQueuedMessageItemMobileRenderState({
+        message: bundledMessage,
+        isExpanded: false,
+        colors: mobileMessageQueuePalette,
+      }),
+      message: bundledMessage,
+      editDraftState: getQueuedMessageEditDraftState('Bundled update', bundledMessage.text),
+      isExpanded: false,
+      styles: {
+        container: 'container',
+        row: 'row',
+        content: 'content',
+        messageText: 'messageText',
+        errorText: 'errorText',
+        metaRow: 'metaRow',
+        metaText: 'metaText',
+        expandButton: 'expandButton',
+        expandText: 'expandText',
+        actions: 'actions',
+        actionButton: 'actionButton',
+        retryActionText: 'retryActionText',
+        editActionText: 'editActionText',
+        removeActionText: 'removeActionText',
+        editContainer: 'editContainer',
+        editInput: 'editInput',
+        editActions: 'editActions',
+        editButton: 'editButton',
+        cancelButton: 'cancelButton',
+        saveButton: 'saveButton',
+        buttonText: 'buttonText',
+        saveButtonText: 'saveButtonText',
+      },
+      onRetry: () => bundledPartCalls.push('retry'),
+      onEdit: () => bundledPartCalls.push('edit'),
+      onRemove: () => bundledPartCalls.push('remove'),
+      onToggleExpanded: () => bundledPartCalls.push('expand'),
+      onCancelEdit: () => bundledPartCalls.push('cancel'),
+      onSaveEdit: () => bundledPartCalls.push('save'),
+    });
+    expect(bundledParts.chrome).toMatchObject({
+      container: {
+        style: 'container',
+      },
+      row: {
+        style: 'row',
+      },
+      actions: {
+        style: 'actions',
+      },
+      failedStatusIcon: {
+        name: 'alert-circle',
+        color: '#dc2626',
+      },
+      processingStatusIndicator: null,
+    });
+    expect(bundledParts.content).toMatchObject({
+      container: {
+        style: 'content',
+      },
+      messageText: {
+        style: 'messageText',
+        numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
+      },
+      errorText: {
+        style: 'errorText',
+        text: 'Error: offline',
+      },
+    });
+    expect(bundledParts.expandButton).toMatchObject({
+      pressable: {
+        style: 'expandButton',
+        accessibilityLabel: 'Expand queued message',
+      },
+      icon: {
+        name: 'chevron-down',
+      },
+      label: {
+        style: 'expandText',
+        text: 'More',
+      },
+    });
+    expect(bundledParts.actions.actions.map((action) => action.key)).toEqual(['retry', 'edit', 'remove']);
+    expect(bundledParts.edit).toMatchObject({
+      input: {
+        style: 'editInput',
+        accessibilityLabel: 'Queued message edit input',
+      },
+      saveButton: {
+        disabled: false,
+        accessibilityState: { disabled: false },
+      },
+    });
+    bundledParts.actions.actions.forEach((action) => action.onPress());
+    bundledParts.expandButton?.pressable.onPress();
+    bundledParts.edit.cancelButton.onPress();
+    bundledParts.edit.saveButton.onPress();
+    expect(bundledPartCalls).toEqual(['retry', 'edit', 'remove', 'expand', 'cancel', 'save']);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.containerBaseClassName).toContain('transition-colors');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.messageCollapsedClassName).toBe('line-clamp-2');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.compact.containerBaseClassName).toContain('flex flex-wrap');

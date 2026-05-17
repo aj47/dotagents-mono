@@ -21,14 +21,9 @@ import {
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
   createMessageQueuePanelListMobilePropsParts,
-  createQueuedMessageStatusIndicatorMobilePropsPart,
-  createQueuedMessageItemChromeMobilePropsParts,
-  createQueuedMessageContentMobilePropsParts,
-  createQueuedMessageExpandButtonMobilePropsParts,
-  createQueuedMessageActionButtonMobilePropsParts,
+  createQueuedMessageItemMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
-  createQueuedMessageEditMobilePropsParts,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   getMessageQueuePanelMobileRenderState,
@@ -85,8 +80,6 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const itemColors = queuedMessageRenderState.colors.item;
   const actionColors = queuedMessageRenderState.colors.actions;
   const editColors = queuedMessageRenderState.colors.edit;
-  const queuePanelIcons = queuedMessageRenderState.icons;
-  const queuePanelCopy = queuedMessageRenderState.copy;
   const statusColor = queuedMessageRenderState.statusColor;
   const statusMetaColor = queuedMessageRenderState.statusMetaColor;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
@@ -208,51 +201,24 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       ...editStyleSlots.saveButtonText,
     },
   });
-  const editParts = createQueuedMessageEditMobilePropsParts({
-    surface: editSurface,
-    copy: queuePanelCopy,
+  const {
+    edit: editParts,
+    actions: actionParts,
+    expandButton: expandButtonParts,
+    content: contentParts,
+    chrome: itemChromeParts,
+  } = createQueuedMessageItemMobilePropsParts({
+    renderState: queuedMessageRenderState,
+    message,
     editDraftState,
-    styles,
-    onCancel: handleCancelEdit,
-    onSave: handleSaveEdit,
-  });
-  const actionParts = createQueuedMessageActionButtonMobilePropsParts({
-    surface: actionSurface,
-    colors: actionColors,
-    icons: queuePanelIcons,
-    copy: queuePanelCopy,
-    presentation: messagePresentation,
+    isExpanded,
     styles,
     onRetry,
     onEdit: () => setIsEditing(true),
     onRemove,
-  });
-  const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts({
-    surface: itemSurface,
-    colors: itemColors,
-    icons: queuePanelIcons,
-    presentation: messagePresentation,
-    isExpanded,
-    styles,
     onToggleExpanded: () => setIsExpanded(!isExpanded),
-  });
-  const statusIndicatorPart = createQueuedMessageStatusIndicatorMobilePropsPart({
-    surface: itemSurface,
-    colors: itemColors,
-    icons: queuePanelIcons,
-    presentation: messagePresentation,
-  });
-  const contentParts = createQueuedMessageContentMobilePropsParts({
-    surface: itemSurface,
-    message,
-    presentation: messagePresentation,
-    isExpanded,
-    styles,
-  });
-  const itemChromeParts = createQueuedMessageItemChromeMobilePropsParts({
-    statusIndicatorPart,
-    actionParts,
-    styles,
+    onCancelEdit: handleCancelEdit,
+    onSaveEdit: handleSaveEdit,
   });
 
   if (isEditing) {
