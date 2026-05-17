@@ -1733,6 +1733,26 @@ type ChatConversationHomePromptEditorModalProps = {
   styles: ChatConversationHomePromptEditorModalStyles;
 };
 
+type ChatConversationHomePromptEditorModalModalPart = {
+  props: ComponentProps<typeof Modal>;
+};
+
+type ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart = {
+  props: ComponentProps<typeof KeyboardAvoidingView>;
+};
+
+type ChatConversationHomePromptEditorModalViewPart = {
+  props: ComponentProps<typeof View>;
+};
+
+type ChatConversationHomePromptEditorModalFrameProps = {
+  modal: ChatConversationHomePromptEditorModalModalPart;
+  keyboardAvoidingView: ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart;
+  overlay: ChatConversationHomePromptEditorModalViewPart;
+  content: ChatConversationHomePromptEditorModalViewPart;
+  children: ReactNode;
+};
+
 type ChatConversationHomePromptEditorModalIconButtonPart = {
   props: ComponentProps<typeof TouchableOpacity>;
 };
@@ -8298,34 +8318,53 @@ export function ChatConversationHomePromptEditorModal({
   });
 
   return (
-    <Modal {...modalParts.modal.props}>
-      <KeyboardAvoidingView {...modalParts.keyboardAvoidingView.props}>
-        <View {...modalParts.overlay.props}>
-          <View {...modalParts.content.props}>
-            <ChatConversationHomePromptEditorModalHeader
-              header={modalParts.header}
-              title={modalParts.title}
-              closeButton={modalParts.closeButton}
-              closeIcon={modalParts.closeIcon}
-            />
+    <ChatConversationHomePromptEditorModalFrame
+      modal={modalParts.modal}
+      keyboardAvoidingView={modalParts.keyboardAvoidingView}
+      overlay={modalParts.overlay}
+      content={modalParts.content}
+    >
+      <ChatConversationHomePromptEditorModalHeader
+        header={modalParts.header}
+        title={modalParts.title}
+        closeButton={modalParts.closeButton}
+        closeIcon={modalParts.closeIcon}
+      />
 
-            <ChatConversationHomePromptEditorModalField
-              label={modalParts.nameLabel}
-              input={modalParts.nameInput}
-            />
+      <ChatConversationHomePromptEditorModalField
+        label={modalParts.nameLabel}
+        input={modalParts.nameInput}
+      />
 
-            <ChatConversationHomePromptEditorModalField
-              label={modalParts.contentLabel}
-              input={modalParts.contentInput}
-            />
+      <ChatConversationHomePromptEditorModalField
+        label={modalParts.contentLabel}
+        input={modalParts.contentInput}
+      />
 
-            <ChatConversationHomePromptEditorModalActions
-              actions={modalParts.actions}
-              cancelButton={modalParts.cancelButton}
-              cancelLabel={modalParts.cancelLabel}
-              saveButton={modalParts.saveButton}
-              saveLabel={modalParts.saveLabel}
-            />
+      <ChatConversationHomePromptEditorModalActions
+        actions={modalParts.actions}
+        cancelButton={modalParts.cancelButton}
+        cancelLabel={modalParts.cancelLabel}
+        saveButton={modalParts.saveButton}
+        saveLabel={modalParts.saveLabel}
+      />
+    </ChatConversationHomePromptEditorModalFrame>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalFrame({
+  modal,
+  keyboardAvoidingView,
+  overlay,
+  content,
+  children,
+}: ChatConversationHomePromptEditorModalFrameProps) {
+  return (
+    <Modal {...modal.props}>
+      <KeyboardAvoidingView {...keyboardAvoidingView.props}>
+        <View {...overlay.props}>
+          <View {...content.props}>
+            {children}
           </View>
         </View>
       </KeyboardAvoidingView>

@@ -7809,13 +7809,16 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /const promptEditorRenderState = getPromptLibraryEditorMobileRenderState\(\{ colors, platform \}\);/);
   assert.doesNotMatch(screenSource, /promptLibraryEditorRenderState\.copy\.(nameLabel|namePlaceholder|contentLabel|contentPlaceholder|cancelLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
-  assert.match(chatMessageChromeSource, /<Modal \{\.\.\.modalParts\.modal\.props\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalFrame/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalFrame\s+modal=\{modalParts\.modal\}\s+keyboardAvoidingView=\{modalParts\.keyboardAvoidingView\}\s+overlay=\{modalParts\.overlay\}\s+content=\{modalParts\.content\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalFrame[\s\S]*?<Modal \{\.\.\.modal\.props\}>[\s\S]*?<KeyboardAvoidingView \{\.\.\.keyboardAvoidingView\.props\}>[\s\S]*?<View \{\.\.\.overlay\.props\}>[\s\S]*?<View \{\.\.\.content\.props\}>[\s\S]*?\{children\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Modal \{\.\.\.modalParts\.modal\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /transparent=\{modalParts\.modal\.transparent\}/);
   assert.doesNotMatch(chatMessageChromeSource, /animationType=\{modalParts\.modal\.animationType\}/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorModalKeyboardAvoidingBehavior\(Platform\.OS\)/);
   assert.doesNotMatch(screenSource, /getPromptLibraryEditorInputPaddingVertical,/);
   assert.match(sessionPresentationSource, /getPromptLibraryEditorInputPaddingVertical/);
-  assert.match(chatMessageChromeSource, /<KeyboardAvoidingView \{\.\.\.modalParts\.keyboardAvoidingView\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /<KeyboardAvoidingView \{\.\.\.modalParts\.keyboardAvoidingView\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /behavior=\{modalParts\.keyboardAvoidingView\.behavior\}/);
   assert.match(sessionPresentationSource, /const \{ chrome, colors, copy, keyboardAvoidingBehavior, surface \} = renderState/);
   assert.doesNotMatch(screenSource, /closeIcon: promptLibraryEditorCloseIcon/);
