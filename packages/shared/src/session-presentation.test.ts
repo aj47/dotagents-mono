@@ -5304,46 +5304,46 @@ describe("session presentation semantics", () => {
     expect(quickStartPropsParts.grid.props.style).toBe("grid")
     const promptItemParts = quickStartPropsParts.grid.items[0]!
     expect(promptItemParts.key).toBe("prompt-1")
-    expect(promptItemParts.pressable.getStyle(true)).toEqual([
+    expect(promptItemParts.pressable.props.style({ pressed: true })).toEqual([
       "shortcutCard",
       false,
       false,
       "shortcutCardPressed",
     ])
-    promptItemParts.pressable.onPress()
+    promptItemParts.pressable.props.onPress()
     expect(pressedQuickStartId).toBe("prompt-1")
     expect(promptItemParts.sourcePill.shouldRender).toBe(true)
     if (!promptItemParts.sourcePill.shouldRender) {
       throw new Error("expected prompt quick start to render a source pill")
     }
     expect(promptItemParts.sourcePill.label.text).toBe("prompt")
-    expect(promptItemParts.sourcePill.label.numberOfLines).toBe(1)
+    expect(promptItemParts.sourcePill.label.props.numberOfLines).toBe(1)
     expect(promptItemParts.addIcon.shouldRender).toBe(false)
     expect(promptItemParts.title.text).toBe("Summarize")
-    expect(promptItemParts.title.numberOfLines).toBe(2)
+    expect(promptItemParts.title.props.numberOfLines).toBe(2)
     expect(promptItemParts.description.shouldRender).toBe(true)
     if (!promptItemParts.description.shouldRender) {
       throw new Error("expected prompt quick start to render a description")
     }
-    expect(promptItemParts.description.numberOfLines).toBe(2)
+    expect(promptItemParts.description.props.numberOfLines).toBe(2)
     expect(promptItemParts.actions.shouldRender).toBe(true)
     if (!promptItemParts.actions.shouldRender) {
       throw new Error("expected prompt quick start to render prompt actions")
     }
     expect(promptItemParts.actions.edit.label.text).toBe("Edit")
-    expect(promptItemParts.actions.delete.label.style).toEqual([
+    expect(promptItemParts.actions.delete.label.props.style).toEqual([
       "actionText",
       "actionDangerText",
     ])
     let stoppedPropagationCount = 0
-    promptItemParts.actions.edit.pressable.onPress({
+    promptItemParts.actions.edit.pressable.props.onPress({
       stopPropagation: () => {
         stoppedPropagationCount += 1
       },
     })
     expect(stoppedPropagationCount).toBe(1)
     expect(editedPromptId).toBe("prompt-1")
-    promptItemParts.actions.delete.pressable.onPress({
+    promptItemParts.actions.delete.pressable.props.onPress({
       stopPropagation: () => {
         stoppedPropagationCount += 1
       },
@@ -5356,8 +5356,8 @@ describe("session presentation semantics", () => {
     if (!addPromptItemParts.addIcon.shouldRender) {
       throw new Error("expected add prompt quick start to render an add icon")
     }
-    expect(addPromptItemParts.addIcon.style).toBe("addIcon")
-    expect(addPromptItemParts.title.style).toEqual([
+    expect(addPromptItemParts.addIcon.props.style).toBe("addIcon")
+    expect(addPromptItemParts.title.props.style).toEqual([
       "title",
       "titleAdd",
     ])

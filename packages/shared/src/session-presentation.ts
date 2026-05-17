@@ -766,18 +766,27 @@ export interface ChatRuntimeHomeQuickStartsMobileActionPropsParts<
   TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike,
 > {
   pressable: {
-    getStyle: (pressed: boolean) => Array<TStyles["actionButton"] | TStyles["actionButtonPressed"] | false>
-    onPress: (event: TEvent) => void
-    accessibilityRole: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["accessibilityRole"]
-    accessibilityLabel: string
+    props: {
+      style: (state: { pressed: boolean }) => Array<TStyles["actionButton"] | TStyles["actionButtonPressed"] | false>
+      onPress: (event: TEvent) => void
+      accessibilityRole: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["accessibilityRole"]
+      accessibilityLabel: string
+    }
   }
-  icon: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["icon"]
-  iconColors: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["iconColors"]
+  icon: {
+    props: {
+      name: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["icon"]["name"]
+      size: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["icon"]["size"]
+      color: string
+    }
+  }
   label: {
-    style:
-      | TStyles["actionText"]
-      | Array<TStyles["actionText"] | TStyles["actionDangerText"]>
     text: string
+    props: {
+      style:
+        | TStyles["actionText"]
+        | Array<TStyles["actionText"] | TStyles["actionDangerText"]>
+    }
   }
   prompt: TPrompt
 }
@@ -790,54 +799,74 @@ export interface ChatRuntimeHomeQuickStartsMobileItemPropsParts<
 > {
   key: string
   pressable: {
-    getStyle: (pressed: boolean) => Array<
-      | TStyles["shortcutCard"]
-      | TStyles["shortcutCardAdd"]
-      | TStyles["shortcutCardDisabled"]
-      | TStyles["shortcutCardPressed"]
-      | false
-    >
-    onPress: () => void
-    disabled: boolean
-    accessibilityRole: PromptLibraryMobileShortcutItemRenderState["accessibilityRole"]
-    accessibilityState: PromptLibraryMobileShortcutItemRenderState["interaction"]["accessibilityState"]
-    accessibilityLabel: string
-    accessibilityHint: string
+    props: {
+      style: (state: { pressed: boolean }) => Array<
+        | TStyles["shortcutCard"]
+        | TStyles["shortcutCardAdd"]
+        | TStyles["shortcutCardDisabled"]
+        | TStyles["shortcutCardPressed"]
+        | false
+      >
+      onPress: () => void
+      disabled: boolean
+      accessibilityRole: PromptLibraryMobileShortcutItemRenderState["accessibilityRole"]
+      accessibilityState: PromptLibraryMobileShortcutItemRenderState["interaction"]["accessibilityState"]
+      accessibilityLabel: string
+      accessibilityHint: string
+    }
   }
   sourcePill:
     | {
       shouldRender: true
-      style: TStyles["sourcePill"]
-      icon: PromptLibraryMobileShortcutItemRenderState["sourceIcon"]
-      iconColors: PromptLibraryMobileShortcutItemRenderState["sourceIconColors"]
+      props: {
+        style: TStyles["sourcePill"]
+      }
+      icon: {
+        props: {
+          name: PromptLibraryMobileShortcutItemRenderState["sourceIcon"]["name"]
+          size: PromptLibraryMobileShortcutItemRenderState["sourceIcon"]["size"]
+          color: string
+        }
+      }
       label: {
-        style: TStyles["sourceLabel"]
-        numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutSourceLabel"]["numberOfLines"]
         text: string
+        props: {
+          style: TStyles["sourceLabel"]
+          numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutSourceLabel"]["numberOfLines"]
+        }
       }
     }
     | {
       shouldRender: false
     }
   addIcon:
-    | (ChatRuntimeHomeQuickStartsMobileAddActionRenderState & {
+    | {
       shouldRender: true
-      style: TStyles["addIcon"]
-    })
+      props: {
+        name: ChatRuntimeHomeQuickStartsMobileAddActionRenderState["icon"]["name"]
+        size: ChatRuntimeHomeQuickStartsMobileAddActionRenderState["icon"]["size"]
+        color: string
+        style: TStyles["addIcon"]
+      }
+    }
     | {
       shouldRender: false
     }
   title: {
-    style: Array<TStyles["title"] | TStyles["titleAdd"] | false>
-    numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutTitle"]["numberOfLines"]
     text: string
+    props: {
+      style: Array<TStyles["title"] | TStyles["titleAdd"] | false>
+      numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutTitle"]["numberOfLines"]
+    }
   }
   description:
     | {
       shouldRender: true
-      style: TStyles["description"]
-      numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutDescription"]["numberOfLines"]
       text: string
+      props: {
+        style: TStyles["description"]
+        numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutDescription"]["numberOfLines"]
+      }
     }
     | {
       shouldRender: false
@@ -845,7 +874,9 @@ export interface ChatRuntimeHomeQuickStartsMobileItemPropsParts<
   actions:
     | {
       shouldRender: true
-      style: TStyles["actions"]
+      props: {
+        style: TStyles["actions"]
+      }
       edit: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
       delete: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
     }
@@ -30542,18 +30573,20 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
         return {
           key: item.id,
           pressable: {
-            getStyle: (pressed: boolean) => [
-              styles.shortcutCard,
-              shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
-              shortcutInteraction.isRunning && styles.shortcutCardDisabled,
-              pressed && styles.shortcutCardPressed,
-            ],
-            onPress: () => onPress(item),
-            disabled: shortcutInteraction.isDisabled,
-            accessibilityRole: shortcutItemRenderState.accessibilityRole,
-            accessibilityState: shortcutInteraction.accessibilityState,
-            accessibilityLabel: shortcutItemRenderState.accessibilityLabel,
-            accessibilityHint: shortcutItemRenderState.accessibilityHint,
+            props: {
+              style: ({ pressed }: { pressed: boolean }) => [
+                styles.shortcutCard,
+                shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
+                shortcutInteraction.isRunning && styles.shortcutCardDisabled,
+                pressed && styles.shortcutCardPressed,
+              ],
+              onPress: () => onPress(item),
+              disabled: shortcutInteraction.isDisabled,
+              accessibilityRole: shortcutItemRenderState.accessibilityRole,
+              accessibilityState: shortcutInteraction.accessibilityState,
+              accessibilityLabel: shortcutItemRenderState.accessibilityLabel,
+              accessibilityHint: shortcutItemRenderState.accessibilityHint,
+            },
           },
           sourcePill: shortcutInteraction.isAddPrompt
             ? {
@@ -30561,39 +30594,56 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
               }
             : {
                 shouldRender: true,
-                style: styles.sourcePill,
-                icon: shortcutItemRenderState.sourceIcon,
-                iconColors: shortcutItemRenderState.sourceIconColors,
+                props: {
+                  style: styles.sourcePill,
+                },
+                icon: {
+                  props: {
+                    name: shortcutItemRenderState.sourceIcon.name,
+                    size: shortcutItemRenderState.sourceIcon.size,
+                    color: shortcutItemRenderState.sourceIconColors.color,
+                  },
+                },
                 label: {
-                  style: styles.sourceLabel,
-                  numberOfLines: shortcutSurface.shortcutSourceLabel.numberOfLines,
                   text: shortcutItemRenderState.sourceLabel,
+                  props: {
+                    style: styles.sourceLabel,
+                    numberOfLines: shortcutSurface.shortcutSourceLabel.numberOfLines,
+                  },
                 },
               },
           addIcon:
             shortcutInteraction.isAddPrompt && shortcutItemRenderState.addAction
               ? {
-                  ...shortcutItemRenderState.addAction,
                   shouldRender: true,
-                  style: styles.addIcon,
+                  props: {
+                    name: shortcutItemRenderState.addAction.icon.name,
+                    size: shortcutItemRenderState.addAction.icon.size,
+                    color: shortcutItemRenderState.addAction.iconColors.color,
+                    style: styles.addIcon,
+                  },
                 }
               : {
                   shouldRender: false,
                 },
           title: {
-            style: [
-              styles.title,
-              shortcutInteraction.isAddPrompt && styles.titleAdd,
-            ],
-            numberOfLines: shortcutSurface.shortcutTitle.numberOfLines,
             text: item.title,
+            props: {
+              style: [
+                styles.title,
+                shortcutInteraction.isAddPrompt && styles.titleAdd,
+              ],
+              numberOfLines: shortcutSurface.shortcutTitle.numberOfLines,
+            },
           },
           description: item.description
             ? {
                 shouldRender: true,
-                style: styles.description,
-                numberOfLines: shortcutSurface.shortcutDescription.numberOfLines,
                 text: item.description,
+                props: {
+                  style: styles.description,
+                  numberOfLines: shortcutSurface.shortcutDescription.numberOfLines,
+                },
               }
             : {
                 shouldRender: false,
@@ -30601,46 +30651,66 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
           actions: prompt && promptActions
             ? {
                 shouldRender: true,
-                style: styles.actions,
+                props: {
+                  style: styles.actions,
+                },
                 edit: {
                   pressable: {
-                    getStyle: (pressed: boolean) => [
-                      styles.actionButton,
-                      pressed && styles.actionButtonPressed,
-                    ],
-                    onPress: (event: TEvent) => {
-                      event.stopPropagation()
-                      onEditPrompt(prompt)
+                    props: {
+                      style: ({ pressed }: { pressed: boolean }) => [
+                        styles.actionButton,
+                        pressed && styles.actionButtonPressed,
+                      ],
+                      onPress: (event: TEvent) => {
+                        event.stopPropagation()
+                        onEditPrompt(prompt)
+                      },
+                      accessibilityRole: promptActions.edit.accessibilityRole,
+                      accessibilityLabel: promptActions.edit.accessibilityLabel,
                     },
-                    accessibilityRole: promptActions.edit.accessibilityRole,
-                    accessibilityLabel: promptActions.edit.accessibilityLabel,
                   },
-                  icon: promptActions.edit.icon,
-                  iconColors: promptActions.edit.iconColors,
+                  icon: {
+                    props: {
+                      name: promptActions.edit.icon.name,
+                      size: promptActions.edit.icon.size,
+                      color: promptActions.edit.iconColors.color,
+                    },
+                  },
                   label: {
-                    style: styles.actionText,
                     text: promptActions.edit.label,
+                    props: {
+                      style: styles.actionText,
+                    },
                   },
                   prompt,
                 },
                 delete: {
                   pressable: {
-                    getStyle: (pressed: boolean) => [
-                      styles.actionButton,
-                      pressed && styles.actionButtonPressed,
-                    ],
-                    onPress: (event: TEvent) => {
-                      event.stopPropagation()
-                      onDeletePrompt(prompt)
+                    props: {
+                      style: ({ pressed }: { pressed: boolean }) => [
+                        styles.actionButton,
+                        pressed && styles.actionButtonPressed,
+                      ],
+                      onPress: (event: TEvent) => {
+                        event.stopPropagation()
+                        onDeletePrompt(prompt)
+                      },
+                      accessibilityRole: promptActions.delete.accessibilityRole,
+                      accessibilityLabel: promptActions.delete.accessibilityLabel,
                     },
-                    accessibilityRole: promptActions.delete.accessibilityRole,
-                    accessibilityLabel: promptActions.delete.accessibilityLabel,
                   },
-                  icon: promptActions.delete.icon,
-                  iconColors: promptActions.delete.iconColors,
+                  icon: {
+                    props: {
+                      name: promptActions.delete.icon.name,
+                      size: promptActions.delete.icon.size,
+                      color: promptActions.delete.iconColors.color,
+                    },
+                  },
                   label: {
-                    style: [styles.actionText, styles.actionDangerText],
                     text: promptActions.delete.label,
+                    props: {
+                      style: [styles.actionText, styles.actionDangerText],
+                    },
                   },
                   prompt,
                 },
