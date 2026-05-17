@@ -170,6 +170,7 @@ import {
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
+  createChatRuntimeThreadMobileStyleSlots,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCallListMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
@@ -11652,6 +11653,64 @@ describe("session presentation semantics", () => {
     expect(threadChromeStyle.toolActivityGroup.colors.countBadge.color).toBe("#0ea5e9")
     expect(threadChromeStyle.toolApproval.title).toBe("Tool Approval Required")
     expect(threadChromeStyle.messageThread.message.surface.paddingHorizontal).toBe("sm")
+    const threadMobileStyleSpacing = {
+      xs: 4,
+      sm: 8,
+      md: 12,
+    }
+    const threadMobileStyleRadius = {
+      sm: 6,
+      md: 10,
+      full: 999,
+    }
+    const threadMobileBorderWidths = {
+      hairline: 0.5,
+    }
+    expect(createChatRuntimeThreadMobileStyleSlots({
+      renderState: threadChromeStyle,
+      spacing: threadMobileStyleSpacing,
+      radius: threadMobileStyleRadius,
+      borderWidths: threadMobileBorderWidths,
+      platform: "android",
+    })).toEqual({
+      compactToolExecution: createChatRuntimeToolExecutionCompactMobileStyleSlots({
+        renderState: threadChromeStyle.compactToolExecution,
+        radius: threadMobileStyleRadius,
+        platform: "android",
+      }),
+      toolExecutionDetail: createChatRuntimeToolExecutionDetailMobileStyleSlots({
+        renderState: threadChromeStyle.toolExecutionDetail,
+        spacing: threadMobileStyleSpacing,
+        radius: threadMobileStyleRadius,
+        platform: "android",
+      }),
+      toolActivityGroup: createChatRuntimeToolActivityGroupMobileStyleSlots({
+        renderState: threadChromeStyle.toolActivityGroup,
+        spacing: threadMobileStyleSpacing,
+        radius: threadMobileStyleRadius,
+        platform: "android",
+      }),
+      toolApproval: createChatRuntimeToolApprovalMobileStyleSlots({
+        renderState: threadChromeStyle.toolApproval,
+        spacing: threadMobileStyleSpacing,
+        radius: threadMobileStyleRadius,
+        platform: "android",
+      }),
+      message: createChatRuntimeMessageMobileStyleSlots({
+        renderState: threadChromeStyle.messageThread.message,
+        spacing: threadMobileStyleSpacing,
+        radius: threadMobileStyleRadius,
+        borderWidths: threadMobileBorderWidths,
+      }),
+      action: createChatRuntimeMessageActionMobileStyleSlots({
+        renderState: threadChromeStyle.messageThread.action,
+        spacing: threadMobileStyleSpacing,
+      }),
+      turnDuration: createChatRuntimeTurnDurationMessageMobileStyleSlotVariants({
+        renderState: threadChromeStyle.messageThread.turnDuration,
+        platform: "android",
+      }),
+    })
     const compactToolPreviewColors = {
       ...messageThreadStyleColors,
       destructive: "#dc2626",

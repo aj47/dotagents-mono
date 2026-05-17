@@ -24,15 +24,9 @@ import {
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderMobileStyleSlots,
   createChatRuntimeHeaderStyleSlotsFromStyleSource,
-  createChatRuntimeMessageActionMobileStyleSlots,
-  createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatRuntimeToolActivityGroupMobileStyleSlots,
-  createChatRuntimeToolApprovalMobileStyleSlots,
-  createChatRuntimeToolExecutionCompactMobileStyleSlots,
-  createChatRuntimeToolExecutionDetailMobileStyleSlots,
-  createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
+  createChatRuntimeThreadMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
@@ -79,12 +73,14 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     platform: mobilePlatform,
   });
   const threadChromeStyleState = chatChromeStyleState.thread;
-  const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
-  const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots({
-    renderState: compactToolExecutionStyleState,
+  const threadMobileStyleSlots = createChatRuntimeThreadMobileStyleSlots({
+    renderState: threadChromeStyleState,
+    spacing,
     radius,
+    borderWidths: theme,
     platform: mobilePlatform,
   });
+  const compactToolExecutionStyleSlots = threadMobileStyleSlots.compactToolExecution;
   const conversationChromeStyleState = chatChromeStyleState.conversation;
   const conversationMobileStyleSlots = createChatRuntimeConversationMobileStyleSlots({
     renderState: conversationChromeStyleState,
@@ -132,46 +128,14 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const headerActionButton = chatChromeStyleState.headerActionButton;
   const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
-  const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;
-  const toolExecutionDetailStyleSlots = createChatRuntimeToolExecutionDetailMobileStyleSlots({
-    renderState: toolExecutionDetailStyleState,
-    spacing,
-    radius,
-    platform: mobilePlatform,
-  });
-  const toolActivityGroupStyleState = threadChromeStyleState.toolActivityGroup;
-  const toolActivityGroupStyleSlots = createChatRuntimeToolActivityGroupMobileStyleSlots({
-    renderState: toolActivityGroupStyleState,
-    spacing,
-    radius,
-    platform: mobilePlatform,
-  });
-  const toolApprovalStyleState = threadChromeStyleState.toolApproval;
-  const toolApprovalStyleSlots = createChatRuntimeToolApprovalMobileStyleSlots({
-    renderState: toolApprovalStyleState,
-    spacing,
-    radius,
-    platform: mobilePlatform,
-  });
-  const mobileMessageThreadStyleState = threadChromeStyleState.messageThread;
-  const mobileMessageStyleState = mobileMessageThreadStyleState.message;
-  const mobileMessageStyleSlots = createChatRuntimeMessageMobileStyleSlots({
-    renderState: mobileMessageStyleState,
-    spacing,
-    radius,
-    borderWidths: theme,
-  });
-  const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
-  const mobileMessageActionStyleSlots = createChatRuntimeMessageActionMobileStyleSlots({
-    renderState: mobileMessageActionStyleState,
-    spacing,
-  });
+  const toolExecutionDetailStyleSlots = threadMobileStyleSlots.toolExecutionDetail;
+  const toolActivityGroupStyleSlots = threadMobileStyleSlots.toolActivityGroup;
+  const toolApprovalStyleSlots = threadMobileStyleSlots.toolApproval;
+  const mobileMessageStyleSlots = threadMobileStyleSlots.message;
+  const mobileMessageActionStyleSlots = threadMobileStyleSlots.action;
   const mobileMessageActionButtonStyleSlots = mobileMessageActionStyleSlots.buttons;
   const mobileMessageActiveActionButtonStyleSlots = mobileMessageActionStyleSlots.activeButtons;
-  const mobileMessageTurnDurationStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlotVariants({
-    renderState: mobileMessageThreadStyleState.turnDuration,
-    platform: mobilePlatform,
-  });
+  const mobileMessageTurnDurationStyleSlots = threadMobileStyleSlots.turnDuration;
   return StyleSheet.create({
     keyboardAvoidingContainer: {
       ...conversationMobileStyleSlots.viewport.keyboardAvoidingContainer,

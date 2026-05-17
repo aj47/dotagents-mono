@@ -1247,6 +1247,34 @@ export interface ChatRuntimeThreadChromeMobileStyleRenderState {
   messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
 }
 
+export interface ChatRuntimeThreadMobileStyleSlotsInput {
+  renderState: ChatRuntimeThreadChromeMobileStyleRenderState
+  spacing:
+    & ChatRuntimeToolExecutionDetailMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeToolActivityGroupMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeToolApprovalMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeMessageMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeMessageActionMobileStyleSlotsInput["spacing"]
+  radius:
+    & ChatRuntimeToolExecutionCompactMobileStyleSlotsInput["radius"]
+    & ChatRuntimeToolExecutionDetailMobileStyleSlotsInput["radius"]
+    & ChatRuntimeToolActivityGroupMobileStyleSlotsInput["radius"]
+    & ChatRuntimeToolApprovalMobileStyleSlotsInput["radius"]
+    & ChatRuntimeMessageMobileStyleSlotsInput["radius"]
+  borderWidths: ChatRuntimeMessageMobileStyleSlotsInput["borderWidths"]
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeThreadMobileStyleSlots {
+  compactToolExecution: ChatRuntimeToolExecutionCompactMobileStyleSlots
+  toolExecutionDetail: ReturnType<typeof createChatRuntimeToolExecutionDetailMobileStyleSlots>
+  toolActivityGroup: ChatRuntimeToolActivityGroupMobileStyleSlots
+  toolApproval: ChatRuntimeToolApprovalMobileStyleSlots
+  message: ReturnType<typeof createChatRuntimeMessageMobileStyleSlots>
+  action: ChatRuntimeMessageActionMobileStyleSlots
+  turnDuration: ChatRuntimeTurnDurationMessageMobileStyleSlotVariants
+}
+
 type ChatRuntimeToolExecutionCompactMobileSurface = ToolExecutionCompactMobileStyleRenderState["surface"]
 
 export type ChatRuntimeToolExecutionCompactMobileRadiusToken =
@@ -18026,6 +18054,54 @@ export function createChatRuntimeMessageMobileStyleSlots({
       fontSize: collapsedPreview.fontSize,
       lineHeight: collapsedPreview.lineHeight,
     },
+  }
+}
+
+export function createChatRuntimeThreadMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  borderWidths,
+  platform,
+}: ChatRuntimeThreadMobileStyleSlotsInput): ChatRuntimeThreadMobileStyleSlots {
+  return {
+    compactToolExecution: createChatRuntimeToolExecutionCompactMobileStyleSlots({
+      renderState: renderState.compactToolExecution,
+      radius,
+      platform,
+    }),
+    toolExecutionDetail: createChatRuntimeToolExecutionDetailMobileStyleSlots({
+      renderState: renderState.toolExecutionDetail,
+      spacing,
+      radius,
+      platform,
+    }),
+    toolActivityGroup: createChatRuntimeToolActivityGroupMobileStyleSlots({
+      renderState: renderState.toolActivityGroup,
+      spacing,
+      radius,
+      platform,
+    }),
+    toolApproval: createChatRuntimeToolApprovalMobileStyleSlots({
+      renderState: renderState.toolApproval,
+      spacing,
+      radius,
+      platform,
+    }),
+    message: createChatRuntimeMessageMobileStyleSlots({
+      renderState: renderState.messageThread.message,
+      spacing,
+      radius,
+      borderWidths,
+    }),
+    action: createChatRuntimeMessageActionMobileStyleSlots({
+      renderState: renderState.messageThread.action,
+      spacing,
+    }),
+    turnDuration: createChatRuntimeTurnDurationMessageMobileStyleSlotVariants({
+      renderState: renderState.messageThread.turnDuration,
+      platform,
+    }),
   }
 }
 
