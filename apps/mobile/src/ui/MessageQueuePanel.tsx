@@ -304,9 +304,7 @@ export function MessageQueuePanel({
     return (
       <View style={panelChromeParts.compactContainer.style}>
         <Ionicons
-          name={panelChromeParts.compactStatusIcon.name}
-          size={panelChromeParts.compactStatusIcon.size}
-          color={panelChromeParts.compactStatusIcon.color}
+          {...panelChromeParts.compactStatusIcon.props}
         />
         <Text style={panelChromeParts.compactLabel.style}>
           {panelChromeParts.compactLabel.text}
@@ -338,9 +336,7 @@ export function MessageQueuePanel({
       <View style={panelChromeParts.headerContainer.style}>
         <View style={panelChromeParts.headerLeft.style}>
           <Ionicons
-            name={panelChromeParts.headerStatusIcon.name}
-            size={panelChromeParts.headerStatusIcon.size}
-            color={panelChromeParts.headerStatusIcon.color}
+            {...panelChromeParts.headerStatusIcon.props}
           />
           <Text style={panelChromeParts.headerTitle.style}>
             {panelChromeParts.headerTitle.text}

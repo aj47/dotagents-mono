@@ -1155,9 +1155,11 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     style: TStyles['compactContainer'];
   };
   compactStatusIcon: {
-    name: MessageQueuePanelStatusIconName;
-    size: MessageQueuePanelMobilePanelSurface['compactIconSize'];
-    color: string;
+    props: {
+      name: MessageQueuePanelStatusIconName;
+      size: MessageQueuePanelMobilePanelSurface['compactIconSize'];
+      color: string;
+    };
   };
   compactLabel: {
     style: TStyles['compactText'];
@@ -1173,9 +1175,11 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     style: TStyles['headerActions'];
   };
   headerStatusIcon: {
-    name: MessageQueuePanelStatusIconName;
-    size: MessageQueuePanelMobilePanelSurface['headerIconSize'];
-    color: string;
+    props: {
+      name: MessageQueuePanelStatusIconName;
+      size: MessageQueuePanelMobilePanelSurface['headerIconSize'];
+      color: string;
+    };
   };
   headerTitle: {
     style: TStyles['headerTitle'];
@@ -1749,9 +1753,11 @@ export function createMessageQueuePanelChromeMobilePropsParts<
       style: styles.compactContainer,
     },
     compactStatusIcon: {
-      name: panel.statusIconName,
-      size: surface.compactIconSize,
-      color: statusColors.color,
+      props: {
+        name: panel.statusIconName,
+        size: surface.compactIconSize,
+        color: statusColors.color,
+      },
     },
     compactLabel: {
       style: styles.compactText,
@@ -1767,9 +1773,11 @@ export function createMessageQueuePanelChromeMobilePropsParts<
       style: styles.headerActions,
     },
     headerStatusIcon: {
-      name: panel.statusIconName,
-      size: surface.headerIconSize,
-      color: statusColors.color,
+      props: {
+        name: panel.statusIconName,
+        size: surface.headerIconSize,
+        color: statusColors.color,
+      },
     },
     headerTitle: {
       style: styles.headerTitle,

@@ -853,9 +853,11 @@ describe('message-queue-utils', () => {
         style: 'compactContainer',
       },
       compactStatusIcon: {
-        name: 'pause-circle-outline',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactIconSize,
-        color: '#f59e0b',
+        props: {
+          name: 'pause-circle-outline',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactIconSize,
+          color: '#f59e0b',
+        },
       },
       compactLabel: {
         style: 'compactText',
@@ -871,9 +873,11 @@ describe('message-queue-utils', () => {
         style: 'headerActions',
       },
       headerStatusIcon: {
-        name: 'pause-circle-outline',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerIconSize,
-        color: '#f59e0b',
+        props: {
+          name: 'pause-circle-outline',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerIconSize,
+          color: '#f59e0b',
+        },
       },
       headerTitle: {
         style: 'headerTitle',
