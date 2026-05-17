@@ -5412,43 +5412,69 @@ export interface ChatComposerRuntimeDockMobilePropsParts<
   TMicButtonStyles = unknown,
   TInputDockStyles = unknown,
 > {
-  speechPreview: TSpeechPreview & {
-    styles: TSpeechPreviewStyles
+  speechPreview: {
+    props: TSpeechPreview & {
+      styles: TSpeechPreviewStyles
+    }
   }
-  pendingImagesRail: TPendingImagesRail & {
-    styles: TPendingImagesRailStyles
+  pendingImagesRail: {
+    props: TPendingImagesRail & {
+      styles: TPendingImagesRailStyles
+    }
   }
-  handsFreeStatus: THandsFreeControls["status"]
-  handsFreeControls: Omit<THandsFreeControls, "status"> & {
-    styles: THandsFreeControlsStyles
+  handsFreeControls: {
+    props: Omit<THandsFreeControls, "status"> & {
+      styles: THandsFreeControlsStyles
+    }
+    content: {
+      status: {
+        props: THandsFreeControls["status"]
+      }
+    }
   }
-  imageAttachmentControl: TImageAttachmentControl & {
-    style: TAccessoryButtonStyle
-    activeStyle: TAccessoryButtonActiveStyle | undefined
+  imageAttachmentControl: {
+    props: TImageAttachmentControl & {
+      style: TAccessoryButtonStyle
+      activeStyle: TAccessoryButtonActiveStyle | undefined
+    }
   }
-  textToSpeechControl: TTextToSpeechControl & {
-    style: TAccessoryButtonStyle
-    activeStyle: TAccessoryButtonActiveStyle | undefined
+  textToSpeechControl: {
+    props: TTextToSpeechControl & {
+      style: TAccessoryButtonStyle
+      activeStyle: TAccessoryButtonActiveStyle | undefined
+    }
   }
-  editBeforeSendControl: TEditBeforeSendControl & {
-    style: TAccessoryButtonStyle
-    activeStyle: TAccessoryButtonActiveStyle | undefined
+  editBeforeSendControl: {
+    props: TEditBeforeSendControl & {
+      style: TAccessoryButtonStyle
+      activeStyle: TAccessoryButtonActiveStyle | undefined
+    }
   }
-  textEntry: TTextEntry & {
-    styles: TTextEntryStyles
+  textEntry: {
+    props: TTextEntry & {
+      styles: TTextEntryStyles
+    }
   }
-  queueAction: TQueueAction & {
-    styles: TQueueActionStyles
+  queueAction: {
+    props: TQueueAction & {
+      styles: TQueueActionStyles
+    }
   }
-  submitAction: TSubmitAction & {
-    styles: TSubmitActionStyles
+  submitAction: {
+    props: TSubmitAction & {
+      styles: TSubmitActionStyles
+    }
   }
-  micButton: TMicButton & {
-    styles: TMicButtonStyles
+  micButton: {
+    props: TMicButton & {
+      styles: TMicButtonStyles
+    }
   }
   inputDock: {
-    micWrapperRef: TMicWrapperRef | undefined
-    styles: TInputDockStyles
+    props: {
+      micWrapperRef: TMicWrapperRef | undefined
+      styles: TInputDockStyles
+    }
   }
 }
 
@@ -22760,52 +22786,78 @@ export function createChatComposerRuntimeDockMobilePropsParts<
 
   return {
     speechPreview: {
-      ...speechPreview,
-      styles: styles.speechPreview,
+      props: {
+        ...speechPreview,
+        styles: styles.speechPreview,
+      },
     },
     pendingImagesRail: {
-      ...pendingImagesRail,
-      styles: styles.pendingImagesRail,
+      props: {
+        ...pendingImagesRail,
+        styles: styles.pendingImagesRail,
+      },
     },
-    handsFreeStatus,
     handsFreeControls: {
-      ...handsFreeControlProps,
-      styles: styles.handsFreeControls,
+      props: {
+        ...handsFreeControlProps,
+        styles: styles.handsFreeControls,
+      },
+      content: {
+        status: {
+          props: handsFreeStatus,
+        },
+      },
     },
     imageAttachmentControl: {
-      ...imageAttachmentControl,
-      style: styles.accessoryButton.style,
-      activeStyle: styles.accessoryButton.activeStyle,
+      props: {
+        ...imageAttachmentControl,
+        style: styles.accessoryButton.style,
+        activeStyle: styles.accessoryButton.activeStyle,
+      },
     },
     textToSpeechControl: {
-      ...textToSpeechControl,
-      style: styles.accessoryButton.style,
-      activeStyle: styles.accessoryButton.activeStyle,
+      props: {
+        ...textToSpeechControl,
+        style: styles.accessoryButton.style,
+        activeStyle: styles.accessoryButton.activeStyle,
+      },
     },
     editBeforeSendControl: {
-      ...editBeforeSendControl,
-      style: styles.accessoryButton.style,
-      activeStyle: styles.accessoryButton.activeStyle,
+      props: {
+        ...editBeforeSendControl,
+        style: styles.accessoryButton.style,
+        activeStyle: styles.accessoryButton.activeStyle,
+      },
     },
     textEntry: {
-      ...textEntry,
-      styles: styles.textEntry,
+      props: {
+        ...textEntry,
+        styles: styles.textEntry,
+      },
     },
     queueAction: {
-      ...queueAction,
-      styles: styles.queueAction,
+      props: {
+        ...queueAction,
+        styles: styles.queueAction,
+      },
     },
     submitAction: {
-      ...submitAction,
-      styles: styles.submitAction,
+      props: {
+        ...submitAction,
+        styles: styles.submitAction,
+      },
     },
     micButton: {
-      ...micButton,
-      styles: styles.micButton,
+      props: {
+        ...micButton,
+        styles: styles.micButton,
+      },
     },
     inputDock: {
-      micWrapperRef,
-      styles: styles.inputDock,
+      props: {
+        micWrapperRef,
+        styles: styles.inputDock,
+      },
     },
   }
 }

@@ -10804,56 +10804,56 @@ export function ChatComposerRuntimeDock({
     <ChatComposerInputDock
       speechPreview={(
         <ChatComposerSpeechPreview
-          {...composerDockParts.speechPreview}
+          {...composerDockParts.speechPreview.props}
         />
       )}
       pendingImagesRail={(
         <ChatComposerPendingImagesRail
-          {...composerDockParts.pendingImagesRail}
+          {...composerDockParts.pendingImagesRail.props}
         />
       )}
       handsFreeControls={(
         <ChatComposerHandsFreeControls
-          {...composerDockParts.handsFreeControls}
-          status={<HandsFreeStatusChip {...composerDockParts.handsFreeStatus} />}
+          {...composerDockParts.handsFreeControls.props}
+          status={<HandsFreeStatusChip {...composerDockParts.handsFreeControls.content.status.props} />}
         />
       )}
       imageAttachmentControl={(
         <ChatComposerIconButton
-          {...composerDockParts.imageAttachmentControl}
+          {...composerDockParts.imageAttachmentControl.props}
         />
       )}
       textToSpeechControl={(
         <ChatComposerIconButton
-          {...composerDockParts.textToSpeechControl}
+          {...composerDockParts.textToSpeechControl.props}
         />
       )}
       editBeforeSendControl={(
         <ChatComposerIconButton
-          {...composerDockParts.editBeforeSendControl}
+          {...composerDockParts.editBeforeSendControl.props}
         />
       )}
       textEntry={(
         <ChatComposerTextEntry
-          {...composerDockParts.textEntry}
+          {...composerDockParts.textEntry.props}
         />
       )}
       queueAction={(
         <ChatComposerLabeledActionButton
-          {...composerDockParts.queueAction}
+          {...composerDockParts.queueAction.props}
         />
       )}
       submitAction={(
         <ChatComposerLabeledActionButton
-          {...composerDockParts.submitAction}
+          {...composerDockParts.submitAction.props}
         />
       )}
       micButton={(
         <ChatComposerMicButton
-          {...composerDockParts.micButton}
+          {...composerDockParts.micButton.props}
         />
       )}
-      {...composerDockParts.inputDock}
+      {...composerDockParts.inputDock.props}
     />
   );
 }

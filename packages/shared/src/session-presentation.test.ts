@@ -9864,55 +9864,81 @@ describe("session presentation semantics", () => {
     })
     expect(composerDockParts).toEqual({
       speechPreview: {
-        text: "voice draft",
-        styles: "speech-preview-styles",
+        props: {
+          text: "voice draft",
+          styles: "speech-preview-styles",
+        },
       },
       pendingImagesRail: {
-        images: ["image-1"],
-        styles: "pending-images-styles",
-      },
-      handsFreeStatus: {
-        phase: "listening",
-        label: "Listening",
+        props: {
+          images: ["image-1"],
+          styles: "pending-images-styles",
+        },
       },
       handsFreeControls: {
-        controlState: "hands-free-controls",
-        styles: "hands-free-control-styles",
+        props: {
+          controlState: "hands-free-controls",
+          styles: "hands-free-control-styles",
+        },
+        content: {
+          status: {
+            props: {
+              phase: "listening",
+              label: "Listening",
+            },
+          },
+        },
       },
       imageAttachmentControl: {
-        renderState: "image-attachment-state",
-        style: "accessory-style",
-        activeStyle: "accessory-active-style",
+        props: {
+          renderState: "image-attachment-state",
+          style: "accessory-style",
+          activeStyle: "accessory-active-style",
+        },
       },
       textToSpeechControl: {
-        renderState: "tts-state",
-        style: "accessory-style",
-        activeStyle: "accessory-active-style",
+        props: {
+          renderState: "tts-state",
+          style: "accessory-style",
+          activeStyle: "accessory-active-style",
+        },
       },
       editBeforeSendControl: {
-        renderState: "edit-state",
-        style: "accessory-style",
-        activeStyle: "accessory-active-style",
+        props: {
+          renderState: "edit-state",
+          style: "accessory-style",
+          activeStyle: "accessory-active-style",
+        },
       },
       textEntry: {
-        value: "hello",
-        styles: "text-entry-styles",
+        props: {
+          value: "hello",
+          styles: "text-entry-styles",
+        },
       },
       queueAction: {
-        renderState: "queue-state",
-        styles: "queue-action-styles",
+        props: {
+          renderState: "queue-state",
+          styles: "queue-action-styles",
+        },
       },
       submitAction: {
-        renderState: "submit-state",
-        styles: "submit-action-styles",
+        props: {
+          renderState: "submit-state",
+          styles: "submit-action-styles",
+        },
       },
       micButton: {
-        renderState: "mic-state",
-        styles: "mic-button-styles",
+        props: {
+          renderState: "mic-state",
+          styles: "mic-button-styles",
+        },
       },
       inputDock: {
-        micWrapperRef: "mic-wrapper",
-        styles: "input-dock-styles",
+        props: {
+          micWrapperRef: "mic-wrapper",
+          styles: "input-dock-styles",
+        },
       },
     })
     expect(createChatComposerInputDockMobilePropsParts({
