@@ -6396,39 +6396,43 @@ describe("session presentation semantics", () => {
         props: {
           style: "container-style",
         },
-      },
-      summary: {
-        text: "Showing latest 40 of 100 messages",
-        props: {
-          style: "summary-style",
-        },
-      },
-      loadButton: {
-        props: {
-          onPress: "load-earlier",
-          accessibilityRole: "button",
-          accessibilityLabel: "Load 30 earlier messages",
-        },
-      },
-      icon: {
-        props: {
-          name: "chevron-up",
-          size: 13,
-          color: "#0f172a",
-        },
-      },
-      loadButtonLabel: {
-        text: "Load earlier",
-        props: {
-          style: "load-button-text-style",
+        content: {
+          summary: {
+            text: "Showing latest 40 of 100 messages",
+            props: {
+              style: "summary-style",
+            },
+          },
+          loadButton: {
+            props: {
+              onPress: "load-earlier",
+              accessibilityRole: "button",
+              accessibilityLabel: "Load 30 earlier messages",
+            },
+            content: {
+              icon: {
+                props: {
+                  name: "chevron-up",
+                  size: 13,
+                  color: "#0f172a",
+                },
+              },
+              label: {
+                text: "Load earlier",
+                props: {
+                  style: "load-button-text-style",
+                },
+              },
+            },
+          },
         },
       },
     })
-    expect(historyBannerParts.loadButton.props.style({ pressed: false })).toEqual([
+    expect(historyBannerParts.container.content.loadButton.props.style({ pressed: false })).toEqual([
       "load-button-style",
       false,
     ])
-    expect(historyBannerParts.loadButton.props.style({ pressed: true })).toEqual([
+    expect(historyBannerParts.container.content.loadButton.props.style({ pressed: true })).toEqual([
       "load-button-style",
       "load-button-pressed-style",
     ])

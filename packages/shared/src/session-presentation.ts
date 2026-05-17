@@ -7391,28 +7391,32 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
     props: {
       style: TStyles["container"]
     }
-  }
-  summary: {
-    text: string
-    props: {
-      style: TStyles["summary"]
-    }
-  }
-  loadButton: {
-    props: {
-      onPress: TOnLoadEarlier | undefined
-      accessibilityRole: TRenderState["loadButton"]["accessibilityRole"]
-      accessibilityLabel: string
-      style: (state: { pressed: boolean }) => Array<TStyles["loadButton"] | TStyles["loadButtonPressed"] | false>
-    }
-  }
-  icon: {
-    props: TRenderState["loadButton"]["icon"]
-  }
-  loadButtonLabel: {
-    text: string
-    props: {
-      style: TStyles["loadButtonText"]
+    content: {
+      summary: {
+        text: string
+        props: {
+          style: TStyles["summary"]
+        }
+      }
+      loadButton: {
+        props: {
+          onPress: TOnLoadEarlier | undefined
+          accessibilityRole: TRenderState["loadButton"]["accessibilityRole"]
+          accessibilityLabel: string
+          style: (state: { pressed: boolean }) => Array<TStyles["loadButton"] | TStyles["loadButtonPressed"] | false>
+        }
+        content: {
+          icon: {
+            props: TRenderState["loadButton"]["icon"]
+          }
+          label: {
+            text: string
+            props: {
+              style: TStyles["loadButtonText"]
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -25024,31 +25028,35 @@ export function createChatRuntimeMessageHistoryBannerMobilePropsParts<
       props: {
         style: styles.container,
       },
-    },
-    summary: {
-      text: renderState.summaryLabel,
-      props: {
-        style: styles.summary,
-      },
-    },
-    loadButton: {
-      props: {
-        onPress: onLoadEarlier,
-        accessibilityRole: renderState.loadButton.accessibilityRole,
-        accessibilityLabel: renderState.loadButton.accessibilityLabel,
-        style: ({ pressed }) => [
-          styles.loadButton,
-          pressed && styles.loadButtonPressed,
-        ],
-      },
-    },
-    icon: {
-      props: renderState.loadButton.icon,
-    },
-    loadButtonLabel: {
-      text: renderState.loadButton.label,
-      props: {
-        style: styles.loadButtonText,
+      content: {
+        summary: {
+          text: renderState.summaryLabel,
+          props: {
+            style: styles.summary,
+          },
+        },
+        loadButton: {
+          props: {
+            onPress: onLoadEarlier,
+            accessibilityRole: renderState.loadButton.accessibilityRole,
+            accessibilityLabel: renderState.loadButton.accessibilityLabel,
+            style: ({ pressed }) => [
+              styles.loadButton,
+              pressed && styles.loadButtonPressed,
+            ],
+          },
+          content: {
+            icon: {
+              props: renderState.loadButton.icon,
+            },
+            label: {
+              text: renderState.loadButton.label,
+              props: {
+                style: styles.loadButtonText,
+              },
+            },
+          },
+        },
       },
     },
   }

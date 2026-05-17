@@ -10367,19 +10367,22 @@ export function ChatMessageHistoryBanner({
 
   if (!historyBannerParts.shouldRenderBanner) return null;
 
+  const historyBannerContent = historyBannerParts.container.content;
+  const historyBannerLoadButtonContent = historyBannerContent.loadButton.content;
+
   return (
     <View {...historyBannerParts.container.props}>
-      <Text {...historyBannerParts.summary.props}>
-        {historyBannerParts.summary.text}
+      <Text {...historyBannerContent.summary.props}>
+        {historyBannerContent.summary.text}
       </Text>
       <Pressable
-        {...historyBannerParts.loadButton.props}
+        {...historyBannerContent.loadButton.props}
       >
         <Ionicons
-          {...historyBannerParts.icon.props}
+          {...historyBannerLoadButtonContent.icon.props}
         />
-        <Text {...historyBannerParts.loadButtonLabel.props}>
-          {historyBannerParts.loadButtonLabel.text}
+        <Text {...historyBannerLoadButtonContent.label.props}>
+          {historyBannerLoadButtonContent.label.text}
         </Text>
       </Pressable>
     </View>

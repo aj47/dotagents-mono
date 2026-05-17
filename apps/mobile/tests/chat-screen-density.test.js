@@ -4779,13 +4779,18 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.shouldRenderBanner\) return null;/);
-  assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.historyBannerParts\.container\.props\}>/);
-  assert.match(chatMessageChromeSource, /\{historyBannerParts\.summary\.text\}/);
-  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.historyBannerParts\.summary\.props\}>/);
-  assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.historyBannerParts\.loadButton\.props\}/);
-  assert.match(chatMessageChromeSource, /<Ionicons\s+\{\.\.\.historyBannerParts\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /\{historyBannerParts\.loadButtonLabel\.text\}/);
-  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.historyBannerParts\.loadButtonLabel\.props\}>/);
+  const historyBannerSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBanner[\s\S]*?export function ChatMessageStepSummaryCard/)?.[0] ?? '';
+  assert.match(historyBannerSource, /const historyBannerContent = historyBannerParts\.container\.content;/);
+  assert.match(historyBannerSource, /const historyBannerLoadButtonContent = historyBannerContent\.loadButton\.content;/);
+  assert.match(historyBannerSource, /<View\s+\{\.\.\.historyBannerParts\.container\.props\}>/);
+  assert.match(historyBannerSource, /\{historyBannerContent\.summary\.text\}/);
+  assert.match(historyBannerSource, /<Text\s+\{\.\.\.historyBannerContent\.summary\.props\}>/);
+  assert.match(historyBannerSource, /<Pressable\s+\{\.\.\.historyBannerContent\.loadButton\.props\}/);
+  assert.match(historyBannerSource, /<Ionicons\s+\{\.\.\.historyBannerLoadButtonContent\.icon\.props\}/);
+  assert.match(historyBannerSource, /\{historyBannerLoadButtonContent\.label\.text\}/);
+  assert.match(historyBannerSource, /<Text\s+\{\.\.\.historyBannerLoadButtonContent\.label\.props\}>/);
+  assert.doesNotMatch(historyBannerSource, /historyBannerParts\.(summary|loadButton|icon|loadButtonLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.loadButton\.(onPress|accessibilityRole|accessibilityLabel|style|pressedStyle)/);
   assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.icon\.(name|size|color)/);
   assert.match(sessionPresentationSource, /shouldRenderBanner: renderState\.shouldRender/);
