@@ -1260,10 +1260,16 @@ type ChatRuntimeHeaderAgentSelectorTouchableProps =
     children: ReactNode;
   };
 
+type ChatRuntimeHeaderAgentSelectorTouchableContentProps =
+  ChatRuntimeHeaderAgentSelectorParts['touchable']['content'];
+
 type ChatRuntimeHeaderAgentSelectorChipProps =
   ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['props'] & {
     children: ReactNode;
   };
+
+type ChatRuntimeHeaderAgentSelectorChipContentProps =
+  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content'];
 
 type ChatRuntimeHeaderAgentSelectorLabelProps =
   ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content']['label']['props'];
@@ -8454,24 +8460,44 @@ export function ChatRuntimeHeaderAgentSelector({
     styles,
   });
 
-  const touchableContent = agentSelectorParts.touchable.content;
-  const chipContent = touchableContent.chip.content;
-
   return (
     <ChatRuntimeHeaderAgentSelectorTouchable
       {...agentSelectorParts.touchable.props}
     >
-      <ChatRuntimeHeaderAgentSelectorChip
-        {...touchableContent.chip.props}
-      >
-        <ChatRuntimeHeaderAgentSelectorLabel
-          {...chipContent.label.props}
-        />
-        <ChatRuntimeHeaderAgentSelectorIcon
-          {...chipContent.icon.props}
-        />
-      </ChatRuntimeHeaderAgentSelectorChip>
+      <ChatRuntimeHeaderAgentSelectorTouchableContent
+        {...agentSelectorParts.touchable.content}
+      />
     </ChatRuntimeHeaderAgentSelectorTouchable>
+  );
+}
+
+export function ChatRuntimeHeaderAgentSelectorTouchableContent({
+  chip,
+}: ChatRuntimeHeaderAgentSelectorTouchableContentProps) {
+  return (
+    <ChatRuntimeHeaderAgentSelectorChip
+      {...chip.props}
+    >
+      <ChatRuntimeHeaderAgentSelectorChipContent
+        {...chip.content}
+      />
+    </ChatRuntimeHeaderAgentSelectorChip>
+  );
+}
+
+export function ChatRuntimeHeaderAgentSelectorChipContent({
+  label,
+  icon,
+}: ChatRuntimeHeaderAgentSelectorChipContentProps) {
+  return (
+    <>
+      <ChatRuntimeHeaderAgentSelectorLabel
+        {...label.props}
+      />
+      <ChatRuntimeHeaderAgentSelectorIcon
+        {...icon.props}
+      />
+    </>
   );
 }
 
