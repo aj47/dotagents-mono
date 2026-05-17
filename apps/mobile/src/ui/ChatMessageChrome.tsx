@@ -99,6 +99,7 @@ import {
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
+  createChatRuntimeDebugPanelStackMobilePropsParts,
   createChatRuntimeConversationFrameMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
@@ -9148,19 +9149,22 @@ export function ChatMessageDebugPanelStack({
   panelStyle,
   textStyle,
 }: ChatMessageDebugPanelStackProps) {
+  const debugPanelStackParts = createChatRuntimeDebugPanelStackMobilePropsParts({
+    requestShouldRender,
+    requestRows,
+    voiceShouldRender,
+    voiceRows,
+    panelStyle,
+    textStyle,
+  });
+
   return (
     <>
       <ChatMessageDebugPanel
-        shouldRender={requestShouldRender}
-        rows={requestRows}
-        panelStyle={panelStyle}
-        textStyle={textStyle}
+        {...debugPanelStackParts.requestPanel}
       />
       <ChatMessageDebugPanel
-        shouldRender={voiceShouldRender}
-        rows={voiceRows}
-        panelStyle={panelStyle}
-        textStyle={textStyle}
+        {...debugPanelStackParts.voicePanel}
       />
     </>
   );

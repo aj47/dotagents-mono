@@ -147,6 +147,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
+  createChatRuntimeDebugPanelStackMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
@@ -8369,6 +8370,27 @@ describe("session presentation semantics", () => {
       debugPanels: {
         requestRows: ["request-row"],
         voiceRows: ["voice-row"],
+        panelStyle: "debug-panel-style",
+        textStyle: "debug-text-style",
+      },
+    })
+    expect(createChatRuntimeDebugPanelStackMobilePropsParts({
+      requestShouldRender: true,
+      requestRows: ["request-row"],
+      voiceShouldRender: false,
+      voiceRows: ["voice-row"],
+      panelStyle: "debug-panel-style",
+      textStyle: "debug-text-style",
+    })).toEqual({
+      requestPanel: {
+        shouldRender: true,
+        rows: ["request-row"],
+        panelStyle: "debug-panel-style",
+        textStyle: "debug-text-style",
+      },
+      voicePanel: {
+        shouldRender: false,
+        rows: ["voice-row"],
         panelStyle: "debug-panel-style",
         textStyle: "debug-text-style",
       },

@@ -6182,8 +6182,15 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(sessionPresentationSource, /debugPanelStyles: \{\s+panelStyle: styles\.debugInfo,\s+textStyle: styles\.debugText,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDebugPanel/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDebugPanelStack/);
-  assert.match(chatMessageChromeSource, /<ChatMessageDebugPanel\s+shouldRender=\{requestShouldRender\}\s+rows=\{requestRows\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageDebugPanel\s+shouldRender=\{voiceShouldRender\}\s+rows=\{voiceRows\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeDebugPanelStackMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeDebugPanelStackMobilePropsParts/);
+  const debugPanelStackSource =
+    chatMessageChromeSource.match(/export function ChatMessageDebugPanelStack[\s\S]*?export function ChatMessageConversationDock/)?.[0] ?? '';
+  assert.match(debugPanelStackSource, /const debugPanelStackParts = createChatRuntimeDebugPanelStackMobilePropsParts\(\{\s+requestShouldRender,\s+requestRows,\s+voiceShouldRender,\s+voiceRows,\s+panelStyle,\s+textStyle,\s+\}\);/);
+  assert.match(debugPanelStackSource, /<ChatMessageDebugPanel\s+\{\.\.\.debugPanelStackParts\.requestPanel\}/);
+  assert.match(debugPanelStackSource, /<ChatMessageDebugPanel\s+\{\.\.\.debugPanelStackParts\.voicePanel\}/);
+  assert.doesNotMatch(debugPanelStackSource, /<ChatMessageDebugPanel\s+shouldRender=\{requestShouldRender\}\s+rows=\{requestRows\}/);
+  assert.doesNotMatch(debugPanelStackSource, /<ChatMessageDebugPanel\s+shouldRender=\{voiceShouldRender\}\s+rows=\{voiceRows\}/);
   assert.match(chatMessageChromeSource, /if \(!shouldRender \|\| rows\.length === 0\) return null;/);
   assert.match(chatMessageChromeSource, /rows\.map\(\(row\) => \(/);
   assert.match(chatMessageChromeSource, /<Text key=\{row\.key\} style=\{textStyle\}>/);

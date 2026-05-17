@@ -5196,6 +5196,44 @@ export interface ChatRuntimeLoadingStateMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeDebugPanelStackMobilePropsPartsInput<
+  TRequestShouldRender = unknown,
+  TRequestRows = unknown,
+  TVoiceShouldRender = unknown,
+  TVoiceRows = unknown,
+  TPanelStyle = unknown,
+  TTextStyle = unknown,
+> {
+  requestShouldRender: TRequestShouldRender
+  requestRows: TRequestRows
+  voiceShouldRender: TVoiceShouldRender
+  voiceRows: TVoiceRows
+  panelStyle: TPanelStyle
+  textStyle: TTextStyle
+}
+
+export interface ChatRuntimeDebugPanelStackMobilePropsParts<
+  TRequestShouldRender = unknown,
+  TRequestRows = unknown,
+  TVoiceShouldRender = unknown,
+  TVoiceRows = unknown,
+  TPanelStyle = unknown,
+  TTextStyle = unknown,
+> {
+  requestPanel: {
+    shouldRender: TRequestShouldRender
+    rows: TRequestRows
+    panelStyle: TPanelStyle
+    textStyle: TTextStyle
+  }
+  voicePanel: {
+    shouldRender: TVoiceShouldRender
+    rows: TVoiceRows
+    panelStyle: TPanelStyle
+    textStyle: TTextStyle
+  }
+}
+
 export interface ChatRuntimeInlineActivityMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -20618,6 +20656,51 @@ export function createChatRuntimeLoadingStateMobilePropsParts<
       source: spinnerSource,
       style: spinnerStyle,
       resizeMode: renderState.spinnerResizeMode,
+    },
+  }
+}
+
+export function createChatRuntimeDebugPanelStackMobilePropsParts<
+  TRequestShouldRender,
+  TRequestRows,
+  TVoiceShouldRender,
+  TVoiceRows,
+  TPanelStyle,
+  TTextStyle,
+>({
+  requestShouldRender,
+  requestRows,
+  voiceShouldRender,
+  voiceRows,
+  panelStyle,
+  textStyle,
+}: ChatRuntimeDebugPanelStackMobilePropsPartsInput<
+  TRequestShouldRender,
+  TRequestRows,
+  TVoiceShouldRender,
+  TVoiceRows,
+  TPanelStyle,
+  TTextStyle
+>): ChatRuntimeDebugPanelStackMobilePropsParts<
+  TRequestShouldRender,
+  TRequestRows,
+  TVoiceShouldRender,
+  TVoiceRows,
+  TPanelStyle,
+  TTextStyle
+> {
+  return {
+    requestPanel: {
+      shouldRender: requestShouldRender,
+      rows: requestRows,
+      panelStyle,
+      textStyle,
+    },
+    voicePanel: {
+      shouldRender: voiceShouldRender,
+      rows: voiceRows,
+      panelStyle,
+      textStyle,
     },
   }
 }
