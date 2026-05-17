@@ -2771,6 +2771,13 @@ type ChatMessageToolExecutionPayloadMetaRowProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionPayloadMetaContentProps =
+  ChatMessageToolExecutionPayloadMetaParts['content'];
+
+type ChatMessageToolExecutionPayloadMetaPayloadTypeBlockProps = {
+  payloadType: ChatMessageToolExecutionPayloadMetaParts['content']['payloadType'];
+};
+
 type ChatMessageToolExecutionPayloadMetaTextProps =
   | ChatMessageToolExecutionPayloadMetaParts['content']['label']['props']
   | ChatMessageToolExecutionPayloadMetaParts['content']['payloadType']['props'];
@@ -11040,19 +11047,11 @@ export function ChatMessageToolExecutionPayloadMeta({
     renderState,
     styles,
   });
-  const payloadMetaContent = payloadMetaParts.content;
 
   const content = (
-    <>
-      <ChatMessageToolExecutionPayloadMetaText
-        {...payloadMetaContent.label.props}
-      />
-      {payloadMetaContent.payloadType.shouldRender ? (
-        <ChatMessageToolExecutionPayloadMetaText
-          {...payloadMetaContent.payloadType.props}
-        />
-      ) : null}
-    </>
+    <ChatMessageToolExecutionPayloadMetaContent
+      {...payloadMetaParts.content}
+    />
   );
 
   if (!payloadMetaParts.row.shouldRender) {
@@ -11065,6 +11064,36 @@ export function ChatMessageToolExecutionPayloadMeta({
     >
       {content}
     </ChatMessageToolExecutionPayloadMetaRow>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadMetaContent({
+  label,
+  payloadType,
+}: ChatMessageToolExecutionPayloadMetaContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionPayloadMetaText
+        {...label.props}
+      />
+      <ChatMessageToolExecutionPayloadMetaPayloadTypeBlock
+        payloadType={payloadType}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadMetaPayloadTypeBlock({
+  payloadType,
+}: ChatMessageToolExecutionPayloadMetaPayloadTypeBlockProps) {
+  if (!payloadType.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolExecutionPayloadMetaText
+      {...payloadType.props}
+    />
   );
 }
 

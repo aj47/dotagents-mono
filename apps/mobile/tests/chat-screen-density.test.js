@@ -4667,14 +4667,22 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadMeta\s+renderState=\{toolInputHeaderState\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadMeta\s+renderState=\{toolOutputHeaderState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMeta/);
+  const toolExecutionPayloadMetaSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadMeta\([\s\S]*?export function ChatMessageToolExecutionPayloadMetaContent/)?.[0] ?? '';
+  const toolExecutionPayloadMetaContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadMetaContent[\s\S]*?export function ChatMessageToolExecutionPayloadMetaPayloadTypeBlock/)?.[0] ?? '';
+  const toolExecutionPayloadMetaPayloadTypeBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadMetaPayloadTypeBlock[\s\S]*?export function ChatMessageToolExecutionPayloadMetaRow/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadMetaMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const payloadMetaParts = createChatRuntimeToolExecutionPayloadMetaMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const payloadMetaContent = payloadMetaParts\.content;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMetaText\s+\{\.\.\.payloadMetaContent\.label\.props\}/);
-  assert.match(chatMessageChromeSource, /payloadMetaContent\.payloadType\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /const payloadMetaContent = payloadMetaParts\.content;/);
+  assert.match(toolExecutionPayloadMetaSource, /<ChatMessageToolExecutionPayloadMetaContent\s+\{\.\.\.payloadMetaParts\.content\}/);
+  assert.match(toolExecutionPayloadMetaContentSource, /<ChatMessageToolExecutionPayloadMetaText\s+\{\.\.\.label\.props\}/);
+  assert.match(toolExecutionPayloadMetaContentSource, /<ChatMessageToolExecutionPayloadMetaPayloadTypeBlock\s+payloadType=\{payloadType\}/);
+  assert.match(toolExecutionPayloadMetaPayloadTypeBlockSource, /if \(!payloadType\.shouldRender\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(chatMessageChromeSource, /payloadMetaContent\.payloadType \? \(/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMetaText\s+\{\.\.\.payloadMetaContent\.payloadType\.props\}/);
+  assert.match(toolExecutionPayloadMetaPayloadTypeBlockSource, /<ChatMessageToolExecutionPayloadMetaText\s+\{\.\.\.payloadType\.props\}/);
   assert.match(chatMessageChromeSource, /if \(!payloadMetaParts\.row\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMetaRow\s+\{\.\.\.payloadMetaParts\.row\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMetaRow[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionPayloadMetaText/);
