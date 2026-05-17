@@ -9,6 +9,7 @@ const indicatorSource = fs.readFileSync(
 );
 
 test('uses shared connection status indicator presentation and labels', () => {
+  assert.match(indicatorSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.match(indicatorSource, /createConnectionStatusIndicatorMobilePropsParts/);
   assert.match(indicatorSource, /createConnectionStatusIndicatorMobileStyleSlots/);
   assert.match(indicatorSource, /getConnectionStatusIndicatorMobileRenderState/);
@@ -31,6 +32,7 @@ test('uses shared connection status indicator presentation and labels', () => {
   assert.doesNotMatch(indicatorSource, /type ConnectionStatusIndicatorMobileRenderState/);
   assert.doesNotMatch(indicatorSource, /const colorStyles = useMemo\(/);
   assert.doesNotMatch(indicatorSource, /function createStyles/);
+  assert.doesNotMatch(indicatorSource, /from '@dotagents\/shared\/connection-recovery';/);
   assert.doesNotMatch(indicatorSource, /statusColorByStatus\[state\]/);
   assert.doesNotMatch(indicatorSource, /CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION/);
   assert.doesNotMatch(indicatorSource, /case 'connected':[\s\S]*?return '#22c55e'/);

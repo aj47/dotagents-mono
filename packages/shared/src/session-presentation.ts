@@ -50,6 +50,16 @@ export type {
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 export { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
+export {
+  createConnectionStatusIndicatorMobilePropsParts,
+  createConnectionStatusIndicatorMobileStyleSlots,
+  getConnectionStatusIndicatorMobileRenderState,
+  type ConnectionStatus,
+  type ConnectionStatusIndicatorMobilePropsParts,
+  type ConnectionStatusIndicatorMobilePulseAnimationState,
+  type ConnectionStatusIndicatorMobileRenderState,
+  type ConnectionStatusIndicatorMobileStyleSlots,
+} from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
   createMarkdownContentMobileStyleSlots,

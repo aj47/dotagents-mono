@@ -6,7 +6,7 @@ import {
   createConnectionStatusIndicatorMobileStyleSlots,
   getConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
-} from '@dotagents/shared/connection-recovery';
+} from '@dotagents/shared/session-presentation';
 
 export interface ConnectionStatusIndicatorProps {
   state: ConnectionStatus;

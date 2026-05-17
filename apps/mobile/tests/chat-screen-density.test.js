@@ -2031,6 +2031,19 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(screenSource, />Retry<\/Text>/);
 });
 
+test('routes mobile connection status indicator presentation through the session facade', () => {
+  const connectionIndicatorSource = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'ui', 'ConnectionStatusIndicator.tsx'),
+    'utf8'
+  );
+
+  assert.match(connectionIndicatorSource, /from '@dotagents\/shared\/session-presentation';/);
+  assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobilePropsParts/);
+  assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /getConnectionStatusIndicatorMobileRenderState/);
+  assert.doesNotMatch(connectionIndicatorSource, /from '@dotagents\/shared\/connection-recovery';/);
+});
+
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {
   assert.doesNotMatch(screenSource, /styles\.agentSelectorRow/);
   assert.doesNotMatch(screenSource, /🤖 Agent/);
