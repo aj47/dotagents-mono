@@ -11250,21 +11250,27 @@ describe("session presentation semantics", () => {
       key: `${delegationConversationPreviewRow.timestamp}-${delegationConversationPreviewRow.role}-0`,
       props: {
         line: {
-          style: "delegation-conversation-preview-line-style",
+          props: {
+            style: "delegation-conversation-preview-line-style",
+          },
         },
         role: {
-          style: [
-            "delegation-conversation-preview-role-style",
-            delegationCardProps.conversationPreview.roleStyles.assistant,
-          ],
-          numberOfLines: delegationCardProps.surface.conversationPreviewRoleNumberOfLines,
-          ellipsizeMode: delegationCardProps.surface.conversationPreviewRoleEllipsizeMode,
+          props: {
+            style: [
+              "delegation-conversation-preview-role-style",
+              delegationCardProps.conversationPreview.roleStyles.assistant,
+            ],
+            numberOfLines: delegationCardProps.surface.conversationPreviewRoleNumberOfLines,
+            ellipsizeMode: delegationCardProps.surface.conversationPreviewRoleEllipsizeMode,
+          },
           text: delegationConversationPreviewRow.roleLabel,
         },
         content: {
-          style: "delegation-conversation-preview-content-style",
-          numberOfLines: delegationCardProps.surface.conversationPreviewContentNumberOfLines,
-          ellipsizeMode: delegationCardProps.surface.conversationPreviewContentEllipsizeMode,
+          props: {
+            style: "delegation-conversation-preview-content-style",
+            numberOfLines: delegationCardProps.surface.conversationPreviewContentNumberOfLines,
+            ellipsizeMode: delegationCardProps.surface.conversationPreviewContentEllipsizeMode,
+          },
           text: delegationConversationPreviewRow.content,
         },
       },
@@ -11274,8 +11280,10 @@ describe("session presentation semantics", () => {
       throw new Error("Expected delegation conversation preview timestamp parts")
     }
     expect(delegationConversationPreviewRowParts.props.timestamp).toMatchObject({
-      style: "delegation-conversation-preview-timestamp-style",
-      numberOfLines: delegationCardProps.surface.conversationPreviewTimestampNumberOfLines,
+      props: {
+        style: "delegation-conversation-preview-timestamp-style",
+        numberOfLines: delegationCardProps.surface.conversationPreviewTimestampNumberOfLines,
+      },
       text: delegationConversationPreviewRow.timestampLabel,
     })
     expect(delegationCardParts.conversationPreview.props.moreAction.shouldRender).toBe(true)

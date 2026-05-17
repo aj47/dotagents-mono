@@ -8768,25 +8768,20 @@ export function ChatMessageDelegationConversationPreviewRow({
   timestamp,
 }: ChatMessageDelegationConversationPreviewRowProps) {
   return (
-    <View style={line.style}>
+    <View {...line.props}>
       <Text
-        style={role.style}
-        numberOfLines={role.numberOfLines}
-        ellipsizeMode={role.ellipsizeMode}
+        {...role.props}
       >
         {role.text}
       </Text>
       <Text
-        style={content.style}
-        numberOfLines={content.numberOfLines}
-        ellipsizeMode={content.ellipsizeMode}
+        {...content.props}
       >
         {content.text}
       </Text>
       {timestamp.shouldRender ? (
         <Text
-          style={timestamp.style}
-          numberOfLines={timestamp.numberOfLines}
+          {...timestamp.props}
         >
           {timestamp.text}
         </Text>

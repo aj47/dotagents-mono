@@ -2317,30 +2317,38 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
         key: string
         props: {
           line: {
-            style: TStyles["conversationPreviewLine"]
+            props: {
+              style: TStyles["conversationPreviewLine"]
+            }
           }
           role: {
-            style: Array<
-              | TStyles["conversationPreviewRole"]
-              | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
-                keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
-              ]
-            >
-            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
-            ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
+            props: {
+              style: Array<
+                | TStyles["conversationPreviewRole"]
+                | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
+                  keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+                ]
+              >
+              numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
+              ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
+            }
             text: string
           }
           content: {
-            style: TStyles["conversationPreviewContent"]
-            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
-            ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
+            props: {
+              style: TStyles["conversationPreviewContent"]
+              numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
+              ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
+            }
             text: string
           }
           timestamp:
             | {
               shouldRender: true
-              style: TStyles["conversationPreviewTimestamp"]
-              numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+              props: {
+                style: TStyles["conversationPreviewTimestamp"]
+                numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+              }
               text: string
             }
             | {
@@ -23646,27 +23654,35 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           key: `${row.timestamp}-${row.role}-${rowIndex}`,
           props: {
             line: {
-              style: styles.conversationPreviewLine,
+              props: {
+                style: styles.conversationPreviewLine,
+              },
             },
             role: {
-              style: [
-                styles.conversationPreviewRole,
-                conversationPreview.roleStyles[row.role],
-              ],
-              numberOfLines: surface.conversationPreviewRoleNumberOfLines,
-              ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
+              props: {
+                style: [
+                  styles.conversationPreviewRole,
+                  conversationPreview.roleStyles[row.role],
+                ],
+                numberOfLines: surface.conversationPreviewRoleNumberOfLines,
+                ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
+              },
               text: row.roleLabel,
             },
             content: {
-              style: styles.conversationPreviewContent,
-              numberOfLines: surface.conversationPreviewContentNumberOfLines,
-              ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
+              props: {
+                style: styles.conversationPreviewContent,
+                numberOfLines: surface.conversationPreviewContentNumberOfLines,
+                ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
+              },
               text: row.content,
             },
             timestamp: row.timestampLabel ? {
               shouldRender: true,
-              style: styles.conversationPreviewTimestamp,
-              numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
+              props: {
+                style: styles.conversationPreviewTimestamp,
+                numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
+              },
               text: row.timestampLabel,
             } : {
               shouldRender: false,
