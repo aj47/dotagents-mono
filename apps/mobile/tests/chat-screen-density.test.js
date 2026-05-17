@@ -4338,13 +4338,18 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /errorCopyButtonRenderState,/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionCopyButton\s+renderState=\{toolErrorCopyButtonState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButton/);
+  const toolExecutionCopyButtonSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCopyButton\([\s\S]*?export function ChatMessageToolExecutionCopyButtonPressable/)?.[0] ?? '';
+  const toolExecutionCopyButtonContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCopyButtonContent[\s\S]*?export function ChatMessageToolExecutionCopyButtonIcon/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCopyButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const copyButtonParts = createChatRuntimeToolExecutionCopyButtonMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const copyButtonContent = copyButtonParts\.container\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const copyButtonContent = copyButtonParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonPressable\s+\{\.\.\.copyButtonParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonIcon\s+\{\.\.\.copyButtonContent\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonLabel\s+\{\.\.\.copyButtonContent\.label\.props\}/);
+  assert.match(toolExecutionCopyButtonSource, /<ChatMessageToolExecutionCopyButtonContent\s+\{\.\.\.copyButtonParts\.container\.content\}/);
+  assert.match(toolExecutionCopyButtonContentSource, /<ChatMessageToolExecutionCopyButtonIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(toolExecutionCopyButtonContentSource, /<ChatMessageToolExecutionCopyButtonLabel\s+\{\.\.\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCopyButtonIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonPressable[\s\S]*?(onPress=\{onPress\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionCopyButtonIcon/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonIcon\(props: ChatMessageToolExecutionCopyButtonIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
@@ -4767,7 +4772,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailCopy\.inputLabel\}:<\/Text>/);
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailCopy\.outputLabel\}:<\/Text>/);
   assert.doesNotMatch(screenSource, /\{toolExecutionDetailCopy\.errorDetailsLabel\}:<\/Text>/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonLabel\s+\{\.\.\.copyButtonContent\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonLabel\s+\{\.\.\.label\.props\}/);
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.copyGlyph/);
   assert.doesNotMatch(screenSource, /getChatMessageToolExecutionCopyFailureResolvedAlertState\(error\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatMessageToolExecutionCopyFailureResolvedAlertState/);

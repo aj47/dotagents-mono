@@ -2596,6 +2596,9 @@ type ChatMessageToolExecutionCopyButtonPressableProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionCopyButtonContentProps =
+  ChatMessageToolExecutionCopyButtonParts['container']['content'];
+
 type ChatMessageToolExecutionCopyButtonIconProps =
   ChatMessageToolExecutionCopyButtonParts['container']['content']['icon']['props'];
 
@@ -10658,17 +10661,13 @@ export function ChatMessageToolExecutionCopyButton({
     onPress,
     styles,
   });
-  const copyButtonContent = copyButtonParts.container.content;
 
   return (
     <ChatMessageToolExecutionCopyButtonPressable
       {...copyButtonParts.container.props}
     >
-      <ChatMessageToolExecutionCopyButtonIcon
-        {...copyButtonContent.icon.props}
-      />
-      <ChatMessageToolExecutionCopyButtonLabel
-        {...copyButtonContent.label.props}
+      <ChatMessageToolExecutionCopyButtonContent
+        {...copyButtonParts.container.content}
       />
     </ChatMessageToolExecutionCopyButtonPressable>
   );
@@ -10682,6 +10681,22 @@ export function ChatMessageToolExecutionCopyButtonPressable({
     <Pressable {...props}>
       {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageToolExecutionCopyButtonContent({
+  icon,
+  label,
+}: ChatMessageToolExecutionCopyButtonContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionCopyButtonIcon
+        {...icon.props}
+      />
+      <ChatMessageToolExecutionCopyButtonLabel
+        {...label.props}
+      />
+    </>
   );
 }
 
