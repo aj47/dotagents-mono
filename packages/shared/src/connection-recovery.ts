@@ -212,22 +212,32 @@ export interface ConnectionStatusIndicatorMobilePropsParts<
   TAnimatedStyle = unknown,
 > {
   container: {
-    style: Array<TStyles['container'] | TStyles['containerCompact'] | false>;
-    accessibilityLabel: string;
-    accessibilityRole: ConnectionStatusIndicatorMobileRenderState['accessibilityRole'];
+    props: {
+      style: Array<TStyles['container'] | TStyles['containerCompact'] | false>;
+      accessibilityLabel: string;
+      accessibilityRole: ConnectionStatusIndicatorMobileRenderState['accessibilityRole'];
+    };
   };
   dotContainer: {
-    style: TStyles['dotContainer'];
+    props: {
+      style: TStyles['dotContainer'];
+    };
   };
   dot: {
-    style: Array<TStyles['dot'] | TStyles['dotColor'] | TStyles['dotPulsing'] | false>;
+    props: {
+      style: Array<TStyles['dot'] | TStyles['dotColor'] | TStyles['dotPulsing'] | false>;
+    };
   };
   pulse: {
-    style: Array<TStyles['dotPulse'] | TStyles['pulseColor'] | TAnimatedStyle>;
+    props: {
+      style: Array<TStyles['dotPulse'] | TStyles['pulseColor'] | TAnimatedStyle>;
+    };
   } | null;
   text: {
-    style: Array<TStyles['text'] | TStyles['textColor']>;
     text: string;
+    props: {
+      style: Array<TStyles['text'] | TStyles['textColor']>;
+    };
   } | null;
 }
 
@@ -375,33 +385,43 @@ export function createConnectionStatusIndicatorMobilePropsParts<
 }: ConnectionStatusIndicatorMobilePropsPartsInput<TStyles, TAnimatedStyle>): ConnectionStatusIndicatorMobilePropsParts<TStyles, TAnimatedStyle> {
   return {
     container: {
-      style: [styles.container, compact && styles.containerCompact],
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityRole: renderState.accessibilityRole,
+      props: {
+        style: [styles.container, compact && styles.containerCompact],
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityRole: renderState.accessibilityRole,
+      },
     },
     dotContainer: {
-      style: styles.dotContainer,
+      props: {
+        style: styles.dotContainer,
+      },
     },
     dot: {
-      style: [
-        styles.dot,
-        styles.dotColor,
-        renderState.isPulsing && styles.dotPulsing,
-      ],
+      props: {
+        style: [
+          styles.dot,
+          styles.dotColor,
+          renderState.isPulsing && styles.dotPulsing,
+        ],
+      },
     },
     pulse: renderState.shouldRenderPulse
       ? {
-          style: [
-            styles.dotPulse,
-            styles.pulseColor,
-            pulseAnimatedStyle,
-          ],
+          props: {
+            style: [
+              styles.dotPulse,
+              styles.pulseColor,
+              pulseAnimatedStyle,
+            ],
+          },
         }
       : null,
     text: renderState.shouldRenderText
       ? {
-          style: [styles.text, styles.textColor],
           text: renderState.statusText,
+          props: {
+            style: [styles.text, styles.textColor],
+          },
         }
       : null,
   };

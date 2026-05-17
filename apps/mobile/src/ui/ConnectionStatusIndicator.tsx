@@ -111,19 +111,15 @@ export function ConnectionStatusIndicator({
   }, [connectionStatusState.isPulsing, connectionStatusAnimation, pulseAnim]);
 
   return (
-    <View
-      style={connectionStatusParts.container.style}
-      accessibilityLabel={connectionStatusParts.container.accessibilityLabel}
-      accessibilityRole={connectionStatusParts.container.accessibilityRole}
-    >
-      <View style={connectionStatusParts.dotContainer.style}>
-        <View style={connectionStatusParts.dot.style} />
+    <View {...connectionStatusParts.container.props}>
+      <View {...connectionStatusParts.dotContainer.props}>
+        <View {...connectionStatusParts.dot.props} />
         {connectionStatusParts.pulse && (
-          <Animated.View style={connectionStatusParts.pulse.style} />
+          <Animated.View {...connectionStatusParts.pulse.props} />
         )}
       </View>
       {connectionStatusParts.text && (
-        <Text style={connectionStatusParts.text.style}>
+        <Text {...connectionStatusParts.text.props}>
           {connectionStatusParts.text.text}
         </Text>
       )}

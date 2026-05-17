@@ -447,23 +447,27 @@ describe('connection status indicator presentation', () => {
     })
 
     expect(propsParts.container).toEqual({
-      style: [styleSlots.container, false],
-      accessibilityLabel: 'Connecting...',
-      accessibilityRole: 'text',
+      props: {
+        style: [styleSlots.container, false],
+        accessibilityLabel: 'Connecting...',
+        accessibilityRole: 'text',
+      },
     })
-    expect(propsParts.dot.style).toEqual([
+    expect(propsParts.dot.props.style).toEqual([
       styleSlots.dot,
       styleSlots.dotColor,
       styleSlots.dotPulsing,
     ])
-    expect(propsParts.pulse?.style).toEqual([
+    expect(propsParts.pulse?.props.style).toEqual([
       styleSlots.dotPulse,
       styleSlots.pulseColor,
       pulseAnimatedStyle,
     ])
     expect(propsParts.text).toEqual({
-      style: [styleSlots.text, styleSlots.textColor],
       text: 'Connecting...',
+      props: {
+        style: [styleSlots.text, styleSlots.textColor],
+      },
     })
   })
 })

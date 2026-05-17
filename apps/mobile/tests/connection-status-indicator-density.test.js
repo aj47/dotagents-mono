@@ -18,11 +18,12 @@ test('uses shared connection status indicator presentation and labels', () => {
   assert.match(indicatorSource, /const connectionStatusAnimation = connectionStatusState\.animation;/);
   assert.match(indicatorSource, /createConnectionStatusIndicatorMobileStyleSlots\(\{[\s\S]*?renderState: connectionStatusState,/);
   assert.match(indicatorSource, /createConnectionStatusIndicatorMobilePropsParts\(\{[\s\S]*?renderState: connectionStatusState,[\s\S]*?styles,[\s\S]*?pulseAnimatedStyle,[\s\S]*?compact,/);
-  assert.match(indicatorSource, /accessibilityLabel=\{connectionStatusParts\.container\.accessibilityLabel\}/);
+  assert.match(indicatorSource, /<View\s+\{\.\.\.connectionStatusParts\.container\.props\}>/);
   assert.match(indicatorSource, /connectionStatusParts\.pulse/);
   assert.match(indicatorSource, /connectionStatusParts\.text/);
   assert.match(indicatorSource, /\{connectionStatusParts\.text\.text\}/);
-  assert.match(indicatorSource, /accessibilityRole=\{connectionStatusParts\.container\.accessibilityRole\}/);
+  assert.doesNotMatch(indicatorSource, /accessibilityLabel=\{connectionStatusParts\.container\.accessibilityLabel\}/);
+  assert.doesNotMatch(indicatorSource, /accessibilityRole=\{connectionStatusParts\.container\.accessibilityRole\}/);
   assert.doesNotMatch(indicatorSource, /accessibilityRole="text"/);
   assert.doesNotMatch(indicatorSource, /formatConnectionStatusIndicatorLabel\(state, retryCount\)/);
   assert.doesNotMatch(indicatorSource, /isConnectionStatusIndicatorPulsing\(state\)/);
@@ -54,8 +55,9 @@ test('keeps the compact dot dimensions and text styling shared', () => {
   assert.match(indicatorSource, /duration:\s*connectionStatusAnimation\.durationMs/);
   assert.match(indicatorSource, /useNativeDriver:\s*connectionStatusAnimation\.useNativeDriver/);
   assert.match(indicatorSource, /const pulseAnimatedStyle = useMemo\(\(\) => \(\{ opacity: pulseAnim \}\), \[pulseAnim\]\)/);
-  assert.match(indicatorSource, /style=\{connectionStatusParts\.text\.style\}/);
-  assert.match(indicatorSource, /style=\{connectionStatusParts\.pulse\.style\}/);
+  assert.match(indicatorSource, /<Text\s+\{\.\.\.connectionStatusParts\.text\.props\}>/);
+  assert.match(indicatorSource, /<Animated\.View\s+\{\.\.\.connectionStatusParts\.pulse\.props\} \/>/);
+  assert.doesNotMatch(indicatorSource, /style=\{connectionStatusParts\.(container|dotContainer|dot|pulse|text)\.style\}/);
   assert.doesNotMatch(indicatorSource, /theme\.colors\[[^\]]+\]/);
   assert.doesNotMatch(indicatorSource, /theme\.colors\.[A-Za-z]/);
   assert.doesNotMatch(indicatorSource, /\{ backgroundColor: statusColor \}/);
