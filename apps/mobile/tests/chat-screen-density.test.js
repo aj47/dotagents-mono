@@ -1657,7 +1657,13 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeOverlays/);
   assert.match(chatMessageChromeSource, /agentSelector=\{<AgentSelectorSheet \{\.\.\.agentSelector\} \/>\}/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModal \{\.\.\.promptEditor\} \/>/);
-  assert.match(chatMessageChromeSource, /\{agentSelector\}[\s\S]*?\{promptEditor\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeConversationOverlaysMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationOverlaysMobilePropsParts/);
+  const conversationOverlaysSource =
+    chatMessageChromeSource.match(/export function ChatMessageConversationOverlays[\s\S]*?export function ChatMessageRuntimeOverlays/)?.[0] ?? '';
+  assert.match(conversationOverlaysSource, /const overlayParts = createChatRuntimeConversationOverlaysMobilePropsParts\(\{\s+agentSelector,\s+promptEditor,\s+\}\);/);
+  assert.match(conversationOverlaysSource, /\{overlayParts\.agentSelector\}[\s\S]*?\{overlayParts\.promptEditor\}/);
+  assert.doesNotMatch(conversationOverlaysSource, /\{agentSelector\}[\s\S]*?\{promptEditor\}/);
   assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
   assert.match(screenSource, /createChatMessageRuntimeViewportStyleSlots,/);
   assert.match(chatRuntimeMobileStylesSource, /createChatMessageRuntimeViewportStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);

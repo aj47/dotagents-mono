@@ -6557,6 +6557,22 @@ export interface ChatRuntimeConversationFrameMobilePropsParts<
   overlays: TOverlays | undefined
 }
 
+export interface ChatRuntimeConversationOverlaysMobilePropsPartsInput<
+  TAgentSelector = unknown,
+  TPromptEditor = unknown,
+> {
+  agentSelector?: TAgentSelector
+  promptEditor?: TPromptEditor
+}
+
+export interface ChatRuntimeConversationOverlaysMobilePropsParts<
+  TAgentSelector = unknown,
+  TPromptEditor = unknown,
+> {
+  agentSelector: TAgentSelector | undefined
+  promptEditor: TPromptEditor | undefined
+}
+
 export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput<
   TFrame extends object = Record<string, never>,
   TDock extends object = Record<string, never>,
@@ -21899,6 +21915,25 @@ export function createChatRuntimeConversationFrameMobilePropsParts<
       dock,
     },
     overlays,
+  }
+}
+
+export function createChatRuntimeConversationOverlaysMobilePropsParts<
+  TAgentSelector,
+  TPromptEditor,
+>({
+  agentSelector,
+  promptEditor,
+}: ChatRuntimeConversationOverlaysMobilePropsPartsInput<
+  TAgentSelector,
+  TPromptEditor
+>): ChatRuntimeConversationOverlaysMobilePropsParts<
+  TAgentSelector,
+  TPromptEditor
+> {
+  return {
+    agentSelector,
+    promptEditor,
   }
 }
 

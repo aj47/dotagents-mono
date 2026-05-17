@@ -151,6 +151,7 @@ import {
   createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeConversationFrameMobilePropsParts,
+  createChatRuntimeConversationOverlaysMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationContentMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
@@ -8140,6 +8141,13 @@ describe("session presentation semantics", () => {
         dock: "dock",
       },
       overlays: "overlays",
+    })
+    expect(createChatRuntimeConversationOverlaysMobilePropsParts({
+      agentSelector: "agent-selector",
+      promptEditor: "prompt-editor",
+    })).toEqual({
+      agentSelector: "agent-selector",
+      promptEditor: "prompt-editor",
     })
     const runtimeThreadSurfaceStyles = {
       surfaceStyle: "thread-surface",

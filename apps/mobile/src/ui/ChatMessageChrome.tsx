@@ -117,6 +117,7 @@ import {
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationScrollViewportMobilePropsParts,
   createChatRuntimeConversationViewportContentMobilePropsParts,
+  createChatRuntimeConversationOverlaysMobilePropsParts,
   createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
@@ -8734,10 +8735,15 @@ export function ChatMessageConversationOverlays({
   agentSelector,
   promptEditor,
 }: ChatMessageConversationOverlaysProps) {
+  const overlayParts = createChatRuntimeConversationOverlaysMobilePropsParts({
+    agentSelector,
+    promptEditor,
+  });
+
   return (
     <>
-      {agentSelector}
-      {promptEditor}
+      {overlayParts.agentSelector}
+      {overlayParts.promptEditor}
     </>
   );
 }
