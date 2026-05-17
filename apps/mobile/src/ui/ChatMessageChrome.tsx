@@ -2234,6 +2234,20 @@ type ChatMessageScrollToBottomButtonProps = {
   style: StyleProp<ViewStyle>;
 };
 
+type ChatMessageScrollToBottomButtonParts = ReturnType<typeof createChatRuntimeScrollToBottomButtonMobilePropsParts<
+  ChatRuntimeScrollToBottomMobileRenderState,
+  ChatMessageScrollToBottomButtonProps['onPress'],
+  ChatMessageScrollToBottomButtonProps['style']
+>>;
+
+type ChatMessageScrollToBottomButtonTouchableProps =
+  ChatMessageScrollToBottomButtonParts['button']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageScrollToBottomButtonIconProps =
+  ChatMessageScrollToBottomButtonParts['icon']['props'];
+
 type ChatMessageLoadingStateProps = {
   renderState: ChatRuntimeLoadingStateMobileRenderState;
   spinnerSource: ImageSourcePropType;
@@ -9453,20 +9467,50 @@ export function ChatMessageScrollToBottomButton({
   if (!scrollToBottomButtonParts.shouldRenderButton) return null;
 
   return (
-    <TouchableOpacity
-      style={scrollToBottomButtonParts.button.style}
-      onPress={scrollToBottomButtonParts.button.onPress}
-      activeOpacity={scrollToBottomButtonParts.button.activeOpacity}
-      accessibilityRole={scrollToBottomButtonParts.button.accessibilityRole}
-      accessibilityLabel={scrollToBottomButtonParts.button.accessibilityLabel}
-      accessibilityHint={scrollToBottomButtonParts.button.accessibilityHint}
+    <ChatMessageScrollToBottomButtonTouchable
+      {...scrollToBottomButtonParts.button.props}
     >
-      <Ionicons
-        name={scrollToBottomButtonParts.icon.name}
-        size={scrollToBottomButtonParts.icon.size}
-        color={scrollToBottomButtonParts.icon.color}
+      <ChatMessageScrollToBottomButtonIcon
+        {...scrollToBottomButtonParts.icon.props}
       />
+    </ChatMessageScrollToBottomButtonTouchable>
+  );
+}
+
+export function ChatMessageScrollToBottomButtonTouchable({
+  style,
+  onPress,
+  activeOpacity,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  children,
+}: ChatMessageScrollToBottomButtonTouchableProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+    >
+      {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatMessageScrollToBottomButtonIcon({
+  name,
+  size,
+  color,
+}: ChatMessageScrollToBottomButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 

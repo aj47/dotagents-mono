@@ -7200,14 +7200,18 @@ export interface ChatRuntimeScrollToBottomButtonMobilePropsParts<
 > {
   shouldRenderButton: boolean
   button: {
-    style: TStyle
-    onPress: TOnPress | undefined
-    activeOpacity: TRenderState["button"]["pressedOpacity"]
-    accessibilityRole: TRenderState["button"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string
+    props: {
+      style: TStyle
+      onPress: TOnPress | undefined
+      activeOpacity: TRenderState["button"]["pressedOpacity"]
+      accessibilityRole: TRenderState["button"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string
+    }
   }
-  icon: TRenderState["button"]["icon"]
+  icon: {
+    props: TRenderState["button"]["icon"]
+  }
 }
 
 export interface ChatRuntimeConversationFrameMobilePropsPartsInput<
@@ -23935,14 +23939,18 @@ export function createChatRuntimeScrollToBottomButtonMobilePropsParts<
   return {
     shouldRenderButton: renderState.shouldRender,
     button: {
-      style,
-      onPress,
-      activeOpacity: renderState.button.pressedOpacity,
-      accessibilityRole: renderState.button.accessibilityRole,
-      accessibilityLabel: renderState.button.accessibilityLabel,
-      accessibilityHint: renderState.button.accessibilityHint,
+      props: {
+        style,
+        onPress,
+        activeOpacity: renderState.button.pressedOpacity,
+        accessibilityRole: renderState.button.accessibilityRole,
+        accessibilityLabel: renderState.button.accessibilityLabel,
+        accessibilityHint: renderState.button.accessibilityHint,
+      },
     },
-    icon: renderState.button.icon,
+    icon: {
+      props: renderState.button.icon,
+    },
   }
 }
 

@@ -7563,17 +7563,21 @@ describe("session presentation semantics", () => {
     expect(scrollToBottomButtonParts).toEqual({
       shouldRenderButton: true,
       button: {
-        style: "scroll-button-style",
-        onPress: "scroll-bottom",
-        activeOpacity: 0.8,
-        accessibilityRole: "button",
-        accessibilityLabel: "Scroll to bottom",
-        accessibilityHint: "Scrolls to the latest messages",
+        props: {
+          style: "scroll-button-style",
+          onPress: "scroll-bottom",
+          activeOpacity: 0.8,
+          accessibilityRole: "button",
+          accessibilityLabel: "Scroll to bottom",
+          accessibilityHint: "Scrolls to the latest messages",
+        },
       },
       icon: {
-        name: "arrow-down",
-        size: 18,
-        color: "#fff",
+        props: {
+          name: "arrow-down",
+          size: 18,
+          color: "#fff",
+        },
       },
     })
     expect(createChatRuntimeScrollToBottomButtonMobilePropsParts({
