@@ -11717,10 +11717,10 @@ export function ChatMessageConversationContent({
   if (conversationContentParts.expandedContent.shouldRender) {
     return (
       <ChatMessageContentRow
-        {...conversationContentParts.expandedContent.props.row}
+        {...conversationContentParts.expandedContent.props.row.props}
       >
         <ChatMessageExpandedContent
-          {...conversationContentParts.expandedContent.props.content}
+          {...conversationContentParts.expandedContent.props.content.props}
         />
       </ChatMessageContentRow>
     );
@@ -11729,10 +11729,10 @@ export function ChatMessageConversationContent({
   if (conversationContentParts.collapsedContent.shouldRender) {
     return (
       <ChatMessageContentRow
-        {...conversationContentParts.collapsedContent.props.row}
+        {...conversationContentParts.collapsedContent.props.row.props}
       >
         <ChatMessageCollapsedPreview
-          {...conversationContentParts.collapsedContent.props.preview}
+          {...conversationContentParts.collapsedContent.props.preview.props}
         />
       </ChatMessageContentRow>
     );

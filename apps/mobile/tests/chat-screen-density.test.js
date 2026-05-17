@@ -3572,7 +3572,7 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageCollapsedPreviewRenderState =/);
   assert.match(chatMessageChromeSource, /renderState: ChatRuntimeConversationMessageMobileRenderState\['collapsedPreview'\];/);
   assert.match(sessionPresentationSource, /collapsed: createChatRuntimeConversationCollapsedPreviewMobileProps\(collapsed\),/);
-  assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\.props\}/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationCollapsedPreviewMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const collapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(\{\s+renderState,\s+actionState,\s+onPress,\s+style,\s+pressedStyle,\s+textStyle,\s+\}\);/);
@@ -4817,7 +4817,7 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(chatMessageChromeSource, /const streamingRenderState = getChatRuntimeStreamingContentMobileRenderState\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStreamingContentRenderState =/);
   assert.match(chatMessageChromeSource, /streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+\{\.\.\.conversationContentParts\.expandedContent\.props\.content\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+\{\.\.\.conversationContentParts\.expandedContent\.props\.content\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationExpandedContentMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobilePropsParts/);
@@ -6141,10 +6141,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /if \(contentDisplayMode === 'collapsed'\) \{/);
   assert.match(sessionPresentationSource, /toolExecutionStack: createChatRuntimeConversationToolExecutionStackMobileProps\(toolExecutionStack\),/);
   assert.match(sessionPresentationSource, /rowStyle: styles\.content\.rowStyle,/);
-  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+\{\.\.\.conversationContentParts\.expandedContent\.props\.row\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+\{\.\.\.conversationContentParts\.expandedContent\.props\.content\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.row\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+\{\.\.\.conversationContentParts\.expandedContent\.props\.row\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageExpandedContent\s+\{\.\.\.conversationContentParts\.expandedContent\.props\.content\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageContentRow\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.row\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+bodyStyle=\{expanded\.bodyStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
@@ -6581,7 +6581,7 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.equal((screenSource.match(/ariaExpanded=\{messageRenderState\.expansion\.ariaExpanded\}/g) ?? []).length, 0);
   assert.doesNotMatch(screenSource, /ariaExpanded: messageRenderState\.expansion\.ariaExpanded/);
   assert.equal((screenSource.match(/aria-expanded=\{messageRenderState\.expansion\.ariaExpanded\}/g) ?? []).length, 0);
-  assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\.props\}/);
   assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
   assert.doesNotMatch(screenSource, /numberOfLines=\{messageRenderState\.collapsedPreview\.numberOfLines\}/);
   assert.doesNotMatch(screenSource, /\{messageRenderState\.collapsedPreview\.text\}/);

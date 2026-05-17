@@ -2716,20 +2716,28 @@ export interface ChatRuntimeConversationContentMobilePropsParts<
 > {
   expandedContent: ChatRuntimeMobilePropsPart<{
     row: {
-      rowStyle: TRowStyle
-      bodyStyle: TExpanded["bodyStyle"]
-      shouldRenderActionSlots: boolean
-      entries: readonly TEntry[]
+      props: {
+        rowStyle: TRowStyle
+        bodyStyle: TExpanded["bodyStyle"]
+        shouldRenderActionSlots: boolean
+        entries: readonly TEntry[]
+      }
     }
-    content: Omit<TExpanded, "bodyStyle">
+    content: {
+      props: Omit<TExpanded, "bodyStyle">
+    }
   }>
   collapsedContent: ChatRuntimeMobilePropsPart<{
     row: {
-      rowStyle: TRowStyle
-      shouldRenderActionSlots: boolean
-      entries: readonly TEntry[]
+      props: {
+        rowStyle: TRowStyle
+        shouldRenderActionSlots: boolean
+        entries: readonly TEntry[]
+      }
     }
-    preview: TCollapsed
+    preview: {
+      props: TCollapsed
+    }
   }>
 }
 
@@ -20475,12 +20483,16 @@ export function createChatRuntimeConversationContentMobilePropsParts<
       shouldRender: true,
       props: {
         row: {
-          rowStyle,
-          bodyStyle,
-          shouldRenderActionSlots,
-          entries,
+          props: {
+            rowStyle,
+            bodyStyle,
+            shouldRenderActionSlots,
+            entries,
+          },
         },
-        content: expandedContent,
+        content: {
+          props: expandedContent,
+        },
       },
     } : {
       shouldRender: false,
@@ -20490,11 +20502,15 @@ export function createChatRuntimeConversationContentMobilePropsParts<
       shouldRender: true,
       props: {
         row: {
-          rowStyle,
-          shouldRenderActionSlots,
-          entries,
+          props: {
+            rowStyle,
+            shouldRenderActionSlots,
+            entries,
+          },
         },
-        preview: collapsed,
+        preview: {
+          props: collapsed,
+        },
       },
     } : {
       shouldRender: false,

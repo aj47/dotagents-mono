@@ -6170,18 +6170,22 @@ describe("session presentation semantics", () => {
         shouldRender: true,
         props: {
           row: {
-            rowStyle: "content-row-style",
-            bodyStyle: "expanded-body-style",
-            shouldRenderActionSlots: true,
-            entries: conversationActionEntries,
+            props: {
+              rowStyle: "content-row-style",
+              bodyStyle: "expanded-body-style",
+              shouldRenderActionSlots: true,
+              entries: conversationActionEntries,
+            },
           },
           content: {
-            streamingRenderState: expandedContentParts.header,
-            markdownContent: "Markdown content",
-            assetBaseUrl: "asset-base",
-            assetAuthToken: "asset-token",
-            spinnerSource: "spinner-source",
-            streamingStyles: expandedContentStyles,
+            props: {
+              streamingRenderState: expandedContentParts.header,
+              markdownContent: "Markdown content",
+              assetBaseUrl: "asset-base",
+              assetAuthToken: "asset-token",
+              spinnerSource: "spinner-source",
+              streamingStyles: expandedContentStyles,
+            },
           },
         },
       },
@@ -6208,11 +6212,15 @@ describe("session presentation semantics", () => {
         shouldRender: true,
         props: {
           row: {
-            rowStyle: "content-row-style",
-            shouldRenderActionSlots: false,
-            entries: conversationActionEntries,
+            props: {
+              rowStyle: "content-row-style",
+              shouldRenderActionSlots: false,
+              entries: conversationActionEntries,
+            },
           },
-          preview: collapsedPreviewParts,
+          preview: {
+            props: collapsedPreviewParts,
+          },
         },
       },
     })
