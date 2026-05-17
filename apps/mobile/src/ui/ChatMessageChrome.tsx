@@ -7128,14 +7128,14 @@ export function ChatMessageToolActivityGroupThreadSurface({
   return (
     <ChatMessageThreadSurface
       {...surfaceParts.surface}
-      leadingActivity={surfaceParts.leadingBoundary ? (
+      leadingActivity={surfaceParts.leadingBoundary.shouldRender ? (
         <ChatMessageToolActivityGroupBoundary
-          {...surfaceParts.leadingBoundary}
+          {...surfaceParts.leadingBoundary.props}
         />
       ) : null}
-      trailingActivity={surfaceParts.trailingBoundary ? (
+      trailingActivity={surfaceParts.trailingBoundary.shouldRender ? (
         <ChatMessageToolActivityGroupBoundary
-          {...surfaceParts.trailingBoundary}
+          {...surfaceParts.trailingBoundary.props}
         />
       ) : null}
     >

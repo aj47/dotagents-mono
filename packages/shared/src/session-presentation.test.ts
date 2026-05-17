@@ -8760,24 +8760,30 @@ describe("session presentation semantics", () => {
         surfaceToneStyle: "assistant-surface-tone",
       },
       leadingBoundary: {
-        renderState: {
-          groupKey: "group-1",
-          shouldRenderExpandedHeader: true,
-          shouldRenderExpandedFooter: true,
+        shouldRender: true,
+        props: {
+          renderState: {
+            groupKey: "group-1",
+            shouldRenderExpandedHeader: true,
+            shouldRenderExpandedFooter: true,
+          },
+          kind: "expanded",
+          onPress: "toggle-group",
+          styles: "activity-boundary",
         },
-        kind: "expanded",
-        onPress: "toggle-group",
-        styles: "activity-boundary",
       },
       trailingBoundary: {
-        renderState: {
-          groupKey: "group-1",
-          shouldRenderExpandedHeader: true,
-          shouldRenderExpandedFooter: true,
+        shouldRender: true,
+        props: {
+          renderState: {
+            groupKey: "group-1",
+            shouldRenderExpandedHeader: true,
+            shouldRenderExpandedFooter: true,
+          },
+          kind: "footer",
+          onPress: "toggle-group",
+          styles: "activity-boundary",
         },
-        kind: "footer",
-        onPress: "toggle-group",
-        styles: "activity-boundary",
       },
     })
     expect(createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
@@ -8791,8 +8797,14 @@ describe("session presentation semantics", () => {
         surfaceStyle: "thread-surface",
         surfaceToneStyle: undefined,
       },
-      leadingBoundary: null,
-      trailingBoundary: null,
+      leadingBoundary: {
+        shouldRender: false,
+        props: null,
+      },
+      trailingBoundary: {
+        shouldRender: false,
+        props: null,
+      },
     })
     const activityGroupToggleRenderState = {
       collapsedHeader: {

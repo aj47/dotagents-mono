@@ -4926,11 +4926,13 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const surfaceParts = createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts\(\{\s+groupRenderState,\s+onToggleGroup,\s+surfaceToneStyle,\s+styles,\s+\}\);/);
   assert.match(sessionPresentationSource, /surface: \{\s+surfaceStyle: styles\.surfaceStyle,\s+surfaceToneStyle,/);
-  assert.match(sessionPresentationSource, /leadingBoundary: groupRenderState\?\.shouldRenderExpandedHeader \? \{\s+renderState: groupRenderState,\s+kind: "expanded",\s+onPress: onToggleGroup,\s+styles: styles\.boundary,/);
-  assert.match(sessionPresentationSource, /trailingBoundary: groupRenderState\?\.shouldRenderExpandedFooter \? \{\s+renderState: groupRenderState,\s+kind: "footer",\s+onPress: onToggleGroup,\s+styles: styles\.boundary,/);
+  assert.match(sessionPresentationSource, /leadingBoundary: groupRenderState\?\.shouldRenderExpandedHeader \? \{\s+shouldRender: true,\s+props: \{\s+renderState: groupRenderState,\s+kind: "expanded",\s+onPress: onToggleGroup,\s+styles: styles\.boundary,/);
+  assert.match(sessionPresentationSource, /trailingBoundary: groupRenderState\?\.shouldRenderExpandedFooter \? \{\s+shouldRender: true,\s+props: \{\s+renderState: groupRenderState,\s+kind: "footer",\s+onPress: onToggleGroup,\s+styles: styles\.boundary,/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadSurface\s+\{\.\.\.surfaceParts\.surface\}/);
-  assert.match(chatMessageChromeSource, /leadingActivity=\{surfaceParts\.leadingBoundary \? \([\s\S]*?<ChatMessageToolActivityGroupBoundary\s+\{\.\.\.surfaceParts\.leadingBoundary\}/);
-  assert.match(chatMessageChromeSource, /trailingActivity=\{surfaceParts\.trailingBoundary \? \([\s\S]*?<ChatMessageToolActivityGroupBoundary\s+\{\.\.\.surfaceParts\.trailingBoundary\}/);
+  assert.match(chatMessageChromeSource, /leadingActivity=\{surfaceParts\.leadingBoundary\.shouldRender \? \([\s\S]*?<ChatMessageToolActivityGroupBoundary\s+\{\.\.\.surfaceParts\.leadingBoundary\.props\}/);
+  assert.match(chatMessageChromeSource, /trailingActivity=\{surfaceParts\.trailingBoundary\.shouldRender \? \([\s\S]*?<ChatMessageToolActivityGroupBoundary\s+\{\.\.\.surfaceParts\.trailingBoundary\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /leadingActivity=\{surfaceParts\.leadingBoundary \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /trailingActivity=\{surfaceParts\.trailingBoundary \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageThreadSurface\s+surfaceStyle=\{styles\.surfaceStyle\}\s+surfaceToneStyle=\{surfaceToneStyle\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeThread/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationRuntimeThreadMobilePropsParts,/);

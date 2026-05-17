@@ -5414,6 +5414,24 @@ export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsPartsInput<
   }
 }
 
+export type ChatRuntimeToolActivityGroupThreadSurfaceBoundaryMobilePropsPart<
+  TGroupRenderState,
+  TOnToggleGroup,
+  TBoundaryStyles,
+  TKind extends ChatRuntimeToolActivityGroupBoundaryMobileKind,
+> = {
+  shouldRender: true
+  props: {
+    renderState: TGroupRenderState
+    kind: TKind
+    onPress: TOnToggleGroup | undefined
+    styles: TBoundaryStyles
+  }
+} | {
+  shouldRender: false
+  props: null
+}
+
 export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
   TGroupRenderState extends {
     shouldRenderExpandedHeader?: boolean
@@ -5431,18 +5449,18 @@ export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
     surfaceStyle: TSurfaceStyle
     surfaceToneStyle: TSurfaceToneStyle | undefined
   }
-  leadingBoundary: ({
-    renderState: TGroupRenderState
-    kind: "expanded"
-    onPress: TOnToggleGroup | undefined
-    styles: TBoundaryStyles
-  }) | null
-  trailingBoundary: ({
-    renderState: TGroupRenderState
-    kind: "footer"
-    onPress: TOnToggleGroup | undefined
-    styles: TBoundaryStyles
-  }) | null
+  leadingBoundary: ChatRuntimeToolActivityGroupThreadSurfaceBoundaryMobilePropsPart<
+    TGroupRenderState,
+    TOnToggleGroup,
+    TBoundaryStyles,
+    "expanded"
+  >
+  trailingBoundary: ChatRuntimeToolActivityGroupThreadSurfaceBoundaryMobilePropsPart<
+    TGroupRenderState,
+    TOnToggleGroup,
+    TBoundaryStyles,
+    "footer"
+  >
 }
 
 export interface ChatRuntimeConversationRuntimeThreadMobilePropsPartsInput<
@@ -21978,17 +21996,29 @@ export function createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
       surfaceToneStyle,
     },
     leadingBoundary: groupRenderState?.shouldRenderExpandedHeader ? {
-      renderState: groupRenderState,
-      kind: "expanded",
-      onPress: onToggleGroup,
-      styles: styles.boundary,
-    } : null,
+      shouldRender: true,
+      props: {
+        renderState: groupRenderState,
+        kind: "expanded",
+        onPress: onToggleGroup,
+        styles: styles.boundary,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
     trailingBoundary: groupRenderState?.shouldRenderExpandedFooter ? {
-      renderState: groupRenderState,
-      kind: "footer",
-      onPress: onToggleGroup,
-      styles: styles.boundary,
-    } : null,
+      shouldRender: true,
+      props: {
+        renderState: groupRenderState,
+        kind: "footer",
+        onPress: onToggleGroup,
+        styles: styles.boundary,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
   }
 }
 
