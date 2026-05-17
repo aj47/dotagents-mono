@@ -7745,19 +7745,19 @@ export function ChatMessageToolActivityGroupBoundary({
     styles,
   });
 
-  if (boundaryParts.footer) {
+  if (boundaryParts.footer.shouldRender) {
     return (
       <ChatMessageToolActivityGroupFooter
-        {...boundaryParts.footer}
+        {...boundaryParts.footer.props}
       />
     );
   }
 
-  if (!boundaryParts.toggle) return null;
+  if (!boundaryParts.toggle.shouldRender) return null;
 
   return (
     <ChatMessageToolActivityGroupToggle
-      {...boundaryParts.toggle}
+      {...boundaryParts.toggle.props}
     />
   );
 }

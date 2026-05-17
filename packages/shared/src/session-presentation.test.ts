@@ -8989,11 +8989,17 @@ describe("session presentation semantics", () => {
         footer: "footer-styles",
       },
     })).toEqual({
-      toggle: null,
+      toggle: {
+        shouldRender: false,
+        props: null,
+      },
       footer: {
-        renderState: "activity-group-state",
-        onPress: "toggle-group",
-        styles: "footer-styles",
+        shouldRender: true,
+        props: {
+          renderState: "activity-group-state",
+          onPress: "toggle-group",
+          styles: "footer-styles",
+        },
       },
     })
     expect(createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
@@ -9006,12 +9012,18 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       toggle: {
-        renderState: "activity-group-state",
-        headerKind: "collapsed",
-        onPress: "toggle-group",
-        styles: "toggle-styles",
+        shouldRender: true,
+        props: {
+          renderState: "activity-group-state",
+          headerKind: "collapsed",
+          onPress: "toggle-group",
+          styles: "toggle-styles",
+        },
       },
-      footer: null,
+      footer: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeConversationFrameMobilePropsParts({
       children: "viewport",

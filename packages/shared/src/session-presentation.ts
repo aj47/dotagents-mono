@@ -5464,17 +5464,29 @@ export interface ChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
   TToggleStyles = unknown,
   TFooterStyles = unknown,
 > {
-  toggle: ({
-    renderState: TRenderState
-    headerKind: ChatRuntimeToolActivityGroupHeaderMobileKind
-    onPress: TOnPress | undefined
-    styles: TToggleStyles
-  }) | null
-  footer: ({
-    renderState: TRenderState
-    onPress: TOnPress | undefined
-    styles: TFooterStyles
-  }) | null
+  toggle: {
+    shouldRender: true
+    props: {
+      renderState: TRenderState
+      headerKind: ChatRuntimeToolActivityGroupHeaderMobileKind
+      onPress: TOnPress | undefined
+      styles: TToggleStyles
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
+  footer: {
+    shouldRender: true
+    props: {
+      renderState: TRenderState
+      onPress: TOnPress | undefined
+      styles: TFooterStyles
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
 }
 
 export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsPartsInput<
@@ -22056,23 +22068,35 @@ export function createChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
 > {
   if (kind === "footer") {
     return {
-      toggle: null,
+      toggle: {
+        shouldRender: false,
+        props: null,
+      },
       footer: {
-        renderState,
-        onPress,
-        styles: styles.footer,
+        shouldRender: true,
+        props: {
+          renderState,
+          onPress,
+          styles: styles.footer,
+        },
       },
     }
   }
 
   return {
     toggle: {
-      renderState,
-      headerKind: kind,
-      onPress,
-      styles: styles.toggle,
+      shouldRender: true,
+      props: {
+        renderState,
+        headerKind: kind,
+        onPress,
+        styles: styles.toggle,
+      },
     },
-    footer: null,
+    footer: {
+      shouldRender: false,
+      props: null,
+    },
   }
 }
 

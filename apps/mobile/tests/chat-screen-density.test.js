@@ -4995,8 +4995,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const boundaryParts = createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(\{\s+renderState,\s+kind,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /if \(boundaryParts\.footer\) \{[\s\S]*?<ChatMessageToolActivityGroupFooter\s+\{\.\.\.boundaryParts\.footer\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupToggle\s+\{\.\.\.boundaryParts\.toggle\}/);
+  assert.match(chatMessageChromeSource, /if \(boundaryParts\.footer\.shouldRender\) \{[\s\S]*?<ChatMessageToolActivityGroupFooter\s+\{\.\.\.boundaryParts\.footer\.props\}/);
+  assert.match(chatMessageChromeSource, /if \(!boundaryParts\.toggle\.shouldRender\) return null;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupToggle\s+\{\.\.\.boundaryParts\.toggle\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /if \(boundaryParts\.footer\) \{/);
+  assert.doesNotMatch(chatMessageChromeSource, /if \(!boundaryParts\.toggle\) return null;/);
   assert.doesNotMatch(chatMessageChromeSource, /if \(kind === 'footer'\)/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupToggle/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupFooter/);
