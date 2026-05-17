@@ -124,6 +124,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     onCancelEdit: handleCancelEdit,
     onSaveEdit: handleSaveEdit,
   });
+  const expandButtonPressable = expandButtonParts.pressable;
 
   if (isEditing) {
     return (
@@ -181,15 +182,15 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             <Text {...contentParts.metaText.props}>
               {contentParts.metaText.text}
             </Text>
-            {expandButtonParts.shouldRender ? (
+            {expandButtonPressable.shouldRender ? (
               <TouchableOpacity
-                {...expandButtonParts.pressable.props}
+                {...expandButtonPressable.props}
               >
                 <Ionicons
-                  {...expandButtonParts.icon.props}
+                  {...expandButtonPressable.content.icon.props}
                 />
-                <Text {...expandButtonParts.label.props}>
-                  {expandButtonParts.label.text}
+                <Text {...expandButtonPressable.content.label.props}>
+                  {expandButtonPressable.content.label.text}
                 </Text>
               </TouchableOpacity>
             ) : null}

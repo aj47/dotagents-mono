@@ -59,7 +59,8 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.doesNotMatch(source, /createQueuedMessageActionRowMobileStyleSlot/);
   assert.doesNotMatch(source, /createQueuedMessageActionButtonMobileStyleSlots/);
   assert.match(source, /<TouchableOpacity\s+key=\{action\.key\}\s+\{\.\.\.action\.props\}/);
-  assert.match(source, /<TouchableOpacity\s+\{\.\.\.expandButtonParts\.pressable\.props\}/);
+  assert.match(source, /const expandButtonPressable = expandButtonParts\.pressable;/);
+  assert.match(source, /<TouchableOpacity\s+\{\.\.\.expandButtonPressable\.props\}/);
   assert.doesNotMatch(source, /hitSlop=\{action\.hitSlop\}/);
   assert.doesNotMatch(source, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
   assert.doesNotMatch(source, /accessibilityRole=\{expandButtonParts\.pressable\.accessibilityRole\}/);
@@ -97,7 +98,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /\{contentParts\.metaText\.text\}/);
   assert.match(source, /<Ionicons\s+\{\.\.\.itemChromeParts\.failedStatusIcon\.props\}/);
   assert.match(source, /<ActivityIndicator\s+\{\.\.\.itemChromeParts\.processingStatusIndicator\.props\}/);
-  assert.match(source, /<Ionicons\s+\{\.\.\.expandButtonParts\.icon\.props\}/);
+  assert.match(source, /<Ionicons\s+\{\.\.\.expandButtonPressable\.content\.icon\.props\}/);
   assert.match(source, /compactActionParts\.actions\.map\(\(action\) =>/);
   assert.match(source, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}/);
   assert.match(source, /<Ionicons\s+\{\.\.\.action\.icon\.props\}/);

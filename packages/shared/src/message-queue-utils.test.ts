@@ -1374,30 +1374,32 @@ describe('message-queue-utils', () => {
       onToggleExpanded: () => expandCalls.push('toggle'),
     });
     expect(expandButtonParts).toMatchObject({
-      shouldRender: true,
       pressable: {
+        shouldRender: true,
         props: {
           style: 'expandButton',
           activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonPressedOpacity,
           accessibilityRole: 'button',
           accessibilityLabel: 'Expand queued message',
         },
-      },
-      icon: {
-        props: {
-          name: 'chevron-down',
-          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandIconSize,
-          color: '#737373',
-        },
-      },
-      label: {
-        text: 'More',
-        props: {
-          style: 'expandText',
+        content: {
+          icon: {
+            props: {
+              name: 'chevron-down',
+              size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandIconSize,
+              color: '#737373',
+            },
+          },
+          label: {
+            text: 'More',
+            props: {
+              style: 'expandText',
+            },
+          },
         },
       },
     });
-    if (!expandButtonParts.shouldRender) {
+    if (!expandButtonParts.pressable.shouldRender) {
       throw new Error('Expected long queued message expand button');
     }
     expandButtonParts.pressable.props.onPress();
@@ -1414,7 +1416,9 @@ describe('message-queue-utils', () => {
       },
       onToggleExpanded: () => expandCalls.push('short'),
     })).toEqual({
-      shouldRender: false,
+      pressable: {
+        shouldRender: false,
+      },
     });
     expect(createQueuedMessageActionButtonMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.actions,
@@ -1772,22 +1776,24 @@ describe('message-queue-utils', () => {
       },
     });
     expect(bundledParts.expandButton).toMatchObject({
-      shouldRender: true,
       pressable: {
+        shouldRender: true,
         props: {
           style: 'expandButton',
           accessibilityLabel: 'Expand queued message',
         },
-      },
-      icon: {
-        props: {
-          name: 'chevron-down',
-        },
-      },
-      label: {
-        text: 'More',
-        props: {
-          style: 'expandText',
+        content: {
+          icon: {
+            props: {
+              name: 'chevron-down',
+            },
+          },
+          label: {
+            text: 'More',
+            props: {
+              style: 'expandText',
+            },
+          },
         },
       },
     });
@@ -1807,7 +1813,7 @@ describe('message-queue-utils', () => {
       },
     });
     bundledParts.actions.actions.forEach((action) => action.props.onPress());
-    if (!bundledParts.expandButton.shouldRender) {
+    if (!bundledParts.expandButton.pressable.shouldRender) {
       throw new Error('Expected bundled queued message expand button');
     }
     bundledParts.expandButton.pressable.props.onPress();

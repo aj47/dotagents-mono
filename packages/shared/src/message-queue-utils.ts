@@ -2201,8 +2201,8 @@ export type QueuedMessageExpandButtonMobilePropsParts<
   TOnToggleExpanded = unknown,
 > =
   | {
-      shouldRender: true;
       pressable: {
+        shouldRender: true;
         props: {
           style: TStyles['expandButton'];
           onPress: TOnToggleExpanded;
@@ -2210,25 +2210,29 @@ export type QueuedMessageExpandButtonMobilePropsParts<
           accessibilityRole: QueuedMessageMobileItemSurface['expandButtonAccessibilityRole'];
           accessibilityLabel: string;
         };
-      };
-      icon: {
-        props: {
-          name:
-            | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
-            | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
-          size: QueuedMessageMobileItemSurface['expandIconSize'];
-          color: string;
-        };
-      };
-      label: {
-        text: string;
-        props: {
-          style: TStyles['expandText'];
+        content: {
+          icon: {
+            props: {
+              name:
+                | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
+                | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
+              size: QueuedMessageMobileItemSurface['expandIconSize'];
+              color: string;
+            };
+          };
+          label: {
+            text: string;
+            props: {
+              style: TStyles['expandText'];
+            };
+          };
         };
       };
     }
   | {
-      shouldRender: false;
+      pressable: {
+        shouldRender: false;
+      };
     };
 
 export interface QueuedMessageActionButtonMobileStyleSlotsInput {
@@ -2849,13 +2853,15 @@ export function createQueuedMessageExpandButtonMobilePropsParts<
 }: QueuedMessageExpandButtonMobilePropsPartsInput<TStyles, TOnToggleExpanded>): QueuedMessageExpandButtonMobilePropsParts<TStyles, TOnToggleExpanded> {
   if (!presentation.isLongMessage) {
     return {
-      shouldRender: false,
+      pressable: {
+        shouldRender: false,
+      },
     };
   }
 
   return {
-    shouldRender: true,
     pressable: {
+      shouldRender: true,
       props: {
         style: styles.expandButton,
         onPress: onToggleExpanded,
@@ -2863,18 +2869,20 @@ export function createQueuedMessageExpandButtonMobilePropsParts<
         accessibilityRole: surface.expandButtonAccessibilityRole,
         accessibilityLabel: presentation.expansionAccessibilityLabel,
       },
-    },
-    icon: {
-      props: {
-        name: isExpanded ? icons.collapseMessageName : icons.expandMessageName,
-        size: surface.expandIconSize,
-        color: colors.expandTextColor,
-      },
-    },
-    label: {
-      text: presentation.expansionLabel,
-      props: {
-        style: styles.expandText,
+      content: {
+        icon: {
+          props: {
+            name: isExpanded ? icons.collapseMessageName : icons.expandMessageName,
+            size: surface.expandIconSize,
+            color: colors.expandTextColor,
+          },
+        },
+        label: {
+          text: presentation.expansionLabel,
+          props: {
+            style: styles.expandText,
+          },
+        },
       },
     },
   };

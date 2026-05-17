@@ -5391,7 +5391,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.processingStatusIndicator[\s\S]*?size=\{itemChromeParts\.processingStatusIndicator\.size\}/);
   assert.match(messageQueuePanelSource, /contentParts\.errorText\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /contentParts\.errorText && \(/);
-  assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \(/);
+  assert.match(messageQueuePanelSource, /const expandButtonPressable = expandButtonParts\.pressable;/);
+  assert.match(messageQueuePanelSource, /expandButtonPressable\.shouldRender \? \(/);
+  assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts\.shouldRender/);
   assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts && \(/);
   assert.match(messageQueuePanelSource, /itemChromeParts\.actions\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.actions && \(/);
@@ -5399,12 +5401,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.messageText\.props\}>/);
   assert.match(messageQueuePanelSource, /\{contentParts\.metaText\.text\}/);
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.metaText\.props\}>/);
-  assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<TouchableOpacity[\s\S]*?\{\.\.\.expandButtonParts\.pressable\.props\}/);
+  assert.match(messageQueuePanelSource, /expandButtonPressable\.shouldRender \? \([\s\S]*?<TouchableOpacity[\s\S]*?\{\.\.\.expandButtonPressable\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{expandButtonParts\.pressable\.style\}/);
-  assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.expandButtonParts\.icon\.props\}/);
+  assert.match(messageQueuePanelSource, /expandButtonPressable\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.expandButtonPressable\.content\.icon\.props\}/);
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}[\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
-  assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{expandButtonParts\.icon\.name\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /expandButtonPressable\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{expandButtonPressable\.content\.icon\.name\}/);
   assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
   assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \(\s+<TouchableOpacity\s+key=\{action\.key\}\s+style=\{action\.style\}/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
