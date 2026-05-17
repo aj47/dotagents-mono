@@ -7918,12 +7918,14 @@ export interface ChatRuntimeConversationSurfaceMobilePropsParts<
   overlays: {
     props: TOverlays
   }
-  threadList: {
-    props: TThreadList
-  }
   viewport: {
     props: TViewport & {
       styles: TViewportStyles
+    }
+    content: {
+      threadList: {
+        props: TThreadList
+      }
     }
   }
 }
@@ -25331,13 +25333,15 @@ export function createChatRuntimeConversationSurfaceMobilePropsParts<
     overlays: {
       props: overlays,
     },
-    threadList: {
-      props: threadList,
-    },
     viewport: {
       props: {
         ...viewport,
         styles: styles.viewport,
+      },
+      content: {
+        threadList: {
+          props: threadList,
+        },
       },
     },
   }

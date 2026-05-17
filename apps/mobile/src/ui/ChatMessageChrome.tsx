@@ -10285,7 +10285,7 @@ export function ChatMessageRuntimeSurface<
       <ChatMessageRuntimeViewport
         {...surfaceParts.viewport.props}
       >
-        <ChatMessageConversationRuntimeThreadList {...surfaceParts.threadList.props} />
+        <ChatMessageConversationRuntimeThreadList {...surfaceParts.viewport.content.threadList.props} />
       </ChatMessageRuntimeViewport>
     </ChatMessageConversationFrame>
   );

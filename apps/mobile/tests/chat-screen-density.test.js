@@ -1993,7 +1993,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationSurfaceMobilePropsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeSurfaceChromeMobileRenderState,/);
   assert.match(chatMessageChromeSource, /return createChatRuntimeSurfaceChromeMobileProps\(\{\s+\.\.\.surface,\s+platform,\s+colors,\s+promptEditorStyles: styles\.promptEditorStyles,\s+dock: chatMessageRuntimeDock,\s+viewport: chatMessageRuntimeViewport,\s+threadStates: conversationThreadListState\.threadStates,\s+threadStyles: styles\.threadStyles,/);
-  assert.match(chatMessageChromeSource, /<ChatMessageConversationRuntimeThreadList \{\.\.\.surfaceParts\.threadList\.props\} \/>/);
+  assert.match(chatMessageChromeSource, /<ChatMessageConversationRuntimeThreadList \{\.\.\.surfaceParts\.viewport\.content\.threadList\.props\} \/>/);
   assert.doesNotMatch(screenSource, /<ChatMessageConversationOverlays\s+agentSelector=\{\(\s*<AgentSelectorSheet/);
   assert.doesNotMatch(screenSource, /promptEditor=\{\(\s*<ChatConversationHomePromptEditorModal/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeSurface/);
@@ -2004,7 +2004,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /<ChatMessageRuntimeViewport\s+\{\.\.\.surfaceParts\.viewport\.props\}/);
   assert.match(sessionPresentationSource, /frame: \{\s+props: \{\s+\.\.\.frame,\s+keyboardAvoidingStyle: styles\.frame\.keyboardAvoidingStyle,\s+rootStyle: styles\.frame\.rootStyle,\s+\},\s+\}/);
   assert.match(sessionPresentationSource, /dock: \{\s+props: \{\s+\.\.\.dock,\s+styles: styles\.dock,\s+\},\s+\}/);
-  assert.match(sessionPresentationSource, /threadList: \{\s+props: threadList,\s+\}/);
+  assert.match(sessionPresentationSource, /content: \{\s+threadList: \{\s+props: threadList,\s+\},\s+\}/);
   assert.doesNotMatch(chatMessageChromeSource, /surfaceParts\.frame\.(keyboardAvoidingStyle|keyboardAvoidingBehavior|keyboardVerticalOffset|rootStyle)/);
   assert.doesNotMatch(chatMessageChromeSource, /keyboardAvoidingStyle=\{styles\.frame\.keyboardAvoidingStyle\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrame/);

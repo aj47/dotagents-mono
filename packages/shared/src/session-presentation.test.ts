@@ -10596,15 +10596,17 @@ describe("session presentation semantics", () => {
           agentSelector: "agent-selector-props",
         },
       },
-      threadList: {
-        props: {
-          items: ["thread-item"],
-        },
-      },
       viewport: {
         props: {
           scrollRef: "scroll-ref",
           styles: "viewport-styles",
+        },
+        content: {
+          threadList: {
+            props: {
+              items: ["thread-item"],
+            },
+          },
         },
       },
     })
