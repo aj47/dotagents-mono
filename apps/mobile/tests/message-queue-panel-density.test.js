@@ -105,6 +105,10 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /headerActionParts\.actions\.map\(\(action\) =>/);
   assert.match(source, /action\.type === 'text'/);
   assert.match(source, /panelChromeParts\.pausedNotice/);
+  assert.match(source, /style=\{panelChromeParts\.pausedNotice\.container\.style\}/);
+  assert.match(source, /style=\{panelChromeParts\.pausedNotice\.message\.style\}/);
+  assert.match(source, /\{panelChromeParts\.pausedNotice\.message\.text\}/);
+  assert.doesNotMatch(source, /panelChromeParts\.pausedNotice\.(containerStyle|textStyle|text)/);
   assert.match(source, /pausedNoticeText:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.pausedNoticeText/);
   assert.doesNotMatch(source, /getMessageQueuePanelState\(messages/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileIconState\(\)/);

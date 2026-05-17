@@ -4471,6 +4471,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.compactContainer\.style\}/);
   assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.headerContainer\.style\}/);
   assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.headerActions\.style\}/);
+  assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.pausedNotice\.container\.style\}/);
+  assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.pausedNotice\.message\.style\}/);
+  assert.match(messageQueuePanelSource, /\{panelChromeParts\.pausedNotice\.message\.text\}/);
   assert.match(messageQueuePanelSource, /name=\{panelChromeParts\.compactStatusIcon\.name\}[\s\S]*?size=\{panelChromeParts\.compactStatusIcon\.size\}[\s\S]*?color=\{panelChromeParts\.compactStatusIcon\.color\}/);
   assert.match(messageQueuePanelSource, /\{panelChromeParts\.headerTitle\.text\}/);
   assert.match(messageQueuePanelSource, /style=\{action\.style\}/);
@@ -4481,6 +4484,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*panelSurface\.processFontWeight/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{styles\.container\}/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{styles\.headerActions\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /panelChromeParts\.pausedNotice\.(containerStyle|textStyle|text)/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.(resumeName|pauseName|sendNextName|clearName)\}/);
   assert.doesNotMatch(messageQueuePanelSource, /size=\{panelSurface\.compactActionIconSize\}/);
   assert.doesNotMatch(messageQueuePanelSource, /queuePanelState\.shouldShowProcessNext && onProcessNext/);

@@ -589,9 +589,9 @@ export function MessageQueuePanel({
         </View>
       </View>
       {panelChromeParts.pausedNotice && (
-        <View style={panelChromeParts.pausedNotice.containerStyle}>
-          <Text style={panelChromeParts.pausedNotice.textStyle}>
-            {panelChromeParts.pausedNotice.text}
+        <View style={panelChromeParts.pausedNotice.container.style}>
+          <Text style={panelChromeParts.pausedNotice.message.style}>
+            {panelChromeParts.pausedNotice.message.text}
           </Text>
         </View>
       )}

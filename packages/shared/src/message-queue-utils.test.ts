@@ -824,9 +824,13 @@ describe('message-queue-utils', () => {
         text: 'Paused Messages (1)',
       },
       pausedNotice: {
-        containerStyle: 'pausedNotice',
-        textStyle: 'pausedNoticeText',
-        text: MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice,
+        container: {
+          style: 'pausedNotice',
+        },
+        message: {
+          style: 'pausedNoticeText',
+          text: MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice,
+        },
       },
       list: {
         style: 'list',

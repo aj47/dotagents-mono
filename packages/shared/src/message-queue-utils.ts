@@ -1165,9 +1165,13 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     text: string;
   };
   pausedNotice: {
-    containerStyle: TStyles['pausedNotice'];
-    textStyle: TStyles['pausedNoticeText'];
-    text: string;
+    container: {
+      style: TStyles['pausedNotice'];
+    };
+    message: {
+      style: TStyles['pausedNoticeText'];
+      text: string;
+    };
   } | null;
   list: {
     style: TStyles['list'];
@@ -1674,9 +1678,13 @@ export function createMessageQueuePanelChromeMobilePropsParts<
     },
     pausedNotice: panel.shouldRenderPausedNotice
       ? {
-          containerStyle: styles.pausedNotice,
-          textStyle: styles.pausedNoticeText,
-          text: copy.pausedNotice,
+          container: {
+            style: styles.pausedNotice,
+          },
+          message: {
+            style: styles.pausedNoticeText,
+            text: copy.pausedNotice,
+          },
         }
       : null,
     list: panel.shouldRenderList
