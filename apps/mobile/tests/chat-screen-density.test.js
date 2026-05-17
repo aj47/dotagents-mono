@@ -4596,13 +4596,18 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeader[\s\S]*?<ChatMessageToolExecutionResultBadge\s+badge=\{resultBadge\}[\s\S]*?export function ChatMessageToolExecutionPayloadBlock/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionResultBadge\s+badge=\{toolDetailHeaderState\.resultBadge\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadge/);
+  const toolExecutionResultBadgeSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultBadge\([\s\S]*?export function ChatMessageToolExecutionResultBadgeContainer/)?.[0] ?? '';
+  const toolExecutionResultBadgeContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultBadgeContent[\s\S]*?export function ChatMessageToolExecutionResultBadgeIcon/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultBadgeMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const resultBadgeParts = createChatRuntimeToolExecutionResultBadgeMobilePropsParts\(\{\s+badge,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const resultBadgeContent = resultBadgeParts\.container\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const resultBadgeContent = resultBadgeParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeContainer\s+\{\.\.\.resultBadgeParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeIcon\s+\{\.\.\.resultBadgeContent\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeLabel\s+\{\.\.\.resultBadgeContent\.label\.props\}/);
+  assert.match(toolExecutionResultBadgeSource, /<ChatMessageToolExecutionResultBadgeContent\s+\{\.\.\.resultBadgeParts\.container\.content\}/);
+  assert.match(toolExecutionResultBadgeContentSource, /<ChatMessageToolExecutionResultBadgeIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(toolExecutionResultBadgeContentSource, /<ChatMessageToolExecutionResultBadgeLabel\s+\{\.\.\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultBadgeIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeContainer[\s\S]*?(accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionResultBadgeIcon/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeIcon\(props: ChatMessageToolExecutionResultBadgeIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
@@ -4749,7 +4754,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /toolResponsePendingText:\s*\{[^}]*textAlign:\s*'center'/);
   assert.match(screenSource, /toolParamsScrollExpanded:\s*\{\s+\.\.\.toolExecutionDetailStyleSlots\.paramsScrollExpanded,/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeContainer\s+\{\.\.\.resultBadgeParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeIcon\s+\{\.\.\.resultBadgeContent\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeIcon\s+\{\.\.\.icon\.props\}/);
   assert.doesNotMatch(screenSource, /toolResultBadgeIcon\.opacity/);
   assert.doesNotMatch(screenSource, /mobileToolExecutionDetailSurface\.(toggleIcon|copyButtonIcon|badgeIcon|pendingSpinner)\.(collapseName|expandedName|collapsedName|name|size|colorToken|opacity)/);
   assert.doesNotMatch(screenSource, /mobileToolExecutionCompactSurface\.statusIcon\.(successName|errorName|idleName)/);

@@ -2699,6 +2699,9 @@ type ChatMessageToolExecutionResultBadgeContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionResultBadgeContentProps =
+  ChatMessageToolExecutionResultBadgeParts['container']['content'];
+
 type ChatMessageToolExecutionResultBadgeIconProps =
   ChatMessageToolExecutionResultBadgeParts['container']['content']['icon']['props'];
 
@@ -10879,17 +10882,13 @@ export function ChatMessageToolExecutionResultBadge({
     badge,
     styles,
   });
-  const resultBadgeContent = resultBadgeParts.container.content;
 
   return (
     <ChatMessageToolExecutionResultBadgeContainer
       {...resultBadgeParts.container.props}
     >
-      <ChatMessageToolExecutionResultBadgeIcon
-        {...resultBadgeContent.icon.props}
-      />
-      <ChatMessageToolExecutionResultBadgeLabel
-        {...resultBadgeContent.label.props}
+      <ChatMessageToolExecutionResultBadgeContent
+        {...resultBadgeParts.container.content}
       />
     </ChatMessageToolExecutionResultBadgeContainer>
   );
@@ -10903,6 +10902,22 @@ export function ChatMessageToolExecutionResultBadgeContainer({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionResultBadgeContent({
+  icon,
+  label,
+}: ChatMessageToolExecutionResultBadgeContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionResultBadgeIcon
+        {...icon.props}
+      />
+      <ChatMessageToolExecutionResultBadgeLabel
+        {...label.props}
+      />
+    </>
   );
 }
 
