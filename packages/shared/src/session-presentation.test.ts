@@ -5065,16 +5065,20 @@ describe("session presentation semantics", () => {
     expect(loadingStateParts).toEqual({
       shouldRenderLoadingState: true,
       container: {
-        accessible: true,
-        accessibilityRole: "progressbar",
-        accessibilityLabel: "Loading messages",
-        accessibilityState: { busy: true },
-        style: "loading-style",
+        props: {
+          accessible: true,
+          accessibilityRole: "progressbar",
+          accessibilityLabel: "Loading messages",
+          accessibilityState: { busy: true },
+          style: "loading-style",
+        },
       },
       spinner: {
-        source: "spinner-source",
-        style: "spinner-style",
-        resizeMode: "contain",
+        props: {
+          source: "spinner-source",
+          style: "spinner-style",
+          resizeMode: "contain",
+        },
       },
     })
     expect(createChatRuntimeLoadingStateMobilePropsParts({

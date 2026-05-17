@@ -2241,6 +2241,21 @@ type ChatMessageLoadingStateProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
+type ChatMessageLoadingStateParts = ReturnType<typeof createChatRuntimeLoadingStateMobilePropsParts<
+  ChatRuntimeLoadingStateMobileRenderState,
+  ImageSourcePropType,
+  StyleProp<ViewStyle>,
+  StyleProp<ImageStyle>
+>>;
+
+type ChatMessageLoadingStateContainerProps =
+  ChatMessageLoadingStateParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageLoadingStateSpinnerProps =
+  ChatMessageLoadingStateParts['spinner']['props'];
+
 type ChatMessageDebugPanelRow = ChatRuntimeDebugPanelsMobileRenderState['requestRows'][number];
 
 type ChatMessageDebugPanelProps = {
@@ -9456,19 +9471,48 @@ export function ChatMessageLoadingState({
   if (!loadingStateParts.shouldRenderLoadingState) return null;
 
   return (
-    <View
-      accessible={loadingStateParts.container.accessible}
-      accessibilityRole={loadingStateParts.container.accessibilityRole}
-      accessibilityLabel={loadingStateParts.container.accessibilityLabel}
-      accessibilityState={loadingStateParts.container.accessibilityState}
-      style={loadingStateParts.container.style}
+    <ChatMessageLoadingStateContainer
+      {...loadingStateParts.container.props}
     >
-      <Image
-        source={loadingStateParts.spinner.source}
-        style={loadingStateParts.spinner.style}
-        resizeMode={loadingStateParts.spinner.resizeMode}
+      <ChatMessageLoadingStateSpinner
+        {...loadingStateParts.spinner.props}
       />
+    </ChatMessageLoadingStateContainer>
+  );
+}
+
+export function ChatMessageLoadingStateContainer({
+  accessible,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityState,
+  style,
+  children,
+}: ChatMessageLoadingStateContainerProps) {
+  return (
+    <View
+      accessible={accessible}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      style={style}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageLoadingStateSpinner({
+  source,
+  style,
+  resizeMode,
+}: ChatMessageLoadingStateSpinnerProps) {
+  return (
+    <Image
+      source={source}
+      style={style}
+      resizeMode={resizeMode}
+    />
   );
 }
 
