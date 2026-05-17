@@ -2159,6 +2159,9 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
   ChatMessageDelegationCardStyles
 >>;
 
+type ChatMessageDelegationContentProps =
+  ChatMessageDelegationCardParts['card']['content'];
+
 type ChatMessageDelegationHeaderProps =
   ChatMessageDelegationCardParts['card']['content']['header']['props'];
 
@@ -9848,6 +9851,34 @@ export function ChatMessageDelegationToolPreview({
   );
 }
 
+export function ChatMessageDelegationContent({
+  header,
+  subtitle,
+  meta,
+  conversationPreview,
+  toolPreview,
+}: ChatMessageDelegationContentProps) {
+  return (
+    <>
+      <ChatMessageDelegationHeader
+        {...header.props}
+      />
+      <ChatMessageDelegationSubtitleBlock
+        subtitle={subtitle}
+      />
+      <ChatMessageDelegationMetaRow
+        {...meta.props}
+      />
+      <ChatMessageDelegationConversationPreviewBlock
+        conversationPreview={conversationPreview}
+      />
+      <ChatMessageDelegationToolPreviewBlock
+        toolPreview={toolPreview}
+      />
+    </>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -9876,20 +9907,8 @@ export function ChatMessageDelegationCard({
     <View
       {...delegationCardParts.card.props}
     >
-      <ChatMessageDelegationHeader
-        {...cardContent.header.props}
-      />
-      <ChatMessageDelegationSubtitleBlock
-        subtitle={cardContent.subtitle}
-      />
-      <ChatMessageDelegationMetaRow
-        {...cardContent.meta.props}
-      />
-      <ChatMessageDelegationConversationPreviewBlock
-        conversationPreview={cardContent.conversationPreview}
-      />
-      <ChatMessageDelegationToolPreviewBlock
-        toolPreview={cardContent.toolPreview}
+      <ChatMessageDelegationContent
+        {...cardContent}
       />
     </View>
   );
