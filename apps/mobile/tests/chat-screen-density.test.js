@@ -5187,10 +5187,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /style=\{itemChromeParts\.row\.style\}/);
   assert.match(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon && \(/);
-  assert.match(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon[\s\S]*?name=\{itemChromeParts\.failedStatusIcon\.name\}[\s\S]*?size=\{itemChromeParts\.failedStatusIcon\.size\}[\s\S]*?color=\{itemChromeParts\.failedStatusIcon\.color\}/);
+  assert.match(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon[\s\S]*?<Ionicons\s+\{\.\.\.itemChromeParts\.failedStatusIcon\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon[\s\S]*?name=\{itemChromeParts\.failedStatusIcon\.name\}/);
   assert.match(messageQueuePanelSource, /itemChromeParts\.processingStatusIndicator\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.processingStatusIndicator && \(/);
-  assert.match(messageQueuePanelSource, /itemChromeParts\.processingStatusIndicator[\s\S]*?<ActivityIndicator[\s\S]*?size=\{itemChromeParts\.processingStatusIndicator\.size\}[\s\S]*?color=\{itemChromeParts\.processingStatusIndicator\.color\}/);
+  assert.match(messageQueuePanelSource, /itemChromeParts\.processingStatusIndicator[\s\S]*?<ActivityIndicator\s+\{\.\.\.itemChromeParts\.processingStatusIndicator\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.processingStatusIndicator[\s\S]*?size=\{itemChromeParts\.processingStatusIndicator\.size\}/);
   assert.match(messageQueuePanelSource, /contentParts\.errorText\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /contentParts\.errorText && \(/);
   assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \(/);
@@ -5201,7 +5203,10 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /numberOfLines=\{contentParts\.messageText\.numberOfLines\}/);
   assert.match(messageQueuePanelSource, /\{contentParts\.metaText\.text\}/);
   assert.match(messageQueuePanelSource, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
-  assert.match(messageQueuePanelSource, /name=\{expandButtonParts\.icon\.name\}[\s\S]*?size=\{expandButtonParts\.icon\.size\}[\s\S]*?color=\{expandButtonParts\.icon\.color\}/);
+  assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.expandButtonParts\.icon\.props\}/);
+  assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{expandButtonParts\.icon\.name\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
   assert.match(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
   assert.match(messageQueuePanelSource, /activeOpacity=\{editParts\.saveButton\.activeOpacity\}/);
   assert.match(messageQueuePanelSource, /accessibilityLabel=\{editParts\.input\.accessibilityLabel\}/);
@@ -5225,7 +5230,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /statusIndicatorPart\?\.type ===/);
   assert.doesNotMatch(messageQueuePanelSource, /actionParts\.shouldRender &&/);
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) =>/);
-  assert.match(messageQueuePanelSource, /name=\{action\.icon\.name\}[\s\S]*?size=\{action\.icon\.size\}[\s\S]*?color=\{action\.icon\.color\}/);
+  assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
   assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);

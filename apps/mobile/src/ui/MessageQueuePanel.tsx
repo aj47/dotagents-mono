@@ -173,15 +173,12 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       <View style={itemChromeParts.row.style}>
         {itemChromeParts.failedStatusIcon.shouldRender ? (
           <Ionicons
-            name={itemChromeParts.failedStatusIcon.name}
-            size={itemChromeParts.failedStatusIcon.size}
-            color={itemChromeParts.failedStatusIcon.color}
+            {...itemChromeParts.failedStatusIcon.props}
           />
         ) : null}
         {itemChromeParts.processingStatusIndicator.shouldRender ? (
           <ActivityIndicator
-            size={itemChromeParts.processingStatusIndicator.size}
-            color={itemChromeParts.processingStatusIndicator.color}
+            {...itemChromeParts.processingStatusIndicator.props}
           />
         ) : null}
         <View style={contentParts.container.style}>
@@ -209,9 +206,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
                 accessibilityLabel={expandButtonParts.pressable.accessibilityLabel}
               >
                 <Ionicons
-                  name={expandButtonParts.icon.name}
-                  size={expandButtonParts.icon.size}
-                  color={expandButtonParts.icon.color}
+                  {...expandButtonParts.icon.props}
                 />
                 <Text style={expandButtonParts.label.style}>
                   {expandButtonParts.label.text}
@@ -232,9 +227,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
                   hitSlop={action.hitSlop}
                 >
                   <Ionicons
-                    name={action.icon.name}
-                    size={action.icon.size}
-                    color={action.icon.color}
+                    {...action.icon.props}
                   />
                   <Text style={action.label.style}>{action.label.text}</Text>
                 </TouchableOpacity>

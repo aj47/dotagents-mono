@@ -1128,9 +1128,11 @@ describe('message-queue-utils', () => {
     })).toEqual({
       type: 'failed',
       icon: {
-        name: 'alert-circle',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
-        color: '#dc2626',
+        props: {
+          name: 'alert-circle',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
+          color: '#dc2626',
+        },
       },
     });
     expect(createQueuedMessageStatusIndicatorMobilePropsPart({
@@ -1144,8 +1146,10 @@ describe('message-queue-utils', () => {
     })).toEqual({
       type: 'processing',
       activityIndicator: {
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
-        color: '#2563eb',
+        props: {
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
+          color: '#2563eb',
+        },
       },
     });
     expect(createQueuedMessageStatusIndicatorMobilePropsPart({
@@ -1161,9 +1165,11 @@ describe('message-queue-utils', () => {
       statusIndicatorPart: {
         type: 'failed',
         icon: {
-          name: 'alert-circle',
-          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
-          color: '#dc2626',
+          props: {
+            name: 'alert-circle',
+            size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
+            color: '#dc2626',
+          },
         },
       },
       actionParts: {
@@ -1183,9 +1189,11 @@ describe('message-queue-utils', () => {
       },
       failedStatusIcon: {
         shouldRender: true,
-        name: 'alert-circle',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
-        color: '#dc2626',
+        props: {
+          name: 'alert-circle',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
+          color: '#dc2626',
+        },
       },
       processingStatusIndicator: {
         shouldRender: false,
@@ -1199,8 +1207,10 @@ describe('message-queue-utils', () => {
       statusIndicatorPart: {
         type: 'processing',
         activityIndicator: {
-          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
-          color: '#2563eb',
+          props: {
+            size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
+            color: '#2563eb',
+          },
         },
       },
       actionParts: {
@@ -1217,8 +1227,10 @@ describe('message-queue-utils', () => {
       },
       processingStatusIndicator: {
         shouldRender: true,
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
-        color: '#2563eb',
+        props: {
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
+          color: '#2563eb',
+        },
       },
       actions: {
         shouldRender: false,
@@ -1308,9 +1320,11 @@ describe('message-queue-utils', () => {
         accessibilityLabel: 'Expand queued message',
       },
       icon: {
-        name: 'chevron-down',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandIconSize,
-        color: '#737373',
+        props: {
+          name: 'chevron-down',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandIconSize,
+          color: '#737373',
+        },
       },
       label: {
         style: 'expandText',
@@ -1396,9 +1410,11 @@ describe('message-queue-utils', () => {
       accessibilityLabel: 'Retry queued message',
       hitSlop: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.hitSlop,
       icon: {
-        name: 'refresh',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.actionIconSize,
-        color: '#2563eb',
+        props: {
+          name: 'refresh',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.actionIconSize,
+          color: '#2563eb',
+        },
       },
       label: {
         style: 'retryActionText',
@@ -1636,8 +1652,10 @@ describe('message-queue-utils', () => {
       },
       failedStatusIcon: {
         shouldRender: true,
-        name: 'alert-circle',
-        color: '#dc2626',
+        props: {
+          name: 'alert-circle',
+          color: '#dc2626',
+        },
       },
       processingStatusIndicator: {
         shouldRender: false,
@@ -1664,7 +1682,9 @@ describe('message-queue-utils', () => {
         accessibilityLabel: 'Expand queued message',
       },
       icon: {
-        name: 'chevron-down',
+        props: {
+          name: 'chevron-down',
+        },
       },
       label: {
         style: 'expandText',

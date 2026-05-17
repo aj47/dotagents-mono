@@ -2085,16 +2085,20 @@ export type QueuedMessageStatusIndicatorMobilePropsPart =
   | {
       type: 'failed';
       icon: {
-        name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.failedName;
-        size: QueuedMessageMobileItemSurface['stateIconSize'];
-        color: string;
+        props: {
+          name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.failedName;
+          size: QueuedMessageMobileItemSurface['stateIconSize'];
+          color: string;
+        };
       };
     }
   | {
       type: 'processing';
       activityIndicator: {
-        size: QueuedMessageMobileItemSurface['processingIndicatorSize'];
-        color: string;
+        props: {
+          size: QueuedMessageMobileItemSurface['processingIndicatorSize'];
+          color: string;
+        };
       };
     };
 
@@ -2132,11 +2136,13 @@ export type QueuedMessageExpandButtonMobilePropsParts<
         accessibilityLabel: string;
       };
       icon: {
-        name:
-          | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
-          | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
-        size: QueuedMessageMobileItemSurface['expandIconSize'];
-        color: string;
+        props: {
+          name:
+            | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
+            | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
+          size: QueuedMessageMobileItemSurface['expandIconSize'];
+          color: string;
+        };
       };
       label: {
         style: TStyles['expandText'];
@@ -2228,12 +2234,14 @@ export interface QueuedMessageActionButtonMobilePropsPart<
   accessibilityLabel: string;
   hitSlop: QueuedMessageMobileActionSurface['hitSlop'];
   icon: {
-    name:
-      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.retryName
-      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.editName
-      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.removeName;
-    size: QueuedMessageMobileActionSurface['actionIconSize'];
-    color: string;
+    props: {
+      name:
+        | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.retryName
+        | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.editName
+        | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.removeName;
+      size: QueuedMessageMobileActionSurface['actionIconSize'];
+      color: string;
+    };
   };
   label: {
     style:
@@ -2278,19 +2286,21 @@ export interface QueuedMessageItemChromeMobilePropsParts<
     style: TStyles['row'];
   };
   failedStatusIcon:
-    | (Extract<QueuedMessageStatusIndicatorMobilePropsPart, { type: 'failed' }>['icon'] & {
+    | {
         shouldRender: true;
-      })
+        props: Extract<QueuedMessageStatusIndicatorMobilePropsPart, { type: 'failed' }>['icon']['props'];
+      }
     | {
         shouldRender: false;
       };
   processingStatusIndicator:
-    | (Extract<
-        QueuedMessageStatusIndicatorMobilePropsPart,
-        { type: 'processing' }
-      >['activityIndicator'] & {
+    | {
         shouldRender: true;
-      })
+        props: Extract<
+          QueuedMessageStatusIndicatorMobilePropsPart,
+          { type: 'processing' }
+        >['activityIndicator']['props'];
+      }
     | {
         shouldRender: false;
       };
@@ -2652,9 +2662,11 @@ export function createQueuedMessageStatusIndicatorMobilePropsPart({
     return {
       type: 'failed',
       icon: {
-        name: icons.failedName,
-        size: surface.stateIconSize,
-        color: colors.failedColor,
+        props: {
+          name: icons.failedName,
+          size: surface.stateIconSize,
+          color: colors.failedColor,
+        },
       },
     };
   }
@@ -2663,8 +2675,10 @@ export function createQueuedMessageStatusIndicatorMobilePropsPart({
     return {
       type: 'processing',
       activityIndicator: {
-        size: surface.processingIndicatorSize,
-        color: colors.processingColor,
+        props: {
+          size: surface.processingIndicatorSize,
+          color: colors.processingColor,
+        },
       },
     };
   }
@@ -2737,9 +2751,11 @@ export function createQueuedMessageExpandButtonMobilePropsParts<
       accessibilityLabel: presentation.expansionAccessibilityLabel,
     },
     icon: {
-      name: isExpanded ? icons.collapseMessageName : icons.expandMessageName,
-      size: surface.expandIconSize,
-      color: colors.expandTextColor,
+      props: {
+        name: isExpanded ? icons.collapseMessageName : icons.expandMessageName,
+        size: surface.expandIconSize,
+        color: colors.expandTextColor,
+      },
     },
     label: {
       style: styles.expandText,
@@ -2804,7 +2820,7 @@ export function createQueuedMessageActionButtonMobilePropsParts<
     params: {
       onPress: () => void;
       accessibilityLabel: string;
-      iconName: QueuedMessageActionButtonMobilePropsPart<TStyles>['icon']['name'];
+      iconName: QueuedMessageActionButtonMobilePropsPart<TStyles>['icon']['props']['name'];
       iconColor: string;
       labelStyle: QueuedMessageActionButtonMobilePropsPart<TStyles>['label']['style'];
       labelText: string;
@@ -2818,9 +2834,11 @@ export function createQueuedMessageActionButtonMobilePropsParts<
     accessibilityLabel: params.accessibilityLabel,
     hitSlop: surface.hitSlop,
     icon: {
-      name: params.iconName,
-      size: surface.actionIconSize,
-      color: params.iconColor,
+      props: {
+        name: params.iconName,
+        size: surface.actionIconSize,
+        color: params.iconColor,
+      },
     },
     label: {
       style: params.labelStyle,
@@ -2896,7 +2914,7 @@ export function createQueuedMessageItemChromeMobilePropsParts<
     failedStatusIcon: statusIndicatorPart?.type === 'failed'
       ? {
           shouldRender: true,
-          ...statusIndicatorPart.icon,
+          props: statusIndicatorPart.icon.props,
         }
       : {
           shouldRender: false,
@@ -2904,7 +2922,7 @@ export function createQueuedMessageItemChromeMobilePropsParts<
     processingStatusIndicator: statusIndicatorPart?.type === 'processing'
       ? {
           shouldRender: true,
-          ...statusIndicatorPart.activityIndicator,
+          props: statusIndicatorPart.activityIndicator.props,
         }
       : {
           shouldRender: false,
