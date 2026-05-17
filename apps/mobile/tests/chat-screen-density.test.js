@@ -4460,8 +4460,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*panelSurface\.processFontWeight/);
   assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
-  assert.match(messageQueuePanelSource, /disabled=\{editDraftState\.saveActionState\.isDisabled\}/);
-  assert.match(messageQueuePanelSource, /accessibilityState=\{editDraftState\.saveActionState\.accessibilityState\}/);
+  assert.match(messageQueuePanelSource, /disabled=\{editParts\.saveButton\.disabled\}/);
+  assert.match(messageQueuePanelSource, /accessibilityState=\{editParts\.saveButton\.accessibilityState\}/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSaveActionState\(editText\)/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /createQueuedMessageItemMobileStyleSlots,/);
@@ -4470,6 +4470,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots\(\{\s+surface: actionSurface,\s+colors: actionColors,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageActionRowMobileStyleSlot,/);
   assert.match(messageQueuePanelSource, /const actionRowStyleSlot = createQueuedMessageActionRowMobileStyleSlot\(\{\s+surface: actionSurface,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createQueuedMessageEditMobilePropsParts,/);
+  assert.match(messageQueuePanelSource, /const editParts = createQueuedMessageEditMobilePropsParts\(\{\s+surface: editSurface,\s+copy: queuePanelCopy,\s+editDraftState,\s+styles,\s+onCancel: handleCancelEdit,\s+onSave: handleSaveEdit,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageEditMobileStyleSlots,/);
   assert.match(messageQueuePanelSource, /const editStyleSlots = createQueuedMessageEditMobileStyleSlots\(\{\s+surface: editSurface,\s+colors: editColors,\s+\}\);/);
   assert.match(messageQueuePanelSource, /container:\s*\{[\s\S]*?\.\.\.itemStyleSlots\.container/);
@@ -4483,6 +4485,11 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /editInput:\s*\{[\s\S]*?\.\.\.editStyleSlots\.input/);
   assert.match(messageQueuePanelSource, /editButton:\s*\{[\s\S]*?\.\.\.editStyleSlots\.button/);
   assert.match(messageQueuePanelSource, /saveButtonText:\s*\{[\s\S]*?\.\.\.editStyleSlots\.saveButtonText/);
+  assert.match(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
+  assert.match(messageQueuePanelSource, /activeOpacity=\{editParts\.saveButton\.activeOpacity\}/);
+  assert.match(messageQueuePanelSource, /accessibilityLabel=\{editParts\.input\.accessibilityLabel\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{\[styles\.editButton, styles\.cancelButton\]\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{\[styles\.editButton, styles\.saveButton\]\}/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*actionColors\.buttonBorderColor/);
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*actionSurface\.textFontWeight/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*editColors\.inputBorderColor/);

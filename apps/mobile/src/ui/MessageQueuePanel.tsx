@@ -19,6 +19,7 @@ import {
   createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
+  createQueuedMessageEditMobilePropsParts,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   formatQueuedMessageMetaLabel,
@@ -206,39 +207,51 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       ...editStyleSlots.saveButtonText,
     },
   });
+  const editParts = createQueuedMessageEditMobilePropsParts({
+    surface: editSurface,
+    copy: queuePanelCopy,
+    editDraftState,
+    styles,
+    onCancel: handleCancelEdit,
+    onSave: handleSaveEdit,
+  });
 
   if (isEditing) {
     return (
       <View style={styles.container}>
-        <View style={styles.editContainer}>
+        <View style={editParts.container.style}>
           <TextInput
-            style={styles.editInput}
+            style={editParts.input.style}
             value={editText}
             onChangeText={setEditText}
-            accessibilityLabel={queuePanelCopy.actions.editInputAccessibilityLabel}
+            accessibilityLabel={editParts.input.accessibilityLabel}
             multiline
             autoFocus
           />
-          <View style={styles.editActions}>
+          <View style={editParts.actions.style}>
             <TouchableOpacity
-              style={[styles.editButton, styles.cancelButton]}
-              onPress={handleCancelEdit}
-              activeOpacity={editSurface.buttonPressedOpacity}
-              accessibilityRole={editSurface.buttonAccessibilityRole}
-              accessibilityLabel={queuePanelCopy.actions.cancelAccessibilityLabel}
+              style={editParts.cancelButton.style}
+              onPress={editParts.cancelButton.onPress}
+              activeOpacity={editParts.cancelButton.activeOpacity}
+              accessibilityRole={editParts.cancelButton.accessibilityRole}
+              accessibilityLabel={editParts.cancelButton.accessibilityLabel}
             >
-              <Text style={styles.buttonText}>{queuePanelCopy.actions.cancelLabel}</Text>
+              <Text style={editParts.cancelButton.text.style}>
+                {editParts.cancelButton.text.value}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.editButton, styles.saveButton]}
-              onPress={handleSaveEdit}
-              disabled={editDraftState.saveActionState.isDisabled}
-              activeOpacity={editSurface.buttonPressedOpacity}
-              accessibilityRole={editSurface.buttonAccessibilityRole}
-              accessibilityLabel={queuePanelCopy.actions.saveAccessibilityLabel}
-              accessibilityState={editDraftState.saveActionState.accessibilityState}
+              style={editParts.saveButton.style}
+              onPress={editParts.saveButton.onPress}
+              disabled={editParts.saveButton.disabled}
+              activeOpacity={editParts.saveButton.activeOpacity}
+              accessibilityRole={editParts.saveButton.accessibilityRole}
+              accessibilityLabel={editParts.saveButton.accessibilityLabel}
+              accessibilityState={editParts.saveButton.accessibilityState}
             >
-              <Text style={styles.saveButtonText}>{queuePanelCopy.actions.saveLabel}</Text>
+              <Text style={editParts.saveButton.text.style}>
+                {editParts.saveButton.text.value}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

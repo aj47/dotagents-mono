@@ -1341,6 +1341,71 @@ export interface QueuedMessageEditMobileStyleSlots {
   };
 }
 
+export interface QueuedMessageEditMobileStylesLike {
+  editContainer: unknown;
+  editInput: unknown;
+  editActions: unknown;
+  editButton: unknown;
+  cancelButton: unknown;
+  saveButton: unknown;
+  buttonText: unknown;
+  saveButtonText: unknown;
+}
+
+export interface QueuedMessageEditMobilePropsPartsInput<
+  TStyles extends QueuedMessageEditMobileStylesLike = QueuedMessageEditMobileStylesLike,
+  TOnCancel = unknown,
+  TOnSave = unknown,
+> {
+  surface: QueuedMessageMobileEditSurface;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+  editDraftState: QueuedMessageEditDraftState;
+  styles: TStyles;
+  onCancel: TOnCancel;
+  onSave: TOnSave;
+}
+
+export interface QueuedMessageEditMobilePropsParts<
+  TStyles extends QueuedMessageEditMobileStylesLike = QueuedMessageEditMobileStylesLike,
+  TOnCancel = unknown,
+  TOnSave = unknown,
+> {
+  container: {
+    style: TStyles['editContainer'];
+  };
+  input: {
+    style: TStyles['editInput'];
+    accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editInputAccessibilityLabel;
+  };
+  actions: {
+    style: TStyles['editActions'];
+  };
+  cancelButton: {
+    style: Array<TStyles['editButton'] | TStyles['cancelButton']>;
+    onPress: TOnCancel;
+    activeOpacity: QueuedMessageMobileEditSurface['buttonPressedOpacity'];
+    accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
+    accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel;
+    text: {
+      style: TStyles['buttonText'];
+      value: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel;
+    };
+  };
+  saveButton: {
+    style: Array<TStyles['editButton'] | TStyles['saveButton']>;
+    onPress: TOnSave;
+    disabled: boolean;
+    activeOpacity: QueuedMessageMobileEditSurface['buttonPressedOpacity'];
+    accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
+    accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel;
+    accessibilityState: QueuedMessageEditSaveActionState['accessibilityState'];
+    text: {
+      style: TStyles['saveButtonText'];
+      value: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel;
+    };
+  };
+}
+
 export interface QueuedMessageItemDesktopRenderStateInput {
   message: Pick<QueuedMessage, 'status' | 'addedToHistory' | 'text' | 'errorMessage'>;
   isExpanded: boolean;
@@ -1580,6 +1645,56 @@ export function createQueuedMessageEditMobileStyleSlots({
     saveButtonText: {
       fontSize: surface.buttonTextFontSize,
       color: colors.saveButtonTextColor,
+    },
+  };
+}
+
+export function createQueuedMessageEditMobilePropsParts<
+  TStyles extends QueuedMessageEditMobileStylesLike,
+  TOnCancel,
+  TOnSave,
+>({
+  surface,
+  copy,
+  editDraftState,
+  styles,
+  onCancel,
+  onSave,
+}: QueuedMessageEditMobilePropsPartsInput<TStyles, TOnCancel, TOnSave>): QueuedMessageEditMobilePropsParts<TStyles, TOnCancel, TOnSave> {
+  return {
+    container: {
+      style: styles.editContainer,
+    },
+    input: {
+      style: styles.editInput,
+      accessibilityLabel: copy.actions.editInputAccessibilityLabel,
+    },
+    actions: {
+      style: styles.editActions,
+    },
+    cancelButton: {
+      style: [styles.editButton, styles.cancelButton],
+      onPress: onCancel,
+      activeOpacity: surface.buttonPressedOpacity,
+      accessibilityRole: surface.buttonAccessibilityRole,
+      accessibilityLabel: copy.actions.cancelAccessibilityLabel,
+      text: {
+        style: styles.buttonText,
+        value: copy.actions.cancelLabel,
+      },
+    },
+    saveButton: {
+      style: [styles.editButton, styles.saveButton],
+      onPress: onSave,
+      disabled: editDraftState.saveActionState.isDisabled,
+      activeOpacity: surface.buttonPressedOpacity,
+      accessibilityRole: surface.buttonAccessibilityRole,
+      accessibilityLabel: copy.actions.saveAccessibilityLabel,
+      accessibilityState: editDraftState.saveActionState.accessibilityState,
+      text: {
+        style: styles.saveButtonText,
+        value: copy.actions.saveLabel,
+      },
     },
   };
 }

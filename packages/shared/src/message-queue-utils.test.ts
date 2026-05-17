@@ -11,6 +11,7 @@ import {
   createMessageQueuePanelMobileWrapperStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
+  createQueuedMessageEditMobilePropsParts,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   enqueueQueuedMessage,
@@ -668,10 +669,11 @@ describe('message-queue-utils', () => {
       gap: 8,
       marginTop: 6,
     });
-    expect(createQueuedMessageEditMobileStyleSlots({
+    const editStyleSlots = createQueuedMessageEditMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.edit,
       colors: mobileQueueSurfaceRenderState.colors.edit,
-    })).toEqual({
+    });
+    expect(editStyleSlots).toEqual({
       container: {
         gap: 8,
       },
@@ -711,6 +713,61 @@ describe('message-queue-utils', () => {
         color: '#ffffff',
       },
     });
+    const editPartCalls: string[] = [];
+    const editParts = createQueuedMessageEditMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.edit,
+      copy: getMessageQueuePanelCopyState(),
+      editDraftState: getQueuedMessageEditDraftState('Updated text', 'Original text'),
+      styles: {
+        editContainer: 'editContainer',
+        editInput: 'editInput',
+        editActions: 'editActions',
+        editButton: 'editButton',
+        cancelButton: 'cancelButton',
+        saveButton: 'saveButton',
+        buttonText: 'buttonText',
+        saveButtonText: 'saveButtonText',
+      },
+      onCancel: () => editPartCalls.push('cancel'),
+      onSave: () => editPartCalls.push('save'),
+    });
+    expect(editParts).toMatchObject({
+      container: {
+        style: 'editContainer',
+      },
+      input: {
+        style: 'editInput',
+        accessibilityLabel: 'Queued message edit input',
+      },
+      actions: {
+        style: 'editActions',
+      },
+      cancelButton: {
+        style: ['editButton', 'cancelButton'],
+        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Cancel queued message edit',
+        text: {
+          style: 'buttonText',
+          value: 'Cancel',
+        },
+      },
+      saveButton: {
+        style: ['editButton', 'saveButton'],
+        disabled: false,
+        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Save queued message edit',
+        accessibilityState: { disabled: false },
+        text: {
+          style: 'saveButtonText',
+          value: 'Save',
+        },
+      },
+    });
+    editParts.cancelButton.onPress();
+    editParts.saveButton.onPress();
+    expect(editPartCalls).toEqual(['cancel', 'save']);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.containerBaseClassName).toContain('transition-colors');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.messageCollapsedClassName).toBe('line-clamp-2');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.compact.containerBaseClassName).toContain('flex flex-wrap');

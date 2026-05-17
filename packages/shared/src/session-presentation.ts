@@ -405,6 +405,7 @@ export {
   createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
+  createQueuedMessageEditMobilePropsParts,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   formatQueuedMessageMetaLabel,
