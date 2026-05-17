@@ -5473,9 +5473,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /bodyStyle: styles\.content\.expandedBodyStyle/);
   assert.doesNotMatch(chatMessageChromeSource, /pressedStyle: styles\.content\.collapsedPressedStyle/);
   assert.doesNotMatch(chatMessageChromeSource, /rowStyle=\{styles\.standaloneActions\.rowStyle\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageConversationContent\s+\{\.\.\.threadBodyParts\.conversation\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionStack\s+\{\.\.\.threadBodyParts\.toolExecutionStack\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageStandaloneActions\s+\{\.\.\.threadBodyParts\.standaloneActions\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageConversationContent\s+\{\.\.\.threadBodyParts\.conversation\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionStack\s+\{\.\.\.threadBodyParts\.toolExecutionStack\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageStandaloneActions\s+\{\.\.\.threadBodyParts\.standaloneActions\.props\}/);
   assert.match(sessionPresentationSource, /content: \{\s+\.\.\.conversation\.content,\s+rowStyle: styles\.content\.rowStyle,/);
   assert.match(sessionPresentationSource, /expanded: \{\s+\.\.\.conversation\.content\.expanded,\s+bodyStyle: styles\.content\.expandedBodyStyle,\s+streamingStyles: styles\.content\.streamingStyles,/);
   assert.match(sessionPresentationSource, /standaloneActions: \{\s+\.\.\.conversation\.standaloneActions,\s+rowStyle: styles\.standaloneActions\.rowStyle,/);
@@ -5511,6 +5511,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /if \(threadBodyParts\.delegationCard\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /if \(threadBodyParts\.toolApproval\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /if \(threadBodyParts\.inlineActivity\.shouldRender\) \{/);
+  assert.match(chatMessageChromeSource, /!threadBodyParts\.conversation\.shouldRender/);
+  assert.match(chatMessageChromeSource, /!threadBodyParts\.toolExecutionStack\.shouldRender/);
+  assert.match(chatMessageChromeSource, /!threadBodyParts\.standaloneActions\.shouldRender/);
   assert.match(sessionPresentationSource, /conversation: createChatRuntimeConversationBodyMobileProps\(\{/);
   assert.match(sessionPresentationSource, /content: \{\s+contentDisplayMode,\s+shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,\s+entries: actionSet\.entries,/);
   assert.doesNotMatch(chatMessageChromeSource, /contentState\.shouldRenderExpandedContent/);

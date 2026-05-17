@@ -10329,9 +10329,18 @@ describe("session presentation semantics", () => {
         shouldRender: false,
         props: null,
       },
-      conversation: null,
-      toolExecutionStack: null,
-      standaloneActions: null,
+      conversation: {
+        shouldRender: false,
+        props: null,
+      },
+      toolExecutionStack: {
+        shouldRender: false,
+        props: null,
+      },
+      standaloneActions: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeConversationThreadBodyMobilePropsParts({
       bodyDisplayMode: "inlineActivity",
@@ -10366,9 +10375,18 @@ describe("session presentation semantics", () => {
           spinnerStyle: "inline-activity-spinner-style",
         },
       },
-      conversation: null,
-      toolExecutionStack: null,
-      standaloneActions: null,
+      conversation: {
+        shouldRender: false,
+        props: null,
+      },
+      toolExecutionStack: {
+        shouldRender: false,
+        props: null,
+      },
+      standaloneActions: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeConversationThreadBodyMobilePropsParts({
       bodyDisplayMode: "conversation",
@@ -10396,33 +10414,42 @@ describe("session presentation semantics", () => {
         props: null,
       },
       conversation: {
-        contentDisplayMode: "expanded",
-        shouldRenderActionSlots: true,
-        entries: ["message-action"],
-        rowStyle: "message-content-row",
-        expanded: {
-          markdownContent: "expanded message",
-          spinnerSource: "spinner-source",
-          bodyStyle: "message-content-body",
-          streamingStyles: "streaming-content-styles",
-        },
-        collapsed: {
-          renderState: "collapsed-preview",
-          onPress: "toggle-preview",
-          style: "collapsed-preview-style",
-          pressedStyle: "collapsed-preview-pressed-style",
-          textStyle: "collapsed-preview-text-style",
+        shouldRender: true,
+        props: {
+          contentDisplayMode: "expanded",
+          shouldRenderActionSlots: true,
+          entries: ["message-action"],
+          rowStyle: "message-content-row",
+          expanded: {
+            markdownContent: "expanded message",
+            spinnerSource: "spinner-source",
+            bodyStyle: "message-content-body",
+            streamingStyles: "streaming-content-styles",
+          },
+          collapsed: {
+            renderState: "collapsed-preview",
+            onPress: "toggle-preview",
+            style: "collapsed-preview-style",
+            pressedStyle: "collapsed-preview-pressed-style",
+            textStyle: "collapsed-preview-text-style",
+          },
         },
       },
       toolExecutionStack: {
         shouldRender: true,
-        detailRows: ["tool-detail-row"],
-        styles: "tool-execution-stack-styles",
+        props: {
+          shouldRender: true,
+          detailRows: ["tool-detail-row"],
+          styles: "tool-execution-stack-styles",
+        },
       },
       standaloneActions: {
         shouldRender: true,
-        entries: ["standalone-action"],
-        rowStyle: "standalone-actions-row",
+        props: {
+          shouldRender: true,
+          entries: ["standalone-action"],
+          rowStyle: "standalone-actions-row",
+        },
       },
     })
     const toolActivityGroupBoundaryStyles = createChatMessageToolActivityGroupBoundaryStyles({

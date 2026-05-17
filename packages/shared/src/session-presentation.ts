@@ -5096,6 +5096,14 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsPartsInp
   }
 }
 
+export type ChatRuntimeConversationThreadBodyMobilePropsPart<TProps> = {
+  shouldRender: true
+  props: TProps
+} | {
+  shouldRender: false
+  props: null
+}
+
 export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   TRetryStatus extends object = Record<string, never>,
   TDelegationCard extends object = Record<string, never>,
@@ -5107,43 +5115,27 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   TInlineActivityStyle = unknown,
   TInlineActivitySpinnerStyle = unknown,
 > {
-  retryStatus: {
-    shouldRender: true
-    props: TRetryStatus & {
+  retryStatus: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    TRetryStatus & {
       styles: TRetryStatusStyles
     }
-  } | {
-    shouldRender: false
-    props: null
-  }
-  delegationCard: {
-    shouldRender: true
-    props: TDelegationCard & {
+  >
+  delegationCard: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    TDelegationCard & {
       styles: TDelegationCardStyles
     }
-  } | {
-    shouldRender: false
-    props: null
-  }
-  toolApproval: {
-    shouldRender: true
-    props: TToolApproval & {
+  >
+  toolApproval: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    TToolApproval & {
       styles: TToolApprovalStyles
     }
-  } | {
-    shouldRender: false
-    props: null
-  }
-  inlineActivity: {
-    shouldRender: true
-    props: TInlineActivity & {
+  >
+  inlineActivity: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    TInlineActivity & {
       style: TInlineActivityStyle
       spinnerStyle: TInlineActivitySpinnerStyle
     }
-  } | {
-    shouldRender: false
-    props: null
-  }
+  >
 }
 
 export interface ChatRuntimeConversationThreadBodyMobilePropsPartsInput<
@@ -5279,45 +5271,51 @@ export interface ChatRuntimeConversationThreadBodyMobilePropsParts<
     TInlineActivityStyle,
     TInlineActivitySpinnerStyle
   >["inlineActivity"]
-  conversation: ChatRuntimeConversationBodyPanelMobilePropsParts<
-    TContent,
-    TToolExecutionStack,
-    TStandaloneActions,
-    TContentRowStyle,
-    TExpandedBodyStyle,
-    TStreamingStyles,
-    TCollapsedStyle,
-    TCollapsedPressedStyle,
-    TCollapsedTextStyle,
-    TToolExecutionStackStyles,
-    TStandaloneActionsRowStyle
-  >["content"] | null
-  toolExecutionStack: ChatRuntimeConversationBodyPanelMobilePropsParts<
-    TContent,
-    TToolExecutionStack,
-    TStandaloneActions,
-    TContentRowStyle,
-    TExpandedBodyStyle,
-    TStreamingStyles,
-    TCollapsedStyle,
-    TCollapsedPressedStyle,
-    TCollapsedTextStyle,
-    TToolExecutionStackStyles,
-    TStandaloneActionsRowStyle
-  >["toolExecutionStack"] | null
-  standaloneActions: ChatRuntimeConversationBodyPanelMobilePropsParts<
-    TContent,
-    TToolExecutionStack,
-    TStandaloneActions,
-    TContentRowStyle,
-    TExpandedBodyStyle,
-    TStreamingStyles,
-    TCollapsedStyle,
-    TCollapsedPressedStyle,
-    TCollapsedTextStyle,
-    TToolExecutionStackStyles,
-    TStandaloneActionsRowStyle
-  >["standaloneActions"] | null
+  conversation: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    ChatRuntimeConversationBodyPanelMobilePropsParts<
+      TContent,
+      TToolExecutionStack,
+      TStandaloneActions,
+      TContentRowStyle,
+      TExpandedBodyStyle,
+      TStreamingStyles,
+      TCollapsedStyle,
+      TCollapsedPressedStyle,
+      TCollapsedTextStyle,
+      TToolExecutionStackStyles,
+      TStandaloneActionsRowStyle
+    >["content"]
+  >
+  toolExecutionStack: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    ChatRuntimeConversationBodyPanelMobilePropsParts<
+      TContent,
+      TToolExecutionStack,
+      TStandaloneActions,
+      TContentRowStyle,
+      TExpandedBodyStyle,
+      TStreamingStyles,
+      TCollapsedStyle,
+      TCollapsedPressedStyle,
+      TCollapsedTextStyle,
+      TToolExecutionStackStyles,
+      TStandaloneActionsRowStyle
+    >["toolExecutionStack"]
+  >
+  standaloneActions: ChatRuntimeConversationThreadBodyMobilePropsPart<
+    ChatRuntimeConversationBodyPanelMobilePropsParts<
+      TContent,
+      TToolExecutionStack,
+      TStandaloneActions,
+      TContentRowStyle,
+      TExpandedBodyStyle,
+      TStreamingStyles,
+      TCollapsedStyle,
+      TCollapsedPressedStyle,
+      TCollapsedTextStyle,
+      TToolExecutionStackStyles,
+      TStandaloneActionsRowStyle
+    >["standaloneActions"]
+  >
 }
 
 export type ChatRuntimeToolActivityGroupHeaderMobileKind = "collapsed" | "expanded"
@@ -21961,51 +21959,51 @@ export function createChatRuntimeConversationThreadBodyMobilePropsParts<
     inlineActivity,
     styles,
   })
-  const hiddenStatusPanelPart = {
+  const hiddenThreadBodyPart = {
     shouldRender: false as const,
     props: null,
   }
   const emptyConversationBodyParts = {
-    conversation: null,
-    toolExecutionStack: null,
-    standaloneActions: null,
+    conversation: hiddenThreadBodyPart,
+    toolExecutionStack: hiddenThreadBodyPart,
+    standaloneActions: hiddenThreadBodyPart,
   }
 
   if (bodyDisplayMode === "retryStatus") {
     return {
       retryStatus: statusPanelParts.retryStatus,
-      delegationCard: hiddenStatusPanelPart,
-      toolApproval: hiddenStatusPanelPart,
-      inlineActivity: hiddenStatusPanelPart,
+      delegationCard: hiddenThreadBodyPart,
+      toolApproval: hiddenThreadBodyPart,
+      inlineActivity: hiddenThreadBodyPart,
       ...emptyConversationBodyParts,
     }
   }
 
   if (bodyDisplayMode === "delegationCard") {
     return {
-      retryStatus: hiddenStatusPanelPart,
+      retryStatus: hiddenThreadBodyPart,
       delegationCard: statusPanelParts.delegationCard,
-      toolApproval: hiddenStatusPanelPart,
-      inlineActivity: hiddenStatusPanelPart,
+      toolApproval: hiddenThreadBodyPart,
+      inlineActivity: hiddenThreadBodyPart,
       ...emptyConversationBodyParts,
     }
   }
 
   if (bodyDisplayMode === "toolApproval") {
     return {
-      retryStatus: hiddenStatusPanelPart,
-      delegationCard: hiddenStatusPanelPart,
+      retryStatus: hiddenThreadBodyPart,
+      delegationCard: hiddenThreadBodyPart,
       toolApproval: statusPanelParts.toolApproval,
-      inlineActivity: hiddenStatusPanelPart,
+      inlineActivity: hiddenThreadBodyPart,
       ...emptyConversationBodyParts,
     }
   }
 
   if (bodyDisplayMode === "inlineActivity") {
     return {
-      retryStatus: hiddenStatusPanelPart,
-      delegationCard: hiddenStatusPanelPart,
-      toolApproval: hiddenStatusPanelPart,
+      retryStatus: hiddenThreadBodyPart,
+      delegationCard: hiddenThreadBodyPart,
+      toolApproval: hiddenThreadBodyPart,
       inlineActivity: statusPanelParts.inlineActivity,
       ...emptyConversationBodyParts,
     }
@@ -22017,13 +22015,22 @@ export function createChatRuntimeConversationThreadBodyMobilePropsParts<
   })
 
   return {
-    retryStatus: hiddenStatusPanelPart,
-    delegationCard: hiddenStatusPanelPart,
-    toolApproval: hiddenStatusPanelPart,
-    inlineActivity: hiddenStatusPanelPart,
-    conversation: conversationBodyParts.content,
-    toolExecutionStack: conversationBodyParts.toolExecutionStack,
-    standaloneActions: conversationBodyParts.standaloneActions,
+    retryStatus: hiddenThreadBodyPart,
+    delegationCard: hiddenThreadBodyPart,
+    toolApproval: hiddenThreadBodyPart,
+    inlineActivity: hiddenThreadBodyPart,
+    conversation: {
+      shouldRender: true,
+      props: conversationBodyParts.content,
+    },
+    toolExecutionStack: {
+      shouldRender: true,
+      props: conversationBodyParts.toolExecutionStack,
+    },
+    standaloneActions: {
+      shouldRender: true,
+      props: conversationBodyParts.standaloneActions,
+    },
   }
 }
 

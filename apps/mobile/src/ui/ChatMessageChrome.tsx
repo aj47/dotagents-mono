@@ -7259,21 +7259,21 @@ export function ChatMessageThreadBody({
   }
 
   if (
-    !threadBodyParts.conversation
-    || !threadBodyParts.toolExecutionStack
-    || !threadBodyParts.standaloneActions
+    !threadBodyParts.conversation.shouldRender
+    || !threadBodyParts.toolExecutionStack.shouldRender
+    || !threadBodyParts.standaloneActions.shouldRender
   ) return null;
 
   return (
     <>
       <ChatMessageConversationContent
-        {...threadBodyParts.conversation}
+        {...threadBodyParts.conversation.props}
       />
       <ChatMessageToolExecutionStack
-        {...threadBodyParts.toolExecutionStack}
+        {...threadBodyParts.toolExecutionStack.props}
       />
       <ChatMessageStandaloneActions
-        {...threadBodyParts.standaloneActions}
+        {...threadBodyParts.standaloneActions.props}
       />
     </>
   );
