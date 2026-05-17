@@ -7242,8 +7242,8 @@ describe("session presentation semantics", () => {
       },
     })
     expect(stepSummaryCardParts).toEqual({
-      shouldRenderCard: true,
       card: {
+        shouldRender: true,
         props: {
           accessible: true,
           accessibilityRole: "text",
@@ -7333,8 +7333,8 @@ describe("session presentation semantics", () => {
         preview: "preview-style",
       },
     })).toMatchObject({
-      shouldRenderCard: false,
       card: {
+        shouldRender: false,
         content: {
           preview: {
             shouldRender: false,

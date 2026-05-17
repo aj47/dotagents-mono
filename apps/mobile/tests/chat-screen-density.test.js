@@ -5090,13 +5090,14 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(chatMessageChromeSource, /createChatRuntimeStepSummaryCardMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeStepSummaryCardMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const stepSummaryCardParts = createChatRuntimeStepSummaryCardMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /if \(!stepSummaryCardParts\.shouldRenderCard\) return null;/);
+  assert.match(chatMessageChromeSource, /const stepSummaryCardPart = stepSummaryCardParts\.card;/);
+  assert.match(chatMessageChromeSource, /if \(!stepSummaryCardPart\.shouldRender\) return null;/);
   const stepSummaryCardSource =
     chatMessageChromeSource.match(/export function ChatMessageStepSummaryCard[\s\S]*?export function ChatMessageScrollToBottomButton/)?.[0] ?? '';
-  assert.match(stepSummaryCardSource, /const stepSummaryCardContent = stepSummaryCardParts\.card\.content;/);
+  assert.match(stepSummaryCardSource, /const stepSummaryCardContent = stepSummaryCardPart\.content;/);
   assert.match(stepSummaryCardSource, /const stepSummaryHeaderContent = stepSummaryCardContent\.header\.content;/);
   assert.match(stepSummaryCardSource, /const stepSummaryBadgeContent = stepSummaryHeaderContent\.badge\.content;/);
-  assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryCardParts\.card\.props\}>/);
+  assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryCardPart\.props\}>/);
   assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryCardContent\.header\.props\}>/);
   assert.match(stepSummaryCardSource, /<Text\s+\{\.\.\.stepSummaryHeaderContent\.title\.props\}>/);
   assert.match(stepSummaryCardSource, /\{stepSummaryHeaderContent\.title\.text\}/);
@@ -5110,9 +5111,11 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(stepSummaryCardSource, /stepSummaryCardContent\.preview\.shouldRender \? \(/);
   assert.match(stepSummaryCardSource, /<Text\s+\{\.\.\.stepSummaryCardContent\.preview\.props\}>/);
   assert.match(stepSummaryCardSource, /\{stepSummaryCardContent\.preview\.text\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /stepSummaryCardParts\.shouldRenderCard/);
   assert.doesNotMatch(stepSummaryCardSource, /stepSummaryCardParts\.(header|title|badge|badgeLabel|action|meta|preview)/);
   assert.doesNotMatch(chatMessageChromeSource, /stepSummaryCardParts\.(card|header|title|badge|badgeLabel|action|meta|preview)\.(accessible|accessibilityRole|accessibilityLabel|style|numberOfLines)/);
-  assert.match(sessionPresentationSource, /shouldRenderCard: renderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /card: \{\s+shouldRender: renderState\.shouldRender,/);
+  assert.doesNotMatch(sessionPresentationSource, /shouldRenderCard:/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageStepSummaryCard[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageScrollToBottomButton/

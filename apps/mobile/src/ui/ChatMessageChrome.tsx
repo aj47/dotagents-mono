@@ -10416,15 +10416,16 @@ export function ChatMessageStepSummaryCard({
     renderState,
     styles,
   });
+  const stepSummaryCardPart = stepSummaryCardParts.card;
 
-  if (!stepSummaryCardParts.shouldRenderCard) return null;
+  if (!stepSummaryCardPart.shouldRender) return null;
 
-  const stepSummaryCardContent = stepSummaryCardParts.card.content;
+  const stepSummaryCardContent = stepSummaryCardPart.content;
   const stepSummaryHeaderContent = stepSummaryCardContent.header.content;
   const stepSummaryBadgeContent = stepSummaryHeaderContent.badge.content;
 
   return (
-    <View {...stepSummaryCardParts.card.props}>
+    <View {...stepSummaryCardPart.props}>
       <View {...stepSummaryCardContent.header.props}>
         <Text {...stepSummaryHeaderContent.title.props}>
           {stepSummaryHeaderContent.title.text}

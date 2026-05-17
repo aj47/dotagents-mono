@@ -7563,8 +7563,8 @@ export interface ChatRuntimeStepSummaryCardMobilePropsParts<
     preview: unknown
   },
 > {
-  shouldRenderCard: boolean
   card: {
+    shouldRender: boolean
     props: {
       accessible: true
       accessibilityRole: TRenderState["accessibilityRole"]
@@ -25167,8 +25167,8 @@ export function createChatRuntimeStepSummaryCardMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRenderCard: renderState.shouldRender,
     card: {
+      shouldRender: renderState.shouldRender,
       props: {
         accessible: true,
         accessibilityRole: renderState.accessibilityRole,
