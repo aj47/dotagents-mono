@@ -9569,7 +9569,7 @@ export function ChatMessageToolExecutionPanel({
   const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts({
     compactList: (
       <ChatMessageToolExecutionCompactList
-        {...panelParts.compact}
+        {...panelParts.compact.props}
       />
     ),
     expandedGroup: panelParts.expandedGroup.shouldRender ? (

@@ -4435,8 +4435,10 @@ export interface ChatRuntimeToolExecutionPanelMobilePropsParts<
   TExpanded extends object = Record<string, never>,
 > {
   shouldRenderPanel: boolean
-  compact: TCompact & {
-    shouldRender: boolean
+  compact: {
+    props: TCompact & {
+      shouldRender: boolean
+    }
   }
   expandedGroup: ChatRuntimeToolExecutionPanelExpandedGroupMobilePropsPart<TExpanded>
 }
@@ -22288,8 +22290,10 @@ export function createChatRuntimeToolExecutionPanelMobilePropsParts<
   return {
     shouldRenderPanel: shouldRender,
     compact: {
-      ...compact,
-      shouldRender: shouldRender && !isExpanded,
+      props: {
+        ...compact,
+        shouldRender: shouldRender && !isExpanded,
+      },
     },
     expandedGroup: shouldRender && isExpanded ? {
       shouldRender: true,

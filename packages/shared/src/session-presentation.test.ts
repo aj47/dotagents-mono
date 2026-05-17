@@ -14036,8 +14036,10 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRenderPanel: true,
       compact: {
-        renderState: "compact-render-state",
-        shouldRender: true,
+        props: {
+          renderState: "compact-render-state",
+          shouldRender: true,
+        },
       },
       expandedGroup: {
         shouldRender: false,
@@ -14056,8 +14058,10 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRenderPanel: true,
       compact: {
-        renderState: "compact-render-state",
-        shouldRender: false,
+        props: {
+          renderState: "compact-render-state",
+          shouldRender: false,
+        },
       },
       expandedGroup: {
         shouldRender: true,
@@ -14078,8 +14082,10 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRenderPanel: false,
       compact: {
-        renderState: "compact-render-state",
-        shouldRender: false,
+        props: {
+          renderState: "compact-render-state",
+          shouldRender: false,
+        },
       },
       expandedGroup: {
         shouldRender: false,
