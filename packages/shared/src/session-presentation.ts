@@ -3176,10 +3176,11 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
     text: TRenderState["label"]
     style: TStyles["label"]
   }
-  payloadType: ({
-    text: NonNullable<TRenderState["payloadTypeLabel"]>
+  payloadType: {
+    shouldRender: boolean
+    text: string
     style: TStyles["payloadType"]
-  }) | null
+  }
 }
 
 export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
@@ -20265,10 +20266,11 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
       text: renderState.label,
       style: styles.label,
     },
-    payloadType: renderState.payloadTypeLabel ? {
-      text: renderState.payloadTypeLabel,
+    payloadType: {
+      shouldRender: Boolean(renderState.payloadTypeLabel),
+      text: renderState.payloadTypeLabel ?? "",
       style: styles.payloadType,
-    } : null,
+    },
   }
 }
 

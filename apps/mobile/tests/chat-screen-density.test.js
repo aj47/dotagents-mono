@@ -3792,12 +3792,13 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const payloadMetaParts = createChatRuntimeToolExecutionPayloadMetaMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /style=\{payloadMetaParts\.label\.style\}/);
   assert.match(chatMessageChromeSource, /\{payloadMetaParts\.label\.text\}/);
-  assert.match(chatMessageChromeSource, /payloadMetaParts\.payloadType \? \(/);
+  assert.match(chatMessageChromeSource, /payloadMetaParts\.payloadType\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /payloadMetaParts\.payloadType \? \(/);
   assert.match(chatMessageChromeSource, /style=\{payloadMetaParts\.payloadType\.style\}/);
   assert.match(chatMessageChromeSource, /\{payloadMetaParts\.payloadType\.text\}/);
   assert.match(chatMessageChromeSource, /if \(!payloadMetaParts\.row\) \{/);
   assert.match(chatMessageChromeSource, /<View style=\{payloadMetaParts\.row\.style\}>/);
-  assert.match(sessionPresentationSource, /payloadType: renderState\.payloadTypeLabel \? \{\s+text: renderState\.payloadTypeLabel,/);
+  assert.match(sessionPresentationSource, /payloadType: \{\s+shouldRender: Boolean\(renderState\.payloadTypeLabel\),\s+text: renderState\.payloadTypeLabel \?\? "",/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMeta[\s\S]*?\{renderState\.label\}[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMeta[\s\S]*?renderState\.payloadTypeLabel \?[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionErrorBlock\s+renderState=\{toolErrorHeaderState\}\s+error=\{toolResultDetail\.error\}\s+copyButtonRenderState=\{toolErrorCopyButtonState\}/);

@@ -8203,7 +8203,7 @@ export function ChatMessageToolExecutionPayloadMeta({
       <Text style={payloadMetaParts.label.style}>
         {payloadMetaParts.label.text}
       </Text>
-      {payloadMetaParts.payloadType ? (
+      {payloadMetaParts.payloadType.shouldRender ? (
         <Text style={payloadMetaParts.payloadType.style}>
           {payloadMetaParts.payloadType.text}
         </Text>

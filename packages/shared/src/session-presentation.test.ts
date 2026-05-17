@@ -13044,6 +13044,7 @@ describe("session presentation semantics", () => {
         style: "payload-meta-label",
       },
       payloadType: {
+        shouldRender: true,
         text: "JSON",
         style: "payload-type",
       },
@@ -13062,7 +13063,11 @@ describe("session presentation semantics", () => {
         text: "Output",
         style: "payload-meta-label",
       },
-      payloadType: null,
+      payloadType: {
+        shouldRender: false,
+        text: "",
+        style: "payload-type",
+      },
     })
     const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
       compactText: "preview",
