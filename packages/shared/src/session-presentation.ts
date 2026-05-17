@@ -8733,22 +8733,30 @@ export interface ChatRuntimeHeaderAgentSelectorMobilePropsParts<
   },
 > {
   touchable: {
-    style: TStyles["button"]
-    onPress: TOnPress | undefined
-    activeOpacity: TRenderState["pressedOpacity"]
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string | undefined
+    props: {
+      style: TStyles["button"]
+      onPress: TOnPress | undefined
+      activeOpacity: TRenderState["pressedOpacity"]
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+    }
   }
   chip: {
-    style: TStyles["chip"]
+    props: {
+      style: TStyles["chip"]
+    }
   }
   label: {
-    style: TStyles["label"]
-    numberOfLines: TLabelNumberOfLines
-    text: string
+    props: {
+      style: TStyles["label"]
+      numberOfLines: TLabelNumberOfLines
+      text: string
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
 }
 
 export interface ChatRuntimeHeaderIconButtonMobileRenderStateLike {
@@ -25573,22 +25581,30 @@ export function createChatRuntimeHeaderAgentSelectorMobilePropsParts<
 > {
   return {
     touchable: {
-      style: styles.button,
-      onPress,
-      activeOpacity: renderState.pressedOpacity,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint ?? undefined,
+      props: {
+        style: styles.button,
+        onPress,
+        activeOpacity: renderState.pressedOpacity,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint ?? undefined,
+      },
     },
     chip: {
-      style: styles.chip,
+      props: {
+        style: styles.chip,
+      },
     },
     label: {
-      style: styles.label,
-      numberOfLines: labelNumberOfLines,
-      text: renderState.label,
+      props: {
+        style: styles.label,
+        numberOfLines: labelNumberOfLines,
+        text: renderState.label,
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
   }
 }
 

@@ -230,12 +230,37 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   const agentSelectorSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderAgentSelector[\s\S]*?export function ChatRuntimeHeaderActionsRow/)?.[0] ?? '';
   assert.match(agentSelectorSource, /const agentSelectorParts = createChatRuntimeHeaderAgentSelectorMobilePropsParts\(\{\s+renderState,\s+onPress,\s+labelNumberOfLines,\s+styles,\s+\}\);/);
-  assert.match(agentSelectorSource, /accessibilityRole=\{agentSelectorParts\.touchable\.accessibilityRole\}/);
-  assert.match(agentSelectorSource, /activeOpacity=\{agentSelectorParts\.touchable\.activeOpacity\}/);
-  assert.match(agentSelectorSource, /accessibilityLabel=\{agentSelectorParts\.touchable\.accessibilityLabel\}/);
-  assert.match(agentSelectorSource, /accessibilityHint=\{agentSelectorParts\.touchable\.accessibilityHint\}/);
-  assert.match(agentSelectorSource, /numberOfLines=\{agentSelectorParts\.label\.numberOfLines\}/);
-  assert.match(agentSelectorSource, /\{agentSelectorParts\.label\.text\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorTouchable\s+\{\.\.\.agentSelectorParts\.touchable\.props\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorChip\s+\{\.\.\.agentSelectorParts\.chip\.props\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorLabel\s+\{\.\.\.agentSelectorParts\.label\.props\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorIcon\s+\{\.\.\.agentSelectorParts\.icon\.props\}/);
+  assert.match(
+    agentSelectorSource,
+    /export function ChatRuntimeHeaderAgentSelectorTouchable\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?export function ChatRuntimeHeaderAgentSelectorChip/
+  );
+  assert.match(
+    agentSelectorSource,
+    /export function ChatRuntimeHeaderAgentSelectorChip\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatRuntimeHeaderAgentSelectorLabel/
+  );
+  assert.match(
+    agentSelectorSource,
+    /export function ChatRuntimeHeaderAgentSelectorLabel\([\s\S]*?style=\{style\}[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatRuntimeHeaderAgentSelectorIcon/
+  );
+  assert.match(
+    agentSelectorSource,
+    /export function ChatRuntimeHeaderAgentSelectorIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatRuntimeHeaderActionsRow/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /touchable: \{\s+props: \{\s+style: styles\.button,\s+onPress,\s+activeOpacity: renderState\.pressedOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,/
+  );
+  assert.match(sessionPresentationSource, /chip: \{\s+props: \{\s+style: styles\.chip,\s+\},\s+\},/);
+  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+numberOfLines: labelNumberOfLines,\s+text: renderState\.label,/);
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.doesNotMatch(
+    agentSelectorSource,
+    /agentSelectorParts\.(touchable|chip|label|icon)\.(style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|numberOfLines|text|name|size|color)/
+  );
   assert.doesNotMatch(agentSelectorSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.doesNotMatch(agentSelectorSource, /activeOpacity=\{renderState\.pressedOpacity\}/);
   assert.doesNotMatch(agentSelectorSource, /numberOfLines=\{labelNumberOfLines\}/);
@@ -244,10 +269,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(screenSource, /getChatRuntimeAgentSelectorMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeAgentSelectorMobileIconState,/);
   assert.doesNotMatch(screenSource, /name=\{mobileHeaderAgentSelectorRenderState\.icon\.name\}/);
-  assert.match(agentSelectorSource, /name=\{agentSelectorParts\.icon\.name\}/);
-  assert.match(agentSelectorSource, /size=\{agentSelectorParts\.icon\.size\}/);
   assert.doesNotMatch(screenSource, /const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState\(\);/);
-  assert.match(agentSelectorSource, /color=\{agentSelectorParts\.icon\.color\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMobileChromeEnvironment\(theme: Theme\): ChatRuntimeMobileChromeEnvironment/);
   assert.match(chatRuntimeMobileStylesSource, /const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment\(theme\);/);
   assert.match(chatRuntimeMobileStylesSource, /const chatChromeStyleState = getChatRuntimeMobileChromeStyleRenderState\(chatRuntimeChromeEnvironment\);/);

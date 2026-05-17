@@ -4313,22 +4313,30 @@ describe("session presentation semantics", () => {
       styles: headerAgentSelectorStyles,
     })).toEqual({
       touchable: {
-        style: headerAgentSelectorStyles.button,
-        onPress: "open-agent-selector",
-        activeOpacity: navigationHeaderState.agentSelectorRenderState.pressedOpacity,
-        accessibilityRole: navigationHeaderState.agentSelectorRenderState.accessibilityRole,
-        accessibilityLabel: navigationHeaderState.agentSelectorRenderState.accessibilityLabel,
-        accessibilityHint: navigationHeaderState.agentSelectorRenderState.accessibilityHint,
+        props: {
+          style: headerAgentSelectorStyles.button,
+          onPress: "open-agent-selector",
+          activeOpacity: navigationHeaderState.agentSelectorRenderState.pressedOpacity,
+          accessibilityRole: navigationHeaderState.agentSelectorRenderState.accessibilityRole,
+          accessibilityLabel: navigationHeaderState.agentSelectorRenderState.accessibilityLabel,
+          accessibilityHint: navigationHeaderState.agentSelectorRenderState.accessibilityHint,
+        },
       },
       chip: {
-        style: headerAgentSelectorStyles.chip,
+        props: {
+          style: headerAgentSelectorStyles.chip,
+        },
       },
       label: {
-        style: headerAgentSelectorStyles.label,
-        numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
-        text: navigationHeaderState.agentSelectorRenderState.label,
+        props: {
+          style: headerAgentSelectorStyles.label,
+          numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+          text: navigationHeaderState.agentSelectorRenderState.label,
+        },
       },
-      icon: navigationHeaderState.agentSelectorRenderState.icon,
+      icon: {
+        props: navigationHeaderState.agentSelectorRenderState.icon,
+      },
     })
     const headerIconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts({
       ...navigationHeaderMobileParts.handsFreeButton,

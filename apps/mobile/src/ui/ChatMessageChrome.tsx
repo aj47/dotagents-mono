@@ -1245,6 +1245,29 @@ type ChatRuntimeHeaderAgentSelectorProps = {
   styles: ChatRuntimeHeaderAgentSelectorStyles;
 };
 
+type ChatRuntimeHeaderAgentSelectorParts = ReturnType<typeof createChatRuntimeHeaderAgentSelectorMobilePropsParts<
+  ChatRuntimeAgentSelectorMobileRenderState,
+  ChatRuntimeHeaderAgentSelectorProps['onPress'],
+  ChatRuntimeHeaderAgentSelectorProps['labelNumberOfLines'],
+  ChatRuntimeHeaderAgentSelectorProps['styles']
+>>;
+
+type ChatRuntimeHeaderAgentSelectorTouchableProps =
+  ChatRuntimeHeaderAgentSelectorParts['touchable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatRuntimeHeaderAgentSelectorChipProps =
+  ChatRuntimeHeaderAgentSelectorParts['chip']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatRuntimeHeaderAgentSelectorLabelProps =
+  ChatRuntimeHeaderAgentSelectorParts['label']['props'];
+
+type ChatRuntimeHeaderAgentSelectorIconProps =
+  ChatRuntimeHeaderAgentSelectorParts['icon']['props'];
+
 type ChatRuntimeHeaderActionsRowProps = {
   children: ReactNode;
   style: StyleProp<ViewStyle>;
@@ -6957,28 +6980,83 @@ export function ChatRuntimeHeaderAgentSelector({
   });
 
   return (
-    <TouchableOpacity
-      style={agentSelectorParts.touchable.style}
-      onPress={agentSelectorParts.touchable.onPress}
-      activeOpacity={agentSelectorParts.touchable.activeOpacity}
-      accessibilityRole={agentSelectorParts.touchable.accessibilityRole}
-      accessibilityLabel={agentSelectorParts.touchable.accessibilityLabel}
-      accessibilityHint={agentSelectorParts.touchable.accessibilityHint}
+    <ChatRuntimeHeaderAgentSelectorTouchable
+      {...agentSelectorParts.touchable.props}
     >
-      <View style={agentSelectorParts.chip.style}>
-        <Text
-          style={agentSelectorParts.label.style}
-          numberOfLines={agentSelectorParts.label.numberOfLines}
-        >
-          {agentSelectorParts.label.text}
-        </Text>
-        <Ionicons
-          name={agentSelectorParts.icon.name}
-          size={agentSelectorParts.icon.size}
-          color={agentSelectorParts.icon.color}
+      <ChatRuntimeHeaderAgentSelectorChip
+        {...agentSelectorParts.chip.props}
+      >
+        <ChatRuntimeHeaderAgentSelectorLabel
+          {...agentSelectorParts.label.props}
         />
-      </View>
+        <ChatRuntimeHeaderAgentSelectorIcon
+          {...agentSelectorParts.icon.props}
+        />
+      </ChatRuntimeHeaderAgentSelectorChip>
+    </ChatRuntimeHeaderAgentSelectorTouchable>
+  );
+}
+
+export function ChatRuntimeHeaderAgentSelectorTouchable({
+  style,
+  onPress,
+  activeOpacity,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  children,
+}: ChatRuntimeHeaderAgentSelectorTouchableProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+    >
+      {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatRuntimeHeaderAgentSelectorChip({
+  style,
+  children,
+}: ChatRuntimeHeaderAgentSelectorChipProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatRuntimeHeaderAgentSelectorLabel({
+  style,
+  numberOfLines,
+  text,
+}: ChatRuntimeHeaderAgentSelectorLabelProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatRuntimeHeaderAgentSelectorIcon({
+  name,
+  size,
+  color,
+}: ChatRuntimeHeaderAgentSelectorIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 
