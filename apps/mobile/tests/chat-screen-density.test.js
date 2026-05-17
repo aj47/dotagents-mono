@@ -2186,8 +2186,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export function createChatComposerRuntimeDockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobileProps,/);
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
-  assert.match(chatMessageChromeSource, /return createChatComposerRuntimeDockMobileProps\(\{\s+chrome,[\s\S]*?speechPreviewText,[\s\S]*?pendingImages,[\s\S]*?onPauseHandsFree,[\s\S]*?composerControlHasContent,[\s\S]*?composerControlMessageQueueEnabled,[\s\S]*?textEntryInputRef,[\s\S]*?textEntryPlaceholderFallback,[\s\S]*?onMicPress,[\s\S]*?micWrapperRef,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
+  assert.match(chatMessageChromeSource, /const chatComposerRuntimeDock = createChatComposerRuntimeDockMobileProps\(\{\s+chrome: chatComposerRuntimeDockChrome,\s+\.\.\.composer,\s+pendingImagesColors: colors,\s+composerControlColors: colors,\s+\}\);/);
   assert.match(sessionPresentationSource, /const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState\(\{/);
   assert.match(sessionPresentationSource, /const controlRenderState = getChatComposerRuntimeControlMobileRenderState\(\{/);
   assert.match(sessionPresentationSource, /const pendingImagesRenderState = getChatImageAttachmentMobileRenderState\(\{/);
