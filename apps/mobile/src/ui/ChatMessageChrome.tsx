@@ -2638,7 +2638,7 @@ type ChatMessageScrollToBottomButtonTouchableProps =
   };
 
 type ChatMessageScrollToBottomButtonIconProps =
-  ChatMessageScrollToBottomButtonParts['icon']['props'];
+  ChatMessageScrollToBottomButtonParts['button']['content']['icon']['props'];
 
 type ChatMessageLoadingStateProps = {
   renderState: ChatRuntimeLoadingStateMobileRenderState;
@@ -10388,12 +10388,14 @@ export function ChatMessageScrollToBottomButton({
 
   if (!scrollToBottomButtonParts.shouldRenderButton) return null;
 
+  const buttonContent = scrollToBottomButtonParts.button.content;
+
   return (
     <ChatMessageScrollToBottomButtonTouchable
       {...scrollToBottomButtonParts.button.props}
     >
       <ChatMessageScrollToBottomButtonIcon
-        {...scrollToBottomButtonParts.icon.props}
+        {...buttonContent.icon.props}
       />
     </ChatMessageScrollToBottomButtonTouchable>
   );

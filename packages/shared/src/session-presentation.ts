@@ -7871,9 +7871,11 @@ export interface ChatRuntimeScrollToBottomButtonMobilePropsParts<
       accessibilityLabel: string
       accessibilityHint: string
     }
-  }
-  icon: {
-    props: TRenderState["button"]["icon"]
+    content: {
+      icon: {
+        props: TRenderState["button"]["icon"]
+      }
+    }
   }
 }
 
@@ -25360,9 +25362,11 @@ export function createChatRuntimeScrollToBottomButtonMobilePropsParts<
         accessibilityLabel: renderState.button.accessibilityLabel,
         accessibilityHint: renderState.button.accessibilityHint,
       },
-    },
-    icon: {
-      props: renderState.button.icon,
+      content: {
+        icon: {
+          props: renderState.button.icon,
+        },
+      },
     },
   }
 }

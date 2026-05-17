@@ -7770,12 +7770,14 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Scroll to bottom",
           accessibilityHint: "Scrolls to the latest messages",
         },
-      },
-      icon: {
-        props: {
-          name: "arrow-down",
-          size: 18,
-          color: "#fff",
+        content: {
+          icon: {
+            props: {
+              name: "arrow-down",
+              size: 18,
+              color: "#fff",
+            },
+          },
         },
       },
     })
