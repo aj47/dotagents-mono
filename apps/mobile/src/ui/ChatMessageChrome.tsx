@@ -10217,14 +10217,14 @@ export function ChatMessageToolExecutionPayloadSection({
         {...payloadSectionParts.headerRow.props}
       >
         <ChatMessageToolExecutionPayloadMeta
-          {...payloadSectionParts.payloadMeta}
+          {...payloadSectionParts.payloadMeta.props}
         />
         <ChatMessageToolExecutionCopyButton
-          {...payloadSectionParts.copyButton}
+          {...payloadSectionParts.copyButton.props}
         />
       </ChatMessageToolExecutionPayloadSectionView>
       <ChatMessageToolExecutionPayloadBlock
-        {...payloadSectionParts.payloadBlock}
+        {...payloadSectionParts.payloadBlock.props}
       />
     </ChatMessageToolExecutionPayloadSectionView>
   );

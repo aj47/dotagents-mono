@@ -3266,20 +3266,26 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
     }
   }
   payloadMeta: {
-    renderState: TPayloadRenderState
-    styles: TStyles["payloadMeta"]
+    props: {
+      renderState: TPayloadRenderState
+      styles: TStyles["payloadMeta"]
+    }
   }
   copyButton: {
-    renderState: TCopyButtonRenderState
-    onPress: TOnCopyPress | undefined
-    styles: TStyles["copyButton"]
+    props: {
+      renderState: TCopyButtonRenderState
+      onPress: TOnCopyPress | undefined
+      styles: TStyles["copyButton"]
+    }
   }
   payloadBlock: {
-    compactText: string | null | undefined
-    content: string
-    isExpanded: boolean
-    previewNumberOfLines: number
-    styles: TStyles["payloadBlock"]
+    props: {
+      compactText: string | null | undefined
+      content: string
+      isExpanded: boolean
+      previewNumberOfLines: number
+      styles: TStyles["payloadBlock"]
+    }
   }
 }
 
@@ -20753,20 +20759,26 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
       },
     },
     payloadMeta: {
-      renderState: payloadRenderState,
-      styles: styles.payloadMeta,
+      props: {
+        renderState: payloadRenderState,
+        styles: styles.payloadMeta,
+      },
     },
     copyButton: {
-      renderState: copyButtonRenderState,
-      onPress: onCopyPress,
-      styles: styles.copyButton,
+      props: {
+        renderState: copyButtonRenderState,
+        onPress: onCopyPress,
+        styles: styles.copyButton,
+      },
     },
     payloadBlock: {
-      compactText,
-      content,
-      isExpanded,
-      previewNumberOfLines,
-      styles: styles.payloadBlock,
+      props: {
+        compactText,
+        content,
+        isExpanded,
+        previewNumberOfLines,
+        styles: styles.payloadBlock,
+      },
     },
   }
 }

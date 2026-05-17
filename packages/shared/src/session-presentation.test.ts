@@ -13575,20 +13575,26 @@ describe("session presentation semantics", () => {
         },
       },
       payloadMeta: {
-        renderState: "payload-render-state",
-        styles: "payload-meta-styles",
+        props: {
+          renderState: "payload-render-state",
+          styles: "payload-meta-styles",
+        },
       },
       copyButton: {
-        renderState: "copy-button-state",
-        onPress: "copy-payload",
-        styles: "copy-button-styles",
+        props: {
+          renderState: "copy-button-state",
+          onPress: "copy-payload",
+          styles: "copy-button-styles",
+        },
       },
       payloadBlock: {
-        compactText: "preview",
-        content: "payload-content",
-        isExpanded: true,
-        previewNumberOfLines: 3,
-        styles: "payload-block-styles",
+        props: {
+          compactText: "preview",
+          content: "payload-content",
+          isExpanded: true,
+          previewNumberOfLines: 3,
+          styles: "payload-block-styles",
+        },
       },
     })
     const payloadMetaParts = createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
