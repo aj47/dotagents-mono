@@ -6841,7 +6841,7 @@ export function ChatConversationHomeQuickStarts<
 
   return (
     <View style={quickStartsParts.container.style}>
-      {quickStartsParts.grid ? (
+      {quickStartsParts.grid.shouldRender ? (
         <View style={quickStartsParts.grid.style}>
           {quickStartsParts.grid.items.map((item) => {
             const actions = item.actions;
@@ -6927,7 +6927,7 @@ export function ChatConversationHomeQuickStarts<
             );
           })}
         </View>
-      ) : quickStartsParts.emptyState ? (
+      ) : quickStartsParts.emptyState.shouldRender ? (
         <Text style={quickStartsParts.emptyState.style}>
           {quickStartsParts.emptyState.text}
         </Text>

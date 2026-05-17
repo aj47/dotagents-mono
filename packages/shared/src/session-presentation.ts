@@ -848,13 +848,15 @@ export interface ChatRuntimeHomeQuickStartsMobilePropsParts<
     style: TStyles["card"]
   }
   grid: {
+    shouldRender: boolean
     style: TStyles["grid"]
     items: Array<ChatRuntimeHomeQuickStartsMobileItemPropsParts<TPrompt, TTask, TEvent, TStyles>>
-  } | null
+  }
   emptyState: {
+    shouldRender: boolean
     style: TStyles["emptyText"]
     text: string
-  } | null
+  }
 }
 
 export interface ChatRuntimeDebugPanelMobileRow {
@@ -29015,8 +29017,16 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
       container: {
         style: styles.card,
       },
-      grid: null,
-      emptyState: null,
+      grid: {
+        shouldRender: false,
+        style: styles.grid,
+        items: [],
+      },
+      emptyState: {
+        shouldRender: false,
+        style: styles.emptyText,
+        text: "",
+      },
     }
   }
 
@@ -29031,8 +29041,13 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
       container: {
         style: styles.card,
       },
-      grid: null,
+      grid: {
+        shouldRender: false,
+        style: styles.grid,
+        items: [],
+      },
       emptyState: {
+        shouldRender: true,
         style: styles.emptyText,
         text: shortcutEmptyRenderState.label,
       },
@@ -29045,6 +29060,7 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
       style: styles.card,
     },
     grid: {
+      shouldRender: true,
       style: styles.grid,
       items: items.map((item) => {
         const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
@@ -29157,7 +29173,11 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
         }
       }),
     },
-    emptyState: null,
+    emptyState: {
+      shouldRender: false,
+      style: styles.emptyText,
+      text: "",
+    },
   }
 }
 

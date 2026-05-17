@@ -6571,6 +6571,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /const promptActions = shortcutItemRenderState\.promptActions;/);
   assert.doesNotMatch(chatMessageChromeSource, /const sourceIcon = shortcutChrome\.sourceIcons\[item\.source\];/);
   assert.doesNotMatch(chatMessageChromeSource, /const shortcutSourceIconColors = shortcutChrome\.sourceIconColors\[item\.source\];/);
+  assert.match(chatMessageChromeSource, /quickStartsParts\.grid\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /quickStartsParts\.grid \? \(/);
   assert.match(chatMessageChromeSource, /quickStartsParts\.grid\.items\.map/);
   assert.match(chatMessageChromeSource, /style=\{\(\{ pressed \}\) => item\.pressable\.getStyle\(pressed\)\}/);
   assert.match(chatMessageChromeSource, /name=\{item\.sourcePill\.icon\.name\}/);
@@ -6595,6 +6597,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(loading|empty)Label/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
+  assert.match(chatMessageChromeSource, /quickStartsParts\.emptyState\.shouldRender \? \(/);
   assert.match(chatMessageChromeSource, /\{quickStartsParts\.emptyState\.text\}/);
   assert.doesNotMatch(screenSource, /const promptLibraryStyleState = composerChromeStyleState\.promptLibrary;/);
   assert.doesNotMatch(screenSource, /const promptLibrarySurface = promptLibraryStyleState\.surface;/);

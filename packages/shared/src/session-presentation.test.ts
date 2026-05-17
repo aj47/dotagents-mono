@@ -5243,9 +5243,10 @@ describe("session presentation semantics", () => {
       styles: quickStartStyles,
     })
     expect(quickStartPropsParts.container.style).toBe("card")
-    expect(quickStartPropsParts.emptyState).toBeNull()
-    expect(quickStartPropsParts.grid?.style).toBe("grid")
-    const promptItemParts = quickStartPropsParts.grid!.items[0]!
+    expect(quickStartPropsParts.emptyState.shouldRender).toBe(false)
+    expect(quickStartPropsParts.grid.shouldRender).toBe(true)
+    expect(quickStartPropsParts.grid.style).toBe("grid")
+    const promptItemParts = quickStartPropsParts.grid.items[0]!
     expect(promptItemParts.key).toBe("prompt-1")
     expect(promptItemParts.pressable.getStyle(true)).toEqual([
       "shortcutCard",
@@ -5279,7 +5280,7 @@ describe("session presentation semantics", () => {
     })
     expect(stoppedPropagationCount).toBe(2)
     expect(deletedPromptId).toBe("prompt-1")
-    const addPromptItemParts = quickStartPropsParts.grid!.items[1]!
+    const addPromptItemParts = quickStartPropsParts.grid.items[1]!
     expect(addPromptItemParts.sourcePill).toBeNull()
     expect(addPromptItemParts.addIcon?.style).toBe("addIcon")
     expect(addPromptItemParts.title.style).toEqual([
@@ -5296,8 +5297,9 @@ describe("session presentation semantics", () => {
       shortcutRenderState: viewportChrome.shortcutRenderState,
       styles: quickStartStyles,
     })
-    expect(emptyQuickStartPropsParts.grid).toBeNull()
-    expect(emptyQuickStartPropsParts.emptyState?.text).toBe(
+    expect(emptyQuickStartPropsParts.grid.shouldRender).toBe(false)
+    expect(emptyQuickStartPropsParts.emptyState.shouldRender).toBe(true)
+    expect(emptyQuickStartPropsParts.emptyState.text).toBe(
       "No prompts, skills, or tasks available from your connected desktop app.",
     )
     const hiddenQuickStartPropsParts = createChatRuntimeHomeQuickStartsMobilePropsParts({
@@ -5310,8 +5312,8 @@ describe("session presentation semantics", () => {
       shortcutRenderState: viewportChrome.shortcutRenderState,
       styles: quickStartStyles,
     })
-    expect(hiddenQuickStartPropsParts.grid).toBeNull()
-    expect(hiddenQuickStartPropsParts.emptyState).toBeNull()
+    expect(hiddenQuickStartPropsParts.grid.shouldRender).toBe(false)
+    expect(hiddenQuickStartPropsParts.emptyState.shouldRender).toBe(false)
     expect(viewportChrome.affordance.historyBanner.renderState.shouldRender).toBe(true)
     expect(viewportChrome.affordance.stepSummary.renderState.shouldRender).toBe(true)
     expect(viewportChrome.debugPanels.requestShouldRender).toBe(true)
