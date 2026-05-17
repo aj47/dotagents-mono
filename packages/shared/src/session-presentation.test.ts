@@ -8854,6 +8854,7 @@ describe("session presentation semantics", () => {
     expect(activityGroupToggleParts.headerRow.style).toBe("toggle-header-row")
     expect(activityGroupToggleParts.leadingIcon).toBe("leading-icon-state")
     expect(activityGroupToggleParts.countBadge).toEqual({
+      shouldRender: true,
       accessibilityLabel: "3 tool calls",
       style: "toggle-count-badge",
       label: {
@@ -8903,7 +8904,15 @@ describe("session presentation semantics", () => {
         countBadgeText: "toggle-count-badge-text",
         previewLine: "toggle-preview-line",
       },
-    }).countBadge).toBeNull()
+    }).countBadge).toEqual({
+      shouldRender: false,
+      accessibilityLabel: "3 tool calls",
+      style: "toggle-count-badge",
+      label: {
+        style: "toggle-count-badge-text",
+        text: 3,
+      },
+    })
     const activityGroupFooterParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts({
       renderState: {
         footerButton: {

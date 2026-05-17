@@ -4986,9 +4986,10 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /renderState\.leadingIcon/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupLeadingIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupLeadingIcon\.opacity/);
-  assert.match(sessionPresentationSource, /countBadge: renderState\.summary\.shouldShowToolCallCount \? \{/);
+  assert.match(sessionPresentationSource, /countBadge: \{\s+shouldRender: renderState\.summary\.shouldShowToolCallCount,/);
   assert.match(sessionPresentationSource, /accessibilityLabel: renderState\.summary\.toolCallCountLabel/);
-  assert.match(toolActivityGroupToggleComponentSource, /toggleParts\.countBadge \? \(/);
+  assert.match(toolActivityGroupToggleComponentSource, /toggleParts\.countBadge\.shouldRender \? \(/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.countBadge \? \(/);
   assert.match(toolActivityGroupToggleComponentSource, /style=\{toggleParts\.countBadge\.style\}/);
   assert.match(toolActivityGroupToggleComponentSource, /accessibilityLabel=\{toggleParts\.countBadge\.accessibilityLabel\}/);
   assert.equal((toolActivityGroupToggleComponentSource.match(/\{toggleParts\.countBadge\.label\.text\}/g) ?? []).length, 1);

@@ -7675,7 +7675,7 @@ export function ChatMessageToolActivityGroupToggle({
           size={toggleParts.leadingIcon.size}
           color={toggleParts.leadingIcon.color}
         />
-        {toggleParts.countBadge ? (
+        {toggleParts.countBadge.shouldRender ? (
           <View
             accessibilityLabel={toggleParts.countBadge.accessibilityLabel}
             style={toggleParts.countBadge.style}
