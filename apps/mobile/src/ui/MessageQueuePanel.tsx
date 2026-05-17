@@ -127,14 +127,14 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
 
   if (isEditing) {
     return (
-      <View style={itemChromeParts.container.style}>
-        <View style={editParts.container.style}>
+      <View {...itemChromeParts.container.props}>
+        <View {...editParts.container.props}>
           <TextInput
             {...editParts.input.props}
             value={editText}
             onChangeText={setEditText}
           />
-          <View style={editParts.actions.style}>
+          <View {...editParts.actions.props}>
             <TouchableOpacity
               {...editParts.cancelButton.props}
             >
@@ -156,8 +156,8 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   }
 
   return (
-    <View style={itemChromeParts.container.style}>
-      <View style={itemChromeParts.row.style}>
+    <View {...itemChromeParts.container.props}>
+      <View {...itemChromeParts.row.props}>
         {itemChromeParts.failedStatusIcon.shouldRender ? (
           <Ionicons
             {...itemChromeParts.failedStatusIcon.props}
@@ -168,7 +168,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             {...itemChromeParts.processingStatusIndicator.props}
           />
         ) : null}
-        <View style={contentParts.container.style}>
+        <View {...contentParts.container.props}>
           <Text {...contentParts.messageText.props}>
             {contentParts.messageText.text}
           </Text>
@@ -177,7 +177,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
               {contentParts.errorText.text}
             </Text>
           ) : null}
-          <View style={contentParts.metaRow.style}>
+          <View {...contentParts.metaRow.props}>
             <Text {...contentParts.metaText.props}>
               {contentParts.metaText.text}
             </Text>
@@ -195,7 +195,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             ) : null}
           </View>
           {itemChromeParts.actions.shouldRender ? (
-            <View style={itemChromeParts.actions.style}>
+            <View {...itemChromeParts.actions.props}>
               {actionParts.actions.map((action) => (
                 <TouchableOpacity
                   key={action.key}

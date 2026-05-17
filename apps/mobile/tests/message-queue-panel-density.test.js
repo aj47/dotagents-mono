@@ -52,7 +52,8 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
   assert.match(source, /createQueuedMessageItemMobilePropsParts/);
   assert.match(source, /chrome: itemChromeParts,/);
-  assert.match(source, /style=\{itemChromeParts\.actions\.style\}/);
+  assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.actions\.props\}>/);
+  assert.doesNotMatch(source, /style=\{itemChromeParts\.actions\.style\}/);
   assert.doesNotMatch(source, /actionParts\.shouldRender &&/);
   assert.doesNotMatch(source, /const actionSurface = queuedMessageRenderState\.surface\.actions;/);
   assert.doesNotMatch(source, /createQueuedMessageActionRowMobileStyleSlot/);
@@ -183,8 +184,16 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /const panelColors = queuePanelColors\.panel;/);
   assert.match(source, /const itemStyleSheetSlots = createQueuedMessageItemMobileStyleSheetSlots\(\{[\s\S]*?renderState: queuedMessageRenderState,/);
   assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
-  assert.match(source, /style=\{itemChromeParts\.container\.style\}/);
-  assert.match(source, /style=\{itemChromeParts\.row\.style\}/);
+  assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.container\.props\}>/);
+  assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.row\.props\}>/);
+  assert.match(source, /<View\s+\{\.\.\.contentParts\.container\.props\}>/);
+  assert.match(source, /<View\s+\{\.\.\.contentParts\.metaRow\.props\}>/);
+  assert.match(source, /<View\s+\{\.\.\.editParts\.container\.props\}>/);
+  assert.match(source, /<View\s+\{\.\.\.editParts\.actions\.props\}>/);
+  assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.actions\.props\}>/);
+  assert.doesNotMatch(source, /style=\{itemChromeParts\.(container|row|actions)\.style\}/);
+  assert.doesNotMatch(source, /style=\{contentParts\.(container|metaRow)\.style\}/);
+  assert.doesNotMatch(source, /style=\{editParts\.(container|actions)\.style\}/);
   assert.match(source, /<Text\s+\{\.\.\.contentParts\.messageText\.props\}>/);
   assert.match(source, /<TextInput\s+\{\.\.\.editParts\.input\.props\}/);
   assert.doesNotMatch(source, /const itemSurface = queuedMessageRenderState\.surface\.item;/);

@@ -2120,7 +2120,9 @@ export interface QueuedMessageContentMobilePropsParts<
     QueuedMessageContentMobilePropsPartsStylesLike,
 > {
   container: {
-    style: TStyles['content'];
+    props: {
+      style: TStyles['content'];
+    };
   };
   messageText: {
     text: string;
@@ -2141,7 +2143,9 @@ export interface QueuedMessageContentMobilePropsParts<
         shouldRender: false;
       };
   metaRow: {
-    style: TStyles['metaRow'];
+    props: {
+      style: TStyles['metaRow'];
+    };
   };
   metaText: {
     text: string;
@@ -2358,10 +2362,14 @@ export interface QueuedMessageItemChromeMobilePropsParts<
     QueuedMessageItemChromeMobilePropsPartsStylesLike,
 > {
   container: {
-    style: TStyles['container'];
+    props: {
+      style: TStyles['container'];
+    };
   };
   row: {
-    style: TStyles['row'];
+    props: {
+      style: TStyles['row'];
+    };
   };
   failedStatusIcon:
     | {
@@ -2385,7 +2393,9 @@ export interface QueuedMessageItemChromeMobilePropsParts<
   actions:
     | {
         shouldRender: true;
-        style: TStyles['actions'];
+        props: {
+          style: TStyles['actions'];
+        };
       }
     | {
         shouldRender: false;
@@ -2500,7 +2510,9 @@ export interface QueuedMessageEditMobilePropsParts<
   TOnSave = unknown,
 > {
   container: {
-    style: TStyles['editContainer'];
+    props: {
+      style: TStyles['editContainer'];
+    };
   };
   input: {
     props: {
@@ -2511,7 +2523,9 @@ export interface QueuedMessageEditMobilePropsParts<
     };
   };
   actions: {
-    style: TStyles['editActions'];
+    props: {
+      style: TStyles['editActions'];
+    };
   };
   cancelButton: {
     props: {
@@ -2785,7 +2799,9 @@ export function createQueuedMessageContentMobilePropsParts<
 }: QueuedMessageContentMobilePropsPartsInput<TStyles>): QueuedMessageContentMobilePropsParts<TStyles> {
   return {
     container: {
-      style: styles.content,
+      props: {
+        style: styles.content,
+      },
     },
     messageText: {
       text: message.text,
@@ -2806,7 +2822,9 @@ export function createQueuedMessageContentMobilePropsParts<
           shouldRender: false,
         },
     metaRow: {
-      style: styles.metaRow,
+      props: {
+        style: styles.metaRow,
+      },
     },
     metaText: {
       text: formatQueuedMessageMetaLabel(message.createdAt, presentation.statusLabel),
@@ -3008,10 +3026,14 @@ export function createQueuedMessageItemChromeMobilePropsParts<
 }: QueuedMessageItemChromeMobilePropsPartsInput<TStyles>): QueuedMessageItemChromeMobilePropsParts<TStyles> {
   return {
     container: {
-      style: styles.container,
+      props: {
+        style: styles.container,
+      },
     },
     row: {
-      style: styles.row,
+      props: {
+        style: styles.row,
+      },
     },
     failedStatusIcon: statusIndicatorPart?.type === 'failed'
       ? {
@@ -3032,7 +3054,9 @@ export function createQueuedMessageItemChromeMobilePropsParts<
     actions: actionParts.shouldRender
       ? {
           shouldRender: true,
-          style: styles.actions,
+          props: {
+            style: styles.actions,
+          },
         }
       : {
           shouldRender: false,
@@ -3147,7 +3171,9 @@ export function createQueuedMessageEditMobilePropsParts<
 }: QueuedMessageEditMobilePropsPartsInput<TStyles, TOnCancel, TOnSave>): QueuedMessageEditMobilePropsParts<TStyles, TOnCancel, TOnSave> {
   return {
     container: {
-      style: styles.editContainer,
+      props: {
+        style: styles.editContainer,
+      },
     },
     input: {
       props: {
@@ -3158,7 +3184,9 @@ export function createQueuedMessageEditMobilePropsParts<
       },
     },
     actions: {
-      style: styles.editActions,
+      props: {
+        style: styles.editActions,
+      },
     },
     cancelButton: {
       props: {

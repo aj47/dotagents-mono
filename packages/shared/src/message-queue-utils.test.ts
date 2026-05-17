@@ -1226,10 +1226,14 @@ describe('message-queue-utils', () => {
       },
     })).toEqual({
       container: {
-        style: 'container',
+        props: {
+          style: 'container',
+        },
       },
       row: {
-        style: 'row',
+        props: {
+          style: 'row',
+        },
       },
       failedStatusIcon: {
         shouldRender: true,
@@ -1244,7 +1248,9 @@ describe('message-queue-utils', () => {
       },
       actions: {
         shouldRender: true,
-        style: 'actions',
+        props: {
+          style: 'actions',
+        },
       },
     });
     expect(createQueuedMessageItemChromeMobilePropsParts({
@@ -1300,7 +1306,9 @@ describe('message-queue-utils', () => {
       },
     })).toEqual({
       container: {
-        style: 'content',
+        props: {
+          style: 'content',
+        },
       },
       messageText: {
         text: 'failed',
@@ -1317,7 +1325,9 @@ describe('message-queue-utils', () => {
         },
       },
       metaRow: {
-        style: 'metaRow',
+        props: {
+          style: 'metaRow',
+        },
       },
       metaText: {
         text: formatQueuedMessageMetaLabel(1000, 'Failed'),
@@ -1616,7 +1626,9 @@ describe('message-queue-utils', () => {
     });
     expect(editParts).toMatchObject({
       container: {
-        style: 'editContainer',
+        props: {
+          style: 'editContainer',
+        },
       },
       input: {
         props: {
@@ -1627,7 +1639,9 @@ describe('message-queue-utils', () => {
         },
       },
       actions: {
-        style: 'editActions',
+        props: {
+          style: 'editActions',
+        },
       },
       cancelButton: {
         props: {
@@ -1711,14 +1725,20 @@ describe('message-queue-utils', () => {
     });
     expect(bundledParts.chrome).toMatchObject({
       container: {
-        style: 'container',
+        props: {
+          style: 'container',
+        },
       },
       row: {
-        style: 'row',
+        props: {
+          style: 'row',
+        },
       },
       actions: {
         shouldRender: true,
-        style: 'actions',
+        props: {
+          style: 'actions',
+        },
       },
       failedStatusIcon: {
         shouldRender: true,
@@ -1733,7 +1753,9 @@ describe('message-queue-utils', () => {
     });
     expect(bundledParts.content).toMatchObject({
       container: {
-        style: 'content',
+        props: {
+          style: 'content',
+        },
       },
       messageText: {
         props: {

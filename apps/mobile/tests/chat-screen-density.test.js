@@ -5198,8 +5198,15 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /actionButtonStyleSlots\./);
   assert.doesNotMatch(messageQueuePanelSource, /actionRowStyleSlot/);
   assert.doesNotMatch(messageQueuePanelSource, /editStyleSlots\./);
-  assert.match(messageQueuePanelSource, /style=\{itemChromeParts\.container\.style\}/);
-  assert.match(messageQueuePanelSource, /style=\{itemChromeParts\.row\.style\}/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.itemChromeParts\.container\.props\}>/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.itemChromeParts\.row\.props\}>/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.editParts\.container\.props\}>/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.editParts\.actions\.props\}>/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.contentParts\.container\.props\}>/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.contentParts\.metaRow\.props\}>/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{itemChromeParts\.(container|row|actions)\.style\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{contentParts\.(container|metaRow)\.style\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{editParts\.(container|actions)\.style\}/);
   assert.match(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon && \(/);
   assert.match(messageQueuePanelSource, /itemChromeParts\.failedStatusIcon[\s\S]*?<Ionicons\s+\{\.\.\.itemChromeParts\.failedStatusIcon\.props\}/);
@@ -5214,7 +5221,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts && \(/);
   assert.match(messageQueuePanelSource, /itemChromeParts\.actions\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.actions && \(/);
-  assert.match(messageQueuePanelSource, /style=\{itemChromeParts\.actions\.style\}/);
+  assert.match(messageQueuePanelSource, /<View\s+\{\.\.\.itemChromeParts\.actions\.props\}>/);
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.messageText\.props\}>/);
   assert.match(messageQueuePanelSource, /\{contentParts\.metaText\.text\}/);
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.metaText\.props\}>/);
