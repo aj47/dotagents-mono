@@ -8211,12 +8211,12 @@ export function ChatMessageToolExecutionPayloadMeta({
     </>
   );
 
-  if (!payloadMetaParts.row) {
+  if (!payloadMetaParts.row.shouldRender) {
     return content;
   }
 
   return (
-    <View style={payloadMetaParts.row.style}>
+    <View style={payloadMetaParts.row.props.style}>
       {content}
     </View>
   );

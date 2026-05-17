@@ -3235,9 +3235,9 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
     payloadType: unknown
   },
 > {
-  row: ({
+  row: ChatRuntimeMobilePropsPart<{
     style: TStyles["row"]
-  }) | null
+  }>
   label: {
     text: TRenderState["label"]
     style: TStyles["label"]
@@ -20397,8 +20397,14 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
 > {
   return {
     row: styles.row ? {
-      style: styles.row,
-    } : null,
+      shouldRender: true,
+      props: {
+        style: styles.row,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
     label: {
       text: renderState.label,
       style: styles.label,

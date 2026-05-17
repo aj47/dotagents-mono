@@ -13227,7 +13227,10 @@ describe("session presentation semantics", () => {
     })
     expect(payloadMetaParts).toEqual({
       row: {
-        style: "payload-meta-row",
+        shouldRender: true,
+        props: {
+          style: "payload-meta-row",
+        },
       },
       label: {
         text: "Input",
@@ -13248,7 +13251,10 @@ describe("session presentation semantics", () => {
         payloadType: "payload-type",
       },
     })).toEqual({
-      row: null,
+      row: {
+        shouldRender: false,
+        props: null,
+      },
       label: {
         text: "Output",
         style: "payload-meta-label",
