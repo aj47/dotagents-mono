@@ -8906,11 +8906,15 @@ describe("session presentation semantics", () => {
     expect(activityGroupToggleParts.leadingIcon).toBe("leading-icon-state")
     expect(activityGroupToggleParts.countBadge).toEqual({
       shouldRender: true,
-      accessibilityLabel: "3 tool calls",
-      style: "toggle-count-badge",
-      label: {
-        style: "toggle-count-badge-text",
-        text: 3,
+      props: {
+        container: {
+          accessibilityLabel: "3 tool calls",
+          style: "toggle-count-badge",
+        },
+        label: {
+          style: "toggle-count-badge-text",
+          text: 3,
+        },
       },
     })
     expect(activityGroupToggleParts.preview).toEqual({
@@ -8957,11 +8961,15 @@ describe("session presentation semantics", () => {
       },
     }).countBadge).toEqual({
       shouldRender: false,
-      accessibilityLabel: "3 tool calls",
-      style: "toggle-count-badge",
-      label: {
-        style: "toggle-count-badge-text",
-        text: 3,
+      props: {
+        container: {
+          accessibilityLabel: "3 tool calls",
+          style: "toggle-count-badge",
+        },
+        label: {
+          style: "toggle-count-badge-text",
+          text: 3,
+        },
       },
     })
     const activityGroupFooterParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts({

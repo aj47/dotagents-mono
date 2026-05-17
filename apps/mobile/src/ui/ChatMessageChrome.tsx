@@ -1687,6 +1687,15 @@ type ChatMessageToolActivityGroupToggleProps = {
   styles: ChatMessageToolActivityGroupToggleStyles;
 };
 
+type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRuntimeToolActivityGroupToggleMobilePropsParts<
+  ToolActivityGroupMobileRenderState,
+  ChatMessageToolActivityGroupToggleProps['onPress'],
+  ChatMessageToolActivityGroupToggleStyles
+>>;
+
+type ChatMessageToolActivityGroupCountBadgeProps =
+  ChatMessageToolActivityGroupToggleParts['countBadge']['props'];
+
 type ChatMessageToolActivityGroupFooterStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -7829,14 +7838,9 @@ export function ChatMessageToolActivityGroupToggle({
           color={toggleParts.leadingIcon.color}
         />
         {toggleParts.countBadge.shouldRender ? (
-          <View
-            accessibilityLabel={toggleParts.countBadge.accessibilityLabel}
-            style={toggleParts.countBadge.style}
-          >
-            <Text style={toggleParts.countBadge.label.style}>
-              {toggleParts.countBadge.label.text}
-            </Text>
-          </View>
+          <ChatMessageToolActivityGroupCountBadge
+            {...toggleParts.countBadge.props}
+          />
         ) : null}
         <Text
           style={toggleParts.preview.style}
@@ -7852,6 +7856,22 @@ export function ChatMessageToolActivityGroupToggle({
         />
       </View>
     </Pressable>
+  );
+}
+
+export function ChatMessageToolActivityGroupCountBadge({
+  container,
+  label,
+}: ChatMessageToolActivityGroupCountBadgeProps) {
+  return (
+    <View
+      accessibilityLabel={container.accessibilityLabel}
+      style={container.style}
+    >
+      <Text style={label.style}>
+        {label.text}
+      </Text>
+    </View>
   );
 }
 

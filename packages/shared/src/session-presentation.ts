@@ -5432,11 +5432,15 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
   leadingIcon: TRenderState["leadingIcon"]
   countBadge: {
     shouldRender: boolean
-    accessibilityLabel: string
-    style: TStyles["countBadge"]
-    label: {
-      style: TStyles["countBadgeText"]
-      text: TRenderState["summary"]["toolCallCount"]
+    props: {
+      container: {
+        accessibilityLabel: string
+        style: TStyles["countBadge"]
+      }
+      label: {
+        style: TStyles["countBadgeText"]
+        text: TRenderState["summary"]["toolCallCount"]
+      }
     }
   }
   preview: {
@@ -22134,11 +22138,15 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
     leadingIcon: renderState.leadingIcon,
     countBadge: {
       shouldRender: renderState.summary.shouldShowToolCallCount,
-      accessibilityLabel: renderState.summary.toolCallCountLabel,
-      style: styles.countBadge,
-      label: {
-        style: styles.countBadgeText,
-        text: renderState.summary.toolCallCount,
+      props: {
+        container: {
+          accessibilityLabel: renderState.summary.toolCallCountLabel,
+          style: styles.countBadge,
+        },
+        label: {
+          style: styles.countBadgeText,
+          text: renderState.summary.toolCallCount,
+        },
       },
     },
     preview: {
