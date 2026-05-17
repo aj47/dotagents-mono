@@ -1524,9 +1524,10 @@ test('keeps pinning available from the individual chat view header', () => {
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderIconButton[\s\S]*?export function ChatRuntimeHeaderConversationStatus/)?.[0] ?? '';
   assert.match(headerIconButtonSource, /const iconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+style,\s+activeStyle,\s+iconContainerStyle,\s+isActive,\s+\}\);/);
   assert.match(headerIconButtonSource, /if \(!iconButtonParts\.shouldRender\) return null;/);
+  assert.match(headerIconButtonSource, /const touchableContent = iconButtonParts\.touchable\.content;/);
   assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchable\s+\{\.\.\.iconButtonParts\.touchable\.props\}/);
-  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIcon\s+\{\.\.\.iconButtonParts\.icon\.props\}/);
-  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIconContainer\s+\{\.\.\.iconButtonParts\.iconContainer\.props\}/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIconContainer\s+\{\.\.\.touchableContent\.iconContainer\.props\}/);
   assert.match(
     headerIconButtonSource,
     /export function ChatRuntimeHeaderIconButtonTouchable[\s\S]*?<TouchableOpacity[\s\S]*?\{\.\.\.props\}[\s\S]*?accessibilityState=\{accessibilityState as AccessibilityState \| undefined\}[\s\S]*?aria-checked=\{ariaChecked as boolean \| 'mixed' \| undefined\}[\s\S]*?export function ChatRuntimeHeaderIconButtonIconContainer/
@@ -1543,8 +1544,7 @@ test('keeps pinning available from the individual chat view header', () => {
     sessionPresentationSource,
     /touchable: \{\s+props: \{\s+onPress,\s+activeOpacity: renderState\.pressedOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,\s+style: \[style, isActive && activeStyle\],/
   );
-  assert.match(sessionPresentationSource, /iconContainer: \{\s+shouldRender: Boolean\(iconContainerStyle\),\s+props: \{\s+style: iconContainerStyle,\s+\},\s+\},/);
-  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.match(sessionPresentationSource, /content: \{\s+iconContainer: \{\s+shouldRender: Boolean\(iconContainerStyle\),\s+props: \{\s+style: iconContainerStyle,\s+\},\s+\},\s+icon: \{\s+props: renderState\.icon,\s+\},\s+\},/);
   assert.doesNotMatch(headerIconButtonSource, /export function ChatRuntimeHeaderIconButtonTouchable[\s\S]*?(onPress=\{onPress\}|activeOpacity=\{activeOpacity\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|style=\{style\})[\s\S]*?export function ChatRuntimeHeaderIconButtonIconContainer/);
   assert.doesNotMatch(headerIconButtonSource, /export function ChatRuntimeHeaderIconButtonIconContainer[\s\S]*?style=\{style\}[\s\S]*?export function ChatRuntimeHeaderIconButtonIcon/);
   assert.doesNotMatch(headerIconButtonSource, /export function ChatRuntimeHeaderIconButtonIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatRuntimeHeaderConversationStatus/);
@@ -1704,7 +1704,7 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /const createChatRuntimeMobileHeaderIconContainerStyle =/);
   assert.doesNotMatch(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlot\(\{/);
-  assert.match(chatMessageChromeSource, /iconButtonParts\.iconContainer\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /touchableContent\.iconContainer\.shouldRender \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /iconButtonParts\.iconContainer \? \(/);
   assert.doesNotMatch(screenSource, /name=\{mobileHeaderKillSwitchRenderState\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /name=\{headerHandsFreeMobileRenderState\.icon\.name\}/);

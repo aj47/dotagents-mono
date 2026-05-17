@@ -9515,15 +9515,17 @@ export interface ChatRuntimeHeaderIconButtonMobilePropsParts<
       "aria-checked": TRenderState["ariaChecked"]
       style: Array<TStyle | TActiveStyle | false | undefined>
     }
-  }
-  iconContainer: {
-    shouldRender: boolean
-    props: {
-      style: TIconContainerStyle | undefined
+    content: {
+      iconContainer: {
+        shouldRender: boolean
+        props: {
+          style: TIconContainerStyle | undefined
+        }
+      }
+      icon: {
+        props: TRenderState["icon"]
+      }
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
   }
 }
 
@@ -27031,15 +27033,17 @@ export function createChatRuntimeHeaderIconButtonMobilePropsParts<
         "aria-checked": renderState.ariaChecked,
         style: [style, isActive && activeStyle],
       },
-    },
-    iconContainer: {
-      shouldRender: Boolean(iconContainerStyle),
-      props: {
-        style: iconContainerStyle,
+      content: {
+        iconContainer: {
+          shouldRender: Boolean(iconContainerStyle),
+          props: {
+            style: iconContainerStyle,
+          },
+        },
+        icon: {
+          props: renderState.icon,
+        },
       },
-    },
-    icon: {
-      props: renderState.icon,
     },
   }
 }

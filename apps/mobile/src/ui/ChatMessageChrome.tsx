@@ -1303,12 +1303,12 @@ type ChatRuntimeHeaderIconButtonTouchableProps =
   };
 
 type ChatRuntimeHeaderIconButtonIconContainerProps =
-  ChatRuntimeHeaderIconButtonParts['iconContainer']['props'] & {
+  ChatRuntimeHeaderIconButtonParts['touchable']['content']['iconContainer']['props'] & {
     children: ReactNode;
   };
 
 type ChatRuntimeHeaderIconButtonIconProps =
-  ChatRuntimeHeaderIconButtonParts['icon']['props'];
+  ChatRuntimeHeaderIconButtonParts['touchable']['content']['icon']['props'];
 
 type ChatRuntimeHeaderConversationStatusStyles = {
   chip: StyleProp<ViewStyle>;
@@ -7645,9 +7645,11 @@ export function ChatRuntimeHeaderIconButton({
 
   if (!iconButtonParts.shouldRender) return null;
 
+  const touchableContent = iconButtonParts.touchable.content;
+
   const icon = (
     <ChatRuntimeHeaderIconButtonIcon
-      {...iconButtonParts.icon.props}
+      {...touchableContent.icon.props}
     />
   );
 
@@ -7655,9 +7657,9 @@ export function ChatRuntimeHeaderIconButton({
     <ChatRuntimeHeaderIconButtonTouchable
       {...iconButtonParts.touchable.props}
     >
-      {iconButtonParts.iconContainer.shouldRender ? (
+      {touchableContent.iconContainer.shouldRender ? (
         <ChatRuntimeHeaderIconButtonIconContainer
-          {...iconButtonParts.iconContainer.props}
+          {...touchableContent.iconContainer.props}
         >
           {icon}
         </ChatRuntimeHeaderIconButtonIconContainer>

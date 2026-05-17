@@ -4364,15 +4364,17 @@ describe("session presentation semantics", () => {
           "aria-checked": navigationHeaderState.handsFreeButtonRenderState.ariaChecked,
           style: ["action-button-style", "hands-free-active-style"],
         },
-      },
-      iconContainer: {
-        shouldRender: true,
-        props: {
-          style: "hands-free-icon-container",
+        content: {
+          iconContainer: {
+            shouldRender: true,
+            props: {
+              style: "hands-free-icon-container",
+            },
+          },
+          icon: {
+            props: navigationHeaderState.handsFreeButtonRenderState.icon,
+          },
         },
-      },
-      icon: {
-        props: navigationHeaderState.handsFreeButtonRenderState.icon,
       },
     })
     expect(createChatRuntimeHeaderIconButtonMobilePropsParts({
