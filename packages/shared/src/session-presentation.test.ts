@@ -9958,19 +9958,23 @@ describe("session presentation semantics", () => {
     expect(composerIconButtonParts).toEqual({
       shouldRender: true,
       touchable: {
-        style: ["accessory-style", "accessory-active-style"],
-        onPress: "press-accessory",
-        activeOpacity: 0.72,
-        accessibilityRole: "button",
-        accessibilityLabel: "Attach image",
-        accessibilityHint: undefined,
-        accessibilityState: { checked: true },
-        ariaChecked: true,
+        props: {
+          style: ["accessory-style", "accessory-active-style"],
+          onPress: "press-accessory",
+          activeOpacity: 0.72,
+          accessibilityRole: "button",
+          accessibilityLabel: "Attach image",
+          accessibilityHint: undefined,
+          accessibilityState: { checked: true },
+          "aria-checked": true,
+        },
       },
       icon: {
-        name: "image",
-        size: 18,
-        color: "#ffffff",
+        props: {
+          name: "image",
+          size: 18,
+          color: "#ffffff",
+        },
       },
     })
     expect(createChatComposerIconButtonMobilePropsParts({

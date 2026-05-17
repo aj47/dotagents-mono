@@ -2581,15 +2581,25 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
   assert.match(composerIconButtonSource, /const iconButtonParts = createChatComposerIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+style,\s+activeStyle,\s+\}\);/);
   assert.match(composerIconButtonSource, /if \(!iconButtonParts\.shouldRender\) return null;/);
-  assert.match(composerIconButtonSource, /style=\{iconButtonParts\.touchable\.style\}/);
-  assert.match(composerIconButtonSource, /accessibilityRole=\{iconButtonParts\.touchable\.accessibilityRole\}/);
-  assert.match(composerIconButtonSource, /accessibilityLabel=\{iconButtonParts\.touchable\.accessibilityLabel\}/);
-  assert.match(composerIconButtonSource, /accessibilityHint=\{iconButtonParts\.touchable\.accessibilityHint\}/);
-  assert.match(composerIconButtonSource, /accessibilityState=\{iconButtonParts\.touchable\.accessibilityState\}/);
-  assert.match(composerIconButtonSource, /aria-checked=\{iconButtonParts\.touchable\.ariaChecked\}/);
-  assert.match(composerIconButtonSource, /name=\{iconButtonParts\.icon\.name\}/);
-  assert.match(composerIconButtonSource, /size=\{iconButtonParts\.icon\.size\}/);
-  assert.match(composerIconButtonSource, /color=\{iconButtonParts\.icon\.color\}/);
+  assert.match(composerIconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonParts\.touchable\.props\}/);
+  assert.match(composerIconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.iconButtonParts\.icon\.props\}/);
+  assert.match(
+    composerIconButtonSource,
+    /export function ChatComposerIconButtonTouchable\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-checked=\{ariaChecked\}[\s\S]*?export function ChatComposerIconButtonIcon/
+  );
+  assert.match(
+    composerIconButtonSource,
+    /export function ChatComposerIconButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerLabeledActionButton/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /touchable: \{\s+props: \{\s+style: \[style, renderState\.isActive && activeStyle\],\s+onPress,\s+activeOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,/
+  );
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.doesNotMatch(
+    composerIconButtonSource,
+    /iconButtonParts\.(touchable|icon)\.(style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaChecked|name|size|color)/
+  );
   assert.doesNotMatch(composerIconButtonSource, /style=\{\[style, renderState\.isActive && activeStyle\]\}/);
   assert.doesNotMatch(composerIconButtonSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.doesNotMatch(composerIconButtonSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);

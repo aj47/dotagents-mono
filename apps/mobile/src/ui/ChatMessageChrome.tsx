@@ -2844,6 +2844,22 @@ type ChatComposerIconButtonProps = {
   activeStyle?: StyleProp<ViewStyle>;
 };
 
+type ChatComposerIconButtonParts = ReturnType<typeof createChatComposerIconButtonMobilePropsParts<
+  ChatComposerIconButtonRenderState,
+  ChatComposerIconButtonProps['onPress'],
+  ChatComposerIconButtonProps['activeOpacity'],
+  ChatComposerIconButtonProps['style'],
+  ChatComposerIconButtonProps['activeStyle']
+>>;
+
+type ChatComposerIconButtonTouchableProps =
+  ChatComposerIconButtonParts['touchable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerIconButtonIconProps =
+  ChatComposerIconButtonParts['icon']['props'];
+
 type ChatComposerLabeledActionRenderState = {
   accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
@@ -10485,22 +10501,54 @@ export function ChatComposerIconButton({
   if (!iconButtonParts.shouldRender) return null;
 
   return (
-    <TouchableOpacity
-      style={iconButtonParts.touchable.style}
-      onPress={iconButtonParts.touchable.onPress}
-      activeOpacity={iconButtonParts.touchable.activeOpacity}
-      accessibilityRole={iconButtonParts.touchable.accessibilityRole}
-      accessibilityLabel={iconButtonParts.touchable.accessibilityLabel}
-      accessibilityHint={iconButtonParts.touchable.accessibilityHint}
-      accessibilityState={iconButtonParts.touchable.accessibilityState}
-      aria-checked={iconButtonParts.touchable.ariaChecked}
+    <ChatComposerIconButtonTouchable
+      {...iconButtonParts.touchable.props}
     >
-      <Ionicons
-        name={iconButtonParts.icon.name}
-        size={iconButtonParts.icon.size}
-        color={iconButtonParts.icon.color}
+      <ChatComposerIconButtonIcon
+        {...iconButtonParts.icon.props}
       />
+    </ChatComposerIconButtonTouchable>
+  );
+}
+
+export function ChatComposerIconButtonTouchable({
+  style,
+  onPress,
+  activeOpacity,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  'aria-checked': ariaChecked,
+  children,
+}: ChatComposerIconButtonTouchableProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
+      aria-checked={ariaChecked}
+    >
+      {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatComposerIconButtonIcon({
+  name,
+  size,
+  color,
+}: ChatComposerIconButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 

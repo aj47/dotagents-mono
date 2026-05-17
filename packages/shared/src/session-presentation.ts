@@ -4674,16 +4674,20 @@ export interface ChatComposerIconButtonMobilePropsParts<
 > {
   shouldRender: boolean
   touchable: {
-    style: Array<TStyle | TActiveStyle | false | undefined>
-    onPress: TOnPress | undefined
-    activeOpacity: TActiveOpacity | undefined
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string | undefined
-    accessibilityState: TRenderState["accessibilityState"]
-    ariaChecked: TRenderState["ariaChecked"]
+    props: {
+      style: Array<TStyle | TActiveStyle | false | undefined>
+      onPress: TOnPress | undefined
+      activeOpacity: TActiveOpacity | undefined
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+      accessibilityState: TRenderState["accessibilityState"]
+      "aria-checked": TRenderState["ariaChecked"]
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
 }
 
 export interface ChatComposerLabeledActionButtonMobileRenderStateLike {
@@ -21504,16 +21508,20 @@ export function createChatComposerIconButtonMobilePropsParts<
   return {
     shouldRender,
     touchable: {
-      style: [style, renderState.isActive && activeStyle],
-      onPress,
-      activeOpacity,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint ?? undefined,
-      accessibilityState: renderState.accessibilityState,
-      ariaChecked: renderState.ariaChecked,
+      props: {
+        style: [style, renderState.isActive && activeStyle],
+        onPress,
+        activeOpacity,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint ?? undefined,
+        accessibilityState: renderState.accessibilityState,
+        "aria-checked": renderState.ariaChecked,
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
   }
 }
 
