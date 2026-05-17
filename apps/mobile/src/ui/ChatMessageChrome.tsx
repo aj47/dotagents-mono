@@ -3055,6 +3055,14 @@ type ChatMessageToolExecutionCallListProps = {
   styles: ChatMessageToolExecutionCallDetailStyles;
 };
 
+type ChatMessageToolExecutionCallListParts = ReturnType<typeof createChatRuntimeToolExecutionCallListMobilePropsParts<
+  ChatMessageToolExecutionCallListRow,
+  ChatMessageToolExecutionCallDetailStyles
+>>;
+
+type ChatMessageToolExecutionCallListContentProps =
+  ChatMessageToolExecutionCallListParts['content'];
+
 type ChatMessageHistoryBannerStyles = {
   container: StyleProp<ViewStyle>;
   summary: StyleProp<TextStyle>;
@@ -11718,11 +11726,20 @@ export function ChatMessageToolExecutionCallList({
     rows,
     styles,
   });
-  const callListContent = callListParts.content;
 
   return (
+    <ChatMessageToolExecutionCallListContent
+      {...callListParts.content}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionCallListContent({
+  rows,
+}: ChatMessageToolExecutionCallListContentProps) {
+  return (
     <>
-      {callListContent.rows.map((row) => (
+      {rows.map((row) => (
         <ChatMessageToolExecutionCallDetail
           key={row.key}
           {...row.props}
