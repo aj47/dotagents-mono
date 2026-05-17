@@ -11465,23 +11465,23 @@ describe("session presentation semantics", () => {
       pressedStyle: "button-pressed-style",
       disabledStyle: "button-disabled-style",
     })
-    expect(actionIconButtonParts.pressable).toMatchObject({
+    expect(actionIconButtonParts.pressable.props).toMatchObject({
       onPress: "press-action",
       disabled: false,
       accessibilityRole: "button",
       accessibilityLabel: "Copy message",
       accessibilityHint: undefined,
       accessibilityState: { selected: true },
-      ariaExpanded: false,
+      "aria-expanded": false,
       hitSlop: 8,
     })
-    expect(actionIconButtonParts.pressable.style({ pressed: false })).toEqual([
+    expect(actionIconButtonParts.pressable.props.style({ pressed: false })).toEqual([
       "button-style",
       "button-active-style",
       false,
       false,
     ])
-    expect(actionIconButtonParts.pressable.style({ pressed: true })).toEqual([
+    expect(actionIconButtonParts.pressable.props.style({ pressed: true })).toEqual([
       "button-style",
       "button-active-style",
       "button-pressed-style",
@@ -11489,14 +11489,18 @@ describe("session presentation semantics", () => {
     ])
     expect(actionIconButtonParts.activityIndicator).toEqual({
       shouldRender: false,
-      size: 16,
-      color: "#ffffff",
+      props: {
+        size: 16,
+        color: "#ffffff",
+      },
     })
     expect(actionIconButtonParts.icon).toEqual({
       shouldRender: true,
-      name: "copy",
-      size: 16,
-      color: "#ffffff",
+      props: {
+        name: "copy",
+        size: 16,
+        color: "#ffffff",
+      },
     })
     const disabledActionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts({
       icon: {
@@ -11513,11 +11517,11 @@ describe("session presentation semantics", () => {
       pressedStyle: "button-pressed-style",
       disabledStyle: "button-disabled-style",
     })
-    expect(disabledActionIconButtonParts.pressable.accessibilityState).toEqual({
+    expect(disabledActionIconButtonParts.pressable.props.accessibilityState).toEqual({
       busy: true,
       disabled: true,
     })
-    expect(disabledActionIconButtonParts.pressable.style({ pressed: true })).toEqual([
+    expect(disabledActionIconButtonParts.pressable.props.style({ pressed: true })).toEqual([
       "button-style",
       false,
       false,
@@ -11525,14 +11529,18 @@ describe("session presentation semantics", () => {
     ])
     expect(disabledActionIconButtonParts.activityIndicator).toEqual({
       shouldRender: true,
-      size: 12,
-      color: "#999999",
+      props: {
+        size: 12,
+        color: "#999999",
+      },
     })
     expect(disabledActionIconButtonParts.icon).toEqual({
       shouldRender: false,
-      name: "sync",
-      size: 12,
-      color: "#999999",
+      props: {
+        name: "sync",
+        size: 12,
+        color: "#999999",
+      },
     })
     expect(createChatRuntimeMessageActionSlotListMobilePropsParts({
       entries: actionSetProps.entries,

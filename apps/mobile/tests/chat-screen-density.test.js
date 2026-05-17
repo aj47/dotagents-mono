@@ -5350,12 +5350,33 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(actionIconButtonSource, /const actionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts\(\{\s+icon,\s+onPress,\s+disabled,\s+isActive,\s+accessibilityRole,\s+accessibilityLabel,\s+accessibilityHint,\s+accessibilityState,\s+ariaExpanded,\s+hitSlop,\s+style,\s+activeStyle,\s+pressedStyle,\s+disabledStyle,\s+\}\);/);
   assert.match(sessionPresentationSource, /const mergedAccessibilityState = disabled[\s\S]*?\? \{ \.\.\.accessibilityState, disabled: true as const \}[\s\S]*?: accessibilityState/);
   assert.doesNotMatch(actionIconButtonSource, /const mergedAccessibilityState/);
+  assert.match(
+    sessionPresentationSource,
+    /pressable: \{\s+props: \{\s+onPress,\s+disabled,\s+accessibilityRole,\s+accessibilityLabel,\s+accessibilityHint: accessibilityHint \?\? undefined,\s+accessibilityState: mergedAccessibilityState,\s+"aria-expanded": ariaExpanded,\s+hitSlop,\s+style: \(\{ pressed \}: \{ pressed: boolean \}\) => \[/
+  );
+  assert.match(sessionPresentationSource, /activityIndicator: \{\s+shouldRender: Boolean\(icon\.isPending\),\s+props: \{\s+size: icon\.size,\s+color: icon\.color,\s+\},\s+\},/);
+  assert.match(sessionPresentationSource, /icon: \{\s+shouldRender: !icon\.isPending,\s+props: \{\s+name: icon\.name,\s+size: icon\.size,\s+color: icon\.color,\s+\},\s+\},/);
+  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonPressable\s+\{\.\.\.actionIconButtonParts\.pressable\.props\}/);
   assert.match(actionIconButtonSource, /actionIconButtonParts\.activityIndicator\.shouldRender \? \(/);
-  assert.match(actionIconButtonSource, /<ActivityIndicator[\s\S]*?size=\{actionIconButtonParts\.activityIndicator\.size\}[\s\S]*?color=\{actionIconButtonParts\.activityIndicator\.color\}/);
+  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonActivityIndicator\s+\{\.\.\.actionIconButtonParts\.activityIndicator\.props\}/);
   assert.match(actionIconButtonSource, /actionIconButtonParts\.icon\.shouldRender \? \(/);
-  assert.match(actionIconButtonSource, /<Ionicons[\s\S]*?name=\{actionIconButtonParts\.icon\.name\}[\s\S]*?size=\{actionIconButtonParts\.icon\.size\}[\s\S]*?color=\{actionIconButtonParts\.icon\.color\}/);
-  assert.match(actionIconButtonSource, /aria-expanded=\{actionIconButtonParts\.pressable\.ariaExpanded\}/);
-  assert.match(actionIconButtonSource, /style=\{actionIconButtonParts\.pressable\.style\}/);
+  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonIcon\s+\{\.\.\.actionIconButtonParts\.icon\.props\}/);
+  assert.match(
+    actionIconButtonSource,
+    /export function ChatMessageActionIconButtonPressable\([\s\S]*?onPress=\{onPress\}[\s\S]*?disabled=\{disabled\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-expanded=\{ariaExpanded\}[\s\S]*?hitSlop=\{hitSlop\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageActionIconButtonActivityIndicator/
+  );
+  assert.match(
+    actionIconButtonSource,
+    /export function ChatMessageActionIconButtonActivityIndicator\([\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatMessageActionIconButtonIcon/
+  );
+  assert.match(
+    actionIconButtonSource,
+    /export function ChatMessageActionIconButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?function renderChatMessageActionButton/
+  );
+  assert.doesNotMatch(
+    actionIconButtonSource,
+    /actionIconButtonParts\.(pressable|activityIndicator|icon)\.(onPress|disabled|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaExpanded|hitSlop|style|size|color|name)/
+  );
   assert.doesNotMatch(actionIconButtonSource, /style=\{\(\{ pressed \}\) => \[/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{turnDurationParts\.container\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{turnDurationParts\.container\.accessibilityLabel\}/);

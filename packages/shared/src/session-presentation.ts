@@ -2673,33 +2673,39 @@ export interface ChatRuntimeMessageActionIconButtonMobilePropsParts<
   TDisabledStyle = unknown,
 > {
   pressable: {
-    onPress: TOnPress | undefined
-    disabled: boolean
-    accessibilityRole: TAccessibilityRole
-    accessibilityLabel: string
-    accessibilityHint: string | undefined
-    accessibilityState: TAccessibilityState | { disabled: true } | undefined
-    ariaExpanded: TAriaExpanded | undefined
-    hitSlop: THitSlop | undefined
-    style: (state: { pressed: boolean }) => Array<
-      | TStyle
-      | TActiveStyle
-      | TPressedStyle
-      | TDisabledStyle
-      | false
-      | undefined
-    >
+    props: {
+      onPress: TOnPress | undefined
+      disabled: boolean
+      accessibilityRole: TAccessibilityRole
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+      accessibilityState: TAccessibilityState | { disabled: true } | undefined
+      "aria-expanded": TAriaExpanded | undefined
+      hitSlop: THitSlop | undefined
+      style: (state: { pressed: boolean }) => Array<
+        | TStyle
+        | TActiveStyle
+        | TPressedStyle
+        | TDisabledStyle
+        | false
+        | undefined
+      >
+    }
   }
   activityIndicator: {
     shouldRender: boolean
-    size: TIcon["size"]
-    color: TIcon["color"]
+    props: {
+      size: TIcon["size"]
+      color: TIcon["color"]
+    }
   }
   icon: {
     shouldRender: boolean
-    name: TIcon["name"]
-    size: TIcon["size"]
-    color: TIcon["color"]
+    props: {
+      name: TIcon["name"]
+      size: TIcon["size"]
+      color: TIcon["color"]
+    }
   }
 }
 
@@ -19936,31 +19942,37 @@ export function createChatRuntimeMessageActionIconButtonMobilePropsParts<
 
   return {
     pressable: {
-      onPress,
-      disabled,
-      accessibilityRole,
-      accessibilityLabel,
-      accessibilityHint: accessibilityHint ?? undefined,
-      accessibilityState: mergedAccessibilityState,
-      ariaExpanded,
-      hitSlop,
-      style: ({ pressed }: { pressed: boolean }) => [
-        style,
-        isActive && activeStyle,
-        pressed && !disabled && pressedStyle,
-        disabled && disabledStyle,
-      ],
+      props: {
+        onPress,
+        disabled,
+        accessibilityRole,
+        accessibilityLabel,
+        accessibilityHint: accessibilityHint ?? undefined,
+        accessibilityState: mergedAccessibilityState,
+        "aria-expanded": ariaExpanded,
+        hitSlop,
+        style: ({ pressed }: { pressed: boolean }) => [
+          style,
+          isActive && activeStyle,
+          pressed && !disabled && pressedStyle,
+          disabled && disabledStyle,
+        ],
+      },
     },
     activityIndicator: {
       shouldRender: Boolean(icon.isPending),
-      size: icon.size,
-      color: icon.color,
+      props: {
+        size: icon.size,
+        color: icon.color,
+      },
     },
     icon: {
       shouldRender: !icon.isPending,
-      name: icon.name,
-      size: icon.size,
-      color: icon.color,
+      props: {
+        name: icon.name,
+        size: icon.size,
+        color: icon.color,
+      },
     },
   }
 }

@@ -1088,6 +1088,30 @@ type ChatMessageActionIconButtonProps = {
   disabledStyle?: StyleProp<ViewStyle>;
 };
 
+type ChatMessageActionIconButtonParts = ReturnType<typeof createChatRuntimeMessageActionIconButtonMobilePropsParts<
+  ChatMessageActionIcon,
+  ChatMessageActionIconButtonProps['onPress'],
+  ChatMessageActionIconButtonProps['accessibilityRole'],
+  ChatMessageActionIconButtonProps['accessibilityState'],
+  ChatMessageActionIconButtonProps['ariaExpanded'],
+  ChatMessageActionIconButtonProps['hitSlop'],
+  ChatMessageActionIconButtonProps['style'],
+  ChatMessageActionIconButtonProps['activeStyle'],
+  ChatMessageActionIconButtonProps['pressedStyle'],
+  ChatMessageActionIconButtonProps['disabledStyle']
+>>;
+
+type ChatMessageActionIconButtonPressableProps =
+  ChatMessageActionIconButtonParts['pressable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageActionIconButtonActivityIndicatorProps =
+  ChatMessageActionIconButtonParts['activityIndicator']['props'];
+
+type ChatMessageActionIconButtonIconProps =
+  ChatMessageActionIconButtonParts['icon']['props'];
+
 type ChatMessageActionButtonRenderState = {
   accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
@@ -3488,30 +3512,74 @@ export function ChatMessageActionIconButton({
   });
 
   return (
-    <Pressable
-      onPress={actionIconButtonParts.pressable.onPress}
-      disabled={actionIconButtonParts.pressable.disabled}
-      accessibilityRole={actionIconButtonParts.pressable.accessibilityRole}
-      accessibilityLabel={actionIconButtonParts.pressable.accessibilityLabel}
-      accessibilityHint={actionIconButtonParts.pressable.accessibilityHint}
-      accessibilityState={actionIconButtonParts.pressable.accessibilityState}
-      aria-expanded={actionIconButtonParts.pressable.ariaExpanded}
-      hitSlop={actionIconButtonParts.pressable.hitSlop}
-      style={actionIconButtonParts.pressable.style}
+    <ChatMessageActionIconButtonPressable
+      {...actionIconButtonParts.pressable.props}
     >
       {actionIconButtonParts.activityIndicator.shouldRender ? (
-        <ActivityIndicator
-          size={actionIconButtonParts.activityIndicator.size}
-          color={actionIconButtonParts.activityIndicator.color}
+        <ChatMessageActionIconButtonActivityIndicator
+          {...actionIconButtonParts.activityIndicator.props}
         />
       ) : actionIconButtonParts.icon.shouldRender ? (
-        <Ionicons
-          name={actionIconButtonParts.icon.name}
-          size={actionIconButtonParts.icon.size}
-          color={actionIconButtonParts.icon.color}
+        <ChatMessageActionIconButtonIcon
+          {...actionIconButtonParts.icon.props}
         />
       ) : null}
+    </ChatMessageActionIconButtonPressable>
+  );
+}
+
+export function ChatMessageActionIconButtonPressable({
+  onPress,
+  disabled,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  'aria-expanded': ariaExpanded,
+  hitSlop,
+  style,
+  children,
+}: ChatMessageActionIconButtonPressableProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
+      aria-expanded={ariaExpanded}
+      hitSlop={hitSlop}
+      style={style}
+    >
+      {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageActionIconButtonActivityIndicator({
+  size,
+  color,
+}: ChatMessageActionIconButtonActivityIndicatorProps) {
+  return (
+    <ActivityIndicator
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageActionIconButtonIcon({
+  name,
+  size,
+  color,
+}: ChatMessageActionIconButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 
