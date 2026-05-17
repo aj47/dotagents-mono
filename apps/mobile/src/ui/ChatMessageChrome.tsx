@@ -2162,6 +2162,10 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
 type ChatMessageDelegationHeaderProps =
   ChatMessageDelegationCardParts['card']['content']['header']['props'];
 
+type ChatMessageDelegationLiveTextProps = {
+  liveText: ChatMessageDelegationHeaderProps['liveText'];
+};
+
 type ChatMessageDelegationSubtitleProps =
   ChatMessageDelegationCardParts['card']['content']['subtitle']['props'];
 
@@ -9612,12 +9616,24 @@ export function ChatMessageDelegationHeader({
           {statusText.text}
         </Text>
       </View>
-      {liveText.shouldRender ? (
-        <Text {...liveText.props}>
-          {liveText.text}
-        </Text>
-      ) : null}
+      <ChatMessageDelegationLiveText
+        liveText={liveText}
+      />
     </View>
+  );
+}
+
+export function ChatMessageDelegationLiveText({
+  liveText,
+}: ChatMessageDelegationLiveTextProps) {
+  if (!liveText.shouldRender) {
+    return null;
+  }
+
+  return (
+    <Text {...liveText.props}>
+      {liveText.text}
+    </Text>
   );
 }
 
