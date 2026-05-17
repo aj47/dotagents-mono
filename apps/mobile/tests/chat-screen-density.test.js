@@ -1971,8 +1971,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /createChatRuntimeConnectionBannerMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const connectionBannerParts = createChatRuntimeConnectionBannerMobilePropsParts\(\{\s+renderState,\s+onRetry,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /connectionBannerParts\.reconnecting \? \(/);
-  assert.match(chatMessageChromeSource, /connectionBannerParts\.failed \? \(/);
+  assert.match(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /connectionBannerParts\.failed\.shouldRender \? \(/);
   assert.match(chatMessageChromeSource, /accessible=\{connectionBannerParts\.reconnecting\.container\.accessible\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{connectionBannerParts\.reconnecting\.container\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{connectionBannerParts\.reconnecting\.container\.accessibilityLabel\}/);
@@ -1981,7 +1981,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /color=\{connectionBannerParts\.reconnecting\.spinner\.color\}/);
   assert.match(chatMessageChromeSource, /style=\{connectionBannerParts\.reconnecting\.spinner\.style\}/);
   assert.match(chatMessageChromeSource, /\{connectionBannerParts\.reconnecting\.title\.text\}/);
-  assert.match(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.subtitle \? \(/);
+  assert.match(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.subtitle\.shouldRender \? \(/);
   assert.match(chatMessageChromeSource, /\{connectionBannerParts\.reconnecting\.subtitle\.text\}/);
   assert.match(chatMessageChromeSource, /accessible=\{connectionBannerParts\.failed\.container\.accessible\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{connectionBannerParts\.failed\.container\.accessibilityRole\}/);
@@ -1998,8 +1998,11 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /activeOpacity=\{connectionBannerParts\.failed\.retryButton\.activeOpacity\}/);
   assert.match(chatMessageChromeSource, /\{connectionBannerParts\.failed\.retryLabel\.text\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{connectionBannerParts\.(?:reconnecting|failed)\.subtitle\.numberOfLines\}/);
-  assert.match(sessionPresentationSource, /reconnecting: renderState\.reconnecting\.shouldRender \? \{/);
-  assert.match(sessionPresentationSource, /failed: renderState\.failed\.shouldRender \? \{/);
+  assert.match(sessionPresentationSource, /reconnecting: \{\s+shouldRender: renderState\.reconnecting\.shouldRender,/);
+  assert.match(sessionPresentationSource, /failed: \{\s+shouldRender: renderState\.failed\.shouldRender,/);
+  assert.doesNotMatch(chatMessageChromeSource, /connectionBannerParts\.reconnecting \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /connectionBannerParts\.failed \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.subtitle \? \(/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageConnectionBanner[\s\S]*?accessibilityRole=\{renderState\.reconnecting\.accessibilityRole\}[\s\S]*?export type ChatMessageResponseHistoryPanelViewProps/

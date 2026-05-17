@@ -6553,6 +6553,7 @@ describe("session presentation semantics", () => {
       styles: connectionBannerStyles,
     })).toEqual({
       reconnecting: {
+        shouldRender: true,
         container: {
           accessible: true,
           accessibilityRole: "alert",
@@ -6575,20 +6576,91 @@ describe("session presentation semantics", () => {
           text: "Reconnecting... (attempt 2)",
         },
         subtitle: {
+          shouldRender: true,
           style: "subtitle-style",
           numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
           text: "Network offline",
         },
       },
-      failed: null,
+      failed: {
+        shouldRender: false,
+        container: {
+          accessible: true,
+          accessibilityRole: "alert",
+          accessibilityLabel: "Message failed to send. Tap retry to try again",
+          style: ["banner-style", "failed-style"],
+        },
+        content: {
+          style: "content-style",
+        },
+        icon: {
+          name: "warning-outline",
+          size: 16,
+          color: "#dc2626",
+          style: "icon-style",
+        },
+        textContainer: {
+          style: "text-container-style",
+        },
+        title: {
+          style: "title-style",
+          text: "Message failed to send",
+        },
+        subtitle: {
+          style: "subtitle-style",
+          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+          text: "Tap retry to try again",
+        },
+        retryButton: {
+          style: "retry-button-style",
+          onPress: "retry-handler",
+          accessibilityRole: "button",
+          accessibilityLabel: "Retry",
+          activeOpacity: 0.7,
+        },
+        retryLabel: {
+          style: "retry-button-text-style",
+          text: "Retry",
+        },
+      },
     })
     expect(createChatRuntimeConnectionBannerMobilePropsParts({
       renderState: failedBanner,
       onRetry: "retry-handler",
       styles: connectionBannerStyles,
     })).toEqual({
-      reconnecting: null,
+      reconnecting: {
+        shouldRender: false,
+        container: {
+          accessible: true,
+          accessibilityRole: "alert",
+          accessibilityLabel: "",
+          style: ["banner-style", "reconnecting-style"],
+        },
+        content: {
+          style: "content-style",
+        },
+        spinner: {
+          size: "small",
+          color: "#d97706",
+          style: "icon-style",
+        },
+        textContainer: {
+          style: "text-container-style",
+        },
+        title: {
+          style: "title-style",
+          text: "",
+        },
+        subtitle: {
+          shouldRender: false,
+          style: "subtitle-style",
+          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+          text: "",
+        },
+      },
       failed: {
+        shouldRender: true,
         container: {
           accessible: true,
           accessibilityRole: "alert",

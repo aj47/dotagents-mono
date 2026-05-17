@@ -5776,6 +5776,7 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
       subtitleNumberOfLines: unknown
     }
     reconnecting: {
+      shouldRender: boolean
       accessibilityRole: unknown
       accessibilityLabel: string
       title: string
@@ -5783,6 +5784,7 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
       spinner: unknown
     }
     failed: {
+      shouldRender: boolean
       accessibilityRole: unknown
       accessibilityLabel: string
       title: string
@@ -5800,6 +5802,7 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
       subtitleNumberOfLines: unknown
     }
     reconnecting: {
+      shouldRender: boolean
       accessibilityRole: unknown
       accessibilityLabel: string
       title: string
@@ -5807,6 +5810,7 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
       spinner: unknown
     }
     failed: {
+      shouldRender: boolean
       accessibilityRole: unknown
       accessibilityLabel: string
       title: string
@@ -5846,6 +5850,7 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
   },
 > {
   reconnecting: {
+    shouldRender: TRenderState["reconnecting"]["shouldRender"]
     container: {
       accessible: true
       accessibilityRole: TRenderState["reconnecting"]["accessibilityRole"]
@@ -5866,12 +5871,14 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
       text: string
     }
     subtitle: {
+      shouldRender: boolean
       style: TStyles["subtitle"]
       numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
       text: string
-    } | null
-  } | null
+    }
+  }
   failed: {
+    shouldRender: TRenderState["failed"]["shouldRender"]
     container: {
       accessible: true
       accessibilityRole: TRenderState["failed"]["accessibilityRole"]
@@ -5907,7 +5914,7 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
       style: TStyles["retryButtonText"]
       text: string
     }
-  } | null
+  }
 }
 
 export interface ChatRuntimeRetryStatusMobilePropsPartsInput<
@@ -22253,7 +22260,8 @@ export function createChatRuntimeConnectionBannerMobilePropsParts<
   TStyles
 > {
   return {
-    reconnecting: renderState.reconnecting.shouldRender ? {
+    reconnecting: {
+      shouldRender: renderState.reconnecting.shouldRender,
       container: {
         accessible: true,
         accessibilityRole: renderState.reconnecting.accessibilityRole,
@@ -22274,13 +22282,15 @@ export function createChatRuntimeConnectionBannerMobilePropsParts<
         style: styles.title,
         text: renderState.reconnecting.title,
       },
-      subtitle: renderState.reconnecting.subtitle ? {
+      subtitle: {
+        shouldRender: Boolean(renderState.reconnecting.subtitle),
         style: styles.subtitle,
         numberOfLines: renderState.surface.subtitleNumberOfLines,
-        text: renderState.reconnecting.subtitle,
-      } : null,
-    } : null,
-    failed: renderState.failed.shouldRender ? {
+        text: renderState.reconnecting.subtitle ?? "",
+      },
+    },
+    failed: {
+      shouldRender: renderState.failed.shouldRender,
       container: {
         accessible: true,
         accessibilityRole: renderState.failed.accessibilityRole,
@@ -22317,7 +22327,7 @@ export function createChatRuntimeConnectionBannerMobilePropsParts<
         style: styles.retryButtonText,
         text: renderState.failed.retryButton.label,
       },
-    } : null,
+    },
   }
 }
 

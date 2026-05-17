@@ -9098,7 +9098,7 @@ export function ChatMessageConnectionBanner({
 
   return (
     <>
-      {connectionBannerParts.reconnecting ? (
+      {connectionBannerParts.reconnecting.shouldRender ? (
         <View
           accessible={connectionBannerParts.reconnecting.container.accessible}
           accessibilityRole={connectionBannerParts.reconnecting.container.accessibilityRole}
@@ -9115,7 +9115,7 @@ export function ChatMessageConnectionBanner({
               <Text style={connectionBannerParts.reconnecting.title.style}>
                 {connectionBannerParts.reconnecting.title.text}
               </Text>
-              {connectionBannerParts.reconnecting.subtitle ? (
+              {connectionBannerParts.reconnecting.subtitle.shouldRender ? (
                 <Text
                   style={connectionBannerParts.reconnecting.subtitle.style}
                   numberOfLines={connectionBannerParts.reconnecting.subtitle.numberOfLines}
@@ -9127,7 +9127,7 @@ export function ChatMessageConnectionBanner({
           </View>
         </View>
       ) : null}
-      {connectionBannerParts.failed ? (
+      {connectionBannerParts.failed.shouldRender ? (
         <View
           accessible={connectionBannerParts.failed.container.accessible}
           accessibilityRole={connectionBannerParts.failed.container.accessibilityRole}
