@@ -14477,34 +14477,36 @@ describe("session presentation semantics", () => {
         props: {
           style: "error-section",
         },
-      },
-      headerRow: {
-        props: {
-          style: "error-header-row",
-        },
-      },
-      content: {
-        label: {
-          props: {
+        content: {
+          headerRow: {
             props: {
-              style: "error-label-style",
+              style: "error-header-row",
             },
-            text: "Error",
+            content: {
+              label: {
+                props: {
+                  props: {
+                    style: "error-label-style",
+                  },
+                  text: "Error",
+                },
+              },
+              copyButton: {
+                props: {
+                  renderState: "copy-error-state",
+                  onPress: "copy-error",
+                  styles: "error-copy-button",
+                },
+              },
+            },
           },
-        },
-        copyButton: {
-          props: {
-            renderState: "copy-error-state",
-            onPress: "copy-error",
-            styles: "error-copy-button",
-          },
-        },
-        error: {
-          props: {
+          error: {
             props: {
-              style: "error-text-style",
+              props: {
+                style: "error-text-style",
+              },
+              text: "failed",
             },
-            text: "failed",
           },
         },
       },

@@ -4513,34 +4513,36 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
     props: {
       style: TStyles["section"]
     }
-  }
-  headerRow: {
-    props: {
-      style: TStyles["headerRow"]
-    }
-  }
-  content: {
-    label: {
-      props: {
+    content: {
+      headerRow: {
         props: {
-          style: TStyles["label"]
+          style: TStyles["headerRow"]
         }
-        text: TRenderState["label"]
+        content: {
+          label: {
+            props: {
+              props: {
+                style: TStyles["label"]
+              }
+              text: TRenderState["label"]
+            }
+          }
+          copyButton: {
+            props: {
+              renderState: TCopyButtonRenderState
+              onPress: TOnCopyPress | undefined
+              styles: TStyles["copyButton"]
+            }
+          }
+        }
       }
-    }
-    copyButton: {
-      props: {
-        renderState: TCopyButtonRenderState
-        onPress: TOnCopyPress | undefined
-        styles: TStyles["copyButton"]
-      }
-    }
-    error: {
-      props: {
+      error: {
         props: {
-          style: TStyles["text"]
+          props: {
+            style: TStyles["text"]
+          }
+          text: string
         }
-        text: string
       }
     }
   }
@@ -22179,34 +22181,36 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
       props: {
         style: styles.section,
       },
-    },
-    headerRow: {
-      props: {
-        style: styles.headerRow,
-      },
-    },
-    content: {
-      label: {
-        props: {
+      content: {
+        headerRow: {
           props: {
-            style: styles.label,
+            style: styles.headerRow,
           },
-          text: renderState.label,
+          content: {
+            label: {
+              props: {
+                props: {
+                  style: styles.label,
+                },
+                text: renderState.label,
+              },
+            },
+            copyButton: {
+              props: {
+                renderState: copyButtonRenderState,
+                onPress: onCopyPress,
+                styles: styles.copyButton,
+              },
+            },
+          },
         },
-      },
-      copyButton: {
-        props: {
-          renderState: copyButtonRenderState,
-          onPress: onCopyPress,
-          styles: styles.copyButton,
-        },
-      },
-      error: {
-        props: {
+        error: {
           props: {
-            style: styles.text,
+            props: {
+              style: styles.text,
+            },
+            text: error,
           },
-          text: error,
         },
       },
     },

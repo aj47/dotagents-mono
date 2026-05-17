@@ -2472,13 +2472,16 @@ type ChatMessageToolExecutionErrorBlockParts = ReturnType<typeof createChatRunti
 >>;
 
 type ChatMessageToolExecutionErrorBlockViewProps =
-  (ChatMessageToolExecutionErrorBlockParts['section']['props'] | ChatMessageToolExecutionErrorBlockParts['headerRow']['props']) & {
+  (
+    | ChatMessageToolExecutionErrorBlockParts['section']['props']
+    | ChatMessageToolExecutionErrorBlockParts['section']['content']['headerRow']['props']
+  ) & {
     children: ReactNode;
   };
 
 type ChatMessageToolExecutionErrorBlockTextProps =
-  | ChatMessageToolExecutionErrorBlockParts['content']['label']['props']
-  | ChatMessageToolExecutionErrorBlockParts['content']['error']['props'];
+  | ChatMessageToolExecutionErrorBlockParts['section']['content']['headerRow']['content']['label']['props']
+  | ChatMessageToolExecutionErrorBlockParts['section']['content']['error']['props'];
 
 type ChatMessageToolExecutionResultSectionStyles = {
   item: StyleProp<ViewStyle>;
@@ -9913,20 +9916,21 @@ export function ChatMessageToolExecutionErrorBlock({
     onCopyPress,
     styles,
   });
-  const errorBlockContent = errorBlockParts.content;
+  const errorBlockContent = errorBlockParts.section.content;
+  const errorBlockHeaderContent = errorBlockContent.headerRow.content;
 
   return (
     <ChatMessageToolExecutionErrorBlockView
       {...errorBlockParts.section.props}
     >
       <ChatMessageToolExecutionErrorBlockView
-        {...errorBlockParts.headerRow.props}
+        {...errorBlockContent.headerRow.props}
       >
         <ChatMessageToolExecutionErrorBlockText
-          {...errorBlockContent.label.props}
+          {...errorBlockHeaderContent.label.props}
         />
         <ChatMessageToolExecutionCopyButton
-          {...errorBlockContent.copyButton.props}
+          {...errorBlockHeaderContent.copyButton.props}
         />
       </ChatMessageToolExecutionErrorBlockView>
       <ChatMessageToolExecutionErrorBlockText
