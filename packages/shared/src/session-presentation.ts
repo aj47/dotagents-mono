@@ -8895,17 +8895,23 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
 > {
   shouldRender: boolean
   container: {
-    style: [TStyles["chip"], TRenderState["styles"]["chip"]]
+    props: {
+      style: [TStyles["chip"], TRenderState["styles"]["chip"]]
+    }
   }
   runningIndicator: {
     shouldRender: boolean
-    source: TSpinnerSource
-    style: TStyles["spinner"]
-    resizeMode: TRenderState["runningIndicator"]["resizeMode"]
+    props: {
+      source: TSpinnerSource
+      style: TStyles["spinner"]
+      resizeMode: TRenderState["runningIndicator"]["resizeMode"]
+    }
   }
   label: {
-    style: [TStyles["text"], TRenderState["styles"]["text"]]
-    text: string
+    props: {
+      style: [TStyles["text"], TRenderState["styles"]["text"]]
+      text: string
+    }
   }
 }
 
@@ -25681,23 +25687,29 @@ export function createChatRuntimeHeaderConversationStatusMobilePropsParts<
   return {
     shouldRender: renderState.shouldRender,
     container: {
-      style: [
-        styles.chip,
-        renderState.styles.chip,
-      ],
+      props: {
+        style: [
+          styles.chip,
+          renderState.styles.chip,
+        ],
+      },
     },
     runningIndicator: {
       shouldRender: renderState.runningIndicator.shouldRender,
-      source: spinnerSource,
-      style: styles.spinner,
-      resizeMode: renderState.runningIndicator.resizeMode,
+      props: {
+        source: spinnerSource,
+        style: styles.spinner,
+        resizeMode: renderState.runningIndicator.resizeMode,
+      },
     },
     label: {
-      style: [
-        styles.text,
-        renderState.styles.text,
-      ],
-      text: renderState.label,
+      props: {
+        style: [
+          styles.text,
+          renderState.styles.text,
+        ],
+        text: renderState.label,
+      },
     },
   }
 }

@@ -350,10 +350,37 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(headerConversationStatusSource, /if \(!conversationStatusParts\.shouldRender\) return null;/);
   assert.match(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender \? \(/);
   assert.doesNotMatch(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender && \(/);
-  assert.match(headerConversationStatusSource, /resizeMode=\{conversationStatusParts\.runningIndicator\.resizeMode\}/);
-  assert.match(headerConversationStatusSource, /style=\{conversationStatusParts\.container\.style\}/);
-  assert.match(headerConversationStatusSource, /style=\{conversationStatusParts\.label\.style\}/);
-  assert.match(headerConversationStatusSource, /\{conversationStatusParts\.label\.text\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainer\s+\{\.\.\.conversationStatusParts\.container\.props\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusRunningIndicator\s+\{\.\.\.conversationStatusParts\.runningIndicator\.props\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusLabel\s+\{\.\.\.conversationStatusParts\.label\.props\}/);
+  assert.match(
+    headerConversationStatusSource,
+    /export function ChatRuntimeHeaderConversationStatusContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatRuntimeHeaderConversationStatusRunningIndicator/
+  );
+  assert.match(
+    headerConversationStatusSource,
+    /export function ChatRuntimeHeaderConversationStatusRunningIndicator\([\s\S]*?source=\{source\}[\s\S]*?style=\{style\}[\s\S]*?resizeMode=\{resizeMode\}[\s\S]*?export function ChatRuntimeHeaderConversationStatusLabel/
+  );
+  assert.match(
+    headerConversationStatusSource,
+    /export function ChatRuntimeHeaderConversationStatusLabel\([\s\S]*?style=\{style\}[\s\S]*?\{text\}[\s\S]*?export function ChatRuntimeHeaderTurnDuration/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /container: \{\s+props: \{\s+style: \[\s+styles\.chip,\s+renderState\.styles\.chip,\s+\],/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /runningIndicator: \{\s+shouldRender: renderState\.runningIndicator\.shouldRender,\s+props: \{\s+source: spinnerSource,\s+style: styles\.spinner,\s+resizeMode: renderState\.runningIndicator\.resizeMode,/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /label: \{\s+props: \{\s+style: \[\s+styles\.text,\s+renderState\.styles\.text,\s+\],\s+text: renderState\.label,/
+  );
+  assert.doesNotMatch(
+    headerConversationStatusSource,
+    /conversationStatusParts\.(container|runningIndicator|label)\.(source|style|resizeMode|text)/
+  );
   assert.doesNotMatch(headerConversationStatusSource, /if \(!renderState\.shouldRender\) return null;/);
   assert.doesNotMatch(headerConversationStatusSource, /renderState\.runningIndicator\.shouldRender && \(/);
   assert.doesNotMatch(headerConversationStatusSource, /resizeMode=\{renderState\.runningIndicator\.resizeMode\}/);

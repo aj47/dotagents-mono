@@ -4382,23 +4382,29 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRender: navigationHeaderState.conversationStatusRenderState.shouldRender,
       container: {
-        style: [
-          headerConversationStatusStyles.chip,
-          navigationHeaderState.conversationStatusRenderState.styles.chip,
-        ],
+        props: {
+          style: [
+            headerConversationStatusStyles.chip,
+            navigationHeaderState.conversationStatusRenderState.styles.chip,
+          ],
+        },
       },
       runningIndicator: {
         shouldRender: navigationHeaderState.conversationStatusRenderState.runningIndicator.shouldRender,
-        source: "spinner-source",
-        style: headerConversationStatusStyles.spinner,
-        resizeMode: navigationHeaderState.conversationStatusRenderState.runningIndicator.resizeMode,
+        props: {
+          source: "spinner-source",
+          style: headerConversationStatusStyles.spinner,
+          resizeMode: navigationHeaderState.conversationStatusRenderState.runningIndicator.resizeMode,
+        },
       },
       label: {
-        style: [
-          headerConversationStatusStyles.text,
-          navigationHeaderState.conversationStatusRenderState.styles.text,
-        ],
-        text: navigationHeaderState.conversationStatusRenderState.label,
+        props: {
+          style: [
+            headerConversationStatusStyles.text,
+            navigationHeaderState.conversationStatusRenderState.styles.text,
+          ],
+          text: navigationHeaderState.conversationStatusRenderState.label,
+        },
       },
     })
     const headerTurnDurationStyles = {

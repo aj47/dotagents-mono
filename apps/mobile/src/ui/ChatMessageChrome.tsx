@@ -1322,6 +1322,23 @@ type ChatRuntimeHeaderConversationStatusProps = {
   styles: ChatRuntimeHeaderConversationStatusStyles;
 };
 
+type ChatRuntimeHeaderConversationStatusParts = ReturnType<typeof createChatRuntimeHeaderConversationStatusMobilePropsParts<
+  ChatSessionStatusMobileRenderState,
+  ChatRuntimeHeaderConversationStatusProps['spinnerSource'],
+  ChatRuntimeHeaderConversationStatusProps['styles']
+>>;
+
+type ChatRuntimeHeaderConversationStatusContainerProps =
+  ChatRuntimeHeaderConversationStatusParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatRuntimeHeaderConversationStatusRunningIndicatorProps =
+  ChatRuntimeHeaderConversationStatusParts['runningIndicator']['props'];
+
+type ChatRuntimeHeaderConversationStatusLabelProps =
+  ChatRuntimeHeaderConversationStatusParts['label']['props'];
+
 type ChatRuntimeHeaderTurnDurationStyles = {
   chip: StyleProp<ViewStyle>;
   liveChip: StyleProp<ViewStyle>;
@@ -7181,18 +7198,54 @@ export function ChatRuntimeHeaderConversationStatus({
   if (!conversationStatusParts.shouldRender) return null;
 
   return (
-    <View style={conversationStatusParts.container.style}>
+    <ChatRuntimeHeaderConversationStatusContainer
+      {...conversationStatusParts.container.props}
+    >
       {conversationStatusParts.runningIndicator.shouldRender ? (
-        <Image
-          source={conversationStatusParts.runningIndicator.source}
-          style={conversationStatusParts.runningIndicator.style}
-          resizeMode={conversationStatusParts.runningIndicator.resizeMode}
+        <ChatRuntimeHeaderConversationStatusRunningIndicator
+          {...conversationStatusParts.runningIndicator.props}
         />
       ) : null}
-      <Text style={conversationStatusParts.label.style}>
-        {conversationStatusParts.label.text}
-      </Text>
+      <ChatRuntimeHeaderConversationStatusLabel
+        {...conversationStatusParts.label.props}
+      />
+    </ChatRuntimeHeaderConversationStatusContainer>
+  );
+}
+
+export function ChatRuntimeHeaderConversationStatusContainer({
+  style,
+  children,
+}: ChatRuntimeHeaderConversationStatusContainerProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
+  );
+}
+
+export function ChatRuntimeHeaderConversationStatusRunningIndicator({
+  source,
+  style,
+  resizeMode,
+}: ChatRuntimeHeaderConversationStatusRunningIndicatorProps) {
+  return (
+    <Image
+      source={source}
+      style={style}
+      resizeMode={resizeMode}
+    />
+  );
+}
+
+export function ChatRuntimeHeaderConversationStatusLabel({
+  style,
+  text,
+}: ChatRuntimeHeaderConversationStatusLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
