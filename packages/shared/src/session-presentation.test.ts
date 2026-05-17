@@ -89,7 +89,9 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeMessageActionSlotListMobilePropsParts,
+  createChatRuntimeMessageContentRowMobilePropsParts,
   createChatRuntimeMessageSurfaceMobilePropsParts,
+  createChatRuntimeMessageStandaloneActionsMobilePropsParts,
   createChatRuntimeMessageThreadItemMobilePropsParts,
   createChatRuntimeMessageThreadSurfaceMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
@@ -9415,6 +9417,54 @@ describe("session presentation semantics", () => {
         style: "message-surface-style",
         toneStyle: "message-surface-tone-style",
       },
+    })
+    expect(createChatRuntimeMessageContentRowMobilePropsParts({
+      shouldRenderActionSlots: true,
+      entries: actionSetProps.entries,
+      rowStyle: "content-row-style",
+      bodyStyle: "content-body-style",
+    })).toEqual({
+      row: {
+        style: "content-row-style",
+      },
+      body: {
+        style: "content-body-style",
+      },
+      actionSlotList: {
+        shouldRender: true,
+        entries: actionSetProps.entries,
+      },
+    })
+    expect(createChatRuntimeMessageContentRowMobilePropsParts({
+      shouldRenderActionSlots: false,
+      entries: actionSetProps.entries,
+      rowStyle: "content-row-style",
+    })).toEqual({
+      row: {
+        style: "content-row-style",
+      },
+      body: null,
+      actionSlotList: {
+        shouldRender: false,
+        entries: actionSetProps.entries,
+      },
+    })
+    expect(createChatRuntimeMessageStandaloneActionsMobilePropsParts({
+      shouldRender: true,
+      entries: actionSetProps.entries,
+      rowStyle: "standalone-row-style",
+    })).toEqual({
+      actionSlotList: {
+        entries: actionSetProps.entries,
+        rowStyle: "standalone-row-style",
+      },
+    })
+    expect(createChatRuntimeMessageStandaloneActionsMobilePropsParts({
+      shouldRender: false,
+      entries: actionSetProps.entries,
+      rowStyle: "standalone-row-style",
+    })).toEqual({
+      actionSlotList: null,
     })
     const toolExecutionStackEvents: string[] = []
     const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({

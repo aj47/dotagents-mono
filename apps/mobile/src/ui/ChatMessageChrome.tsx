@@ -93,7 +93,9 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeMessageActionSlotListMobilePropsParts,
+  createChatRuntimeMessageContentRowMobilePropsParts,
   createChatRuntimeMessageSurfaceMobilePropsParts,
+  createChatRuntimeMessageStandaloneActionsMobilePropsParts,
   createChatRuntimeMessageThreadItemMobilePropsParts,
   createChatRuntimeMessageThreadSurfaceMobilePropsParts,
   createChatRuntimeConversationBodyMobileProps,
@@ -10001,16 +10003,22 @@ export function ChatMessageContentRow({
   rowStyle,
   bodyStyle,
 }: ChatMessageContentRowProps) {
+  const contentRowParts = createChatRuntimeMessageContentRowMobilePropsParts({
+    shouldRenderActionSlots,
+    entries,
+    rowStyle,
+    bodyStyle,
+  });
+
   return (
-    <View style={rowStyle}>
-      {bodyStyle ? (
-        <View style={bodyStyle}>
+    <View style={contentRowParts.row.style}>
+      {contentRowParts.body ? (
+        <View style={contentRowParts.body.style}>
           {children}
         </View>
       ) : children}
       <ChatMessageActionSlotList
-        shouldRender={shouldRenderActionSlots}
-        entries={entries}
+        {...contentRowParts.actionSlotList}
       />
     </View>
   );
@@ -10021,12 +10029,17 @@ export function ChatMessageStandaloneActions({
   entries,
   rowStyle,
 }: ChatMessageStandaloneActionsProps) {
-  if (!shouldRender) return null;
+  const standaloneActionsParts = createChatRuntimeMessageStandaloneActionsMobilePropsParts({
+    shouldRender,
+    entries,
+    rowStyle,
+  });
+
+  if (!standaloneActionsParts.actionSlotList) return null;
 
   return (
     <ChatMessageActionSlotList
-      entries={entries}
-      rowStyle={rowStyle}
+      {...standaloneActionsParts.actionSlotList}
     />
   );
 }

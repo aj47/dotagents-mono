@@ -2031,6 +2031,53 @@ export interface ChatRuntimeMessageThreadSurfaceMobilePropsParts<
   >
 }
 
+export interface ChatRuntimeMessageContentRowMobilePropsPartsInput<
+  TEntry = unknown,
+  TRowStyle = unknown,
+  TBodyStyle = unknown,
+> {
+  shouldRenderActionSlots: boolean
+  entries: readonly TEntry[]
+  rowStyle: TRowStyle
+  bodyStyle?: TBodyStyle
+}
+
+export interface ChatRuntimeMessageContentRowMobilePropsParts<
+  TEntry = unknown,
+  TRowStyle = unknown,
+  TBodyStyle = unknown,
+> {
+  row: {
+    style: TRowStyle
+  }
+  body: {
+    style: TBodyStyle
+  } | null
+  actionSlotList: {
+    shouldRender: boolean
+    entries: readonly TEntry[]
+  }
+}
+
+export interface ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<
+  TEntry = unknown,
+  TRowStyle = unknown,
+> {
+  shouldRender: boolean
+  entries: readonly TEntry[]
+  rowStyle?: TRowStyle
+}
+
+export interface ChatRuntimeMessageStandaloneActionsMobilePropsParts<
+  TEntry = unknown,
+  TRowStyle = unknown,
+> {
+  actionSlotList: {
+    entries: readonly TEntry[]
+    rowStyle: TRowStyle | undefined
+  } | null
+}
+
 export interface ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
   TIcon extends {
     isPending?: boolean
@@ -16937,6 +16984,60 @@ export function createChatRuntimeMessageThreadSurfaceMobilePropsParts<
       style: surfaceStyle,
       toneStyle: surfaceToneStyle,
     },
+  }
+}
+
+export function createChatRuntimeMessageContentRowMobilePropsParts<
+  TEntry,
+  TRowStyle,
+  TBodyStyle,
+>({
+  shouldRenderActionSlots,
+  entries,
+  rowStyle,
+  bodyStyle,
+}: ChatRuntimeMessageContentRowMobilePropsPartsInput<
+  TEntry,
+  TRowStyle,
+  TBodyStyle
+>): ChatRuntimeMessageContentRowMobilePropsParts<
+  TEntry,
+  TRowStyle,
+  TBodyStyle
+> {
+  return {
+    row: {
+      style: rowStyle,
+    },
+    body: bodyStyle ? {
+      style: bodyStyle,
+    } : null,
+    actionSlotList: {
+      shouldRender: shouldRenderActionSlots,
+      entries,
+    },
+  }
+}
+
+export function createChatRuntimeMessageStandaloneActionsMobilePropsParts<
+  TEntry,
+  TRowStyle,
+>({
+  shouldRender,
+  entries,
+  rowStyle,
+}: ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<
+  TEntry,
+  TRowStyle
+>): ChatRuntimeMessageStandaloneActionsMobilePropsParts<
+  TEntry,
+  TRowStyle
+> {
+  return {
+    actionSlotList: shouldRender ? {
+      entries,
+      rowStyle,
+    } : null,
   }
 }
 
