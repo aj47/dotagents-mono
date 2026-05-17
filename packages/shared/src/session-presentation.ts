@@ -894,8 +894,8 @@ export interface ChatRuntimeHomeQuickStartsMobilePropsParts<
   TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike =
     ChatRuntimeHomeQuickStartsMobileStylesLike,
 > {
-  shouldRender: boolean
   container: {
+    shouldRender: boolean
     props: {
       style: TStyles["card"]
     }
@@ -31183,8 +31183,8 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
 
   if (!shouldRender) {
     return {
-      shouldRender: false,
       container: {
+        shouldRender: false,
         props: {
           style: styles.card,
         },
@@ -31215,8 +31215,8 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
     )
 
     return {
-      shouldRender: true,
       container: {
+        shouldRender: true,
         props: {
           style: styles.card,
         },
@@ -31241,8 +31241,8 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
   }
 
   return {
-    shouldRender: true,
     container: {
+      shouldRender: true,
       props: {
         style: styles.card,
       },

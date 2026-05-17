@@ -5320,6 +5320,7 @@ describe("session presentation semantics", () => {
       shortcutRenderState: viewportChrome.shortcutRenderState,
       styles: quickStartStyles,
     })
+    expect(quickStartPropsParts.container.shouldRender).toBe(true)
     expect(quickStartPropsParts.container.props.style).toBe("card")
     expect(quickStartPropsParts.emptyState.shouldRender).toBe(false)
     expect(quickStartPropsParts.grid.shouldRender).toBe(true)
@@ -5393,6 +5394,7 @@ describe("session presentation semantics", () => {
       shortcutRenderState: viewportChrome.shortcutRenderState,
       styles: quickStartStyles,
     })
+    expect(emptyQuickStartPropsParts.container.shouldRender).toBe(true)
     expect(emptyQuickStartPropsParts.grid.shouldRender).toBe(false)
     expect(emptyQuickStartPropsParts.emptyState.shouldRender).toBe(true)
     expect(emptyQuickStartPropsParts.emptyState.props.style).toBe("emptyText")
@@ -5409,6 +5411,7 @@ describe("session presentation semantics", () => {
       shortcutRenderState: viewportChrome.shortcutRenderState,
       styles: quickStartStyles,
     })
+    expect(hiddenQuickStartPropsParts.container.shouldRender).toBe(false)
     expect(hiddenQuickStartPropsParts.grid.shouldRender).toBe(false)
     expect(hiddenQuickStartPropsParts.emptyState.shouldRender).toBe(false)
     expect(viewportChrome.affordance.historyBanner.renderState.shouldRender).toBe(true)

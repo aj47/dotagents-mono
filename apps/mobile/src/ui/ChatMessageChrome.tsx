@@ -7888,13 +7888,14 @@ export function ChatConversationHomeQuickStarts<
     shortcutRenderState,
     styles,
   });
+  const quickStartsContainer = quickStartsParts.container;
 
-  if (!quickStartsParts.shouldRender) return null;
+  if (!quickStartsContainer.shouldRender) return null;
 
   const quickStartsGridContent = quickStartsParts.grid.content;
 
   return (
-    <View {...quickStartsParts.container.props}>
+    <View {...quickStartsContainer.props}>
       {quickStartsParts.grid.shouldRender ? (
         <View {...quickStartsParts.grid.props}>
           {quickStartsGridContent.items.map((item) => {
