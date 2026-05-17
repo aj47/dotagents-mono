@@ -10573,15 +10573,13 @@ describe("session presentation semantics", () => {
       },
     })
     expect(pendingImagesRailParts.shouldRender).toBe(true)
-    expect(pendingImagesRailParts.scrollView).toEqual({
-      props: {
-        horizontal: true,
-        showsHorizontalScrollIndicator: false,
-        contentContainerStyle: "pending-row",
-      },
+    expect(pendingImagesRailParts.scrollView.props).toEqual({
+      horizontal: true,
+      showsHorizontalScrollIndicator: false,
+      contentContainerStyle: "pending-row",
     })
-    expect(pendingImagesRailParts.items).toHaveLength(1)
-    const pendingImageItem = pendingImagesRailParts.items[0]!
+    expect(pendingImagesRailParts.scrollView.content.items).toHaveLength(1)
+    const pendingImageItem = pendingImagesRailParts.scrollView.content.items[0]!
     expect(pendingImageItem).toEqual({
       key: "image-1",
       card: {
@@ -10644,7 +10642,11 @@ describe("session presentation semantics", () => {
       },
     })).toMatchObject({
       shouldRender: false,
-      items: [],
+      scrollView: {
+        content: {
+          items: [],
+        },
+      },
     })
     const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
       frame: {

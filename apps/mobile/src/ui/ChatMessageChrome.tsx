@@ -3171,7 +3171,7 @@ type ChatComposerPendingImagesRailScrollViewProps =
   };
 
 type ChatComposerPendingImagesRailItemParts =
-  ChatComposerPendingImagesRailParts['items'][number];
+  ChatComposerPendingImagesRailParts['scrollView']['content']['items'][number];
 
 type ChatComposerPendingImageCardProps =
   ChatComposerPendingImagesRailItemParts['card']['props'] & {
@@ -11082,6 +11082,7 @@ export function ChatComposerPendingImagesRail({
     onRemove,
     styles,
   });
+  const pendingImagesRailContent = pendingImagesRailParts.scrollView.content;
 
   if (!pendingImagesRailParts.shouldRender) return null;
 
@@ -11089,7 +11090,7 @@ export function ChatComposerPendingImagesRail({
     <ChatComposerPendingImagesRailScrollView
       {...pendingImagesRailParts.scrollView.props}
     >
-      {pendingImagesRailParts.items.map((item) => (
+      {pendingImagesRailContent.items.map((item) => (
         <ChatComposerPendingImageCard
           key={item.key}
           {...item.card.props}

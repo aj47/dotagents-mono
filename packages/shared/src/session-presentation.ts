@@ -5324,33 +5324,35 @@ export interface ChatComposerPendingImagesRailMobilePropsParts<
       showsHorizontalScrollIndicator: TRenderState["surface"]["row"]["showsHorizontalScrollIndicator"]
       contentContainerStyle: TStyles["row"]
     }
+    content: {
+      items: Array<{
+        key: TImage["id"]
+        card: {
+          props: {
+            style: TStyles["card"]
+          }
+        }
+        preview: {
+          props: {
+            source: { uri: TImage["previewUri"] }
+            style: TStyles["preview"]
+          }
+        }
+        removeButton: {
+          props: {
+            style: TStyles["removeButton"]
+            onPress: () => void
+            activeOpacity: TRenderState["removeButton"]["pressedOpacity"]
+            accessibilityRole: TRenderState["removeButton"]["accessibilityRole"]
+            accessibilityLabel: string
+          }
+        }
+        removeIcon: {
+          props: TRenderState["removeIcon"]
+        }
+      }>
+    }
   }
-  items: Array<{
-    key: TImage["id"]
-    card: {
-      props: {
-        style: TStyles["card"]
-      }
-    }
-    preview: {
-      props: {
-        source: { uri: TImage["previewUri"] }
-        style: TStyles["preview"]
-      }
-    }
-    removeButton: {
-      props: {
-        style: TStyles["removeButton"]
-        onPress: () => void
-        activeOpacity: TRenderState["removeButton"]["pressedOpacity"]
-        accessibilityRole: TRenderState["removeButton"]["accessibilityRole"]
-        accessibilityLabel: string
-      }
-    }
-    removeIcon: {
-      props: TRenderState["removeIcon"]
-    }
-  }>
 }
 
 export interface ChatComposerInputDockMobileStylesLike {
@@ -22797,33 +22799,35 @@ export function createChatComposerPendingImagesRailMobilePropsParts<
         showsHorizontalScrollIndicator: renderState.surface.row.showsHorizontalScrollIndicator,
         contentContainerStyle: styles.row,
       },
+      content: {
+        items: images.map((image) => ({
+          key: image.id,
+          card: {
+            props: {
+              style: styles.card,
+            },
+          },
+          preview: {
+            props: {
+              source: { uri: image.previewUri },
+              style: styles.preview,
+            },
+          },
+          removeButton: {
+            props: {
+              style: styles.removeButton,
+              onPress: () => onRemove(image.id),
+              activeOpacity: renderState.removeButton.pressedOpacity,
+              accessibilityRole: renderState.removeButton.accessibilityRole,
+              accessibilityLabel: renderState.removeButton.accessibilityLabel,
+            },
+          },
+          removeIcon: {
+            props: renderState.removeIcon,
+          },
+        })),
+      },
     },
-    items: images.map((image) => ({
-      key: image.id,
-      card: {
-        props: {
-          style: styles.card,
-        },
-      },
-      preview: {
-        props: {
-          source: { uri: image.previewUri },
-          style: styles.preview,
-        },
-      },
-      removeButton: {
-        props: {
-          style: styles.removeButton,
-          onPress: () => onRemove(image.id),
-          activeOpacity: renderState.removeButton.pressedOpacity,
-          accessibilityRole: renderState.removeButton.accessibilityRole,
-          accessibilityLabel: renderState.removeButton.accessibilityLabel,
-        },
-      },
-      removeIcon: {
-        props: renderState.removeIcon,
-      },
-    })),
   }
 }
 
