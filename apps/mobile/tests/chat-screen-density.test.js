@@ -7512,10 +7512,13 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(loading|empty)Label/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutChrome\.addIconColors/);
-  assert.match(chatMessageChromeSource, /quickStartsParts\.emptyState\.shouldRender \? \(/);
-  assert.match(chatMessageChromeSource, /<Text \{\.\.\.quickStartsParts\.emptyState\.props\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsEmptyState/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartsEmptyState\s+emptyState=\{quickStartsParts\.emptyState\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsEmptyState[\s\S]*?if \(!emptyState\.shouldRender\) return null;[\s\S]*?<Text \{\.\.\.emptyState\.props\}>[\s\S]*?\{emptyState\.text\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /quickStartsParts\.emptyState\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.quickStartsParts\.emptyState\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /style=\{quickStartsParts\.emptyState\.style\}/);
-  assert.match(chatMessageChromeSource, /\{quickStartsParts\.emptyState\.text\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /\{quickStartsParts\.emptyState\.text\}/);
   assert.doesNotMatch(screenSource, /const promptLibraryStyleState = composerChromeStyleState\.promptLibrary;/);
   assert.doesNotMatch(screenSource, /const promptLibrarySurface = promptLibraryStyleState\.surface;/);
   assert.doesNotMatch(screenSource, /const promptLibrarySurfaceColors = promptLibraryStyleState\.colors;/);

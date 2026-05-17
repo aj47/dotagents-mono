@@ -1643,6 +1643,20 @@ type ChatConversationHomeQuickStartActionsProps = {
   actions: ChatConversationHomeQuickStartActionsPart;
 };
 
+type ChatConversationHomeQuickStartsEmptyStatePart =
+  | {
+      shouldRender: false;
+    }
+  | {
+      shouldRender: true;
+      text: string;
+      props: ComponentProps<typeof Text>;
+    };
+
+type ChatConversationHomeQuickStartsEmptyStateProps = {
+  emptyState: ChatConversationHomeQuickStartsEmptyStatePart;
+};
+
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
   overlay: StyleProp<ViewStyle>;
@@ -8039,12 +8053,24 @@ export function ChatConversationHomeQuickStarts<
             );
           })}
         </View>
-      ) : quickStartsParts.emptyState.shouldRender ? (
-        <Text {...quickStartsParts.emptyState.props}>
-          {quickStartsParts.emptyState.text}
-        </Text>
-      ) : null}
+      ) : (
+        <ChatConversationHomeQuickStartsEmptyState
+          emptyState={quickStartsParts.emptyState}
+        />
+      )}
     </View>
+  );
+}
+
+export function ChatConversationHomeQuickStartsEmptyState({
+  emptyState,
+}: ChatConversationHomeQuickStartsEmptyStateProps) {
+  if (!emptyState.shouldRender) return null;
+
+  return (
+    <Text {...emptyState.props}>
+      {emptyState.text}
+    </Text>
   );
 }
 
