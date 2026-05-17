@@ -79,6 +79,7 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
+  createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
@@ -7463,42 +7464,47 @@ export function ChatMessageRetryStatus({
   renderState,
   styles,
 }: ChatMessageRetryStatusProps) {
-  if (!renderState.shouldRender) return null;
+  const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts({
+    renderState,
+    styles,
+  });
+
+  if (!retryStatusParts.shouldRenderRetryStatus) return null;
 
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      style={styles.card}
+      accessible={retryStatusParts.card.accessible}
+      accessibilityRole={retryStatusParts.card.accessibilityRole}
+      accessibilityLabel={retryStatusParts.card.accessibilityLabel}
+      style={retryStatusParts.card.style}
     >
-      <View style={styles.header}>
+      <View style={retryStatusParts.header.style}>
         <Ionicons
-          name={renderState.icon.name}
-          size={renderState.icon.size}
-          color={renderState.icon.color}
+          name={retryStatusParts.icon.name}
+          size={retryStatusParts.icon.size}
+          color={retryStatusParts.icon.color}
         />
         <Text
-          style={styles.title}
-          numberOfLines={renderState.surface.titleNumberOfLines}
+          style={retryStatusParts.title.style}
+          numberOfLines={retryStatusParts.title.numberOfLines}
         >
-          {renderState.title}
+          {retryStatusParts.title.text}
         </Text>
         <ActivityIndicator
-          size={renderState.spinner.size}
-          color={renderState.spinner.color}
+          size={retryStatusParts.spinner.size}
+          color={retryStatusParts.spinner.color}
         />
       </View>
-      <View style={styles.metaRow}>
-        <Text style={styles.attempt}>
-          {renderState.attemptLabel}
+      <View style={retryStatusParts.meta.style}>
+        <Text style={retryStatusParts.attempt.style}>
+          {retryStatusParts.attempt.text}
         </Text>
-        <Text style={styles.countdown}>
-          {renderState.countdownLabel}
+        <Text style={retryStatusParts.countdown.style}>
+          {retryStatusParts.countdown.text}
         </Text>
       </View>
-      <Text style={styles.description}>
-        {renderState.description}
+      <Text style={retryStatusParts.description.style}>
+        {retryStatusParts.description.text}
       </Text>
     </View>
   );

@@ -3695,6 +3695,136 @@ export interface ChatRuntimeInlineActivityMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeRetryStatusMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    spinner: unknown
+    surface: {
+      titleNumberOfLines: unknown
+    }
+    title: string
+    attemptLabel: string
+    countdownLabel: string
+    description: string
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    spinner: unknown
+    surface: {
+      titleNumberOfLines: unknown
+    }
+    title: string
+    attemptLabel: string
+    countdownLabel: string
+    description: string
+  },
+  TStyles extends {
+    card: unknown
+    header: unknown
+    title: unknown
+    metaRow: unknown
+    attempt: unknown
+    countdown: unknown
+    description: unknown
+  } = {
+    card: unknown
+    header: unknown
+    title: unknown
+    metaRow: unknown
+    attempt: unknown
+    countdown: unknown
+    description: unknown
+  },
+> {
+  renderState: TRenderState
+  styles: TStyles
+}
+
+export interface ChatRuntimeRetryStatusMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    spinner: unknown
+    surface: {
+      titleNumberOfLines: unknown
+    }
+    title: string
+    attemptLabel: string
+    countdownLabel: string
+    description: string
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    spinner: unknown
+    surface: {
+      titleNumberOfLines: unknown
+    }
+    title: string
+    attemptLabel: string
+    countdownLabel: string
+    description: string
+  },
+  TStyles extends {
+    card: unknown
+    header: unknown
+    title: unknown
+    metaRow: unknown
+    attempt: unknown
+    countdown: unknown
+    description: unknown
+  } = {
+    card: unknown
+    header: unknown
+    title: unknown
+    metaRow: unknown
+    attempt: unknown
+    countdown: unknown
+    description: unknown
+  },
+> {
+  shouldRenderRetryStatus: boolean
+  card: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStyles["card"]
+  }
+  header: {
+    style: TStyles["header"]
+  }
+  icon: TRenderState["icon"]
+  title: {
+    style: TStyles["title"]
+    numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+    text: string
+  }
+  spinner: TRenderState["spinner"]
+  meta: {
+    style: TStyles["metaRow"]
+  }
+  attempt: {
+    style: TStyles["attempt"]
+    text: string
+  }
+  countdown: {
+    style: TStyles["countdown"]
+    text: string
+  }
+  description: {
+    style: TStyles["description"]
+    text: string
+  }
+}
+
 export interface ChatRuntimeTurnDurationBadgeMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -17538,6 +17668,76 @@ export function createChatRuntimeInlineActivityMobilePropsParts<
       source: spinnerSource,
       style: spinnerStyle,
       resizeMode: renderState.spinnerResizeMode,
+    },
+  }
+}
+
+export function createChatRuntimeRetryStatusMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    spinner: unknown
+    surface: {
+      titleNumberOfLines: unknown
+    }
+    title: string
+    attemptLabel: string
+    countdownLabel: string
+    description: string
+  },
+  TStyles extends {
+    card: unknown
+    header: unknown
+    title: unknown
+    metaRow: unknown
+    attempt: unknown
+    countdown: unknown
+    description: unknown
+  },
+>({
+  renderState,
+  styles,
+}: ChatRuntimeRetryStatusMobilePropsPartsInput<
+  TRenderState,
+  TStyles
+>): ChatRuntimeRetryStatusMobilePropsParts<
+  TRenderState,
+  TStyles
+> {
+  return {
+    shouldRenderRetryStatus: renderState.shouldRender,
+    card: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      style: styles.card,
+    },
+    header: {
+      style: styles.header,
+    },
+    icon: renderState.icon,
+    title: {
+      style: styles.title,
+      numberOfLines: renderState.surface.titleNumberOfLines,
+      text: renderState.title,
+    },
+    spinner: renderState.spinner,
+    meta: {
+      style: styles.metaRow,
+    },
+    attempt: {
+      style: styles.attempt,
+      text: renderState.attemptLabel,
+    },
+    countdown: {
+      style: styles.countdown,
+      text: renderState.countdownLabel,
+    },
+    description: {
+      style: styles.description,
+      text: renderState.description,
     },
   }
 }

@@ -697,19 +697,39 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /return renderState\s+\? \{\s+renderState,\s+\}\s+: null/);
   assert.match(sessionPresentationSource, /retryStatus: \{[\s\S]*?card: styles\.retryStatusCard,[\s\S]*?description: styles\.retryStatusDescription,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
-  assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.titleNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.title\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.spinner\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.spinner\.color\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.attemptLabel\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.countdownLabel\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.description\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeRetryStatusMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /if \(!retryStatusParts\.shouldRenderRetryStatus\) return null;/);
+  assert.match(chatMessageChromeSource, /accessible=\{retryStatusParts\.card\.accessible\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{retryStatusParts\.card\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{retryStatusParts\.card\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /style=\{retryStatusParts\.card\.style\}/);
+  assert.match(chatMessageChromeSource, /<View style=\{retryStatusParts\.header\.style\}>/);
+  assert.match(chatMessageChromeSource, /name=\{retryStatusParts\.icon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{retryStatusParts\.icon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{retryStatusParts\.icon\.color\}/);
+  assert.match(chatMessageChromeSource, /style=\{retryStatusParts\.title\.style\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{retryStatusParts\.title\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /\{retryStatusParts\.title\.text\}/);
+  assert.match(chatMessageChromeSource, /size=\{retryStatusParts\.spinner\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{retryStatusParts\.spinner\.color\}/);
+  assert.match(chatMessageChromeSource, /<View style=\{retryStatusParts\.meta\.style\}>/);
+  assert.match(chatMessageChromeSource, /<Text style=\{retryStatusParts\.attempt\.style\}>/);
+  assert.match(chatMessageChromeSource, /\{retryStatusParts\.attempt\.text\}/);
+  assert.match(chatMessageChromeSource, /<Text style=\{retryStatusParts\.countdown\.style\}>/);
+  assert.match(chatMessageChromeSource, /\{retryStatusParts\.countdown\.text\}/);
+  assert.match(chatMessageChromeSource, /<Text style=\{retryStatusParts\.description\.style\}>/);
+  assert.match(chatMessageChromeSource, /\{retryStatusParts\.description\.text\}/);
+  assert.match(sessionPresentationSource, /shouldRenderRetryStatus: renderState\.shouldRender/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageRetryStatus[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageToolApproval/
+  );
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageRetryStatus[\s\S]*?numberOfLines=\{renderState\.surface\.titleNumberOfLines\}[\s\S]*?export function ChatMessageToolApproval/
+  );
   assert.match(screenSource, /createChatRuntimeRetryStatusMobileStyleSlots,/);
   assert.match(screenSource, /const retryStatusStyleState = conversationChromeStyleState\.retryStatus;/);
   assert.match(screenSource, /const retryStatusStyleSlots = createChatRuntimeRetryStatusMobileStyleSlots\(\{\s+renderState: retryStatusStyleState,\s+spacing,\s+radius,\s+\}\);/);

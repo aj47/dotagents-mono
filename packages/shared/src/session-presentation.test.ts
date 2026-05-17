@@ -124,6 +124,7 @@ import {
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
+  createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
@@ -4115,6 +4116,66 @@ describe("session presentation semantics", () => {
     expect(createChatRuntimeConversationRetryStatusMobileProps({
       renderState: null,
     })).toBeNull()
+    const retryStatusStyles = {
+      card: "retry-card-style",
+      header: "retry-header-style",
+      title: "retry-title-style",
+      metaRow: "retry-meta-style",
+      attempt: "retry-attempt-style",
+      countdown: "retry-countdown-style",
+      description: "retry-description-style",
+    }
+    expect(createChatRuntimeRetryStatusMobilePropsParts({
+      renderState: retryStatusRenderState,
+      styles: retryStatusStyles,
+    })).toEqual({
+      shouldRenderRetryStatus: true,
+      card: {
+        accessible: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Rate limit reached. Attempt 2/5. Retrying in 7s. The agent will automatically retry when the API is available.",
+        style: "retry-card-style",
+      },
+      header: {
+        style: "retry-header-style",
+      },
+      icon: {
+        name: "time-outline",
+        size: 14,
+        color: "#d97706",
+      },
+      title: {
+        style: "retry-title-style",
+        numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
+        text: "Rate limit reached",
+      },
+      spinner: {
+        size: "small",
+        color: "#d97706",
+      },
+      meta: {
+        style: "retry-meta-style",
+      },
+      attempt: {
+        style: "retry-attempt-style",
+        text: "Attempt 2/5",
+      },
+      countdown: {
+        style: "retry-countdown-style",
+        text: "Retrying in 7s",
+      },
+      description: {
+        style: "retry-description-style",
+        text: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+      },
+    })
+    expect(createChatRuntimeRetryStatusMobilePropsParts({
+      renderState: {
+        ...retryStatusRenderState,
+        shouldRender: false,
+      },
+      styles: retryStatusStyles,
+    }).shouldRenderRetryStatus).toBe(false)
     expect(createChatRuntimeRetryStatusMobileStyleSlots({
       renderState: getChatRuntimeRetryStatusMobileRenderState({
         retryInfo: {
