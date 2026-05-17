@@ -63,6 +63,7 @@ import {
   createChatComposerStyleSlots,
   createChatComposerStyleSlotsFromStyleSource,
   getChatMessageActionMobileButtonStatesBySlot,
+  createChatComposerHandsFreeControlsMobilePropsParts,
   createChatComposerIconButtonMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
@@ -8483,6 +8484,101 @@ describe("session presentation semantics", () => {
         text: "speech-preview-text",
       },
     }).shouldRender).toBe(false)
+    const handsFreeControlStyles = {
+      statusRow: "hands-free-status-row",
+      controlsRow: "hands-free-controls-row",
+      controlButton: "hands-free-control-button",
+      controlButtonText: "hands-free-control-button-text",
+    }
+    const handsFreeControlsParts = createChatComposerHandsFreeControlsMobilePropsParts({
+      isVisible: true,
+      status: "hands-free-status",
+      controlState: {
+        primary: {
+          action: "wake",
+          label: "Wake",
+          accessibilityRole: "button",
+          accessibilityLabel: "Wake agent",
+        },
+        secondary: {
+          action: "resume",
+          label: "Resume",
+          accessibilityRole: "button",
+          accessibilityLabel: "Resume handsfree",
+        },
+      },
+      onWake: "wake-handler",
+      onSleep: "sleep-handler",
+      onResume: "resume-handler",
+      onPause: "pause-handler",
+      controlPressedOpacity: 0.66,
+      styles: handsFreeControlStyles,
+    })
+    expect(handsFreeControlsParts).toEqual({
+      shouldRender: true,
+      statusRow: {
+        style: "hands-free-status-row",
+        status: "hands-free-status",
+      },
+      controlsRow: {
+        style: "hands-free-controls-row",
+      },
+      primaryControl: {
+        touchable: {
+          style: "hands-free-control-button",
+          onPress: "wake-handler",
+          activeOpacity: 0.66,
+          accessibilityRole: "button",
+          accessibilityLabel: "Wake agent",
+        },
+        label: {
+          style: "hands-free-control-button-text",
+          text: "Wake",
+        },
+      },
+      secondaryControl: {
+        touchable: {
+          style: "hands-free-control-button",
+          onPress: "resume-handler",
+          activeOpacity: 0.66,
+          accessibilityRole: "button",
+          accessibilityLabel: "Resume handsfree",
+        },
+        label: {
+          style: "hands-free-control-button-text",
+          text: "Resume",
+        },
+      },
+    })
+    const sleepingHandsFreeControlsParts = createChatComposerHandsFreeControlsMobilePropsParts({
+      isVisible: false,
+      status: "hands-free-status",
+      controlState: {
+        primary: {
+          action: "sleep",
+          label: "Sleep",
+          accessibilityRole: "button",
+          accessibilityLabel: "Sleep agent",
+        },
+        secondary: {
+          action: "pause",
+          label: "Pause",
+          accessibilityRole: "button",
+          accessibilityLabel: "Pause handsfree",
+        },
+      },
+      onWake: "wake-handler",
+      onSleep: "sleep-handler",
+      onResume: "resume-handler",
+      onPause: "pause-handler",
+      controlPressedOpacity: 0.66,
+      styles: handsFreeControlStyles,
+    })
+    expect(sleepingHandsFreeControlsParts.shouldRender).toBe(false)
+    expect(sleepingHandsFreeControlsParts.primaryControl.touchable.onPress)
+      .toBe("sleep-handler")
+    expect(sleepingHandsFreeControlsParts.secondaryControl.touchable.onPress)
+      .toBe("pause-handler")
     const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({
       shouldRender: true,
       renderState: {

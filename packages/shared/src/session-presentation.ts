@@ -3867,6 +3867,95 @@ export interface ChatComposerSpeechPreviewMobilePropsParts<
   }
 }
 
+export interface ChatComposerHandsFreeControlsMobileControlStateLike {
+  primary: {
+    action: "wake" | "sleep"
+    label: string
+    accessibilityRole: unknown
+    accessibilityLabel: string
+  }
+  secondary: {
+    action: "pause" | "resume"
+    label: string
+    accessibilityRole: unknown
+    accessibilityLabel: string
+  }
+}
+
+export interface ChatComposerHandsFreeControlsMobileStylesLike {
+  statusRow: unknown
+  controlsRow: unknown
+  controlButton: unknown
+  controlButtonText: unknown
+}
+
+export interface ChatComposerHandsFreeControlsMobilePropsPartsInput<
+  TStatus = unknown,
+  TControlState extends ChatComposerHandsFreeControlsMobileControlStateLike = ChatComposerHandsFreeControlsMobileControlStateLike,
+  TOnWake = unknown,
+  TOnSleep = unknown,
+  TOnResume = unknown,
+  TOnPause = unknown,
+  TControlPressedOpacity = unknown,
+  TStyles extends ChatComposerHandsFreeControlsMobileStylesLike = ChatComposerHandsFreeControlsMobileStylesLike,
+> {
+  isVisible: boolean
+  status: TStatus
+  controlState: TControlState
+  onWake: TOnWake
+  onSleep: TOnSleep
+  onResume: TOnResume
+  onPause: TOnPause
+  controlPressedOpacity: TControlPressedOpacity
+  styles: TStyles
+}
+
+export interface ChatComposerHandsFreeControlsMobilePropsParts<
+  TStatus = unknown,
+  TControlState extends ChatComposerHandsFreeControlsMobileControlStateLike = ChatComposerHandsFreeControlsMobileControlStateLike,
+  TOnWake = unknown,
+  TOnSleep = unknown,
+  TOnResume = unknown,
+  TOnPause = unknown,
+  TControlPressedOpacity = unknown,
+  TStyles extends ChatComposerHandsFreeControlsMobileStylesLike = ChatComposerHandsFreeControlsMobileStylesLike,
+> {
+  shouldRender: boolean
+  statusRow: {
+    style: TStyles["statusRow"]
+    status: TStatus
+  }
+  controlsRow: {
+    style: TStyles["controlsRow"]
+  }
+  primaryControl: {
+    touchable: {
+      style: TStyles["controlButton"]
+      onPress: TOnWake | TOnSleep
+      activeOpacity: TControlPressedOpacity
+      accessibilityRole: TControlState["primary"]["accessibilityRole"]
+      accessibilityLabel: string
+    }
+    label: {
+      style: TStyles["controlButtonText"]
+      text: string
+    }
+  }
+  secondaryControl: {
+    touchable: {
+      style: TStyles["controlButton"]
+      onPress: TOnResume | TOnPause
+      activeOpacity: TControlPressedOpacity
+      accessibilityRole: TControlState["secondary"]["accessibilityRole"]
+      accessibilityLabel: string
+    }
+    label: {
+      style: TStyles["controlButtonText"]
+      text: string
+    }
+  }
+}
+
 export interface ChatComposerIconButtonMobileRenderStateLike {
   isActive?: boolean
   accessibilityRole: unknown
@@ -18990,6 +19079,89 @@ export function createChatComposerSpeechPreviewMobilePropsParts<
     text: {
       style: styles.text,
       text,
+    },
+  }
+}
+
+export function createChatComposerHandsFreeControlsMobilePropsParts<
+  TStatus,
+  TControlState extends ChatComposerHandsFreeControlsMobileControlStateLike,
+  TOnWake,
+  TOnSleep,
+  TOnResume,
+  TOnPause,
+  TControlPressedOpacity,
+  TStyles extends ChatComposerHandsFreeControlsMobileStylesLike,
+>({
+  isVisible,
+  status,
+  controlState,
+  onWake,
+  onSleep,
+  onResume,
+  onPause,
+  controlPressedOpacity,
+  styles,
+}: ChatComposerHandsFreeControlsMobilePropsPartsInput<
+  TStatus,
+  TControlState,
+  TOnWake,
+  TOnSleep,
+  TOnResume,
+  TOnPause,
+  TControlPressedOpacity,
+  TStyles
+>): ChatComposerHandsFreeControlsMobilePropsParts<
+  TStatus,
+  TControlState,
+  TOnWake,
+  TOnSleep,
+  TOnResume,
+  TOnPause,
+  TControlPressedOpacity,
+  TStyles
+> {
+  const primaryOnPress = controlState.primary.action === "wake"
+    ? onWake
+    : onSleep
+  const secondaryOnPress = controlState.secondary.action === "resume"
+    ? onResume
+    : onPause
+
+  return {
+    shouldRender: isVisible,
+    statusRow: {
+      style: styles.statusRow,
+      status,
+    },
+    controlsRow: {
+      style: styles.controlsRow,
+    },
+    primaryControl: {
+      touchable: {
+        style: styles.controlButton,
+        onPress: primaryOnPress,
+        activeOpacity: controlPressedOpacity,
+        accessibilityRole: controlState.primary.accessibilityRole,
+        accessibilityLabel: controlState.primary.accessibilityLabel,
+      },
+      label: {
+        style: styles.controlButtonText,
+        text: controlState.primary.label,
+      },
+    },
+    secondaryControl: {
+      touchable: {
+        style: styles.controlButton,
+        onPress: secondaryOnPress,
+        activeOpacity: controlPressedOpacity,
+        accessibilityRole: controlState.secondary.accessibilityRole,
+        accessibilityLabel: controlState.secondary.accessibilityLabel,
+      },
+      label: {
+        style: styles.controlButtonText,
+        text: controlState.secondary.label,
+      },
     },
   }
 }

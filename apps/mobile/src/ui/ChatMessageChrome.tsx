@@ -35,6 +35,7 @@ import {
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
+  createChatComposerHandsFreeControlsMobilePropsParts,
   createChatComposerIconButtonMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
@@ -9562,41 +9563,46 @@ export function ChatComposerHandsFreeControls({
   controlPressedOpacity,
   styles,
 }: ChatComposerHandsFreeControlsProps) {
-  if (!isVisible) return null;
+  const handsFreeControlsParts = createChatComposerHandsFreeControlsMobilePropsParts({
+    isVisible,
+    status,
+    controlState,
+    onWake,
+    onSleep,
+    onResume,
+    onPause,
+    controlPressedOpacity,
+    styles,
+  });
 
-  const primaryOnPress = controlState.primary.action === 'wake'
-    ? onWake
-    : onSleep;
-  const secondaryOnPress = controlState.secondary.action === 'resume'
-    ? onResume
-    : onPause;
+  if (!handsFreeControlsParts.shouldRender) return null;
 
   return (
     <>
-      <View style={styles.statusRow}>
-        {status}
+      <View style={handsFreeControlsParts.statusRow.style}>
+        {handsFreeControlsParts.statusRow.status}
       </View>
-      <View style={styles.controlsRow}>
+      <View style={handsFreeControlsParts.controlsRow.style}>
         <TouchableOpacity
-          style={styles.controlButton}
-          onPress={primaryOnPress}
-          activeOpacity={controlPressedOpacity}
-          accessibilityRole={controlState.primary.accessibilityRole}
-          accessibilityLabel={controlState.primary.accessibilityLabel}
+          style={handsFreeControlsParts.primaryControl.touchable.style}
+          onPress={handsFreeControlsParts.primaryControl.touchable.onPress}
+          activeOpacity={handsFreeControlsParts.primaryControl.touchable.activeOpacity}
+          accessibilityRole={handsFreeControlsParts.primaryControl.touchable.accessibilityRole}
+          accessibilityLabel={handsFreeControlsParts.primaryControl.touchable.accessibilityLabel}
         >
-          <Text style={styles.controlButtonText}>
-            {controlState.primary.label}
+          <Text style={handsFreeControlsParts.primaryControl.label.style}>
+            {handsFreeControlsParts.primaryControl.label.text}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.controlButton}
-          onPress={secondaryOnPress}
-          activeOpacity={controlPressedOpacity}
-          accessibilityRole={controlState.secondary.accessibilityRole}
-          accessibilityLabel={controlState.secondary.accessibilityLabel}
+          style={handsFreeControlsParts.secondaryControl.touchable.style}
+          onPress={handsFreeControlsParts.secondaryControl.touchable.onPress}
+          activeOpacity={handsFreeControlsParts.secondaryControl.touchable.activeOpacity}
+          accessibilityRole={handsFreeControlsParts.secondaryControl.touchable.accessibilityRole}
+          accessibilityLabel={handsFreeControlsParts.secondaryControl.touchable.accessibilityLabel}
         >
-          <Text style={styles.controlButtonText}>
-            {controlState.secondary.label}
+          <Text style={handsFreeControlsParts.secondaryControl.label.style}>
+            {handsFreeControlsParts.secondaryControl.label.text}
           </Text>
         </TouchableOpacity>
       </View>
