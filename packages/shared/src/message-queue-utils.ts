@@ -1071,15 +1071,23 @@ export interface MessageQueuePanelHeaderTextActionMobilePropsPart<
   extends MessageQueuePanelHeaderActionMobilePropsPartBase<TStyle, TOnPress> {
   type: 'text';
   label: {
+    shouldRender: true;
     style: TLabelStyle;
     text: string;
+  };
+  icon: {
+    shouldRender: false;
   };
 }
 
 export interface MessageQueuePanelHeaderIconActionMobilePropsPart<TStyle, TOnPress>
   extends MessageQueuePanelHeaderActionMobilePropsPartBase<TStyle, TOnPress> {
   type: 'icon';
+  label: {
+    shouldRender: false;
+  };
   icon: {
+    shouldRender: true;
     name: MessageQueuePanelToggleIconName;
     size: MessageQueuePanelMobilePanelSurface['headerToggleIconSize'];
     color: string;
@@ -1626,8 +1634,12 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       onPress: onResume,
       accessibilityLabel: copy.actions.resumeTitle,
       label: {
+        shouldRender: true,
         style: styles.queueControlText,
         text: copy.actions.resumeLabel,
+      },
+      icon: {
+        shouldRender: false,
       },
     });
   }
@@ -1643,11 +1655,15 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       accessibilityLabel: copy.actions.pauseTitle,
       accessibilityState: panel.pauseActionState.accessibilityState,
       label: {
+        shouldRender: true,
         style: [
           styles.queueControlText,
           panel.pauseActionState.isDisabled && styles.queueControlTextDisabled,
         ],
         text: copy.actions.pauseLabel,
+      },
+      icon: {
+        shouldRender: false,
       },
     });
   }
@@ -1661,8 +1677,12 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       onPress: onProcessNext,
       accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
       label: {
+        shouldRender: true,
         style: styles.processButtonText,
         text: copy.actions.sendNextLabel,
+      },
+      icon: {
+        shouldRender: false,
       },
     });
   }
@@ -1678,8 +1698,12 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       accessibilityLabel: copy.actions.clearQueueTitle,
       accessibilityState: panel.clearActionState.accessibilityState,
       label: {
+        shouldRender: true,
         style: styles.clearButtonText,
         text: copy.actions.clearAllLabel,
+      },
+      icon: {
+        shouldRender: false,
       },
     });
   }
@@ -1692,7 +1716,11 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
     onPress: onToggleListCollapsed,
     accessibilityLabel: panel.listToggleLabel,
     accessibilityState: panel.listToggleAccessibilityState,
+    label: {
+      shouldRender: false,
+    },
     icon: {
+      shouldRender: true,
       name: panel.toggleIconName,
       size: surface.headerToggleIconSize,
       color: colors.toggleIconColor,

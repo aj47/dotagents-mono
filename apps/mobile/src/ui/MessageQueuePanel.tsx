@@ -358,15 +358,16 @@ export function MessageQueuePanel({
               accessibilityLabel={action.accessibilityLabel}
               accessibilityState={action.accessibilityState}
             >
-              {action.type === 'text' ? (
+              {action.label.shouldRender ? (
                 <Text style={action.label.style}>{action.label.text}</Text>
-              ) : (
+              ) : null}
+              {action.icon.shouldRender ? (
                 <Ionicons
                   name={action.icon.name}
                   size={action.icon.size}
                   color={action.icon.color}
                 />
-              )}
+              ) : null}
             </TouchableOpacity>
           ))}
         </View>

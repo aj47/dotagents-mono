@@ -4598,8 +4598,10 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /name=\{panelChromeParts\.compactStatusIcon\.name\}[\s\S]*?size=\{panelChromeParts\.compactStatusIcon\.size\}[\s\S]*?color=\{panelChromeParts\.compactStatusIcon\.color\}/);
   assert.match(messageQueuePanelSource, /\{panelChromeParts\.headerTitle\.text\}/);
   assert.match(messageQueuePanelSource, /style=\{action\.style\}/);
-  assert.match(messageQueuePanelSource, /action\.type === 'text'/);
+  assert.match(messageQueuePanelSource, /action\.label\.shouldRender \? \(/);
+  assert.doesNotMatch(messageQueuePanelSource, /action\.type === 'text'/);
   assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
+  assert.match(messageQueuePanelSource, /action\.icon\.shouldRender \? \(/);
   assert.match(messageQueuePanelSource, /name=\{action\.icon\.name\}[\s\S]*?size=\{action\.icon\.size\}[\s\S]*?color=\{action\.icon\.color\}/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*panelStatusColors\.borderColor/);
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*panelSurface\.processFontWeight/);

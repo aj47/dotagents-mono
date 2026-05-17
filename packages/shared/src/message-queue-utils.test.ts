@@ -741,15 +741,23 @@ describe('message-queue-utils', () => {
       disabled: false,
       accessibilityState: { disabled: false },
       label: {
+        shouldRender: true,
         style: ['queueControlText', false],
         text: 'Pause',
+      },
+      icon: {
+        shouldRender: false,
       },
     });
     expect(headerActionParts.actions[1]).toMatchObject({
       type: 'text',
       label: {
+        shouldRender: true,
         style: 'processButtonText',
         text: 'Send Next',
+      },
+      icon: {
+        shouldRender: false,
       },
     });
     expect(headerActionParts.actions[3]).toMatchObject({
@@ -757,7 +765,11 @@ describe('message-queue-utils', () => {
       style: 'clearButton',
       accessibilityLabel: 'Collapse queue',
       accessibilityState: { expanded: true },
+      label: {
+        shouldRender: false,
+      },
       icon: {
+        shouldRender: true,
         name: 'chevron-up',
         size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerToggleIconSize,
         color: '#737373',
@@ -790,8 +802,12 @@ describe('message-queue-utils', () => {
         key: 'resume',
         type: 'text',
         label: {
+          shouldRender: true,
           style: 'queueControlText',
           text: 'Resume',
+        },
+        icon: {
+          shouldRender: false,
         },
       },
       {
@@ -799,7 +815,11 @@ describe('message-queue-utils', () => {
         type: 'icon',
         accessibilityLabel: 'Expand queue',
         accessibilityState: { expanded: false },
+        label: {
+          shouldRender: false,
+        },
         icon: {
+          shouldRender: true,
           name: 'chevron-down',
         },
       },
