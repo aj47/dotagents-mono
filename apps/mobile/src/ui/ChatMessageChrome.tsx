@@ -94,6 +94,7 @@ import {
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  createChatRuntimeToolExecutionCompactListMobilePropsParts,
   createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
@@ -8037,19 +8038,26 @@ export function ChatMessageToolExecutionCompactList({
   groupStyles,
   rowStyles,
 }: ChatMessageToolExecutionCompactListProps) {
-  if (!shouldRender) return null;
+  const compactListParts = createChatRuntimeToolExecutionCompactListMobilePropsParts({
+    shouldRender,
+    renderState,
+    rows,
+    onPress,
+    groupStyles,
+    rowStyles,
+  });
+
+  if (!compactListParts.shouldRenderList) return null;
 
   return (
     <ChatMessageToolExecutionCompactGroup
-      renderState={renderState}
-      onPress={onPress}
-      styles={groupStyles}
+      {...compactListParts.group}
     >
-      {rows.map((row) => (
+      {compactListParts.rows.map((row) => (
         <ChatMessageToolExecutionCompactRow
           key={row.key}
           renderState={row.renderState}
-          styles={rowStyles}
+          styles={row.styles}
         />
       ))}
     </ChatMessageToolExecutionCompactGroup>

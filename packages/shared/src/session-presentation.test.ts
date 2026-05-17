@@ -133,6 +133,7 @@ import {
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  createChatRuntimeToolExecutionCompactListMobilePropsParts,
   createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
@@ -9311,6 +9312,50 @@ describe("session presentation semantics", () => {
         },
       },
     })
+    const compactListParts = createChatRuntimeToolExecutionCompactListMobilePropsParts({
+      shouldRender: true,
+      renderState: "compact-expand-state",
+      rows: [
+        {
+          key: "read_file:0",
+          renderState: "read-file-row-state",
+        },
+        {
+          key: "write_file:1",
+          renderState: "write-file-row-state",
+        },
+      ],
+      onPress: "expand-tools",
+      groupStyles: "compact-group-styles",
+      rowStyles: "compact-row-styles",
+    })
+    expect(compactListParts).toEqual({
+      shouldRenderList: true,
+      group: {
+        renderState: "compact-expand-state",
+        onPress: "expand-tools",
+        styles: "compact-group-styles",
+      },
+      rows: [
+        {
+          key: "read_file:0",
+          renderState: "read-file-row-state",
+          styles: "compact-row-styles",
+        },
+        {
+          key: "write_file:1",
+          renderState: "write-file-row-state",
+          styles: "compact-row-styles",
+        },
+      ],
+    })
+    expect(createChatRuntimeToolExecutionCompactListMobilePropsParts({
+      shouldRender: false,
+      renderState: "compact-expand-state",
+      rows: [],
+      groupStyles: "compact-group-styles",
+      rowStyles: "compact-row-styles",
+    }).shouldRenderList).toBe(false)
     const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
       renderState: "detail-header-state",
       toolName: "read_file",

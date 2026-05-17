@@ -2529,6 +2529,53 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCompactListMobilePropsPartsInput<
+  TRenderState = unknown,
+  TRow extends {
+    key: unknown
+    renderState: unknown
+  } = {
+    key: unknown
+    renderState: unknown
+  },
+  TOnPress = unknown,
+  TCompactGroupStyles = unknown,
+  TCompactRowStyles = unknown,
+> {
+  shouldRender: boolean
+  renderState: TRenderState
+  rows: readonly TRow[]
+  onPress?: TOnPress
+  groupStyles: TCompactGroupStyles
+  rowStyles: TCompactRowStyles
+}
+
+export interface ChatRuntimeToolExecutionCompactListMobilePropsParts<
+  TRenderState = unknown,
+  TRow extends {
+    key: unknown
+    renderState: unknown
+  } = {
+    key: unknown
+    renderState: unknown
+  },
+  TOnPress = unknown,
+  TCompactGroupStyles = unknown,
+  TCompactRowStyles = unknown,
+> {
+  shouldRenderList: boolean
+  group: {
+    renderState: TRenderState
+    onPress: TOnPress | undefined
+    styles: TCompactGroupStyles
+  }
+  rows: Array<{
+    key: TRow["key"]
+    renderState: TRow["renderState"]
+    styles: TCompactRowStyles
+  }>
+}
+
 export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -15567,6 +15614,50 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
       style: styles.toggleIcon,
       icon: renderState.toggleIcon,
     },
+  }
+}
+
+export function createChatRuntimeToolExecutionCompactListMobilePropsParts<
+  TRenderState,
+  TRow extends {
+    key: unknown
+    renderState: unknown
+  },
+  TOnPress,
+  TCompactGroupStyles,
+  TCompactRowStyles,
+>({
+  shouldRender,
+  renderState,
+  rows,
+  onPress,
+  groupStyles,
+  rowStyles,
+}: ChatRuntimeToolExecutionCompactListMobilePropsPartsInput<
+  TRenderState,
+  TRow,
+  TOnPress,
+  TCompactGroupStyles,
+  TCompactRowStyles
+>): ChatRuntimeToolExecutionCompactListMobilePropsParts<
+  TRenderState,
+  TRow,
+  TOnPress,
+  TCompactGroupStyles,
+  TCompactRowStyles
+> {
+  return {
+    shouldRenderList: shouldRender,
+    group: {
+      renderState,
+      onPress,
+      styles: groupStyles,
+    },
+    rows: rows.map((row) => ({
+      key: row.key,
+      renderState: row.renderState,
+      styles: rowStyles,
+    })),
   }
 }
 
