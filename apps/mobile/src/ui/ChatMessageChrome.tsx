@@ -2045,6 +2045,10 @@ type ChatMessageToolApprovalToolNameProps =
 type ChatMessageToolApprovalArgumentsPreviewProps =
   ChatMessageToolApprovalParts['argumentsPreview']['props'];
 
+type ChatMessageToolApprovalArgumentsPreviewBlockProps = {
+  preview: ChatMessageToolApprovalParts['argumentsPreview'];
+};
+
 type ChatMessageToolApprovalFullArgumentsProps =
   ChatMessageToolApprovalParts['fullArguments']['text']['props'];
 
@@ -9066,11 +9070,9 @@ export function ChatMessageToolApproval({
           label={toolApprovalParts.toolLabel}
           name={toolApprovalParts.toolName}
         />
-        {toolApprovalParts.argumentsPreview.shouldRender ? (
-          <ChatMessageToolApprovalArgumentsPreview
-            {...toolApprovalParts.argumentsPreview.props}
-          />
-        ) : null}
+        <ChatMessageToolApprovalArgumentsPreviewBlock
+          preview={toolApprovalParts.argumentsPreview}
+        />
         <ChatMessageToolApprovalArgumentsToggle
           {...toolApprovalParts.argumentsToggle.props}
         >
@@ -9250,6 +9252,20 @@ export function ChatMessageToolApprovalArgumentsPreview({
     <Text {...props}>
       {text}
     </Text>
+  );
+}
+
+export function ChatMessageToolApprovalArgumentsPreviewBlock({
+  preview,
+}: ChatMessageToolApprovalArgumentsPreviewBlockProps) {
+  if (!preview.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolApprovalArgumentsPreview
+      {...preview.props}
+    />
   );
 }
 

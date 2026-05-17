@@ -712,6 +712,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalDenyActionContent[\s\S]*?export function ChatMessageToolApprovalApproveActionContent/)?.[0] ?? '';
   const approveActionContentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalApproveActionContent[\s\S]*?export function ChatMessageToolApprovalView/)?.[0] ?? '';
+  const argumentsPreviewBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalArgumentsPreviewBlock[\s\S]*?export function ChatMessageToolApprovalFullArgumentsBlock/)?.[0] ?? '';
   const fullArgumentsBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalFullArgumentsBlock[\s\S]*?export function ChatMessageToolApprovalFullArguments/)?.[0] ?? '';
   const actionBarSource =
@@ -733,9 +735,13 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ expanded: isToolApprovalExpanded, disabled: isToolApprovalResponding \}\}/);
   assert.doesNotMatch(screenSource, /aria-expanded=\{isToolApprovalExpanded\}/);
   assert.match(sessionPresentationSource, /argumentsPreview: \{[\s\S]*?shouldRender: Boolean\(argumentsPreview\),[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsPreview,[\s\S]*?numberOfLines: renderState\.surface\.argumentsPreview\.numberOfLines,[\s\S]*?text: argumentsPreview,/);
-  assert.match(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsPreviewBlock/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsPreviewBlock\s+preview=\{toolApprovalParts\.argumentsPreview\}/);
+  assert.match(argumentsPreviewBlockSource, /if \(!preview\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.shouldRender \? \(/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsPreview/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsPreview\s+\{\.\.\.toolApprovalParts\.argumentsPreview\.props\}/);
+  assert.match(argumentsPreviewBlockSource, /<ChatMessageToolApprovalArgumentsPreview\s+\{\.\.\.preview\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsPreview\s+\{\.\.\.toolApprovalParts\.argumentsPreview\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsPreview[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsPreview[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageToolApprovalFullArguments/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.(style|numberOfLines|text)/);
