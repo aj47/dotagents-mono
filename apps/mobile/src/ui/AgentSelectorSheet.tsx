@@ -24,6 +24,7 @@ import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi
 import { useProfile } from '../store/profile';
 import {
   buildSelectorProfiles,
+  createAgentSelectorProfileItemMobilePropsParts,
   createAgentSelectorMobileStyleSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
@@ -212,61 +213,50 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       currentProfileId: currentProfile?.id,
       isSwitching,
     });
+    const profileItemParts = createAgentSelectorProfileItemMobilePropsParts({
+      profile: item,
+      renderState: agentSelectorRenderState,
+      profileRenderState: profileItemRenderState,
+      styles,
+      avatarImageSource: item.avatarDataUrl ? { uri: item.avatarDataUrl } : null,
+      onPress: () => handleSelectProfile(item),
+    });
+    const profileItemContent = profileItemParts.touchable.content;
+    const avatar = profileItemContent.avatar;
+    const profileInfo = profileItemContent.profileInfo;
+    const profileDescription = profileInfo.description;
+    const checkIcon = profileItemContent.checkIcon;
+
     return (
       <TouchableOpacity
-        style={[styles.profileItem, profileItemRenderState.isSelected && styles.profileItemSelected]}
-        onPress={() => handleSelectProfile(item)}
-        disabled={profileItemRenderState.isDisabled}
-        activeOpacity={profileItemRenderState.activeOpacity}
-        accessibilityRole={profileItemRenderState.accessibilityRole}
-        accessibilityLabel={profileItemRenderState.accessibilityLabel}
-        accessibilityState={profileItemRenderState.accessibilityState}
+        {...profileItemParts.touchable.props}
       >
-        <View
-          style={[
-            styles.profileAvatar,
-            !item.avatarDataUrl && {
-              backgroundColor: profileItemRenderState.fallbackAvatar.backgroundColor,
-            },
-          ]}
-        >
-          {item.avatarDataUrl ? (
+        <View {...avatar.props}>
+          {avatar.image.shouldRender ? (
             <Image
-              source={{ uri: item.avatarDataUrl }}
-              style={styles.profileAvatarImage}
-              accessibilityIgnoresInvertColors
+              {...avatar.image.props}
             />
           ) : (
             <Ionicons
-              name={agentSelectorSurface.avatar.fallbackIconName}
-              size={agentSelectorSurface.avatar.fallbackIconSize}
-              color={agentSelectorColors.avatar.fallbackIconColor}
+              {...avatar.fallbackIcon.props}
             />
           )}
         </View>
-        <View style={styles.profileInfo}>
-          <Text
-            style={[styles.profileName, profileItemRenderState.isSelected && styles.profileNameSelected]}
-            numberOfLines={agentSelectorSurface.profileName.numberOfLines}
-          >
-            {item.name}
+        <View {...profileInfo.props}>
+          <Text {...profileInfo.name.props}>
+            {profileInfo.name.text}
           </Text>
-          {profileItemRenderState.shouldRenderProfileSummary && (
-            <Text
-              style={styles.profileDescription}
-              numberOfLines={agentSelectorSurface.profileDescription.numberOfLines}
-            >
-              {profileItemRenderState.profileSummary}
+          {profileDescription.shouldRender ? (
+            <Text {...profileDescription.props}>
+              {profileDescription.text}
             </Text>
-          )}
+          ) : null}
         </View>
-        {profileItemRenderState.isSelected && (
+        {checkIcon.shouldRender ? (
           <Ionicons
-            name={agentSelectorSurface.checkIcon.name}
-            size={agentSelectorSurface.checkIcon.size}
-            color={agentSelectorColors.checkIcon.color}
+            {...checkIcon.props}
           />
-        )}
+        ) : null}
       </TouchableOpacity>
     );
   };

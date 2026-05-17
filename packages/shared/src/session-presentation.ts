@@ -227,9 +227,12 @@ import {
 } from "./predefined-prompts"
 export {
   buildSelectorProfiles,
+  createAgentSelectorProfileItemMobilePropsParts,
   createAgentSelectorMobileStyleSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
+  type AgentSelectorProfileItemMobilePropsParts,
+  type AgentSelectorProfileItemMobilePropsPartsInput,
   type SelectableAgentProfile,
 } from "./agent-selector-options"
 export {

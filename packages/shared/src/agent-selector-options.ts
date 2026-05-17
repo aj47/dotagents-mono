@@ -262,6 +262,106 @@ export interface AgentSelectorMobileProfileItemRenderState {
   }
 }
 
+export interface AgentSelectorProfileItemMobilePropsStylesLike {
+  profileItem: unknown
+  profileItemSelected: unknown
+  profileAvatar: unknown
+  profileAvatarImage: unknown
+  profileInfo: unknown
+  profileName: unknown
+  profileNameSelected: unknown
+  profileDescription: unknown
+}
+
+export interface AgentSelectorProfileItemMobilePropsPartsInput<
+  TProfile extends SelectableAgentProfile = SelectableAgentProfile,
+  TStyles extends AgentSelectorProfileItemMobilePropsStylesLike =
+    AgentSelectorProfileItemMobilePropsStylesLike,
+  TImageSource = unknown,
+  TOnPress = unknown,
+> {
+  profile: TProfile
+  renderState: Pick<AgentSelectorMobileRenderState, "surface" | "colors">
+  profileRenderState: AgentSelectorMobileProfileItemRenderState
+  styles: TStyles
+  avatarImageSource?: TImageSource | null
+  onPress: TOnPress
+}
+
+export interface AgentSelectorProfileItemMobilePropsParts<
+  TStyles extends AgentSelectorProfileItemMobilePropsStylesLike =
+    AgentSelectorProfileItemMobilePropsStylesLike,
+  TImageSource = unknown,
+  TOnPress = unknown,
+> {
+  touchable: {
+    props: {
+      style: Array<TStyles["profileItem"] | false | TStyles["profileItemSelected"]>
+      onPress: TOnPress
+      disabled: boolean
+      activeOpacity: AgentSelectorMobileProfileItemRenderState["activeOpacity"]
+      accessibilityRole: AgentSelectorMobileProfileItemRenderState["accessibilityRole"]
+      accessibilityLabel: AgentSelectorMobileProfileItemRenderState["accessibilityLabel"]
+      accessibilityState: AgentSelectorMobileProfileItemRenderState["accessibilityState"]
+    }
+    content: {
+      avatar: {
+        props: {
+          style: Array<
+            | TStyles["profileAvatar"]
+            | false
+            | AgentSelectorMobileProfileItemRenderState["fallbackAvatar"]
+          >
+        }
+        image: {
+          shouldRender: boolean
+          props: {
+            source: TImageSource
+            style: TStyles["profileAvatarImage"]
+            accessibilityIgnoresInvertColors: true
+          }
+        }
+        fallbackIcon: {
+          shouldRender: boolean
+          props: {
+            name: AgentSelectorMobileSurface["avatar"]["fallbackIconName"]
+            size: AgentSelectorMobileSurface["avatar"]["fallbackIconSize"]
+            color: AgentSelectorMobileSurfaceColors["avatar"]["fallbackIconColor"]
+          }
+        }
+      }
+      profileInfo: {
+        props: {
+          style: TStyles["profileInfo"]
+        }
+        name: {
+          text: string
+          props: {
+            style: Array<TStyles["profileName"] | false | TStyles["profileNameSelected"]>
+            numberOfLines: AgentSelectorMobileSurface["profileName"]["numberOfLines"]
+          }
+        }
+        description: {
+          shouldRender: boolean
+          text: string
+          props: {
+            style: TStyles["profileDescription"]
+            numberOfLines: AgentSelectorMobileSurface["profileDescription"]["numberOfLines"]
+          }
+        }
+      }
+      checkIcon: {
+        shouldRender: boolean
+        props: {
+          name: AgentSelectorMobileSurface["checkIcon"]["name"]
+          size: AgentSelectorMobileSurface["checkIcon"]["size"]
+          color: AgentSelectorMobileSurfaceColors["checkIcon"]["color"]
+        }
+      }
+    }
+  }
+}
+
 export interface AgentSelectorMobileRenderState {
   copy: typeof AGENT_SELECTOR_PRESENTATION.sheet
   surface: typeof AGENT_SELECTOR_PRESENTATION.mobile
@@ -788,6 +888,98 @@ export function getAgentSelectorMobileProfileItemRenderState({
     },
     fallbackAvatar: {
       backgroundColor: getAgentSelectorMobileFallbackAvatarBackgroundColor(fallbackAvatarColor),
+    },
+  }
+}
+
+export function createAgentSelectorProfileItemMobilePropsParts<
+  TProfile extends SelectableAgentProfile = SelectableAgentProfile,
+  TStyles extends AgentSelectorProfileItemMobilePropsStylesLike =
+    AgentSelectorProfileItemMobilePropsStylesLike,
+  TImageSource = unknown,
+  TOnPress = unknown,
+>({
+  profile,
+  renderState,
+  profileRenderState,
+  styles,
+  avatarImageSource,
+  onPress,
+}: AgentSelectorProfileItemMobilePropsPartsInput<TProfile, TStyles, TImageSource, TOnPress>):
+  AgentSelectorProfileItemMobilePropsParts<TStyles, TImageSource, TOnPress> {
+  const hasAvatarImage = avatarImageSource != null
+
+  return {
+    touchable: {
+      props: {
+        style: [
+          styles.profileItem,
+          profileRenderState.isSelected && styles.profileItemSelected,
+        ],
+        onPress,
+        disabled: profileRenderState.isDisabled,
+        activeOpacity: profileRenderState.activeOpacity,
+        accessibilityRole: profileRenderState.accessibilityRole,
+        accessibilityLabel: profileRenderState.accessibilityLabel,
+        accessibilityState: profileRenderState.accessibilityState,
+      },
+      content: {
+        avatar: {
+          props: {
+            style: [
+              styles.profileAvatar,
+              !hasAvatarImage && profileRenderState.fallbackAvatar,
+            ],
+          },
+          image: {
+            shouldRender: hasAvatarImage,
+            props: {
+              source: avatarImageSource as TImageSource,
+              style: styles.profileAvatarImage,
+              accessibilityIgnoresInvertColors: true,
+            },
+          },
+          fallbackIcon: {
+            shouldRender: !hasAvatarImage,
+            props: {
+              name: renderState.surface.avatar.fallbackIconName,
+              size: renderState.surface.avatar.fallbackIconSize,
+              color: renderState.colors.avatar.fallbackIconColor,
+            },
+          },
+        },
+        profileInfo: {
+          props: {
+            style: styles.profileInfo,
+          },
+          name: {
+            text: profile.name,
+            props: {
+              style: [
+                styles.profileName,
+                profileRenderState.isSelected && styles.profileNameSelected,
+              ],
+              numberOfLines: renderState.surface.profileName.numberOfLines,
+            },
+          },
+          description: {
+            shouldRender: profileRenderState.shouldRenderProfileSummary,
+            text: profileRenderState.profileSummary,
+            props: {
+              style: styles.profileDescription,
+              numberOfLines: renderState.surface.profileDescription.numberOfLines,
+            },
+          },
+        },
+        checkIcon: {
+          shouldRender: profileRenderState.isSelected,
+          props: {
+            name: renderState.surface.checkIcon.name,
+            size: renderState.surface.checkIcon.size,
+            color: renderState.colors.checkIcon.color,
+          },
+        },
+      },
     },
   }
 }

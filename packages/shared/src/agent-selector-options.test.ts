@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   AGENT_SELECTOR_PRESENTATION,
   buildSelectorProfiles,
+  createAgentSelectorProfileItemMobilePropsParts,
   createAgentSelectorMobileStyleSlots,
   formatAgentSelectorEditLabel,
   formatAgentSelectorSelectAccessibilityLabel,
@@ -430,17 +431,19 @@ describe("agent selector option helpers", () => {
     expect(getAgentSelectorMobileFallbackAvatarBackgroundColor("#0f172a")).toBe(
       "rgba(15, 23, 42, 0.14)",
     )
-    expect(getAgentSelectorMobileProfileItemRenderState({
-      profile: {
-        id: "research",
-        name: "Research",
-        description: "Finds citations",
-        selectorMode: "profile",
-        selectionValue: "research",
-      },
+    const selectedProfile = {
+      id: "research",
+      name: "Research",
+      description: "Finds citations",
+      selectorMode: "profile" as const,
+      selectionValue: "research",
+    }
+    const selectedProfileRenderState = getAgentSelectorMobileProfileItemRenderState({
+      profile: selectedProfile,
       currentProfileId: "research",
       isSwitching: true,
-    })).toEqual({
+    })
+    expect(selectedProfileRenderState).toEqual({
       isSelected: true,
       isDisabled: true,
       profileSummary: "Finds citations",
@@ -454,6 +457,90 @@ describe("agent selector option helpers", () => {
       },
       fallbackAvatar: {
         backgroundColor: getAgentSelectorMobileFallbackAvatarBackgroundColor("#06b6d4"),
+      },
+    })
+    const profileItemStyles = {
+      profileItem: "profile-item",
+      profileItemSelected: "profile-item-selected",
+      profileAvatar: "profile-avatar",
+      profileAvatarImage: "profile-avatar-image",
+      profileInfo: "profile-info",
+      profileName: "profile-name",
+      profileNameSelected: "profile-name-selected",
+      profileDescription: "profile-description",
+    }
+    expect(createAgentSelectorProfileItemMobilePropsParts({
+      profile: selectedProfile,
+      renderState: agentSelectorRenderState,
+      profileRenderState: selectedProfileRenderState,
+      styles: profileItemStyles,
+      avatarImageSource: { uri: "avatar-data-url" },
+      onPress: "select-profile",
+    })).toEqual({
+      touchable: {
+        props: {
+          style: ["profile-item", "profile-item-selected"],
+          onPress: "select-profile",
+          disabled: true,
+          activeOpacity: AGENT_SELECTOR_PRESENTATION.mobile.profileItem.pressedOpacity,
+          accessibilityRole: AGENT_SELECTOR_PRESENTATION.mobile.profileItem.accessibilityRole,
+          accessibilityLabel: "Select Research agent",
+          accessibilityState: {
+            selected: true,
+            disabled: true,
+          },
+        },
+        content: {
+          avatar: {
+            props: {
+              style: ["profile-avatar", false],
+            },
+            image: {
+              shouldRender: true,
+              props: {
+                source: { uri: "avatar-data-url" },
+                style: "profile-avatar-image",
+                accessibilityIgnoresInvertColors: true,
+              },
+            },
+            fallbackIcon: {
+              shouldRender: false,
+              props: {
+                name: AGENT_SELECTOR_PRESENTATION.mobile.avatar.fallbackIconName,
+                size: AGENT_SELECTOR_PRESENTATION.mobile.avatar.fallbackIconSize,
+                color: "#2563eb",
+              },
+            },
+          },
+          profileInfo: {
+            props: {
+              style: "profile-info",
+            },
+            name: {
+              text: "Research",
+              props: {
+                style: ["profile-name", "profile-name-selected"],
+                numberOfLines: AGENT_SELECTOR_PRESENTATION.mobile.profileName.numberOfLines,
+              },
+            },
+            description: {
+              shouldRender: true,
+              text: "Finds citations",
+              props: {
+                style: "profile-description",
+                numberOfLines: AGENT_SELECTOR_PRESENTATION.mobile.profileDescription.numberOfLines,
+              },
+            },
+          },
+          checkIcon: {
+            shouldRender: true,
+            props: {
+              name: AGENT_SELECTOR_PRESENTATION.mobile.checkIcon.name,
+              size: AGENT_SELECTOR_PRESENTATION.mobile.checkIcon.size,
+              color: "#2563eb",
+            },
+          },
+        },
       },
     })
     expect(getAgentSelectorMobileProfileItemRenderState({
