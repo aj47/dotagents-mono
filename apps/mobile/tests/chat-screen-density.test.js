@@ -5460,7 +5460,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /leadingIcon: \{[\s\S]*?props: renderState\.leadingIcon,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupIcon/);
   assert.match(toolActivityGroupToggleComponentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.toggleParts\.leadingIcon\.props\}/);
-  assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupIcon[\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupIcon\(props: ChatMessageToolActivityGroupIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolActivityGroupCountBadge/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.leadingIcon\.(name|size|color)/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /renderState\.leadingIcon/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupLeadingIcon\.colorToken\]/);

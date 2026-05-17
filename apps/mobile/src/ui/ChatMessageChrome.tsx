@@ -9007,17 +9007,9 @@ export function ChatMessageToolActivityGroupToggle({
   );
 }
 
-export function ChatMessageToolActivityGroupIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolActivityGroupIconProps) {
+export function ChatMessageToolActivityGroupIcon(props: ChatMessageToolActivityGroupIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
