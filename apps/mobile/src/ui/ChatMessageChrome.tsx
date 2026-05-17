@@ -8407,7 +8407,7 @@ export function ChatMessageToolExecutionResultSection({
       <ChatMessageToolExecutionPayloadBlock
         {...resultSectionParts.payloadBlock}
       />
-      {resultSectionParts.errorBlock ? (
+      {resultSectionParts.errorBlock.shouldRender ? (
         <ChatMessageToolExecutionErrorBlock
           {...resultSectionParts.errorBlock}
         />
