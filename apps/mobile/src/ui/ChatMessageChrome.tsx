@@ -2445,6 +2445,17 @@ type ChatMessageToolExecutionCompactListProps = {
   rowStyles: ChatMessageToolExecutionCompactRowStyles;
 };
 
+type ChatMessageToolExecutionCompactListParts = ReturnType<typeof createChatRuntimeToolExecutionCompactListMobilePropsParts<
+  ChatMessageToolExecutionCompactListProps['renderState'],
+  ChatMessageToolExecutionCompactListRow,
+  ChatMessageToolExecutionCompactListProps['onPress'],
+  ChatMessageToolExecutionCompactListProps['groupStyles'],
+  ChatMessageToolExecutionCompactListProps['rowStyles']
+>>;
+
+type ChatMessageToolExecutionCompactListContentProps =
+  ChatMessageToolExecutionCompactListParts['group']['content'];
+
 type ChatMessageToolExecutionCollapseControlStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -10359,7 +10370,6 @@ export function ChatMessageToolExecutionCompactList({
     groupStyles,
     rowStyles,
   });
-  const compactListContent = compactListParts.group.content;
 
   if (!compactListParts.group.shouldRender) return null;
 
@@ -10367,13 +10377,25 @@ export function ChatMessageToolExecutionCompactList({
     <ChatMessageToolExecutionCompactGroup
       {...compactListParts.group.props}
     >
-      {compactListContent.rows.map((row) => (
+      <ChatMessageToolExecutionCompactListContent
+        {...compactListParts.group.content}
+      />
+    </ChatMessageToolExecutionCompactGroup>
+  );
+}
+
+export function ChatMessageToolExecutionCompactListContent({
+  rows,
+}: ChatMessageToolExecutionCompactListContentProps) {
+  return (
+    <>
+      {rows.map((row) => (
         <ChatMessageToolExecutionCompactRow
           key={row.key}
           {...row.props}
         />
       ))}
-    </ChatMessageToolExecutionCompactGroup>
+    </>
   );
 }
 
