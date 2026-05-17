@@ -133,6 +133,7 @@ import {
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
@@ -9217,6 +9218,99 @@ describe("session presentation semantics", () => {
       "compact-group",
       "compact-group-pressed",
     ])
+    const compactRowParts = createChatRuntimeToolExecutionCompactRowMobilePropsParts({
+      renderState: {
+        accessibilityLabel: "Running: read_file",
+        toolIcon: {
+          name: "hammer-outline",
+          size: 14,
+          color: "#555",
+        },
+        isPending: true,
+        isSuccess: false,
+        isError: false,
+        name: {
+          numberOfLines: 1,
+          ellipsizeMode: "tail",
+        },
+        preview: "read_file",
+        statusIndicator: {
+          spinner: {
+            shouldRender: true,
+            size: "small",
+            color: "#888",
+          },
+          icon: {
+            shouldRender: false,
+            name: "checkmark-circle",
+            size: 12,
+            color: "#0f0",
+          },
+        },
+        toggleIcon: {
+          name: "chevron-forward",
+          size: 16,
+          color: "#999",
+        },
+      },
+      styles: {
+        line: "compact-line",
+        leadingIcon: "compact-leading",
+        name: "compact-name",
+        namePending: "compact-name-pending",
+        nameSuccess: "compact-name-success",
+        nameError: "compact-name-error",
+        statusIndicator: "compact-status",
+        toggleIcon: "compact-toggle",
+      },
+    })
+    expect(compactRowParts).toEqual({
+      container: {
+        style: "compact-line",
+        accessibilityLabel: "Running: read_file",
+      },
+      leadingIcon: {
+        style: "compact-leading",
+        icon: {
+          name: "hammer-outline",
+          size: 14,
+          color: "#555",
+        },
+      },
+      name: {
+        text: "read_file",
+        style: [
+          "compact-name",
+          "compact-name-pending",
+          false,
+          false,
+        ],
+        numberOfLines: 1,
+        ellipsizeMode: "tail",
+      },
+      statusIndicator: {
+        style: "compact-status",
+        spinner: {
+          shouldRender: true,
+          size: "small",
+          color: "#888",
+        },
+        icon: {
+          shouldRender: false,
+          name: "checkmark-circle",
+          size: 12,
+          color: "#0f0",
+        },
+      },
+      toggleIcon: {
+        style: "compact-toggle",
+        icon: {
+          name: "chevron-forward",
+          size: 16,
+          color: "#999",
+        },
+      },
+    })
     const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts({
       renderState: "detail-header-state",
       toolName: "read_file",

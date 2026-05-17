@@ -94,6 +94,7 @@ import {
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  createChatRuntimeToolExecutionCompactRowMobilePropsParts,
   createChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   createChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
@@ -7979,49 +7980,49 @@ export function ChatMessageToolExecutionCompactRow({
   renderState,
   styles,
 }: ChatMessageToolExecutionCompactRowProps) {
+  const compactRowParts = createChatRuntimeToolExecutionCompactRowMobilePropsParts({
+    renderState,
+    styles,
+  });
+
   return (
     <View
-      style={styles.line}
-      accessibilityLabel={renderState.accessibilityLabel}
+      style={compactRowParts.container.style}
+      accessibilityLabel={compactRowParts.container.accessibilityLabel}
     >
-      <View style={styles.leadingIcon}>
+      <View style={compactRowParts.leadingIcon.style}>
         <Ionicons
-          name={renderState.toolIcon.name}
-          size={renderState.toolIcon.size}
-          color={renderState.toolIcon.color}
+          name={compactRowParts.leadingIcon.icon.name}
+          size={compactRowParts.leadingIcon.icon.size}
+          color={compactRowParts.leadingIcon.icon.color}
         />
       </View>
       <Text
-        style={[
-          styles.name,
-          renderState.isPending && styles.namePending,
-          renderState.isSuccess && styles.nameSuccess,
-          renderState.isError && styles.nameError,
-        ]}
-        numberOfLines={renderState.name.numberOfLines}
-        ellipsizeMode={renderState.name.ellipsizeMode}
+        style={compactRowParts.name.style}
+        numberOfLines={compactRowParts.name.numberOfLines}
+        ellipsizeMode={compactRowParts.name.ellipsizeMode}
       >
-        {renderState.preview}
+        {compactRowParts.name.text}
       </Text>
-      <View style={styles.statusIndicator}>
-        {renderState.statusIndicator.spinner.shouldRender ? (
+      <View style={compactRowParts.statusIndicator.style}>
+        {compactRowParts.statusIndicator.spinner.shouldRender ? (
           <ActivityIndicator
-            size={renderState.statusIndicator.spinner.size}
-            color={renderState.statusIndicator.spinner.color}
+            size={compactRowParts.statusIndicator.spinner.size}
+            color={compactRowParts.statusIndicator.spinner.color}
           />
-        ) : renderState.statusIndicator.icon.shouldRender ? (
+        ) : compactRowParts.statusIndicator.icon.shouldRender ? (
           <Ionicons
-            name={renderState.statusIndicator.icon.name}
-            size={renderState.statusIndicator.icon.size}
-            color={renderState.statusIndicator.icon.color}
+            name={compactRowParts.statusIndicator.icon.name}
+            size={compactRowParts.statusIndicator.icon.size}
+            color={compactRowParts.statusIndicator.icon.color}
           />
         ) : null}
       </View>
-      <View style={styles.toggleIcon}>
+      <View style={compactRowParts.toggleIcon.style}>
         <Ionicons
-          name={renderState.toggleIcon.name}
-          size={renderState.toggleIcon.size}
-          color={renderState.toggleIcon.color}
+          name={compactRowParts.toggleIcon.icon.name}
+          size={compactRowParts.toggleIcon.icon.size}
+          color={compactRowParts.toggleIcon.icon.color}
         />
       </View>
     </View>

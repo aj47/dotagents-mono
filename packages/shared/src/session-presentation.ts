@@ -2386,6 +2386,149 @@ export interface ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityLabel: string
+    toolIcon: unknown
+    isPending: boolean
+    isSuccess: boolean
+    isError: boolean
+    name: {
+      numberOfLines: unknown
+      ellipsizeMode: unknown
+    }
+    preview: string
+    statusIndicator: {
+      spinner: unknown
+      icon: unknown
+    }
+    toggleIcon: unknown
+  } = {
+    accessibilityLabel: string
+    toolIcon: unknown
+    isPending: boolean
+    isSuccess: boolean
+    isError: boolean
+    name: {
+      numberOfLines: unknown
+      ellipsizeMode: unknown
+    }
+    preview: string
+    statusIndicator: {
+      spinner: unknown
+      icon: unknown
+    }
+    toggleIcon: unknown
+  },
+  TStyles extends {
+    line: unknown
+    leadingIcon: unknown
+    name: unknown
+    namePending: unknown
+    nameSuccess: unknown
+    nameError: unknown
+    statusIndicator: unknown
+    toggleIcon: unknown
+  } = {
+    line: unknown
+    leadingIcon: unknown
+    name: unknown
+    namePending: unknown
+    nameSuccess: unknown
+    nameError: unknown
+    statusIndicator: unknown
+    toggleIcon: unknown
+  },
+> {
+  renderState: TRenderState
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
+  TRenderState extends {
+    accessibilityLabel: string
+    toolIcon: unknown
+    isPending: boolean
+    isSuccess: boolean
+    isError: boolean
+    name: {
+      numberOfLines: unknown
+      ellipsizeMode: unknown
+    }
+    preview: string
+    statusIndicator: {
+      spinner: unknown
+      icon: unknown
+    }
+    toggleIcon: unknown
+  } = {
+    accessibilityLabel: string
+    toolIcon: unknown
+    isPending: boolean
+    isSuccess: boolean
+    isError: boolean
+    name: {
+      numberOfLines: unknown
+      ellipsizeMode: unknown
+    }
+    preview: string
+    statusIndicator: {
+      spinner: unknown
+      icon: unknown
+    }
+    toggleIcon: unknown
+  },
+  TStyles extends {
+    line: unknown
+    leadingIcon: unknown
+    name: unknown
+    namePending: unknown
+    nameSuccess: unknown
+    nameError: unknown
+    statusIndicator: unknown
+    toggleIcon: unknown
+  } = {
+    line: unknown
+    leadingIcon: unknown
+    name: unknown
+    namePending: unknown
+    nameSuccess: unknown
+    nameError: unknown
+    statusIndicator: unknown
+    toggleIcon: unknown
+  },
+> {
+  container: {
+    style: TStyles["line"]
+    accessibilityLabel: string
+  }
+  leadingIcon: {
+    style: TStyles["leadingIcon"]
+    icon: TRenderState["toolIcon"]
+  }
+  name: {
+    text: string
+    style: Array<
+      | TStyles["name"]
+      | TStyles["namePending"]
+      | TStyles["nameSuccess"]
+      | TStyles["nameError"]
+      | false
+    >
+    numberOfLines: TRenderState["name"]["numberOfLines"]
+    ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+  }
+  statusIndicator: {
+    style: TStyles["statusIndicator"]
+    spinner: TRenderState["statusIndicator"]["spinner"]
+    icon: TRenderState["statusIndicator"]["icon"]
+  }
+  toggleIcon: {
+    style: TStyles["toggleIcon"]
+    icon: TRenderState["toggleIcon"]
+  }
+}
+
 export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -15353,6 +15496,76 @@ export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts<
         styles.container,
         pressed && styles.pressed,
       ],
+    },
+  }
+}
+
+export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
+  TRenderState extends {
+    accessibilityLabel: string
+    toolIcon: unknown
+    isPending: boolean
+    isSuccess: boolean
+    isError: boolean
+    name: {
+      numberOfLines: unknown
+      ellipsizeMode: unknown
+    }
+    preview: string
+    statusIndicator: {
+      spinner: unknown
+      icon: unknown
+    }
+    toggleIcon: unknown
+  },
+  TStyles extends {
+    line: unknown
+    leadingIcon: unknown
+    name: unknown
+    namePending: unknown
+    nameSuccess: unknown
+    nameError: unknown
+    statusIndicator: unknown
+    toggleIcon: unknown
+  },
+>({
+  renderState,
+  styles,
+}: ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
+  TRenderState,
+  TStyles
+>): ChatRuntimeToolExecutionCompactRowMobilePropsParts<
+  TRenderState,
+  TStyles
+> {
+  return {
+    container: {
+      style: styles.line,
+      accessibilityLabel: renderState.accessibilityLabel,
+    },
+    leadingIcon: {
+      style: styles.leadingIcon,
+      icon: renderState.toolIcon,
+    },
+    name: {
+      text: renderState.preview,
+      style: [
+        styles.name,
+        renderState.isPending && styles.namePending,
+        renderState.isSuccess && styles.nameSuccess,
+        renderState.isError && styles.nameError,
+      ],
+      numberOfLines: renderState.name.numberOfLines,
+      ellipsizeMode: renderState.name.ellipsizeMode,
+    },
+    statusIndicator: {
+      style: styles.statusIndicator,
+      spinner: renderState.statusIndicator.spinner,
+      icon: renderState.statusIndicator.icon,
+    },
+    toggleIcon: {
+      style: styles.toggleIcon,
+      icon: renderState.toggleIcon,
     },
   }
 }
