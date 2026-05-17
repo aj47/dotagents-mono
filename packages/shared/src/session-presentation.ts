@@ -2995,16 +2995,37 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
     onHeaderPress: TOnHeaderPress | undefined
     styles: TStyles["callSection"]
   }
-  inputSection: (TInput & {
-    styles: TStyles["payloadSection"]
-  }) | null
-  resultSection: (TResult & {
-    styles: TStyles["resultSection"]
-  }) | null
-  pendingResult: ({
-    renderState: TPendingResult["renderState"]
-    styles: TStyles["pendingResult"]
-  }) | null
+  inputSection: (
+    | (TInput & {
+      shouldRender: true
+      styles: TStyles["payloadSection"]
+    })
+    | {
+      shouldRender: false
+      styles: TStyles["payloadSection"]
+    }
+  )
+  resultSection: (
+    | (TResult & {
+      shouldRender: true
+      styles: TStyles["resultSection"]
+    })
+    | {
+      shouldRender: false
+      styles: TStyles["resultSection"]
+    }
+  )
+  pendingResult: (
+    | {
+      shouldRender: true
+      renderState: TPendingResult["renderState"]
+      styles: TStyles["pendingResult"]
+    }
+    | {
+      shouldRender: false
+      styles: TStyles["pendingResult"]
+    }
+  )
 }
 
 export interface ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
@@ -20129,12 +20150,20 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
 > {
   const inputSection = input ? {
     ...input,
+    shouldRender: true as const,
     styles: styles.payloadSection,
-  } : null
+  } : {
+    shouldRender: false as const,
+    styles: styles.payloadSection,
+  }
   const resultSection = result ? {
     ...result,
+    shouldRender: true as const,
     styles: styles.resultSection,
-  } : null
+  } : {
+    shouldRender: false as const,
+    styles: styles.resultSection,
+  }
 
   return {
     callSection: {
@@ -20145,10 +20174,14 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
     },
     inputSection,
     resultSection,
-    pendingResult: !resultSection && pendingResult ? {
+    pendingResult: !resultSection.shouldRender && pendingResult ? {
+      shouldRender: true as const,
       renderState: pendingResult.renderState,
       styles: styles.pendingResult,
-    } : null,
+    } : {
+      shouldRender: false as const,
+      styles: styles.pendingResult,
+    },
   }
 }
 

@@ -8439,16 +8439,16 @@ export function ChatMessageToolExecutionCallDetail({
     <ChatMessageToolExecutionCallSection
       {...callDetailParts.callSection}
     >
-      {callDetailParts.inputSection ? (
+      {callDetailParts.inputSection.shouldRender ? (
         <ChatMessageToolExecutionPayloadSection
           {...callDetailParts.inputSection}
         />
       ) : null}
-      {callDetailParts.resultSection ? (
+      {callDetailParts.resultSection.shouldRender ? (
         <ChatMessageToolExecutionResultSection
           {...callDetailParts.resultSection}
         />
-      ) : callDetailParts.pendingResult ? (
+      ) : callDetailParts.pendingResult.shouldRender ? (
         <ChatMessageToolExecutionPendingResult
           {...callDetailParts.pendingResult}
         />

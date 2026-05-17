@@ -12795,10 +12795,15 @@ describe("session presentation semantics", () => {
       inputSection: {
         payloadRenderState: "input-payload-state",
         content: "input-content",
+        shouldRender: true,
         styles: "payload-section-styles",
       },
-      resultSection: null,
+      resultSection: {
+        shouldRender: false,
+        styles: "result-section-styles",
+      },
       pendingResult: {
+        shouldRender: true,
         renderState: "pending-result-state",
         styles: "pending-result-styles",
       },
@@ -12818,7 +12823,10 @@ describe("session presentation semantics", () => {
         resultSection: "result-section-styles",
         pendingResult: "pending-result-styles",
       },
-    }).pendingResult).toBeNull()
+    }).pendingResult).toEqual({
+      shouldRender: false,
+      styles: "pending-result-styles",
+    })
     expect(createChatRuntimeToolExecutionCallListMobilePropsParts({
       rows: [
         {
