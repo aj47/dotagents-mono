@@ -9613,21 +9613,23 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
     props: {
       style: [TStyles["chip"], TRenderState["styles"]["chip"]]
     }
-  }
-  runningIndicator: {
-    shouldRender: boolean
-    props: {
-      source: TSpinnerSource
-      style: TStyles["spinner"]
-      resizeMode: TRenderState["runningIndicator"]["resizeMode"]
-    }
-  }
-  label: {
-    props: {
-      props: {
-        style: [TStyles["text"], TRenderState["styles"]["text"]]
+    content: {
+      runningIndicator: {
+        shouldRender: boolean
+        props: {
+          source: TSpinnerSource
+          style: TStyles["spinner"]
+          resizeMode: TRenderState["runningIndicator"]["resizeMode"]
+        }
       }
-      text: string
+      label: {
+        props: {
+          props: {
+            style: [TStyles["text"], TRenderState["styles"]["text"]]
+          }
+          text: string
+        }
+      }
     }
   }
 }
@@ -27082,24 +27084,26 @@ export function createChatRuntimeHeaderConversationStatusMobilePropsParts<
           renderState.styles.chip,
         ],
       },
-    },
-    runningIndicator: {
-      shouldRender: renderState.runningIndicator.shouldRender,
-      props: {
-        source: spinnerSource,
-        style: styles.spinner,
-        resizeMode: renderState.runningIndicator.resizeMode,
-      },
-    },
-    label: {
-      props: {
-        props: {
-          style: [
-            styles.text,
-            renderState.styles.text,
-          ],
+      content: {
+        runningIndicator: {
+          shouldRender: renderState.runningIndicator.shouldRender,
+          props: {
+            source: spinnerSource,
+            style: styles.spinner,
+            resizeMode: renderState.runningIndicator.resizeMode,
+          },
         },
-        text: renderState.label,
+        label: {
+          props: {
+            props: {
+              style: [
+                styles.text,
+                renderState.styles.text,
+              ],
+            },
+            text: renderState.label,
+          },
+        },
       },
     },
   }

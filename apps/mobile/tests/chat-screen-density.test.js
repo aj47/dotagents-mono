@@ -353,11 +353,12 @@ test('shows a conversation-state chip in the mobile chat header while preserving
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderConversationStatus[\s\S]*?export function ChatRuntimeHeaderTurnDuration/)?.[0] ?? '';
   assert.match(headerConversationStatusSource, /const conversationStatusParts = createChatRuntimeHeaderConversationStatusMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+styles,\s+\}\);/);
   assert.match(headerConversationStatusSource, /if \(!conversationStatusParts\.shouldRender\) return null;/);
-  assert.match(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender \? \(/);
-  assert.doesNotMatch(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender && \(/);
+  assert.match(headerConversationStatusSource, /const containerContent = conversationStatusParts\.container\.content;/);
+  assert.match(headerConversationStatusSource, /containerContent\.runningIndicator\.shouldRender \? \(/);
+  assert.doesNotMatch(headerConversationStatusSource, /containerContent\.runningIndicator\.shouldRender && \(/);
   assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainer\s+\{\.\.\.conversationStatusParts\.container\.props\}/);
-  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusRunningIndicator\s+\{\.\.\.conversationStatusParts\.runningIndicator\.props\}/);
-  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusLabel\s+\{\.\.\.conversationStatusParts\.label\.props\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusRunningIndicator\s+\{\.\.\.containerContent\.runningIndicator\.props\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusLabel\s+\{\.\.\.containerContent\.label\.props\}/);
   assert.match(
     headerConversationStatusSource,
     /export function ChatRuntimeHeaderConversationStatusContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatRuntimeHeaderConversationStatusRunningIndicator/
@@ -376,7 +377,7 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   );
   assert.match(
     sessionPresentationSource,
-    /runningIndicator: \{\s+shouldRender: renderState\.runningIndicator\.shouldRender,\s+props: \{\s+source: spinnerSource,\s+style: styles\.spinner,\s+resizeMode: renderState\.runningIndicator\.resizeMode,/
+    /content: \{\s+runningIndicator: \{\s+shouldRender: renderState\.runningIndicator\.shouldRender,\s+props: \{\s+source: spinnerSource,\s+style: styles\.spinner,\s+resizeMode: renderState\.runningIndicator\.resizeMode,/
   );
   assert.match(
     sessionPresentationSource,

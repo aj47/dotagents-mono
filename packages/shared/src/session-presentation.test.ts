@@ -4402,24 +4402,26 @@ describe("session presentation semantics", () => {
             navigationHeaderState.conversationStatusRenderState.styles.chip,
           ],
         },
-      },
-      runningIndicator: {
-        shouldRender: navigationHeaderState.conversationStatusRenderState.runningIndicator.shouldRender,
-        props: {
-          source: "spinner-source",
-          style: headerConversationStatusStyles.spinner,
-          resizeMode: navigationHeaderState.conversationStatusRenderState.runningIndicator.resizeMode,
-        },
-      },
-      label: {
-        props: {
-          props: {
-            style: [
-              headerConversationStatusStyles.text,
-              navigationHeaderState.conversationStatusRenderState.styles.text,
-            ],
+        content: {
+          runningIndicator: {
+            shouldRender: navigationHeaderState.conversationStatusRenderState.runningIndicator.shouldRender,
+            props: {
+              source: "spinner-source",
+              style: headerConversationStatusStyles.spinner,
+              resizeMode: navigationHeaderState.conversationStatusRenderState.runningIndicator.resizeMode,
+            },
           },
-          text: navigationHeaderState.conversationStatusRenderState.label,
+          label: {
+            props: {
+              props: {
+                style: [
+                  headerConversationStatusStyles.text,
+                  navigationHeaderState.conversationStatusRenderState.styles.text,
+                ],
+              },
+              text: navigationHeaderState.conversationStatusRenderState.label,
+            },
+          },
         },
       },
     })

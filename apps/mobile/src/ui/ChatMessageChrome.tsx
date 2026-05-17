@@ -1334,10 +1334,10 @@ type ChatRuntimeHeaderConversationStatusContainerProps =
   };
 
 type ChatRuntimeHeaderConversationStatusRunningIndicatorProps =
-  ChatRuntimeHeaderConversationStatusParts['runningIndicator']['props'];
+  ChatRuntimeHeaderConversationStatusParts['container']['content']['runningIndicator']['props'];
 
 type ChatRuntimeHeaderConversationStatusLabelProps =
-  ChatRuntimeHeaderConversationStatusParts['label']['props'];
+  ChatRuntimeHeaderConversationStatusParts['container']['content']['label']['props'];
 
 type ChatRuntimeHeaderTurnDurationStyles = {
   chip: StyleProp<ViewStyle>;
@@ -7720,17 +7720,19 @@ export function ChatRuntimeHeaderConversationStatus({
 
   if (!conversationStatusParts.shouldRender) return null;
 
+  const containerContent = conversationStatusParts.container.content;
+
   return (
     <ChatRuntimeHeaderConversationStatusContainer
       {...conversationStatusParts.container.props}
     >
-      {conversationStatusParts.runningIndicator.shouldRender ? (
+      {containerContent.runningIndicator.shouldRender ? (
         <ChatRuntimeHeaderConversationStatusRunningIndicator
-          {...conversationStatusParts.runningIndicator.props}
+          {...containerContent.runningIndicator.props}
         />
       ) : null}
       <ChatRuntimeHeaderConversationStatusLabel
-        {...conversationStatusParts.label.props}
+        {...containerContent.label.props}
       />
     </ChatRuntimeHeaderConversationStatusContainer>
   );
