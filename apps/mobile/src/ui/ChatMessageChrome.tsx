@@ -4107,6 +4107,9 @@ type ChatComposerIconButtonTouchableProps =
     children: ReactNode;
   };
 
+type ChatComposerIconButtonTouchableContentProps =
+  ChatComposerIconButtonParts['touchable']['content'];
+
 type ChatComposerIconButtonIconProps =
   ChatComposerIconButtonParts['touchable']['content']['icon']['props'];
 
@@ -13796,15 +13799,11 @@ export function ChatComposerIconButton({
 
   if (!iconButtonTouchable.shouldRender) return null;
 
-  const touchableContent = iconButtonTouchable.content;
-
   return (
     <ChatComposerIconButtonTouchable
       {...iconButtonTouchable.props}
     >
-      <ChatComposerIconButtonIcon
-        {...touchableContent.icon.props}
-      />
+      <ChatComposerIconButtonTouchableContent {...iconButtonTouchable.content} />
     </ChatComposerIconButtonTouchable>
   );
 }
@@ -13817,6 +13816,16 @@ export function ChatComposerIconButtonTouchable({
     <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatComposerIconButtonTouchableContent({
+  icon,
+}: ChatComposerIconButtonTouchableContentProps) {
+  return (
+    <ChatComposerIconButtonIcon
+      {...icon.props}
+    />
   );
 }
 

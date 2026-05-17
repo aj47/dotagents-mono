@@ -2980,11 +2980,16 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(composerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
   assert.match(composerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
   assert.match(composerIconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
-  assert.match(composerIconButtonSource, /const touchableContent = iconButtonTouchable\.content;/);
-  assert.match(composerIconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
+  assert.match(composerIconButtonSource, /<ChatComposerIconButtonTouchableContent\s+\{\.\.\.iconButtonTouchable\.content\}/);
+  assert.doesNotMatch(composerIconButtonSource, /const touchableContent = iconButtonTouchable\.content;/);
+  assert.match(composerIconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.icon\.props\}/);
   assert.match(
     composerIconButtonSource,
-    /export function ChatComposerIconButtonTouchable\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerIconButtonIcon/
+    /export function ChatComposerIconButtonTouchable\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerIconButtonTouchableContent/
+  );
+  assert.match(
+    composerIconButtonSource,
+    /export function ChatComposerIconButtonTouchableContent\([\s\S]*?<ChatComposerIconButtonIcon\s+\{\.\.\.icon\.props\}[\s\S]*?export function ChatComposerIconButtonIcon/
   );
   assert.match(
     composerIconButtonSource,
