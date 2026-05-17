@@ -5120,6 +5120,11 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /\{panelChromeParts\.pausedNotice\.message\.text\}/);
   assert.match(messageQueuePanelSource, /panelChromeParts\.list\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /panelChromeParts\.list && \(/);
+  assert.match(messageQueuePanelSource, /<ScrollView\s+\{\.\.\.panelChromeParts\.list\.props\}/);
+  assert.match(messageQueuePanelSource, /item\.separator\.shouldRender \? <View \{\.\.\.item\.separator\.props\} \/> : null/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{panelChromeParts\.list\.style\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /showsVerticalScrollIndicator=\{panelChromeParts\.list\.showsVerticalScrollIndicator\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{item\.separator\.style\}/);
   assert.match(messageQueuePanelSource, /<Ionicons\s+\{\.\.\.panelChromeParts\.compactStatusIcon\.props\}/);
   assert.match(messageQueuePanelSource, /<Ionicons\s+\{\.\.\.panelChromeParts\.headerStatusIcon\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /panelChromeParts\.(compactStatusIcon|headerStatusIcon)\.(name|size|color)/);
@@ -5162,7 +5167,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /queuePanelState\.items\.map/);
   assert.doesNotMatch(messageQueuePanelSource, /item\.shouldRenderSeparator/);
   assert.match(messageQueuePanelSource, /panelListParts\.items\.map\(\(item\) =>/);
-  assert.match(messageQueuePanelSource, /item\.separator\.shouldRender \? <View style=\{item\.separator\.style\} \/> : null/);
+  assert.match(messageQueuePanelSource, /item\.separator\.shouldRender \? <View \{\.\.\.item\.separator\.props\} \/> : null/);
   assert.doesNotMatch(messageQueuePanelSource, /item\.separator && <View style=\{item\.separator\.style\} \/>/);
   assert.match(messageQueuePanelSource, /<QueuedMessageItem[\s\S]*?\{\.\.\.item\.messageProps\}[\s\S]*?colors=\{colors\}/);
   assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);

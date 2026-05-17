@@ -150,7 +150,7 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.doesNotMatch(source, /actionParts\.shouldRender &&/);
   assert.match(source, /panelListParts\.items\.map\(\(item\) =>/);
   assert.match(source, /item\.separator\.shouldRender \?/);
-  assert.match(source, /<View style=\{item\.separator\.style\} \/>/);
+  assert.match(source, /<View \{\.\.\.item\.separator\.props\} \/>/);
   assert.doesNotMatch(source, /item\.shouldRenderSeparator/);
   assert.match(source, /const messagePresentation = queuedMessageRenderState\.presentation;/);
   assert.match(source, /content: contentParts,/);
@@ -208,8 +208,11 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /activeOpacity=\{action\.activeOpacity\}/);
   assert.doesNotMatch(source, /accessibilityRole=\{action\.accessibilityRole\}/);
   assert.match(source, /style=\{panelChromeParts\.compactContainer\.style\}/);
-  assert.match(source, /style=\{panelChromeParts\.list\.style\}/);
-  assert.match(source, /showsVerticalScrollIndicator=\{panelChromeParts\.list\.showsVerticalScrollIndicator\}/);
+  assert.match(source, /<ScrollView\s+\{\.\.\.panelChromeParts\.list\.props\}/);
+  assert.match(source, /item\.separator\.shouldRender \? <View \{\.\.\.item\.separator\.props\} \/> : null/);
+  assert.doesNotMatch(source, /style=\{panelChromeParts\.list\.style\}/);
+  assert.doesNotMatch(source, /showsVerticalScrollIndicator=\{panelChromeParts\.list\.showsVerticalScrollIndicator\}/);
+  assert.doesNotMatch(source, /style=\{item\.separator\.style\}/);
   assert.doesNotMatch(source, /import \{ hexToRgba \} from '\.\/theme';/);
   assert.doesNotMatch(source, /hexToRgba\(/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);

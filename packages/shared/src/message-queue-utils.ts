@@ -1218,8 +1218,10 @@ export interface MessageQueuePanelChromeMobilePropsParts<
   list:
     | {
         shouldRender: true;
-        style: TStyles['list'];
-        showsVerticalScrollIndicator: MessageQueuePanelMobilePanelSurface['listShowsVerticalScrollIndicator'];
+        props: {
+          style: TStyles['list'];
+          showsVerticalScrollIndicator: MessageQueuePanelMobilePanelSurface['listShowsVerticalScrollIndicator'];
+        };
       }
     | {
         shouldRender: false;
@@ -1251,7 +1253,9 @@ export interface MessageQueuePanelListMobilePropsPart<
   separator:
     | {
         shouldRender: true;
-        style: TStyles['separator'];
+        props: {
+          style: TStyles['separator'];
+        };
       }
     | {
         shouldRender: false;
@@ -1858,8 +1862,10 @@ export function createMessageQueuePanelChromeMobilePropsParts<
     list: panel.shouldRenderList
       ? {
           shouldRender: true,
-          style: styles.list,
-          showsVerticalScrollIndicator: surface.listShowsVerticalScrollIndicator,
+          props: {
+            style: styles.list,
+            showsVerticalScrollIndicator: surface.listShowsVerticalScrollIndicator,
+          },
         }
       : {
           shouldRender: false,
@@ -1883,7 +1889,9 @@ export function createMessageQueuePanelListMobilePropsParts<
       separator: item.shouldRenderSeparator
         ? {
             shouldRender: true,
-            style: styles.separator,
+            props: {
+              style: styles.separator,
+            },
           }
         : {
             shouldRender: false,

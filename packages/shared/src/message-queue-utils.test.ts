@@ -933,8 +933,10 @@ describe('message-queue-utils', () => {
       },
       list: {
         shouldRender: true,
-        style: 'list',
-        showsVerticalScrollIndicator: true,
+        props: {
+          style: 'list',
+          showsVerticalScrollIndicator: true,
+        },
       },
     });
     expect(createMessageQueuePanelChromeMobilePropsParts({
@@ -994,7 +996,9 @@ describe('message-queue-utils', () => {
         key: 'list-failed-message',
         separator: {
           shouldRender: true,
-          style: 'separator',
+          props: {
+            style: 'separator',
+          },
         },
         messageProps: {
           message: listFailedMessage,
@@ -1065,15 +1069,19 @@ describe('message-queue-utils', () => {
       },
       list: {
         shouldRender: true,
-        style: 'list',
-        showsVerticalScrollIndicator: true,
+        props: {
+          style: 'list',
+          showsVerticalScrollIndicator: true,
+        },
       },
     });
     expect(panelParts.list.items[1]).toMatchObject({
       key: 'list-failed-message',
       separator: {
         shouldRender: true,
-        style: 'separator',
+        props: {
+          style: 'separator',
+        },
       },
       messageProps: {
         message: listFailedMessage,

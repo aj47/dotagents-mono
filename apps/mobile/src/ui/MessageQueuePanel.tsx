@@ -329,12 +329,11 @@ export function MessageQueuePanel({
       ) : null}
       {panelChromeParts.list.shouldRender ? (
         <ScrollView
-          style={panelChromeParts.list.style}
-          showsVerticalScrollIndicator={panelChromeParts.list.showsVerticalScrollIndicator}
+          {...panelChromeParts.list.props}
         >
           {panelListParts.items.map((item) => (
             <React.Fragment key={item.key}>
-              {item.separator.shouldRender ? <View style={item.separator.style} /> : null}
+              {item.separator.shouldRender ? <View {...item.separator.props} /> : null}
               <QueuedMessageItem
                 {...item.messageProps}
                 colors={colors}
