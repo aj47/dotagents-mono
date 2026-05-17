@@ -3143,6 +3143,16 @@ type ChatMessageSurfaceProps = {
   toneStyle?: StyleProp<ViewStyle>;
 };
 
+type ChatMessageSurfaceParts = ReturnType<typeof createChatRuntimeMessageSurfaceMobilePropsParts<
+  ChatMessageSurfaceProps['style'],
+  ChatMessageSurfaceProps['toneStyle']
+>>;
+
+type ChatMessageSurfaceContainerProps =
+  ChatMessageSurfaceParts['container']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageThreadItemProps = {
   children: ReactNode;
   leadingActivity?: ReactNode;
@@ -7791,7 +7801,20 @@ export function ChatMessageSurface({
   });
 
   return (
-    <View style={surfaceParts.container.style}>
+    <ChatMessageSurfaceContainer
+      {...surfaceParts.container.props}
+    >
+      {children}
+    </ChatMessageSurfaceContainer>
+  );
+}
+
+export function ChatMessageSurfaceContainer({
+  style,
+  children,
+}: ChatMessageSurfaceContainerProps) {
+  return (
+    <View style={style}>
       {children}
     </View>
   );

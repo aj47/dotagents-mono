@@ -5320,7 +5320,13 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageThreadItemMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageThreadSurfaceMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const surfaceParts = createChatRuntimeMessageSurfaceMobilePropsParts\(\{\s+style,\s+toneStyle,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /<View style=\{surfaceParts\.container\.style\}>/);
+  assert.match(chatMessageChromeSource, /<ChatMessageSurfaceContainer\s+\{\.\.\.surfaceParts\.container\.props\}/);
+  assert.match(
+    chatMessageChromeSource,
+    /export function ChatMessageSurfaceContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageThreadItem/
+  );
+  assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: \[style, toneStyle\],/);
+  assert.doesNotMatch(chatMessageChromeSource, /surfaceParts\.container\.style/);
   assert.match(chatMessageChromeSource, /const threadItemParts = createChatRuntimeMessageThreadItemMobilePropsParts\(\{\s+leadingActivity,\s+trailingActivity,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<View>[\s\S]*?\{threadItemParts\.leadingActivity\}[\s\S]*?\{children\}[\s\S]*?\{threadItemParts\.trailingActivity\}[\s\S]*?<\/View>/);
   assert.match(chatMessageChromeSource, /const threadSurfaceParts = createChatRuntimeMessageThreadSurfaceMobilePropsParts\(\{\s+leadingActivity,\s+trailingActivity,\s+surfaceStyle,\s+surfaceToneStyle,\s+\}\);/);
@@ -6320,7 +6326,7 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.match(chatMessageChromeSource, /<ChatMessageSurface\s+\{\.\.\.threadSurfaceParts\.surface\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageThreadSurface\s+\{\.\.\.surfaceParts\.surface\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupThreadSurface\s+\{\.\.\.runtimeThreadParts\.bodySurface\.surface\}/);
-  assert.match(chatMessageChromeSource, /<View style=\{surfaceParts\.container\.style\}>/);
+  assert.match(chatMessageChromeSource, /<ChatMessageSurfaceContainer\s+\{\.\.\.surfaceParts\.container\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageSurface\s+style=\{surfaceStyle\}\s+toneStyle=\{surfaceToneStyle\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<View style=\{\[style, toneStyle\]\}>/);
   assert.doesNotMatch(screenSource, /styles\.msg,[\s\S]*?messageToneStyle/);

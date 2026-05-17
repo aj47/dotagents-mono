@@ -2468,7 +2468,9 @@ export interface ChatRuntimeMessageSurfaceMobilePropsParts<
   TToneStyle = unknown,
 > {
   container: {
-    style: Array<TStyle | TToneStyle | undefined>
+    props: {
+      style: Array<TStyle | TToneStyle | undefined>
+    }
   }
 }
 
@@ -19801,7 +19803,9 @@ export function createChatRuntimeMessageSurfaceMobilePropsParts<
 >): ChatRuntimeMessageSurfaceMobilePropsParts<TStyle, TToneStyle> {
   return {
     container: {
-      style: [style, toneStyle],
+      props: {
+        style: [style, toneStyle],
+      },
     },
   }
 }

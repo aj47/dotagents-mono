@@ -11677,10 +11677,12 @@ describe("session presentation semantics", () => {
       toneStyle: "message-surface-tone-style",
     })).toEqual({
       container: {
-        style: [
-          "message-surface-style",
-          "message-surface-tone-style",
-        ],
+        props: {
+          style: [
+            "message-surface-style",
+            "message-surface-tone-style",
+          ],
+        },
       },
     })
     expect(createChatRuntimeMessageThreadItemMobilePropsParts({
