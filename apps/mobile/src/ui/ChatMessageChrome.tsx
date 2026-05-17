@@ -2198,6 +2198,9 @@ type ChatMessageDelegationConversationPreviewBlockProps = {
   conversationPreview: ChatMessageDelegationCardParts['card']['content']['conversationPreview'];
 };
 
+type ChatMessageDelegationConversationPreviewBodyProps =
+  ChatMessageDelegationConversationPreviewProps['container']['content'];
+
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationConversationPreviewProps['container']['content']['rows'][number]['props'];
 
@@ -2217,6 +2220,9 @@ type ChatMessageDelegationToolPreviewProps =
 type ChatMessageDelegationToolPreviewBlockProps = {
   toolPreview: ChatMessageDelegationCardParts['card']['content']['toolPreview'];
 };
+
+type ChatMessageDelegationToolPreviewBodyProps =
+  ChatMessageDelegationToolPreviewProps['container']['content'];
 
 type ChatMessageDelegationToolPreviewRowProps =
   ChatMessageDelegationToolPreviewProps['container']['content']['rows'][number]['props'];
@@ -9570,20 +9576,31 @@ export function ChatMessageDelegationConversationPreviewBlock({
 export function ChatMessageDelegationConversationPreview({
   container,
 }: ChatMessageDelegationConversationPreviewProps) {
-  const previewContent = container.content;
-
   return (
     <View {...container.props}>
-      {previewContent.rows.map((row) => (
+      <ChatMessageDelegationConversationPreviewBody
+        {...container.content}
+      />
+    </View>
+  );
+}
+
+export function ChatMessageDelegationConversationPreviewBody({
+  rows,
+  moreAction,
+}: ChatMessageDelegationConversationPreviewBodyProps) {
+  return (
+    <>
+      {rows.map((row) => (
         <ChatMessageDelegationConversationPreviewRow
           key={row.key}
           {...row.props}
         />
       ))}
       <ChatMessageDelegationMorePreviewActionBlock
-        moreAction={previewContent.moreAction}
+        moreAction={moreAction}
       />
-    </View>
+    </>
   );
 }
 
@@ -9831,23 +9848,35 @@ export function ChatMessageDelegationToolPreviewBlock({
 export function ChatMessageDelegationToolPreview({
   container,
 }: ChatMessageDelegationToolPreviewProps) {
-  const previewContent = container.content;
-
   return (
     <View {...container.props}>
-      <ChatMessageDelegationToolPreviewLabel
-        {...previewContent.label.props}
+      <ChatMessageDelegationToolPreviewBody
+        {...container.content}
       />
-      {previewContent.rows.map((row) => (
+    </View>
+  );
+}
+
+export function ChatMessageDelegationToolPreviewBody({
+  label,
+  rows,
+  moreAction,
+}: ChatMessageDelegationToolPreviewBodyProps) {
+  return (
+    <>
+      <ChatMessageDelegationToolPreviewLabel
+        {...label.props}
+      />
+      {rows.map((row) => (
         <ChatMessageDelegationToolPreviewRow
           key={row.key}
           {...row.props}
         />
       ))}
       <ChatMessageDelegationMorePreviewActionBlock
-        moreAction={previewContent.moreAction}
+        moreAction={moreAction}
       />
-    </View>
+    </>
   );
 }
 

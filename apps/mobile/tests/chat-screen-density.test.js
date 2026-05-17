@@ -1330,6 +1330,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /key: `\$\{row\.timestamp\}-\$\{row\.role\}-\$\{rowIndex\}`,[\s\S]*?props: \{[\s\S]*?line: \{[\s\S]*?props: \{[\s\S]*?style: styles\.conversationPreviewLine,/);
   const delegationConversationPreviewBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewBlock[\s\S]*?export function ChatMessageDelegationConversationPreview\(/)?.[0] ?? '';
+  const delegationConversationPreviewBodySource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewBody[\s\S]*?export function ChatMessageDelegationToolPreviewRow/)?.[0] ?? '';
+  const delegationConversationPreviewShellSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreview\([\s\S]*?export function ChatMessageDelegationConversationPreviewBody/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewBlock/);
   assert.match(delegationContentSource, /<ChatMessageDelegationConversationPreviewBlock\s+conversationPreview=\{conversationPreview\}/);
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationConversationPreviewBlock\s+conversationPreview=\{cardContent\.conversationPreview\}/);
@@ -1339,10 +1343,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreview\(/);
   assert.match(delegationConversationPreviewBlockSource, /<ChatMessageDelegationConversationPreview\s+\{\.\.\.conversationPreview\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationConversationPreview\s+\{\.\.\.cardContent\.conversationPreview\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreview\(\{[\s\S]*?container,[\s\S]*?\}: ChatMessageDelegationConversationPreviewProps\) \{[\s\S]*?const previewContent = container\.content;[\s\S]*?export function ChatMessageDelegationToolPreviewRow/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreview\([\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationToolPreviewRow/);
+  assert.match(delegationConversationPreviewShellSource, /export function ChatMessageDelegationConversationPreview\(\{[\s\S]*?container,[\s\S]*?\}: ChatMessageDelegationConversationPreviewProps\) \{[\s\S]*?<ChatMessageDelegationConversationPreviewBody\s+\{\.\.\.container\.content\}/);
+  assert.match(delegationConversationPreviewShellSource, /<View\s+\{\.\.\.container\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreview\([\s\S]*?<View\s+style=\{container\.style\}[\s\S]*?export function ChatMessageDelegationToolPreviewRow/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreview\([\s\S]*?previewContent\.rows\.map\(\(row\) => \([\s\S]*?<ChatMessageDelegationConversationPreviewRow[\s\S]*?export function ChatMessageDelegationToolPreviewRow/);
+  assert.match(delegationConversationPreviewBodySource, /rows\.map\(\(row\) => \([\s\S]*?<ChatMessageDelegationConversationPreviewRow/);
+  assert.doesNotMatch(delegationConversationPreviewShellSource, /rows\.map\(\(row\) =>/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.rows\.map\(\(row\) =>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreviewRow/);
   assert.match(chatMessageChromeSource, /<ChatMessageDelegationConversationPreviewRow\s+key=\{row\.key\}\s+\{\.\.\.row\.props\}/);
@@ -1417,7 +1422,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
     chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreview\([\s\S]*?export function ChatMessageDelegationToolPreviewRow/)?.[0] ?? '';
   const delegationMorePreviewActionBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationMorePreviewActionBlock[\s\S]*?export function ChatMessageDelegationMorePreviewAction/)?.[0] ?? '';
-  assert.match(delegationConversationPreviewSource, /<ChatMessageDelegationMorePreviewActionBlock\s+moreAction=\{previewContent\.moreAction\}/);
+  assert.match(delegationConversationPreviewBodySource, /<ChatMessageDelegationMorePreviewActionBlock\s+moreAction=\{moreAction\}/);
+  assert.doesNotMatch(delegationConversationPreviewSource, /previewContent\./);
   assert.doesNotMatch(delegationConversationPreviewSource, /previewContent\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction \? \(/);
@@ -1466,6 +1472,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /label: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?numberOfLines: surface\.toolPreviewLabelNumberOfLines,/);
   const delegationToolPreviewBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewBlock[\s\S]*?export function ChatMessageDelegationToolPreview\(/)?.[0] ?? '';
+  const delegationToolPreviewBodySource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewBody[\s\S]*?export function ChatMessageDelegationContent/)?.[0] ?? '';
+  const delegationToolPreviewShellSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreview\([\s\S]*?export function ChatMessageDelegationToolPreviewBody/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewBlock/);
   assert.match(delegationContentSource, /<ChatMessageDelegationToolPreviewBlock\s+toolPreview=\{toolPreview\}/);
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationToolPreviewBlock\s+toolPreview=\{cardContent\.toolPreview\}/);
@@ -1473,7 +1483,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview \? \(/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<ChatMessageDelegationToolPreviewLabel\s+\{\.\.\.previewContent\.label\.props\}/);
+  assert.match(delegationToolPreviewShellSource, /<ChatMessageDelegationToolPreviewBody\s+\{\.\.\.container\.content\}/);
+  assert.match(delegationToolPreviewBodySource, /<ChatMessageDelegationToolPreviewLabel\s+\{\.\.\.label\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationToolPreviewLabel\s+\{\.\.\.cardContent\.toolPreview\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationToolPreview/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageDelegationToolPreview/);
@@ -1499,11 +1510,12 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\(/);
   assert.match(delegationToolPreviewBlockSource, /<ChatMessageDelegationToolPreview\s+\{\.\.\.toolPreview\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationToolPreview\s+\{\.\.\.cardContent\.toolPreview\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\(\{[\s\S]*?container,[\s\S]*?\}: ChatMessageDelegationToolPreviewProps\) \{[\s\S]*?const previewContent = container\.content;[\s\S]*?export function ChatMessageDelegationCard/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.match(delegationToolPreviewShellSource, /export function ChatMessageDelegationToolPreview\(\{[\s\S]*?container,[\s\S]*?\}: ChatMessageDelegationToolPreviewProps\) \{[\s\S]*?<ChatMessageDelegationToolPreviewBody\s+\{\.\.\.container\.content\}/);
+  assert.match(delegationToolPreviewShellSource, /<View\s+\{\.\.\.container\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<View\s+style=\{container\.style\}[\s\S]*?export function ChatMessageDelegationCard/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?previewContent\.rows\.map\(\(row\) => \([\s\S]*?<ChatMessageDelegationToolPreviewRow[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.match(delegationToolPreviewBodySource, /rows\.map\(\(row\) => \([\s\S]*?<ChatMessageDelegationToolPreviewRow/);
+  assert.doesNotMatch(delegationToolPreviewShellSource, /rows\.map\(\(row\) =>/);
   assert.match(chatMessageChromeSource, /<ChatMessageDelegationToolPreviewRow\s+key=\{row\.key\}\s+\{\.\.\.row\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.rows\.map\(\(row\) =>/);
   const delegationToolPreviewRowSource =
@@ -1555,7 +1567,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /shouldRenderToolPreview && toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \{[\s\S]*?shouldRender: true,[\s\S]*?props: \{[\s\S]*?button: \{[\s\S]*?props: \{/);
   const delegationToolPreviewSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreview\([\s\S]*?export function ChatMessageDelegationCard/)?.[0] ?? '';
-  assert.match(delegationToolPreviewSource, /<ChatMessageDelegationMorePreviewActionBlock\s+moreAction=\{previewContent\.moreAction\}/);
+  assert.match(delegationToolPreviewBodySource, /<ChatMessageDelegationMorePreviewActionBlock\s+moreAction=\{moreAction\}/);
+  assert.doesNotMatch(delegationToolPreviewSource, /previewContent\./);
   assert.doesNotMatch(delegationToolPreviewSource, /previewContent\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.moreAction \? \(/);
