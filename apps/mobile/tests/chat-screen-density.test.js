@@ -2485,21 +2485,42 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     chatMessageChromeSource.match(/export function ChatComposerHandsFreeControls[\s\S]*?export function ChatComposerIconButton/)?.[0] ?? '';
   assert.match(handsFreeControlsSource, /const handsFreeControlsParts = createChatComposerHandsFreeControlsMobilePropsParts\(\{\s+isVisible,\s+status,\s+controlState,\s+onWake,\s+onSleep,\s+onResume,\s+onPause,\s+controlPressedOpacity,\s+styles,\s+\}\);/);
   assert.match(handsFreeControlsSource, /if \(!handsFreeControlsParts\.shouldRender\) return null;/);
-  assert.match(handsFreeControlsSource, /<View style=\{handsFreeControlsParts\.statusRow\.style\}>/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeStatusRow\s+\{\.\.\.handsFreeControlsParts\.statusRow\.props\}/);
   assert.match(handsFreeControlsSource, /\{handsFreeControlsParts\.statusRow\.status\}/);
-  assert.match(handsFreeControlsSource, /<View style=\{handsFreeControlsParts\.controlsRow\.style\}>/);
-  assert.match(handsFreeControlsSource, /style=\{handsFreeControlsParts\.primaryControl\.touchable\.style\}/);
-  assert.match(handsFreeControlsSource, /onPress=\{handsFreeControlsParts\.primaryControl\.touchable\.onPress\}/);
-  assert.match(handsFreeControlsSource, /activeOpacity=\{handsFreeControlsParts\.primaryControl\.touchable\.activeOpacity\}/);
-  assert.match(handsFreeControlsSource, /accessibilityRole=\{handsFreeControlsParts\.primaryControl\.touchable\.accessibilityRole\}/);
-  assert.match(handsFreeControlsSource, /accessibilityLabel=\{handsFreeControlsParts\.primaryControl\.touchable\.accessibilityLabel\}/);
-  assert.match(handsFreeControlsSource, /style=\{handsFreeControlsParts\.secondaryControl\.touchable\.style\}/);
-  assert.match(handsFreeControlsSource, /onPress=\{handsFreeControlsParts\.secondaryControl\.touchable\.onPress\}/);
-  assert.match(handsFreeControlsSource, /activeOpacity=\{handsFreeControlsParts\.secondaryControl\.touchable\.activeOpacity\}/);
-  assert.match(handsFreeControlsSource, /accessibilityRole=\{handsFreeControlsParts\.secondaryControl\.touchable\.accessibilityRole\}/);
-  assert.match(handsFreeControlsSource, /accessibilityLabel=\{handsFreeControlsParts\.secondaryControl\.touchable\.accessibilityLabel\}/);
-  assert.match(handsFreeControlsSource, /\{handsFreeControlsParts\.primaryControl\.label\.text\}/);
-  assert.match(handsFreeControlsSource, /\{handsFreeControlsParts\.secondaryControl\.label\.text\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlsRow\s+\{\.\.\.handsFreeControlsParts\.controlsRow\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.handsFreeControlsParts\.primaryControl\.touchable\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.handsFreeControlsParts\.primaryControl\.label\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.handsFreeControlsParts\.secondaryControl\.touchable\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.handsFreeControlsParts\.secondaryControl\.label\.props\}/);
+  assert.match(
+    handsFreeControlsSource,
+    /export function ChatComposerHandsFreeStatusRow\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerHandsFreeControlsRow/
+  );
+  assert.match(
+    handsFreeControlsSource,
+    /export function ChatComposerHandsFreeControlsRow\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerHandsFreeControlButton/
+  );
+  assert.match(
+    handsFreeControlsSource,
+    /export function ChatComposerHandsFreeControlButton\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?export function ChatComposerHandsFreeControlLabel/
+  );
+  assert.match(
+    handsFreeControlsSource,
+    /export function ChatComposerHandsFreeControlLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerIconButton/
+  );
+  assert.match(sessionPresentationSource, /statusRow: \{\s+props: \{\s+style: styles\.statusRow,/);
+  assert.match(sessionPresentationSource, /controlsRow: \{\s+props: \{\s+style: styles\.controlsRow,/);
+  assert.match(sessionPresentationSource, /primaryControl: \{\s+touchable: \{\s+props: \{\s+style: styles\.controlButton,\s+onPress: primaryOnPress,/);
+  assert.match(sessionPresentationSource, /secondaryControl: \{\s+touchable: \{\s+props: \{\s+style: styles\.controlButton,\s+onPress: secondaryOnPress,/);
+  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.controlButtonText,\s+text: controlState\.(primary|secondary)\.label,/);
+  assert.doesNotMatch(
+    handsFreeControlsSource,
+    /handsFreeControlsParts\.(statusRow|controlsRow)\.style/
+  );
+  assert.doesNotMatch(
+    handsFreeControlsSource,
+    /handsFreeControlsParts\.(primaryControl|secondaryControl)\.(touchable|label)\.(style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|text)/
+  );
   assert.doesNotMatch(handsFreeControlsSource, /const primaryOnPress = controlState\.primary\.action === 'wake'/);
   assert.doesNotMatch(handsFreeControlsSource, /const secondaryOnPress = controlState\.secondary\.action === 'resume'/);
   assert.doesNotMatch(handsFreeControlsSource, /onPress=\{primaryOnPress\}/);

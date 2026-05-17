@@ -9741,36 +9741,48 @@ describe("session presentation semantics", () => {
     expect(handsFreeControlsParts).toEqual({
       shouldRender: true,
       statusRow: {
-        style: "hands-free-status-row",
+        props: {
+          style: "hands-free-status-row",
+        },
         status: "hands-free-status",
       },
       controlsRow: {
-        style: "hands-free-controls-row",
+        props: {
+          style: "hands-free-controls-row",
+        },
       },
       primaryControl: {
         touchable: {
-          style: "hands-free-control-button",
-          onPress: "wake-handler",
-          activeOpacity: 0.66,
-          accessibilityRole: "button",
-          accessibilityLabel: "Wake agent",
+          props: {
+            style: "hands-free-control-button",
+            onPress: "wake-handler",
+            activeOpacity: 0.66,
+            accessibilityRole: "button",
+            accessibilityLabel: "Wake agent",
+          },
         },
         label: {
-          style: "hands-free-control-button-text",
-          text: "Wake",
+          props: {
+            style: "hands-free-control-button-text",
+            text: "Wake",
+          },
         },
       },
       secondaryControl: {
         touchable: {
-          style: "hands-free-control-button",
-          onPress: "resume-handler",
-          activeOpacity: 0.66,
-          accessibilityRole: "button",
-          accessibilityLabel: "Resume handsfree",
+          props: {
+            style: "hands-free-control-button",
+            onPress: "resume-handler",
+            activeOpacity: 0.66,
+            accessibilityRole: "button",
+            accessibilityLabel: "Resume handsfree",
+          },
         },
         label: {
-          style: "hands-free-control-button-text",
-          text: "Resume",
+          props: {
+            style: "hands-free-control-button-text",
+            text: "Resume",
+          },
         },
       },
     })
@@ -9799,9 +9811,9 @@ describe("session presentation semantics", () => {
       styles: handsFreeControlStyles,
     })
     expect(sleepingHandsFreeControlsParts.shouldRender).toBe(false)
-    expect(sleepingHandsFreeControlsParts.primaryControl.touchable.onPress)
+    expect(sleepingHandsFreeControlsParts.primaryControl.touchable.props.onPress)
       .toBe("sleep-handler")
-    expect(sleepingHandsFreeControlsParts.secondaryControl.touchable.onPress)
+    expect(sleepingHandsFreeControlsParts.secondaryControl.touchable.props.onPress)
       .toBe("pause-handler")
     expect(createChatComposerVoiceOverlayMobilePropsParts({
       isVisible: true,

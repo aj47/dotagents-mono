@@ -4484,36 +4484,48 @@ export interface ChatComposerHandsFreeControlsMobilePropsParts<
 > {
   shouldRender: boolean
   statusRow: {
-    style: TStyles["statusRow"]
+    props: {
+      style: TStyles["statusRow"]
+    }
     status: TStatus
   }
   controlsRow: {
-    style: TStyles["controlsRow"]
+    props: {
+      style: TStyles["controlsRow"]
+    }
   }
   primaryControl: {
     touchable: {
-      style: TStyles["controlButton"]
-      onPress: TOnWake | TOnSleep
-      activeOpacity: TControlPressedOpacity
-      accessibilityRole: TControlState["primary"]["accessibilityRole"]
-      accessibilityLabel: string
+      props: {
+        style: TStyles["controlButton"]
+        onPress: TOnWake | TOnSleep
+        activeOpacity: TControlPressedOpacity
+        accessibilityRole: TControlState["primary"]["accessibilityRole"]
+        accessibilityLabel: string
+      }
     }
     label: {
-      style: TStyles["controlButtonText"]
-      text: string
+      props: {
+        style: TStyles["controlButtonText"]
+        text: string
+      }
     }
   }
   secondaryControl: {
     touchable: {
-      style: TStyles["controlButton"]
-      onPress: TOnResume | TOnPause
-      activeOpacity: TControlPressedOpacity
-      accessibilityRole: TControlState["secondary"]["accessibilityRole"]
-      accessibilityLabel: string
+      props: {
+        style: TStyles["controlButton"]
+        onPress: TOnResume | TOnPause
+        activeOpacity: TControlPressedOpacity
+        accessibilityRole: TControlState["secondary"]["accessibilityRole"]
+        accessibilityLabel: string
+      }
     }
     label: {
-      style: TStyles["controlButtonText"]
-      text: string
+      props: {
+        style: TStyles["controlButtonText"]
+        text: string
+      }
     }
   }
 }
@@ -21373,36 +21385,48 @@ export function createChatComposerHandsFreeControlsMobilePropsParts<
   return {
     shouldRender: isVisible,
     statusRow: {
-      style: styles.statusRow,
+      props: {
+        style: styles.statusRow,
+      },
       status,
     },
     controlsRow: {
-      style: styles.controlsRow,
+      props: {
+        style: styles.controlsRow,
+      },
     },
     primaryControl: {
       touchable: {
-        style: styles.controlButton,
-        onPress: primaryOnPress,
-        activeOpacity: controlPressedOpacity,
-        accessibilityRole: controlState.primary.accessibilityRole,
-        accessibilityLabel: controlState.primary.accessibilityLabel,
+        props: {
+          style: styles.controlButton,
+          onPress: primaryOnPress,
+          activeOpacity: controlPressedOpacity,
+          accessibilityRole: controlState.primary.accessibilityRole,
+          accessibilityLabel: controlState.primary.accessibilityLabel,
+        },
       },
       label: {
-        style: styles.controlButtonText,
-        text: controlState.primary.label,
+        props: {
+          style: styles.controlButtonText,
+          text: controlState.primary.label,
+        },
       },
     },
     secondaryControl: {
       touchable: {
-        style: styles.controlButton,
-        onPress: secondaryOnPress,
-        activeOpacity: controlPressedOpacity,
-        accessibilityRole: controlState.secondary.accessibilityRole,
-        accessibilityLabel: controlState.secondary.accessibilityLabel,
+        props: {
+          style: styles.controlButton,
+          onPress: secondaryOnPress,
+          activeOpacity: controlPressedOpacity,
+          accessibilityRole: controlState.secondary.accessibilityRole,
+          accessibilityLabel: controlState.secondary.accessibilityLabel,
+        },
       },
       label: {
-        style: styles.controlButtonText,
-        text: controlState.secondary.label,
+        props: {
+          style: styles.controlButtonText,
+          text: controlState.secondary.label,
+        },
       },
     },
   }

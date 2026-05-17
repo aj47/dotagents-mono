@@ -2885,6 +2885,35 @@ type ChatComposerHandsFreeControlsProps = {
   styles: ChatComposerHandsFreeControlsStyles;
 };
 
+type ChatComposerHandsFreeControlsParts = ReturnType<typeof createChatComposerHandsFreeControlsMobilePropsParts<
+  ChatComposerHandsFreeControlsProps['status'],
+  ChatComposerHandsFreeControlsProps['controlState'],
+  ChatComposerHandsFreeControlsProps['onWake'],
+  ChatComposerHandsFreeControlsProps['onSleep'],
+  ChatComposerHandsFreeControlsProps['onResume'],
+  ChatComposerHandsFreeControlsProps['onPause'],
+  ChatComposerHandsFreeControlsProps['controlPressedOpacity'],
+  ChatComposerHandsFreeControlsProps['styles']
+>>;
+
+type ChatComposerHandsFreeStatusRowProps =
+  ChatComposerHandsFreeControlsParts['statusRow']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerHandsFreeControlsRowProps =
+  ChatComposerHandsFreeControlsParts['controlsRow']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerHandsFreeControlButtonProps =
+  ChatComposerHandsFreeControlsParts['primaryControl']['touchable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerHandsFreeControlLabelProps =
+  ChatComposerHandsFreeControlsParts['primaryControl']['label']['props'];
+
 type ChatComposerHandsFreeRuntimeStatusProps = ComponentProps<typeof HandsFreeStatusChip>;
 
 type ChatComposerRuntimeHandsFreeControlsProps =
@@ -10729,34 +10758,84 @@ export function ChatComposerHandsFreeControls({
 
   return (
     <>
-      <View style={handsFreeControlsParts.statusRow.style}>
+      <ChatComposerHandsFreeStatusRow
+        {...handsFreeControlsParts.statusRow.props}
+      >
         {handsFreeControlsParts.statusRow.status}
-      </View>
-      <View style={handsFreeControlsParts.controlsRow.style}>
-        <TouchableOpacity
-          style={handsFreeControlsParts.primaryControl.touchable.style}
-          onPress={handsFreeControlsParts.primaryControl.touchable.onPress}
-          activeOpacity={handsFreeControlsParts.primaryControl.touchable.activeOpacity}
-          accessibilityRole={handsFreeControlsParts.primaryControl.touchable.accessibilityRole}
-          accessibilityLabel={handsFreeControlsParts.primaryControl.touchable.accessibilityLabel}
+      </ChatComposerHandsFreeStatusRow>
+      <ChatComposerHandsFreeControlsRow
+        {...handsFreeControlsParts.controlsRow.props}
+      >
+        <ChatComposerHandsFreeControlButton
+          {...handsFreeControlsParts.primaryControl.touchable.props}
         >
-          <Text style={handsFreeControlsParts.primaryControl.label.style}>
-            {handsFreeControlsParts.primaryControl.label.text}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={handsFreeControlsParts.secondaryControl.touchable.style}
-          onPress={handsFreeControlsParts.secondaryControl.touchable.onPress}
-          activeOpacity={handsFreeControlsParts.secondaryControl.touchable.activeOpacity}
-          accessibilityRole={handsFreeControlsParts.secondaryControl.touchable.accessibilityRole}
-          accessibilityLabel={handsFreeControlsParts.secondaryControl.touchable.accessibilityLabel}
+          <ChatComposerHandsFreeControlLabel
+            {...handsFreeControlsParts.primaryControl.label.props}
+          />
+        </ChatComposerHandsFreeControlButton>
+        <ChatComposerHandsFreeControlButton
+          {...handsFreeControlsParts.secondaryControl.touchable.props}
         >
-          <Text style={handsFreeControlsParts.secondaryControl.label.style}>
-            {handsFreeControlsParts.secondaryControl.label.text}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <ChatComposerHandsFreeControlLabel
+            {...handsFreeControlsParts.secondaryControl.label.props}
+          />
+        </ChatComposerHandsFreeControlButton>
+      </ChatComposerHandsFreeControlsRow>
     </>
+  );
+}
+
+export function ChatComposerHandsFreeStatusRow({
+  style,
+  children,
+}: ChatComposerHandsFreeStatusRowProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatComposerHandsFreeControlsRow({
+  style,
+  children,
+}: ChatComposerHandsFreeControlsRowProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatComposerHandsFreeControlButton({
+  style,
+  onPress,
+  activeOpacity,
+  accessibilityRole,
+  accessibilityLabel,
+  children,
+}: ChatComposerHandsFreeControlButtonProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+}
+
+export function ChatComposerHandsFreeControlLabel({
+  style,
+  text,
+}: ChatComposerHandsFreeControlLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
