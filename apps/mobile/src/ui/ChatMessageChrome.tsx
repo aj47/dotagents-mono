@@ -1916,6 +1916,14 @@ type ChatMessageRetryStatusCardProps =
 type ChatMessageRetryStatusContent =
   ChatMessageRetryStatusParts['card']['content'];
 
+type ChatMessageRetryStatusHeaderProps = {
+  header: ChatMessageRetryStatusContent['header'];
+};
+
+type ChatMessageRetryStatusMetaProps = {
+  meta: ChatMessageRetryStatusContent['meta'];
+};
+
 type ChatMessageRetryStatusViewProps =
   (ChatMessageRetryStatusContent['header']['props'] | ChatMessageRetryStatusContent['meta']['props']) & {
     children: ReactNode;
@@ -8861,40 +8869,62 @@ export function ChatMessageRetryStatus({
   if (!retryStatusCard.shouldRender) return null;
 
   const retryStatusContent = retryStatusCard.content;
-  const headerContent = retryStatusContent.header.content;
-  const metaContent = retryStatusContent.meta.content;
 
   return (
     <ChatMessageRetryStatusCard
       {...retryStatusCard.props}
     >
-      <ChatMessageRetryStatusView
-        {...retryStatusContent.header.props}
-      >
-        <ChatMessageRetryStatusIcon
-          {...headerContent.icon.props}
-        />
-        <ChatMessageRetryStatusTitle
-          {...headerContent.title.props}
-        />
-        <ChatMessageRetryStatusSpinner
-          {...headerContent.spinner.props}
-        />
-      </ChatMessageRetryStatusView>
-      <ChatMessageRetryStatusView
-        {...retryStatusContent.meta.props}
-      >
-        <ChatMessageRetryStatusText
-          {...metaContent.attempt.props}
-        />
-        <ChatMessageRetryStatusText
-          {...metaContent.countdown.props}
-        />
-      </ChatMessageRetryStatusView>
+      <ChatMessageRetryStatusHeader
+        header={retryStatusContent.header}
+      />
+      <ChatMessageRetryStatusMeta
+        meta={retryStatusContent.meta}
+      />
       <ChatMessageRetryStatusText
         {...retryStatusContent.description.props}
       />
     </ChatMessageRetryStatusCard>
+  );
+}
+
+export function ChatMessageRetryStatusHeader({
+  header,
+}: ChatMessageRetryStatusHeaderProps) {
+  const headerContent = header.content;
+
+  return (
+    <ChatMessageRetryStatusView
+      {...header.props}
+    >
+      <ChatMessageRetryStatusIcon
+        {...headerContent.icon.props}
+      />
+      <ChatMessageRetryStatusTitle
+        {...headerContent.title.props}
+      />
+      <ChatMessageRetryStatusSpinner
+        {...headerContent.spinner.props}
+      />
+    </ChatMessageRetryStatusView>
+  );
+}
+
+export function ChatMessageRetryStatusMeta({
+  meta,
+}: ChatMessageRetryStatusMetaProps) {
+  const metaContent = meta.content;
+
+  return (
+    <ChatMessageRetryStatusView
+      {...meta.props}
+    >
+      <ChatMessageRetryStatusText
+        {...metaContent.attempt.props}
+      />
+      <ChatMessageRetryStatusText
+        {...metaContent.countdown.props}
+      />
+    </ChatMessageRetryStatusView>
   );
 }
 
