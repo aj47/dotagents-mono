@@ -4803,27 +4803,33 @@ export interface ChatComposerMicButtonMobilePropsParts<
   TStyles extends ChatComposerMicButtonMobileStylesLike = ChatComposerMicButtonMobileStylesLike,
 > {
   pressable: {
-    style: Array<
-      | TStyles["button"]
-      | TStyles["activeButton"]
-      | TWebPressedStyle
-      | false
-      | undefined
-    >
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string | undefined
-    accessibilityState: TRenderState["accessibilityState"]
-    ariaBusy: TRenderState["ariaBusy"]
-    onPressIn: TOnPressIn | undefined
-    onPressOut: TOnPressOut | undefined
-    onPress: TOnPress | undefined
+    props: {
+      style: Array<
+        | TStyles["button"]
+        | TStyles["activeButton"]
+        | TWebPressedStyle
+        | false
+        | undefined
+      >
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+      accessibilityState: TRenderState["accessibilityState"]
+      "aria-busy": TRenderState["ariaBusy"]
+      onPressIn: TOnPressIn | undefined
+      onPressOut: TOnPressOut | undefined
+      onPress: TOnPress | undefined
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   label: {
-    style: Array<TStyles["label"] | TStyles["activeLabel"] | false | undefined>
-    selectable: TRenderState["labelSelectable"]
-    text: string
+    props: {
+      style: Array<TStyles["label"] | TStyles["activeLabel"] | false | undefined>
+      selectable: TRenderState["labelSelectable"]
+      text: string
+    }
   }
 }
 
@@ -21611,25 +21617,31 @@ export function createChatComposerMicButtonMobilePropsParts<
 > {
   return {
     pressable: {
-      style: [
-        styles.button,
-        renderState.isActive && styles.activeButton,
-        webPressedStyle,
-      ],
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint ?? undefined,
-      accessibilityState: renderState.accessibilityState,
-      ariaBusy: renderState.ariaBusy,
-      onPressIn,
-      onPressOut,
-      onPress,
+      props: {
+        style: [
+          styles.button,
+          renderState.isActive && styles.activeButton,
+          webPressedStyle,
+        ],
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint ?? undefined,
+        accessibilityState: renderState.accessibilityState,
+        "aria-busy": renderState.ariaBusy,
+        onPressIn,
+        onPressOut,
+        onPress,
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     label: {
-      style: [styles.label, renderState.isActive && styles.activeLabel],
-      selectable: renderState.labelSelectable,
-      text: renderState.label,
+      props: {
+        style: [styles.label, renderState.isActive && styles.activeLabel],
+        selectable: renderState.labelSelectable,
+        text: renderState.label,
+      },
     },
   }
 }

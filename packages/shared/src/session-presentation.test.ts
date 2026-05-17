@@ -10087,25 +10087,31 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       pressable: {
-        style: ["mic-button", "mic-active-button", "web-pressed"],
-        accessibilityRole: "button",
-        accessibilityLabel: "Start voice input",
-        accessibilityHint: undefined,
-        accessibilityState: { busy: true },
-        ariaBusy: true,
-        onPressIn: "press-in",
-        onPressOut: "press-out",
-        onPress: "press",
+        props: {
+          style: ["mic-button", "mic-active-button", "web-pressed"],
+          accessibilityRole: "button",
+          accessibilityLabel: "Start voice input",
+          accessibilityHint: undefined,
+          accessibilityState: { busy: true },
+          "aria-busy": true,
+          onPressIn: "press-in",
+          onPressOut: "press-out",
+          onPress: "press",
+        },
       },
       icon: {
-        name: "mic",
-        size: 20,
-        color: "#ffffff",
+        props: {
+          name: "mic",
+          size: 20,
+          color: "#ffffff",
+        },
       },
       label: {
-        style: ["mic-label", "mic-active-label"],
-        selectable: false,
-        text: "Hold to talk",
+        props: {
+          style: ["mic-label", "mic-active-label"],
+          selectable: false,
+          text: "Hold to talk",
+        },
       },
     })
     const removedImageIds: Array<string | number> = []

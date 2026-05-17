@@ -2722,13 +2722,35 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /createChatComposerMicButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerMicButtonMobilePropsParts/);
   assert.match(composerMicButtonSource, /const micButtonParts = createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\);/);
-  assert.match(composerMicButtonSource, /style=\{micButtonParts\.pressable\.style\}/);
-  assert.match(composerMicButtonSource, /aria-busy=\{micButtonParts\.pressable\.ariaBusy\}/);
-  assert.match(composerMicButtonSource, /name=\{micButtonParts\.icon\.name\}/);
-  assert.match(composerMicButtonSource, /size=\{micButtonParts\.icon\.size\}/);
-  assert.match(composerMicButtonSource, /color=\{micButtonParts\.icon\.color\}/);
-  assert.match(composerMicButtonSource, /selectable=\{micButtonParts\.label\.selectable\}/);
-  assert.match(composerMicButtonSource, /\{micButtonParts\.label\.text\}/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressable\s+\{\.\.\.micButtonParts\.pressable\.props\}/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonIcon\s+\{\.\.\.micButtonParts\.icon\.props\}/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonLabel\s+\{\.\.\.micButtonParts\.label\.props\}/);
+  assert.match(
+    composerMicButtonSource,
+    /export function ChatComposerMicButtonPressable\([\s\S]*?style=\{style\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-busy=\{ariaBusy\}[\s\S]*?onPressIn=\{onPressIn\}[\s\S]*?onPressOut=\{onPressOut\}[\s\S]*?onPress=\{onPress\}[\s\S]*?export function ChatComposerMicButtonIcon/
+  );
+  assert.match(
+    composerMicButtonSource,
+    /export function ChatComposerMicButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerMicButtonLabel/
+  );
+  assert.match(
+    composerMicButtonSource,
+    /export function ChatComposerMicButtonLabel\([\s\S]*?style=\{style\}[\s\S]*?selectable=\{selectable\}[\s\S]*?\{text\}[\s\S]*?export function ChatComposerTextEntry/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /pressable: \{\s+props: \{\s+style: \[\s+styles\.button,\s+renderState\.isActive && styles\.activeButton,\s+webPressedStyle,\s+\],\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-busy": renderState\.ariaBusy,\s+onPressIn,\s+onPressOut,\s+onPress,/
+  );
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: \[styles\.label, renderState\.isActive && styles\.activeLabel\],\s+selectable: renderState\.labelSelectable,\s+text: renderState\.label,/);
+  assert.doesNotMatch(
+    composerMicButtonSource,
+    /micButtonParts\.(pressable|icon)\.(style|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaBusy|onPressIn|onPressOut|onPress|name|size|color)/
+  );
+  assert.doesNotMatch(
+    composerMicButtonSource,
+    /micButtonParts\.label\.(style|selectable|text)/
+  );
   assert.doesNotMatch(composerMicButtonSource, /aria-busy=\{renderState\.ariaBusy\}/);
   assert.doesNotMatch(composerMicButtonSource, /name=\{renderState\.icon\.name\}/);
   assert.doesNotMatch(composerMicButtonSource, /selectable=\{renderState\.labelSelectable\}/);

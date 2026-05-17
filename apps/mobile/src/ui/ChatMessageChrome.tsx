@@ -2924,6 +2924,26 @@ type ChatComposerMicButtonProps = {
   styles: ChatComposerMicButtonStyles;
 };
 
+type ChatComposerMicButtonParts = ReturnType<typeof createChatComposerMicButtonMobilePropsParts<
+  ChatComposerMicButtonRenderState,
+  ChatComposerMicButtonProps['onPressIn'],
+  ChatComposerMicButtonProps['onPressOut'],
+  ChatComposerMicButtonProps['onPress'],
+  ChatComposerMicButtonProps['webPressedStyle'],
+  ChatComposerMicButtonProps['styles']
+>>;
+
+type ChatComposerMicButtonPressableProps =
+  ChatComposerMicButtonParts['pressable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerMicButtonIconProps =
+  ChatComposerMicButtonParts['icon']['props'];
+
+type ChatComposerMicButtonLabelProps =
+  ChatComposerMicButtonParts['label']['props'];
+
 type ChatComposerTextEntryStyles = {
   input: StyleProp<TextStyle>;
   visuallyHiddenHint: StyleProp<TextStyle>;
@@ -10673,29 +10693,74 @@ export function ChatComposerMicButton({
   });
 
   return (
-    <Pressable
-      style={micButtonParts.pressable.style}
-      accessibilityRole={micButtonParts.pressable.accessibilityRole}
-      accessibilityLabel={micButtonParts.pressable.accessibilityLabel}
-      accessibilityHint={micButtonParts.pressable.accessibilityHint}
-      accessibilityState={micButtonParts.pressable.accessibilityState}
-      aria-busy={micButtonParts.pressable.ariaBusy}
-      onPressIn={micButtonParts.pressable.onPressIn}
-      onPressOut={micButtonParts.pressable.onPressOut}
-      onPress={micButtonParts.pressable.onPress}
+    <ChatComposerMicButtonPressable
+      {...micButtonParts.pressable.props}
     >
-      <Ionicons
-        name={micButtonParts.icon.name}
-        size={micButtonParts.icon.size}
-        color={micButtonParts.icon.color}
+      <ChatComposerMicButtonIcon
+        {...micButtonParts.icon.props}
       />
-      <Text
-        style={micButtonParts.label.style}
-        selectable={micButtonParts.label.selectable}
-      >
-        {micButtonParts.label.text}
-      </Text>
+      <ChatComposerMicButtonLabel
+        {...micButtonParts.label.props}
+      />
+    </ChatComposerMicButtonPressable>
+  );
+}
+
+export function ChatComposerMicButtonPressable({
+  style,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  'aria-busy': ariaBusy,
+  onPressIn,
+  onPressOut,
+  onPress,
+  children,
+}: ChatComposerMicButtonPressableProps) {
+  return (
+    <Pressable
+      style={style}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
+      aria-busy={ariaBusy}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={onPress}
+    >
+      {children}
     </Pressable>
+  );
+}
+
+export function ChatComposerMicButtonIcon({
+  name,
+  size,
+  color,
+}: ChatComposerMicButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatComposerMicButtonLabel({
+  style,
+  selectable,
+  text,
+}: ChatComposerMicButtonLabelProps) {
+  return (
+    <Text
+      style={style}
+      selectable={selectable}
+    >
+      {text}
+    </Text>
   );
 }
 
