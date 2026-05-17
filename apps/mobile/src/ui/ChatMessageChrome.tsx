@@ -41,6 +41,7 @@ import {
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
   createChatComposerSpeechPreviewMobilePropsParts,
+  createChatComposerVoiceOverlayMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9528,23 +9529,31 @@ export function ChatComposerVoiceOverlay({
   transcriptNumberOfLines,
   styles,
 }: ChatComposerVoiceOverlayProps) {
-  if (!isVisible) return null;
+  const voiceOverlayParts = createChatComposerVoiceOverlayMobilePropsParts({
+    isVisible,
+    label,
+    transcript,
+    transcriptNumberOfLines,
+    styles,
+  });
+
+  if (!voiceOverlayParts.shouldRender) return null;
 
   return (
     <View
-      style={styles.overlay}
-      pointerEvents="none"
+      style={voiceOverlayParts.overlay.style}
+      pointerEvents={voiceOverlayParts.overlay.pointerEvents}
     >
-      <View style={styles.card}>
-        <Text style={styles.label}>
-          {label}
+      <View style={voiceOverlayParts.card.style}>
+        <Text style={voiceOverlayParts.label.style}>
+          {voiceOverlayParts.label.text}
         </Text>
-        {!!transcript && (
+        {voiceOverlayParts.transcript && (
           <Text
-            style={styles.transcript}
-            numberOfLines={transcriptNumberOfLines}
+            style={voiceOverlayParts.transcript.style}
+            numberOfLines={voiceOverlayParts.transcript.numberOfLines}
           >
-            {transcript}
+            {voiceOverlayParts.transcript.text}
           </Text>
         )}
       </View>

@@ -3956,6 +3956,49 @@ export interface ChatComposerHandsFreeControlsMobilePropsParts<
   }
 }
 
+export interface ChatComposerVoiceOverlayMobileStylesLike {
+  overlay: unknown
+  card: unknown
+  label: unknown
+  transcript: unknown
+}
+
+export interface ChatComposerVoiceOverlayMobilePropsPartsInput<
+  TTranscript = string | null | undefined,
+  TTranscriptNumberOfLines = unknown,
+  TStyles extends ChatComposerVoiceOverlayMobileStylesLike = ChatComposerVoiceOverlayMobileStylesLike,
+> {
+  isVisible: boolean
+  label: string
+  transcript: TTranscript
+  transcriptNumberOfLines: TTranscriptNumberOfLines
+  styles: TStyles
+}
+
+export interface ChatComposerVoiceOverlayMobilePropsParts<
+  TTranscript = string | null | undefined,
+  TTranscriptNumberOfLines = unknown,
+  TStyles extends ChatComposerVoiceOverlayMobileStylesLike = ChatComposerVoiceOverlayMobileStylesLike,
+> {
+  shouldRender: boolean
+  overlay: {
+    style: TStyles["overlay"]
+    pointerEvents: "none"
+  }
+  card: {
+    style: TStyles["card"]
+  }
+  label: {
+    style: TStyles["label"]
+    text: string
+  }
+  transcript: {
+    style: TStyles["transcript"]
+    numberOfLines: TTranscriptNumberOfLines
+    text: TTranscript
+  } | null
+}
+
 export interface ChatComposerIconButtonMobileRenderStateLike {
   isActive?: boolean
   accessibilityRole: unknown
@@ -19163,6 +19206,46 @@ export function createChatComposerHandsFreeControlsMobilePropsParts<
         text: controlState.secondary.label,
       },
     },
+  }
+}
+
+export function createChatComposerVoiceOverlayMobilePropsParts<
+  TTranscript,
+  TTranscriptNumberOfLines,
+  TStyles extends ChatComposerVoiceOverlayMobileStylesLike,
+>({
+  isVisible,
+  label,
+  transcript,
+  transcriptNumberOfLines,
+  styles,
+}: ChatComposerVoiceOverlayMobilePropsPartsInput<
+  TTranscript,
+  TTranscriptNumberOfLines,
+  TStyles
+>): ChatComposerVoiceOverlayMobilePropsParts<
+  TTranscript,
+  TTranscriptNumberOfLines,
+  TStyles
+> {
+  return {
+    shouldRender: isVisible,
+    overlay: {
+      style: styles.overlay,
+      pointerEvents: "none",
+    },
+    card: {
+      style: styles.card,
+    },
+    label: {
+      style: styles.label,
+      text: label,
+    },
+    transcript: transcript ? {
+      style: styles.transcript,
+      numberOfLines: transcriptNumberOfLines,
+      text: transcript,
+    } : null,
   }
 }
 

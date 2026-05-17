@@ -69,6 +69,7 @@ import {
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
   createChatComposerSpeechPreviewMobilePropsParts,
+  createChatComposerVoiceOverlayMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -8579,6 +8580,51 @@ describe("session presentation semantics", () => {
       .toBe("sleep-handler")
     expect(sleepingHandsFreeControlsParts.secondaryControl.touchable.onPress)
       .toBe("pause-handler")
+    expect(createChatComposerVoiceOverlayMobilePropsParts({
+      isVisible: true,
+      label: "Listening",
+      transcript: "voice transcript",
+      transcriptNumberOfLines: 2,
+      styles: {
+        overlay: "voice-overlay",
+        card: "voice-overlay-card",
+        label: "voice-overlay-label",
+        transcript: "voice-overlay-transcript",
+      },
+    })).toEqual({
+      shouldRender: true,
+      overlay: {
+        style: "voice-overlay",
+        pointerEvents: "none",
+      },
+      card: {
+        style: "voice-overlay-card",
+      },
+      label: {
+        style: "voice-overlay-label",
+        text: "Listening",
+      },
+      transcript: {
+        style: "voice-overlay-transcript",
+        numberOfLines: 2,
+        text: "voice transcript",
+      },
+    })
+    expect(createChatComposerVoiceOverlayMobilePropsParts({
+      isVisible: false,
+      label: "Listening",
+      transcript: "",
+      transcriptNumberOfLines: 2,
+      styles: {
+        overlay: "voice-overlay",
+        card: "voice-overlay-card",
+        label: "voice-overlay-label",
+        transcript: "voice-overlay-transcript",
+      },
+    })).toMatchObject({
+      shouldRender: false,
+      transcript: null,
+    })
     const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({
       shouldRender: true,
       renderState: {
