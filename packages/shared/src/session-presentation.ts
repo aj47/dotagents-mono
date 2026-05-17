@@ -5774,20 +5774,26 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
     shouldRender: boolean
     props: {
       container: {
-        accessibilityLabel: string
-        style: TStyles["countBadge"]
+        props: {
+          accessibilityLabel: string
+          style: TStyles["countBadge"]
+        }
       }
       label: {
-        style: TStyles["countBadgeText"]
+        props: {
+          style: TStyles["countBadgeText"]
+        }
         text: TRenderState["summary"]["toolCallCount"]
       }
     }
   }
   preview: {
     props: {
-      style: TStyles["previewLine"]
-      numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
-      ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
+      props: {
+        style: TStyles["previewLine"]
+        numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
+        ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
+      }
       text: string
     }
   }
@@ -5828,7 +5834,9 @@ export interface ChatRuntimeToolActivityGroupFooterMobilePropsParts<
   }
   label: {
     props: {
-      style: TStyles["text"]
+      props: {
+        style: TStyles["text"]
+      }
       text: string
     }
   }
@@ -22774,20 +22782,26 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
       shouldRender: renderState.summary.shouldShowToolCallCount,
       props: {
         container: {
-          accessibilityLabel: renderState.summary.toolCallCountLabel,
-          style: styles.countBadge,
+          props: {
+            accessibilityLabel: renderState.summary.toolCallCountLabel,
+            style: styles.countBadge,
+          },
         },
         label: {
-          style: styles.countBadgeText,
+          props: {
+            style: styles.countBadgeText,
+          },
           text: renderState.summary.toolCallCount,
         },
       },
     },
     preview: {
       props: {
-        style: styles.previewLine,
-        numberOfLines: renderState.surface.preview.numberOfLines,
-        ellipsizeMode: renderState.surface.preview.ellipsizeMode,
+        props: {
+          style: styles.previewLine,
+          numberOfLines: renderState.surface.preview.numberOfLines,
+          ellipsizeMode: renderState.surface.preview.ellipsizeMode,
+        },
         text: renderState.summary.previewText,
       },
     },
@@ -22824,7 +22838,9 @@ export function createChatRuntimeToolActivityGroupFooterMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.text,
+        props: {
+          style: styles.text,
+        },
         text: renderState.footerButton.label,
       },
     },

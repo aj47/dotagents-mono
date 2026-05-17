@@ -9018,11 +9018,8 @@ export function ChatMessageToolActivityGroupCountBadge({
   label,
 }: ChatMessageToolActivityGroupCountBadgeProps) {
   return (
-    <View
-      accessibilityLabel={container.accessibilityLabel}
-      style={container.style}
-    >
-      <Text style={label.style}>
+    <View {...container.props}>
+      <Text {...label.props}>
         {label.text}
       </Text>
     </View>
@@ -9030,17 +9027,11 @@ export function ChatMessageToolActivityGroupCountBadge({
 }
 
 export function ChatMessageToolActivityGroupPreviewLine({
-  style,
-  numberOfLines,
-  ellipsizeMode,
+  props,
   text,
 }: ChatMessageToolActivityGroupPreviewLineProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-      ellipsizeMode={ellipsizeMode}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9072,11 +9063,11 @@ export function ChatMessageToolActivityGroupFooter({
 }
 
 export function ChatMessageToolActivityGroupFooterLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolActivityGroupFooterLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );

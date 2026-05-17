@@ -9036,20 +9036,26 @@ describe("session presentation semantics", () => {
       shouldRender: true,
       props: {
         container: {
-          accessibilityLabel: "3 tool calls",
-          style: "toggle-count-badge",
+          props: {
+            accessibilityLabel: "3 tool calls",
+            style: "toggle-count-badge",
+          },
         },
         label: {
-          style: "toggle-count-badge-text",
+          props: {
+            style: "toggle-count-badge-text",
+          },
           text: 3,
         },
       },
     })
     expect(activityGroupToggleParts.preview).toEqual({
       props: {
-        style: "toggle-preview-line",
-        numberOfLines: 1,
-        ellipsizeMode: "tail",
+        props: {
+          style: "toggle-preview-line",
+          numberOfLines: 1,
+          ellipsizeMode: "tail",
+        },
         text: "Read, edit, test",
       },
     })
@@ -9095,11 +9101,15 @@ describe("session presentation semantics", () => {
       shouldRender: false,
       props: {
         container: {
-          accessibilityLabel: "3 tool calls",
-          style: "toggle-count-badge",
+          props: {
+            accessibilityLabel: "3 tool calls",
+            style: "toggle-count-badge",
+          },
         },
         label: {
-          style: "toggle-count-badge-text",
+          props: {
+            style: "toggle-count-badge-text",
+          },
           text: 3,
         },
       },
@@ -9138,7 +9148,9 @@ describe("session presentation semantics", () => {
     })
     expect(activityGroupFooterParts.label).toEqual({
       props: {
-        style: "footer-text",
+        props: {
+          style: "footer-text",
+        },
         text: "Hide tool activities",
       },
     })
