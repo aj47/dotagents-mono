@@ -1717,10 +1717,14 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(headerIconButtonSource, /const iconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+style,\s+activeStyle,\s+iconContainerStyle,\s+isActive,\s+\}\);/);
   assert.match(headerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
   assert.match(headerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
-  assert.match(headerIconButtonSource, /const touchableContent = iconButtonTouchable\.content;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonTouchableContentProps =\s+ChatRuntimeHeaderIconButtonParts\['touchable'\]\['content'\];/);
   assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
-  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
-  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIconContainer\s+\{\.\.\.touchableContent\.iconContainer\.props\}/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchableContent\s+\{\.\.\.iconButtonTouchable\.content\}\s+\/>/);
+  assert.match(headerIconButtonSource, /export function ChatRuntimeHeaderIconButtonTouchableContent/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(headerIconButtonSource, /if \(iconContainer\.shouldRender\) \{/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIconContainer\s+\{\.\.\.iconContainer\.props\}/);
+  assert.doesNotMatch(headerIconButtonSource, /const touchableContent = iconButtonTouchable\.content;/);
   assert.match(
     headerIconButtonSource,
     /export function ChatRuntimeHeaderIconButtonTouchable[\s\S]*?<TouchableOpacity[\s\S]*?\{\.\.\.props\}[\s\S]*?accessibilityState=\{accessibilityState as AccessibilityState \| undefined\}[\s\S]*?aria-checked=\{ariaChecked as boolean \| 'mixed' \| undefined\}[\s\S]*?export function ChatRuntimeHeaderIconButtonIconContainer/
@@ -1898,7 +1902,7 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /const createChatRuntimeMobileHeaderIconContainerStyle =/);
   assert.doesNotMatch(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlot\(\{/);
-  assert.match(chatMessageChromeSource, /touchableContent\.iconContainer\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /if \(iconContainer\.shouldRender\) \{/);
   assert.doesNotMatch(chatMessageChromeSource, /iconButtonParts\.iconContainer \? \(/);
   assert.doesNotMatch(screenSource, /name=\{mobileHeaderKillSwitchRenderState\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /name=\{headerHandsFreeMobileRenderState\.icon\.name\}/);

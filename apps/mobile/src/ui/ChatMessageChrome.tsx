@@ -1305,6 +1305,9 @@ type ChatRuntimeHeaderIconButtonTouchableProps =
     children: ReactNode;
   };
 
+type ChatRuntimeHeaderIconButtonTouchableContentProps =
+  ChatRuntimeHeaderIconButtonParts['touchable']['content'];
+
 type ChatRuntimeHeaderIconButtonIconContainerProps =
   ChatRuntimeHeaderIconButtonParts['touchable']['content']['iconContainer']['props'] & {
     children: ReactNode;
@@ -8544,29 +8547,38 @@ export function ChatRuntimeHeaderIconButton({
 
   if (!iconButtonTouchable.shouldRender) return null;
 
-  const touchableContent = iconButtonTouchable.content;
-
-  const icon = (
-    <ChatRuntimeHeaderIconButtonIcon
-      {...touchableContent.icon.props}
-    />
-  );
-
   return (
     <ChatRuntimeHeaderIconButtonTouchable
       {...iconButtonTouchable.props}
     >
-      {touchableContent.iconContainer.shouldRender ? (
-        <ChatRuntimeHeaderIconButtonIconContainer
-          {...touchableContent.iconContainer.props}
-        >
-          {icon}
-        </ChatRuntimeHeaderIconButtonIconContainer>
-      ) : (
-        icon
-      )}
+      <ChatRuntimeHeaderIconButtonTouchableContent
+        {...iconButtonTouchable.content}
+      />
     </ChatRuntimeHeaderIconButtonTouchable>
   );
+}
+
+export function ChatRuntimeHeaderIconButtonTouchableContent({
+  icon,
+  iconContainer,
+}: ChatRuntimeHeaderIconButtonTouchableContentProps) {
+  const iconContent = (
+    <ChatRuntimeHeaderIconButtonIcon
+      {...icon.props}
+    />
+  );
+
+  if (iconContainer.shouldRender) {
+    return (
+      <ChatRuntimeHeaderIconButtonIconContainer
+        {...iconContainer.props}
+      >
+        {iconContent}
+      </ChatRuntimeHeaderIconButtonIconContainer>
+    );
+  }
+
+  return iconContent;
 }
 
 export function ChatRuntimeHeaderIconButtonTouchable({
