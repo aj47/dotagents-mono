@@ -2066,16 +2066,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const scrollViewportSource =
     chatMessageChromeSource.match(/export function ChatMessageScrollViewport[\s\S]*?export function ChatMessageConversationViewportContent/)?.[0] ?? '';
   assert.match(scrollViewportSource, /const scrollViewportParts = createChatRuntimeConversationScrollViewportMobilePropsParts\(\{\s+children,\s+scrollRef,\s+style,\s+contentContainerStyle,\s+keyboardShouldPersistTaps,\s+contentInsetAdjustmentBehavior,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollEventThrottle,\s+\}\);/);
-  assert.match(scrollViewportSource, /<ScrollView\s+ref=\{scrollViewportParts\.scrollView\.ref\}/);
-  assert.match(scrollViewportSource, /style=\{scrollViewportParts\.scrollView\.style\}/);
-  assert.match(scrollViewportSource, /contentContainerStyle=\{scrollViewportParts\.scrollView\.contentContainerStyle\}/);
-  assert.match(scrollViewportSource, /keyboardShouldPersistTaps=\{scrollViewportParts\.scrollView\.keyboardShouldPersistTaps\}/);
-  assert.match(scrollViewportSource, /contentInsetAdjustmentBehavior=\{scrollViewportParts\.scrollView\.contentInsetAdjustmentBehavior\}/);
-  assert.match(scrollViewportSource, /onScroll=\{scrollViewportParts\.scrollView\.onScroll\}/);
-  assert.match(scrollViewportSource, /onScrollBeginDrag=\{scrollViewportParts\.scrollView\.onScrollBeginDrag\}/);
-  assert.match(scrollViewportSource, /onScrollEndDrag=\{scrollViewportParts\.scrollView\.onScrollEndDrag\}/);
-  assert.match(scrollViewportSource, /scrollEventThrottle=\{scrollViewportParts\.scrollView\.scrollEventThrottle\}/);
+  assert.match(scrollViewportSource, /<ScrollView\s+\{\.\.\.scrollViewportParts\.scrollView\.props\}/);
   assert.match(scrollViewportSource, /\{scrollViewportParts\.children\}/);
+  assert.doesNotMatch(scrollViewportSource, /scrollViewportParts\.scrollView\.(ref|style|contentContainerStyle|keyboardShouldPersistTaps|contentInsetAdjustmentBehavior|onScroll|onScrollBeginDrag|onScrollEndDrag|scrollEventThrottle)/);
   assert.doesNotMatch(scrollViewportSource, /ref=\{scrollRef\}/);
   assert.doesNotMatch(scrollViewportSource, /contentContainerStyle=\{contentContainerStyle\}/);
   assert.doesNotMatch(scrollViewportSource, /keyboardShouldPersistTaps=\{keyboardShouldPersistTaps\}/);
@@ -4624,7 +4617,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount/);
   assert.match(sessionPresentationSource, /if \(messageCount === 0\) return initialVisibleCount/);
   assert.match(sessionPresentationSource, /return Math\.min\(messageCount, nextVisibleCount\)/);
-  assert.match(chatMessageChromeSource, /scrollEventThrottle=\{scrollViewportParts\.scrollView\.scrollEventThrottle\}/);
+  assert.match(chatMessageChromeSource, /<ScrollView\s+\{\.\.\.scrollViewportParts\.scrollView\.props\}/);
   assert.doesNotMatch(screenSource, /const inlineActivitySurface = viewportStyleState\.inlineActivity;/);
   assert.doesNotMatch(screenSource, /const messageHistoryBannerStyleState = conversationChromeStyleState\.messageHistoryBanner;/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobileStyleSlots/);

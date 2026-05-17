@@ -7350,15 +7350,17 @@ export interface ChatRuntimeConversationScrollViewportMobilePropsParts<
   TScrollEventThrottle = unknown,
 > {
   scrollView: {
-    ref: TScrollRef | undefined
-    style: TStyle
-    contentContainerStyle: TContentContainerStyle
-    keyboardShouldPersistTaps: TKeyboardShouldPersistTaps
-    contentInsetAdjustmentBehavior: TContentInsetAdjustmentBehavior
-    onScroll: TOnScroll | undefined
-    onScrollBeginDrag: TOnScrollBeginDrag | undefined
-    onScrollEndDrag: TOnScrollEndDrag | undefined
-    scrollEventThrottle: TScrollEventThrottle
+    props: {
+      ref: TScrollRef | undefined
+      style: TStyle
+      contentContainerStyle: TContentContainerStyle
+      keyboardShouldPersistTaps: TKeyboardShouldPersistTaps
+      contentInsetAdjustmentBehavior: TContentInsetAdjustmentBehavior
+      onScroll: TOnScroll | undefined
+      onScrollBeginDrag: TOnScrollBeginDrag | undefined
+      onScrollEndDrag: TOnScrollEndDrag | undefined
+      scrollEventThrottle: TScrollEventThrottle
+    }
   }
   children: TChildren
 }
@@ -24535,15 +24537,17 @@ export function createChatRuntimeConversationScrollViewportMobilePropsParts<
 > {
   return {
     scrollView: {
-      ref: scrollRef,
-      style,
-      contentContainerStyle,
-      keyboardShouldPersistTaps,
-      contentInsetAdjustmentBehavior,
-      onScroll,
-      onScrollBeginDrag,
-      onScrollEndDrag,
-      scrollEventThrottle,
+      props: {
+        ref: scrollRef,
+        style,
+        contentContainerStyle,
+        keyboardShouldPersistTaps,
+        contentInsetAdjustmentBehavior,
+        onScroll,
+        onScrollBeginDrag,
+        onScrollEndDrag,
+        scrollEventThrottle,
+      },
     },
     children,
   }

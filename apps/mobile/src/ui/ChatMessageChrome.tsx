@@ -10217,15 +10217,7 @@ export function ChatMessageScrollViewport({
 
   return (
     <ScrollView
-      ref={scrollViewportParts.scrollView.ref}
-      style={scrollViewportParts.scrollView.style}
-      contentContainerStyle={scrollViewportParts.scrollView.contentContainerStyle}
-      keyboardShouldPersistTaps={scrollViewportParts.scrollView.keyboardShouldPersistTaps}
-      contentInsetAdjustmentBehavior={scrollViewportParts.scrollView.contentInsetAdjustmentBehavior}
-      onScroll={scrollViewportParts.scrollView.onScroll}
-      onScrollBeginDrag={scrollViewportParts.scrollView.onScrollBeginDrag}
-      onScrollEndDrag={scrollViewportParts.scrollView.onScrollEndDrag}
-      scrollEventThrottle={scrollViewportParts.scrollView.scrollEventThrottle}
+      {...scrollViewportParts.scrollView.props}
     >
       {scrollViewportParts.children}
     </ScrollView>
