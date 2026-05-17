@@ -8644,14 +8644,11 @@ export function ChatMessageDelegationToolPreviewRow({
       >
         {statusIcon.spinner.shouldRender ? (
           <ActivityIndicator
-            size={statusIcon.spinner.size}
-            color={statusIcon.spinner.color}
+            {...statusIcon.spinner.props}
           />
         ) : statusIcon.icon.shouldRender ? (
           <Ionicons
-            name={statusIcon.icon.name}
-            size={statusIcon.icon.size}
-            color={statusIcon.icon.color}
+            {...statusIcon.icon.props}
           />
         ) : null}
       </View>

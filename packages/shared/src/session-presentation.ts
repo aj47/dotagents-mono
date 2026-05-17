@@ -2452,8 +2452,20 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
               accessibilityElementsHidden: true
               importantForAccessibility: "no-hide-descendants"
             }
-            spinner: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"]
-            icon: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"]
+            spinner: {
+              shouldRender: boolean
+              props: Omit<
+                ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"],
+                "shouldRender"
+              >
+            }
+            icon: {
+              shouldRender: boolean
+              props: Omit<
+                ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"],
+                "shouldRender"
+              >
+            }
           }
           name: {
             props: {
@@ -23893,44 +23905,56 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
             text: toolPreview.label,
           },
         },
-        rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => ({
-          key,
-          props: {
-            line: {
-              props: {
-                style: styles.toolPreviewLine,
-                accessibilityLabel: renderState.accessibilityLabel,
+        rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => {
+          const { shouldRender: spinnerShouldRender, ...spinnerProps } = renderState.statusIndicator.spinner
+          const { shouldRender: iconShouldRender, ...iconProps } = renderState.statusIndicator.icon
+
+          return {
+            key,
+            props: {
+              line: {
+                props: {
+                  style: styles.toolPreviewLine,
+                  accessibilityLabel: renderState.accessibilityLabel,
+                },
+              },
+              statusIcon: {
+                props: {
+                  style: styles.toolPreviewStatusIcon,
+                  accessibilityElementsHidden: true,
+                  importantForAccessibility: "no-hide-descendants" as const,
+                },
+                spinner: {
+                  shouldRender: spinnerShouldRender,
+                  props: spinnerProps as Omit<
+                    typeof renderState.statusIndicator.spinner,
+                    "shouldRender"
+                  >,
+                },
+                icon: {
+                  shouldRender: !spinnerShouldRender && iconShouldRender,
+                  props: iconProps as Omit<
+                    typeof renderState.statusIndicator.icon,
+                    "shouldRender"
+                  >,
+                },
+              },
+              name: {
+                props: {
+                  style: [
+                    styles.toolPreviewName,
+                    renderState.isPending && styles.toolPreviewNamePending,
+                    renderState.isSuccess && styles.toolPreviewNameSuccess,
+                    renderState.isError && styles.toolPreviewNameError,
+                  ],
+                  numberOfLines: renderState.name.numberOfLines,
+                  ellipsizeMode: renderState.name.ellipsizeMode,
+                },
+                text: preview,
               },
             },
-            statusIcon: {
-              props: {
-                style: styles.toolPreviewStatusIcon,
-                accessibilityElementsHidden: true,
-                importantForAccessibility: "no-hide-descendants" as const,
-              },
-              spinner: renderState.statusIndicator.spinner,
-              icon: {
-                ...renderState.statusIndicator.icon,
-                shouldRender:
-                  !renderState.statusIndicator.spinner.shouldRender
-                  && renderState.statusIndicator.icon.shouldRender,
-              },
-            },
-            name: {
-              props: {
-                style: [
-                  styles.toolPreviewName,
-                  renderState.isPending && styles.toolPreviewNamePending,
-                  renderState.isSuccess && styles.toolPreviewNameSuccess,
-                  renderState.isError && styles.toolPreviewNameError,
-                ],
-                numberOfLines: renderState.name.numberOfLines,
-                ellipsizeMode: renderState.name.ellipsizeMode,
-              },
-              text: preview,
-            },
-          },
-        })) : [],
+          }
+        }) : [],
         moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
           shouldRender: true,
           props: {

@@ -1344,7 +1344,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(chatMessageChromeSource, /rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState\(\{\s+rows: toolPreviewState\.rows,\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /rows: getChatRuntimeDelegationToolPreviewRowsMobileRenderState\(\{\s+rows: toolPreviewState\.rows,\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /toolPreview: \{[\s\S]*?props: \{[\s\S]*?container: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolPreview,/);
-  assert.match(sessionPresentationSource, /rows: shouldRenderToolPreview \? toolPreview\.rows\.map\(\(\{ key, preview, renderState \}\) => \(\{[\s\S]*?key,[\s\S]*?props: \{[\s\S]*?line: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolPreviewLine,/);
+  assert.match(sessionPresentationSource, /rows: shouldRenderToolPreview \? toolPreview\.rows\.map\(\(\{ key, preview, renderState \}\) => \{[\s\S]*?const \{ shouldRender: spinnerShouldRender, \.\.\.spinnerProps \} = renderState\.statusIndicator\.spinner[\s\S]*?return \{[\s\S]*?key,[\s\S]*?props: \{[\s\S]*?line: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolPreviewLine,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\(/);
   assert.match(delegationCardComponentSource, /<ChatMessageDelegationToolPreview\s+\{\.\.\.delegationCardParts\.toolPreview\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationCard/);
@@ -1361,10 +1361,13 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /styles\.toolPreviewStatusIcon/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?<View\s+\{\.\.\.statusIcon\.props\}[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?statusIcon\.(style|accessibilityElementsHidden|importantForAccessibility)[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
-  assert.match(sessionPresentationSource, /renderState\.statusIndicator\.spinner\.shouldRender/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?statusIcon\.spinner\.shouldRender \? \([\s\S]*?size=\{statusIcon\.spinner\.size\}[\s\S]*?color=\{statusIcon\.spinner\.color\}[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
-  assert.match(sessionPresentationSource, /renderState\.statusIndicator\.icon\.shouldRender/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?statusIcon\.icon\.shouldRender \? \([\s\S]*?name=\{statusIcon\.icon\.name\}[\s\S]*?color=\{statusIcon\.icon\.color\}[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
+  assert.match(sessionPresentationSource, /const \{ shouldRender: spinnerShouldRender, \.\.\.spinnerProps \} = renderState\.statusIndicator\.spinner/);
+  assert.match(sessionPresentationSource, /spinner: \{\s+shouldRender: spinnerShouldRender,\s+props: spinnerProps as Omit</);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?statusIcon\.spinner\.shouldRender \? \([\s\S]*?<ActivityIndicator\s+\{\.\.\.statusIcon\.spinner\.props\}[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
+  assert.match(sessionPresentationSource, /const \{ shouldRender: iconShouldRender, \.\.\.iconProps \} = renderState\.statusIndicator\.icon/);
+  assert.match(sessionPresentationSource, /icon: \{\s+shouldRender: !spinnerShouldRender && iconShouldRender,\s+props: iconProps as Omit</);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?statusIcon\.icon\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.statusIcon\.icon\.props\}[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewRow[\s\S]*?statusIcon\.(spinner|icon)\.(size|color|name)[\s\S]*?export function ChatMessageDelegationMorePreviewAction/);
   assert.doesNotMatch(delegationCardComponentSource, /row\.statusIcon\.spinner \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /row\.statusIcon\.icon \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /renderState\.statusIndicator\.spinner\.shouldRender/);

@@ -11382,12 +11382,19 @@ describe("session presentation semantics", () => {
             importantForAccessibility: "no-hide-descendants",
           },
           spinner: {
-            ...delegationToolPreviewRow.renderState.statusIndicator.spinner,
             shouldRender: false,
+            props: {
+              size: delegationToolPreviewRow.renderState.statusIndicator.spinner.size,
+              color: delegationToolPreviewRow.renderState.statusIndicator.spinner.color,
+            },
           },
           icon: {
-            ...delegationToolPreviewRow.renderState.statusIndicator.icon,
             shouldRender: true,
+            props: {
+              name: delegationToolPreviewRow.renderState.statusIndicator.icon.name,
+              size: delegationToolPreviewRow.renderState.statusIndicator.icon.size,
+              color: delegationToolPreviewRow.renderState.statusIndicator.icon.color,
+            },
           },
         },
         name: {
