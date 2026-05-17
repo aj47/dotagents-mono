@@ -2438,7 +2438,10 @@ type ChatMessageToolExecutionPayloadSectionParts = ReturnType<typeof createChatR
 >>;
 
 type ChatMessageToolExecutionPayloadSectionViewProps =
-  (ChatMessageToolExecutionPayloadSectionParts['section']['props'] | ChatMessageToolExecutionPayloadSectionParts['headerRow']['props']) & {
+  (
+    | ChatMessageToolExecutionPayloadSectionParts['section']['props']
+    | ChatMessageToolExecutionPayloadSectionParts['section']['content']['headerRow']['props']
+  ) & {
     children: ReactNode;
   };
 
@@ -9856,23 +9859,25 @@ export function ChatMessageToolExecutionPayloadSection({
     onCopyPress,
     styles,
   });
+  const payloadSectionContent = payloadSectionParts.section.content;
+  const payloadSectionHeaderContent = payloadSectionContent.headerRow.content;
 
   return (
     <ChatMessageToolExecutionPayloadSectionView
       {...payloadSectionParts.section.props}
     >
       <ChatMessageToolExecutionPayloadSectionView
-        {...payloadSectionParts.headerRow.props}
+        {...payloadSectionContent.headerRow.props}
       >
         <ChatMessageToolExecutionPayloadMeta
-          {...payloadSectionParts.payloadMeta.props}
+          {...payloadSectionHeaderContent.payloadMeta.props}
         />
         <ChatMessageToolExecutionCopyButton
-          {...payloadSectionParts.copyButton.props}
+          {...payloadSectionHeaderContent.copyButton.props}
         />
       </ChatMessageToolExecutionPayloadSectionView>
       <ChatMessageToolExecutionPayloadBlock
-        {...payloadSectionParts.payloadBlock.props}
+        {...payloadSectionContent.payloadBlock.props}
       />
     </ChatMessageToolExecutionPayloadSectionView>
   );

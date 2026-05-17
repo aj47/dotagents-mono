@@ -14055,32 +14055,36 @@ describe("session presentation semantics", () => {
         props: {
           style: "payload-section",
         },
-      },
-      headerRow: {
-        props: {
-          style: "payload-header-row",
-        },
-      },
-      payloadMeta: {
-        props: {
-          renderState: "payload-render-state",
-          styles: "payload-meta-styles",
-        },
-      },
-      copyButton: {
-        props: {
-          renderState: "copy-button-state",
-          onPress: "copy-payload",
-          styles: "copy-button-styles",
-        },
-      },
-      payloadBlock: {
-        props: {
-          compactText: "preview",
-          content: "payload-content",
-          isExpanded: true,
-          previewNumberOfLines: 3,
-          styles: "payload-block-styles",
+        content: {
+          headerRow: {
+            props: {
+              style: "payload-header-row",
+            },
+            content: {
+              payloadMeta: {
+                props: {
+                  renderState: "payload-render-state",
+                  styles: "payload-meta-styles",
+                },
+              },
+              copyButton: {
+                props: {
+                  renderState: "copy-button-state",
+                  onPress: "copy-payload",
+                  styles: "copy-button-styles",
+                },
+              },
+            },
+          },
+          payloadBlock: {
+            props: {
+              compactText: "preview",
+              content: "payload-content",
+              isExpanded: true,
+              previewNumberOfLines: 3,
+              styles: "payload-block-styles",
+            },
+          },
         },
       },
     })

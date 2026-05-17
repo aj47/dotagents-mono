@@ -3402,32 +3402,36 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
     props: {
       style: TStyles["section"]
     }
-  }
-  headerRow: {
-    props: {
-      style: TStyles["headerRow"]
-    }
-  }
-  payloadMeta: {
-    props: {
-      renderState: TPayloadRenderState
-      styles: TStyles["payloadMeta"]
-    }
-  }
-  copyButton: {
-    props: {
-      renderState: TCopyButtonRenderState
-      onPress: TOnCopyPress | undefined
-      styles: TStyles["copyButton"]
-    }
-  }
-  payloadBlock: {
-    props: {
-      compactText: string | null | undefined
-      content: string
-      isExpanded: boolean
-      previewNumberOfLines: number
-      styles: TStyles["payloadBlock"]
+    content: {
+      headerRow: {
+        props: {
+          style: TStyles["headerRow"]
+        }
+        content: {
+          payloadMeta: {
+            props: {
+              renderState: TPayloadRenderState
+              styles: TStyles["payloadMeta"]
+            }
+          }
+          copyButton: {
+            props: {
+              renderState: TCopyButtonRenderState
+              onPress: TOnCopyPress | undefined
+              styles: TStyles["copyButton"]
+            }
+          }
+        }
+      }
+      payloadBlock: {
+        props: {
+          compactText: string | null | undefined
+          content: string
+          isExpanded: boolean
+          previewNumberOfLines: number
+          styles: TStyles["payloadBlock"]
+        }
+      }
     }
   }
 }
@@ -21362,32 +21366,36 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
       props: {
         style: styles.section,
       },
-    },
-    headerRow: {
-      props: {
-        style: styles.headerRow,
-      },
-    },
-    payloadMeta: {
-      props: {
-        renderState: payloadRenderState,
-        styles: styles.payloadMeta,
-      },
-    },
-    copyButton: {
-      props: {
-        renderState: copyButtonRenderState,
-        onPress: onCopyPress,
-        styles: styles.copyButton,
-      },
-    },
-    payloadBlock: {
-      props: {
-        compactText,
-        content,
-        isExpanded,
-        previewNumberOfLines,
-        styles: styles.payloadBlock,
+      content: {
+        headerRow: {
+          props: {
+            style: styles.headerRow,
+          },
+          content: {
+            payloadMeta: {
+              props: {
+                renderState: payloadRenderState,
+                styles: styles.payloadMeta,
+              },
+            },
+            copyButton: {
+              props: {
+                renderState: copyButtonRenderState,
+                onPress: onCopyPress,
+                styles: styles.copyButton,
+              },
+            },
+          },
+        },
+        payloadBlock: {
+          props: {
+            compactText,
+            content,
+            isExpanded,
+            previewNumberOfLines,
+            styles: styles.payloadBlock,
+          },
+        },
       },
     },
   }
