@@ -7,6 +7,10 @@ const rendererSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MarkdownRenderer.tsx'),
   'utf8',
 );
+const markdownRenderPartsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'markdown-render-parts.ts'),
+  'utf8',
+);
 
 test('markdown renderer loads conversation image assets through authenticated remote API', () => {
   assert.match(rendererSource, /parseConversationImageAssetUrl/);
@@ -51,13 +55,15 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(rendererSource, /type MarkdownThinkSectionMobileSurfaceRenderState/);
   assert.match(rendererSource, /type MarkdownThinkSectionControlOptions/);
   assert.match(rendererSource, /interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions/);
-  assert.match(rendererSource, /const createThinkStyles = \(renderState: MarkdownThinkSectionMobileSurfaceRenderState\) =>/);
-  assert.match(rendererSource, /const thinkSectionSurface = renderState\.surface;/);
+  assert.match(rendererSource, /createMarkdownThinkSectionMobileStyleSlots/);
+  assert.match(markdownRenderPartsSource, /export function createMarkdownThinkSectionMobileStyleSlots\(\{/);
+  assert.match(markdownRenderPartsSource, /const surface = renderState\.surface/);
   assert.match(rendererSource, /surface: MarkdownThinkSectionMobileSurfaceRenderState\['surface'\]/);
-  assert.match(rendererSource, /const colors = renderState\.colors;/);
+  assert.match(markdownRenderPartsSource, /const colors = renderState\.colors/);
   assert.match(rendererSource, /const thinkSectionRenderState = React\.useMemo\([\s\S]*?getMarkdownThinkSectionMobileSurfaceRenderState\(\{ isDark \}\)/);
   assert.match(rendererSource, /const thinkSectionColors = thinkSectionRenderState\.colors;/);
-  assert.match(rendererSource, /const thinkStyles = React\.useMemo\([\s\S]*?createThinkStyles\(thinkSectionRenderState\)/);
+  assert.match(rendererSource, /const thinkSectionStyleSlots = React\.useMemo\([\s\S]*?createMarkdownThinkSectionMobileStyleSlots\(\{[\s\S]*?renderState: thinkSectionRenderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\)/);
+  assert.match(rendererSource, /const thinkStyles = React\.useMemo\([\s\S]*?StyleSheet\.create\(thinkSectionStyleSlots\)/);
   assert.match(rendererSource, /const chevronIcon = getMarkdownThinkSectionMobileChevronIconState\(collapsed\);/);
   assert.match(rendererSource, /const thinkIcon = getMarkdownThinkSectionMobileLeadingIconState\(\);/);
   assert.match(rendererSource, /name=\{chevronIcon\.name\}/);
@@ -80,13 +86,13 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(rendererSource, /if \(onToggle\) \{\s+onToggle\(\);\s+return;\s+\}/);
   assert.doesNotMatch(rendererSource, /const keyBase = getThinkKey/);
   assert.doesNotMatch(rendererSource, /const isControlled = !!\(isThinkExpanded && onToggleThink\)/);
-  assert.match(rendererSource, /borderRadius:\s*radius\[thinkSectionSurface\.container\.borderRadius\]/);
-  assert.match(rendererSource, /borderColor:\s*colors\.collapsedContainer\.borderColor/);
-  assert.match(rendererSource, /backgroundColor:\s*colors\.expandedContainer\.backgroundColor/);
-  assert.match(rendererSource, /paddingHorizontal:\s*spacing\[thinkSectionSurface\.header\.paddingHorizontal\]/);
-  assert.match(rendererSource, /color:\s*colors\.label\.color/);
-  assert.match(rendererSource, /paddingBottom:\s*spacing\[thinkSectionSurface\.content\.paddingBottom\]/);
-  assert.match(rendererSource, /const resolveMobileMarkdownSpacing = \(value: keyof typeof spacing \| number\) =>/);
+  assert.match(markdownRenderPartsSource, /borderRadius:\s*radius\[surface\.container\.borderRadius\]/);
+  assert.match(markdownRenderPartsSource, /borderColor:\s*colors\.collapsedContainer\.borderColor/);
+  assert.match(markdownRenderPartsSource, /backgroundColor:\s*colors\.expandedContainer\.backgroundColor/);
+  assert.match(markdownRenderPartsSource, /paddingHorizontal:\s*resolveMarkdownMobileSpacing\(surface\.header\.paddingHorizontal, spacing\)/);
+  assert.match(markdownRenderPartsSource, /color:\s*colors\.label\.color/);
+  assert.match(markdownRenderPartsSource, /paddingBottom:\s*resolveMarkdownMobileSpacing\(surface\.content\.paddingBottom, spacing\)/);
+  assert.match(markdownRenderPartsSource, /function resolveMarkdownMobileSpacing\(/);
   assert.doesNotMatch(rendererSource, /resolveThemedColor/);
   assert.doesNotMatch(rendererSource, /resolveThemedAlphaColor/);
   assert.doesNotMatch(rendererSource, /ThemedAlphaColor/);
@@ -111,25 +117,27 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
 
 test('markdown renderer uses shared compact markdown content surface tokens', () => {
   assert.match(rendererSource, /getMarkdownContentMobileSurfaceRenderState/);
+  assert.match(rendererSource, /createMarkdownContentMobileStyleSlots/);
+  assert.match(markdownRenderPartsSource, /export function createMarkdownContentMobileStyleSlots\(\{/);
   assert.match(rendererSource, /type MarkdownContentMobileSurfaceRenderState/);
   assert.match(rendererSource, /const markdownContentRenderState = React\.useMemo\([\s\S]*?getMarkdownContentMobileSurfaceRenderState\(\{[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?\}\)/);
-  assert.match(rendererSource, /const markdownContentSurface = markdownContentRenderState\.surface;/);
+  assert.match(markdownRenderPartsSource, /const surface = renderState\.surface/);
   assert.match(rendererSource, /const markdownContentColors = markdownContentRenderState\.colors;/);
-  assert.match(rendererSource, /import \{ resolveChatRuntimeMobileFontFamily \} from '@dotagents\/shared\/session-presentation';/);
+  assert.match(markdownRenderPartsSource, /function resolveMarkdownMobileFontFamily\(/);
   assert.doesNotMatch(rendererSource, /from '\.\/mobileTypography'/);
-  assert.match(rendererSource, /fontSize:\s*markdownContentSurface\.body\.fontSize/);
-  assert.match(rendererSource, /lineHeight:\s*markdownContentSurface\.body\.lineHeight/);
-  assert.match(rendererSource, /color:\s*markdownContentColors\.body\.color/);
-  assert.match(rendererSource, /fontFamily:\s*resolveChatRuntimeMobileFontFamily\(\s*markdownContentSurface\.inlineCode\.fontFamilyByPlatform,\s*Platform\.OS,\s*\)/);
-  assert.match(rendererSource, /fontFamily:\s*resolveChatRuntimeMobileFontFamily\(\s*markdownContentSurface\.codeBlock\.fontFamilyByPlatform,\s*Platform\.OS,\s*\)/);
-  assert.match(rendererSource, /borderRadius:\s*radius\[markdownContentSurface\.codeBlock\.borderRadius\]/);
+  assert.match(markdownRenderPartsSource, /fontSize:\s*surface\.body\.fontSize/);
+  assert.match(markdownRenderPartsSource, /lineHeight:\s*surface\.body\.lineHeight/);
+  assert.match(markdownRenderPartsSource, /color:\s*colors\.body\.color/);
+  assert.match(markdownRenderPartsSource, /const inlineCodeFontFamily = resolveMarkdownMobileFontFamily\(surface\.inlineCode\.fontFamilyByPlatform, platform\)/);
+  assert.match(markdownRenderPartsSource, /const codeBlockFontFamily = resolveMarkdownMobileFontFamily\(surface\.codeBlock\.fontFamilyByPlatform, platform\)/);
+  assert.match(markdownRenderPartsSource, /borderRadius:\s*radius\[surface\.codeBlock\.borderRadius\]/);
   assert.match(rendererSource, /import \* as Clipboard from 'expo-clipboard';/);
   assert.match(rendererSource, /Ionicons/);
   assert.match(rendererSource, /const MarkdownCodeBlock/);
   assert.match(rendererSource, /getMarkdownCodeBlockCopyMobileRenderState/);
   assert.match(rendererSource, /const codeBlockCopyRenderState = getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?isCopied: copied,[\s\S]*?colors,/);
-  assert.match(rendererSource, /const codeBlockCopyButtonRenderState = React\.useMemo\([\s\S]*?getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?colors: markdownContentColors,[\s\S]*?\}\)/);
-  assert.match(rendererSource, /const copiedCodeBlockCopyButtonRenderState = React\.useMemo\([\s\S]*?getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?isCopied: true,[\s\S]*?colors: markdownContentColors,[\s\S]*?\}\)/);
+  assert.match(markdownRenderPartsSource, /const codeBlockCopyButton = getMarkdownCodeBlockCopyMobileRenderState\(\{ colors \}\)/);
+  assert.match(markdownRenderPartsSource, /const copiedCodeBlockCopyButton = getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?isCopied: true,[\s\S]*?colors,[\s\S]*?\}\)/);
   assert.match(rendererSource, /accessibilityRole=\{codeBlockCopyRenderState\.button\.accessibilityRole\}/);
   assert.match(rendererSource, /accessibilityLabel=\{codeBlockCopyRenderState\.label\}/);
   assert.match(rendererSource, /getMarkdownCodeBlockFeedbackResetDelayMs\(\)/);
@@ -138,15 +146,15 @@ test('markdown renderer uses shared compact markdown content surface tokens', ()
   assert.match(rendererSource, /size=\{codeBlockCopyRenderState\.icon\.size\}/);
   assert.match(rendererSource, /color=\{codeBlockCopyRenderState\.icon\.color\}/);
   assert.match(rendererSource, /colors=\{markdownContentColors\}/);
-  assert.match(rendererSource, /paddingRight:\s*markdownContentSurface\.codeBlock\.copyPaddingRight/);
-  assert.match(rendererSource, /codeBlockCopyButton:\s*\{[\s\S]*?position:\s*codeBlockCopyButtonRenderState\.button\.position,[\s\S]*?width:\s*codeBlockCopyButtonRenderState\.button\.size,[\s\S]*?borderColor:\s*codeBlockCopyButtonRenderState\.buttonColors\.borderColor/);
-  assert.match(rendererSource, /codeBlockCopyButton:\s*\{[\s\S]*?alignItems:\s*codeBlockCopyButtonRenderState\.button\.alignItems,[\s\S]*?justifyContent:\s*codeBlockCopyButtonRenderState\.button\.justifyContent,/);
+  assert.match(markdownRenderPartsSource, /paddingRight:\s*surface\.codeBlock\.copyPaddingRight/);
+  assert.match(markdownRenderPartsSource, /codeBlockCopyButton:\s*\{[\s\S]*?position:\s*codeBlockCopyButton\.button\.position,[\s\S]*?width:\s*codeBlockCopyButton\.button\.size,[\s\S]*?borderColor:\s*codeBlockCopyButton\.buttonColors\.borderColor/);
+  assert.match(markdownRenderPartsSource, /codeBlockCopyButton:\s*\{[\s\S]*?alignItems:\s*codeBlockCopyButton\.button\.alignItems,[\s\S]*?justifyContent:\s*codeBlockCopyButton\.button\.justifyContent,/);
   assert.match(rendererSource, /code_block: \(node: any\) => \(/);
   assert.match(rendererSource, /fence: \(node: any\) => \(/);
-  assert.match(rendererSource, /codeBlockCopyButtonCopied:\s*\{[\s\S]*?borderColor:\s*copiedCodeBlockCopyButtonRenderState\.buttonColors\.borderColor,[\s\S]*?backgroundColor:\s*copiedCodeBlockCopyButtonRenderState\.buttonColors\.backgroundColor/);
-  assert.match(rendererSource, /blockquote:\s*\{[\s\S]*?backgroundColor:\s*markdownContentColors\.blockquote\.backgroundColor/);
-  assert.match(rendererSource, /maxHeight:\s*markdownContentSurface\.image\.maxHeight/);
-  assert.match(rendererSource, /fontWeight:\s*markdownContentSurface\.tableCell\.headerFontWeight/);
+  assert.match(markdownRenderPartsSource, /codeBlockCopyButtonCopied:\s*\{[\s\S]*?borderColor:\s*copiedCodeBlockCopyButton\.buttonColors\.borderColor,[\s\S]*?backgroundColor:\s*copiedCodeBlockCopyButton\.buttonColors\.backgroundColor/);
+  assert.match(markdownRenderPartsSource, /blockquote:\s*\{[\s\S]*?backgroundColor:\s*colors\.blockquote\.backgroundColor/);
+  assert.match(markdownRenderPartsSource, /maxHeight:\s*surface\.image\.maxHeight/);
+  assert.match(markdownRenderPartsSource, /fontWeight:\s*surface\.tableCell\.headerFontWeight/);
   assert.doesNotMatch(rendererSource, /theme\.colors\[[^\]]+\]/);
   assert.doesNotMatch(rendererSource, /hexToRgba\(/);
   assert.doesNotMatch(rendererSource, /fontSize:\s*13,\s*lineHeight:\s*18/);
