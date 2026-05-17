@@ -1545,9 +1545,10 @@ test('keeps pinning available from the individual chat view header', () => {
   const headerIconButtonSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderIconButton[\s\S]*?export function ChatRuntimeHeaderConversationStatus/)?.[0] ?? '';
   assert.match(headerIconButtonSource, /const iconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+style,\s+activeStyle,\s+iconContainerStyle,\s+isActive,\s+\}\);/);
-  assert.match(headerIconButtonSource, /if \(!iconButtonParts\.shouldRender\) return null;/);
-  assert.match(headerIconButtonSource, /const touchableContent = iconButtonParts\.touchable\.content;/);
-  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchable\s+\{\.\.\.iconButtonParts\.touchable\.props\}/);
+  assert.match(headerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
+  assert.match(headerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
+  assert.match(headerIconButtonSource, /const touchableContent = iconButtonTouchable\.content;/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
   assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
   assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIconContainer\s+\{\.\.\.touchableContent\.iconContainer\.props\}/);
   assert.match(
@@ -1564,7 +1565,7 @@ test('keeps pinning available from the individual chat view header', () => {
   );
   assert.match(
     sessionPresentationSource,
-    /touchable: \{\s+props: \{\s+onPress,\s+activeOpacity: renderState\.pressedOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,\s+style: \[style, isActive && activeStyle\],/
+    /touchable: \{\s+shouldRender,\s+props: \{\s+onPress,\s+activeOpacity: renderState\.pressedOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,\s+style: \[style, isActive && activeStyle\],/
   );
   assert.match(sessionPresentationSource, /content: \{\s+iconContainer: \{\s+shouldRender: Boolean\(iconContainerStyle\),\s+props: \{\s+style: iconContainerStyle,\s+\},\s+\},\s+icon: \{\s+props: renderState\.icon,\s+\},\s+\},/);
   assert.doesNotMatch(headerIconButtonSource, /export function ChatRuntimeHeaderIconButtonTouchable[\s\S]*?(onPress=\{onPress\}|activeOpacity=\{activeOpacity\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|style=\{style\})[\s\S]*?export function ChatRuntimeHeaderIconButtonIconContainer/);
@@ -1574,6 +1575,7 @@ test('keeps pinning available from the individual chat view header', () => {
     headerIconButtonSource,
     /iconButtonParts\.(touchable|iconContainer|icon)\.(onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaChecked|style|name|size|color)/
   );
+  assert.doesNotMatch(headerIconButtonSource, /iconButtonParts\.shouldRender/);
   assert.doesNotMatch(headerIconButtonSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.doesNotMatch(headerIconButtonSource, /activeOpacity=\{renderState\.pressedOpacity\}/);
   assert.doesNotMatch(headerIconButtonSource, /style=\{\[style, isActive && activeStyle\]\}/);
@@ -2751,9 +2753,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /createChatComposerIconButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
   assert.match(composerIconButtonSource, /const iconButtonParts = createChatComposerIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+style,\s+activeStyle,\s+\}\);/);
-  assert.match(composerIconButtonSource, /if \(!iconButtonParts\.shouldRender\) return null;/);
-  assert.match(composerIconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonParts\.touchable\.props\}/);
-  assert.match(composerIconButtonSource, /const touchableContent = iconButtonParts\.touchable\.content;/);
+  assert.match(composerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
+  assert.match(composerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
+  assert.match(composerIconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
+  assert.match(composerIconButtonSource, /const touchableContent = iconButtonTouchable\.content;/);
   assert.match(composerIconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
   assert.match(
     composerIconButtonSource,
@@ -2765,13 +2768,14 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   );
   assert.match(
     sessionPresentationSource,
-    /touchable: \{\s+props: \{\s+style: \[style, renderState\.isActive && activeStyle\],\s+onPress,\s+activeOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,/
+    /touchable: \{\s+shouldRender,\s+props: \{\s+style: \[style, renderState\.isActive && activeStyle\],\s+onPress,\s+activeOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,/
   );
   assert.match(sessionPresentationSource, /content: \{\s+icon: \{\s+props: renderState\.icon,\s+\},\s+\},/);
   assert.doesNotMatch(
     composerIconButtonSource,
     /iconButtonParts\.(touchable|icon)\.(style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaChecked|name|size|color)/
   );
+  assert.doesNotMatch(composerIconButtonSource, /iconButtonParts\.shouldRender/);
   assert.doesNotMatch(composerIconButtonSource, /style=\{\[style, renderState\.isActive && activeStyle\]\}/);
   assert.doesNotMatch(composerIconButtonSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.doesNotMatch(composerIconButtonSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
@@ -2836,13 +2840,14 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /createChatComposerLabeledActionButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerLabeledActionButtonMobilePropsParts/);
   assert.match(composerLabeledActionButtonSource, /const actionButtonParts = createChatComposerLabeledActionButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+styles,\s+\}\);/);
-  assert.match(composerLabeledActionButtonSource, /if \(!actionButtonParts\.shouldRender\) return null;/);
+  assert.match(composerLabeledActionButtonSource, /const actionButtonTouchable = actionButtonParts\.touchable;/);
+  assert.match(composerLabeledActionButtonSource, /if \(!actionButtonTouchable\.shouldRender\) return null;/);
   assert.doesNotMatch(screenSource, /const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage\(\);/);
   assert.doesNotMatch(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
   assert.match(chatMessageChromeSource, /setDebugInfo\(getChatComposerQueueMobileActionState\(\)\.debugMessage\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage/);
-  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonTouchable\s+\{\.\.\.actionButtonParts\.touchable\.props\}/);
-  assert.match(composerLabeledActionButtonSource, /const touchableContent = actionButtonParts\.touchable\.content;/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonTouchable\s+\{\.\.\.actionButtonTouchable\.props\}/);
+  assert.match(composerLabeledActionButtonSource, /const touchableContent = actionButtonTouchable\.content;/);
   assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
   assert.match(composerLabeledActionButtonSource, /touchableContent\.label\.shouldRender \? \(/);
   assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.touchableContent\.label\.props\}/);
@@ -2860,13 +2865,14 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   );
   assert.match(
     sessionPresentationSource,
-    /touchable: \{\s+props: \{\s+style: \[styles\.button, renderState\.isDisabled && styles\.disabledButton\],\s+onPress,\s+activeOpacity,\s+disabled: renderState\.isDisabled,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,/
+    /touchable: \{\s+shouldRender,\s+props: \{\s+style: \[styles\.button, renderState\.isDisabled && styles\.disabledButton\],\s+onPress,\s+activeOpacity,\s+disabled: renderState\.isDisabled,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,/
   );
   assert.match(sessionPresentationSource, /content: \{\s+icon: \{\s+props: renderState\.icon,\s+\},\s+label: \{\s+shouldRender: renderState\.labelShouldRender \?\? true,\s+props: \{\s+style: styles\.text,\s+text: renderState\.label,/);
   assert.doesNotMatch(
     composerLabeledActionButtonSource,
     /actionButtonParts\.(touchable|icon)\.(disabled|style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|name|size|color)/
   );
+  assert.doesNotMatch(composerLabeledActionButtonSource, /actionButtonParts\.shouldRender/);
   assert.doesNotMatch(
     composerLabeledActionButtonSource,
     /actionButtonParts\.label\.(style|text)/

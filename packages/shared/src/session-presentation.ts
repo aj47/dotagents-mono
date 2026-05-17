@@ -5108,8 +5108,8 @@ export interface ChatComposerIconButtonMobilePropsParts<
   TStyle = unknown,
   TActiveStyle = unknown,
 > {
-  shouldRender: boolean
   touchable: {
+    shouldRender: boolean
     props: {
       style: Array<TStyle | TActiveStyle | false | undefined>
       onPress: TOnPress | undefined
@@ -5168,8 +5168,8 @@ export interface ChatComposerLabeledActionButtonMobilePropsParts<
   TActiveOpacity = unknown,
   TStyles extends ChatComposerLabeledActionButtonMobileStylesLike = ChatComposerLabeledActionButtonMobileStylesLike,
 > {
-  shouldRender: boolean
   touchable: {
+    shouldRender: boolean
     props: {
       style: Array<TStyles["button"] | TStyles["disabledButton"] | false | undefined>
       onPress: TOnPress | undefined
@@ -9651,8 +9651,8 @@ export interface ChatRuntimeHeaderIconButtonMobilePropsParts<
   TActiveStyle = unknown,
   TIconContainerStyle = unknown,
 > {
-  shouldRender: boolean
   touchable: {
+    shouldRender: boolean
     props: {
       onPress: TOnPress | undefined
       activeOpacity: TRenderState["pressedOpacity"]
@@ -22693,8 +22693,8 @@ export function createChatComposerIconButtonMobilePropsParts<
   TActiveStyle
 > {
   return {
-    shouldRender,
     touchable: {
+      shouldRender,
       props: {
         style: [style, renderState.isActive && activeStyle],
         onPress,
@@ -22737,8 +22737,8 @@ export function createChatComposerLabeledActionButtonMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRender,
     touchable: {
+      shouldRender,
       props: {
         style: [styles.button, renderState.isDisabled && styles.disabledButton],
         onPress,
@@ -27321,8 +27321,8 @@ export function createChatRuntimeHeaderIconButtonMobilePropsParts<
   TIconContainerStyle
 > {
   return {
-    shouldRender,
     touchable: {
+      shouldRender,
       props: {
         onPress,
         activeOpacity: renderState.pressedOpacity,

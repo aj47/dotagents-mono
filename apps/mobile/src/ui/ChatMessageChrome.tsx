@@ -7677,10 +7677,11 @@ export function ChatRuntimeHeaderIconButton({
     iconContainerStyle,
     isActive,
   });
+  const iconButtonTouchable = iconButtonParts.touchable;
 
-  if (!iconButtonParts.shouldRender) return null;
+  if (!iconButtonTouchable.shouldRender) return null;
 
-  const touchableContent = iconButtonParts.touchable.content;
+  const touchableContent = iconButtonTouchable.content;
 
   const icon = (
     <ChatRuntimeHeaderIconButtonIcon
@@ -7690,7 +7691,7 @@ export function ChatRuntimeHeaderIconButton({
 
   return (
     <ChatRuntimeHeaderIconButtonTouchable
-      {...iconButtonParts.touchable.props}
+      {...iconButtonTouchable.props}
     >
       {touchableContent.iconContainer.shouldRender ? (
         <ChatRuntimeHeaderIconButtonIconContainer
@@ -11402,14 +11403,15 @@ export function ChatComposerIconButton({
     style,
     activeStyle,
   });
+  const iconButtonTouchable = iconButtonParts.touchable;
 
-  if (!iconButtonParts.shouldRender) return null;
+  if (!iconButtonTouchable.shouldRender) return null;
 
-  const touchableContent = iconButtonParts.touchable.content;
+  const touchableContent = iconButtonTouchable.content;
 
   return (
     <ChatComposerIconButtonTouchable
-      {...iconButtonParts.touchable.props}
+      {...iconButtonTouchable.props}
     >
       <ChatComposerIconButtonIcon
         {...touchableContent.icon.props}
@@ -11449,14 +11451,15 @@ export function ChatComposerLabeledActionButton({
     activeOpacity,
     styles,
   });
+  const actionButtonTouchable = actionButtonParts.touchable;
 
-  if (!actionButtonParts.shouldRender) return null;
+  if (!actionButtonTouchable.shouldRender) return null;
 
-  const touchableContent = actionButtonParts.touchable.content;
+  const touchableContent = actionButtonTouchable.content;
 
   return (
     <ChatComposerLabeledActionButtonTouchable
-      {...actionButtonParts.touchable.props}
+      {...actionButtonTouchable.props}
     >
       <ChatComposerLabeledActionButtonIcon
         {...touchableContent.icon.props}

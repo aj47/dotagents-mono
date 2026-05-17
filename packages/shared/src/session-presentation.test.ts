@@ -4356,8 +4356,8 @@ describe("session presentation semantics", () => {
       isActive: true,
     })
     expect(headerIconButtonParts).toEqual({
-      shouldRender: true,
       touchable: {
+        shouldRender: true,
         props: {
           onPress: "toggle-hands-free",
           activeOpacity: navigationHeaderState.handsFreeButtonRenderState.pressedOpacity,
@@ -4384,7 +4384,7 @@ describe("session presentation semantics", () => {
     expect(createChatRuntimeHeaderIconButtonMobilePropsParts({
       ...navigationHeaderMobileParts.killSwitchButton,
       shouldRender: false,
-    }).shouldRender).toBe(false)
+    }).touchable.shouldRender).toBe(false)
     const headerConversationStatusStyles = {
       chip: "conversation-status-chip",
       text: "conversation-status-text",
@@ -10443,8 +10443,8 @@ describe("session presentation semantics", () => {
       activeStyle: "accessory-active-style",
     })
     expect(composerIconButtonParts).toEqual({
-      shouldRender: true,
       touchable: {
+        shouldRender: true,
         props: {
           style: ["accessory-style", "accessory-active-style"],
           onPress: "press-accessory",
@@ -10478,7 +10478,7 @@ describe("session presentation semantics", () => {
         },
       },
       style: "accessory-style",
-    }).shouldRender).toBe(false)
+    }).touchable.shouldRender).toBe(false)
     const composerLabeledActionButtonParts = createChatComposerLabeledActionButtonMobilePropsParts({
       shouldRender: true,
       renderState: {
@@ -10503,8 +10503,8 @@ describe("session presentation semantics", () => {
       },
     })
     expect(composerLabeledActionButtonParts).toEqual({
-      shouldRender: true,
       touchable: {
+        shouldRender: true,
         props: {
           style: ["queue-button", "queue-disabled-button"],
           onPress: "press-queue",
@@ -10549,7 +10549,7 @@ describe("session presentation semantics", () => {
         button: "queue-button",
         text: "queue-button-text",
       },
-    }).shouldRender).toBe(false)
+    }).touchable.shouldRender).toBe(false)
     expect(createChatComposerMicButtonMobilePropsParts({
       renderState: {
         isActive: true,
