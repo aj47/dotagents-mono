@@ -79,6 +79,7 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
+  createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
@@ -8948,49 +8949,54 @@ export function ChatMessageStepSummaryCard({
   renderState,
   styles,
 }: ChatMessageStepSummaryCardProps) {
-  if (!renderState.shouldRender) return null;
+  const stepSummaryCardParts = createChatRuntimeStepSummaryCardMobilePropsParts({
+    renderState,
+    styles,
+  });
+
+  if (!stepSummaryCardParts.shouldRenderCard) return null;
 
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      style={styles.card}
+      accessible={stepSummaryCardParts.card.accessible}
+      accessibilityRole={stepSummaryCardParts.card.accessibilityRole}
+      accessibilityLabel={stepSummaryCardParts.card.accessibilityLabel}
+      style={stepSummaryCardParts.card.style}
     >
-      <View style={styles.header}>
+      <View style={stepSummaryCardParts.header.style}>
         <Text
-          style={styles.title}
-          numberOfLines={renderState.surface.titleNumberOfLines}
+          style={stepSummaryCardParts.title.style}
+          numberOfLines={stepSummaryCardParts.title.numberOfLines}
         >
-          {renderState.title}
+          {stepSummaryCardParts.title.text}
         </Text>
-        <View style={styles.badge}>
+        <View style={stepSummaryCardParts.badge.style}>
           <Text
-            style={styles.badgeText}
-            numberOfLines={renderState.surface.badgeNumberOfLines}
+            style={stepSummaryCardParts.badgeLabel.style}
+            numberOfLines={stepSummaryCardParts.badgeLabel.numberOfLines}
           >
-            {renderState.badgeLabel}
+            {stepSummaryCardParts.badgeLabel.text}
           </Text>
         </View>
       </View>
       <Text
-        style={styles.action}
-        numberOfLines={renderState.surface.actionNumberOfLines}
+        style={stepSummaryCardParts.action.style}
+        numberOfLines={stepSummaryCardParts.action.numberOfLines}
       >
-        {renderState.actionSummary}
+        {stepSummaryCardParts.action.text}
       </Text>
       <Text
-        style={styles.meta}
-        numberOfLines={renderState.surface.metaNumberOfLines}
+        style={stepSummaryCardParts.meta.style}
+        numberOfLines={stepSummaryCardParts.meta.numberOfLines}
       >
-        {renderState.meta}
+        {stepSummaryCardParts.meta.text}
       </Text>
-      {renderState.preview ? (
+      {stepSummaryCardParts.preview.shouldRender ? (
         <Text
-          style={styles.preview}
-          numberOfLines={renderState.surface.previewNumberOfLines}
+          style={stepSummaryCardParts.preview.style}
+          numberOfLines={stepSummaryCardParts.preview.numberOfLines}
         >
-          {renderState.preview}
+          {stepSummaryCardParts.preview.text}
         </Text>
       ) : null}
     </View>

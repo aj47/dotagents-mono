@@ -3949,20 +3949,33 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.doesNotMatch(chatScreenSource, /card: styles\.stepSummaryCard,\s+header: styles\.stepSummaryHeader,\s+title: styles\.stepSummaryTitle,\s+badge: styles\.stepSummaryBadge,\s+badgeText: styles\.stepSummaryBadgeText,\s+action: styles\.stepSummaryAction,\s+meta: styles\.stepSummaryMeta,\s+preview: styles\.stepSummaryPreview,/);
   assert.match(sessionPresentationSource, /stepSummaryStyles: \{\s+card: styles\.stepSummaryCard,\s+header: styles\.stepSummaryHeader,\s+title: styles\.stepSummaryTitle,\s+badge: styles\.stepSummaryBadge,\s+badgeText: styles\.stepSummaryBadgeText,\s+action: styles\.stepSummaryAction,\s+meta: styles\.stepSummaryMeta,\s+preview: styles\.stepSummaryPreview,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageStepSummaryCard/);
-  assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.title\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.badgeLabel\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.actionSummary\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.meta\}/);
-  assert.match(chatMessageChromeSource, /renderState\.preview \? \(/);
-  assert.match(chatMessageChromeSource, /\{renderState\.preview\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.titleNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.badgeNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.actionNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.metaNumberOfLines\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{renderState\.surface\.previewNumberOfLines\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeStepSummaryCardMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeStepSummaryCardMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const stepSummaryCardParts = createChatRuntimeStepSummaryCardMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /if \(!stepSummaryCardParts\.shouldRenderCard\) return null;/);
+  assert.match(chatMessageChromeSource, /accessible=\{stepSummaryCardParts\.card\.accessible\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{stepSummaryCardParts\.card\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{stepSummaryCardParts\.card\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /\{stepSummaryCardParts\.title\.text\}/);
+  assert.match(chatMessageChromeSource, /\{stepSummaryCardParts\.badgeLabel\.text\}/);
+  assert.match(chatMessageChromeSource, /\{stepSummaryCardParts\.action\.text\}/);
+  assert.match(chatMessageChromeSource, /\{stepSummaryCardParts\.meta\.text\}/);
+  assert.match(chatMessageChromeSource, /stepSummaryCardParts\.preview\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /\{stepSummaryCardParts\.preview\.text\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{stepSummaryCardParts\.title\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{stepSummaryCardParts\.badgeLabel\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{stepSummaryCardParts\.action\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{stepSummaryCardParts\.meta\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /numberOfLines=\{stepSummaryCardParts\.preview\.numberOfLines\}/);
+  assert.match(sessionPresentationSource, /shouldRenderCard: renderState\.shouldRender/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageStepSummaryCard[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageScrollToBottomButton/
+  );
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageStepSummaryCard[\s\S]*?numberOfLines=\{renderState\.surface\.titleNumberOfLines\}[\s\S]*?export function ChatMessageScrollToBottomButton/
+  );
   assert.match(screenSource, /createChatRuntimeStepSummaryMobileStyleSlots,/);
   assert.match(screenSource, /const stepSummaryStyleState = conversationChromeStyleState\.stepSummary;/);
   assert.match(screenSource, /const stepSummaryStyleSlots = createChatRuntimeStepSummaryMobileStyleSlots\(\{\s+renderState: stepSummaryStyleState,\s+spacing,\s+radius,\s+\}\);/);

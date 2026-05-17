@@ -3735,6 +3735,159 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeStepSummaryCardMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    actionSummary: string
+    meta: string
+    preview: string
+    surface: {
+      titleNumberOfLines: unknown
+      badgeNumberOfLines: unknown
+      actionNumberOfLines: unknown
+      metaNumberOfLines: unknown
+      previewNumberOfLines: unknown
+    }
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    actionSummary: string
+    meta: string
+    preview: string
+    surface: {
+      titleNumberOfLines: unknown
+      badgeNumberOfLines: unknown
+      actionNumberOfLines: unknown
+      metaNumberOfLines: unknown
+      previewNumberOfLines: unknown
+    }
+  },
+  TStyles extends {
+    card: unknown
+    header: unknown
+    title: unknown
+    badge: unknown
+    badgeText: unknown
+    action: unknown
+    meta: unknown
+    preview: unknown
+  } = {
+    card: unknown
+    header: unknown
+    title: unknown
+    badge: unknown
+    badgeText: unknown
+    action: unknown
+    meta: unknown
+    preview: unknown
+  },
+> {
+  renderState: TRenderState
+  styles: TStyles
+}
+
+export interface ChatRuntimeStepSummaryCardMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    actionSummary: string
+    meta: string
+    preview: string
+    surface: {
+      titleNumberOfLines: unknown
+      badgeNumberOfLines: unknown
+      actionNumberOfLines: unknown
+      metaNumberOfLines: unknown
+      previewNumberOfLines: unknown
+    }
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    actionSummary: string
+    meta: string
+    preview: string
+    surface: {
+      titleNumberOfLines: unknown
+      badgeNumberOfLines: unknown
+      actionNumberOfLines: unknown
+      metaNumberOfLines: unknown
+      previewNumberOfLines: unknown
+    }
+  },
+  TStyles extends {
+    card: unknown
+    header: unknown
+    title: unknown
+    badge: unknown
+    badgeText: unknown
+    action: unknown
+    meta: unknown
+    preview: unknown
+  } = {
+    card: unknown
+    header: unknown
+    title: unknown
+    badge: unknown
+    badgeText: unknown
+    action: unknown
+    meta: unknown
+    preview: unknown
+  },
+> {
+  shouldRenderCard: boolean
+  card: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStyles["card"]
+  }
+  header: {
+    style: TStyles["header"]
+  }
+  title: {
+    style: TStyles["title"]
+    numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+    text: string
+  }
+  badge: {
+    style: TStyles["badge"]
+  }
+  badgeLabel: {
+    style: TStyles["badgeText"]
+    numberOfLines: TRenderState["surface"]["badgeNumberOfLines"]
+    text: string
+  }
+  action: {
+    style: TStyles["action"]
+    numberOfLines: TRenderState["surface"]["actionNumberOfLines"]
+    text: string
+  }
+  meta: {
+    style: TStyles["meta"]
+    numberOfLines: TRenderState["surface"]["metaNumberOfLines"]
+    text: string
+  }
+  preview: {
+    shouldRender: boolean
+    style: TStyles["preview"]
+    numberOfLines: TRenderState["surface"]["previewNumberOfLines"]
+    text: string
+  }
+}
+
 export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
   TLoadingState extends object = Record<string, never>,
   THomeQuickStarts extends object = Record<string, never>,
@@ -16999,6 +17152,87 @@ export function createChatRuntimeMessageHistoryBannerMobilePropsParts<
     loadButtonLabel: {
       style: styles.loadButtonText,
       text: renderState.loadButton.label,
+    },
+  }
+}
+
+export function createChatRuntimeStepSummaryCardMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    title: string
+    badgeLabel: string
+    actionSummary: string
+    meta: string
+    preview: string
+    surface: {
+      titleNumberOfLines: unknown
+      badgeNumberOfLines: unknown
+      actionNumberOfLines: unknown
+      metaNumberOfLines: unknown
+      previewNumberOfLines: unknown
+    }
+  },
+  TStyles extends {
+    card: unknown
+    header: unknown
+    title: unknown
+    badge: unknown
+    badgeText: unknown
+    action: unknown
+    meta: unknown
+    preview: unknown
+  },
+>({
+  renderState,
+  styles,
+}: ChatRuntimeStepSummaryCardMobilePropsPartsInput<
+  TRenderState,
+  TStyles
+>): ChatRuntimeStepSummaryCardMobilePropsParts<
+  TRenderState,
+  TStyles
+> {
+  return {
+    shouldRenderCard: renderState.shouldRender,
+    card: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      style: styles.card,
+    },
+    header: {
+      style: styles.header,
+    },
+    title: {
+      style: styles.title,
+      numberOfLines: renderState.surface.titleNumberOfLines,
+      text: renderState.title,
+    },
+    badge: {
+      style: styles.badge,
+    },
+    badgeLabel: {
+      style: styles.badgeText,
+      numberOfLines: renderState.surface.badgeNumberOfLines,
+      text: renderState.badgeLabel,
+    },
+    action: {
+      style: styles.action,
+      numberOfLines: renderState.surface.actionNumberOfLines,
+      text: renderState.actionSummary,
+    },
+    meta: {
+      style: styles.meta,
+      numberOfLines: renderState.surface.metaNumberOfLines,
+      text: renderState.meta,
+    },
+    preview: {
+      shouldRender: Boolean(renderState.preview),
+      style: styles.preview,
+      numberOfLines: renderState.surface.previewNumberOfLines,
+      text: renderState.preview,
     },
   }
 }

@@ -123,6 +123,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
+  createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeScrollToBottomMobileStyleSlots,
@@ -5629,6 +5630,110 @@ describe("session presentation semantics", () => {
         fontSize: 12,
         lineHeight: 17,
         marginTop: 2,
+      },
+    })
+    const stepSummaryCardParts = createChatRuntimeStepSummaryCardMobilePropsParts({
+      renderState: {
+        shouldRender: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Latest activity. Step 3 summary.",
+        title: "Latest activity",
+        badgeLabel: "Summary · Step 3",
+        actionSummary: "Compared mobile and desktop chat chrome",
+        meta: "Step 3 · High importance · 1 key finding",
+        preview: "Mobile did not surface generated step summaries",
+        surface: {
+          titleNumberOfLines: 1,
+          badgeNumberOfLines: 1,
+          actionNumberOfLines: 2,
+          metaNumberOfLines: 1,
+          previewNumberOfLines: 2,
+        },
+      },
+      styles: {
+        card: "card-style",
+        header: "header-style",
+        title: "title-style",
+        badge: "badge-style",
+        badgeText: "badge-text-style",
+        action: "action-style",
+        meta: "meta-style",
+        preview: "preview-style",
+      },
+    })
+    expect(stepSummaryCardParts).toEqual({
+      shouldRenderCard: true,
+      card: {
+        accessible: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Latest activity. Step 3 summary.",
+        style: "card-style",
+      },
+      header: {
+        style: "header-style",
+      },
+      title: {
+        style: "title-style",
+        numberOfLines: 1,
+        text: "Latest activity",
+      },
+      badge: {
+        style: "badge-style",
+      },
+      badgeLabel: {
+        style: "badge-text-style",
+        numberOfLines: 1,
+        text: "Summary · Step 3",
+      },
+      action: {
+        style: "action-style",
+        numberOfLines: 2,
+        text: "Compared mobile and desktop chat chrome",
+      },
+      meta: {
+        style: "meta-style",
+        numberOfLines: 1,
+        text: "Step 3 · High importance · 1 key finding",
+      },
+      preview: {
+        shouldRender: true,
+        style: "preview-style",
+        numberOfLines: 2,
+        text: "Mobile did not surface generated step summaries",
+      },
+    })
+    expect(createChatRuntimeStepSummaryCardMobilePropsParts({
+      renderState: {
+        shouldRender: false,
+        accessibilityRole: "text",
+        accessibilityLabel: "Latest activity. Step 3 summary.",
+        title: "Latest activity",
+        badgeLabel: "Summary · Step 3",
+        actionSummary: "Compared mobile and desktop chat chrome",
+        meta: "Step 3 · High importance · 1 key finding",
+        preview: "",
+        surface: {
+          titleNumberOfLines: 1,
+          badgeNumberOfLines: 1,
+          actionNumberOfLines: 2,
+          metaNumberOfLines: 1,
+          previewNumberOfLines: 2,
+        },
+      },
+      styles: {
+        card: "card-style",
+        header: "header-style",
+        title: "title-style",
+        badge: "badge-style",
+        badgeText: "badge-text-style",
+        action: "action-style",
+        meta: "meta-style",
+        preview: "preview-style",
+      },
+    })).toMatchObject({
+      shouldRenderCard: false,
+      preview: {
+        shouldRender: false,
       },
     })
     expect(getChatRuntimeStepSummaryState({
