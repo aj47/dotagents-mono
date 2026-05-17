@@ -10267,7 +10267,7 @@ export function ChatMessageToolExecutionErrorBlock({
           {...errorBlockParts.label.props}
         />
         <ChatMessageToolExecutionCopyButton
-          {...errorBlockParts.copyButton}
+          {...errorBlockParts.copyButton.props}
         />
       </ChatMessageToolExecutionErrorBlockView>
       <ChatMessageToolExecutionErrorBlockText

@@ -4319,9 +4319,11 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
     }
   }
   copyButton: {
-    renderState: TCopyButtonRenderState
-    onPress: TOnCopyPress | undefined
-    styles: TStyles["copyButton"]
+    props: {
+      renderState: TCopyButtonRenderState
+      onPress: TOnCopyPress | undefined
+      styles: TStyles["copyButton"]
+    }
   }
   error: {
     props: {
@@ -21494,9 +21496,11 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
       },
     },
     copyButton: {
-      renderState: copyButtonRenderState,
-      onPress: onCopyPress,
-      styles: styles.copyButton,
+      props: {
+        renderState: copyButtonRenderState,
+        onPress: onCopyPress,
+        styles: styles.copyButton,
+      },
     },
     error: {
       props: {

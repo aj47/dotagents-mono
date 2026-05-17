@@ -13945,9 +13945,11 @@ describe("session presentation semantics", () => {
         },
       },
       copyButton: {
-        renderState: "copy-error-state",
-        onPress: "copy-error",
-        styles: "error-copy-button",
+        props: {
+          renderState: "copy-error-state",
+          onPress: "copy-error",
+          styles: "error-copy-button",
+        },
       },
       error: {
         props: {

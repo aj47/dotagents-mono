@@ -4202,15 +4202,17 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockView\s+\{\.\.\.errorBlockParts\.section\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockView\s+\{\.\.\.errorBlockParts\.headerRow\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.errorBlockParts\.label\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.errorBlockParts\.copyButton\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.errorBlockParts\.copyButton\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.errorBlockParts\.error\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockView[\s\S]*?<View style=\{style\}>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockText[\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}/);
   assert.match(sessionPresentationSource, /section: \{\s+props: \{\s+style: styles\.section,/);
   assert.match(sessionPresentationSource, /headerRow: \{\s+props: \{\s+style: styles\.headerRow,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+text: renderState\.label,/);
+  assert.match(sessionPresentationSource, /copyButton: \{\s+props: \{\s+renderState: copyButtonRenderState,\s+onPress: onCopyPress,\s+styles: styles\.copyButton,/);
   assert.match(sessionPresentationSource, /error: \{\s+props: \{\s+style: styles\.text,\s+text: error,/);
   assert.doesNotMatch(chatMessageChromeSource, /errorBlockParts\.(sectionStyle|headerRowStyle)/);
+  assert.doesNotMatch(chatMessageChromeSource, /errorBlockParts\.copyButton\.(renderState|onPress|styles)/);
   assert.doesNotMatch(chatMessageChromeSource, /errorBlockParts\.(label|error)\.(style|text)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlock[\s\S]*?\{renderState\.label\}[\s\S]*?export function ChatMessageToolExecutionResultSection/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlock[\s\S]*?<ChatMessageToolExecutionCopyButton\s+renderState=\{copyButtonRenderState\}[\s\S]*?export function ChatMessageToolExecutionResultSection/);
