@@ -7,6 +7,7 @@ import {
   buildConversationImageAssetHttpUrl,
   createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
+  createMarkdownThinkSectionMobilePropsParts,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockFeedbackResetDelayMs,
@@ -17,12 +18,7 @@ import {
   getMarkdownImageLoadErrorFallback,
   getMarkdownImageUnavailableLabel,
   getMarkdownRenderOptions,
-  getMarkdownThinkSectionAccessibilityLabel,
-  getMarkdownThinkSectionAccessibilityState,
   getMarkdownThinkSectionControlState,
-  getMarkdownThinkSectionDisplayLabel,
-  getMarkdownThinkSectionMobileChevronIconState,
-  getMarkdownThinkSectionMobileLeadingIconState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
   isAllowedMarkdownImageUrl,
   isAllowedMarkdownContentLinkUrl,
@@ -45,8 +41,7 @@ interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
 
 const ThinkSection: React.FC<{
   content: string;
-  surface: MarkdownThinkSectionMobileSurfaceRenderState['surface'];
-  colors: MarkdownThinkSectionMobileSurfaceRenderState['colors'];
+  renderState: MarkdownThinkSectionMobileSurfaceRenderState;
   markdownStyles: any;
   markdownRules: any;
   styles: any;
@@ -55,8 +50,7 @@ const ThinkSection: React.FC<{
   onToggle?: () => void;
 }> = ({
   content,
-  surface,
-  colors,
+  renderState,
   markdownStyles,
   markdownRules,
   styles,
@@ -66,8 +60,6 @@ const ThinkSection: React.FC<{
 }) => {
   const [internalCollapsed, setInternalCollapsed] = React.useState(defaultCollapsed);
   const collapsed = isCollapsed ?? internalCollapsed;
-  const chevronIcon = getMarkdownThinkSectionMobileChevronIconState(collapsed);
-  const thinkIcon = getMarkdownThinkSectionMobileLeadingIconState();
   const handleToggle = React.useCallback(() => {
     if (onToggle) {
       onToggle();
@@ -75,30 +67,29 @@ const ThinkSection: React.FC<{
     }
     setInternalCollapsed(prev => !prev);
   }, [onToggle]);
+  const thinkSectionParts = createMarkdownThinkSectionMobilePropsParts({
+    renderState,
+    styles,
+    content,
+    isCollapsed: collapsed,
+    onToggle: handleToggle,
+  });
 
   return (
-    <View style={[styles.container, collapsed ? styles.containerCollapsed : styles.containerExpanded]}>
+    <View {...thinkSectionParts.container.props}>
       <Pressable
-        onPress={handleToggle}
-        accessibilityRole={surface.header.accessibilityRole}
-        accessibilityLabel={getMarkdownThinkSectionAccessibilityLabel(collapsed)}
-        accessibilityState={getMarkdownThinkSectionAccessibilityState(collapsed)}
-        style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
+        {...thinkSectionParts.header.props}
       >
         <Ionicons
-          name={chevronIcon.name}
-          size={chevronIcon.size}
-          color={colors.chevron.color}
+          {...thinkSectionParts.chevronIcon.props}
         />
         <Ionicons
-          name={thinkIcon.name}
-          size={thinkIcon.size}
-          color={colors.icon.color}
+          {...thinkSectionParts.leadingIcon.props}
         />
-        <Text style={styles.label}>{getMarkdownThinkSectionDisplayLabel(collapsed)}</Text>
+        <Text {...thinkSectionParts.label.props}>{thinkSectionParts.label.text}</Text>
       </Pressable>
-      {!collapsed && content.trim().length > 0 && (
-        <View style={styles.content}>
+      {thinkSectionParts.content.shouldRender && (
+        <View {...thinkSectionParts.content.props}>
           <Markdown style={markdownStyles} rules={markdownRules} onLinkPress={isAllowedMarkdownContentLinkUrl}>
             {content}
           </Markdown>
@@ -306,7 +297,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
     [isDark],
   );
-  const thinkSectionColors = thinkSectionRenderState.colors;
   const thinkSectionStyleSlots = React.useMemo(
     () => createMarkdownThinkSectionMobileStyleSlots({
       renderState: thinkSectionRenderState,
@@ -383,8 +373,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             <ThinkSection
               key={thinkControl.key}
               content={part.content}
-              surface={thinkSectionRenderState.surface}
-              colors={thinkSectionColors}
+              renderState={thinkSectionRenderState}
               markdownStyles={markdownStyles}
               markdownRules={markdownRules}
               styles={thinkStyles}

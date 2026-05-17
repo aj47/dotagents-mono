@@ -64,6 +64,7 @@ import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
   createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
+  createMarkdownThinkSectionMobilePropsParts,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockCopyDesktopRenderState,
@@ -96,6 +97,8 @@ export {
   type MarkdownMobileStyleRadiusToken,
   type MarkdownMobileStyleSpacingToken,
   type MarkdownThinkSectionControlOptions,
+  type MarkdownThinkSectionMobilePropsParts,
+  type MarkdownThinkSectionMobilePropsPartsInput,
   type MarkdownThinkSectionMobileStyleSlotsInput,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from "./markdown-render-parts"

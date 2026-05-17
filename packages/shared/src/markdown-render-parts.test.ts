@@ -7,6 +7,7 @@ import {
   MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION,
   createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
+  createMarkdownThinkSectionMobilePropsParts,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockCopyDesktopRenderState,
@@ -410,6 +411,52 @@ describe("markdown render parts", () => {
       paddingHorizontal: 8,
       paddingBottom: 8,
     })
+    const thinkSectionParts = createMarkdownThinkSectionMobilePropsParts({
+      renderState: getMarkdownThinkSectionMobileSurfaceRenderState({ isDark: false }),
+      styles: thinkSectionStyleSlots,
+      content: "visible thought",
+      isCollapsed: false,
+      onToggle: "toggle-thinking",
+    })
+    expect(thinkSectionParts.container.props.style).toEqual([
+      thinkSectionStyleSlots.container,
+      thinkSectionStyleSlots.containerExpanded,
+    ])
+    expect(thinkSectionParts.header.props).toMatchObject({
+      onPress: "toggle-thinking",
+      accessibilityRole: "button",
+      accessibilityLabel: "Hide thinking",
+      accessibilityState: { expanded: true },
+    })
+    expect(thinkSectionParts.header.props.style({ pressed: true })).toEqual([
+      thinkSectionStyleSlots.header,
+      thinkSectionStyleSlots.headerPressed,
+    ])
+    expect(thinkSectionParts.chevronIcon.props).toEqual({
+      name: "chevron-down",
+      size: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.chevron.size,
+      color: "#d97706",
+    })
+    expect(thinkSectionParts.leadingIcon.props).toEqual({
+      name: "bulb-outline",
+      size: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.icon.size,
+      color: "#d97706",
+    })
+    expect(thinkSectionParts.label).toEqual({
+      text: "Hide thinking",
+      props: { style: thinkSectionStyleSlots.label },
+    })
+    expect(thinkSectionParts.content).toEqual({
+      shouldRender: true,
+      props: { style: thinkSectionStyleSlots.content },
+    })
+    expect(createMarkdownThinkSectionMobilePropsParts({
+      renderState: getMarkdownThinkSectionMobileSurfaceRenderState({ isDark: false }),
+      styles: thinkSectionStyleSlots,
+      content: "visible thought",
+      isCollapsed: true,
+      onToggle: "toggle-thinking",
+    }).content.shouldRender).toBe(false)
     expect(getMarkdownThinkSectionMobileSurfaceColors({ isDark: true })).toEqual({
       collapsedContainer: {
         borderColor: "rgba(251, 191, 36, 0.28)",

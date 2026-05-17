@@ -580,6 +580,73 @@ export interface MarkdownThinkSectionMobileSurfaceRenderState {
   colors: MarkdownThinkSectionMobileSurfaceColors
 }
 
+export interface MarkdownThinkSectionMobilePropsStylesLike {
+  container: unknown
+  containerCollapsed: unknown
+  containerExpanded: unknown
+  header: unknown
+  headerPressed: unknown
+  label: unknown
+  content: unknown
+}
+
+export interface MarkdownThinkSectionMobilePropsPartsInput<
+  TStyles extends MarkdownThinkSectionMobilePropsStylesLike = MarkdownThinkSectionMobilePropsStylesLike,
+  TPressHandler = unknown,
+> {
+  renderState: MarkdownThinkSectionMobileSurfaceRenderState
+  styles: TStyles
+  content: string
+  isCollapsed: boolean
+  onToggle: TPressHandler
+}
+
+export interface MarkdownThinkSectionMobilePropsParts<
+  TStyles extends MarkdownThinkSectionMobilePropsStylesLike = MarkdownThinkSectionMobilePropsStylesLike,
+  TPressHandler = unknown,
+> {
+  container: {
+    props: {
+      style: Array<TStyles["container"] | TStyles["containerCollapsed"] | TStyles["containerExpanded"]>
+    }
+  }
+  header: {
+    props: {
+      onPress: TPressHandler
+      accessibilityRole: MarkdownThinkSectionMobileSurface["header"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: MarkdownThinkSectionAccessibilityState
+      style: (input: { pressed: boolean }) => Array<TStyles["header"] | false | TStyles["headerPressed"]>
+    }
+  }
+  chevronIcon: {
+    props: {
+      name: ReturnType<typeof getMarkdownThinkSectionMobileChevronIconState>["name"]
+      size: number
+      color: string
+    }
+  }
+  leadingIcon: {
+    props: {
+      name: ReturnType<typeof getMarkdownThinkSectionMobileLeadingIconState>["name"]
+      size: number
+      color: string
+    }
+  }
+  label: {
+    text: string
+    props: {
+      style: TStyles["label"]
+    }
+  }
+  content: {
+    shouldRender: boolean
+    props: {
+      style: TStyles["content"]
+    }
+  }
+}
+
 function resolveMarkdownMobileThemedColor(
   color: MarkdownMobileThemedColor,
   isDark: boolean,
@@ -1046,6 +1113,67 @@ export function getMarkdownThinkSectionMobileLeadingIconState() {
     size: surface.size,
     color: surface.color,
   } as const
+}
+
+export function createMarkdownThinkSectionMobilePropsParts<
+  TStyles extends MarkdownThinkSectionMobilePropsStylesLike = MarkdownThinkSectionMobilePropsStylesLike,
+  TPressHandler = unknown,
+>({
+  renderState,
+  styles,
+  content,
+  isCollapsed,
+  onToggle,
+}: MarkdownThinkSectionMobilePropsPartsInput<TStyles, TPressHandler>):
+  MarkdownThinkSectionMobilePropsParts<TStyles, TPressHandler> {
+  const chevronIcon = getMarkdownThinkSectionMobileChevronIconState(isCollapsed)
+  const leadingIcon = getMarkdownThinkSectionMobileLeadingIconState()
+
+  return {
+    container: {
+      props: {
+        style: [
+          styles.container,
+          isCollapsed ? styles.containerCollapsed : styles.containerExpanded,
+        ],
+      },
+    },
+    header: {
+      props: {
+        onPress: onToggle,
+        accessibilityRole: renderState.surface.header.accessibilityRole,
+        accessibilityLabel: getMarkdownThinkSectionAccessibilityLabel(isCollapsed),
+        accessibilityState: getMarkdownThinkSectionAccessibilityState(isCollapsed),
+        style: ({ pressed }) => [styles.header, pressed && styles.headerPressed],
+      },
+    },
+    chevronIcon: {
+      props: {
+        name: chevronIcon.name,
+        size: chevronIcon.size,
+        color: renderState.colors.chevron.color,
+      },
+    },
+    leadingIcon: {
+      props: {
+        name: leadingIcon.name,
+        size: leadingIcon.size,
+        color: renderState.colors.icon.color,
+      },
+    },
+    label: {
+      text: getMarkdownThinkSectionDisplayLabel(isCollapsed),
+      props: {
+        style: styles.label,
+      },
+    },
+    content: {
+      shouldRender: !isCollapsed && content.trim().length > 0,
+      props: {
+        style: styles.content,
+      },
+    },
+  }
 }
 
 export function getMarkdownThinkSectionMobileContainerState(isCollapsed: boolean) {
