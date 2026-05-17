@@ -1610,6 +1610,9 @@ type ChatMessageToolApprovalToolLabelProps =
 type ChatMessageToolApprovalToolNameProps =
   ChatMessageToolApprovalParts['toolName']['props'];
 
+type ChatMessageToolApprovalArgumentsPreviewProps =
+  ChatMessageToolApprovalParts['argumentsPreview']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7476,12 +7479,9 @@ export function ChatMessageToolApproval({
           />
         </View>
         {toolApprovalParts.argumentsPreview.shouldRender ? (
-          <Text
-            style={toolApprovalParts.argumentsPreview.style}
-            numberOfLines={toolApprovalParts.argumentsPreview.numberOfLines}
-          >
-            {toolApprovalParts.argumentsPreview.text}
-          </Text>
+          <ChatMessageToolApprovalArgumentsPreview
+            {...toolApprovalParts.argumentsPreview.props}
+          />
         ) : null}
         <Pressable
           onPress={toolApprovalParts.argumentsToggle.onPress}
@@ -7609,6 +7609,21 @@ export function ChatMessageToolApprovalToolName({
   numberOfLines,
   text,
 }: ChatMessageToolApprovalToolNameProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolApprovalArgumentsPreview({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageToolApprovalArgumentsPreviewProps) {
   return (
     <Text
       style={style}

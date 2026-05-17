@@ -8195,9 +8195,11 @@ describe("session presentation semantics", () => {
     })
     expect(toolApprovalParts.argumentsPreview).toEqual({
       shouldRender: true,
-      style: "tool-approval-arguments-preview-style",
-      numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.numberOfLines,
-      text: "path: /test",
+      props: {
+        style: "tool-approval-arguments-preview-style",
+        numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.numberOfLines,
+        text: "path: /test",
+      },
     })
     expect(toolApprovalParts.argumentsToggle.style({ pressed: true })).toEqual([
       "tool-approval-arguments-toggle-style",

@@ -2003,9 +2003,11 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
   }
   argumentsPreview: {
     shouldRender: boolean
-    style: TStyles["argumentsPreview"]
-    numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["argumentsPreview"]["numberOfLines"]
-    text: string
+    props: {
+      style: TStyles["argumentsPreview"]
+      numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["argumentsPreview"]["numberOfLines"]
+      text: string
+    }
   }
   argumentsToggle: {
     onPress: TOnToggleArguments
@@ -22842,9 +22844,11 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
     },
     argumentsPreview: {
       shouldRender: Boolean(argumentsPreview),
-      style: styles.argumentsPreview,
-      numberOfLines: renderState.surface.argumentsPreview.numberOfLines,
-      text: argumentsPreview,
+      props: {
+        style: styles.argumentsPreview,
+        numberOfLines: renderState.surface.argumentsPreview.numberOfLines,
+        text: argumentsPreview,
+      },
     },
     argumentsToggle: {
       onPress: onToggleArguments,

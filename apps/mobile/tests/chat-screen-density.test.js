@@ -628,8 +628,12 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /renderState\.argumentsToggle\.isDisabled && styles\.buttonDisabled/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ expanded: isToolApprovalExpanded, disabled: isToolApprovalResponding \}\}/);
   assert.doesNotMatch(screenSource, /aria-expanded=\{isToolApprovalExpanded\}/);
+  assert.match(sessionPresentationSource, /argumentsPreview: \{[\s\S]*?shouldRender: Boolean\(argumentsPreview\),[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsPreview,[\s\S]*?numberOfLines: renderState\.surface\.argumentsPreview\.numberOfLines,[\s\S]*?text: argumentsPreview,/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.shouldRender \? \(/);
-  assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.argumentsPreview\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsPreview/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsPreview\s+\{\.\.\.toolApprovalParts\.argumentsPreview\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsPreview[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.(style|numberOfLines|text)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview \? \(/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.argumentsToggle\.icon,/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.icon\.props\}/);
