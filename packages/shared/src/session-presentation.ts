@@ -7323,12 +7323,14 @@ export interface ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
         | undefined
       >
     }
-  }
-  text: {
-    text: string
-    props: {
-      style: TTextStyle
-      numberOfLines: TRenderState["numberOfLines"]
+    content: {
+      text: {
+        text: string
+        props: {
+          style: TTextStyle
+          numberOfLines: TRenderState["numberOfLines"]
+        }
+      }
     }
   }
 }
@@ -25029,12 +25031,14 @@ export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts<
           pressed && !actionState.disabled && pressedStyle,
         ],
       },
-    },
-    text: {
-      text: renderState.text,
-      props: {
-        style: textStyle,
-        numberOfLines: renderState.numberOfLines,
+      content: {
+        text: {
+          text: renderState.text,
+          props: {
+            style: textStyle,
+            numberOfLines: renderState.numberOfLines,
+          },
+        },
       },
     },
   }

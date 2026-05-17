@@ -11809,13 +11809,14 @@ export function ChatMessageCollapsedPreview({
     pressedStyle,
     textStyle,
   });
+  const collapsedPreviewContent = collapsedPreviewParts.pressable.content;
 
   return (
     <Pressable
       {...collapsedPreviewParts.pressable.props}
     >
-      <Text {...collapsedPreviewParts.text.props}>
-        {collapsedPreviewParts.text.text}
+      <Text {...collapsedPreviewContent.text.props}>
+        {collapsedPreviewContent.text.text}
       </Text>
     </Pressable>
   );

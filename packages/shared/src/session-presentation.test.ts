@@ -6136,12 +6136,14 @@ describe("session presentation semantics", () => {
           "aria-expanded": false,
           hitSlop: 8,
         },
-      },
-      text: {
-        text: "Preview text",
-        props: {
-          style: "preview-text-style",
-          numberOfLines: 2,
+        content: {
+          text: {
+            text: "Preview text",
+            props: {
+              style: "preview-text-style",
+              numberOfLines: 2,
+            },
+          },
         },
       },
     })
