@@ -3119,8 +3119,16 @@ type ChatMessageHistoryBannerTextPart = {
   props: ComponentProps<typeof Text>;
 };
 
+type ChatMessageHistoryBannerTextProps = {
+  part: ChatMessageHistoryBannerTextPart;
+};
+
 type ChatMessageHistoryBannerIconPart = {
   props: ComponentProps<typeof Ionicons>;
+};
+
+type ChatMessageHistoryBannerIconProps = {
+  icon: ChatMessageHistoryBannerIconPart;
 };
 
 type ChatMessageHistoryBannerLoadButtonPart = {
@@ -3143,6 +3151,9 @@ type ChatMessageHistoryBannerContainerProps = {
   container: ChatMessageHistoryBannerContainerPart;
 };
 
+type ChatMessageHistoryBannerContainerContentProps =
+  ChatMessageHistoryBannerContainerPart['content'];
+
 type ChatMessageHistoryBannerSummaryProps = {
   summary: ChatMessageHistoryBannerTextPart;
 };
@@ -3150,6 +3161,9 @@ type ChatMessageHistoryBannerSummaryProps = {
 type ChatMessageHistoryBannerLoadButtonProps = {
   button: ChatMessageHistoryBannerLoadButtonPart;
 };
+
+type ChatMessageHistoryBannerLoadButtonContentProps =
+  ChatMessageHistoryBannerLoadButtonPart['content'];
 
 type ChatMessageConversationFrameProps = {
   children: ReactNode;
@@ -12144,17 +12158,24 @@ export function ChatMessageHistoryBanner({
 export function ChatMessageHistoryBannerContainer({
   container,
 }: ChatMessageHistoryBannerContainerProps) {
-  const historyBannerContent = container.content;
-
   return (
     <View {...container.props}>
-      <ChatMessageHistoryBannerSummary
-        summary={historyBannerContent.summary}
-      />
-      <ChatMessageHistoryBannerLoadButton
-        button={historyBannerContent.loadButton}
+      <ChatMessageHistoryBannerContainerContent
+        {...container.content}
       />
     </View>
+  );
+}
+
+export function ChatMessageHistoryBannerContainerContent({
+  summary,
+  loadButton,
+}: ChatMessageHistoryBannerContainerContentProps) {
+  return (
+    <>
+      <ChatMessageHistoryBannerSummary summary={summary} />
+      <ChatMessageHistoryBannerLoadButton button={loadButton} />
+    </>
   );
 }
 
@@ -12162,28 +12183,51 @@ export function ChatMessageHistoryBannerSummary({
   summary,
 }: ChatMessageHistoryBannerSummaryProps) {
   return (
-    <Text {...summary.props}>
-      {summary.text}
-    </Text>
+    <ChatMessageHistoryBannerText part={summary} />
   );
 }
 
 export function ChatMessageHistoryBannerLoadButton({
   button,
 }: ChatMessageHistoryBannerLoadButtonProps) {
-  const historyBannerLoadButtonContent = button.content;
-
   return (
     <Pressable
       {...button.props}
     >
-      <Ionicons
-        {...historyBannerLoadButtonContent.icon.props}
+      <ChatMessageHistoryBannerLoadButtonContent
+        {...button.content}
       />
-      <Text {...historyBannerLoadButtonContent.label.props}>
-        {historyBannerLoadButtonContent.label.text}
-      </Text>
     </Pressable>
+  );
+}
+
+export function ChatMessageHistoryBannerLoadButtonContent({
+  icon,
+  label,
+}: ChatMessageHistoryBannerLoadButtonContentProps) {
+  return (
+    <>
+      <ChatMessageHistoryBannerIcon icon={icon} />
+      <ChatMessageHistoryBannerText part={label} />
+    </>
+  );
+}
+
+export function ChatMessageHistoryBannerIcon({
+  icon,
+}: ChatMessageHistoryBannerIconProps) {
+  return (
+    <Ionicons {...icon.props} />
+  );
+}
+
+export function ChatMessageHistoryBannerText({
+  part,
+}: ChatMessageHistoryBannerTextProps) {
+  return (
+    <Text {...part.props}>
+      {part.text}
+    </Text>
   );
 }
 

@@ -5141,24 +5141,42 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.container\.shouldRender\) return null;/);
   const historyBannerSource =
-    chatMessageChromeSource.match(/export function ChatMessageHistoryBanner[\s\S]*?export function ChatMessageStepSummaryCard/)?.[0] ?? '';
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBanner\([\s\S]*?export function ChatMessageHistoryBannerContainer/)?.[0] ?? '';
+  const historyBannerContainerSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerContainer[\s\S]*?export function ChatMessageHistoryBannerContainerContent/)?.[0] ?? '';
+  const historyBannerContainerContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerContainerContent[\s\S]*?export function ChatMessageHistoryBannerSummary/)?.[0] ?? '';
+  const historyBannerSummarySource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerSummary[\s\S]*?export function ChatMessageHistoryBannerLoadButton/)?.[0] ?? '';
+  const historyBannerLoadButtonSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerLoadButton\([\s\S]*?export function ChatMessageHistoryBannerLoadButtonContent/)?.[0] ?? '';
+  const historyBannerLoadButtonContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerLoadButtonContent[\s\S]*?export function ChatMessageHistoryBannerIcon/)?.[0] ?? '';
+  const historyBannerIconSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerIcon[\s\S]*?export function ChatMessageHistoryBannerText/)?.[0] ?? '';
+  const historyBannerTextSource =
+    chatMessageChromeSource.match(/export function ChatMessageHistoryBannerText[\s\S]*?export function ChatMessageStepSummaryCard/)?.[0] ?? '';
   assert.match(historyBannerSource, /<ChatMessageHistoryBannerContainer\s+container=\{historyBannerParts\.container\}/);
   assert.match(historyBannerSource, /export function ChatMessageHistoryBannerContainer/);
-  assert.match(historyBannerSource, /const historyBannerContent = container\.content;/);
-  assert.match(historyBannerSource, /<View\s+\{\.\.\.container\.props\}>/);
-  assert.match(historyBannerSource, /<ChatMessageHistoryBannerSummary\s+summary=\{historyBannerContent\.summary\}/);
-  assert.match(historyBannerSource, /<ChatMessageHistoryBannerLoadButton\s+button=\{historyBannerContent\.loadButton\}/);
-  assert.match(historyBannerSource, /export function ChatMessageHistoryBannerSummary[\s\S]*?<Text\s+\{\.\.\.summary\.props\}>[\s\S]*?\{summary\.text\}/);
-  assert.match(historyBannerSource, /export function ChatMessageHistoryBannerLoadButton/);
-  assert.match(historyBannerSource, /const historyBannerLoadButtonContent = button\.content;/);
-  assert.match(historyBannerSource, /<Pressable\s+\{\.\.\.button\.props\}/);
-  assert.match(historyBannerSource, /<Ionicons\s+\{\.\.\.historyBannerLoadButtonContent\.icon\.props\}/);
-  assert.match(historyBannerSource, /\{historyBannerLoadButtonContent\.label\.text\}/);
-  assert.match(historyBannerSource, /<Text\s+\{\.\.\.historyBannerLoadButtonContent\.label\.props\}>/);
-  assert.doesNotMatch(historyBannerSource, /const historyBannerContent = historyBannerParts\.container\.content;/);
-  assert.doesNotMatch(historyBannerSource, /<View\s+\{\.\.\.historyBannerParts\.container\.props\}>/);
-  assert.doesNotMatch(historyBannerSource, /<Text\s+\{\.\.\.historyBannerContent\.summary\.props\}>/);
-  assert.doesNotMatch(historyBannerSource, /<Pressable\s+\{\.\.\.historyBannerContent\.loadButton\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const historyBannerContent = container\.content;/);
+  assert.match(historyBannerContainerSource, /<View\s+\{\.\.\.container\.props\}>/);
+  assert.match(historyBannerContainerSource, /<ChatMessageHistoryBannerContainerContent\s+\{\.\.\.container\.content\}/);
+  assert.match(historyBannerContainerContentSource, /<ChatMessageHistoryBannerSummary\s+summary=\{summary\}/);
+  assert.match(historyBannerContainerContentSource, /<ChatMessageHistoryBannerLoadButton\s+button=\{loadButton\}/);
+  assert.match(historyBannerSummarySource, /<ChatMessageHistoryBannerText\s+part=\{summary\}/);
+  assert.match(historyBannerLoadButtonSource, /export function ChatMessageHistoryBannerLoadButton/);
+  assert.doesNotMatch(chatMessageChromeSource, /const historyBannerLoadButtonContent = button\.content;/);
+  assert.match(historyBannerLoadButtonSource, /<Pressable\s+\{\.\.\.button\.props\}/);
+  assert.match(historyBannerLoadButtonSource, /<ChatMessageHistoryBannerLoadButtonContent\s+\{\.\.\.button\.content\}/);
+  assert.match(historyBannerLoadButtonContentSource, /<ChatMessageHistoryBannerIcon\s+icon=\{icon\}/);
+  assert.match(historyBannerLoadButtonContentSource, /<ChatMessageHistoryBannerText\s+part=\{label\}/);
+  assert.match(historyBannerIconSource, /<Ionicons\s+\{\.\.\.icon\.props\}/);
+  assert.match(historyBannerTextSource, /<Text\s+\{\.\.\.part\.props\}>/);
+  assert.match(historyBannerTextSource, /\{part\.text\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const historyBannerContent = historyBannerParts\.container\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /<View\s+\{\.\.\.historyBannerParts\.container\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Text\s+\{\.\.\.historyBannerContent\.summary\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Pressable\s+\{\.\.\.historyBannerContent\.loadButton\.props\}/);
   assert.doesNotMatch(historyBannerSource, /historyBannerParts\.(summary|loadButton|icon|loadButtonLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.loadButton\.(onPress|accessibilityRole|accessibilityLabel|style|pressedStyle)/);
   assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.icon\.(name|size|color)/);
