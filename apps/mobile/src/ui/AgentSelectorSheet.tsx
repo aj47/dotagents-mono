@@ -28,7 +28,7 @@ import {
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
   type SelectableAgentProfile as SelectableProfile,
-} from '@dotagents/shared/agent-selector-options';
+} from '@dotagents/shared/session-presentation';
 
 interface AgentSelectorSheetProps {
   visible: boolean;

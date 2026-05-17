@@ -7,6 +7,10 @@ const sheetSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'AgentSelectorSheet.tsx'),
   'utf8'
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
 
 test('keeps the mobile agent selector close affordance in a compact header instead of a footer band', () => {
   assert.match(sheetSource, /<View style=\{styles\.header\}>/);
@@ -44,6 +48,9 @@ test('keeps the mobile agent selector title shrink-safe beside the header close 
 });
 
 test('uses shared selector presentation tokens and desktop-like avatar rows', () => {
+  assert.match(sheetSource, /from '@dotagents\/shared\/session-presentation';/);
+  assert.doesNotMatch(sheetSource, /from '@dotagents\/shared\/agent-selector-options';/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildSelectorProfiles,[\s\S]*?createAgentSelectorMobileStyleSlots,[\s\S]*?getAgentSelectorMobileProfileItemRenderState,[\s\S]*?getAgentSelectorMobileRenderState,[\s\S]*?type SelectableAgentProfile,[\s\S]*?\} from "\.\/agent-selector-options"/);
   assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
   assert.match(sheetSource, /getAgentSelectorMobileProfileItemRenderState/);
   assert.match(sheetSource, /const agentSelectorRenderState = React\.useMemo\([\s\S]*?getAgentSelectorMobileRenderState\(\{[\s\S]*?selectorMode,[\s\S]*?colors: theme\.colors,/);

@@ -214,6 +214,13 @@ import {
   type PromptLibraryTaskLike,
 } from "./predefined-prompts"
 export {
+  buildSelectorProfiles,
+  createAgentSelectorMobileStyleSlots,
+  getAgentSelectorMobileProfileItemRenderState,
+  getAgentSelectorMobileRenderState,
+  type SelectableAgentProfile,
+} from "./agent-selector-options"
+export {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
   sortPredefinedPromptsByUpdatedAt,
