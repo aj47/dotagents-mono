@@ -1106,6 +1106,9 @@ type ChatMessageActionIconButtonPressableProps =
     children: ReactNode;
   };
 
+type ChatMessageActionIconButtonPressableContentProps =
+  ChatMessageActionIconButtonParts['pressable']['content'];
+
 type ChatMessageActionIconButtonActivityIndicatorProps =
   ChatMessageActionIconButtonParts['pressable']['content']['activityIndicator']['props'];
 
@@ -5039,23 +5042,38 @@ export function ChatMessageActionIconButton({
     disabledStyle,
   });
 
-  const pressableContent = actionIconButtonParts.pressable.content;
-
   return (
     <ChatMessageActionIconButtonPressable
       {...actionIconButtonParts.pressable.props}
     >
-      {pressableContent.activityIndicator.shouldRender ? (
-        <ChatMessageActionIconButtonActivityIndicator
-          {...pressableContent.activityIndicator.props}
-        />
-      ) : pressableContent.icon.shouldRender ? (
-        <ChatMessageActionIconButtonIcon
-          {...pressableContent.icon.props}
-        />
-      ) : null}
+      <ChatMessageActionIconButtonPressableContent
+        {...actionIconButtonParts.pressable.content}
+      />
     </ChatMessageActionIconButtonPressable>
   );
+}
+
+export function ChatMessageActionIconButtonPressableContent({
+  activityIndicator,
+  icon,
+}: ChatMessageActionIconButtonPressableContentProps) {
+  if (activityIndicator.shouldRender) {
+    return (
+      <ChatMessageActionIconButtonActivityIndicator
+        {...activityIndicator.props}
+      />
+    );
+  }
+
+  if (icon.shouldRender) {
+    return (
+      <ChatMessageActionIconButtonIcon
+        {...icon.props}
+      />
+    );
+  }
+
+  return null;
 }
 
 export function ChatMessageActionIconButtonPressable({

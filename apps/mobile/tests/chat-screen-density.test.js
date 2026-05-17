@@ -6456,11 +6456,14 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /content: \{\s+activityIndicator: \{\s+shouldRender: Boolean\(icon\.isPending\),\s+props: \{\s+size: icon\.size,\s+color: icon\.color,\s+\},\s+\},/);
   assert.match(sessionPresentationSource, /icon: \{\s+shouldRender: !icon\.isPending,\s+props: \{\s+name: icon\.name,\s+size: icon\.size,\s+color: icon\.color,\s+\},\s+\},/);
   assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonPressable\s+\{\.\.\.actionIconButtonParts\.pressable\.props\}/);
-  assert.match(actionIconButtonSource, /const pressableContent = actionIconButtonParts\.pressable\.content;/);
-  assert.match(actionIconButtonSource, /pressableContent\.activityIndicator\.shouldRender \? \(/);
-  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonActivityIndicator\s+\{\.\.\.pressableContent\.activityIndicator\.props\}/);
-  assert.match(actionIconButtonSource, /pressableContent\.icon\.shouldRender \? \(/);
-  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonIcon\s+\{\.\.\.pressableContent\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonPressableContentProps =\s+ChatMessageActionIconButtonParts\['pressable'\]\['content'\];/);
+  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonPressableContent\s+\{\.\.\.actionIconButtonParts\.pressable\.content\}\s+\/>/);
+  assert.match(actionIconButtonSource, /export function ChatMessageActionIconButtonPressableContent/);
+  assert.match(actionIconButtonSource, /if \(activityIndicator\.shouldRender\) \{/);
+  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonActivityIndicator\s+\{\.\.\.activityIndicator\.props\}/);
+  assert.match(actionIconButtonSource, /if \(icon\.shouldRender\) \{/);
+  assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonIcon\s+\{\.\.\.icon\.props\}/);
+  assert.doesNotMatch(actionIconButtonSource, /const pressableContent = actionIconButtonParts\.pressable\.content;/);
   assert.match(
     actionIconButtonSource,
     /export function ChatMessageActionIconButtonPressable\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageActionIconButtonPressableProps\) \{\s+return \(\s+<Pressable \{\.\.\.props\}>[\s\S]*?export function ChatMessageActionIconButtonActivityIndicator/
@@ -8479,9 +8482,9 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /isPending: branchingMessageIndex === messageBranchIndex/);
   assert.doesNotMatch(screenSource, /renderState: messageBranchRenderState,/);
   assert.match(sessionPresentationSource, /activityIndicator: \{\s+shouldRender: Boolean\(icon\.isPending\),/);
-  assert.match(chatMessageChromeSource, /const pressableContent = actionIconButtonParts\.pressable\.content;/);
-  assert.match(chatMessageChromeSource, /pressableContent\.activityIndicator\.shouldRender \? \(/);
-  assert.match(chatMessageChromeSource, /pressableContent\.icon\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /<ChatMessageActionIconButtonPressableContent\s+\{\.\.\.actionIconButtonParts\.pressable\.content\}\s+\/>/);
+  assert.match(chatMessageChromeSource, /if \(activityIndicator\.shouldRender\) \{/);
+  assert.match(chatMessageChromeSource, /if \(icon\.shouldRender\) \{/);
   assert.doesNotMatch(chatMessageChromeSource, /actionIconButtonParts\.activityIndicator/);
   assert.doesNotMatch(screenSource, /theme\.colors\[(messageSpeechMobileIcon|messageExpansionMobileIcon|messageCopyMobileIcon|messageTurnDurationMobileIcon|messageBranchMobileIcon)\.colorToken\]/);
   assert.match(sessionPresentationSource, /expansion: \{\s+onPress: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\.\.\.styles\.expansion,\s+\},/);
