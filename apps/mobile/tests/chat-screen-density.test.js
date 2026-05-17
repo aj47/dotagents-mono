@@ -702,6 +702,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(toolApprovalComponentSource, /const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
   assert.match(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
+  const toolApprovalToolRowSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalToolRow[\s\S]*?export function ChatMessageToolApprovalHeader/)?.[0] ?? '';
   const toolApprovalHeaderSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalHeader[\s\S]*?export function ChatMessageToolApprovalDenyActionContent/)?.[0] ?? '';
   const denyActionContentSource =
@@ -781,7 +783,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalHeaderSource, /<ChatMessageToolApprovalView\s+\{\.\.\.header\.props\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalView\s+\{\.\.\.toolApprovalParts\.header\.props\}/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalView\s+\{\.\.\.toolApprovalParts\.content\.props\}/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalView\s+\{\.\.\.toolApprovalParts\.toolRow\.props\}/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalToolRow\s+row=\{toolApprovalParts\.toolRow\}[\s\S]*?label=\{toolApprovalParts\.toolLabel\}[\s\S]*?name=\{toolApprovalParts\.toolName\}/);
+  assert.match(toolApprovalToolRowSource, /<ChatMessageToolApprovalView\s+\{\.\.\.row\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalView\s+\{\.\.\.toolApprovalParts\.toolRow\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?\{children\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalView[\s\S]*?<View\s+style=\{style\}[\s\S]*?export function ChatMessageToolApprovalIcon/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.(card|header|content|toolRow)\.style/);
@@ -806,13 +810,15 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner \? \(/);
   assert.match(sessionPresentationSource, /toolLabel: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolLabel,[\s\S]*?text: `\$\{renderState\.copy\.toolLabel\}:`,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalToolLabel/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalToolLabel\s+\{\.\.\.toolApprovalParts\.toolLabel\.props\}/);
+  assert.match(toolApprovalToolRowSource, /<ChatMessageToolApprovalToolLabel\s+\{\.\.\.label\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalToolLabel\s+\{\.\.\.toolApprovalParts\.toolLabel\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalToolLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalToolLabel[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolApprovalToolName/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.toolLabel\.(style|text)/);
   assert.match(sessionPresentationSource, /toolName: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolName,[\s\S]*?numberOfLines: renderState\.surface\.toolName\.numberOfLines,[\s\S]*?text: toolName,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalToolName/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalToolName\s+\{\.\.\.toolApprovalParts\.toolName\.props\}/);
+  assert.match(toolApprovalToolRowSource, /<ChatMessageToolApprovalToolName\s+\{\.\.\.name\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalToolName\s+\{\.\.\.toolApprovalParts\.toolName\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalToolName[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalToolName[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageToolApprovalArgumentsPreview/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.toolName\.(style|numberOfLines|text)/);

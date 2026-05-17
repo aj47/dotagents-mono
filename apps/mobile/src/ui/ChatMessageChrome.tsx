@@ -2001,6 +2001,12 @@ type ChatMessageToolApprovalHeaderProps = {
   spinner: ChatMessageToolApprovalParts['headerSpinner'];
 };
 
+type ChatMessageToolApprovalToolRowProps = {
+  row: ChatMessageToolApprovalParts['toolRow'];
+  label: ChatMessageToolApprovalParts['toolLabel'];
+  name: ChatMessageToolApprovalParts['toolName'];
+};
+
 type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
   | ChatMessageToolApprovalParts['argumentsToggle']['content']['icon']['props']
@@ -9042,16 +9048,11 @@ export function ChatMessageToolApproval({
       <ChatMessageToolApprovalView
         {...toolApprovalParts.content.props}
       >
-        <ChatMessageToolApprovalView
-          {...toolApprovalParts.toolRow.props}
-        >
-          <ChatMessageToolApprovalToolLabel
-            {...toolApprovalParts.toolLabel.props}
-          />
-          <ChatMessageToolApprovalToolName
-            {...toolApprovalParts.toolName.props}
-          />
-        </ChatMessageToolApprovalView>
+        <ChatMessageToolApprovalToolRow
+          row={toolApprovalParts.toolRow}
+          label={toolApprovalParts.toolLabel}
+          name={toolApprovalParts.toolName}
+        />
         {toolApprovalParts.argumentsPreview.shouldRender ? (
           <ChatMessageToolApprovalArgumentsPreview
             {...toolApprovalParts.argumentsPreview.props}
@@ -9095,6 +9096,25 @@ export function ChatMessageToolApproval({
           </ChatMessageToolApprovalActionButton>
         </ChatMessageToolApprovalActions>
       </ChatMessageToolApprovalView>
+    </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalToolRow({
+  row,
+  label,
+  name,
+}: ChatMessageToolApprovalToolRowProps) {
+  return (
+    <ChatMessageToolApprovalView
+      {...row.props}
+    >
+      <ChatMessageToolApprovalToolLabel
+        {...label.props}
+      />
+      <ChatMessageToolApprovalToolName
+        {...name.props}
+      />
     </ChatMessageToolApprovalView>
   );
 }
