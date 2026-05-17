@@ -36,6 +36,7 @@ import {
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerIconButtonMobilePropsParts,
+  createChatComposerLabeledActionButtonMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9633,26 +9634,34 @@ export function ChatComposerLabeledActionButton({
   activeOpacity,
   styles,
 }: ChatComposerLabeledActionButtonProps) {
-  if (!shouldRender) return null;
+  const actionButtonParts = createChatComposerLabeledActionButtonMobilePropsParts({
+    shouldRender,
+    renderState,
+    onPress,
+    activeOpacity,
+    styles,
+  });
+
+  if (!actionButtonParts.shouldRender) return null;
 
   return (
     <TouchableOpacity
-      style={[styles.button, renderState.isDisabled && styles.disabledButton]}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      disabled={renderState.isDisabled}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint ?? undefined}
-      accessibilityState={renderState.accessibilityState}
+      style={actionButtonParts.touchable.style}
+      onPress={actionButtonParts.touchable.onPress}
+      activeOpacity={actionButtonParts.touchable.activeOpacity}
+      disabled={actionButtonParts.touchable.disabled}
+      accessibilityRole={actionButtonParts.touchable.accessibilityRole}
+      accessibilityLabel={actionButtonParts.touchable.accessibilityLabel}
+      accessibilityHint={actionButtonParts.touchable.accessibilityHint}
+      accessibilityState={actionButtonParts.touchable.accessibilityState}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={actionButtonParts.icon.name}
+        size={actionButtonParts.icon.size}
+        color={actionButtonParts.icon.color}
       />
-      <Text style={styles.text}>
-        {renderState.label}
+      <Text style={actionButtonParts.label.style}>
+        {actionButtonParts.label.text}
       </Text>
     </TouchableOpacity>
   );

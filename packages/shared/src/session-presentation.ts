@@ -3884,6 +3884,63 @@ export interface ChatComposerIconButtonMobilePropsParts<
   icon: TRenderState["icon"]
 }
 
+export interface ChatComposerLabeledActionButtonMobileRenderStateLike {
+  isDisabled?: boolean
+  accessibilityRole: unknown
+  accessibilityLabel: string
+  accessibilityHint?: string | null
+  accessibilityState?: unknown
+  icon: {
+    name: unknown
+    size: unknown
+    color: unknown
+  }
+  label: string
+}
+
+export interface ChatComposerLabeledActionButtonMobileStylesLike {
+  button: unknown
+  disabledButton?: unknown
+  text: unknown
+}
+
+export interface ChatComposerLabeledActionButtonMobilePropsPartsInput<
+  TRenderState extends ChatComposerLabeledActionButtonMobileRenderStateLike = ChatComposerLabeledActionButtonMobileRenderStateLike,
+  TOnPress = unknown,
+  TActiveOpacity = unknown,
+  TStyles extends ChatComposerLabeledActionButtonMobileStylesLike = ChatComposerLabeledActionButtonMobileStylesLike,
+> {
+  shouldRender?: boolean
+  renderState: TRenderState
+  onPress?: TOnPress
+  activeOpacity?: TActiveOpacity
+  styles: TStyles
+}
+
+export interface ChatComposerLabeledActionButtonMobilePropsParts<
+  TRenderState extends ChatComposerLabeledActionButtonMobileRenderStateLike = ChatComposerLabeledActionButtonMobileRenderStateLike,
+  TOnPress = unknown,
+  TActiveOpacity = unknown,
+  TStyles extends ChatComposerLabeledActionButtonMobileStylesLike = ChatComposerLabeledActionButtonMobileStylesLike,
+> {
+  shouldRender: boolean
+  touchable: {
+    style: Array<TStyles["button"] | TStyles["disabledButton"] | false | undefined>
+    onPress: TOnPress | undefined
+    activeOpacity: TActiveOpacity | undefined
+    disabled: TRenderState["isDisabled"]
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string | undefined
+    accessibilityState: TRenderState["accessibilityState"]
+  }
+  icon: TRenderState["icon"]
+  label: {
+    style: TStyles["text"]
+    text: string
+  }
+}
+
 export interface ChatComposerRuntimeDockMobilePropsPartsInput<
   TSpeechPreview extends object = Record<string, never>,
   TPendingImagesRail extends object = Record<string, never>,
@@ -18769,6 +18826,48 @@ export function createChatComposerIconButtonMobilePropsParts<
       ariaChecked: renderState.ariaChecked,
     },
     icon: renderState.icon,
+  }
+}
+
+export function createChatComposerLabeledActionButtonMobilePropsParts<
+  TRenderState extends ChatComposerLabeledActionButtonMobileRenderStateLike,
+  TOnPress,
+  TActiveOpacity,
+  TStyles extends ChatComposerLabeledActionButtonMobileStylesLike,
+>({
+  shouldRender = true,
+  renderState,
+  onPress,
+  activeOpacity,
+  styles,
+}: ChatComposerLabeledActionButtonMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TActiveOpacity,
+  TStyles
+>): ChatComposerLabeledActionButtonMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TActiveOpacity,
+  TStyles
+> {
+  return {
+    shouldRender,
+    touchable: {
+      style: [styles.button, renderState.isDisabled && styles.disabledButton],
+      onPress,
+      activeOpacity,
+      disabled: renderState.isDisabled,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint ?? undefined,
+      accessibilityState: renderState.accessibilityState,
+    },
+    icon: renderState.icon,
+    label: {
+      style: styles.text,
+      text: renderState.label,
+    },
   }
 }
 

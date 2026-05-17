@@ -64,6 +64,7 @@ import {
   createChatComposerStyleSlotsFromStyleSource,
   getChatMessageActionMobileButtonStatesBySlot,
   createChatComposerIconButtonMobilePropsParts,
+  createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -8498,6 +8499,68 @@ describe("session presentation semantics", () => {
         },
       },
       style: "accessory-style",
+    }).shouldRender).toBe(false)
+    const composerLabeledActionButtonParts = createChatComposerLabeledActionButtonMobilePropsParts({
+      shouldRender: true,
+      renderState: {
+        isDisabled: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Queue message",
+        accessibilityHint: null,
+        accessibilityState: { disabled: true },
+        icon: {
+          name: "albums",
+          size: 16,
+          color: "#ffffff",
+        },
+        label: "Queue",
+      },
+      onPress: "press-queue",
+      activeOpacity: 0.68,
+      styles: {
+        button: "queue-button",
+        disabledButton: "queue-disabled-button",
+        text: "queue-button-text",
+      },
+    })
+    expect(composerLabeledActionButtonParts).toEqual({
+      shouldRender: true,
+      touchable: {
+        style: ["queue-button", "queue-disabled-button"],
+        onPress: "press-queue",
+        activeOpacity: 0.68,
+        disabled: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Queue message",
+        accessibilityHint: undefined,
+        accessibilityState: { disabled: true },
+      },
+      icon: {
+        name: "albums",
+        size: 16,
+        color: "#ffffff",
+      },
+      label: {
+        style: "queue-button-text",
+        text: "Queue",
+      },
+    })
+    expect(createChatComposerLabeledActionButtonMobilePropsParts({
+      shouldRender: false,
+      renderState: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Queue message",
+        icon: {
+          name: "albums",
+          size: 16,
+          color: "#ffffff",
+        },
+        label: "Queue",
+      },
+      styles: {
+        button: "queue-button",
+        text: "queue-button-text",
+      },
     }).shouldRender).toBe(false)
     const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
       frame: {
