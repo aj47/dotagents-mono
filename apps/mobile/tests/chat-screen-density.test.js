@@ -2260,39 +2260,40 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /export function ChatMessageConnectionBanner/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConnectionBannerMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const connectionBannerParts = createChatRuntimeConnectionBannerMobilePropsParts\(\{\s+renderState,\s+onRetry,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.shouldRender \? \(/);
-  assert.match(chatMessageChromeSource, /connectionBannerParts\.failed\.shouldRender \? \(/);
-  assert.match(chatMessageChromeSource, /accessible=\{connectionBannerParts\.reconnecting\.container\.accessible\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{connectionBannerParts\.reconnecting\.container\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{connectionBannerParts\.reconnecting\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /style=\{connectionBannerParts\.reconnecting\.container\.style\}/);
-  assert.match(chatMessageChromeSource, /size=\{connectionBannerParts\.reconnecting\.spinner\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{connectionBannerParts\.reconnecting\.spinner\.color\}/);
-  assert.match(chatMessageChromeSource, /style=\{connectionBannerParts\.reconnecting\.spinner\.style\}/);
-  assert.match(chatMessageChromeSource, /\{connectionBannerParts\.reconnecting\.title\.text\}/);
-  assert.match(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.subtitle\.shouldRender \? \(/);
-  assert.match(chatMessageChromeSource, /\{connectionBannerParts\.reconnecting\.subtitle\.text\}/);
-  assert.match(chatMessageChromeSource, /accessible=\{connectionBannerParts\.failed\.container\.accessible\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{connectionBannerParts\.failed\.container\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{connectionBannerParts\.failed\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /name=\{connectionBannerParts\.failed\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{connectionBannerParts\.failed\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{connectionBannerParts\.failed\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /style=\{connectionBannerParts\.failed\.icon\.style\}/);
-  assert.match(chatMessageChromeSource, /\{connectionBannerParts\.failed\.title\.text\}/);
-  assert.match(chatMessageChromeSource, /\{connectionBannerParts\.failed\.subtitle\.text\}/);
-  assert.match(chatMessageChromeSource, /onPress=\{connectionBannerParts\.failed\.retryButton\.onPress\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{connectionBannerParts\.failed\.retryButton\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{connectionBannerParts\.failed\.retryButton\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /activeOpacity=\{connectionBannerParts\.failed\.retryButton\.activeOpacity\}/);
-  assert.match(chatMessageChromeSource, /\{connectionBannerParts\.failed\.retryLabel\.text\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{connectionBannerParts\.(?:reconnecting|failed)\.subtitle\.numberOfLines\}/);
+  const connectionBannerSource =
+    chatMessageChromeSource.match(/export function ChatMessageConnectionBanner[\s\S]*?export function ChatComposerRuntimeDock/)?.[0] ?? '';
+  assert.match(connectionBannerSource, /const connectionBannerParts = createChatRuntimeConnectionBannerMobilePropsParts\(\{\s+renderState,\s+onRetry,\s+styles,\s+\}\);/);
+  assert.match(connectionBannerSource, /connectionBannerParts\.reconnecting\.shouldRender \? \(/);
+  assert.match(connectionBannerSource, /connectionBannerParts\.failed\.shouldRender \? \(/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerContainer\s+\{\.\.\.connectionBannerParts\.reconnecting\.container\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerContent\s+\{\.\.\.connectionBannerParts\.reconnecting\.content\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerSpinner\s+\{\.\.\.connectionBannerParts\.reconnecting\.spinner\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerTextContainer\s+\{\.\.\.connectionBannerParts\.reconnecting\.textContainer\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerText\s+\{\.\.\.connectionBannerParts\.reconnecting\.title\.props\}/);
+  assert.match(connectionBannerSource, /connectionBannerParts\.reconnecting\.subtitle\.shouldRender \? \(/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerText\s+\{\.\.\.connectionBannerParts\.reconnecting\.subtitle\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerContainer\s+\{\.\.\.connectionBannerParts\.failed\.container\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerContent\s+\{\.\.\.connectionBannerParts\.failed\.content\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerIcon\s+\{\.\.\.connectionBannerParts\.failed\.icon\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerTextContainer\s+\{\.\.\.connectionBannerParts\.failed\.textContainer\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerText\s+\{\.\.\.connectionBannerParts\.failed\.title\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerText\s+\{\.\.\.connectionBannerParts\.failed\.subtitle\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerRetryButton\s+\{\.\.\.connectionBannerParts\.failed\.retryButton\.props\}/);
+  assert.match(connectionBannerSource, /<ChatMessageConnectionBannerText\s+\{\.\.\.connectionBannerParts\.failed\.retryLabel\.props\}/);
+  assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerContainer[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageConnectionBannerContent/);
+  assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerSpinner[\s\S]*?<ActivityIndicator \{\.\.\.props\} \/>[\s\S]*?export function ChatMessageConnectionBannerIcon/);
+  assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerIcon[\s\S]*?<Ionicons \{\.\.\.props\} \/>[\s\S]*?export function ChatMessageConnectionBannerTextContainer/);
+  assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerText[\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatMessageConnectionBannerRetryButton/);
+  assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerRetryButton[\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerRuntimeDock/);
   assert.match(sessionPresentationSource, /reconnecting: \{\s+shouldRender: renderState\.reconnecting\.shouldRender,/);
   assert.match(sessionPresentationSource, /failed: \{\s+shouldRender: renderState\.failed\.shouldRender,/);
   assert.doesNotMatch(chatMessageChromeSource, /connectionBannerParts\.reconnecting \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /connectionBannerParts\.failed \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /connectionBannerParts\.reconnecting\.subtitle \? \(/);
+  assert.doesNotMatch(
+    connectionBannerSource,
+    /connectionBannerParts\.(reconnecting|failed)\.(container|content|spinner|icon|textContainer|title|subtitle|retryButton|retryLabel)\.(accessible|accessibilityRole|accessibilityLabel|style|size|color|name|onPress|activeOpacity|numberOfLines|text)/
+  );
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageConnectionBanner[\s\S]*?accessibilityRole=\{renderState\.reconnecting\.accessibilityRole\}[\s\S]*?export type ChatMessageResponseHistoryPanelViewProps/

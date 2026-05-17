@@ -6652,72 +6652,110 @@ describe("session presentation semantics", () => {
       reconnecting: {
         shouldRender: true,
         container: {
-          accessible: true,
-          accessibilityRole: "alert",
-          accessibilityLabel: "Reconnecting... (attempt 2). Network offline",
-          style: ["banner-style", "reconnecting-style"],
+          props: {
+            accessible: true,
+            accessibilityRole: "alert",
+            accessibilityLabel: "Reconnecting... (attempt 2). Network offline",
+            style: ["banner-style", "reconnecting-style"],
+          },
         },
         content: {
-          style: "content-style",
+          props: {
+            style: "content-style",
+          },
         },
         spinner: {
-          size: "small",
-          color: "#d97706",
-          style: "icon-style",
+          props: {
+            size: "small",
+            color: "#d97706",
+            style: "icon-style",
+          },
         },
         textContainer: {
-          style: "text-container-style",
+          props: {
+            style: "text-container-style",
+          },
         },
         title: {
-          style: "title-style",
-          text: "Reconnecting... (attempt 2)",
+          props: {
+            text: "Reconnecting... (attempt 2)",
+            props: {
+              style: "title-style",
+            },
+          },
         },
         subtitle: {
           shouldRender: true,
-          style: "subtitle-style",
-          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
-          text: "Network offline",
+          props: {
+            text: "Network offline",
+            props: {
+              style: "subtitle-style",
+              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+            },
+          },
         },
       },
       failed: {
         shouldRender: false,
         container: {
-          accessible: true,
-          accessibilityRole: "alert",
-          accessibilityLabel: "Message failed to send. Tap retry to try again",
-          style: ["banner-style", "failed-style"],
+          props: {
+            accessible: true,
+            accessibilityRole: "alert",
+            accessibilityLabel: "Message failed to send. Tap retry to try again",
+            style: ["banner-style", "failed-style"],
+          },
         },
         content: {
-          style: "content-style",
+          props: {
+            style: "content-style",
+          },
         },
         icon: {
-          name: "warning-outline",
-          size: 16,
-          color: "#dc2626",
-          style: "icon-style",
+          props: {
+            name: "warning-outline",
+            size: 16,
+            color: "#dc2626",
+            style: "icon-style",
+          },
         },
         textContainer: {
-          style: "text-container-style",
+          props: {
+            style: "text-container-style",
+          },
         },
         title: {
-          style: "title-style",
-          text: "Message failed to send",
+          props: {
+            text: "Message failed to send",
+            props: {
+              style: "title-style",
+            },
+          },
         },
         subtitle: {
-          style: "subtitle-style",
-          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
-          text: "Tap retry to try again",
+          props: {
+            text: "Tap retry to try again",
+            props: {
+              style: "subtitle-style",
+              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+            },
+          },
         },
         retryButton: {
-          style: "retry-button-style",
-          onPress: "retry-handler",
-          accessibilityRole: "button",
-          accessibilityLabel: "Retry",
-          activeOpacity: 0.7,
+          props: {
+            style: "retry-button-style",
+            onPress: "retry-handler",
+            accessibilityRole: "button",
+            accessibilityLabel: "Retry",
+            activeOpacity: 0.7,
+          },
         },
         retryLabel: {
-          style: "retry-button-text-style",
-          text: "Retry",
+          props: {
+            text: "Retry",
+            props: {
+              style: "retry-button-text-style",
+            },
+          },
         },
       },
     })
@@ -6729,72 +6767,110 @@ describe("session presentation semantics", () => {
       reconnecting: {
         shouldRender: false,
         container: {
-          accessible: true,
-          accessibilityRole: "alert",
-          accessibilityLabel: "",
-          style: ["banner-style", "reconnecting-style"],
+          props: {
+            accessible: true,
+            accessibilityRole: "alert",
+            accessibilityLabel: "",
+            style: ["banner-style", "reconnecting-style"],
+          },
         },
         content: {
-          style: "content-style",
+          props: {
+            style: "content-style",
+          },
         },
         spinner: {
-          size: "small",
-          color: "#d97706",
-          style: "icon-style",
+          props: {
+            size: "small",
+            color: "#d97706",
+            style: "icon-style",
+          },
         },
         textContainer: {
-          style: "text-container-style",
+          props: {
+            style: "text-container-style",
+          },
         },
         title: {
-          style: "title-style",
-          text: "",
+          props: {
+            text: "",
+            props: {
+              style: "title-style",
+            },
+          },
         },
         subtitle: {
           shouldRender: false,
-          style: "subtitle-style",
-          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
-          text: "",
+          props: {
+            text: "",
+            props: {
+              style: "subtitle-style",
+              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+            },
+          },
         },
       },
       failed: {
         shouldRender: true,
         container: {
-          accessible: true,
-          accessibilityRole: "alert",
-          accessibilityLabel: "Message failed to send. Tap retry to try again",
-          style: ["banner-style", "failed-style"],
+          props: {
+            accessible: true,
+            accessibilityRole: "alert",
+            accessibilityLabel: "Message failed to send. Tap retry to try again",
+            style: ["banner-style", "failed-style"],
+          },
         },
         content: {
-          style: "content-style",
+          props: {
+            style: "content-style",
+          },
         },
         icon: {
-          name: "warning-outline",
-          size: 16,
-          color: "#dc2626",
-          style: "icon-style",
+          props: {
+            name: "warning-outline",
+            size: 16,
+            color: "#dc2626",
+            style: "icon-style",
+          },
         },
         textContainer: {
-          style: "text-container-style",
+          props: {
+            style: "text-container-style",
+          },
         },
         title: {
-          style: "title-style",
-          text: "Message failed to send",
+          props: {
+            text: "Message failed to send",
+            props: {
+              style: "title-style",
+            },
+          },
         },
         subtitle: {
-          style: "subtitle-style",
-          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
-          text: "Tap retry to try again",
+          props: {
+            text: "Tap retry to try again",
+            props: {
+              style: "subtitle-style",
+              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+            },
+          },
         },
         retryButton: {
-          style: "retry-button-style",
-          onPress: "retry-handler",
-          accessibilityRole: "button",
-          accessibilityLabel: "Retry",
-          activeOpacity: 0.7,
+          props: {
+            style: "retry-button-style",
+            onPress: "retry-handler",
+            accessibilityRole: "button",
+            accessibilityLabel: "Retry",
+            activeOpacity: 0.7,
+          },
         },
         retryLabel: {
-          style: "retry-button-text-style",
-          text: "Retry",
+          props: {
+            text: "Retry",
+            props: {
+              style: "retry-button-text-style",
+            },
+          },
         },
       },
     })

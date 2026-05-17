@@ -2876,6 +2876,48 @@ type ChatMessageConnectionBannerProps = {
   styles: ChatMessageConnectionBannerStyles;
 };
 
+type ChatMessageConnectionBannerParts = ReturnType<typeof createChatRuntimeConnectionBannerMobilePropsParts<
+  ChatMessageConnectionBannerProps['renderState'],
+  ChatMessageConnectionBannerProps['onRetry'],
+  ChatMessageConnectionBannerProps['styles']
+>>;
+
+type ChatMessageConnectionBannerContainerProps =
+  | (ChatMessageConnectionBannerParts['reconnecting']['container']['props'] & {
+    children: ReactNode;
+  })
+  | (ChatMessageConnectionBannerParts['failed']['container']['props'] & {
+    children: ReactNode;
+  });
+
+type ChatMessageConnectionBannerContentProps =
+  ChatMessageConnectionBannerParts['reconnecting']['content']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageConnectionBannerSpinnerProps =
+  ChatMessageConnectionBannerParts['reconnecting']['spinner']['props'];
+
+type ChatMessageConnectionBannerIconProps =
+  ChatMessageConnectionBannerParts['failed']['icon']['props'];
+
+type ChatMessageConnectionBannerTextContainerProps =
+  ChatMessageConnectionBannerParts['reconnecting']['textContainer']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageConnectionBannerTextProps =
+  | ChatMessageConnectionBannerParts['reconnecting']['title']['props']
+  | ChatMessageConnectionBannerParts['reconnecting']['subtitle']['props']
+  | ChatMessageConnectionBannerParts['failed']['title']['props']
+  | ChatMessageConnectionBannerParts['failed']['subtitle']['props']
+  | ChatMessageConnectionBannerParts['failed']['retryLabel']['props'];
+
+type ChatMessageConnectionBannerRetryButtonProps =
+  ChatMessageConnectionBannerParts['failed']['retryButton']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageRuntimeDockStyleSlots = {
   scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps['style'];
   voiceOverlay: ChatComposerVoiceOverlayStyles;
@@ -10693,74 +10735,128 @@ export function ChatMessageConnectionBanner({
   return (
     <>
       {connectionBannerParts.reconnecting.shouldRender ? (
-        <View
-          accessible={connectionBannerParts.reconnecting.container.accessible}
-          accessibilityRole={connectionBannerParts.reconnecting.container.accessibilityRole}
-          accessibilityLabel={connectionBannerParts.reconnecting.container.accessibilityLabel}
-          style={connectionBannerParts.reconnecting.container.style}
+        <ChatMessageConnectionBannerContainer
+          {...connectionBannerParts.reconnecting.container.props}
         >
-          <View style={connectionBannerParts.reconnecting.content.style}>
-            <ActivityIndicator
-              size={connectionBannerParts.reconnecting.spinner.size}
-              color={connectionBannerParts.reconnecting.spinner.color}
-              style={connectionBannerParts.reconnecting.spinner.style}
+          <ChatMessageConnectionBannerContent
+            {...connectionBannerParts.reconnecting.content.props}
+          >
+            <ChatMessageConnectionBannerSpinner
+              {...connectionBannerParts.reconnecting.spinner.props}
             />
-            <View style={connectionBannerParts.reconnecting.textContainer.style}>
-              <Text style={connectionBannerParts.reconnecting.title.style}>
-                {connectionBannerParts.reconnecting.title.text}
-              </Text>
+            <ChatMessageConnectionBannerTextContainer
+              {...connectionBannerParts.reconnecting.textContainer.props}
+            >
+              <ChatMessageConnectionBannerText
+                {...connectionBannerParts.reconnecting.title.props}
+              />
               {connectionBannerParts.reconnecting.subtitle.shouldRender ? (
-                <Text
-                  style={connectionBannerParts.reconnecting.subtitle.style}
-                  numberOfLines={connectionBannerParts.reconnecting.subtitle.numberOfLines}
-                >
-                  {connectionBannerParts.reconnecting.subtitle.text}
-                </Text>
+                <ChatMessageConnectionBannerText
+                  {...connectionBannerParts.reconnecting.subtitle.props}
+                />
               ) : null}
-            </View>
-          </View>
-        </View>
+            </ChatMessageConnectionBannerTextContainer>
+          </ChatMessageConnectionBannerContent>
+        </ChatMessageConnectionBannerContainer>
       ) : null}
       {connectionBannerParts.failed.shouldRender ? (
-        <View
-          accessible={connectionBannerParts.failed.container.accessible}
-          accessibilityRole={connectionBannerParts.failed.container.accessibilityRole}
-          accessibilityLabel={connectionBannerParts.failed.container.accessibilityLabel}
-          style={connectionBannerParts.failed.container.style}
+        <ChatMessageConnectionBannerContainer
+          {...connectionBannerParts.failed.container.props}
         >
-          <View style={connectionBannerParts.failed.content.style}>
-            <Ionicons
-              name={connectionBannerParts.failed.icon.name}
-              size={connectionBannerParts.failed.icon.size}
-              color={connectionBannerParts.failed.icon.color}
-              style={connectionBannerParts.failed.icon.style}
+          <ChatMessageConnectionBannerContent
+            {...connectionBannerParts.failed.content.props}
+          >
+            <ChatMessageConnectionBannerIcon
+              {...connectionBannerParts.failed.icon.props}
             />
-            <View style={connectionBannerParts.failed.textContainer.style}>
-              <Text style={connectionBannerParts.failed.title.style}>
-                {connectionBannerParts.failed.title.text}
-              </Text>
-              <Text
-                style={connectionBannerParts.failed.subtitle.style}
-                numberOfLines={connectionBannerParts.failed.subtitle.numberOfLines}
-              >
-                {connectionBannerParts.failed.subtitle.text}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={connectionBannerParts.failed.retryButton.style}
-              onPress={connectionBannerParts.failed.retryButton.onPress}
-              accessibilityRole={connectionBannerParts.failed.retryButton.accessibilityRole}
-              accessibilityLabel={connectionBannerParts.failed.retryButton.accessibilityLabel}
-              activeOpacity={connectionBannerParts.failed.retryButton.activeOpacity}
+            <ChatMessageConnectionBannerTextContainer
+              {...connectionBannerParts.failed.textContainer.props}
             >
-              <Text style={connectionBannerParts.failed.retryLabel.style}>
-                {connectionBannerParts.failed.retryLabel.text}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+              <ChatMessageConnectionBannerText
+                {...connectionBannerParts.failed.title.props}
+              />
+              <ChatMessageConnectionBannerText
+                {...connectionBannerParts.failed.subtitle.props}
+              />
+            </ChatMessageConnectionBannerTextContainer>
+            <ChatMessageConnectionBannerRetryButton
+              {...connectionBannerParts.failed.retryButton.props}
+            >
+              <ChatMessageConnectionBannerText
+                {...connectionBannerParts.failed.retryLabel.props}
+              />
+            </ChatMessageConnectionBannerRetryButton>
+          </ChatMessageConnectionBannerContent>
+        </ChatMessageConnectionBannerContainer>
       ) : null}
     </>
+  );
+}
+
+export function ChatMessageConnectionBannerContainer({
+  children,
+  ...props
+}: ChatMessageConnectionBannerContainerProps) {
+  return (
+    <View {...props}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageConnectionBannerContent({
+  children,
+  ...props
+}: ChatMessageConnectionBannerContentProps) {
+  return (
+    <View {...props}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageConnectionBannerSpinner(props: ChatMessageConnectionBannerSpinnerProps) {
+  return (
+    <ActivityIndicator {...props} />
+  );
+}
+
+export function ChatMessageConnectionBannerIcon(props: ChatMessageConnectionBannerIconProps) {
+  return (
+    <Ionicons {...props} />
+  );
+}
+
+export function ChatMessageConnectionBannerTextContainer({
+  children,
+  ...props
+}: ChatMessageConnectionBannerTextContainerProps) {
+  return (
+    <View {...props}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageConnectionBannerText({
+  props,
+  text,
+}: ChatMessageConnectionBannerTextProps) {
+  return (
+    <Text {...props}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageConnectionBannerRetryButton({
+  children,
+  ...props
+}: ChatMessageConnectionBannerRetryButtonProps) {
+  return (
+    <TouchableOpacity {...props}>
+      {children}
+    </TouchableOpacity>
   );
 }
 
