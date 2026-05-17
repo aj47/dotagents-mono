@@ -7833,10 +7833,16 @@ export interface ChatRuntimeConversationFrameMobilePropsParts<
     props: {
       style: TRootStyle
     }
-    children: TChildren
-    dock: TDock | undefined
+    content: {
+      children: TChildren
+    }
+    dock: {
+      children: TDock | undefined
+    }
   }
-  overlays: TOverlays | undefined
+  overlays: {
+    children: TOverlays | undefined
+  }
 }
 
 export interface ChatRuntimeConversationOverlaysMobilePropsPartsInput<
@@ -25230,10 +25236,16 @@ export function createChatRuntimeConversationFrameMobilePropsParts<
       props: {
         style: rootStyle,
       },
-      children,
-      dock,
+      content: {
+        children,
+      },
+      dock: {
+        children: dock,
+      },
     },
-    overlays,
+    overlays: {
+      children: overlays,
+    },
   }
 }
 

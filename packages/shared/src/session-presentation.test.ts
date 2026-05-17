@@ -9386,10 +9386,16 @@ describe("session presentation semantics", () => {
         props: {
           style: "root-style",
         },
-        children: "viewport",
-        dock: "dock",
+        content: {
+          children: "viewport",
+        },
+        dock: {
+          children: "dock",
+        },
       },
-      overlays: "overlays",
+      overlays: {
+        children: "overlays",
+      },
     })
     expect(createChatRuntimeConversationOverlaysMobilePropsParts({
       agentSelector: "agent-selector",

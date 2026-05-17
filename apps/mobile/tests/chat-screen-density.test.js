@@ -2015,8 +2015,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     chatMessageChromeSource.match(/export function ChatMessageConversationFrame[\s\S]*?export function ChatMessageConversationOverlays/)?.[0] ?? '';
   assert.match(conversationFrameSource, /const frameParts = createChatRuntimeConversationFrameMobilePropsParts\(\{\s+children,\s+dock,\s+overlays,\s+keyboardAvoidingStyle,\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+rootStyle,\s+\}\);/);
   assert.match(conversationFrameSource, /<KeyboardAvoidingView\s+\{\.\.\.frameParts\.keyboardAvoidingView\.props\}/);
-  assert.match(conversationFrameSource, /<View\s+\{\.\.\.frameParts\.root\.props\}>[\s\S]*?\{frameParts\.root\.children\}[\s\S]*?\{frameParts\.root\.dock\}/);
-  assert.match(conversationFrameSource, /\{frameParts\.overlays\}[\s\S]*?<\/KeyboardAvoidingView>/);
+  assert.match(conversationFrameSource, /<View\s+\{\.\.\.frameParts\.root\.props\}>[\s\S]*?\{frameParts\.root\.content\.children\}[\s\S]*?\{frameParts\.root\.dock\.children\}/);
+  assert.match(conversationFrameSource, /\{frameParts\.overlays\.children\}[\s\S]*?<\/KeyboardAvoidingView>/);
   assert.doesNotMatch(conversationFrameSource, /frameParts\.(keyboardAvoidingView|root)\.(style|behavior|keyboardVerticalOffset)/);
   assert.doesNotMatch(conversationFrameSource, /style=\{keyboardAvoidingStyle\}/);
   assert.doesNotMatch(conversationFrameSource, /behavior=\{keyboardAvoidingBehavior\}/);

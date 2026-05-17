@@ -10065,10 +10065,10 @@ export function ChatMessageConversationFrame({
       {...frameParts.keyboardAvoidingView.props}
     >
       <View {...frameParts.root.props}>
-        {frameParts.root.children}
-        {frameParts.root.dock}
+        {frameParts.root.content.children}
+        {frameParts.root.dock.children}
       </View>
-      {frameParts.overlays}
+      {frameParts.overlays.children}
     </KeyboardAvoidingView>
   );
 }
