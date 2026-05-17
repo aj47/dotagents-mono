@@ -1745,6 +1745,10 @@ type ChatConversationHomePromptEditorModalActionButtonPart = {
   props: ComponentProps<typeof TouchableOpacity>;
 };
 
+type ChatConversationHomePromptEditorModalHeaderPart = {
+  props: ComponentProps<typeof View>;
+};
+
 type ChatConversationHomePromptEditorModalTextPart = {
   text: string;
   props: ComponentProps<typeof Text>;
@@ -1757,6 +1761,13 @@ type ChatConversationHomePromptEditorModalInputPart = {
 type ChatConversationHomePromptEditorModalIconButtonProps = {
   button: ChatConversationHomePromptEditorModalIconButtonPart;
   icon: ChatConversationHomePromptEditorModalIconPart;
+};
+
+type ChatConversationHomePromptEditorModalHeaderProps = {
+  header: ChatConversationHomePromptEditorModalHeaderPart;
+  title: ChatConversationHomePromptEditorModalTextPart;
+  closeButton: ChatConversationHomePromptEditorModalIconButtonPart;
+  closeIcon: ChatConversationHomePromptEditorModalIconPart;
 };
 
 type ChatConversationHomePromptEditorModalFieldProps = {
@@ -8279,13 +8290,12 @@ export function ChatConversationHomePromptEditorModal({
       <KeyboardAvoidingView {...modalParts.keyboardAvoidingView.props}>
         <View {...modalParts.overlay.props}>
           <View {...modalParts.content.props}>
-            <View {...modalParts.header.props}>
-              <Text {...modalParts.title.props}>{modalParts.title.text}</Text>
-              <ChatConversationHomePromptEditorModalIconButton
-                button={modalParts.closeButton}
-                icon={modalParts.closeIcon}
-              />
-            </View>
+            <ChatConversationHomePromptEditorModalHeader
+              header={modalParts.header}
+              title={modalParts.title}
+              closeButton={modalParts.closeButton}
+              closeIcon={modalParts.closeIcon}
+            />
 
             <ChatConversationHomePromptEditorModalField
               label={modalParts.nameLabel}
@@ -8311,6 +8321,23 @@ export function ChatConversationHomePromptEditorModal({
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalHeader({
+  header,
+  title,
+  closeButton,
+  closeIcon,
+}: ChatConversationHomePromptEditorModalHeaderProps) {
+  return (
+    <View {...header.props}>
+      <Text {...title.props}>{title.text}</Text>
+      <ChatConversationHomePromptEditorModalIconButton
+        button={closeButton}
+        icon={closeIcon}
+      />
+    </View>
   );
 }
 
