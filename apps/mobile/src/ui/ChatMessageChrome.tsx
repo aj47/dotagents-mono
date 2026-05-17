@@ -3027,6 +3027,27 @@ type ChatMessageToolExecutionCallDetailProps = {
   styles: ChatMessageToolExecutionCallDetailStyles;
 };
 
+type ChatMessageToolExecutionCallDetailParts = ReturnType<typeof createChatRuntimeToolExecutionCallDetailMobilePropsParts<
+  ChatMessageToolExecutionCallDetailProps['renderState'],
+  ChatMessageToolExecutionCallDetailProps['onHeaderPress'],
+  ChatMessageToolExecutionCallDetailInput,
+  ChatMessageToolExecutionCallDetailResult,
+  ChatMessageToolExecutionCallDetailPendingResult,
+  ChatMessageToolExecutionCallDetailProps['styles']
+>>;
+
+type ChatMessageToolExecutionCallDetailContentProps =
+  ChatMessageToolExecutionCallDetailParts['callSection']['content'];
+
+type ChatMessageToolExecutionCallDetailInputSectionProps = {
+  inputSection: ChatMessageToolExecutionCallDetailParts['callSection']['content']['inputSection'];
+};
+
+type ChatMessageToolExecutionCallDetailResultStateProps = {
+  resultSection: ChatMessageToolExecutionCallDetailParts['callSection']['content']['resultSection'];
+  pendingResult: ChatMessageToolExecutionCallDetailParts['callSection']['content']['pendingResult'];
+};
+
 type ChatMessageToolExecutionCallListRow = ChatRuntimeConversationToolExecutionDetailMobileRowState;
 
 type ChatMessageToolExecutionCallListProps = {
@@ -11622,28 +11643,71 @@ export function ChatMessageToolExecutionCallDetail({
     pendingResult,
     styles,
   });
-  const callDetailContent = callDetailParts.callSection.content;
 
   return (
     <ChatMessageToolExecutionCallSection
       {...callDetailParts.callSection.props}
     >
-      {callDetailContent.inputSection.shouldRender ? (
-        <ChatMessageToolExecutionPayloadSection
-          {...callDetailContent.inputSection.props}
-        />
-      ) : null}
-      {callDetailContent.resultSection.shouldRender ? (
-        <ChatMessageToolExecutionResultSection
-          {...callDetailContent.resultSection.props}
-        />
-      ) : callDetailContent.pendingResult.shouldRender ? (
-        <ChatMessageToolExecutionPendingResult
-          {...callDetailContent.pendingResult.props}
-        />
-      ) : null}
+      <ChatMessageToolExecutionCallDetailContent
+        {...callDetailParts.callSection.content}
+      />
     </ChatMessageToolExecutionCallSection>
   );
+}
+
+export function ChatMessageToolExecutionCallDetailContent({
+  inputSection,
+  resultSection,
+  pendingResult,
+}: ChatMessageToolExecutionCallDetailContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionCallDetailInputSection
+        inputSection={inputSection}
+      />
+      <ChatMessageToolExecutionCallDetailResultState
+        resultSection={resultSection}
+        pendingResult={pendingResult}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionCallDetailInputSection({
+  inputSection,
+}: ChatMessageToolExecutionCallDetailInputSectionProps) {
+  if (!inputSection.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolExecutionPayloadSection
+      {...inputSection.props}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionCallDetailResultState({
+  resultSection,
+  pendingResult,
+}: ChatMessageToolExecutionCallDetailResultStateProps) {
+  if (resultSection.shouldRender) {
+    return (
+      <ChatMessageToolExecutionResultSection
+        {...resultSection.props}
+      />
+    );
+  }
+
+  if (pendingResult.shouldRender) {
+    return (
+      <ChatMessageToolExecutionPendingResult
+        {...pendingResult.props}
+      />
+    );
+  }
+
+  return null;
 }
 
 export function ChatMessageToolExecutionCallList({
