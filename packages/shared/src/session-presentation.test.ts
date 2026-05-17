@@ -1915,6 +1915,9 @@ describe("session presentation semantics", () => {
     })
     expect(CHAT_COMPOSER_PRESENTATION.queue.label).toBe("Queue")
     expect(CHAT_COMPOSER_PRESENTATION.queue.mobileIcon.name).toBe("time-outline")
+    expect(CHAT_COMPOSER_PRESENTATION.queue.mobileIcon.size).toBe(
+      CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon.size,
+    )
     expect(getChatComposerQueueMobileActionState()).toEqual({
       isDisabled: false,
       label: CHAT_COMPOSER_PRESENTATION.queue.label,
@@ -3069,6 +3072,9 @@ describe("session presentation semantics", () => {
     expect(getChatComposerMobileTextInputPlatformState("web")).toEqual({ paddingVertical: 10 })
     expect(CHAT_COMPOSER_PRESENTATION.submit.sendLabel).toBe("Send")
     expect(CHAT_COMPOSER_PRESENTATION.submit.mobileIcon.name).toBe("send-outline")
+    expect(CHAT_COMPOSER_PRESENTATION.submit.mobileIcon.size).toBe(
+      CHAT_COMPOSER_PRESENTATION.imageAttachment.mobileIcon.size,
+    )
     expect(getChatComposerSubmitMobileActionState({
       presentation: {
         mode: "queue",

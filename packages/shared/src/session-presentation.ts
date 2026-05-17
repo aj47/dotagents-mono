@@ -12334,7 +12334,7 @@ export const CHAT_COMPOSER_PRESENTATION = {
     debugMessage: "Message queued. Use Send Next when you are ready.",
     mobileIcon: {
       name: "time-outline",
-      size: 14,
+      size: 18,
     },
   },
   submit: {
@@ -12343,7 +12343,7 @@ export const CHAT_COMPOSER_PRESENTATION = {
     sendLabel: "Send",
     mobileIcon: {
       name: "send-outline",
-      size: 14,
+      size: 18,
     },
   },
   mic: {
