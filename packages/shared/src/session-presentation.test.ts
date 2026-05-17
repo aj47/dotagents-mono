@@ -7208,51 +7208,57 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Latest activity. Step 3 summary.",
           style: "card-style",
         },
-      },
-      header: {
-        props: {
-          style: "header-style",
-        },
-      },
-      title: {
-        text: "Latest activity",
-        props: {
-          style: "title-style",
-          numberOfLines: 1,
-        },
-      },
-      badge: {
-        props: {
-          style: "badge-style",
-        },
-      },
-      badgeLabel: {
-        text: "Summary · Step 3",
-        props: {
-          style: "badge-text-style",
-          numberOfLines: 1,
-        },
-      },
-      action: {
-        text: "Compared mobile and desktop chat chrome",
-        props: {
-          style: "action-style",
-          numberOfLines: 2,
-        },
-      },
-      meta: {
-        text: "Step 3 · High importance · 1 key finding",
-        props: {
-          style: "meta-style",
-          numberOfLines: 1,
-        },
-      },
-      preview: {
-        shouldRender: true,
-        text: "Mobile did not surface generated step summaries",
-        props: {
-          style: "preview-style",
-          numberOfLines: 2,
+        content: {
+          header: {
+            props: {
+              style: "header-style",
+            },
+            content: {
+              title: {
+                text: "Latest activity",
+                props: {
+                  style: "title-style",
+                  numberOfLines: 1,
+                },
+              },
+              badge: {
+                props: {
+                  style: "badge-style",
+                },
+                content: {
+                  label: {
+                    text: "Summary · Step 3",
+                    props: {
+                      style: "badge-text-style",
+                      numberOfLines: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          action: {
+            text: "Compared mobile and desktop chat chrome",
+            props: {
+              style: "action-style",
+              numberOfLines: 2,
+            },
+          },
+          meta: {
+            text: "Step 3 · High importance · 1 key finding",
+            props: {
+              style: "meta-style",
+              numberOfLines: 1,
+            },
+          },
+          preview: {
+            shouldRender: true,
+            text: "Mobile did not surface generated step summaries",
+            props: {
+              style: "preview-style",
+              numberOfLines: 2,
+            },
+          },
         },
       },
     })
@@ -7286,8 +7292,12 @@ describe("session presentation semantics", () => {
       },
     })).toMatchObject({
       shouldRenderCard: false,
-      preview: {
-        shouldRender: false,
+      card: {
+        content: {
+          preview: {
+            shouldRender: false,
+          },
+        },
       },
     })
     expect(getChatRuntimeStepSummaryState({

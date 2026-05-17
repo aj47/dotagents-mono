@@ -7541,51 +7541,57 @@ export interface ChatRuntimeStepSummaryCardMobilePropsParts<
       accessibilityLabel: string
       style: TStyles["card"]
     }
-  }
-  header: {
-    props: {
-      style: TStyles["header"]
-    }
-  }
-  title: {
-    text: string
-    props: {
-      style: TStyles["title"]
-      numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
-    }
-  }
-  badge: {
-    props: {
-      style: TStyles["badge"]
-    }
-  }
-  badgeLabel: {
-    text: string
-    props: {
-      style: TStyles["badgeText"]
-      numberOfLines: TRenderState["surface"]["badgeNumberOfLines"]
-    }
-  }
-  action: {
-    text: string
-    props: {
-      style: TStyles["action"]
-      numberOfLines: TRenderState["surface"]["actionNumberOfLines"]
-    }
-  }
-  meta: {
-    text: string
-    props: {
-      style: TStyles["meta"]
-      numberOfLines: TRenderState["surface"]["metaNumberOfLines"]
-    }
-  }
-  preview: {
-    shouldRender: boolean
-    text: string
-    props: {
-      style: TStyles["preview"]
-      numberOfLines: TRenderState["surface"]["previewNumberOfLines"]
+    content: {
+      header: {
+        props: {
+          style: TStyles["header"]
+        }
+        content: {
+          title: {
+            text: string
+            props: {
+              style: TStyles["title"]
+              numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+            }
+          }
+          badge: {
+            props: {
+              style: TStyles["badge"]
+            }
+            content: {
+              label: {
+                text: string
+                props: {
+                  style: TStyles["badgeText"]
+                  numberOfLines: TRenderState["surface"]["badgeNumberOfLines"]
+                }
+              }
+            }
+          }
+        }
+      }
+      action: {
+        text: string
+        props: {
+          style: TStyles["action"]
+          numberOfLines: TRenderState["surface"]["actionNumberOfLines"]
+        }
+      }
+      meta: {
+        text: string
+        props: {
+          style: TStyles["meta"]
+          numberOfLines: TRenderState["surface"]["metaNumberOfLines"]
+        }
+      }
+      preview: {
+        shouldRender: boolean
+        text: string
+        props: {
+          style: TStyles["preview"]
+          numberOfLines: TRenderState["surface"]["previewNumberOfLines"]
+        }
+      }
     }
   }
 }
@@ -25109,51 +25115,57 @@ export function createChatRuntimeStepSummaryCardMobilePropsParts<
         accessibilityLabel: renderState.accessibilityLabel,
         style: styles.card,
       },
-    },
-    header: {
-      props: {
-        style: styles.header,
-      },
-    },
-    title: {
-      text: renderState.title,
-      props: {
-        style: styles.title,
-        numberOfLines: renderState.surface.titleNumberOfLines,
-      },
-    },
-    badge: {
-      props: {
-        style: styles.badge,
-      },
-    },
-    badgeLabel: {
-      text: renderState.badgeLabel,
-      props: {
-        style: styles.badgeText,
-        numberOfLines: renderState.surface.badgeNumberOfLines,
-      },
-    },
-    action: {
-      text: renderState.actionSummary,
-      props: {
-        style: styles.action,
-        numberOfLines: renderState.surface.actionNumberOfLines,
-      },
-    },
-    meta: {
-      text: renderState.meta,
-      props: {
-        style: styles.meta,
-        numberOfLines: renderState.surface.metaNumberOfLines,
-      },
-    },
-    preview: {
-      shouldRender: Boolean(renderState.preview),
-      text: renderState.preview,
-      props: {
-        style: styles.preview,
-        numberOfLines: renderState.surface.previewNumberOfLines,
+      content: {
+        header: {
+          props: {
+            style: styles.header,
+          },
+          content: {
+            title: {
+              text: renderState.title,
+              props: {
+                style: styles.title,
+                numberOfLines: renderState.surface.titleNumberOfLines,
+              },
+            },
+            badge: {
+              props: {
+                style: styles.badge,
+              },
+              content: {
+                label: {
+                  text: renderState.badgeLabel,
+                  props: {
+                    style: styles.badgeText,
+                    numberOfLines: renderState.surface.badgeNumberOfLines,
+                  },
+                },
+              },
+            },
+          },
+        },
+        action: {
+          text: renderState.actionSummary,
+          props: {
+            style: styles.action,
+            numberOfLines: renderState.surface.actionNumberOfLines,
+          },
+        },
+        meta: {
+          text: renderState.meta,
+          props: {
+            style: styles.meta,
+            numberOfLines: renderState.surface.metaNumberOfLines,
+          },
+        },
+        preview: {
+          shouldRender: Boolean(renderState.preview),
+          text: renderState.preview,
+          props: {
+            style: styles.preview,
+            numberOfLines: renderState.surface.previewNumberOfLines,
+          },
+        },
       },
     },
   }

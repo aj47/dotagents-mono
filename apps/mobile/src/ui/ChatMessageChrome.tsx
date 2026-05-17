@@ -10400,27 +10400,31 @@ export function ChatMessageStepSummaryCard({
 
   if (!stepSummaryCardParts.shouldRenderCard) return null;
 
+  const stepSummaryCardContent = stepSummaryCardParts.card.content;
+  const stepSummaryHeaderContent = stepSummaryCardContent.header.content;
+  const stepSummaryBadgeContent = stepSummaryHeaderContent.badge.content;
+
   return (
     <View {...stepSummaryCardParts.card.props}>
-      <View {...stepSummaryCardParts.header.props}>
-        <Text {...stepSummaryCardParts.title.props}>
-          {stepSummaryCardParts.title.text}
+      <View {...stepSummaryCardContent.header.props}>
+        <Text {...stepSummaryHeaderContent.title.props}>
+          {stepSummaryHeaderContent.title.text}
         </Text>
-        <View {...stepSummaryCardParts.badge.props}>
-          <Text {...stepSummaryCardParts.badgeLabel.props}>
-            {stepSummaryCardParts.badgeLabel.text}
+        <View {...stepSummaryHeaderContent.badge.props}>
+          <Text {...stepSummaryBadgeContent.label.props}>
+            {stepSummaryBadgeContent.label.text}
           </Text>
         </View>
       </View>
-      <Text {...stepSummaryCardParts.action.props}>
-        {stepSummaryCardParts.action.text}
+      <Text {...stepSummaryCardContent.action.props}>
+        {stepSummaryCardContent.action.text}
       </Text>
-      <Text {...stepSummaryCardParts.meta.props}>
-        {stepSummaryCardParts.meta.text}
+      <Text {...stepSummaryCardContent.meta.props}>
+        {stepSummaryCardContent.meta.text}
       </Text>
-      {stepSummaryCardParts.preview.shouldRender ? (
-        <Text {...stepSummaryCardParts.preview.props}>
-          {stepSummaryCardParts.preview.text}
+      {stepSummaryCardContent.preview.shouldRender ? (
+        <Text {...stepSummaryCardContent.preview.props}>
+          {stepSummaryCardContent.preview.text}
         </Text>
       ) : null}
     </View>
