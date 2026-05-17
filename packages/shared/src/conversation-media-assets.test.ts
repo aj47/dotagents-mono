@@ -15,6 +15,7 @@ import {
   CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION,
   CHAT_VIDEO_ATTACHMENT_PRESENTATION,
   CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION,
+  createChatVideoAttachmentMobileStyleSlots,
   createConversationImageAssetFileService,
   createConversationImageAssetRouteActions,
   createConversationVideoAssetFileService,
@@ -245,7 +246,7 @@ describe('conversation video asset utilities', () => {
         color: '#dc2626',
       },
     });
-    expect(getChatVideoAttachmentMobileRenderState({
+    const videoAttachmentRenderState = getChatVideoAttachmentMobileRenderState({
       sourceUrl: 'assets://conversation-video/conv_1/abcdef1234567890.mp4',
       label: 'Demo clip',
       colors: {
@@ -258,7 +259,8 @@ describe('conversation video asset utilities', () => {
       },
       isDark: true,
       loading: true,
-    })).toMatchObject({
+    });
+    expect(videoAttachmentRenderState).toMatchObject({
       copy: CHAT_VIDEO_ATTACHMENT_PRESENTATION,
       surface: CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile,
       displayLabel: 'Demo clip',
@@ -279,6 +281,90 @@ describe('conversation video asset utilities', () => {
       externalLink: {
         accessibilityRole: 'link',
         accessibilityLabel: 'Open video link: Demo clip',
+      },
+    });
+    expect(createChatVideoAttachmentMobileStyleSlots({
+      renderState: videoAttachmentRenderState,
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        lg: 12,
+      },
+    })).toEqual({
+      card: {
+        borderWidth: 1,
+        borderColor: '#d4d4d4',
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        overflow: 'hidden',
+        marginBottom: 8,
+      },
+      header: {
+        padding: 8,
+        gap: 2,
+      },
+      loadButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        padding: 8,
+      },
+      loadButtonPressed: {
+        opacity: 0.72,
+      },
+      loadButtonDisabled: {
+        opacity: 0.65,
+      },
+      playIconWrapper: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(37, 99, 235, 0.09)',
+      },
+      textWrapper: {
+        flex: 1,
+        minWidth: 0,
+      },
+      title: {
+        color: '#171717',
+        fontWeight: '600',
+        fontSize: 13,
+      },
+      subtitle: {
+        color: '#737373',
+        fontSize: 11,
+      },
+      video: {
+        width: '100%',
+        height: 220,
+        backgroundColor: '#000',
+      },
+      fallbackLink: {
+        paddingVertical: 4,
+        marginBottom: 8,
+      },
+      fallbackLinkPressed: {
+        opacity: 0.72,
+      },
+      fallbackLinkText: {
+        color: '#2563eb',
+        fontSize: 13,
+        textDecorationLine: 'underline',
+      },
+      externalLink: {
+        marginTop: 4,
+      },
+      externalLinkPressed: {
+        opacity: 0.72,
+      },
+      errorText: {
+        color: '#dc2626',
+        fontSize: 11,
+        marginTop: 4,
       },
     });
     expect(getChatVideoAttachmentMobileSurfaceColors({

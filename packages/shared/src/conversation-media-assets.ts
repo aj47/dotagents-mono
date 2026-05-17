@@ -540,6 +540,103 @@ export interface ChatVideoAttachmentMobileRenderState {
   };
 }
 
+type ChatVideoAttachmentMobileSurface =
+  typeof CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION.mobile;
+
+export type ChatVideoAttachmentMobileStyleSpacingToken =
+  | ChatVideoAttachmentMobileSurface['card']['marginBottom']
+  | ChatVideoAttachmentMobileSurface['header']['padding']
+  | ChatVideoAttachmentMobileSurface['loadButton']['padding']
+  | ChatVideoAttachmentMobileSurface['fallbackLink']['paddingVertical']
+  | ChatVideoAttachmentMobileSurface['fallbackLink']['marginBottom']
+  | ChatVideoAttachmentMobileSurface['externalLink']['marginTop']
+  | ChatVideoAttachmentMobileSurface['errorText']['marginTop'];
+
+export type ChatVideoAttachmentMobileStyleRadiusToken =
+  ChatVideoAttachmentMobileSurface['card']['borderRadius'];
+
+export interface ChatVideoAttachmentMobileStyleSlotsInput {
+  renderState: Pick<ChatVideoAttachmentMobileRenderState, 'surface' | 'colors'>;
+  spacing: Readonly<Record<ChatVideoAttachmentMobileStyleSpacingToken, number>>;
+  radius: Readonly<Record<ChatVideoAttachmentMobileStyleRadiusToken, number>>;
+}
+
+export interface ChatVideoAttachmentMobileStyleSlots {
+  card: {
+    borderWidth: number;
+    borderColor: string;
+    borderRadius: number;
+    backgroundColor: string;
+    overflow: ChatVideoAttachmentMobileSurface['card']['overflow'];
+    marginBottom: number;
+  };
+  header: {
+    padding: number;
+    gap: number;
+  };
+  loadButton: {
+    flexDirection: ChatVideoAttachmentMobileSurface['loadButton']['flexDirection'];
+    alignItems: ChatVideoAttachmentMobileSurface['loadButton']['alignItems'];
+    gap: number;
+    padding: number;
+  };
+  loadButtonPressed: {
+    opacity: number;
+  };
+  loadButtonDisabled: {
+    opacity: number;
+  };
+  playIconWrapper: {
+    width: number;
+    height: number;
+    borderRadius: number;
+    alignItems: ChatVideoAttachmentMobileSurface['playIconWrapper']['alignItems'];
+    justifyContent: ChatVideoAttachmentMobileSurface['playIconWrapper']['justifyContent'];
+    backgroundColor: string;
+  };
+  textWrapper: {
+    flex: number;
+    minWidth: number;
+  };
+  title: {
+    color: string;
+    fontWeight: ChatVideoAttachmentMobileSurface['title']['fontWeight'];
+    fontSize: number;
+  };
+  subtitle: {
+    color: string;
+    fontSize: number;
+  };
+  video: {
+    width: ChatVideoAttachmentMobileSurface['video']['width'];
+    height: number;
+    backgroundColor: string;
+  };
+  fallbackLink: {
+    paddingVertical: number;
+    marginBottom: number;
+  };
+  fallbackLinkPressed: {
+    opacity: number;
+  };
+  fallbackLinkText: {
+    color: string;
+    fontSize: number;
+    textDecorationLine: ChatVideoAttachmentMobileSurface['fallbackLinkText']['textDecorationLine'];
+  };
+  externalLink: {
+    marginTop: number;
+  };
+  externalLinkPressed: {
+    opacity: number;
+  };
+  errorText: {
+    color: string;
+    fontSize: number;
+    marginTop: number;
+  };
+}
+
 export function getChatVideoAttachmentMobileSurfaceColors(
   colors: ChatVideoAttachmentMobileSurfaceColorPalette,
   input: { isDark?: boolean } = {},
@@ -583,6 +680,91 @@ export function getChatVideoAttachmentMobileSurfaceColors(
     },
     errorText: {
       color: colors[surface.errorText.colorToken],
+    },
+  };
+}
+
+export function createChatVideoAttachmentMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatVideoAttachmentMobileStyleSlotsInput): ChatVideoAttachmentMobileStyleSlots {
+  const surface = renderState.surface;
+  const colors = renderState.colors;
+
+  return {
+    card: {
+      borderWidth: surface.card.borderWidth,
+      borderColor: colors.card.borderColor,
+      borderRadius: radius[surface.card.borderRadius],
+      backgroundColor: colors.card.backgroundColor,
+      overflow: surface.card.overflow,
+      marginBottom: spacing[surface.card.marginBottom],
+    },
+    header: {
+      padding: spacing[surface.header.padding],
+      gap: surface.header.gap,
+    },
+    loadButton: {
+      flexDirection: surface.loadButton.flexDirection,
+      alignItems: surface.loadButton.alignItems,
+      gap: surface.loadButton.gap,
+      padding: spacing[surface.loadButton.padding],
+    },
+    loadButtonPressed: {
+      opacity: surface.loadButton.pressedOpacity,
+    },
+    loadButtonDisabled: {
+      opacity: surface.loadButton.disabledOpacity,
+    },
+    playIconWrapper: {
+      width: surface.playIconWrapper.size,
+      height: surface.playIconWrapper.size,
+      borderRadius: surface.playIconWrapper.borderRadius,
+      alignItems: surface.playIconWrapper.alignItems,
+      justifyContent: surface.playIconWrapper.justifyContent,
+      backgroundColor: colors.playIconWrapper.backgroundColor,
+    },
+    textWrapper: {
+      flex: surface.textWrapper.flex,
+      minWidth: surface.textWrapper.minWidth,
+    },
+    title: {
+      color: colors.title.color,
+      fontWeight: surface.title.fontWeight,
+      fontSize: surface.title.fontSize,
+    },
+    subtitle: {
+      color: colors.subtitle.color,
+      fontSize: surface.subtitle.fontSize,
+    },
+    video: {
+      width: surface.video.width,
+      height: surface.video.height,
+      backgroundColor: surface.video.backgroundColor,
+    },
+    fallbackLink: {
+      paddingVertical: spacing[surface.fallbackLink.paddingVertical],
+      marginBottom: spacing[surface.fallbackLink.marginBottom],
+    },
+    fallbackLinkPressed: {
+      opacity: surface.fallbackLink.pressedOpacity,
+    },
+    fallbackLinkText: {
+      color: colors.fallbackLinkText.color,
+      fontSize: surface.fallbackLinkText.fontSize,
+      textDecorationLine: surface.fallbackLinkText.textDecorationLine,
+    },
+    externalLink: {
+      marginTop: spacing[surface.externalLink.marginTop],
+    },
+    externalLinkPressed: {
+      opacity: surface.externalLink.pressedOpacity,
+    },
+    errorText: {
+      color: colors.errorText.color,
+      fontSize: surface.errorText.fontSize,
+      marginTop: spacing[surface.errorText.marginTop],
     },
   };
 }

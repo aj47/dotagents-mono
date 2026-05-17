@@ -5,6 +5,7 @@ import { File, Paths } from 'expo-file-system';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
+  createChatVideoAttachmentMobileStyleSlots,
   getChatVideoAttachmentMobileRenderState,
   formatVideoAttachmentRequestFailedMessage,
   isRenderableVideoUrl,
@@ -72,6 +73,14 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   const videoAttachmentCopy = videoAttachmentRenderState.copy;
   const videoAttachmentSurface = videoAttachmentRenderState.surface;
   const videoAttachmentSurfaceColors = videoAttachmentRenderState.colors;
+  const videoAttachmentStyleSlots = useMemo(
+    () => createChatVideoAttachmentMobileStyleSlots({
+      renderState: videoAttachmentRenderState,
+      spacing,
+      radius,
+    }),
+    [videoAttachmentRenderState],
+  );
   const displayLabel = videoAttachmentRenderState.displayLabel;
   const resolvedUri = resolveVideoUri(sourceUrl, assetBaseUrl);
   const conversationAssetRef = useMemo(() => parseConversationVideoAssetUrl(sourceUrl), [sourceUrl]);
@@ -167,79 +176,54 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
 
   const styles = useMemo(() => StyleSheet.create({
     card: {
-      borderWidth: videoAttachmentSurface.card.borderWidth,
-      borderColor: videoAttachmentSurfaceColors.card.borderColor,
-      borderRadius: radius[videoAttachmentSurface.card.borderRadius],
-      backgroundColor: videoAttachmentSurfaceColors.card.backgroundColor,
-      overflow: videoAttachmentSurface.card.overflow,
-      marginBottom: spacing[videoAttachmentSurface.card.marginBottom],
+      ...videoAttachmentStyleSlots.card,
     },
     header: {
-      padding: spacing[videoAttachmentSurface.header.padding],
-      gap: videoAttachmentSurface.header.gap,
+      ...videoAttachmentStyleSlots.header,
     },
     loadButton: {
-      flexDirection: videoAttachmentSurface.loadButton.flexDirection,
-      alignItems: videoAttachmentSurface.loadButton.alignItems,
-      gap: videoAttachmentSurface.loadButton.gap,
-      padding: spacing[videoAttachmentSurface.loadButton.padding],
+      ...videoAttachmentStyleSlots.loadButton,
     },
     loadButtonPressed: {
-      opacity: videoAttachmentSurface.loadButton.pressedOpacity,
+      ...videoAttachmentStyleSlots.loadButtonPressed,
     },
     loadButtonDisabled: {
-      opacity: videoAttachmentSurface.loadButton.disabledOpacity,
+      ...videoAttachmentStyleSlots.loadButtonDisabled,
     },
     playIconWrapper: {
-      width: videoAttachmentSurface.playIconWrapper.size,
-      height: videoAttachmentSurface.playIconWrapper.size,
-      borderRadius: videoAttachmentSurface.playIconWrapper.borderRadius,
-      alignItems: videoAttachmentSurface.playIconWrapper.alignItems,
-      justifyContent: videoAttachmentSurface.playIconWrapper.justifyContent,
-      backgroundColor: videoAttachmentSurfaceColors.playIconWrapper.backgroundColor,
+      ...videoAttachmentStyleSlots.playIconWrapper,
     },
     textWrapper: {
-      flex: videoAttachmentSurface.textWrapper.flex,
-      minWidth: videoAttachmentSurface.textWrapper.minWidth,
+      ...videoAttachmentStyleSlots.textWrapper,
     },
     title: {
-      color: videoAttachmentSurfaceColors.title.color,
-      fontWeight: videoAttachmentSurface.title.fontWeight,
-      fontSize: videoAttachmentSurface.title.fontSize,
+      ...videoAttachmentStyleSlots.title,
     },
     subtitle: {
-      color: videoAttachmentSurfaceColors.subtitle.color,
-      fontSize: videoAttachmentSurface.subtitle.fontSize,
+      ...videoAttachmentStyleSlots.subtitle,
     },
     video: {
-      width: videoAttachmentSurface.video.width,
-      height: videoAttachmentSurface.video.height,
-      backgroundColor: videoAttachmentSurface.video.backgroundColor,
+      ...videoAttachmentStyleSlots.video,
     },
     fallbackLink: {
-      paddingVertical: spacing[videoAttachmentSurface.fallbackLink.paddingVertical],
-      marginBottom: spacing[videoAttachmentSurface.fallbackLink.marginBottom],
+      ...videoAttachmentStyleSlots.fallbackLink,
     },
     fallbackLinkPressed: {
-      opacity: videoAttachmentSurface.fallbackLink.pressedOpacity,
+      ...videoAttachmentStyleSlots.fallbackLinkPressed,
     },
     fallbackLinkText: {
-      color: videoAttachmentSurfaceColors.fallbackLinkText.color,
-      fontSize: videoAttachmentSurface.fallbackLinkText.fontSize,
-      textDecorationLine: videoAttachmentSurface.fallbackLinkText.textDecorationLine,
+      ...videoAttachmentStyleSlots.fallbackLinkText,
     },
     externalLink: {
-      marginTop: spacing[videoAttachmentSurface.externalLink.marginTop],
+      ...videoAttachmentStyleSlots.externalLink,
     },
     externalLinkPressed: {
-      opacity: videoAttachmentSurface.externalLink.pressedOpacity,
+      ...videoAttachmentStyleSlots.externalLinkPressed,
     },
     errorText: {
-      color: videoAttachmentSurfaceColors.errorText.color,
-      fontSize: videoAttachmentSurface.errorText.fontSize,
-      marginTop: spacing[videoAttachmentSurface.errorText.marginTop],
+      ...videoAttachmentStyleSlots.errorText,
     },
-  }), [videoAttachmentSurfaceColors]);
+  }), [videoAttachmentStyleSlots]);
 
   if (!canRender) {
     return (
