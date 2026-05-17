@@ -2035,8 +2035,10 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
   fullArguments: {
     shouldRender: boolean
     scroll: {
-      style: TStyles["argumentsScroll"]
-      nestedScrollEnabled: true
+      props: {
+        style: TStyles["argumentsScroll"]
+        nestedScrollEnabled: true
+      }
     }
     text: {
       props: {
@@ -22877,8 +22879,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
     fullArguments: {
       shouldRender: renderState.argumentsToggle.ariaExpanded,
       scroll: {
-        style: styles.argumentsScroll,
-        nestedScrollEnabled: true,
+        props: {
+          style: styles.argumentsScroll,
+          nestedScrollEnabled: true,
+        },
       },
       text: {
         props: {

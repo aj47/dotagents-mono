@@ -8228,8 +8228,10 @@ describe("session presentation semantics", () => {
     expect(toolApprovalParts.fullArguments).toEqual({
       shouldRender: true,
       scroll: {
-        style: "tool-approval-arguments-scroll-style",
-        nestedScrollEnabled: true,
+        props: {
+          style: "tool-approval-arguments-scroll-style",
+          nestedScrollEnabled: true,
+        },
       },
       text: {
         props: {

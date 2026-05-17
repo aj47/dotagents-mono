@@ -1616,6 +1616,11 @@ type ChatMessageToolApprovalArgumentsPreviewProps =
 type ChatMessageToolApprovalFullArgumentsProps =
   ChatMessageToolApprovalParts['fullArguments']['text']['props'];
 
+type ChatMessageToolApprovalFullArgumentsScrollProps =
+  ChatMessageToolApprovalParts['fullArguments']['scroll']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7503,14 +7508,13 @@ export function ChatMessageToolApproval({
           />
         </Pressable>
         {toolApprovalParts.fullArguments.shouldRender ? (
-          <ScrollView
-            style={toolApprovalParts.fullArguments.scroll.style}
-            nestedScrollEnabled={toolApprovalParts.fullArguments.scroll.nestedScrollEnabled}
+          <ChatMessageToolApprovalFullArgumentsScroll
+            {...toolApprovalParts.fullArguments.scroll.props}
           >
             <ChatMessageToolApprovalFullArguments
               {...toolApprovalParts.fullArguments.text.props}
             />
-          </ScrollView>
+          </ChatMessageToolApprovalFullArgumentsScroll>
         ) : null}
         <View style={toolApprovalParts.actions.style}>
           <TouchableOpacity
@@ -7645,6 +7649,21 @@ export function ChatMessageToolApprovalFullArguments({
     <Text style={style}>
       {text}
     </Text>
+  );
+}
+
+export function ChatMessageToolApprovalFullArgumentsScroll({
+  style,
+  nestedScrollEnabled,
+  children,
+}: ChatMessageToolApprovalFullArgumentsScrollProps) {
+  return (
+    <ScrollView
+      style={style}
+      nestedScrollEnabled={nestedScrollEnabled}
+    >
+      {children}
+    </ScrollView>
   );
 }
 
