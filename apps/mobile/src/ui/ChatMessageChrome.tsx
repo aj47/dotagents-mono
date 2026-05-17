@@ -2400,15 +2400,15 @@ type ChatMessageToolExecutionPayloadBlockParts = ReturnType<typeof createChatRun
 >>;
 
 type ChatMessageToolExecutionPayloadPreviewProps =
-  ChatMessageToolExecutionPayloadBlockParts['preview']['props'];
+  ChatMessageToolExecutionPayloadBlockParts['content']['preview']['props'];
 
 type ChatMessageToolExecutionPayloadScrollProps =
-  ChatMessageToolExecutionPayloadBlockParts['scroll']['props'] & {
+  ChatMessageToolExecutionPayloadBlockParts['content']['scroll']['props'] & {
     children: ReactNode;
   };
 
 type ChatMessageToolExecutionPayloadCodeProps =
-  ChatMessageToolExecutionPayloadBlockParts['code']['props'];
+  ChatMessageToolExecutionPayloadBlockParts['content']['code']['props'];
 
 type ChatMessageToolExecutionPayloadSectionStyles = {
   section: StyleProp<ViewStyle>;
@@ -9776,19 +9776,20 @@ export function ChatMessageToolExecutionPayloadBlock({
     previewNumberOfLines,
     styles,
   });
+  const payloadBlockContent = payloadBlockParts.content;
 
   return (
     <>
-      {payloadBlockParts.preview.shouldRender ? (
+      {payloadBlockContent.preview.shouldRender ? (
         <ChatMessageToolExecutionPayloadPreview
-          {...payloadBlockParts.preview.props}
+          {...payloadBlockContent.preview.props}
         />
       ) : null}
       <ChatMessageToolExecutionPayloadScroll
-        {...payloadBlockParts.scroll.props}
+        {...payloadBlockContent.scroll.props}
       >
         <ChatMessageToolExecutionPayloadCode
-          {...payloadBlockParts.code.props}
+          {...payloadBlockContent.code.props}
         />
       </ChatMessageToolExecutionPayloadScroll>
     </>

@@ -14160,28 +14160,30 @@ describe("session presentation semantics", () => {
       },
     })
     expect(payloadBlockParts).toEqual({
-      preview: {
-        shouldRender: true,
-        props: {
+      content: {
+        preview: {
+          shouldRender: true,
           props: {
-            style: "payload-preview",
-            numberOfLines: 3,
+            props: {
+              style: "payload-preview",
+              numberOfLines: 3,
+            },
+            text: "preview",
           },
-          text: "preview",
         },
-      },
-      scroll: {
-        props: {
-          style: "payload-scroll-expanded",
-          nestedScrollEnabled: true,
-        },
-      },
-      code: {
-        props: {
+        scroll: {
           props: {
-            style: "payload-code",
+            style: "payload-scroll-expanded",
+            nestedScrollEnabled: true,
           },
-          text: "payload-content",
+        },
+        code: {
+          props: {
+            props: {
+              style: "payload-code",
+            },
+            text: "payload-content",
+          },
         },
       },
     })
@@ -14197,28 +14199,30 @@ describe("session presentation semantics", () => {
         code: "payload-code",
       },
     })).toEqual({
-      preview: {
-        shouldRender: false,
-        props: {
+      content: {
+        preview: {
+          shouldRender: false,
           props: {
-            style: "payload-preview",
-            numberOfLines: 2,
+            props: {
+              style: "payload-preview",
+              numberOfLines: 2,
+            },
+            text: "",
           },
-          text: "",
         },
-      },
-      scroll: {
-        props: {
-          style: "payload-scroll",
-          nestedScrollEnabled: true,
-        },
-      },
-      code: {
-        props: {
+        scroll: {
           props: {
-            style: "payload-code",
+            style: "payload-scroll",
+            nestedScrollEnabled: true,
           },
-          text: "payload-content",
+        },
+        code: {
+          props: {
+            props: {
+              style: "payload-code",
+            },
+            text: "payload-content",
+          },
         },
       },
     })

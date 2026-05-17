@@ -3527,28 +3527,30 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
     code: unknown
   },
 > {
-  preview: {
-    shouldRender: boolean
-    props: {
+  content: {
+    preview: {
+      shouldRender: boolean
       props: {
-        style: TStyles["preview"]
-        numberOfLines: number
+        props: {
+          style: TStyles["preview"]
+          numberOfLines: number
+        }
+        text: string
       }
-      text: string
     }
-  }
-  scroll: {
-    props: {
-      style: TStyles["scroll"] | TStyles["scrollExpanded"]
-      nestedScrollEnabled: true
-    }
-  }
-  code: {
-    props: {
+    scroll: {
       props: {
-        style: TStyles["code"]
+        style: TStyles["scroll"] | TStyles["scrollExpanded"]
+        nestedScrollEnabled: true
       }
-      text: string
+    }
+    code: {
+      props: {
+        props: {
+          style: TStyles["code"]
+        }
+        text: string
+      }
     }
   }
 }
@@ -21442,28 +21444,30 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   styles,
 }: ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<TStyles>): ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<TStyles> {
   return {
-    preview: {
-      shouldRender: Boolean(compactText),
-      props: {
+    content: {
+      preview: {
+        shouldRender: Boolean(compactText),
         props: {
-          style: styles.preview,
-          numberOfLines: previewNumberOfLines,
+          props: {
+            style: styles.preview,
+            numberOfLines: previewNumberOfLines,
+          },
+          text: compactText ?? "",
         },
-        text: compactText ?? "",
       },
-    },
-    scroll: {
-      props: {
-        style: isExpanded ? styles.scrollExpanded : styles.scroll,
-        nestedScrollEnabled: true,
-      },
-    },
-    code: {
-      props: {
+      scroll: {
         props: {
-          style: styles.code,
+          style: isExpanded ? styles.scrollExpanded : styles.scroll,
+          nestedScrollEnabled: true,
         },
-        text: content,
+      },
+      code: {
+        props: {
+          props: {
+            style: styles.code,
+          },
+          text: content,
+        },
       },
     },
   }
