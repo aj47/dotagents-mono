@@ -92,6 +92,7 @@ import {
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
+  createChatRuntimeMessageActionSlotListMobilePropsParts,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
@@ -10017,16 +10018,22 @@ export function ChatMessageActionSlotList({
   entries,
   rowStyle,
 }: ChatMessageActionSlotListProps) {
-  if (!shouldRender) return null;
+  const actionSlotListParts = createChatRuntimeMessageActionSlotListMobilePropsParts({
+    shouldRender,
+    entries,
+    rowStyle,
+  });
 
-  const content = entries.map(({ slot, item }) => (
-    <Fragment key={slot}>
+  if (!actionSlotListParts.shouldRenderList) return null;
+
+  const content = actionSlotListParts.items.map(({ key, item }) => (
+    <Fragment key={key}>
       {item}
     </Fragment>
   ));
 
-  if (rowStyle) {
-    return <View style={rowStyle}>{content}</View>;
+  if (actionSlotListParts.row) {
+    return <View style={actionSlotListParts.row.style}>{content}</View>;
   }
 
   return <>{content}</>;

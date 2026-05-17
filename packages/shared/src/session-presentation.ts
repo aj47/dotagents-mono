@@ -2052,6 +2052,41 @@ export interface ChatRuntimeMessageActionIconButtonMobilePropsParts<
   icon: TIcon | null
 }
 
+export interface ChatRuntimeMessageActionSlotListMobilePropsPartsInput<
+  TEntry extends {
+    slot: string | number
+    item: unknown
+  } = {
+    slot: string | number
+    item: unknown
+  },
+  TRowStyle = unknown,
+> {
+  shouldRender?: boolean
+  entries: readonly TEntry[]
+  rowStyle?: TRowStyle
+}
+
+export interface ChatRuntimeMessageActionSlotListMobilePropsParts<
+  TEntry extends {
+    slot: string | number
+    item: unknown
+  } = {
+    slot: string | number
+    item: unknown
+  },
+  TRowStyle = unknown,
+> {
+  shouldRenderList: boolean
+  items: Array<{
+    key: TEntry["slot"]
+    item: TEntry["item"]
+  }>
+  row: {
+    style: TRowStyle
+  } | null
+}
+
 export interface ChatRuntimeConversationActionSetMobileStateInput<
   TTurnDurationStyle extends object = Record<string, never>,
   TSpeechStyle extends object = Record<string, never>,
@@ -16852,6 +16887,30 @@ export function createChatRuntimeMessageActionIconButtonMobilePropsParts<
     },
     activityIndicator: icon.isPending ? icon : null,
     icon: icon.isPending ? null : icon,
+  }
+}
+
+export function createChatRuntimeMessageActionSlotListMobilePropsParts<
+  TEntry extends {
+    slot: string | number
+    item: unknown
+  },
+  TRowStyle,
+>({
+  shouldRender = true,
+  entries,
+  rowStyle,
+}: ChatRuntimeMessageActionSlotListMobilePropsPartsInput<TEntry, TRowStyle>):
+  ChatRuntimeMessageActionSlotListMobilePropsParts<TEntry, TRowStyle> {
+  return {
+    shouldRenderList: shouldRender,
+    items: entries.map(({ slot, item }) => ({
+      key: slot,
+      item,
+    })),
+    row: rowStyle ? {
+      style: rowStyle,
+    } : null,
   }
 }
 

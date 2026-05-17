@@ -88,6 +88,7 @@ import {
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
+  createChatRuntimeMessageActionSlotListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
@@ -9353,6 +9354,32 @@ describe("session presentation semantics", () => {
       isPending: true,
     })
     expect(disabledActionIconButtonParts.icon).toBeNull()
+    expect(createChatRuntimeMessageActionSlotListMobilePropsParts({
+      entries: actionSetProps.entries,
+      rowStyle: "action-row-style",
+    })).toEqual({
+      shouldRenderList: true,
+      items: [
+        { key: "speech", item: "speech" },
+        { key: "branch", item: "branch" },
+        { key: "copy", item: "copy" },
+      ],
+      row: {
+        style: "action-row-style",
+      },
+    })
+    expect(createChatRuntimeMessageActionSlotListMobilePropsParts({
+      shouldRender: false,
+      entries: actionSetProps.entries,
+    })).toEqual({
+      shouldRenderList: false,
+      items: [
+        { key: "speech", item: "speech" },
+        { key: "branch", item: "branch" },
+        { key: "copy", item: "copy" },
+      ],
+      row: null,
+    })
     const toolExecutionStackEvents: string[] = []
     const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: threadBodyColors,
