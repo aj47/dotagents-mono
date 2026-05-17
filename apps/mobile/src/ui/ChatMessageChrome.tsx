@@ -9238,22 +9238,22 @@ export function ChatMessageToolExecutionExpandedGroup({
 }
 
 export function ChatMessageToolExecutionExpandedGroupContainer({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionExpandedGroupContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatMessageToolExecutionExpandedGroupCard({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionExpandedGroupCardProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );

@@ -3918,6 +3918,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionExpandedGroup \{\.\.\.panelParts\.expandedGroup\.props\}>[\s\S]*?\{children\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionExpandedGroupContainer\s+\{\.\.\.expandedGroupParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionExpandedGroupCard\s+\{\.\.\.expandedGroupParts\.card\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionExpandedGroupContainer\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?\}: ChatMessageToolExecutionExpandedGroupContainerProps\) \{[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageToolExecutionExpandedGroupCard/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionExpandedGroupCard\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?\}: ChatMessageToolExecutionExpandedGroupCardProps\) \{[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageToolExecutionPanel/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionExpandedGroup(Container|Card)[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionPanel/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControl\s+\{\.\.\.expandedGroupParts\.topCollapseControl\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControl\s+\{\.\.\.expandedGroupParts\.bottomCollapseControl\.props\}/);
   assert.match(chatMessageChromeSource, /expandedGroupParts\.emptyState\.shouldRender \? expandedGroupParts\.emptyState\.props : null/);
