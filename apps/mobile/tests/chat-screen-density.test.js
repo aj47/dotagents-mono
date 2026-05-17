@@ -1421,7 +1421,12 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /getAgentDelegationToolPreviewState,/);
   assert.doesNotMatch(screenSource, /displayToolCallCount - delegationVisibleToolRows\.length/);
   assert.match(sessionPresentationSource, /label: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?numberOfLines: surface\.toolPreviewLabelNumberOfLines,/);
-  assert.match(delegationCardComponentSource, /cardContent\.toolPreview\.shouldRender \? \(/);
+  const delegationToolPreviewBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewBlock[\s\S]*?export function ChatMessageDelegationToolPreview\(/)?.[0] ?? '';
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewBlock/);
+  assert.match(delegationCardComponentSource, /<ChatMessageDelegationToolPreviewBlock\s+toolPreview=\{cardContent\.toolPreview\}/);
+  assert.match(delegationToolPreviewBlockSource, /if \(!toolPreview\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview \? \(/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<ChatMessageDelegationToolPreviewLabel\s+\{\.\.\.previewContent\.label\.props\}/);
@@ -1448,7 +1453,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /container: \{[\s\S]*?content: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolPreviewLabel,/);
   assert.match(sessionPresentationSource, /rows: shouldRenderToolPreview \? toolPreview\.rows\.map\(\(\{ key, preview, renderState \}\) => \{[\s\S]*?const \{ shouldRender: spinnerShouldRender, \.\.\.spinnerProps \} = renderState\.statusIndicator\.spinner[\s\S]*?return \{[\s\S]*?key,[\s\S]*?props: \{[\s\S]*?line: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolPreviewLine,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\(/);
-  assert.match(delegationCardComponentSource, /<ChatMessageDelegationToolPreview\s+\{\.\.\.cardContent\.toolPreview\.props\}/);
+  assert.match(delegationToolPreviewBlockSource, /<ChatMessageDelegationToolPreview\s+\{\.\.\.toolPreview\.props\}/);
+  assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationToolPreview\s+\{\.\.\.cardContent\.toolPreview\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\(\{[\s\S]*?container,[\s\S]*?\}: ChatMessageDelegationToolPreviewProps\) \{[\s\S]*?const previewContent = container\.content;[\s\S]*?export function ChatMessageDelegationCard/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationCard/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?<View\s+style=\{container\.style\}[\s\S]*?export function ChatMessageDelegationCard/);
