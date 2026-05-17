@@ -4329,8 +4329,10 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: headerAgentSelectorStyles.label,
-          numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+          props: {
+            style: headerAgentSelectorStyles.label,
+            numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+          },
           text: navigationHeaderState.agentSelectorRenderState.label,
         },
       },
@@ -4399,10 +4401,12 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: [
-            headerConversationStatusStyles.text,
-            navigationHeaderState.conversationStatusRenderState.styles.text,
-          ],
+          props: {
+            style: [
+              headerConversationStatusStyles.text,
+              navigationHeaderState.conversationStatusRenderState.styles.text,
+            ],
+          },
           text: navigationHeaderState.conversationStatusRenderState.label,
         },
       },
@@ -4434,11 +4438,13 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: [
-            headerTurnDurationStyles.text,
-            headerTurnDurationStyles.liveText,
-          ],
-          numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
+          props: {
+            style: [
+              headerTurnDurationStyles.text,
+              headerTurnDurationStyles.liveText,
+            ],
+            numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
+          },
           text: navigationHeaderState.turnDurationRenderState.label,
         },
       },

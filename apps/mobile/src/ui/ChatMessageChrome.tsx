@@ -7529,65 +7529,41 @@ export function ChatRuntimeHeaderAgentSelector({
 }
 
 export function ChatRuntimeHeaderAgentSelectorTouchable({
-  style,
-  onPress,
-  activeOpacity,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
   children,
+  ...props
 }: ChatRuntimeHeaderAgentSelectorTouchableProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
 export function ChatRuntimeHeaderAgentSelectorChip({
-  style,
   children,
+  ...props
 }: ChatRuntimeHeaderAgentSelectorChipProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatRuntimeHeaderAgentSelectorLabel({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatRuntimeHeaderAgentSelectorLabelProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
-export function ChatRuntimeHeaderAgentSelectorIcon({
-  name,
-  size,
-  color,
-}: ChatRuntimeHeaderAgentSelectorIconProps) {
+export function ChatRuntimeHeaderAgentSelectorIcon(props: ChatRuntimeHeaderAgentSelectorIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -7647,26 +7623,16 @@ export function ChatRuntimeHeaderIconButton({
 }
 
 export function ChatRuntimeHeaderIconButtonTouchable({
-  onPress,
-  activeOpacity,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
   'aria-checked': ariaChecked,
-  style,
+  accessibilityState,
   children,
+  ...props
 }: ChatRuntimeHeaderIconButtonTouchableProps) {
   return (
     <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
+      {...props}
       accessibilityState={accessibilityState as AccessibilityState | undefined}
       aria-checked={ariaChecked as boolean | 'mixed' | undefined}
-      style={style}
     >
       {children}
     </TouchableOpacity>
@@ -7674,27 +7640,19 @@ export function ChatRuntimeHeaderIconButtonTouchable({
 }
 
 export function ChatRuntimeHeaderIconButtonIconContainer({
-  style,
   children,
+  ...props
 }: ChatRuntimeHeaderIconButtonIconContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatRuntimeHeaderIconButtonIcon({
-  name,
-  size,
-  color,
-}: ChatRuntimeHeaderIconButtonIconProps) {
+export function ChatRuntimeHeaderIconButtonIcon(props: ChatRuntimeHeaderIconButtonIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -7728,36 +7686,30 @@ export function ChatRuntimeHeaderConversationStatus({
 }
 
 export function ChatRuntimeHeaderConversationStatusContainer({
-  style,
   children,
+  ...props
 }: ChatRuntimeHeaderConversationStatusContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatRuntimeHeaderConversationStatusRunningIndicator({
-  source,
-  style,
-  resizeMode,
-}: ChatRuntimeHeaderConversationStatusRunningIndicatorProps) {
+export function ChatRuntimeHeaderConversationStatusRunningIndicator(
+  props: ChatRuntimeHeaderConversationStatusRunningIndicatorProps,
+) {
   return (
-    <Image
-      source={source}
-      style={style}
-      resizeMode={resizeMode}
-    />
+    <Image {...props} />
   );
 }
 
 export function ChatRuntimeHeaderConversationStatusLabel({
-  style,
+  props,
   text,
 }: ChatRuntimeHeaderConversationStatusLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -7789,48 +7741,28 @@ export function ChatRuntimeHeaderTurnDuration({
 }
 
 export function ChatRuntimeHeaderTurnDurationContainer({
-  accessible,
-  accessibilityRole,
-  accessibilityLabel,
-  style,
   children,
+  ...props
 }: ChatRuntimeHeaderTurnDurationContainerProps) {
   return (
-    <View
-      accessible={accessible}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={style}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatRuntimeHeaderTurnDurationIcon({
-  name,
-  size,
-  color,
-}: ChatRuntimeHeaderTurnDurationIconProps) {
+export function ChatRuntimeHeaderTurnDurationIcon(props: ChatRuntimeHeaderTurnDurationIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
 export function ChatRuntimeHeaderTurnDurationLabel({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatRuntimeHeaderTurnDurationLabelProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );

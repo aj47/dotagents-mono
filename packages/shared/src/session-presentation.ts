@@ -9078,8 +9078,10 @@ export interface ChatRuntimeHeaderAgentSelectorMobilePropsParts<
   }
   label: {
     props: {
-      style: TStyles["label"]
-      numberOfLines: TLabelNumberOfLines
+      props: {
+        style: TStyles["label"]
+        numberOfLines: TLabelNumberOfLines
+      }
       text: string
     }
   }
@@ -9238,7 +9240,9 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
   }
   label: {
     props: {
-      style: [TStyles["text"], TRenderState["styles"]["text"]]
+      props: {
+        style: [TStyles["text"], TRenderState["styles"]["text"]]
+      }
       text: string
     }
   }
@@ -9330,8 +9334,10 @@ export interface ChatRuntimeHeaderTurnDurationMobilePropsParts<
   }
   label: {
     props: {
-      style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
-      numberOfLines: TRenderState["badge"]["numberOfLines"]
+      props: {
+        style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
+        numberOfLines: TRenderState["badge"]["numberOfLines"]
+      }
       text: string
     }
   }
@@ -26260,8 +26266,10 @@ export function createChatRuntimeHeaderAgentSelectorMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.label,
-        numberOfLines: labelNumberOfLines,
+        props: {
+          style: styles.label,
+          numberOfLines: labelNumberOfLines,
+        },
         text: renderState.label,
       },
     },
@@ -26361,10 +26369,12 @@ export function createChatRuntimeHeaderConversationStatusMobilePropsParts<
     },
     label: {
       props: {
-        style: [
-          styles.text,
-          renderState.styles.text,
-        ],
+        props: {
+          style: [
+            styles.text,
+            renderState.styles.text,
+          ],
+        },
         text: renderState.label,
       },
     },
@@ -26402,11 +26412,13 @@ export function createChatRuntimeHeaderTurnDurationMobilePropsParts<
     },
     label: {
       props: {
-        style: [
-          styles.text,
-          renderState.isLive && styles.liveText,
-        ],
-        numberOfLines: renderState.badge.numberOfLines,
+        props: {
+          style: [
+            styles.text,
+            renderState.isLive && styles.liveText,
+          ],
+          numberOfLines: renderState.badge.numberOfLines,
+        },
         text: renderState.label,
       },
     },
