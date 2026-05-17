@@ -3202,6 +3202,18 @@ type ChatMessageConversationViewportContentProps = {
   debugPanels?: ReactNode;
 };
 
+type ChatMessageConversationViewportContentParts = ReturnType<typeof createChatRuntimeConversationViewportContentMobilePropsParts<
+  ChatMessageConversationViewportContentProps['loadingState'],
+  ChatMessageConversationViewportContentProps['homeState'],
+  ChatMessageConversationViewportContentProps['historyBanner'],
+  ChatMessageConversationViewportContentProps['stepSummary'],
+  ChatMessageConversationViewportContentProps['children'],
+  ChatMessageConversationViewportContentProps['debugPanels']
+>>;
+
+type ChatMessageConversationViewportContentPartProps =
+  ChatMessageConversationViewportContentParts['content'];
+
 type ChatMessageConversationViewportProps =
   Omit<ChatMessageScrollViewportProps, 'children'>
   & ChatMessageConversationViewportContentProps;
@@ -11997,16 +12009,30 @@ export function ChatMessageConversationViewportContent({
     children,
     debugPanels,
   });
-  const viewportContent = viewportContentParts.content;
 
   return (
+    <ChatMessageConversationViewportContentPart
+      {...viewportContentParts.content}
+    />
+  );
+}
+
+export function ChatMessageConversationViewportContentPart({
+  loadingState,
+  homeState,
+  historyBanner,
+  stepSummary,
+  children,
+  debugPanels,
+}: ChatMessageConversationViewportContentPartProps) {
+  return (
     <>
-      {viewportContent.loadingState.children}
-      {viewportContent.homeState.children}
-      {viewportContent.historyBanner.children}
-      {viewportContent.stepSummary.children}
-      {viewportContent.children}
-      {viewportContent.debugPanels.children}
+      {loadingState.children}
+      {homeState.children}
+      {historyBanner.children}
+      {stepSummary.children}
+      {children}
+      {debugPanels.children}
     </>
   );
 }
