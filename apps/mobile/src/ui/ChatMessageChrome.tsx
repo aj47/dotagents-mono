@@ -1635,6 +1635,9 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationCardParts['conversationPreview']['rows'][number]['props'];
 
+type ChatMessageDelegationToolPreviewRowProps =
+  ChatMessageDelegationCardParts['toolPreview']['rows'][number]['props'];
+
 type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
 
 type ChatMessageToolActivityGroupToggleStyles = {
@@ -7510,6 +7513,45 @@ export function ChatMessageDelegationConversationPreviewRow({
   );
 }
 
+export function ChatMessageDelegationToolPreviewRow({
+  line,
+  statusIcon,
+  name,
+}: ChatMessageDelegationToolPreviewRowProps) {
+  return (
+    <View
+      style={line.style}
+      accessibilityLabel={line.accessibilityLabel}
+    >
+      <View
+        style={statusIcon.style}
+        accessibilityElementsHidden={statusIcon.accessibilityElementsHidden}
+        importantForAccessibility={statusIcon.importantForAccessibility}
+      >
+        {statusIcon.spinner.shouldRender ? (
+          <ActivityIndicator
+            size={statusIcon.spinner.size}
+            color={statusIcon.spinner.color}
+          />
+        ) : statusIcon.icon.shouldRender ? (
+          <Ionicons
+            name={statusIcon.icon.name}
+            size={statusIcon.icon.size}
+            color={statusIcon.icon.color}
+          />
+        ) : null}
+      </View>
+      <Text
+        style={name.style}
+        numberOfLines={name.numberOfLines}
+        ellipsizeMode={name.ellipsizeMode}
+      >
+        {name.text}
+      </Text>
+    </View>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7614,37 +7656,10 @@ export function ChatMessageDelegationCard({
             {delegationCardParts.toolPreview.label.text}
           </Text>
           {delegationCardParts.toolPreview.rows.map((row) => (
-            <View
+            <ChatMessageDelegationToolPreviewRow
               key={row.key}
-              style={row.line.style}
-              accessibilityLabel={row.line.accessibilityLabel}
-            >
-              <View
-                style={row.statusIcon.style}
-                accessibilityElementsHidden={row.statusIcon.accessibilityElementsHidden}
-                importantForAccessibility={row.statusIcon.importantForAccessibility}
-              >
-                {row.statusIcon.spinner.shouldRender ? (
-                  <ActivityIndicator
-                    size={row.statusIcon.spinner.size}
-                    color={row.statusIcon.spinner.color}
-                  />
-                ) : row.statusIcon.icon.shouldRender ? (
-                  <Ionicons
-                    name={row.statusIcon.icon.name}
-                    size={row.statusIcon.icon.size}
-                    color={row.statusIcon.icon.color}
-                  />
-                ) : null}
-              </View>
-              <Text
-                style={row.name.style}
-                numberOfLines={row.name.numberOfLines}
-                ellipsizeMode={row.name.ellipsizeMode}
-              >
-                {row.name.text}
-              </Text>
-            </View>
+              {...row.props}
+            />
           ))}
           {delegationCardParts.toolPreview.moreAction.shouldRender ? (
             <Pressable

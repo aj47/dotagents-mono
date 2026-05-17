@@ -2321,28 +2321,30 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     }
     rows: Array<{
       key: string
-      line: {
-        style: TStyles["toolPreviewLine"]
-        accessibilityLabel: string
-      }
-      statusIcon: {
-        style: TStyles["toolPreviewStatusIcon"]
-        accessibilityElementsHidden: true
-        importantForAccessibility: "no-hide-descendants"
-        spinner: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"]
-        icon: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"]
-      }
-      name: {
-        style: Array<
-          | TStyles["toolPreviewName"]
-          | TStyles["toolPreviewNamePending"]
-          | TStyles["toolPreviewNameSuccess"]
-          | TStyles["toolPreviewNameError"]
-          | false
-        >
-        numberOfLines: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["numberOfLines"]
-        ellipsizeMode: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["ellipsizeMode"]
-        text: string
+      props: {
+        line: {
+          style: TStyles["toolPreviewLine"]
+          accessibilityLabel: string
+        }
+        statusIcon: {
+          style: TStyles["toolPreviewStatusIcon"]
+          accessibilityElementsHidden: true
+          importantForAccessibility: "no-hide-descendants"
+          spinner: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"]
+          icon: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"]
+        }
+        name: {
+          style: Array<
+            | TStyles["toolPreviewName"]
+            | TStyles["toolPreviewNamePending"]
+            | TStyles["toolPreviewNameSuccess"]
+            | TStyles["toolPreviewNameError"]
+            | false
+          >
+          numberOfLines: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["numberOfLines"]
+          ellipsizeMode: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["ellipsizeMode"]
+          text: string
+        }
       }
     }>
     moreAction:
@@ -22991,32 +22993,34 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       },
       rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => ({
         key,
-        line: {
-          style: styles.toolPreviewLine,
-          accessibilityLabel: renderState.accessibilityLabel,
-        },
-        statusIcon: {
-          style: styles.toolPreviewStatusIcon,
-          accessibilityElementsHidden: true,
-          importantForAccessibility: "no-hide-descendants" as const,
-          spinner: renderState.statusIndicator.spinner,
-          icon: {
-            ...renderState.statusIndicator.icon,
-            shouldRender:
-              !renderState.statusIndicator.spinner.shouldRender
-              && renderState.statusIndicator.icon.shouldRender,
+        props: {
+          line: {
+            style: styles.toolPreviewLine,
+            accessibilityLabel: renderState.accessibilityLabel,
           },
-        },
-        name: {
-          style: [
-            styles.toolPreviewName,
-            renderState.isPending && styles.toolPreviewNamePending,
-            renderState.isSuccess && styles.toolPreviewNameSuccess,
-            renderState.isError && styles.toolPreviewNameError,
-          ],
-          numberOfLines: renderState.name.numberOfLines,
-          ellipsizeMode: renderState.name.ellipsizeMode,
-          text: preview,
+          statusIcon: {
+            style: styles.toolPreviewStatusIcon,
+            accessibilityElementsHidden: true,
+            importantForAccessibility: "no-hide-descendants" as const,
+            spinner: renderState.statusIndicator.spinner,
+            icon: {
+              ...renderState.statusIndicator.icon,
+              shouldRender:
+                !renderState.statusIndicator.spinner.shouldRender
+                && renderState.statusIndicator.icon.shouldRender,
+            },
+          },
+          name: {
+            style: [
+              styles.toolPreviewName,
+              renderState.isPending && styles.toolPreviewNamePending,
+              renderState.isSuccess && styles.toolPreviewNameSuccess,
+              renderState.isError && styles.toolPreviewNameError,
+            ],
+            numberOfLines: renderState.name.numberOfLines,
+            ellipsizeMode: renderState.name.ellipsizeMode,
+            text: preview,
+          },
         },
       })) : [],
       moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {

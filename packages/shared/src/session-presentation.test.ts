@@ -11077,31 +11077,33 @@ describe("session presentation semantics", () => {
     }
     expect(delegationCardParts.toolPreview.rows[0]).toMatchObject({
       key: delegationToolPreviewRow.key,
-      line: {
-        style: "delegation-tool-preview-line-style",
-        accessibilityLabel: delegationToolPreviewRow.renderState.accessibilityLabel,
-      },
-      statusIcon: {
-        style: "delegation-tool-preview-status-icon-style",
-        accessibilityElementsHidden: true,
-        importantForAccessibility: "no-hide-descendants",
-        spinner: {
-          ...delegationToolPreviewRow.renderState.statusIndicator.spinner,
-          shouldRender: false,
+      props: {
+        line: {
+          style: "delegation-tool-preview-line-style",
+          accessibilityLabel: delegationToolPreviewRow.renderState.accessibilityLabel,
         },
-        icon: {
-          ...delegationToolPreviewRow.renderState.statusIndicator.icon,
-          shouldRender: true,
+        statusIcon: {
+          style: "delegation-tool-preview-status-icon-style",
+          accessibilityElementsHidden: true,
+          importantForAccessibility: "no-hide-descendants",
+          spinner: {
+            ...delegationToolPreviewRow.renderState.statusIndicator.spinner,
+            shouldRender: false,
+          },
+          icon: {
+            ...delegationToolPreviewRow.renderState.statusIndicator.icon,
+            shouldRender: true,
+          },
         },
-      },
-      name: {
-        style: [
-          "delegation-tool-preview-name-style",
-          false,
-          "delegation-tool-preview-name-success-style",
-          false,
-        ],
-        text: delegationToolPreviewRow.preview,
+        name: {
+          style: [
+            "delegation-tool-preview-name-style",
+            false,
+            "delegation-tool-preview-name-success-style",
+            false,
+          ],
+          text: delegationToolPreviewRow.preview,
+        },
       },
     })
     expect(delegationCardParts.toolPreview.moreAction.shouldRender).toBe(true)
