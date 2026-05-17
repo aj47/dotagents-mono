@@ -11633,37 +11633,19 @@ export function ChatMessageInlineActivity({
 }
 
 export function ChatMessageInlineActivityContainer({
-  accessible,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityState,
-  style,
   children,
+  ...props
 }: ChatMessageInlineActivityContainerProps) {
   return (
-    <View
-      accessible={accessible}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
-      style={style}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageInlineActivitySpinner({
-  source,
-  style,
-  resizeMode,
-}: ChatMessageInlineActivitySpinnerProps) {
+export function ChatMessageInlineActivitySpinner(props: ChatMessageInlineActivitySpinnerProps) {
   return (
-    <Image
-      source={source}
-      style={style}
-      resizeMode={resizeMode}
-    />
+    <Image {...props} />
   );
 }
 
