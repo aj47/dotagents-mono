@@ -1366,12 +1366,19 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /numberOfLines: surface\.conversationPreviewRoleNumberOfLines/);
   assert.match(sessionPresentationSource, /ellipsizeMode: surface\.conversationPreviewRoleEllipsizeMode/);
   const delegationConversationPreviewRowSource =
-    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewRow[\s\S]*?export function ChatMessageDelegationConversationPreviewTimestamp/)?.[0] ?? '';
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewRow[\s\S]*?export function ChatMessageDelegationConversationPreviewRole/)?.[0] ?? '';
+  const delegationConversationPreviewRoleSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewRole[\s\S]*?export function ChatMessageDelegationConversationPreviewContent/)?.[0] ?? '';
+  const delegationConversationPreviewContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewContent[\s\S]*?export function ChatMessageDelegationConversationPreviewTimestamp/)?.[0] ?? '';
   const delegationConversationPreviewTimestampSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewTimestamp[\s\S]*?export function ChatMessageDelegationConversationPreview/)?.[0] ?? '';
   assert.match(delegationConversationPreviewRowSource, /<View\s+\{\.\.\.line\.props\}/);
-  assert.match(delegationConversationPreviewRowSource, /<Text\s+\{\.\.\.role\.props\}[\s\S]*?\{role\.text\}/);
-  assert.match(delegationConversationPreviewRowSource, /<Text\s+\{\.\.\.content\.props\}[\s\S]*?\{content\.text\}/);
+  assert.match(delegationConversationPreviewRowSource, /<ChatMessageDelegationConversationPreviewRole\s+\{\.\.\.role\}/);
+  assert.match(delegationConversationPreviewRoleSource, /<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
+  assert.match(delegationConversationPreviewRowSource, /<ChatMessageDelegationConversationPreviewContent\s+\{\.\.\.content\}/);
+  assert.match(delegationConversationPreviewContentSource, /<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(delegationConversationPreviewRowSource, /<Text\s+\{\.\.\.(role|content)\.props\}/);
   assert.match(delegationConversationPreviewRowSource, /<ChatMessageDelegationConversationPreviewTimestamp\s+timestamp=\{timestamp\}/);
   assert.doesNotMatch(delegationConversationPreviewRowSource, /(line|role|content)\.(style|numberOfLines|ellipsizeMode)/);
   assert.doesNotMatch(delegationCardComponentSource, /style=\{row\.role\.style\}/);

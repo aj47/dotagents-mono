@@ -2198,6 +2198,12 @@ type ChatMessageDelegationConversationPreviewBlockProps = {
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationConversationPreviewProps['container']['content']['rows'][number]['props'];
 
+type ChatMessageDelegationConversationPreviewRoleProps =
+  ChatMessageDelegationConversationPreviewRowProps['role'];
+
+type ChatMessageDelegationConversationPreviewContentProps =
+  ChatMessageDelegationConversationPreviewRowProps['content'];
+
 type ChatMessageDelegationConversationPreviewTimestampProps = {
   timestamp: ChatMessageDelegationConversationPreviewRowProps['timestamp'];
 };
@@ -9488,20 +9494,42 @@ export function ChatMessageDelegationConversationPreviewRow({
 }: ChatMessageDelegationConversationPreviewRowProps) {
   return (
     <View {...line.props}>
-      <Text
-        {...role.props}
-      >
-        {role.text}
-      </Text>
-      <Text
-        {...content.props}
-      >
-        {content.text}
-      </Text>
+      <ChatMessageDelegationConversationPreviewRole
+        {...role}
+      />
+      <ChatMessageDelegationConversationPreviewContent
+        {...content}
+      />
       <ChatMessageDelegationConversationPreviewTimestamp
         timestamp={timestamp}
       />
     </View>
+  );
+}
+
+export function ChatMessageDelegationConversationPreviewRole({
+  props,
+  text,
+}: ChatMessageDelegationConversationPreviewRoleProps) {
+  return (
+    <Text
+      {...props}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageDelegationConversationPreviewContent({
+  props,
+  text,
+}: ChatMessageDelegationConversationPreviewContentProps) {
+  return (
+    <Text
+      {...props}
+    >
+      {text}
+    </Text>
   );
 }
 
