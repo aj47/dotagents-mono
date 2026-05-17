@@ -2017,6 +2017,10 @@ type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['denyButton']['content']['icon']['props']
   | ChatMessageToolApprovalParts['approveButton']['content']['icon']['props'];
 
+type ChatMessageToolApprovalArgumentsToggleBlockProps = {
+  argumentsToggle: ChatMessageToolApprovalParts['argumentsToggle'];
+};
+
 type ChatMessageToolApprovalArgumentsToggleProps =
   ChatMessageToolApprovalParts['argumentsToggle']['props'] & {
     children: ReactNode;
@@ -9073,13 +9077,9 @@ export function ChatMessageToolApproval({
         <ChatMessageToolApprovalArgumentsPreviewBlock
           preview={toolApprovalParts.argumentsPreview}
         />
-        <ChatMessageToolApprovalArgumentsToggle
-          {...toolApprovalParts.argumentsToggle.props}
-        >
-          <ChatMessageToolApprovalArgumentsToggleContent
-            content={toolApprovalParts.argumentsToggle.content}
-          />
-        </ChatMessageToolApprovalArgumentsToggle>
+        <ChatMessageToolApprovalArgumentsToggleBlock
+          argumentsToggle={toolApprovalParts.argumentsToggle}
+        />
         <ChatMessageToolApprovalFullArgumentsBlock
           fullArguments={toolApprovalParts.fullArguments}
         />
@@ -9109,6 +9109,20 @@ export function ChatMessageToolApprovalToolRow({
         {...name.props}
       />
     </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalArgumentsToggleBlock({
+  argumentsToggle,
+}: ChatMessageToolApprovalArgumentsToggleBlockProps) {
+  return (
+    <ChatMessageToolApprovalArgumentsToggle
+      {...argumentsToggle.props}
+    >
+      <ChatMessageToolApprovalArgumentsToggleContent
+        content={argumentsToggle.content}
+      />
+    </ChatMessageToolApprovalArgumentsToggle>
   );
 }
 

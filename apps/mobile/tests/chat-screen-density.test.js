@@ -703,7 +703,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
   assert.doesNotMatch(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
   const toolApprovalToolRowSource =
-    chatMessageChromeSource.match(/export function ChatMessageToolApprovalToolRow[\s\S]*?export function ChatMessageToolApprovalArgumentsToggleContent/)?.[0] ?? '';
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalToolRow[\s\S]*?export function ChatMessageToolApprovalArgumentsToggleBlock/)?.[0] ?? '';
+  const argumentsToggleBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalArgumentsToggleBlock[\s\S]*?export function ChatMessageToolApprovalArgumentsToggleContent/)?.[0] ?? '';
   const argumentsToggleContentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalArgumentsToggleContent[\s\S]*?export function ChatMessageToolApprovalHeader/)?.[0] ?? '';
   const toolApprovalHeaderSource =
@@ -722,7 +724,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /const approveButtonContent = toolApprovalParts\.approveButton\.content;/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?props: \{[\s\S]*?onPress: onToggleArguments,[\s\S]*?disabled: renderState\.argumentsToggle\.isDisabled,[\s\S]*?accessibilityRole: renderState\.argumentsToggle\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.argumentsToggle\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.argumentsToggle\.accessibilityState,[\s\S]*?"aria-expanded": renderState\.argumentsToggle\.ariaExpanded,[\s\S]*?style: \(\{ pressed \}\) => \[/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsToggle/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggle\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsToggleBlock/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggleBlock\s+argumentsToggle=\{toolApprovalParts\.argumentsToggle\}/);
+  assert.match(argumentsToggleBlockSource, /<ChatMessageToolApprovalArgumentsToggle\s+\{\.\.\.argumentsToggle\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggle\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggle[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?\{children\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggle[\s\S]*?(style=\{style\}|onPress=\{onPress\}|disabled=\{disabled\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityState=\{accessibilityState\}|aria-expanded=\{ariaExpanded\})[\s\S]*?export function ChatMessageToolApprovalArgumentsToggleLabel/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsToggle\.(style|onPress|disabled|accessibilityRole|accessibilityLabel|accessibilityState|ariaExpanded)/);
@@ -747,7 +752,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.(style|numberOfLines|text)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview \? \(/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?content: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.argumentsToggle\.icon,/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggleContent\s+content=\{toolApprovalParts\.argumentsToggle\.content\}/);
+  assert.match(argumentsToggleBlockSource, /<ChatMessageToolApprovalArgumentsToggleContent\s+content=\{argumentsToggle\.content\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggleContent\s+content=\{toolApprovalParts\.argumentsToggle\.content\}/);
   assert.match(argumentsToggleContentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.content\.icon\.props\}/);
   assert.doesNotMatch(argumentsToggleContentSource, /content\.icon\.(name|size|color)/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?content: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsToggleText,[\s\S]*?text: renderState\.argumentsToggle\.label,/);
