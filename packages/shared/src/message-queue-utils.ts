@@ -1250,6 +1250,50 @@ export interface QueuedMessageItemMobileStyleSlots {
   };
 }
 
+export interface QueuedMessageExpandButtonMobilePropsPartsStylesLike {
+  expandButton: unknown;
+  expandText: unknown;
+}
+
+export interface QueuedMessageExpandButtonMobilePropsPartsInput<
+  TStyles extends QueuedMessageExpandButtonMobilePropsPartsStylesLike =
+    QueuedMessageExpandButtonMobilePropsPartsStylesLike,
+  TOnToggleExpanded = unknown,
+> {
+  surface: QueuedMessageMobileItemSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['item'];
+  icons: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon;
+  presentation: Pick<QueuedMessageItemPresentation, 'isLongMessage' | 'expansionLabel' | 'expansionAccessibilityLabel'>;
+  isExpanded: boolean;
+  styles: TStyles;
+  onToggleExpanded: TOnToggleExpanded;
+}
+
+export interface QueuedMessageExpandButtonMobilePropsParts<
+  TStyles extends QueuedMessageExpandButtonMobilePropsPartsStylesLike =
+    QueuedMessageExpandButtonMobilePropsPartsStylesLike,
+  TOnToggleExpanded = unknown,
+> {
+  pressable: {
+    style: TStyles['expandButton'];
+    onPress: TOnToggleExpanded;
+    activeOpacity: QueuedMessageMobileItemSurface['expandButtonPressedOpacity'];
+    accessibilityRole: QueuedMessageMobileItemSurface['expandButtonAccessibilityRole'];
+    accessibilityLabel: string;
+  };
+  icon: {
+    name:
+      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
+      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
+    size: QueuedMessageMobileItemSurface['expandIconSize'];
+    color: string;
+  };
+  label: {
+    style: TStyles['expandText'];
+    text: string;
+  };
+}
+
 export interface QueuedMessageActionButtonMobileStyleSlotsInput {
   surface: QueuedMessageMobileActionSurface;
   colors: MessageQueuePanelMobileSurfaceRenderState['colors']['actions'];
@@ -1616,6 +1660,42 @@ export function createQueuedMessageItemMobileStyleSlots({
       fontSize: surface.expandTextFontSize,
       color: colors.expandTextColor,
       marginLeft: surface.expandTextMarginLeft,
+    },
+  };
+}
+
+export function createQueuedMessageExpandButtonMobilePropsParts<
+  TStyles extends QueuedMessageExpandButtonMobilePropsPartsStylesLike,
+  TOnToggleExpanded,
+>({
+  surface,
+  colors,
+  icons,
+  presentation,
+  isExpanded,
+  styles,
+  onToggleExpanded,
+}: QueuedMessageExpandButtonMobilePropsPartsInput<TStyles, TOnToggleExpanded>): QueuedMessageExpandButtonMobilePropsParts<TStyles, TOnToggleExpanded> | null {
+  if (!presentation.isLongMessage) {
+    return null;
+  }
+
+  return {
+    pressable: {
+      style: styles.expandButton,
+      onPress: onToggleExpanded,
+      activeOpacity: surface.expandButtonPressedOpacity,
+      accessibilityRole: surface.expandButtonAccessibilityRole,
+      accessibilityLabel: presentation.expansionAccessibilityLabel,
+    },
+    icon: {
+      name: isExpanded ? icons.collapseMessageName : icons.expandMessageName,
+      size: surface.expandIconSize,
+      color: colors.expandTextColor,
+    },
+    label: {
+      style: styles.expandText,
+      text: presentation.expansionLabel,
     },
   };
 }

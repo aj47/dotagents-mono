@@ -9,6 +9,7 @@ import {
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
+  createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
@@ -627,6 +628,52 @@ describe('message-queue-utils', () => {
         marginLeft: 2,
       },
     });
+    const expandCalls: string[] = [];
+    const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      colors: mobileQueueSurfaceRenderState.colors.item,
+      icons: getMessageQueuePanelMobileIconState(),
+      presentation: getQueuedMessageItemPresentation(makeMessage('long', {
+        text: 'x'.repeat(MESSAGE_QUEUE_PANEL_PRESENTATION.longMessagePreviewCharacterLimit + 1),
+      }), false),
+      isExpanded: false,
+      styles: {
+        expandButton: 'expandButton',
+        expandText: 'expandText',
+      },
+      onToggleExpanded: () => expandCalls.push('toggle'),
+    });
+    expect(expandButtonParts).toMatchObject({
+      pressable: {
+        style: 'expandButton',
+        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Expand queued message',
+      },
+      icon: {
+        name: 'chevron-down',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandIconSize,
+        color: '#737373',
+      },
+      label: {
+        style: 'expandText',
+        text: 'More',
+      },
+    });
+    expandButtonParts?.pressable.onPress();
+    expect(expandCalls).toEqual(['toggle']);
+    expect(createQueuedMessageExpandButtonMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      colors: mobileQueueSurfaceRenderState.colors.item,
+      icons: getMessageQueuePanelMobileIconState(),
+      presentation: getQueuedMessageItemPresentation(makeMessage('short'), false),
+      isExpanded: false,
+      styles: {
+        expandButton: 'expandButton',
+        expandText: 'expandText',
+      },
+      onToggleExpanded: () => expandCalls.push('short'),
+    })).toBeNull();
     expect(createQueuedMessageActionButtonMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.actions,
       colors: mobileQueueSurfaceRenderState.colors.actions,

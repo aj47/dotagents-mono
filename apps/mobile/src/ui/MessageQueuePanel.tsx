@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
+  createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
@@ -70,11 +71,9 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   });
   const messagePresentation = queuedMessageRenderState.presentation;
   const {
-    isLongMessage,
     isFailed,
     isProcessing,
     statusLabel,
-    expansionLabel,
     errorText,
   } = messagePresentation;
   const itemSurface = queuedMessageRenderState.surface.item;
@@ -225,6 +224,15 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     onEdit: () => setIsEditing(true),
     onRemove,
   });
+  const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts({
+    surface: itemSurface,
+    colors: itemColors,
+    icons: queuePanelIcons,
+    presentation: messagePresentation,
+    isExpanded,
+    styles,
+    onToggleExpanded: () => setIsExpanded(!isExpanded),
+  });
 
   if (isEditing) {
     return (
@@ -292,21 +300,21 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             <Text style={styles.metaText}>
               {formatQueuedMessageMetaLabel(message.createdAt, statusLabel)}
             </Text>
-            {isLongMessage && (
+            {expandButtonParts && (
               <TouchableOpacity
-                style={styles.expandButton}
-                onPress={() => setIsExpanded(!isExpanded)}
-                activeOpacity={itemSurface.expandButtonPressedOpacity}
-                accessibilityRole={itemSurface.expandButtonAccessibilityRole}
-                accessibilityLabel={messagePresentation.expansionAccessibilityLabel}
+                style={expandButtonParts.pressable.style}
+                onPress={expandButtonParts.pressable.onPress}
+                activeOpacity={expandButtonParts.pressable.activeOpacity}
+                accessibilityRole={expandButtonParts.pressable.accessibilityRole}
+                accessibilityLabel={expandButtonParts.pressable.accessibilityLabel}
               >
                 <Ionicons
-                  name={isExpanded ? queuePanelIcons.collapseMessageName : queuePanelIcons.expandMessageName}
-                  size={itemSurface.expandIconSize}
-                  color={itemColors.expandTextColor}
+                  name={expandButtonParts.icon.name}
+                  size={expandButtonParts.icon.size}
+                  color={expandButtonParts.icon.color}
                 />
-                <Text style={styles.expandText}>
-                  {expansionLabel}
+                <Text style={expandButtonParts.label.style}>
+                  {expandButtonParts.label.text}
                 </Text>
               </TouchableOpacity>
             )}
