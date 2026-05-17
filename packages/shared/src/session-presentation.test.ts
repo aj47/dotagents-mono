@@ -13353,44 +13353,46 @@ describe("session presentation semantics", () => {
         props: {
           style: "expanded-container",
         },
-      },
-      card: {
-        props: {
-          style: [
-            "expanded-card",
-            "expanded-pending",
-            false,
-            "expanded-error",
-          ],
-        },
-      },
-      topCollapseControl: {
-        props: {
-          renderState: "top-collapse",
-          onPress: "collapse-expanded",
-          styles: {
-            button: "collapse-button",
-            pressed: "collapse-pressed",
-            placement: "collapse-top",
-            text: "collapse-text",
+        content: {
+          card: {
+            props: {
+              style: [
+                "expanded-card",
+                "expanded-pending",
+                false,
+                "expanded-error",
+              ],
+            },
+          },
+          topCollapseControl: {
+            props: {
+              renderState: "top-collapse",
+              onPress: "collapse-expanded",
+              styles: {
+                button: "collapse-button",
+                pressed: "collapse-pressed",
+                placement: "collapse-top",
+                text: "collapse-text",
+              },
+            },
+          },
+          bottomCollapseControl: {
+            props: {
+              renderState: "bottom-collapse",
+              onPress: "collapse-expanded",
+              styles: {
+                button: "collapse-button",
+                pressed: "collapse-pressed",
+                placement: "collapse-bottom",
+                text: "collapse-text",
+              },
+            },
+          },
+          emptyState: {
+            shouldRender: true,
+            props: "empty-state-node",
           },
         },
-      },
-      bottomCollapseControl: {
-        props: {
-          renderState: "bottom-collapse",
-          onPress: "collapse-expanded",
-          styles: {
-            button: "collapse-button",
-            pressed: "collapse-pressed",
-            placement: "collapse-bottom",
-            text: "collapse-text",
-          },
-        },
-      },
-      emptyState: {
-        shouldRender: true,
-        props: "empty-state-node",
       },
     })
     expect(createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
@@ -13412,7 +13414,7 @@ describe("session presentation semantics", () => {
         collapseBottomPlacement: "collapse-bottom",
         collapseText: "collapse-text",
       },
-    }).emptyState).toEqual({
+    }).container.content.emptyState).toEqual({
       shouldRender: false,
       props: null,
     })

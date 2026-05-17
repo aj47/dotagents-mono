@@ -2124,7 +2124,7 @@ type ChatMessageToolExecutionExpandedGroupContainerProps =
   };
 
 type ChatMessageToolExecutionExpandedGroupCardProps =
-  ChatMessageToolExecutionExpandedGroupParts['card']['props'] & {
+  ChatMessageToolExecutionExpandedGroupParts['container']['content']['card']['props'] & {
     children: ReactNode;
   };
 
@@ -9222,22 +9222,23 @@ export function ChatMessageToolExecutionExpandedGroup({
     emptyState,
     styles,
   });
+  const expandedGroupContent = expandedGroupParts.container.content;
 
   return (
     <ChatMessageToolExecutionExpandedGroupContainer
       {...expandedGroupParts.container.props}
     >
       <ChatMessageToolExecutionCollapseControl
-        {...expandedGroupParts.topCollapseControl.props}
+        {...expandedGroupContent.topCollapseControl.props}
       />
       <ChatMessageToolExecutionExpandedGroupCard
-        {...expandedGroupParts.card.props}
+        {...expandedGroupContent.card.props}
       >
         {children}
-        {expandedGroupParts.emptyState.shouldRender ? expandedGroupParts.emptyState.props : null}
+        {expandedGroupContent.emptyState.shouldRender ? expandedGroupContent.emptyState.props : null}
       </ChatMessageToolExecutionExpandedGroupCard>
       <ChatMessageToolExecutionCollapseControl
-        {...expandedGroupParts.bottomCollapseControl.props}
+        {...expandedGroupContent.bottomCollapseControl.props}
       />
     </ChatMessageToolExecutionExpandedGroupContainer>
   );
