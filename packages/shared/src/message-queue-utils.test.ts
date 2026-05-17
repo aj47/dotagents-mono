@@ -879,10 +879,14 @@ describe('message-queue-utils', () => {
     });
     expect(chromeParts).toMatchObject({
       container: {
-        style: 'container',
+        props: {
+          style: 'container',
+        },
       },
       compactContainer: {
-        style: 'compactContainer',
+        props: {
+          style: 'compactContainer',
+        },
       },
       compactStatusIcon: {
         props: {
@@ -898,13 +902,19 @@ describe('message-queue-utils', () => {
         },
       },
       headerContainer: {
-        style: ['header', false],
+        props: {
+          style: ['header', false],
+        },
       },
       headerLeft: {
-        style: 'headerLeft',
+        props: {
+          style: 'headerLeft',
+        },
       },
       headerActions: {
-        style: 'headerActions',
+        props: {
+          style: 'headerActions',
+        },
       },
       headerStatusIcon: {
         props: {
@@ -922,7 +932,9 @@ describe('message-queue-utils', () => {
       pausedNotice: {
         shouldRender: true,
         container: {
-          style: 'pausedNotice',
+          props: {
+            style: 'pausedNotice',
+          },
         },
         message: {
           text: MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice,
@@ -961,7 +973,9 @@ describe('message-queue-utils', () => {
       },
     })).toMatchObject({
       headerContainer: {
-        style: ['header', 'headerCollapsed'],
+        props: {
+          style: ['header', 'headerCollapsed'],
+        },
       },
       pausedNotice: {
         shouldRender: false,
@@ -1059,7 +1073,9 @@ describe('message-queue-utils', () => {
     ]);
     expect(panelParts.chrome).toMatchObject({
       container: {
-        style: 'container',
+        props: {
+          style: 'container',
+        },
       },
       compactLabel: {
         text: '2 queued messages',

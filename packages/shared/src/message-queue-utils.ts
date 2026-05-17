@@ -1159,10 +1159,14 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     MessageQueuePanelChromeMobilePropsPartsStylesLike,
 > {
   container: {
-    style: TStyles['container'];
+    props: {
+      style: TStyles['container'];
+    };
   };
   compactContainer: {
-    style: TStyles['compactContainer'];
+    props: {
+      style: TStyles['compactContainer'];
+    };
   };
   compactStatusIcon: {
     props: {
@@ -1178,13 +1182,19 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     };
   };
   headerContainer: {
-    style: Array<TStyles['header'] | TStyles['headerCollapsed'] | false>;
+    props: {
+      style: Array<TStyles['header'] | TStyles['headerCollapsed'] | false>;
+    };
   };
   headerLeft: {
-    style: TStyles['headerLeft'];
+    props: {
+      style: TStyles['headerLeft'];
+    };
   };
   headerActions: {
-    style: TStyles['headerActions'];
+    props: {
+      style: TStyles['headerActions'];
+    };
   };
   headerStatusIcon: {
     props: {
@@ -1203,7 +1213,9 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     | {
         shouldRender: true;
         container: {
-          style: TStyles['pausedNotice'];
+          props: {
+            style: TStyles['pausedNotice'];
+          };
         };
         message: {
           text: string;
@@ -1803,10 +1815,14 @@ export function createMessageQueuePanelChromeMobilePropsParts<
 
   return {
     container: {
-      style: styles.container,
+      props: {
+        style: styles.container,
+      },
     },
     compactContainer: {
-      style: styles.compactContainer,
+      props: {
+        style: styles.compactContainer,
+      },
     },
     compactStatusIcon: {
       props: {
@@ -1822,13 +1838,19 @@ export function createMessageQueuePanelChromeMobilePropsParts<
       },
     },
     headerContainer: {
-      style: [styles.header, panel.isListCollapsed && styles.headerCollapsed],
+      props: {
+        style: [styles.header, panel.isListCollapsed && styles.headerCollapsed],
+      },
     },
     headerLeft: {
-      style: styles.headerLeft,
+      props: {
+        style: styles.headerLeft,
+      },
     },
     headerActions: {
-      style: styles.headerActions,
+      props: {
+        style: styles.headerActions,
+      },
     },
     headerStatusIcon: {
       props: {
@@ -1847,7 +1869,9 @@ export function createMessageQueuePanelChromeMobilePropsParts<
       ? {
           shouldRender: true,
           container: {
-            style: styles.pausedNotice,
+            props: {
+              style: styles.pausedNotice,
+            },
           },
           message: {
             text: copy.pausedNotice,

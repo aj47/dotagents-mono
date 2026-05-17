@@ -270,7 +270,7 @@ export function MessageQueuePanel({
 
   if (compact) {
     return (
-      <View style={panelChromeParts.compactContainer.style}>
+      <View {...panelChromeParts.compactContainer.props}>
         <Ionicons
           {...panelChromeParts.compactStatusIcon.props}
         />
@@ -292,9 +292,9 @@ export function MessageQueuePanel({
   }
 
   return (
-    <View style={panelChromeParts.container.style}>
-      <View style={panelChromeParts.headerContainer.style}>
-        <View style={panelChromeParts.headerLeft.style}>
+    <View {...panelChromeParts.container.props}>
+      <View {...panelChromeParts.headerContainer.props}>
+        <View {...panelChromeParts.headerLeft.props}>
           <Ionicons
             {...panelChromeParts.headerStatusIcon.props}
           />
@@ -302,7 +302,7 @@ export function MessageQueuePanel({
             {panelChromeParts.headerTitle.text}
           </Text>
         </View>
-        <View style={panelChromeParts.headerActions.style}>
+        <View {...panelChromeParts.headerActions.props}>
           {headerActionParts.actions.map((action) => (
             <TouchableOpacity
               key={action.key}
@@ -321,7 +321,7 @@ export function MessageQueuePanel({
         </View>
       </View>
       {panelChromeParts.pausedNotice.shouldRender ? (
-        <View style={panelChromeParts.pausedNotice.container.style}>
+        <View {...panelChromeParts.pausedNotice.container.props}>
           <Text {...panelChromeParts.pausedNotice.message.props}>
             {panelChromeParts.pausedNotice.message.text}
           </Text>
