@@ -135,13 +135,16 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
   assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
   assert.match(source, /createMessageQueuePanelChromeMobilePropsParts/);
+  assert.match(source, /createMessageQueuePanelListMobilePropsParts/);
   assert.match(source, /createQueuedMessageItemChromeMobilePropsParts/);
   assert.doesNotMatch(source, /queuePanelState\.shouldRenderPausedNotice &&/);
   assert.doesNotMatch(source, /queuePanelState\.shouldRenderList &&/);
   assert.doesNotMatch(source, /statusIndicatorPart\?\.type ===/);
   assert.doesNotMatch(source, /actionParts\.shouldRender &&/);
-  assert.match(source, /queuePanelState\.items\.map/);
-  assert.match(source, /item\.shouldRenderSeparator/);
+  assert.match(source, /const panelListParts = createMessageQueuePanelListMobilePropsParts\(\{[\s\S]*?items: queuePanelState\.items,[\s\S]*?styles,[\s\S]*?onRemove,[\s\S]*?onUpdate,[\s\S]*?onRetry,[\s\S]*?\}\);/);
+  assert.match(source, /panelListParts\.items\.map\(\(item\) =>/);
+  assert.match(source, /item\.separator && <View style=\{item\.separator\.style\} \/>/);
+  assert.doesNotMatch(source, /item\.shouldRenderSeparator/);
   assert.match(source, /const messagePresentation = queuedMessageRenderState\.presentation;/);
   assert.match(source, /createQueuedMessageContentMobilePropsParts/);
   assert.match(source, /contentParts\.errorText/);
@@ -165,7 +168,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceColors/);
   assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?colors,/);
-  assert.match(source, /<QueuedMessageItem[\s\S]*?message=\{msg\}[\s\S]*?colors=\{colors\}/);
+  assert.match(source, /<QueuedMessageItem[\s\S]*?\{\.\.\.item\.messageProps\}[\s\S]*?colors=\{colors\}/);
   assert.doesNotMatch(source, /useTheme\(\)/);
   assert.doesNotMatch(source, /colors: theme\.colors/);
   assert.match(source, /const queuePanelColors = queuePanelRenderState\.colors;/);

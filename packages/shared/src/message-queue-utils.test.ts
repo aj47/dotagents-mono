@@ -12,6 +12,7 @@ import {
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
+  createMessageQueuePanelListMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageItemChromeMobilePropsParts,
   createQueuedMessageContentMobilePropsParts,
@@ -848,6 +849,44 @@ describe('message-queue-utils', () => {
       pausedNotice: null,
       list: null,
     });
+    const listPendingMessage = makeMessage('list-pending-message');
+    const listFailedMessage = makeMessage('list-failed-message', { status: 'failed' });
+    const listPartCalls: string[] = [];
+    const listParts = createMessageQueuePanelListMobilePropsParts({
+      items: getMessageQueuePanelRenderItems([listPendingMessage, listFailedMessage]),
+      styles: {
+        separator: 'separator',
+      },
+      onRemove: (messageId) => listPartCalls.push(`remove:${messageId}`),
+      onUpdate: (messageId, text) => listPartCalls.push(`update:${messageId}:${text}`),
+      onRetry: (messageId) => listPartCalls.push(`retry:${messageId}`),
+    });
+    expect(listParts.items).toMatchObject([
+      {
+        key: 'list-pending-message',
+        separator: null,
+        messageProps: {
+          message: listPendingMessage,
+        },
+      },
+      {
+        key: 'list-failed-message',
+        separator: {
+          style: 'separator',
+        },
+        messageProps: {
+          message: listFailedMessage,
+        },
+      },
+    ]);
+    listParts.items[1].messageProps.onRemove();
+    listParts.items[1].messageProps.onUpdate('updated text');
+    listParts.items[1].messageProps.onRetry();
+    expect(listPartCalls).toEqual([
+      'remove:list-failed-message',
+      'update:list-failed-message:updated text',
+      'retry:list-failed-message',
+    ]);
     expect(createQueuedMessageItemMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.item,
       colors: mobileQueueSurfaceRenderState.colors.item,

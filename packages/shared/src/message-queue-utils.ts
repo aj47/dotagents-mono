@@ -1166,6 +1166,47 @@ export interface MessageQueuePanelChromeMobilePropsParts<
   } | null;
 }
 
+export interface MessageQueuePanelListMobilePropsPartsStylesLike {
+  separator: unknown;
+}
+
+export interface MessageQueuePanelListMobilePropsPartsInput<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelListMobilePropsPartsStylesLike =
+    MessageQueuePanelListMobilePropsPartsStylesLike,
+> {
+  items: readonly MessageQueuePanelRenderItem<T>[];
+  styles: TStyles;
+  onRemove: (messageId: string) => void;
+  onUpdate: (messageId: string, text: string) => void;
+  onRetry: (messageId: string) => void;
+}
+
+export interface MessageQueuePanelListMobilePropsPart<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelListMobilePropsPartsStylesLike =
+    MessageQueuePanelListMobilePropsPartsStylesLike,
+> {
+  key: string;
+  separator: {
+    style: TStyles['separator'];
+  } | null;
+  messageProps: {
+    message: T;
+    onRemove: () => void;
+    onUpdate: (text: string) => void;
+    onRetry: () => void;
+  };
+}
+
+export interface MessageQueuePanelListMobilePropsParts<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelListMobilePropsPartsStylesLike =
+    MessageQueuePanelListMobilePropsPartsStylesLike,
+> {
+  items: Array<MessageQueuePanelListMobilePropsPart<T, TStyles>>;
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -1629,6 +1670,34 @@ export function createMessageQueuePanelChromeMobilePropsParts<
           style: styles.list,
         }
       : null,
+  };
+}
+
+export function createMessageQueuePanelListMobilePropsParts<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelListMobilePropsPartsStylesLike,
+>({
+  items,
+  styles,
+  onRemove,
+  onUpdate,
+  onRetry,
+}: MessageQueuePanelListMobilePropsPartsInput<T, TStyles>): MessageQueuePanelListMobilePropsParts<T, TStyles> {
+  return {
+    items: items.map((item) => ({
+      key: item.key,
+      separator: item.shouldRenderSeparator
+        ? {
+            style: styles.separator,
+          }
+        : null,
+      messageProps: {
+        message: item.message,
+        onRemove: () => onRemove(item.message.id),
+        onUpdate: (text: string) => onUpdate(item.message.id, text),
+        onRetry: () => onRetry(item.message.id),
+      },
+    })),
   };
 }
 

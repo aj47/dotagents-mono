@@ -20,6 +20,7 @@ import {
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
+  createMessageQueuePanelListMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageItemChromeMobilePropsParts,
   createQueuedMessageContentMobilePropsParts,
@@ -508,6 +509,13 @@ export function MessageQueuePanel({
     panel: queuePanelState,
     styles,
   });
+  const panelListParts = createMessageQueuePanelListMobilePropsParts({
+    items: queuePanelState.items,
+    styles,
+    onRemove,
+    onUpdate,
+    onRetry,
+  });
 
   if (compact) {
     return (
@@ -589,21 +597,15 @@ export function MessageQueuePanel({
       )}
       {panelChromeParts.list && (
         <ScrollView style={panelChromeParts.list.style}>
-          {queuePanelState.items.map((item) => {
-            const msg = item.message;
-            return (
-              <React.Fragment key={item.key}>
-                {item.shouldRenderSeparator && <View style={styles.separator} />}
-                <QueuedMessageItem
-                  message={msg}
-                  colors={colors}
-                  onRemove={() => onRemove(msg.id)}
-                  onUpdate={(text) => onUpdate(msg.id, text)}
-                  onRetry={() => onRetry(msg.id)}
-                />
-              </React.Fragment>
-            );
-          })}
+          {panelListParts.items.map((item) => (
+            <React.Fragment key={item.key}>
+              {item.separator && <View style={item.separator.style} />}
+              <QueuedMessageItem
+                {...item.messageProps}
+                colors={colors}
+              />
+            </React.Fragment>
+          ))}
         </ScrollView>
       )}
     </View>
