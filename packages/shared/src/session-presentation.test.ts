@@ -13915,33 +13915,35 @@ describe("session presentation semantics", () => {
           "aria-expanded": false,
           accessibilityHint: "Shows tool details",
         },
-      },
-      toolName: {
-        props: {
-          props: {
-            style: "detail-tool-name",
-          },
-          text: "read_file",
-        },
-      },
-      expandHint: {
-        props: {
-          style: "detail-expand-hint",
-        },
         content: {
-          icon: {
-            props: {
-              name: "chevron-down",
-              size: 12,
-              color: "#777",
-            },
-          },
-          label: {
+          toolName: {
             props: {
               props: {
-                style: "detail-expand-hint-text",
+                style: "detail-tool-name",
               },
-              text: "Show",
+              text: "read_file",
+            },
+          },
+          expandHint: {
+            props: {
+              style: "detail-expand-hint",
+            },
+            content: {
+              icon: {
+                props: {
+                  name: "chevron-down",
+                  size: 12,
+                  color: "#777",
+                },
+              },
+              label: {
+                props: {
+                  props: {
+                    style: "detail-expand-hint-text",
+                  },
+                  text: "Show",
+                },
+              },
             },
           },
         },

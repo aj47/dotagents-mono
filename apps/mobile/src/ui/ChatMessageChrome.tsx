@@ -2216,18 +2216,18 @@ type ChatMessageToolExecutionDetailHeaderPressableProps =
   };
 
 type ChatMessageToolExecutionDetailHeaderToolNameProps =
-  ChatMessageToolExecutionDetailHeaderParts['toolName']['props'];
+  ChatMessageToolExecutionDetailHeaderParts['container']['content']['toolName']['props'];
 
 type ChatMessageToolExecutionDetailHeaderExpandHintProps =
-  ChatMessageToolExecutionDetailHeaderParts['expandHint']['props'] & {
+  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['props'] & {
     children: ReactNode;
   };
 
 type ChatMessageToolExecutionDetailHeaderIconProps =
-  ChatMessageToolExecutionDetailHeaderParts['expandHint']['content']['icon']['props'];
+  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content']['icon']['props'];
 
 type ChatMessageToolExecutionDetailHeaderExpandLabelProps =
-  ChatMessageToolExecutionDetailHeaderParts['expandHint']['content']['label']['props'];
+  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content']['label']['props'];
 
 type ChatMessageToolExecutionCallSectionStyles = {
   section: StyleProp<ViewStyle>;
@@ -9405,17 +9405,18 @@ export function ChatMessageToolExecutionDetailHeader({
     onPress,
     styles,
   });
-  const expandHintContent = detailHeaderParts.expandHint.content;
+  const detailHeaderContent = detailHeaderParts.container.content;
+  const expandHintContent = detailHeaderContent.expandHint.content;
 
   return (
     <ChatMessageToolExecutionDetailHeaderPressable
       {...detailHeaderParts.container.props}
     >
       <ChatMessageToolExecutionDetailHeaderToolName
-        {...detailHeaderParts.toolName.props}
+        {...detailHeaderContent.toolName.props}
       />
       <ChatMessageToolExecutionDetailHeaderExpandHint
-        {...detailHeaderParts.expandHint.props}
+        {...detailHeaderContent.expandHint.props}
       >
         <ChatMessageToolExecutionDetailHeaderIcon
           {...expandHintContent.icon.props}

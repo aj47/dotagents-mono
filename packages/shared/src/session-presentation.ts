@@ -3800,29 +3800,31 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
       "aria-expanded": TRenderState["ariaExpanded"]
       accessibilityHint: string
     }
-  }
-  toolName: {
-    props: {
-      props: {
-        style: TStyles["toolName"]
-      }
-      text: string
-    }
-  }
-  expandHint: {
-    props: {
-      style: TStyles["expandHint"]
-    }
     content: {
-      icon: {
-        props: TRenderState["toggleIcon"]
-      }
-      label: {
+      toolName: {
         props: {
           props: {
-            style: TStyles["expandHintText"]
+            style: TStyles["toolName"]
           }
           text: string
+        }
+      }
+      expandHint: {
+        props: {
+          style: TStyles["expandHint"]
+        }
+        content: {
+          icon: {
+            props: TRenderState["toggleIcon"]
+          }
+          label: {
+            props: {
+              props: {
+                style: TStyles["expandHintText"]
+              }
+              text: string
+            }
+          }
         }
       }
     }
@@ -21642,29 +21644,31 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
         "aria-expanded": renderState.ariaExpanded,
         accessibilityHint: renderState.accessibilityHint,
       },
-    },
-    toolName: {
-      props: {
-        props: {
-          style: styles.toolName,
-        },
-        text: toolName,
-      },
-    },
-    expandHint: {
-      props: {
-        style: styles.expandHint,
-      },
       content: {
-        icon: {
-          props: renderState.toggleIcon,
-        },
-        label: {
+        toolName: {
           props: {
             props: {
-              style: styles.expandHintText,
+              style: styles.toolName,
             },
-            text: renderState.toggleLabel,
+            text: toolName,
+          },
+        },
+        expandHint: {
+          props: {
+            style: styles.expandHint,
+          },
+          content: {
+            icon: {
+              props: renderState.toggleIcon,
+            },
+            label: {
+              props: {
+                props: {
+                  style: styles.expandHintText,
+                },
+                text: renderState.toggleLabel,
+              },
+            },
           },
         },
       },
