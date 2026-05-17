@@ -93,6 +93,9 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeMessageActionSlotListMobilePropsParts,
+  createChatRuntimeMessageSurfaceMobilePropsParts,
+  createChatRuntimeMessageThreadItemMobilePropsParts,
+  createChatRuntimeMessageThreadSurfaceMobilePropsParts,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
@@ -7265,8 +7268,13 @@ export function ChatMessageSurface({
   style,
   toneStyle,
 }: ChatMessageSurfaceProps) {
+  const surfaceParts = createChatRuntimeMessageSurfaceMobilePropsParts({
+    style,
+    toneStyle,
+  });
+
   return (
-    <View style={[style, toneStyle]}>
+    <View style={surfaceParts.container.style}>
       {children}
     </View>
   );
@@ -7277,11 +7285,16 @@ export function ChatMessageThreadItem({
   leadingActivity,
   trailingActivity,
 }: ChatMessageThreadItemProps) {
+  const threadItemParts = createChatRuntimeMessageThreadItemMobilePropsParts({
+    leadingActivity,
+    trailingActivity,
+  });
+
   return (
     <View>
-      {leadingActivity}
+      {threadItemParts.leadingActivity}
       {children}
-      {trailingActivity}
+      {threadItemParts.trailingActivity}
     </View>
   );
 }
@@ -7293,14 +7306,19 @@ export function ChatMessageThreadSurface({
   surfaceStyle,
   surfaceToneStyle,
 }: ChatMessageThreadSurfaceProps) {
+  const threadSurfaceParts = createChatRuntimeMessageThreadSurfaceMobilePropsParts({
+    leadingActivity,
+    trailingActivity,
+    surfaceStyle,
+    surfaceToneStyle,
+  });
+
   return (
     <ChatMessageThreadItem
-      leadingActivity={leadingActivity}
-      trailingActivity={trailingActivity}
+      {...threadSurfaceParts.item}
     >
       <ChatMessageSurface
-        style={surfaceStyle}
-        toneStyle={surfaceToneStyle}
+        {...threadSurfaceParts.surface}
       >
         {children}
       </ChatMessageSurface>

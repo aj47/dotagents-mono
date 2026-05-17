@@ -1970,6 +1970,67 @@ export interface ChatRuntimeConversationActionSetMobileStyleSlots<
   expansion: TExpansionStyle
 }
 
+export interface ChatRuntimeMessageSurfaceMobilePropsPartsInput<
+  TStyle = unknown,
+  TToneStyle = unknown,
+> {
+  style: TStyle
+  toneStyle?: TToneStyle
+}
+
+export interface ChatRuntimeMessageSurfaceMobilePropsParts<
+  TStyle = unknown,
+  TToneStyle = unknown,
+> {
+  container: {
+    style: Array<TStyle | TToneStyle | undefined>
+  }
+}
+
+export interface ChatRuntimeMessageThreadItemMobilePropsPartsInput<
+  TLeadingActivity = unknown,
+  TTrailingActivity = unknown,
+> {
+  leadingActivity?: TLeadingActivity
+  trailingActivity?: TTrailingActivity
+}
+
+export interface ChatRuntimeMessageThreadItemMobilePropsParts<
+  TLeadingActivity = unknown,
+  TTrailingActivity = unknown,
+> {
+  leadingActivity: TLeadingActivity | undefined
+  trailingActivity: TTrailingActivity | undefined
+}
+
+export interface ChatRuntimeMessageThreadSurfaceMobilePropsPartsInput<
+  TLeadingActivity = unknown,
+  TTrailingActivity = unknown,
+  TSurfaceStyle = unknown,
+  TSurfaceToneStyle = unknown,
+> {
+  leadingActivity?: TLeadingActivity
+  trailingActivity?: TTrailingActivity
+  surfaceStyle: TSurfaceStyle
+  surfaceToneStyle?: TSurfaceToneStyle
+}
+
+export interface ChatRuntimeMessageThreadSurfaceMobilePropsParts<
+  TLeadingActivity = unknown,
+  TTrailingActivity = unknown,
+  TSurfaceStyle = unknown,
+  TSurfaceToneStyle = unknown,
+> {
+  item: ChatRuntimeMessageThreadItemMobilePropsParts<
+    TLeadingActivity,
+    TTrailingActivity
+  >
+  surface: ChatRuntimeMessageSurfaceMobilePropsPartsInput<
+    TSurfaceStyle,
+    TSurfaceToneStyle
+  >
+}
+
 export interface ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
   TIcon extends {
     isPending?: boolean
@@ -16807,6 +16868,75 @@ export function createChatRuntimeConversationActionSetMobileProps<TActionContent
     entries: getChatMessageActionSlotRenderEntries(renderState.layout.visibleSlots, components),
     shouldRenderActionSlots: renderState.layout.shouldRenderActionSlots,
     shouldRenderStandaloneActions: renderState.layout.shouldRenderStandaloneRow,
+  }
+}
+
+export function createChatRuntimeMessageSurfaceMobilePropsParts<
+  TStyle,
+  TToneStyle,
+>({
+  style,
+  toneStyle,
+}: ChatRuntimeMessageSurfaceMobilePropsPartsInput<
+  TStyle,
+  TToneStyle
+>): ChatRuntimeMessageSurfaceMobilePropsParts<TStyle, TToneStyle> {
+  return {
+    container: {
+      style: [style, toneStyle],
+    },
+  }
+}
+
+export function createChatRuntimeMessageThreadItemMobilePropsParts<
+  TLeadingActivity,
+  TTrailingActivity,
+>({
+  leadingActivity,
+  trailingActivity,
+}: ChatRuntimeMessageThreadItemMobilePropsPartsInput<
+  TLeadingActivity,
+  TTrailingActivity
+>): ChatRuntimeMessageThreadItemMobilePropsParts<
+  TLeadingActivity,
+  TTrailingActivity
+> {
+  return {
+    leadingActivity,
+    trailingActivity,
+  }
+}
+
+export function createChatRuntimeMessageThreadSurfaceMobilePropsParts<
+  TLeadingActivity,
+  TTrailingActivity,
+  TSurfaceStyle,
+  TSurfaceToneStyle,
+>({
+  leadingActivity,
+  trailingActivity,
+  surfaceStyle,
+  surfaceToneStyle,
+}: ChatRuntimeMessageThreadSurfaceMobilePropsPartsInput<
+  TLeadingActivity,
+  TTrailingActivity,
+  TSurfaceStyle,
+  TSurfaceToneStyle
+>): ChatRuntimeMessageThreadSurfaceMobilePropsParts<
+  TLeadingActivity,
+  TTrailingActivity,
+  TSurfaceStyle,
+  TSurfaceToneStyle
+> {
+  return {
+    item: createChatRuntimeMessageThreadItemMobilePropsParts({
+      leadingActivity,
+      trailingActivity,
+    }),
+    surface: {
+      style: surfaceStyle,
+      toneStyle: surfaceToneStyle,
+    },
   }
 }
 

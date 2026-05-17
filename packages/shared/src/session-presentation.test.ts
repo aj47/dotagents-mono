@@ -89,6 +89,9 @@ import {
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeMessageActionSlotListMobilePropsParts,
+  createChatRuntimeMessageSurfaceMobilePropsParts,
+  createChatRuntimeMessageThreadItemMobilePropsParts,
+  createChatRuntimeMessageThreadSurfaceMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
@@ -9379,6 +9382,39 @@ describe("session presentation semantics", () => {
         { key: "copy", item: "copy" },
       ],
       row: null,
+    })
+    expect(createChatRuntimeMessageSurfaceMobilePropsParts({
+      style: "message-surface-style",
+      toneStyle: "message-surface-tone-style",
+    })).toEqual({
+      container: {
+        style: [
+          "message-surface-style",
+          "message-surface-tone-style",
+        ],
+      },
+    })
+    expect(createChatRuntimeMessageThreadItemMobilePropsParts({
+      leadingActivity: "leading-activity",
+      trailingActivity: "trailing-activity",
+    })).toEqual({
+      leadingActivity: "leading-activity",
+      trailingActivity: "trailing-activity",
+    })
+    expect(createChatRuntimeMessageThreadSurfaceMobilePropsParts({
+      leadingActivity: "leading-activity",
+      trailingActivity: "trailing-activity",
+      surfaceStyle: "message-surface-style",
+      surfaceToneStyle: "message-surface-tone-style",
+    })).toEqual({
+      item: {
+        leadingActivity: "leading-activity",
+        trailingActivity: "trailing-activity",
+      },
+      surface: {
+        style: "message-surface-style",
+        toneStyle: "message-surface-tone-style",
+      },
     })
     const toolExecutionStackEvents: string[] = []
     const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
