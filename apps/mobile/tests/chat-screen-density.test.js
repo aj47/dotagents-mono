@@ -5778,11 +5778,11 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<MessageQueuePanelActionButton\s+key=\{action\.key\}[\s\S]*?action=\{action\}/);
   assert.match(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?<MessageQueuePanelActionButton\s+key=\{action\.key\}[\s\S]*?action=\{action\}/);
   assert.doesNotMatch(messageQueuePanelSource, /(compactActionParts|headerActionParts)\.actions\.map\(\(action\) => \(\s+<TouchableOpacity\s+key=\{action\.key\}\s+style=\{action\.style\}/);
-  assert.match(messageQueuePanelSource, /actionLabel && actionLabel\.shouldRender !== false \? \(/);
+  assert.match(messageQueuePanelSource, /actionLabel && 'props' in actionLabel \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /action\.type === 'text'/);
   assert.match(messageQueuePanelSource, /<Text \{\.\.\.actionLabel\.props\}>\{actionLabel\.text\}<\/Text>/);
   assert.doesNotMatch(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
-  assert.match(messageQueuePanelSource, /actionIcon && actionIcon\.shouldRender !== false \? \(/);
+  assert.match(messageQueuePanelSource, /actionIcon && 'props' in actionIcon \? \(/);
   assert.match(messageQueuePanelSource, /<Ionicons\s+\{\.\.\.actionIcon\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
   assert.doesNotMatch(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?action\.icon\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);

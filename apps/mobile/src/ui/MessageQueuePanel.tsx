@@ -4,7 +4,7 @@
  * Displays queued messages with options to view, edit, remove, and retry.
  */
 
-import React, { type ComponentProps, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,10 @@ import {
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
+  type MessageQueuePanelMobilePropsParts,
+  type MessageQueuePanelMobileStyleSheetSlots,
+  type QueuedMessageItemMobilePropsParts,
+  type QueuedMessageItemMobileStyleSheetSlots,
   type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
 
@@ -55,35 +59,29 @@ interface QueuedMessageItemProps {
   onRetry: () => void;
 }
 
-type MessageQueuePanelActionButtonPart = {
-  key: string;
-  props: ComponentProps<typeof TouchableOpacity>;
-  icon?:
-    | { shouldRender: false }
-    | {
-        shouldRender?: boolean;
-        props: ComponentProps<typeof Ionicons>;
-      };
-  label?:
-    | { shouldRender: false }
-    | {
-        shouldRender?: boolean;
-        text: string;
-        props: ComponentProps<typeof Text>;
-      };
-};
+type QueuedMessageItemParts =
+  QueuedMessageItemMobilePropsParts<QueuedMessageItemMobileStyleSheetSlots>;
+
+type MessageQueuePanelActionButtonPart =
+  | MessageQueuePanelMobilePropsParts<
+      QueuedMessage,
+      MessageQueuePanelMobileStyleSheetSlots,
+      () => void
+    >['compactActions']['actions'][number]
+  | MessageQueuePanelMobilePropsParts<
+      QueuedMessage,
+      MessageQueuePanelMobileStyleSheetSlots,
+      () => void
+    >['headerActions']['actions'][number]
+  | QueuedMessageItemParts['actions']['actions'][number];
 
 interface MessageQueuePanelActionButtonProps {
   action: MessageQueuePanelActionButtonPart;
 }
 
-type MessageQueuePanelEditButtonPart = {
-  props: ComponentProps<typeof TouchableOpacity>;
-  text: {
-    text: string;
-    props: ComponentProps<typeof Text>;
-  };
-};
+type MessageQueuePanelEditButtonPart =
+  | QueuedMessageItemParts['edit']['cancelButton']
+  | QueuedMessageItemParts['edit']['saveButton'];
 
 interface MessageQueuePanelEditButtonProps {
   button: MessageQueuePanelEditButtonPart;
@@ -91,18 +89,18 @@ interface MessageQueuePanelEditButtonProps {
 
 function MessageQueuePanelActionButton({ action }: MessageQueuePanelActionButtonProps) {
   const actionIcon = action.icon;
-  const actionLabel = action.label;
+  const actionLabel = 'label' in action ? action.label : undefined;
 
   return (
     <TouchableOpacity
       {...action.props}
     >
-      {actionIcon && actionIcon.shouldRender !== false ? (
+      {actionIcon && 'props' in actionIcon ? (
         <Ionicons
           {...actionIcon.props}
         />
       ) : null}
-      {actionLabel && actionLabel.shouldRender !== false ? (
+      {actionLabel && 'props' in actionLabel ? (
         <Text {...actionLabel.props}>{actionLabel.text}</Text>
       ) : null}
     </TouchableOpacity>

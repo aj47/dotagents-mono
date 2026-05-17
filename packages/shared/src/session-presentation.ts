@@ -471,6 +471,10 @@ export {
   getQueuedMessageEditDraftState,
   getQueuedMessageItemDesktopRenderState,
   getQueuedMessageItemMobileRenderState,
+  type MessageQueuePanelMobilePropsParts,
+  type MessageQueuePanelMobileStyleSheetSlots,
+  type QueuedMessageItemMobilePropsParts,
+  type QueuedMessageItemMobileStyleSheetSlots,
   type QueuedMessage,
 } from "./message-queue-utils"
 import {

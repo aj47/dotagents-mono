@@ -7,6 +7,24 @@ const source = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MessageQueuePanel.tsx'),
   'utf8'
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
+
+test('mobile queue panel uses shared prop-part contracts for reusable button chrome', () => {
+  assert.match(source, /type MessageQueuePanelMobilePropsParts,/);
+  assert.match(source, /type MessageQueuePanelMobileStyleSheetSlots,/);
+  assert.match(source, /type QueuedMessageItemMobilePropsParts,/);
+  assert.match(source, /type QueuedMessageItemMobileStyleSheetSlots,/);
+  assert.match(source, /type MessageQueuePanelActionButtonPart =[\s\S]*?MessageQueuePanelMobilePropsParts<[\s\S]*?compactActions[\s\S]*?MessageQueuePanelMobilePropsParts<[\s\S]*?headerActions[\s\S]*?QueuedMessageItemParts\['actions'\]\['actions'\]\[number\]/);
+  assert.match(source, /type MessageQueuePanelEditButtonPart =[\s\S]*?QueuedMessageItemParts\['edit'\]\['cancelButton'\][\s\S]*?QueuedMessageItemParts\['edit'\]\['saveButton'\]/);
+  assert.doesNotMatch(source, /type MessageQueuePanelActionButtonPart = \{/);
+  assert.doesNotMatch(source, /type MessageQueuePanelEditButtonPart = \{/);
+  assert.doesNotMatch(source, /type ComponentProps/);
+  assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsParts,/);
+});
 
 test('mobile queued-message rows use text-first actions with explicit accessibility labels', () => {
   assert.match(source, /getQueuedMessageItemMobileRenderState/);
@@ -110,7 +128,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /<Ionicons\s+\{\.\.\.actionIcon\.props\}/);
   assert.match(source, /headerActionParts\.actions\.map\(\(action\) =>/);
   assert.match(source, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?<MessageQueuePanelActionButton\s+key=\{action\.key\}[\s\S]*?action=\{action\}/);
-  assert.match(source, /actionLabel && actionLabel\.shouldRender !== false \? \(/);
+  assert.match(source, /actionLabel && 'props' in actionLabel \? \(/);
   assert.match(source, /panelChromeParts\.pausedNotice/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.pausedNotice\.container\.props\}>/);
   assert.match(source, /<Text\s+\{\.\.\.panelChromeParts\.pausedNotice\.message\.props\}>/);
