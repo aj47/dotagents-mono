@@ -417,9 +417,14 @@ export interface AgentResponseHistoryMobilePropsPartsItem<
   entry: T;
   originalIndex: number;
   shouldRenderSeparator: boolean;
-  separator: {
-    style: TStyles['separator'];
-  } | null;
+  separator:
+    | {
+        shouldRender: true;
+        style: TStyles['separator'];
+      }
+    | {
+        shouldRender: false;
+      };
   animated: {
     isNewest: boolean;
     animation: AgentResponseHistoryMobileAnimationState;
@@ -491,23 +496,33 @@ export interface AgentResponseHistoryMobilePropsParts<
       color: string;
     };
   };
-  collapsedPreview: {
-    style: TStyles['collapsedPreview'];
-    timestamp: {
-      style: TStyles['collapsedPreviewTimestamp'];
-      text: string;
-    };
-    preview: {
-      style: TStyles['collapsedPreviewText'];
-      numberOfLines: AgentResponseHistoryMobileSurface['collapsedPreview']['previewNumberOfLines'];
-      text: string;
-    };
-  } | null;
-  list: {
-    style: TStyles['list'];
-    showsVerticalScrollIndicator: AgentResponseHistoryMobileSurface['list']['showsVerticalScrollIndicator'];
-    items: Array<AgentResponseHistoryMobilePropsPartsItem<T, TStyles>>;
-  } | null;
+  collapsedPreview:
+    | {
+        shouldRender: true;
+        style: TStyles['collapsedPreview'];
+        timestamp: {
+          style: TStyles['collapsedPreviewTimestamp'];
+          text: string;
+        };
+        preview: {
+          style: TStyles['collapsedPreviewText'];
+          numberOfLines: AgentResponseHistoryMobileSurface['collapsedPreview']['previewNumberOfLines'];
+          text: string;
+        };
+      }
+    | {
+        shouldRender: false;
+      };
+  list:
+    | {
+        shouldRender: true;
+        style: TStyles['list'];
+        showsVerticalScrollIndicator: AgentResponseHistoryMobileSurface['list']['showsVerticalScrollIndicator'];
+        items: Array<AgentResponseHistoryMobilePropsPartsItem<T, TStyles>>;
+      }
+    | {
+        shouldRender: false;
+      };
 }
 
 const NO_RUN_ORDINAL_KEY = 'no-run';
@@ -782,6 +797,7 @@ export function createAgentResponseHistoryMobilePropsParts<
     },
     collapsedPreview: panel.collapsedPreview.shouldRender
       ? {
+          shouldRender: true,
           style: styles.collapsedPreview,
           timestamp: {
             style: styles.collapsedPreviewTimestamp,
@@ -793,9 +809,12 @@ export function createAgentResponseHistoryMobilePropsParts<
             text: panel.collapsedPreview.text,
           },
         }
-      : null,
+      : {
+          shouldRender: false,
+        },
     list: renderState.shouldRenderList
       ? {
+          shouldRender: true,
           style: styles.list,
           showsVerticalScrollIndicator: surface.list.showsVerticalScrollIndicator,
           items: renderState.items.map((item) => {
@@ -808,9 +827,12 @@ export function createAgentResponseHistoryMobilePropsParts<
               shouldRenderSeparator: item.shouldRenderSeparator,
               separator: item.shouldRenderSeparator
                 ? {
+                    shouldRender: true,
                     style: styles.separator,
                   }
-                : null,
+                : {
+                    shouldRender: false,
+                  },
               animated: {
                 isNewest: item.isNewest,
                 animation: renderState.animation,
@@ -840,7 +862,9 @@ export function createAgentResponseHistoryMobilePropsParts<
             };
           }),
         }
-      : null,
+      : {
+          shouldRender: false,
+        },
   };
 }
 

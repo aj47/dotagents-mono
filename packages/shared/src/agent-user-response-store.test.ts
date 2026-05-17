@@ -205,17 +205,26 @@ describe('agent-user-response-store', () => {
       style: responseHistoryStyleSlots.badgeText,
       value: '1',
     });
-    expect(responseHistoryParts.collapsedPreview).toBeNull();
-    expect(responseHistoryParts.list).not.toBeNull();
-    expect(responseHistoryParts.list?.style).toBe(responseHistoryStyleSlots.list);
-    expect(responseHistoryParts.list?.showsVerticalScrollIndicator).toBe(true);
-    const responseHistoryItem = responseHistoryParts.list?.items[0];
+    expect(responseHistoryParts.collapsedPreview).toEqual({
+      shouldRender: false,
+    });
+    expect(responseHistoryParts.list).toMatchObject({
+      shouldRender: true,
+      showsVerticalScrollIndicator: true,
+    });
+    if (!responseHistoryParts.list.shouldRender) {
+      throw new Error('Expected expanded response history list');
+    }
+    expect(responseHistoryParts.list.style).toBe(responseHistoryStyleSlots.list);
+    const responseHistoryItem = responseHistoryParts.list.items[0];
     expect(responseHistoryItem).toMatchObject({
       key: '1000-0',
       entry: { text: 'Hello from the agent', timestamp: 1000 },
       originalIndex: 0,
       shouldRenderSeparator: false,
-      separator: null,
+      separator: {
+        shouldRender: false,
+      },
       animated: {
         isNewest: false,
         animation: responseHistoryRenderState.animation,
@@ -245,11 +254,14 @@ describe('agent-user-response-store', () => {
       onToggleCollapsed: () => undefined,
       onSpeakResponse: (text, index) => responseHistorySpeakCalls.push({ text, index }),
     });
-    expect(responseHistoryTwoParts.list?.items.map((item) => item.separator)).toEqual([
-      null,
-      { style: responseHistoryStyleSlots.separator },
+    if (!responseHistoryTwoParts.list.shouldRender) {
+      throw new Error('Expected expanded response history list');
+    }
+    expect(responseHistoryTwoParts.list.items.map((item) => item.separator)).toEqual([
+      { shouldRender: false },
+      { shouldRender: true, style: responseHistoryStyleSlots.separator },
     ]);
-    responseHistoryItem?.speakButton.onPress();
+    responseHistoryItem.speakButton.onPress();
     expect(responseHistorySpeakCalls).toEqual([
       {
         text: 'Hello from the agent',

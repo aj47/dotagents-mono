@@ -197,7 +197,7 @@ export function ResponseHistoryPanel({
           color={responseHistoryParts.header.toggleIcon.color}
         />
       </TouchableOpacity>
-      {responseHistoryParts.collapsedPreview && (
+      {responseHistoryParts.collapsedPreview.shouldRender ? (
         <View style={responseHistoryParts.collapsedPreview.style}>
           <Text style={responseHistoryParts.collapsedPreview.timestamp.style}>
             {responseHistoryParts.collapsedPreview.timestamp.text}
@@ -209,8 +209,8 @@ export function ResponseHistoryPanel({
             {responseHistoryParts.collapsedPreview.preview.text}
           </Text>
         </View>
-      )}
-      {responseHistoryParts.list && (
+      ) : null}
+      {responseHistoryParts.list.shouldRender ? (
         <ScrollView
           style={responseHistoryParts.list.style}
           showsVerticalScrollIndicator={responseHistoryParts.list.showsVerticalScrollIndicator}
@@ -218,7 +218,7 @@ export function ResponseHistoryPanel({
           {responseHistoryParts.list.items.map((item) => {
             return (
               <React.Fragment key={item.key}>
-                {item.separator && <View style={item.separator.style} />}
+                {item.separator.shouldRender ? <View style={item.separator.style} /> : null}
                 <AnimatedResponseItem
                   isNewest={item.animated.isNewest}
                   animation={item.animated.animation}
@@ -253,7 +253,7 @@ export function ResponseHistoryPanel({
             );
           })}
         </ScrollView>
-      )}
+      ) : null}
     </View>
   );
 }
