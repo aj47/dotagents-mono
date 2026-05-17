@@ -987,9 +987,11 @@ export interface MessageQueuePanelCompactActionMobilePropsPart<TStyle, TOnPress>
   accessibilityLabel: string;
   accessibilityState?: MessageQueuePanelActionAccessibilityState;
   icon: {
-    name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon[keyof typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon];
-    size: MessageQueuePanelMobilePanelSurface['compactActionIconSize'];
-    color: string;
+    props: {
+      name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon[keyof typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon];
+      size: MessageQueuePanelMobilePanelSurface['compactActionIconSize'];
+      color: string;
+    };
   };
 }
 
@@ -1088,9 +1090,11 @@ export interface MessageQueuePanelHeaderIconActionMobilePropsPart<TStyle, TOnPre
   };
   icon: {
     shouldRender: true;
-    name: MessageQueuePanelToggleIconName;
-    size: MessageQueuePanelMobilePanelSurface['headerToggleIconSize'];
-    color: string;
+    props: {
+      name: MessageQueuePanelToggleIconName;
+      size: MessageQueuePanelMobilePanelSurface['headerToggleIconSize'];
+      color: string;
+    };
   };
 }
 
@@ -1555,9 +1559,11 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
       onPress: onResume,
       accessibilityLabel: copy.actions.resumeTitle,
       icon: {
-        name: icons.resumeName,
-        size: surface.compactActionIconSize,
-        color: colors.resumeActionColor,
+        props: {
+          name: icons.resumeName,
+          size: surface.compactActionIconSize,
+          color: colors.resumeActionColor,
+        },
       },
     });
   }
@@ -1571,11 +1577,13 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
       accessibilityLabel: copy.actions.pauseTitle,
       accessibilityState: panel.pauseActionState.accessibilityState,
       icon: {
-        name: icons.pauseName,
-        size: surface.compactActionIconSize,
-        color: panel.pauseActionState.isDisabled
-          ? colors.disabledActionColor
-          : statusColors.color,
+        props: {
+          name: icons.pauseName,
+          size: surface.compactActionIconSize,
+          color: panel.pauseActionState.isDisabled
+            ? colors.disabledActionColor
+            : statusColors.color,
+        },
       },
     });
   }
@@ -1587,9 +1595,11 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
       onPress: onProcessNext,
       accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
       icon: {
-        name: icons.sendNextName,
-        size: surface.compactActionIconSize,
-        color: colors.processReadyColor,
+        props: {
+          name: icons.sendNextName,
+          size: surface.compactActionIconSize,
+          color: colors.processReadyColor,
+        },
       },
     });
   }
@@ -1602,11 +1612,13 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
     accessibilityLabel: copy.actions.clearQueueTitle,
     accessibilityState: panel.clearActionState.accessibilityState,
     icon: {
-      name: icons.clearName,
-      size: surface.compactActionIconSize,
-      color: panel.clearActionState.isDisabled
-        ? colors.disabledActionColor
-        : statusColors.color,
+      props: {
+        name: icons.clearName,
+        size: surface.compactActionIconSize,
+        color: panel.clearActionState.isDisabled
+          ? colors.disabledActionColor
+          : statusColors.color,
+      },
     },
   });
 
@@ -1731,9 +1743,11 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
     },
     icon: {
       shouldRender: true,
-      name: panel.toggleIconName,
-      size: surface.headerToggleIconSize,
-      color: colors.toggleIconColor,
+      props: {
+        name: panel.toggleIconName,
+        size: surface.headerToggleIconSize,
+        color: colors.toggleIconColor,
+      },
     },
   });
 

@@ -5131,7 +5131,10 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /action\.type === 'text'/);
   assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
   assert.match(messageQueuePanelSource, /action\.icon\.shouldRender \? \(/);
-  assert.match(messageQueuePanelSource, /name=\{action\.icon\.name\}[\s\S]*?size=\{action\.icon\.size\}[\s\S]*?color=\{action\.icon\.color\}/);
+  assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
+  assert.match(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?action\.icon\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?action\.icon\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*panelStatusColors\.borderColor/);
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*panelSurface\.processFontWeight/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{styles\.container\}/);

@@ -321,9 +321,7 @@ export function MessageQueuePanel({
             accessibilityState={action.accessibilityState}
           >
             <Ionicons
-              name={action.icon.name}
-              size={action.icon.size}
-              color={action.icon.color}
+              {...action.icon.props}
             />
           </TouchableOpacity>
         ))}
@@ -359,9 +357,7 @@ export function MessageQueuePanel({
               ) : null}
               {action.icon.shouldRender ? (
                 <Ionicons
-                  name={action.icon.name}
-                  size={action.icon.size}
-                  color={action.icon.color}
+                  {...action.icon.props}
                 />
               ) : null}
             </TouchableOpacity>

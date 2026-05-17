@@ -645,16 +645,20 @@ describe('message-queue-utils', () => {
       disabled: false,
       accessibilityState: { disabled: false },
       icon: {
-        name: 'pause',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactActionIconSize,
-        color: '#f59e0b',
+        props: {
+          name: 'pause',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactActionIconSize,
+          color: '#f59e0b',
+        },
       },
     });
     expect(compactActionParts.actions[1]).toMatchObject({
       accessibilityLabel: 'Send next queued message',
       icon: {
-        name: 'play',
-        color: '#2563eb',
+        props: {
+          name: 'play',
+          color: '#2563eb',
+        },
       },
     });
     compactActionParts.actions.forEach((action) => action.onPress());
@@ -692,7 +696,9 @@ describe('message-queue-utils', () => {
         disabled: true,
         accessibilityState: { disabled: true },
         icon: {
-          color: '#737373',
+          props: {
+            color: '#737373',
+          },
         },
       },
       {
@@ -700,7 +706,9 @@ describe('message-queue-utils', () => {
         disabled: true,
         accessibilityState: { disabled: true },
         icon: {
-          color: '#737373',
+          props: {
+            color: '#737373',
+          },
         },
       },
     ]);
@@ -770,9 +778,11 @@ describe('message-queue-utils', () => {
       },
       icon: {
         shouldRender: true,
-        name: 'chevron-up',
-        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerToggleIconSize,
-        color: '#737373',
+        props: {
+          name: 'chevron-up',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerToggleIconSize,
+          color: '#737373',
+        },
       },
     });
     headerActionParts.actions.forEach((action) => action.onPress());
@@ -820,7 +830,9 @@ describe('message-queue-utils', () => {
         },
         icon: {
           shouldRender: true,
-          name: 'chevron-down',
+          props: {
+            name: 'chevron-down',
+          },
         },
       },
     ]);
