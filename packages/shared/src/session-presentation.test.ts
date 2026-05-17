@@ -10803,12 +10803,7 @@ describe("session presentation semantics", () => {
           size: "small",
           color: "#888",
         },
-        icon: {
-          shouldRender: false,
-          name: "checkmark-circle",
-          size: 12,
-          color: "#0f0",
-        },
+        icon: null,
       },
       toggleIcon: {
         style: "compact-toggle",
@@ -10817,6 +10812,62 @@ describe("session presentation semantics", () => {
           size: 16,
           color: "#999",
         },
+      },
+    })
+    const compactRowIconParts = createChatRuntimeToolExecutionCompactRowMobilePropsParts({
+      renderState: {
+        accessibilityLabel: "Done: read_file",
+        toolIcon: {
+          name: "hammer-outline",
+          size: 14,
+          color: "#555",
+        },
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+        name: {
+          numberOfLines: 1,
+          ellipsizeMode: "tail",
+        },
+        preview: "read_file",
+        statusIndicator: {
+          spinner: {
+            shouldRender: false,
+            size: "small",
+            color: "#888",
+          },
+          icon: {
+            shouldRender: true,
+            name: "checkmark-circle",
+            size: 12,
+            color: "#0f0",
+          },
+        },
+        toggleIcon: {
+          name: "chevron-forward",
+          size: 16,
+          color: "#999",
+        },
+      },
+      styles: {
+        line: "compact-line",
+        leadingIcon: "compact-leading",
+        name: "compact-name",
+        namePending: "compact-name-pending",
+        nameSuccess: "compact-name-success",
+        nameError: "compact-name-error",
+        statusIndicator: "compact-status",
+        toggleIcon: "compact-toggle",
+      },
+    })
+    expect(compactRowIconParts.statusIndicator).toEqual({
+      style: "compact-status",
+      spinner: null,
+      icon: {
+        shouldRender: true,
+        name: "checkmark-circle",
+        size: 12,
+        color: "#0f0",
       },
     })
     const compactListParts = createChatRuntimeToolExecutionCompactListMobilePropsParts({

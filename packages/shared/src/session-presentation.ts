@@ -3175,6 +3175,10 @@ export interface ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
   }
 }
 
+type ChatRuntimeToolExecutionCompactRowStatusIndicatorPart = {
+  shouldRender: boolean
+}
+
 export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
   TRenderState extends {
     accessibilityLabel: string
@@ -3188,8 +3192,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
     }
     preview: string
     statusIndicator: {
-      spinner: unknown
-      icon: unknown
+      spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
+      icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
     }
     toggleIcon: unknown
   } = {
@@ -3204,8 +3208,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
     }
     preview: string
     statusIndicator: {
-      spinner: unknown
-      icon: unknown
+      spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
+      icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
     }
     toggleIcon: unknown
   },
@@ -3246,8 +3250,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
     }
     preview: string
     statusIndicator: {
-      spinner: unknown
-      icon: unknown
+      spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
+      icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
     }
     toggleIcon: unknown
   } = {
@@ -3262,8 +3266,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
     }
     preview: string
     statusIndicator: {
-      spinner: unknown
-      icon: unknown
+      spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
+      icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
     }
     toggleIcon: unknown
   },
@@ -3309,8 +3313,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
   }
   statusIndicator: {
     style: TStyles["statusIndicator"]
-    spinner: TRenderState["statusIndicator"]["spinner"]
-    icon: TRenderState["statusIndicator"]["icon"]
+    spinner: TRenderState["statusIndicator"]["spinner"] | null
+    icon: TRenderState["statusIndicator"]["icon"] | null
   }
   toggleIcon: {
     style: TStyles["toggleIcon"]
@@ -18170,8 +18174,8 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
     }
     preview: string
     statusIndicator: {
-      spinner: unknown
-      icon: unknown
+      spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
+      icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPart
     }
     toggleIcon: unknown
   },
@@ -18195,6 +18199,13 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
   TRenderState,
   TStyles
 > {
+  const spinner = renderState.statusIndicator.spinner.shouldRender
+    ? renderState.statusIndicator.spinner
+    : null
+  const icon = !spinner && renderState.statusIndicator.icon.shouldRender
+    ? renderState.statusIndicator.icon
+    : null
+
   return {
     container: {
       style: styles.line,
@@ -18217,8 +18228,8 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
     },
     statusIndicator: {
       style: styles.statusIndicator,
-      spinner: renderState.statusIndicator.spinner,
-      icon: renderState.statusIndicator.icon,
+      spinner,
+      icon,
     },
     toggleIcon: {
       style: styles.toggleIcon,

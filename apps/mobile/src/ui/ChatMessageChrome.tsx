@@ -8032,12 +8032,12 @@ export function ChatMessageToolExecutionCompactRow({
         {compactRowParts.name.text}
       </Text>
       <View style={compactRowParts.statusIndicator.style}>
-        {compactRowParts.statusIndicator.spinner.shouldRender ? (
+        {compactRowParts.statusIndicator.spinner ? (
           <ActivityIndicator
             size={compactRowParts.statusIndicator.spinner.size}
             color={compactRowParts.statusIndicator.spinner.color}
           />
-        ) : compactRowParts.statusIndicator.icon.shouldRender ? (
+        ) : compactRowParts.statusIndicator.icon ? (
           <Ionicons
             name={compactRowParts.statusIndicator.icon.name}
             size={compactRowParts.statusIndicator.icon.size}

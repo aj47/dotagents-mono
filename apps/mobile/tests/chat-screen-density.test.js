@@ -3070,10 +3070,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /ellipsizeMode=\{compactRowParts\.name\.ellipsizeMode\}/);
   assert.match(chatMessageChromeSource, /\{compactRowParts\.name\.text\}/);
   assert.match(chatMessageChromeSource, /style=\{compactRowParts\.statusIndicator\.style\}/);
-  assert.match(chatMessageChromeSource, /compactRowParts\.statusIndicator\.spinner\.shouldRender/);
+  assert.match(chatMessageChromeSource, /compactRowParts\.statusIndicator\.spinner \? \(/);
   assert.match(chatMessageChromeSource, /size=\{compactRowParts\.statusIndicator\.spinner\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{compactRowParts\.statusIndicator\.spinner\.color\}/);
-  assert.match(chatMessageChromeSource, /compactRowParts\.statusIndicator\.icon\.shouldRender/);
+  assert.match(chatMessageChromeSource, /compactRowParts\.statusIndicator\.icon \? \(/);
   assert.match(chatMessageChromeSource, /name=\{compactRowParts\.statusIndicator\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{compactRowParts\.statusIndicator\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{compactRowParts\.statusIndicator\.icon\.color\}/);
