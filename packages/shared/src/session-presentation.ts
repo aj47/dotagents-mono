@@ -2291,20 +2291,22 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     moreAction:
       | {
         shouldRender: true
-        button: {
-          onPress: TConversationPreviewOnShowAll
-          accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
-          accessibilityLabel: string
-          style: (state: { pressed: boolean }) => Array<
-            | TStyles["conversationPreviewMoreButton"]
-            | TStyles["conversationPreviewMoreButtonPressed"]
-            | false
-          >
-        }
-        label: {
-          style: TStyles["conversationPreviewMore"]
-          numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
-          text: string
+        props: {
+          button: {
+            onPress: TConversationPreviewOnShowAll
+            accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+            accessibilityLabel: string
+            style: (state: { pressed: boolean }) => Array<
+              | TStyles["conversationPreviewMoreButton"]
+              | TStyles["conversationPreviewMoreButtonPressed"]
+              | false
+            >
+          }
+          label: {
+            style: TStyles["conversationPreviewMore"]
+            numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+            text: string
+          }
         }
       }
       | {
@@ -2350,20 +2352,22 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     moreAction:
       | {
         shouldRender: true
-        button: {
-          onPress: TToolPreviewOnShowAll
-          accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
-          accessibilityLabel: string
-          style: (state: { pressed: boolean }) => Array<
-            | TStyles["toolPreviewMoreButton"]
-            | TStyles["toolPreviewMoreButtonPressed"]
-            | false
-          >
-        }
-        label: {
-          style: TStyles["toolPreviewMore"]
-          numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
-          text: string
+        props: {
+          button: {
+            onPress: TToolPreviewOnShowAll
+            accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+            accessibilityLabel: string
+            style: (state: { pressed: boolean }) => Array<
+              | TStyles["toolPreviewMoreButton"]
+              | TStyles["toolPreviewMoreButtonPressed"]
+              | false
+            >
+          }
+          label: {
+            style: TStyles["toolPreviewMore"]
+            numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+            text: string
+          }
         }
       }
       | {
@@ -22965,19 +22969,21 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       })) : [],
       moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
         shouldRender: true,
-        button: {
-          onPress: conversationPreview.onShowAll,
-          accessibilityRole: conversationPreview.moreAction.accessibilityRole,
-          accessibilityLabel: conversationPreview.moreAction.accessibilityLabel,
-          style: ({ pressed }: { pressed: boolean }) => [
-            styles.conversationPreviewMoreButton,
-            pressed && styles.conversationPreviewMoreButtonPressed,
-          ],
-        },
-        label: {
-          style: styles.conversationPreviewMore,
-          numberOfLines: conversationPreview.moreAction.numberOfLines,
-          text: conversationPreview.moreAction.label,
+        props: {
+          button: {
+            onPress: conversationPreview.onShowAll,
+            accessibilityRole: conversationPreview.moreAction.accessibilityRole,
+            accessibilityLabel: conversationPreview.moreAction.accessibilityLabel,
+            style: ({ pressed }: { pressed: boolean }) => [
+              styles.conversationPreviewMoreButton,
+              pressed && styles.conversationPreviewMoreButtonPressed,
+            ],
+          },
+          label: {
+            style: styles.conversationPreviewMore,
+            numberOfLines: conversationPreview.moreAction.numberOfLines,
+            text: conversationPreview.moreAction.label,
+          },
         },
       } : {
         shouldRender: false,
@@ -23025,19 +23031,21 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       })) : [],
       moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
         shouldRender: true,
-        button: {
-          onPress: toolPreview.onShowAll,
-          accessibilityRole: toolPreview.moreAction.accessibilityRole,
-          accessibilityLabel: toolPreview.moreAction.accessibilityLabel,
-          style: ({ pressed }: { pressed: boolean }) => [
-            styles.toolPreviewMoreButton,
-            pressed && styles.toolPreviewMoreButtonPressed,
-          ],
-        },
-        label: {
-          style: styles.toolPreviewMore,
-          numberOfLines: toolPreview.moreAction.numberOfLines,
-          text: toolPreview.moreAction.label,
+        props: {
+          button: {
+            onPress: toolPreview.onShowAll,
+            accessibilityRole: toolPreview.moreAction.accessibilityRole,
+            accessibilityLabel: toolPreview.moreAction.accessibilityLabel,
+            style: ({ pressed }: { pressed: boolean }) => [
+              styles.toolPreviewMoreButton,
+              pressed && styles.toolPreviewMoreButtonPressed,
+            ],
+          },
+          label: {
+            style: styles.toolPreviewMore,
+            numberOfLines: toolPreview.moreAction.numberOfLines,
+            text: toolPreview.moreAction.label,
+          },
         },
       } : {
         shouldRender: false,

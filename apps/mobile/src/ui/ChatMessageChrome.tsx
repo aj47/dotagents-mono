@@ -1638,6 +1638,16 @@ type ChatMessageDelegationConversationPreviewRowProps =
 type ChatMessageDelegationToolPreviewRowProps =
   ChatMessageDelegationCardParts['toolPreview']['rows'][number]['props'];
 
+type ChatMessageDelegationConversationMorePreviewActionProps =
+  Extract<ChatMessageDelegationCardParts['conversationPreview']['moreAction'], { shouldRender: true }>['props'];
+
+type ChatMessageDelegationToolMorePreviewActionProps =
+  Extract<ChatMessageDelegationCardParts['toolPreview']['moreAction'], { shouldRender: true }>['props'];
+
+type ChatMessageDelegationMorePreviewActionProps =
+  | ChatMessageDelegationConversationMorePreviewActionProps
+  | ChatMessageDelegationToolMorePreviewActionProps;
+
 type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
 
 type ChatMessageToolActivityGroupToggleStyles = {
@@ -7552,6 +7562,27 @@ export function ChatMessageDelegationToolPreviewRow({
   );
 }
 
+export function ChatMessageDelegationMorePreviewAction({
+  button,
+  label,
+}: ChatMessageDelegationMorePreviewActionProps) {
+  return (
+    <Pressable
+      onPress={button.onPress}
+      accessibilityRole={button.accessibilityRole}
+      accessibilityLabel={button.accessibilityLabel}
+      style={button.style}
+    >
+      <Text
+        style={label.style}
+        numberOfLines={label.numberOfLines}
+      >
+        {label.text}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7631,19 +7662,9 @@ export function ChatMessageDelegationCard({
             />
           ))}
           {delegationCardParts.conversationPreview.moreAction.shouldRender ? (
-            <Pressable
-              onPress={delegationCardParts.conversationPreview.moreAction.button.onPress}
-              accessibilityRole={delegationCardParts.conversationPreview.moreAction.button.accessibilityRole}
-              accessibilityLabel={delegationCardParts.conversationPreview.moreAction.button.accessibilityLabel}
-              style={delegationCardParts.conversationPreview.moreAction.button.style}
-            >
-              <Text
-                style={delegationCardParts.conversationPreview.moreAction.label.style}
-                numberOfLines={delegationCardParts.conversationPreview.moreAction.label.numberOfLines}
-              >
-                {delegationCardParts.conversationPreview.moreAction.label.text}
-              </Text>
-            </Pressable>
+            <ChatMessageDelegationMorePreviewAction
+              {...delegationCardParts.conversationPreview.moreAction.props}
+            />
           ) : null}
         </View>
       ) : null}
@@ -7662,19 +7683,9 @@ export function ChatMessageDelegationCard({
             />
           ))}
           {delegationCardParts.toolPreview.moreAction.shouldRender ? (
-            <Pressable
-              onPress={delegationCardParts.toolPreview.moreAction.button.onPress}
-              accessibilityRole={delegationCardParts.toolPreview.moreAction.button.accessibilityRole}
-              accessibilityLabel={delegationCardParts.toolPreview.moreAction.button.accessibilityLabel}
-              style={delegationCardParts.toolPreview.moreAction.button.style}
-            >
-              <Text
-                style={delegationCardParts.toolPreview.moreAction.label.style}
-                numberOfLines={delegationCardParts.toolPreview.moreAction.label.numberOfLines}
-              >
-                {delegationCardParts.toolPreview.moreAction.label.text}
-              </Text>
-            </Pressable>
+            <ChatMessageDelegationMorePreviewAction
+              {...delegationCardParts.toolPreview.moreAction.props}
+            />
           ) : null}
         </View>
       ) : null}
