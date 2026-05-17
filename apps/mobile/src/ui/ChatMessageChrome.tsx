@@ -2901,6 +2901,30 @@ type ChatMessageStepSummaryCardProps = {
   styles: ChatMessageStepSummaryCardStyles;
 };
 
+type ChatMessageStepSummaryTextPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type ChatMessageStepSummaryBadgePart = {
+  props: ComponentProps<typeof View>;
+  content: {
+    label: ChatMessageStepSummaryTextPart;
+  };
+};
+
+type ChatMessageStepSummaryHeaderPart = {
+  props: ComponentProps<typeof View>;
+  content: {
+    title: ChatMessageStepSummaryTextPart;
+    badge: ChatMessageStepSummaryBadgePart;
+  };
+};
+
+type ChatMessageStepSummaryHeaderProps = {
+  header: ChatMessageStepSummaryHeaderPart;
+};
+
 type ChatMessageScrollToBottomButtonProps = {
   renderState: ChatRuntimeScrollToBottomMobileRenderState;
   onPress?: (event: GestureResponderEvent) => void;
@@ -10975,21 +10999,12 @@ export function ChatMessageStepSummaryCard({
   if (!stepSummaryCardPart.shouldRender) return null;
 
   const stepSummaryCardContent = stepSummaryCardPart.content;
-  const stepSummaryHeaderContent = stepSummaryCardContent.header.content;
-  const stepSummaryBadgeContent = stepSummaryHeaderContent.badge.content;
 
   return (
     <View {...stepSummaryCardPart.props}>
-      <View {...stepSummaryCardContent.header.props}>
-        <Text {...stepSummaryHeaderContent.title.props}>
-          {stepSummaryHeaderContent.title.text}
-        </Text>
-        <View {...stepSummaryHeaderContent.badge.props}>
-          <Text {...stepSummaryBadgeContent.label.props}>
-            {stepSummaryBadgeContent.label.text}
-          </Text>
-        </View>
-      </View>
+      <ChatMessageStepSummaryHeader
+        header={stepSummaryCardContent.header}
+      />
       <Text {...stepSummaryCardContent.action.props}>
         {stepSummaryCardContent.action.text}
       </Text>
@@ -11001,6 +11016,26 @@ export function ChatMessageStepSummaryCard({
           {stepSummaryCardContent.preview.text}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+export function ChatMessageStepSummaryHeader({
+  header,
+}: ChatMessageStepSummaryHeaderProps) {
+  const stepSummaryHeaderContent = header.content;
+  const stepSummaryBadgeContent = stepSummaryHeaderContent.badge.content;
+
+  return (
+    <View {...header.props}>
+      <Text {...stepSummaryHeaderContent.title.props}>
+        {stepSummaryHeaderContent.title.text}
+      </Text>
+      <View {...stepSummaryHeaderContent.badge.props}>
+        <Text {...stepSummaryBadgeContent.label.props}>
+          {stepSummaryBadgeContent.label.text}
+        </Text>
+      </View>
     </View>
   );
 }

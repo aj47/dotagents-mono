@@ -5141,15 +5141,19 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   const stepSummaryCardSource =
     chatMessageChromeSource.match(/export function ChatMessageStepSummaryCard[\s\S]*?export function ChatMessageScrollToBottomButton/)?.[0] ?? '';
   assert.match(stepSummaryCardSource, /const stepSummaryCardContent = stepSummaryCardPart\.content;/);
-  assert.match(stepSummaryCardSource, /const stepSummaryHeaderContent = stepSummaryCardContent\.header\.content;/);
-  assert.match(stepSummaryCardSource, /const stepSummaryBadgeContent = stepSummaryHeaderContent\.badge\.content;/);
   assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryCardPart\.props\}>/);
-  assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryCardContent\.header\.props\}>/);
+  assert.match(stepSummaryCardSource, /<ChatMessageStepSummaryHeader\s+header=\{stepSummaryCardContent\.header\}/);
+  assert.match(stepSummaryCardSource, /export function ChatMessageStepSummaryHeader/);
+  assert.match(stepSummaryCardSource, /const stepSummaryHeaderContent = header\.content;/);
+  assert.match(stepSummaryCardSource, /const stepSummaryBadgeContent = stepSummaryHeaderContent\.badge\.content;/);
+  assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.header\.props\}>/);
   assert.match(stepSummaryCardSource, /<Text\s+\{\.\.\.stepSummaryHeaderContent\.title\.props\}>/);
   assert.match(stepSummaryCardSource, /\{stepSummaryHeaderContent\.title\.text\}/);
   assert.match(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryHeaderContent\.badge\.props\}>/);
   assert.match(stepSummaryCardSource, /<Text\s+\{\.\.\.stepSummaryBadgeContent\.label\.props\}>/);
   assert.match(stepSummaryCardSource, /\{stepSummaryBadgeContent\.label\.text\}/);
+  assert.doesNotMatch(stepSummaryCardSource, /const stepSummaryHeaderContent = stepSummaryCardContent\.header\.content;/);
+  assert.doesNotMatch(stepSummaryCardSource, /<View\s+\{\.\.\.stepSummaryCardContent\.header\.props\}>/);
   assert.match(stepSummaryCardSource, /<Text\s+\{\.\.\.stepSummaryCardContent\.action\.props\}>/);
   assert.match(stepSummaryCardSource, /\{stepSummaryCardContent\.action\.text\}/);
   assert.match(stepSummaryCardSource, /<Text\s+\{\.\.\.stepSummaryCardContent\.meta\.props\}>/);
