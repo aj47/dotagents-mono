@@ -14094,21 +14094,23 @@ describe("session presentation semantics", () => {
           style: "payload-meta-row",
         },
       },
-      label: {
-        props: {
+      content: {
+        label: {
           props: {
-            style: "payload-meta-label",
+            props: {
+              style: "payload-meta-label",
+            },
+            text: "Input",
           },
-          text: "Input",
         },
-      },
-      payloadType: {
-        shouldRender: true,
-        props: {
+        payloadType: {
+          shouldRender: true,
           props: {
-            style: "payload-type",
+            props: {
+              style: "payload-type",
+            },
+            text: "JSON",
           },
-          text: "JSON",
         },
       },
     })
@@ -14125,21 +14127,23 @@ describe("session presentation semantics", () => {
         shouldRender: false,
         props: null,
       },
-      label: {
-        props: {
+      content: {
+        label: {
           props: {
-            style: "payload-meta-label",
+            props: {
+              style: "payload-meta-label",
+            },
+            text: "Output",
           },
-          text: "Output",
         },
-      },
-      payloadType: {
-        shouldRender: false,
-        props: {
+        payloadType: {
+          shouldRender: false,
           props: {
-            style: "payload-type",
+            props: {
+              style: "payload-type",
+            },
+            text: "",
           },
-          text: "",
         },
       },
     })

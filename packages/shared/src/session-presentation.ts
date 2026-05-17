@@ -3473,21 +3473,23 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
   row: ChatRuntimeMobilePropsPart<{
     style: TStyles["row"]
   }>
-  label: {
-    props: {
+  content: {
+    label: {
       props: {
-        style: TStyles["label"]
+        props: {
+          style: TStyles["label"]
+        }
+        text: TRenderState["label"]
       }
-      text: TRenderState["label"]
     }
-  }
-  payloadType: {
-    shouldRender: boolean
-    props: {
+    payloadType: {
+      shouldRender: boolean
       props: {
-        style: TStyles["payloadType"]
+        props: {
+          style: TStyles["payloadType"]
+        }
+        text: string
       }
-      text: string
     }
   }
 }
@@ -21401,21 +21403,23 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
       shouldRender: false,
       props: null,
     },
-    label: {
-      props: {
+    content: {
+      label: {
         props: {
-          style: styles.label,
+          props: {
+            style: styles.label,
+          },
+          text: renderState.label,
         },
-        text: renderState.label,
       },
-    },
-    payloadType: {
-      shouldRender: Boolean(renderState.payloadTypeLabel),
-      props: {
+      payloadType: {
+        shouldRender: Boolean(renderState.payloadTypeLabel),
         props: {
-          style: styles.payloadType,
+          props: {
+            style: styles.payloadType,
+          },
+          text: renderState.payloadTypeLabel ?? "",
         },
-        text: renderState.payloadTypeLabel ?? "",
       },
     },
   }

@@ -2343,8 +2343,8 @@ type ChatMessageToolExecutionPayloadMetaRowProps =
   };
 
 type ChatMessageToolExecutionPayloadMetaTextProps =
-  | ChatMessageToolExecutionPayloadMetaParts['label']['props']
-  | ChatMessageToolExecutionPayloadMetaParts['payloadType']['props'];
+  | ChatMessageToolExecutionPayloadMetaParts['content']['label']['props']
+  | ChatMessageToolExecutionPayloadMetaParts['content']['payloadType']['props'];
 
 type ChatMessageToolExecutionResultHeaderStyles = {
   header: StyleProp<ViewStyle>;
@@ -9649,15 +9649,16 @@ export function ChatMessageToolExecutionPayloadMeta({
     renderState,
     styles,
   });
+  const payloadMetaContent = payloadMetaParts.content;
 
   const content = (
     <>
       <ChatMessageToolExecutionPayloadMetaText
-        {...payloadMetaParts.label.props}
+        {...payloadMetaContent.label.props}
       />
-      {payloadMetaParts.payloadType.shouldRender ? (
+      {payloadMetaContent.payloadType.shouldRender ? (
         <ChatMessageToolExecutionPayloadMetaText
-          {...payloadMetaParts.payloadType.props}
+          {...payloadMetaContent.payloadType.props}
         />
       ) : null}
     </>
