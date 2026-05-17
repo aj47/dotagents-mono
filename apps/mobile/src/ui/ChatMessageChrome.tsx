@@ -1589,6 +1589,10 @@ type ChatConversationHomeQuickStartLeadingAccessoryProps = {
   addIcon: ChatConversationHomeQuickStartAddIconPart;
 };
 
+type ChatConversationHomeQuickStartCardPressablePart = {
+  props: ComponentProps<typeof Pressable>;
+};
+
 type ChatConversationHomeQuickStartTextPart = {
   text: string;
   props: ComponentProps<typeof Text>;
@@ -1655,6 +1659,15 @@ type ChatConversationHomeQuickStartsEmptyStatePart =
 
 type ChatConversationHomeQuickStartsEmptyStateProps = {
   emptyState: ChatConversationHomeQuickStartsEmptyStatePart;
+};
+
+type ChatConversationHomeQuickStartCardProps = {
+  pressable: ChatConversationHomeQuickStartCardPressablePart;
+  sourcePill: ChatConversationHomeQuickStartSourcePillPart;
+  addIcon: ChatConversationHomeQuickStartAddIconPart;
+  title: ChatConversationHomeQuickStartTextPart;
+  description: ChatConversationHomeQuickStartDescriptionPart;
+  actions: ChatConversationHomeQuickStartActionsPart;
 };
 
 type ChatConversationHomePromptEditorModalStyles = {
@@ -8032,26 +8045,17 @@ export function ChatConversationHomeQuickStarts<
     <View {...quickStartsContainer.props}>
       {quickStartsParts.grid.shouldRender ? (
         <View {...quickStartsParts.grid.props}>
-          {quickStartsGridContent.items.map((item) => {
-            return (
-              <Pressable
-                key={item.key}
-                {...item.pressable.props}
-              >
-                <ChatConversationHomeQuickStartLeadingAccessory
-                  sourcePill={item.sourcePill}
-                  addIcon={item.addIcon}
-                />
-                <ChatConversationHomeQuickStartTextContent
-                  title={item.title}
-                  description={item.description}
-                />
-                <ChatConversationHomeQuickStartActions
-                  actions={item.actions}
-                />
-              </Pressable>
-            );
-          })}
+          {quickStartsGridContent.items.map((item) => (
+            <ChatConversationHomeQuickStartCard
+              key={item.key}
+              pressable={item.pressable}
+              sourcePill={item.sourcePill}
+              addIcon={item.addIcon}
+              title={item.title}
+              description={item.description}
+              actions={item.actions}
+            />
+          ))}
         </View>
       ) : (
         <ChatConversationHomeQuickStartsEmptyState
@@ -8059,6 +8063,31 @@ export function ChatConversationHomeQuickStarts<
         />
       )}
     </View>
+  );
+}
+
+export function ChatConversationHomeQuickStartCard({
+  pressable,
+  sourcePill,
+  addIcon,
+  title,
+  description,
+  actions,
+}: ChatConversationHomeQuickStartCardProps) {
+  return (
+    <Pressable {...pressable.props}>
+      <ChatConversationHomeQuickStartLeadingAccessory
+        sourcePill={sourcePill}
+        addIcon={addIcon}
+      />
+      <ChatConversationHomeQuickStartTextContent
+        title={title}
+        description={description}
+      />
+      <ChatConversationHomeQuickStartActions
+        actions={actions}
+      />
+    </Pressable>
   );
 }
 

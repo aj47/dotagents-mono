@@ -7354,9 +7354,10 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(sessionPresentationSource, /if \(!shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /const quickStartsGridContent = quickStartsParts\.grid\.content;/);
   assert.match(sessionPresentationSource, /content: \{\s+items: items\.map\(\(item\) => \{/);
-  assert.match(chatMessageChromeSource, /quickStartsGridContent\.items\.map\(\(item\) => \{/);
+  assert.match(chatMessageChromeSource, /quickStartsGridContent\.items\.map\(\(item\) => \(/);
   assert.doesNotMatch(chatMessageChromeSource, /quickStartsParts\.grid\.items\./);
-  assert.match(chatMessageChromeSource, /\{\.\.\.item\.pressable\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartCard\s+key=\{item\.key\}\s+pressable=\{item\.pressable\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /\{\.\.\.item\.pressable\.props\}/);
   assert.doesNotMatch(screenSource, /promptQuickStarts\.map\(\(item\) => \{/);
   assert.match(sessionPresentationSource, /getPromptLibraryMobileSurfaceRenderState/);
   assert.doesNotMatch(screenSource, /getPromptLibraryMobileSurfaceState,/);
@@ -7448,10 +7449,14 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /<View \{\.\.\.quickStartsParts\.grid\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /style=\{quickStartsParts\.grid\.style\}/);
   assert.match(chatMessageChromeSource, /quickStartsGridContent\.items\.map/);
-  assert.match(chatMessageChromeSource, /\{\.\.\.item\.pressable\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartCard/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartCard\s+key=\{item\.key\}\s+pressable=\{item\.pressable\}\s+sourcePill=\{item\.sourcePill\}\s+addIcon=\{item\.addIcon\}\s+title=\{item\.title\}\s+description=\{item\.description\}\s+actions=\{item\.actions\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartCard[\s\S]*?<Pressable \{\.\.\.pressable\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /\{\.\.\.item\.pressable\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Pressable\s+key=\{item\.key\}/);
   assert.doesNotMatch(chatMessageChromeSource, /item\.pressable\.getStyle/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartLeadingAccessory/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartLeadingAccessory\s+sourcePill=\{item\.sourcePill\}\s+addIcon=\{item\.addIcon\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartLeadingAccessory\s+sourcePill=\{sourcePill\}\s+addIcon=\{addIcon\}/);
   assert.match(chatMessageChromeSource, /if \(sourcePill\.shouldRender\)/);
   assert.match(chatMessageChromeSource, /<View \{\.\.\.sourcePill\.props\}>/);
   assert.match(chatMessageChromeSource, /<Ionicons \{\.\.\.sourcePill\.icon\.props\} \/>/);
@@ -7478,7 +7483,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /accessibilityLabel=\{item\.pressable\.accessibilityLabel\}/);
   assert.doesNotMatch(chatMessageChromeSource, /createButtonAccessibilityLabel/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartTextContent/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartTextContent\s+title=\{item\.title\}\s+description=\{item\.description\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartTextContent\s+title=\{title\}\s+description=\{description\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartTextContent[\s\S]*?<Text \{\.\.\.title\.props\}>[\s\S]*?\{title\.text\}[\s\S]*?description\.shouldRender \? \([\s\S]*?<Text \{\.\.\.description\.props\}>[\s\S]*?\{description\.text\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.item\.title\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{item\.title\.numberOfLines\}/);
@@ -7489,7 +7494,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{item\.description\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(edit|delete)Label/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartActions/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartActions\s+actions=\{item\.actions\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartActions\s+actions=\{actions\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartActions[\s\S]*?if \(!actions\.shouldRender\) return null;[\s\S]*?<View \{\.\.\.actions\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /const actions = item\.actions;/);
   assert.doesNotMatch(chatMessageChromeSource, /\{actions\.shouldRender \? \(/);
