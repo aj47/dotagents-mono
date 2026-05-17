@@ -3202,6 +3202,14 @@ type ChatMessageConversationOverlaysProps = {
   promptEditor?: ReactNode;
 };
 
+type ChatMessageConversationOverlaysParts = ReturnType<typeof createChatRuntimeConversationOverlaysMobilePropsParts<
+  ChatMessageConversationOverlaysProps['agentSelector'],
+  ChatMessageConversationOverlaysProps['promptEditor']
+>>;
+
+type ChatMessageConversationOverlaysContentProps =
+  ChatMessageConversationOverlaysParts['content'];
+
 type ChatMessageScrollViewportProps = {
   children: ReactNode;
   scrollRef?: Ref<ScrollView>;
@@ -11991,12 +11999,22 @@ export function ChatMessageConversationOverlays({
     agentSelector,
     promptEditor,
   });
-  const overlayContent = overlayParts.content;
 
   return (
+    <ChatMessageConversationOverlaysContent
+      {...overlayParts.content}
+    />
+  );
+}
+
+export function ChatMessageConversationOverlaysContent({
+  agentSelector,
+  promptEditor,
+}: ChatMessageConversationOverlaysContentProps) {
+  return (
     <>
-      {overlayContent.agentSelector.children}
-      {overlayContent.promptEditor.children}
+      {agentSelector.children}
+      {promptEditor.children}
     </>
   );
 }

@@ -2227,8 +2227,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     chatMessageChromeSource.match(/export function ChatMessageConversationOverlays[\s\S]*?export function ChatMessageRuntimeOverlays/)?.[0] ?? '';
   assert.match(conversationOverlaysSource, /const overlayParts = createChatRuntimeConversationOverlaysMobilePropsParts\(\{\s+agentSelector,\s+promptEditor,\s+\}\);/);
   assert.match(sessionPresentationSource, /content: \{\s+agentSelector: \{\s+children: agentSelector,/);
-  assert.match(conversationOverlaysSource, /const overlayContent = overlayParts\.content;/);
-  assert.match(conversationOverlaysSource, /\{overlayContent\.agentSelector\.children\}[\s\S]*?\{overlayContent\.promptEditor\.children\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationOverlaysContentProps =\s+ChatMessageConversationOverlaysParts\['content'\];/);
+  assert.match(conversationOverlaysSource, /<ChatMessageConversationOverlaysContent\s+\{\.\.\.overlayParts\.content\}\s+\/>/);
+  assert.match(conversationOverlaysSource, /export function ChatMessageConversationOverlaysContent/);
+  assert.match(conversationOverlaysSource, /\{agentSelector\.children\}[\s\S]*?\{promptEditor\.children\}/);
+  assert.doesNotMatch(conversationOverlaysSource, /const overlayContent = overlayParts\.content;/);
   assert.doesNotMatch(conversationOverlaysSource, /overlayParts\.agentSelector\.children/);
   assert.doesNotMatch(conversationOverlaysSource, /\{agentSelector\}[\s\S]*?\{promptEditor\}/);
   assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
@@ -6345,6 +6348,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrameRoot/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrameRootContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlays/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlaysContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeOverlays/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewport/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewportContent/);
