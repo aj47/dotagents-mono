@@ -188,34 +188,38 @@ describe('agent-user-response-store', () => {
       onToggleCollapsed: () => undefined,
       onSpeakResponse: (text, index) => responseHistorySpeakCalls.push({ text, index }),
     });
-    expect(responseHistoryParts.container.style).toBe(responseHistoryStyleSlots.container);
-    expect(responseHistoryParts.header.touchable).toMatchObject({
+    expect(responseHistoryParts.container.props.style).toBe(responseHistoryStyleSlots.container);
+    expect(responseHistoryParts.header.touchable.props).toMatchObject({
       style: responseHistoryStyleSlots.header,
       activeOpacity: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.pressedOpacity,
       accessibilityRole: 'button',
       accessibilityLabel: 'Hide agent responses',
       accessibilityState: { expanded: true },
     });
-    expect(responseHistoryParts.header.icon).toEqual({
+    expect(responseHistoryParts.header.icon.props).toEqual({
       name: 'chatbubbles-outline',
       size: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.iconSize,
       color: '#737373',
     });
     expect(responseHistoryParts.header.badge.text).toEqual({
-      style: responseHistoryStyleSlots.badgeText,
       value: '1',
+      props: {
+        style: responseHistoryStyleSlots.badgeText,
+      },
     });
     expect(responseHistoryParts.collapsedPreview).toEqual({
       shouldRender: false,
     });
     expect(responseHistoryParts.list).toMatchObject({
       shouldRender: true,
-      showsVerticalScrollIndicator: true,
+      props: {
+        showsVerticalScrollIndicator: true,
+      },
     });
     if (!responseHistoryParts.list.shouldRender) {
       throw new Error('Expected expanded response history list');
     }
-    expect(responseHistoryParts.list.style).toBe(responseHistoryStyleSlots.list);
+    expect(responseHistoryParts.list.props.style).toBe(responseHistoryStyleSlots.list);
     const responseHistoryItem = responseHistoryParts.list.items[0];
     expect(responseHistoryItem).toMatchObject({
       key: '1000-0',
@@ -230,15 +234,19 @@ describe('agent-user-response-store', () => {
         animation: responseHistoryRenderState.animation,
       },
       speakButton: {
-        style: responseHistoryStyleSlots.speakButton,
-        activeOpacity: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakButtonPressedOpacity,
-        accessibilityRole: 'button',
-        accessibilityLabel: 'Stop speaking',
+        props: {
+          style: responseHistoryStyleSlots.speakButton,
+          activeOpacity: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakButtonPressedOpacity,
+          accessibilityRole: 'button',
+          accessibilityLabel: 'Stop speaking',
+        },
       },
       speakIcon: {
-        name: 'stop-circle',
-        size: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakIconSize,
-        color: '#2563eb',
+        props: {
+          name: 'stop-circle',
+          size: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakIconSize,
+          color: '#2563eb',
+        },
       },
     });
     const responseHistoryTwoParts = createAgentResponseHistoryMobilePropsParts({
@@ -259,9 +267,9 @@ describe('agent-user-response-store', () => {
     }
     expect(responseHistoryTwoParts.list.items.map((item) => item.separator)).toEqual([
       { shouldRender: false },
-      { shouldRender: true, style: responseHistoryStyleSlots.separator },
+      { shouldRender: true, props: { style: responseHistoryStyleSlots.separator } },
     ]);
-    responseHistoryItem.speakButton.onPress();
+    responseHistoryItem.speakButton.props.onPress();
     expect(responseHistorySpeakCalls).toEqual([
       {
         text: 'Hello from the agent',

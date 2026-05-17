@@ -420,7 +420,9 @@ export interface AgentResponseHistoryMobilePropsPartsItem<
   separator:
     | {
         shouldRender: true;
-        style: TStyles['separator'];
+        props: {
+          style: TStyles['separator'];
+        };
       }
     | {
         shouldRender: false;
@@ -430,26 +432,36 @@ export interface AgentResponseHistoryMobilePropsPartsItem<
     animation: AgentResponseHistoryMobileAnimationState;
   };
   container: {
-    style: TStyles['responseItem'];
+    props: {
+      style: TStyles['responseItem'];
+    };
   };
   header: {
-    style: TStyles['responseHeader'];
+    props: {
+      style: TStyles['responseHeader'];
+    };
   };
   timestamp: {
-    style: TStyles['timestamp'];
     text: string;
+    props: {
+      style: TStyles['timestamp'];
+    };
   };
   speakButton: {
-    style: TStyles['speakButton'];
-    onPress: () => void;
-    activeOpacity: AgentResponseHistoryMobileSurface['item']['speakButtonPressedOpacity'];
-    accessibilityRole: AgentResponseHistoryMobileSurface['item']['speakButtonAccessibilityRole'];
-    accessibilityLabel: string;
+    props: {
+      style: TStyles['speakButton'];
+      onPress: () => void;
+      activeOpacity: AgentResponseHistoryMobileSurface['item']['speakButtonPressedOpacity'];
+      accessibilityRole: AgentResponseHistoryMobileSurface['item']['speakButtonAccessibilityRole'];
+      accessibilityLabel: string;
+    };
   };
   speakIcon: {
-    name: AgentResponseHistorySpeechActionState['icon']['name'];
-    size: AgentResponseHistoryMobileSurface['item']['speakIconSize'];
-    color: string;
+    props: {
+      name: AgentResponseHistorySpeechActionState['icon']['name'];
+      size: AgentResponseHistoryMobileSurface['item']['speakIconSize'];
+      color: string;
+    };
   };
 }
 
@@ -460,54 +472,76 @@ export interface AgentResponseHistoryMobilePropsParts<
 > {
   shouldRender: boolean;
   container: {
-    style: TStyles['container'];
+    props: {
+      style: TStyles['container'];
+    };
   };
   header: {
     touchable: {
-      style: TStyles['header'];
-      onPress: TOnToggleCollapsed;
-      activeOpacity: AgentResponseHistoryMobileSurface['header']['pressedOpacity'];
-      accessibilityRole: AgentResponseHistoryMobileSurface['header']['accessibilityRole'];
-      accessibilityLabel: string;
-      accessibilityState: AgentResponseHistoryPanelToggleAccessibilityState;
+      props: {
+        style: TStyles['header'];
+        onPress: TOnToggleCollapsed;
+        activeOpacity: AgentResponseHistoryMobileSurface['header']['pressedOpacity'];
+        accessibilityRole: AgentResponseHistoryMobileSurface['header']['accessibilityRole'];
+        accessibilityLabel: string;
+        accessibilityState: AgentResponseHistoryPanelToggleAccessibilityState;
+      };
     };
     left: {
-      style: TStyles['headerLeft'];
+      props: {
+        style: TStyles['headerLeft'];
+      };
     };
     icon: {
-      name: typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.headerName;
-      size: AgentResponseHistoryMobileSurface['header']['iconSize'];
-      color: string;
+      props: {
+        name: typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.headerName;
+        size: AgentResponseHistoryMobileSurface['header']['iconSize'];
+        color: string;
+      };
     };
     title: {
-      style: TStyles['headerTitle'];
       text: string;
+      props: {
+        style: TStyles['headerTitle'];
+      };
     };
     badge: {
-      style: TStyles['badge'];
+      props: {
+        style: TStyles['badge'];
+      };
       text: {
-        style: TStyles['badgeText'];
         value: string;
+        props: {
+          style: TStyles['badgeText'];
+        };
       };
     };
     toggleIcon: {
-      name: AgentResponseHistoryPanelState<T>['toggleIconName'];
-      size: AgentResponseHistoryMobileSurface['header']['toggleIconSize'];
-      color: string;
+      props: {
+        name: AgentResponseHistoryPanelState<T>['toggleIconName'];
+        size: AgentResponseHistoryMobileSurface['header']['toggleIconSize'];
+        color: string;
+      };
     };
   };
   collapsedPreview:
     | {
         shouldRender: true;
-        style: TStyles['collapsedPreview'];
+        props: {
+          style: TStyles['collapsedPreview'];
+        };
         timestamp: {
-          style: TStyles['collapsedPreviewTimestamp'];
           text: string;
+          props: {
+            style: TStyles['collapsedPreviewTimestamp'];
+          };
         };
         preview: {
-          style: TStyles['collapsedPreviewText'];
-          numberOfLines: AgentResponseHistoryMobileSurface['collapsedPreview']['previewNumberOfLines'];
           text: string;
+          props: {
+            style: TStyles['collapsedPreviewText'];
+            numberOfLines: AgentResponseHistoryMobileSurface['collapsedPreview']['previewNumberOfLines'];
+          };
         };
       }
     | {
@@ -516,8 +550,10 @@ export interface AgentResponseHistoryMobilePropsParts<
   list:
     | {
         shouldRender: true;
-        style: TStyles['list'];
-        showsVerticalScrollIndicator: AgentResponseHistoryMobileSurface['list']['showsVerticalScrollIndicator'];
+        props: {
+          style: TStyles['list'];
+          showsVerticalScrollIndicator: AgentResponseHistoryMobileSurface['list']['showsVerticalScrollIndicator'];
+        };
         items: Array<AgentResponseHistoryMobilePropsPartsItem<T, TStyles>>;
       }
     | {
@@ -759,54 +795,76 @@ export function createAgentResponseHistoryMobilePropsParts<
   return {
     shouldRender: renderState.shouldRender,
     container: {
-      style: styles.container,
+      props: {
+        style: styles.container,
+      },
     },
     header: {
       touchable: {
-        style: styles.header,
-        onPress: onToggleCollapsed,
-        activeOpacity: surface.header.pressedOpacity,
-        accessibilityRole: surface.header.accessibilityRole,
-        accessibilityLabel: panel.toggleAccessibilityLabel,
-        accessibilityState: panel.toggleAccessibilityState,
+        props: {
+          style: styles.header,
+          onPress: onToggleCollapsed,
+          activeOpacity: surface.header.pressedOpacity,
+          accessibilityRole: surface.header.accessibilityRole,
+          accessibilityLabel: panel.toggleAccessibilityLabel,
+          accessibilityState: panel.toggleAccessibilityState,
+        },
       },
       left: {
-        style: styles.headerLeft,
+        props: {
+          style: styles.headerLeft,
+        },
       },
       icon: {
-        name: icons.headerName,
-        size: surface.header.iconSize,
-        color: colors.header.iconColor,
+        props: {
+          name: icons.headerName,
+          size: surface.header.iconSize,
+          color: colors.header.iconColor,
+        },
       },
       title: {
-        style: styles.headerTitle,
         text: panel.title,
+        props: {
+          style: styles.headerTitle,
+        },
       },
       badge: {
-        style: styles.badge,
+        props: {
+          style: styles.badge,
+        },
         text: {
-          style: styles.badgeText,
           value: panel.countLabel,
+          props: {
+            style: styles.badgeText,
+          },
         },
       },
       toggleIcon: {
-        name: panel.toggleIconName,
-        size: surface.header.toggleIconSize,
-        color: colors.header.toggleIconColor,
+        props: {
+          name: panel.toggleIconName,
+          size: surface.header.toggleIconSize,
+          color: colors.header.toggleIconColor,
+        },
       },
     },
     collapsedPreview: panel.collapsedPreview.shouldRender
       ? {
           shouldRender: true,
-          style: styles.collapsedPreview,
+          props: {
+            style: styles.collapsedPreview,
+          },
           timestamp: {
-            style: styles.collapsedPreviewTimestamp,
             text: panel.collapsedPreview.timestampLabel,
+            props: {
+              style: styles.collapsedPreviewTimestamp,
+            },
           },
           preview: {
-            style: styles.collapsedPreviewText,
-            numberOfLines: surface.collapsedPreview.previewNumberOfLines,
             text: panel.collapsedPreview.text,
+            props: {
+              style: styles.collapsedPreviewText,
+              numberOfLines: surface.collapsedPreview.previewNumberOfLines,
+            },
           },
         }
       : {
@@ -815,8 +873,10 @@ export function createAgentResponseHistoryMobilePropsParts<
     list: renderState.shouldRenderList
       ? {
           shouldRender: true,
-          style: styles.list,
-          showsVerticalScrollIndicator: surface.list.showsVerticalScrollIndicator,
+          props: {
+            style: styles.list,
+            showsVerticalScrollIndicator: surface.list.showsVerticalScrollIndicator,
+          },
           items: renderState.items.map((item) => {
             const speechActionState = item.speechActionState;
 
@@ -828,7 +888,9 @@ export function createAgentResponseHistoryMobilePropsParts<
               separator: item.shouldRenderSeparator
                 ? {
                     shouldRender: true,
-                    style: styles.separator,
+                    props: {
+                      style: styles.separator,
+                    },
                   }
                 : {
                     shouldRender: false,
@@ -838,26 +900,36 @@ export function createAgentResponseHistoryMobilePropsParts<
                 animation: renderState.animation,
               },
               container: {
-                style: styles.responseItem,
+                props: {
+                  style: styles.responseItem,
+                },
               },
               header: {
-                style: styles.responseHeader,
+                props: {
+                  style: styles.responseHeader,
+                },
               },
               timestamp: {
-                style: styles.timestamp,
                 text: item.timestampLabel,
+                props: {
+                  style: styles.timestamp,
+                },
               },
               speakButton: {
-                style: styles.speakButton,
-                onPress: () => onSpeakResponse(item.entry.text, item.originalIndex),
-                activeOpacity: surface.item.speakButtonPressedOpacity,
-                accessibilityRole: surface.item.speakButtonAccessibilityRole,
-                accessibilityLabel: speechActionState.accessibilityLabel,
+                props: {
+                  style: styles.speakButton,
+                  onPress: () => onSpeakResponse(item.entry.text, item.originalIndex),
+                  activeOpacity: surface.item.speakButtonPressedOpacity,
+                  accessibilityRole: surface.item.speakButtonAccessibilityRole,
+                  accessibilityLabel: speechActionState.accessibilityLabel,
+                },
               },
               speakIcon: {
-                name: speechActionState.icon.name,
-                size: surface.item.speakIconSize,
-                color: speechActionState.icon.color,
+                props: {
+                  name: speechActionState.icon.name,
+                  size: surface.item.speakIconSize,
+                  color: speechActionState.icon.color,
+                },
               },
             };
           }),

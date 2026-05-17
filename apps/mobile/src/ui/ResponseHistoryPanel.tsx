@@ -167,44 +167,34 @@ export function ResponseHistoryPanel({
   });
 
   return (
-    <View style={responseHistoryParts.container.style}>
+    <View {...responseHistoryParts.container.props}>
       <TouchableOpacity
-        style={responseHistoryParts.header.touchable.style}
-        onPress={responseHistoryParts.header.touchable.onPress}
-        activeOpacity={responseHistoryParts.header.touchable.activeOpacity}
-        accessibilityRole={responseHistoryParts.header.touchable.accessibilityRole}
-        accessibilityLabel={responseHistoryParts.header.touchable.accessibilityLabel}
-        accessibilityState={responseHistoryParts.header.touchable.accessibilityState}
+        {...responseHistoryParts.header.touchable.props}
       >
-        <View style={responseHistoryParts.header.left.style}>
+        <View {...responseHistoryParts.header.left.props}>
           <Ionicons
-            name={responseHistoryParts.header.icon.name}
-            size={responseHistoryParts.header.icon.size}
-            color={responseHistoryParts.header.icon.color}
+            {...responseHistoryParts.header.icon.props}
           />
-          <Text style={responseHistoryParts.header.title.style}>
+          <Text {...responseHistoryParts.header.title.props}>
             {responseHistoryParts.header.title.text}
           </Text>
-          <View style={responseHistoryParts.header.badge.style}>
-            <Text style={responseHistoryParts.header.badge.text.style}>
+          <View {...responseHistoryParts.header.badge.props}>
+            <Text {...responseHistoryParts.header.badge.text.props}>
               {responseHistoryParts.header.badge.text.value}
             </Text>
           </View>
         </View>
         <Ionicons
-          name={responseHistoryParts.header.toggleIcon.name}
-          size={responseHistoryParts.header.toggleIcon.size}
-          color={responseHistoryParts.header.toggleIcon.color}
+          {...responseHistoryParts.header.toggleIcon.props}
         />
       </TouchableOpacity>
       {responseHistoryParts.collapsedPreview.shouldRender ? (
-        <View style={responseHistoryParts.collapsedPreview.style}>
-          <Text style={responseHistoryParts.collapsedPreview.timestamp.style}>
+        <View {...responseHistoryParts.collapsedPreview.props}>
+          <Text {...responseHistoryParts.collapsedPreview.timestamp.props}>
             {responseHistoryParts.collapsedPreview.timestamp.text}
           </Text>
           <Text
-            style={responseHistoryParts.collapsedPreview.preview.style}
-            numberOfLines={responseHistoryParts.collapsedPreview.preview.numberOfLines}
+            {...responseHistoryParts.collapsedPreview.preview.props}
           >
             {responseHistoryParts.collapsedPreview.preview.text}
           </Text>
@@ -212,33 +202,26 @@ export function ResponseHistoryPanel({
       ) : null}
       {responseHistoryParts.list.shouldRender ? (
         <ScrollView
-          style={responseHistoryParts.list.style}
-          showsVerticalScrollIndicator={responseHistoryParts.list.showsVerticalScrollIndicator}
+          {...responseHistoryParts.list.props}
         >
           {responseHistoryParts.list.items.map((item) => {
             return (
               <React.Fragment key={item.key}>
-                {item.separator.shouldRender ? <View style={item.separator.style} /> : null}
+                {item.separator.shouldRender ? <View {...item.separator.props} /> : null}
                 <AnimatedResponseItem
                   isNewest={item.animated.isNewest}
                   animation={item.animated.animation}
                 >
-                  <View style={item.container.style}>
-                    <View style={item.header.style}>
-                      <Text style={item.timestamp.style}>
+                  <View {...item.container.props}>
+                    <View {...item.header.props}>
+                      <Text {...item.timestamp.props}>
                         {item.timestamp.text}
                       </Text>
                       <TouchableOpacity
-                        style={item.speakButton.style}
-                        onPress={item.speakButton.onPress}
-                        activeOpacity={item.speakButton.activeOpacity}
-                        accessibilityRole={item.speakButton.accessibilityRole}
-                        accessibilityLabel={item.speakButton.accessibilityLabel}
+                        {...item.speakButton.props}
                       >
                         <Ionicons
-                          name={item.speakIcon.name}
-                          size={item.speakIcon.size}
-                          color={item.speakIcon.color}
+                          {...item.speakIcon.props}
                         />
                       </TouchableOpacity>
                     </View>
