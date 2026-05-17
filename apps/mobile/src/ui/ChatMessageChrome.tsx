@@ -8599,67 +8599,55 @@ export function ChatMessageToolApprovalSpinner({
 }
 
 export function ChatMessageToolApprovalTitle({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageToolApprovalTitleProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatMessageToolApprovalToolLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolApprovalToolLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatMessageToolApprovalToolName({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageToolApprovalToolNameProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatMessageToolApprovalArgumentsPreview({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageToolApprovalArgumentsPreviewProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatMessageToolApprovalFullArguments({
-  style,
+  props,
   text,
 }: ChatMessageToolApprovalFullArgumentsProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -8710,22 +8698,22 @@ export function ChatMessageToolApprovalArgumentsToggle({
 }
 
 export function ChatMessageToolApprovalArgumentsToggleLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolApprovalArgumentsToggleLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatMessageToolApprovalActionLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolApprovalActionLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );

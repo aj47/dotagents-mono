@@ -8231,8 +8231,10 @@ describe("session presentation semantics", () => {
     })
     expect(toolApprovalParts.title).toEqual({
       props: {
-        style: "tool-approval-title-style",
-        numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
+        props: {
+          style: "tool-approval-title-style",
+          numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
+        },
         text: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
       },
     })
@@ -8255,22 +8257,28 @@ describe("session presentation semantics", () => {
     })
     expect(toolApprovalParts.toolLabel).toEqual({
       props: {
-        style: "tool-approval-tool-label-style",
+        props: {
+          style: "tool-approval-tool-label-style",
+        },
         text: `${CHAT_RUNTIME_PRESENTATION.approval.toolLabel}:`,
       },
     })
     expect(toolApprovalParts.toolName).toEqual({
       props: {
-        style: "tool-approval-tool-name-style",
-        numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.numberOfLines,
+        props: {
+          style: "tool-approval-tool-name-style",
+          numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.numberOfLines,
+        },
         text: "write_file",
       },
     })
     expect(toolApprovalParts.argumentsPreview).toEqual({
       shouldRender: true,
       props: {
-        style: "tool-approval-arguments-preview-style",
-        numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.numberOfLines,
+        props: {
+          style: "tool-approval-arguments-preview-style",
+          numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.numberOfLines,
+        },
         text: "path: /test",
       },
     })
@@ -8295,7 +8303,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "tool-approval-arguments-toggle-text-style",
+          props: {
+            style: "tool-approval-arguments-toggle-text-style",
+          },
           text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
         },
       },
@@ -8311,7 +8321,9 @@ describe("session presentation semantics", () => {
       },
       text: {
         props: {
-          style: "tool-approval-arguments-full-style",
+          props: {
+            style: "tool-approval-arguments-full-style",
+          },
           text: '{\n  "path": "/test"\n}',
         },
       },
@@ -8340,7 +8352,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "tool-approval-deny-button-text-style",
+          props: {
+            style: "tool-approval-deny-button-text-style",
+          },
           text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
         },
       },
@@ -8370,7 +8384,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "tool-approval-approve-button-text-style",
+          props: {
+            style: "tool-approval-approve-button-text-style",
+          },
           text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
         },
       },

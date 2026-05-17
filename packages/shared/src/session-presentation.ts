@@ -1977,8 +1977,10 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
   }
   title: {
     props: {
-      style: TStyles["title"]
-      numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
+      props: {
+        style: TStyles["title"]
+        numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
+      }
       text: string
     }
   }
@@ -1998,22 +2000,28 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
   }
   toolLabel: {
     props: {
-      style: TStyles["toolLabel"]
+      props: {
+        style: TStyles["toolLabel"]
+      }
       text: string
     }
   }
   toolName: {
     props: {
-      style: TStyles["toolName"]
-      numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["toolName"]["numberOfLines"]
+      props: {
+        style: TStyles["toolName"]
+        numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["toolName"]["numberOfLines"]
+      }
       text: string
     }
   }
   argumentsPreview: {
     shouldRender: boolean
     props: {
-      style: TStyles["argumentsPreview"]
-      numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["argumentsPreview"]["numberOfLines"]
+      props: {
+        style: TStyles["argumentsPreview"]
+        numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["argumentsPreview"]["numberOfLines"]
+      }
       text: string
     }
   }
@@ -2037,7 +2045,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
     label: {
       props: {
-        style: TStyles["argumentsToggleText"]
+        props: {
+          style: TStyles["argumentsToggleText"]
+        }
         text: string
       }
     }
@@ -2052,7 +2062,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
     text: {
       props: {
-        style: TStyles["argumentsFull"]
+        props: {
+          style: TStyles["argumentsFull"]
+        }
         text: string
       }
     }
@@ -2076,7 +2088,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
     label: {
       props: {
-        style: TStyles["denyButtonText"]
+        props: {
+          style: TStyles["denyButtonText"]
+        }
         text: string
       }
     }
@@ -2100,7 +2114,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
     label: {
       props: {
-        style: TStyles["approveButtonText"]
+        props: {
+          style: TStyles["approveButtonText"]
+        }
         text: string
       }
     }
@@ -23426,8 +23442,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
     },
     title: {
       props: {
-        style: styles.title,
-        numberOfLines: renderState.surface.title.numberOfLines,
+        props: {
+          style: styles.title,
+          numberOfLines: renderState.surface.title.numberOfLines,
+        },
         text: renderState.title,
       },
     },
@@ -23450,22 +23468,28 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
     },
     toolLabel: {
       props: {
-        style: styles.toolLabel,
+        props: {
+          style: styles.toolLabel,
+        },
         text: `${renderState.copy.toolLabel}:`,
       },
     },
     toolName: {
       props: {
-        style: styles.toolName,
-        numberOfLines: renderState.surface.toolName.numberOfLines,
+        props: {
+          style: styles.toolName,
+          numberOfLines: renderState.surface.toolName.numberOfLines,
+        },
         text: toolName,
       },
     },
     argumentsPreview: {
       shouldRender: Boolean(argumentsPreview),
       props: {
-        style: styles.argumentsPreview,
-        numberOfLines: renderState.surface.argumentsPreview.numberOfLines,
+        props: {
+          style: styles.argumentsPreview,
+          numberOfLines: renderState.surface.argumentsPreview.numberOfLines,
+        },
         text: argumentsPreview,
       },
     },
@@ -23488,7 +23512,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
       label: {
         props: {
-          style: styles.argumentsToggleText,
+          props: {
+            style: styles.argumentsToggleText,
+          },
           text: renderState.argumentsToggle.label,
         },
       },
@@ -23503,7 +23529,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
       text: {
         props: {
-          style: styles.argumentsFull,
+          props: {
+            style: styles.argumentsFull,
+          },
           text: argumentsContent,
         },
       },
@@ -23531,7 +23559,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
       label: {
         props: {
-          style: styles.denyButtonText,
+          props: {
+            style: styles.denyButtonText,
+          },
           text: renderState.denyButton.label,
         },
       },
@@ -23559,7 +23589,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
       label: {
         props: {
-          style: styles.approveButtonText,
+          props: {
+            style: styles.approveButtonText,
+          },
           text: renderState.approveButton.label,
         },
       },
