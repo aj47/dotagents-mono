@@ -11738,39 +11738,23 @@ export function ChatMessageExpandedContent({
 
   return (
     <>
-      <View
-        accessible={expandedContentParts.header.accessible}
-        accessibilityRole={expandedContentParts.header.accessibilityRole}
-        accessibilityLabel={expandedContentParts.header.accessibilityLabel}
-        style={expandedContentParts.header.style}
-      >
-        <Ionicons
-          name={expandedContentParts.icon.name}
-          size={expandedContentParts.icon.size}
-          color={expandedContentParts.icon.color}
-        />
-        <Text
-          style={expandedContentParts.title.style}
-          numberOfLines={expandedContentParts.title.numberOfLines}
-        >
+      <View {...expandedContentParts.header.props}>
+        <Ionicons {...expandedContentParts.icon.props} />
+        <Text {...expandedContentParts.title.props}>
           {expandedContentParts.title.text}
         </Text>
-        <Image
-          source={expandedContentParts.spinner.source}
-          style={expandedContentParts.spinner.style}
-          resizeMode={expandedContentParts.spinner.resizeMode}
-        />
-        <View style={expandedContentParts.badge.style}>
-          <Text style={expandedContentParts.badgeLabel.style}>
+        <Image {...expandedContentParts.spinner.props} />
+        <View {...expandedContentParts.badge.props}>
+          <Text {...expandedContentParts.badgeLabel.props}>
             {expandedContentParts.badgeLabel.text}
           </Text>
         </View>
       </View>
-      <View style={expandedContentParts.body.style}>
-        <Text style={expandedContentParts.text.style}>
+      <View {...expandedContentParts.body.props}>
+        <Text {...expandedContentParts.text.props}>
           {expandedContentParts.text.text}
         </Text>
-        <View style={expandedContentParts.caret.style} />
+        <View {...expandedContentParts.caret.props} />
       </View>
     </>
   );

@@ -5986,42 +5986,60 @@ describe("session presentation semantics", () => {
         assetAuthToken: "asset-token",
       },
       header: {
-        accessible: true,
-        accessibilityRole: "text",
-        accessibilityLabel: "Generating response...",
-        style: "header-style",
+        props: {
+          accessible: true,
+          accessibilityRole: "text",
+          accessibilityLabel: "Generating response...",
+          style: "header-style",
+        },
       },
       icon: {
-        name: "sparkles",
-        size: 14,
-        color: "#2563eb",
+        props: {
+          name: "sparkles",
+          size: 14,
+          color: "#2563eb",
+        },
       },
       title: {
-        style: "title-style",
-        numberOfLines: 1,
         text: "Generating response...",
+        props: {
+          style: "title-style",
+          numberOfLines: 1,
+        },
       },
       spinner: {
-        source: "spinner-source",
-        style: "spinner-style",
-        resizeMode: "contain",
+        props: {
+          source: "spinner-source",
+          style: "spinner-style",
+          resizeMode: "contain",
+        },
       },
       badge: {
-        style: "badge-style",
+        props: {
+          style: "badge-style",
+        },
       },
       badgeLabel: {
-        style: "badge-text-style",
         text: "Streaming",
+        props: {
+          style: "badge-text-style",
+        },
       },
       body: {
-        style: "body-row-style",
+        props: {
+          style: "body-row-style",
+        },
       },
       text: {
-        style: "text-style",
         text: "Hello live",
+        props: {
+          style: "text-style",
+        },
       },
       caret: {
-        style: "caret-style",
+        props: {
+          style: "caret-style",
+        },
       },
     })
     expect(createChatRuntimeConversationExpandedContentMobilePropsParts({

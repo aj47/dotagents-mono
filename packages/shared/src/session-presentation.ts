@@ -6912,38 +6912,56 @@ export interface ChatRuntimeConversationExpandedContentMobilePropsParts<
     assetAuthToken?: TAssetAuthToken
   }
   header: {
-    accessible: true
-    accessibilityRole: TStreamingRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStreamingStyles["header"]
+    props: {
+      accessible: true
+      accessibilityRole: TStreamingRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: TStreamingStyles["header"]
+    }
   }
-  icon: TStreamingRenderState["icon"]
+  icon: {
+    props: TStreamingRenderState["icon"]
+  }
   title: {
-    style: TStreamingStyles["title"]
-    numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
     text: string
+    props: {
+      style: TStreamingStyles["title"]
+      numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
+    }
   }
   spinner: {
-    source: TSpinnerSource
-    style: TStreamingStyles["spinner"]
-    resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
+    props: {
+      source: TSpinnerSource
+      style: TStreamingStyles["spinner"]
+      resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
+    }
   }
   badge: {
-    style: TStreamingStyles["badge"]
+    props: {
+      style: TStreamingStyles["badge"]
+    }
   }
   badgeLabel: {
-    style: TStreamingStyles["badgeText"]
     text: string
+    props: {
+      style: TStreamingStyles["badgeText"]
+    }
   }
   body: {
-    style: TStreamingStyles["bodyRow"]
+    props: {
+      style: TStreamingStyles["bodyRow"]
+    }
   }
   text: {
-    style: TStreamingStyles["text"]
     text: string
+    props: {
+      style: TStreamingStyles["text"]
+    }
   }
   caret: {
-    style: TStreamingStyles["caret"]
+    props: {
+      style: TStreamingStyles["caret"]
+    }
   }
 }
 
@@ -24226,38 +24244,56 @@ export function createChatRuntimeConversationExpandedContentMobilePropsParts<
       assetAuthToken,
     },
     header: {
-      accessible: true,
-      accessibilityRole: streamingRenderState.accessibilityRole,
-      accessibilityLabel: streamingRenderState.accessibilityLabel,
-      style: streamingStyles.header,
+      props: {
+        accessible: true,
+        accessibilityRole: streamingRenderState.accessibilityRole,
+        accessibilityLabel: streamingRenderState.accessibilityLabel,
+        style: streamingStyles.header,
+      },
     },
-    icon: streamingRenderState.icon,
+    icon: {
+      props: streamingRenderState.icon,
+    },
     title: {
-      style: streamingStyles.title,
-      numberOfLines: streamingRenderState.surface.titleNumberOfLines,
       text: streamingRenderState.title,
+      props: {
+        style: streamingStyles.title,
+        numberOfLines: streamingRenderState.surface.titleNumberOfLines,
+      },
     },
     spinner: {
-      source: spinnerSource,
-      style: streamingStyles.spinner,
-      resizeMode: streamingRenderState.spinner.resizeMode,
+      props: {
+        source: spinnerSource,
+        style: streamingStyles.spinner,
+        resizeMode: streamingRenderState.spinner.resizeMode,
+      },
     },
     badge: {
-      style: streamingStyles.badge,
+      props: {
+        style: streamingStyles.badge,
+      },
     },
     badgeLabel: {
-      style: streamingStyles.badgeText,
       text: streamingRenderState.badgeLabel,
+      props: {
+        style: streamingStyles.badgeText,
+      },
     },
     body: {
-      style: streamingStyles.bodyRow,
+      props: {
+        style: streamingStyles.bodyRow,
+      },
     },
     text: {
-      style: streamingStyles.text,
       text: streamingRenderState.content,
+      props: {
+        style: streamingStyles.text,
+      },
     },
     caret: {
-      style: streamingStyles.caret,
+      props: {
+        style: streamingStyles.caret,
+      },
     },
   }
 }
