@@ -7075,9 +7075,11 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.container\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}\s+style=\{turnDuration\.style\}\s+liveStyle=\{turnDuration\.liveStyle\}\s+textStyle=\{turnDuration\.textStyle\}\s+liveTextStyle=\{turnDuration\.liveTextStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainer\s+\{\.\.\.turnDurationBadgeParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /const containerContent = turnDurationBadgeParts\.container\.content;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeIcon\s+\{\.\.\.containerContent\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeLabel\s+\{\.\.\.containerContent\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeContainerContentProps =\s+ChatMessageTurnDurationBadgeParts\['container'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainerContent\s+\{\.\.\.turnDurationBadgeParts\.container\.content\}\s+\/>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeContainerContent\(\{\s+icon,\s+label,\s+\}: ChatMessageTurnDurationBadgeContainerContentProps\) \{\s+return \(\s+<>\s+<ChatMessageTurnDurationBadgeIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeLabel\s+\{\.\.\.label\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const containerContent = turnDurationBadgeParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeContainer[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeIcon\(props: ChatMessageTurnDurationBadgeIconProps\)[\s\S]*?<Ionicons \{\.\.\.props\} \/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeLabel[\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}/);

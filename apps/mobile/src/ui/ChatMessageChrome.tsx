@@ -1860,6 +1860,9 @@ type ChatMessageTurnDurationBadgeContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageTurnDurationBadgeContainerContentProps =
+  ChatMessageTurnDurationBadgeParts['container']['content'];
+
 type ChatMessageTurnDurationBadgeIconProps =
   ChatMessageTurnDurationBadgeParts['container']['content']['icon']['props'];
 
@@ -13878,17 +13881,12 @@ export function ChatMessageTurnDurationBadge({
 
   if (!turnDurationBadgeParts.container.shouldRender) return null;
 
-  const containerContent = turnDurationBadgeParts.container.content;
-
   return (
     <ChatMessageTurnDurationBadgeContainer
       {...turnDurationBadgeParts.container.props}
     >
-      <ChatMessageTurnDurationBadgeIcon
-        {...containerContent.icon.props}
-      />
-      <ChatMessageTurnDurationBadgeLabel
-        {...containerContent.label.props}
+      <ChatMessageTurnDurationBadgeContainerContent
+        {...turnDurationBadgeParts.container.content}
       />
     </ChatMessageTurnDurationBadgeContainer>
   );
@@ -13902,6 +13900,22 @@ export function ChatMessageTurnDurationBadgeContainer({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageTurnDurationBadgeContainerContent({
+  icon,
+  label,
+}: ChatMessageTurnDurationBadgeContainerContentProps) {
+  return (
+    <>
+      <ChatMessageTurnDurationBadgeIcon
+        {...icon.props}
+      />
+      <ChatMessageTurnDurationBadgeLabel
+        {...label.props}
+      />
+    </>
   );
 }
 
