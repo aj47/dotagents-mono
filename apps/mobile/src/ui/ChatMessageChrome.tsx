@@ -2986,10 +2986,17 @@ type ChatMessageToolExecutionResultSectionParts = ReturnType<typeof createChatRu
   ChatMessageToolExecutionResultSectionProps['styles']
 >>;
 
+type ChatMessageToolExecutionResultSectionContentProps =
+  ChatMessageToolExecutionResultSectionParts['item']['content'];
+
 type ChatMessageToolExecutionResultSectionItemProps =
   ChatMessageToolExecutionResultSectionParts['item']['props'] & {
     children: ReactNode;
   };
+
+type ChatMessageToolExecutionResultSectionErrorBlockProps = {
+  errorBlock: ChatMessageToolExecutionResultSectionParts['item']['content']['errorBlock'];
+};
 
 type ChatMessageToolExecutionCallDetailInput = NonNullable<
   ChatRuntimeConversationToolExecutionDetailMobileRowState['input']
@@ -11540,24 +11547,49 @@ export function ChatMessageToolExecutionResultSection({
     onErrorCopyPress,
     styles,
   });
-  const resultSectionContent = resultSectionParts.item.content;
 
   return (
     <ChatMessageToolExecutionResultSectionItem
       {...resultSectionParts.item.props}
     >
+      <ChatMessageToolExecutionResultSectionContent
+        {...resultSectionParts.item.content}
+      />
+    </ChatMessageToolExecutionResultSectionItem>
+  );
+}
+
+export function ChatMessageToolExecutionResultSectionContent({
+  header,
+  payloadBlock,
+  errorBlock,
+}: ChatMessageToolExecutionResultSectionContentProps) {
+  return (
+    <>
       <ChatMessageToolExecutionResultHeader
-        {...resultSectionContent.header.props}
+        {...header.props}
       />
       <ChatMessageToolExecutionPayloadBlock
-        {...resultSectionContent.payloadBlock.props}
+        {...payloadBlock.props}
       />
-      {resultSectionContent.errorBlock.shouldRender ? (
-        <ChatMessageToolExecutionErrorBlock
-          {...resultSectionContent.errorBlock.props}
-        />
-      ) : null}
-    </ChatMessageToolExecutionResultSectionItem>
+      <ChatMessageToolExecutionResultSectionErrorBlock
+        errorBlock={errorBlock}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionResultSectionErrorBlock({
+  errorBlock,
+}: ChatMessageToolExecutionResultSectionErrorBlockProps) {
+  if (!errorBlock.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolExecutionErrorBlock
+      {...errorBlock.props}
+    />
   );
 }
 

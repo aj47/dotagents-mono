@@ -4555,14 +4555,24 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /payloadBlock: \{\s+preview: styles\.toolPayloadPreview,\s+scroll: styles\.toolResultScroll,\s+scrollExpanded: styles\.toolResultScrollExpanded,\s+code: styles\.toolResultCode,/);
   assert.match(sessionPresentationSource, /errorBlock: \{\s+section: styles\.toolResultErrorSection,\s+headerRow: styles\.toolDetailHeaderRow,\s+label: styles\.toolResultErrorLabel,\s+text: styles\.toolResultErrorText,\s+copyButton: \{/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection/);
+  const toolExecutionResultSectionSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultSection\([\s\S]*?export function ChatMessageToolExecutionResultSectionContent/)?.[0] ?? '';
+  const toolExecutionResultSectionContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultSectionContent[\s\S]*?export function ChatMessageToolExecutionResultSectionErrorBlock/)?.[0] ?? '';
+  const toolExecutionResultSectionErrorBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultSectionErrorBlock[\s\S]*?export function ChatMessageToolExecutionResultSectionItem/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const resultSectionParts = createChatRuntimeToolExecutionResultSectionMobilePropsParts\(\{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+resultCompactText,\s+resultContent,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+errorRenderState,\s+error,\s+errorCopyButtonRenderState,\s+onErrorCopyPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const resultSectionContent = resultSectionParts\.item\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const resultSectionContent = resultSectionParts\.item\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultSectionItem\s+\{\.\.\.resultSectionParts\.item\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultHeader\s+\{\.\.\.resultSectionContent\.header\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.resultSectionContent\.payloadBlock\.props\}/);
-  assert.match(chatMessageChromeSource, /resultSectionContent\.errorBlock\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionErrorBlock\s+\{\.\.\.resultSectionContent\.errorBlock\.props\}/);
+  assert.match(toolExecutionResultSectionSource, /<ChatMessageToolExecutionResultSectionContent\s+\{\.\.\.resultSectionParts\.item\.content\}/);
+  assert.match(toolExecutionResultSectionContentSource, /<ChatMessageToolExecutionResultHeader\s+\{\.\.\.header\.props\}/);
+  assert.match(toolExecutionResultSectionContentSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.payloadBlock\.props\}/);
+  assert.match(toolExecutionResultSectionContentSource, /<ChatMessageToolExecutionResultSectionErrorBlock\s+errorBlock=\{errorBlock\}/);
+  assert.match(toolExecutionResultSectionErrorBlockSource, /if \(!errorBlock\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.match(toolExecutionResultSectionErrorBlockSource, /<ChatMessageToolExecutionErrorBlock\s+\{\.\.\.errorBlock\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /resultSectionContent\.errorBlock\.shouldRender \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /resultSection(Content|Parts)\.errorBlock \? \(/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSectionItem[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSectionItem[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
