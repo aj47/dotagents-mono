@@ -12957,13 +12957,17 @@ describe("session presentation semantics", () => {
       rows: [
         {
           key: "read_file:0",
-          renderState: "read-file-row-state",
-          styles: "compact-row-styles",
+          props: {
+            renderState: "read-file-row-state",
+            styles: "compact-row-styles",
+          },
         },
         {
           key: "write_file:1",
-          renderState: "write-file-row-state",
-          styles: "compact-row-styles",
+          props: {
+            renderState: "write-file-row-state",
+            styles: "compact-row-styles",
+          },
         },
       ],
     })

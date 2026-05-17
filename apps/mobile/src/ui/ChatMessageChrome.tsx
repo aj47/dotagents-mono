@@ -7868,8 +7868,7 @@ export function ChatMessageToolExecutionCompactList({
       {compactListParts.rows.map((row) => (
         <ChatMessageToolExecutionCompactRow
           key={row.key}
-          renderState={row.renderState}
-          styles={row.styles}
+          {...row.props}
         />
       ))}
     </ChatMessageToolExecutionCompactGroup>

@@ -3880,8 +3880,10 @@ export interface ChatRuntimeToolExecutionCompactListMobilePropsParts<
   }
   rows: Array<{
     key: TRow["key"]
-    renderState: TRow["renderState"]
-    styles: TCompactRowStyles
+    props: {
+      renderState: TRow["renderState"]
+      styles: TCompactRowStyles
+    }
   }>
 }
 
@@ -20831,8 +20833,10 @@ export function createChatRuntimeToolExecutionCompactListMobilePropsParts<
     },
     rows: rows.map((row) => ({
       key: row.key,
-      renderState: row.renderState,
-      styles: rowStyles,
+      props: {
+        renderState: row.renderState,
+        styles: rowStyles,
+      },
     })),
   }
 }
