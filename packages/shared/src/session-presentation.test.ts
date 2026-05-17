@@ -3792,7 +3792,11 @@ describe("session presentation semantics", () => {
     expect(createChatMessageRuntimeSurfaceChromeSlots({
       surfaceStyles: "surface-styles",
     })).toEqual({
-      surfaceStyles: "surface-styles",
+      runtimeSurface: {
+        props: {
+          styles: "surface-styles",
+        },
+      },
     })
     expect(createChatRuntimeChromeSlots({
       environment: "environment",

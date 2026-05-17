@@ -1961,6 +1961,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /const chatMessageRuntimeSurfaceChrome = useMemo/);
   assert.match(sessionPresentationSource, /surface: createChatMessageRuntimeSurfaceChromeSlots\(\{/);
+  assert.match(sessionPresentationSource, /runtimeSurface: \{\s+props: \{\s+styles: surfaceStyles,/);
   assert.match(chatScreenSource, /<ChatMessageRuntimeChromeSurface<PredefinedPromptSummary, Loop>\s+\{\.\.\.chatMessageRuntimeSurface\}\s+\{\.\.\.chatRuntimeChrome\.surface\}/);
   assert.doesNotMatch(chatScreenSource, /chatMessageRuntimeSurfaceStyles/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeChromeStyles = useMemo/);
@@ -1984,6 +1985,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeSurfaceChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeChromeProps/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeChromeSurface/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRuntimeSurface\s+\{\.\.\.chatMessageRuntimeSurface\}\s+\{\.\.\.runtimeSurface\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /styles=\{surfaceStyles\}/);
   assert.match(chatMessageChromeSource, /createChatRuntimeSurfaceChromeMobileProps,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeSurfaceChromeMobileProps/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationSurfaceMobilePropsParts,/);

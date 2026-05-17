@@ -29006,10 +29006,18 @@ export function createChatMessageRuntimeSurfaceChromeSlots<TSurfaceStyles>({
 }: {
   surfaceStyles: TSurfaceStyles
 }): {
-  surfaceStyles: TSurfaceStyles
+  runtimeSurface: {
+    props: {
+      styles: TSurfaceStyles
+    }
+  }
 } {
   return {
-    surfaceStyles,
+    runtimeSurface: {
+      props: {
+        styles: surfaceStyles,
+      },
+    },
   }
 }
 

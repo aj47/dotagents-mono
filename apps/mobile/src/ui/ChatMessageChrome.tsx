@@ -3095,7 +3095,11 @@ export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask> & {
-  surfaceStyles: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['styles'];
+  runtimeSurface: {
+    props: {
+      styles: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['styles'];
+    };
+  };
 };
 
 type ChatComposerSpeechPreviewStyles = {
@@ -4755,7 +4759,7 @@ export function ChatMessageRuntimeChromeSurface<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 >({
-  surfaceStyles,
+  runtimeSurface,
   ...chromePropsInput
 }: ChatMessageRuntimeChromeSurfaceProps<TPrompt, TTask>) {
   const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<TPrompt, TTask>(chromePropsInput);
@@ -4763,7 +4767,7 @@ export function ChatMessageRuntimeChromeSurface<
   return (
     <ChatMessageRuntimeSurface
       {...chatMessageRuntimeSurface}
-      styles={surfaceStyles}
+      {...runtimeSurface.props}
     />
   );
 }
