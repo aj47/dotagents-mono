@@ -4419,22 +4419,28 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRender: navigationHeaderState.turnDurationRenderState.shouldRender,
       container: {
-        accessible: true,
-        accessibilityRole: navigationHeaderState.turnDurationRenderState.accessibilityRole,
-        accessibilityLabel: navigationHeaderState.turnDurationRenderState.accessibilityLabel,
-        style: [
-          headerTurnDurationStyles.chip,
-          headerTurnDurationStyles.liveChip,
-        ],
+        props: {
+          accessible: true,
+          accessibilityRole: navigationHeaderState.turnDurationRenderState.accessibilityRole,
+          accessibilityLabel: navigationHeaderState.turnDurationRenderState.accessibilityLabel,
+          style: [
+            headerTurnDurationStyles.chip,
+            headerTurnDurationStyles.liveChip,
+          ],
+        },
       },
-      icon: navigationHeaderState.turnDurationRenderState.icon,
+      icon: {
+        props: navigationHeaderState.turnDurationRenderState.icon,
+      },
       label: {
-        style: [
-          headerTurnDurationStyles.text,
-          headerTurnDurationStyles.liveText,
-        ],
-        numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
-        text: navigationHeaderState.turnDurationRenderState.label,
+        props: {
+          style: [
+            headerTurnDurationStyles.text,
+            headerTurnDurationStyles.liveText,
+          ],
+          numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
+          text: navigationHeaderState.turnDurationRenderState.label,
+        },
       },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)

@@ -8989,16 +8989,22 @@ export interface ChatRuntimeHeaderTurnDurationMobilePropsParts<
 > {
   shouldRender: boolean
   container: {
-    accessible: true
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: Array<TStyles["chip"] | TStyles["liveChip"] | false | undefined>
+    props: {
+      accessible: true
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: Array<TStyles["chip"] | TStyles["liveChip"] | false | undefined>
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   label: {
-    style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
-    numberOfLines: TRenderState["badge"]["numberOfLines"]
-    text: string
+    props: {
+      style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
+      numberOfLines: TRenderState["badge"]["numberOfLines"]
+      text: string
+    }
   }
 }
 
@@ -25730,22 +25736,28 @@ export function createChatRuntimeHeaderTurnDurationMobilePropsParts<
   return {
     shouldRender: renderState.shouldRender,
     container: {
-      accessible: true,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style: [
-        styles.chip,
-        renderState.isLive && styles.liveChip,
-      ],
+      props: {
+        accessible: true,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style: [
+          styles.chip,
+          renderState.isLive && styles.liveChip,
+        ],
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     label: {
-      style: [
-        styles.text,
-        renderState.isLive && styles.liveText,
-      ],
-      numberOfLines: renderState.badge.numberOfLines,
-      text: renderState.label,
+      props: {
+        style: [
+          styles.text,
+          renderState.isLive && styles.liveText,
+        ],
+        numberOfLines: renderState.badge.numberOfLines,
+        text: renderState.label,
+      },
     },
   }
 }

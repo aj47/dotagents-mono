@@ -456,8 +456,34 @@ test('shows the shared total agent time in the mobile chat header', () => {
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderTurnDuration[\s\S]*?export function ChatConversationHomeQuickStarts/)?.[0] ?? '';
   assert.match(headerTurnDurationSource, /const turnDurationParts = createChatRuntimeHeaderTurnDurationMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(headerTurnDurationSource, /if \(!turnDurationParts\.shouldRender\) return null;/);
-  assert.match(headerTurnDurationSource, /accessibilityRole=\{turnDurationParts\.container\.accessibilityRole\}/);
-  assert.match(headerTurnDurationSource, /accessibilityLabel=\{turnDurationParts\.container\.accessibilityLabel\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationParts\.container\.props\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.turnDurationParts\.icon\.props\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.turnDurationParts\.label\.props\}/);
+  assert.match(
+    headerTurnDurationSource,
+    /export function ChatRuntimeHeaderTurnDurationContainer\([\s\S]*?accessible=\{accessible\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatRuntimeHeaderTurnDurationIcon/
+  );
+  assert.match(
+    headerTurnDurationSource,
+    /export function ChatRuntimeHeaderTurnDurationIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatRuntimeHeaderTurnDurationLabel/
+  );
+  assert.match(
+    headerTurnDurationSource,
+    /export function ChatRuntimeHeaderTurnDurationLabel\([\s\S]*?style=\{style\}[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatConversationHomeQuickStarts/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /container: \{\s+props: \{\s+accessible: true,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style: \[\s+styles\.chip,\s+renderState\.isLive && styles\.liveChip,/
+  );
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.match(
+    sessionPresentationSource,
+    /label: \{\s+props: \{\s+style: \[\s+styles\.text,\s+renderState\.isLive && styles\.liveText,\s+\],\s+numberOfLines: renderState\.badge\.numberOfLines,\s+text: renderState\.label,/
+  );
+  assert.doesNotMatch(
+    headerTurnDurationSource,
+    /turnDurationParts\.(container|icon|label)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/
+  );
   assert.doesNotMatch(headerTurnDurationSource, /if \(!renderState\.shouldRender\) return null;/);
   assert.doesNotMatch(headerTurnDurationSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.doesNotMatch(headerTurnDurationSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
@@ -466,11 +492,6 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(sessionPresentationSource, /styles\.headerDurationChipLive/);
   assert.match(sessionPresentationSource, /styles\.headerDurationChipText/);
   assert.match(sessionPresentationSource, /styles\.headerDurationChipTextLive/);
-  assert.match(headerTurnDurationSource, /name=\{turnDurationParts\.icon\.name\}/);
-  assert.match(headerTurnDurationSource, /size=\{turnDurationParts\.icon\.size\}/);
-  assert.match(headerTurnDurationSource, /color=\{turnDurationParts\.icon\.color\}/);
-  assert.match(headerTurnDurationSource, /numberOfLines=\{turnDurationParts\.label\.numberOfLines\}/);
-  assert.match(headerTurnDurationSource, /\{turnDurationParts\.label\.text\}/);
   assert.doesNotMatch(headerTurnDurationSource, /name=\{renderState\.icon\.name\}/);
   assert.doesNotMatch(headerTurnDurationSource, /numberOfLines=\{renderState\.badge\.numberOfLines\}/);
   assert.doesNotMatch(headerTurnDurationSource, /\{renderState\.label\}/);
@@ -5444,11 +5465,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
     /actionIconButtonParts\.(pressable|activityIndicator|icon)\.(onPress|disabled|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaExpanded|hitSlop|style|size|color|name)/
   );
   assert.doesNotMatch(actionIconButtonSource, /style=\{\(\{ pressed \}\) => \[/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{turnDurationParts\.container\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{turnDurationParts\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /name=\{turnDurationParts\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{turnDurationParts\.label\.numberOfLines\}/);
-  assert.match(chatMessageChromeSource, /\{turnDurationParts\.label\.text\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationParts\.container\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.turnDurationParts\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.turnDurationParts\.label\.props\}/);
   const contentRowSource =
     chatMessageChromeSource.match(/export function ChatMessageContentRow[\s\S]*?export function ChatMessageStandaloneActions/)?.[0] ?? '';
   const standaloneActionsSource =

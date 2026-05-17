@@ -1351,6 +1351,22 @@ type ChatRuntimeHeaderTurnDurationProps = {
   styles: ChatRuntimeHeaderTurnDurationStyles;
 };
 
+type ChatRuntimeHeaderTurnDurationParts = ReturnType<typeof createChatRuntimeHeaderTurnDurationMobilePropsParts<
+  ChatRuntimeTurnDurationHeaderMobileRenderState,
+  ChatRuntimeHeaderTurnDurationProps['styles']
+>>;
+
+type ChatRuntimeHeaderTurnDurationContainerProps =
+  ChatRuntimeHeaderTurnDurationParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatRuntimeHeaderTurnDurationIconProps =
+  ChatRuntimeHeaderTurnDurationParts['icon']['props'];
+
+type ChatRuntimeHeaderTurnDurationLabelProps =
+  ChatRuntimeHeaderTurnDurationParts['label']['props'];
+
 type ChatRuntimeHeaderStyleSlots = {
   actionsRowStyle: ChatRuntimeHeaderActionsRowProps['style'];
   agentSelector: ChatRuntimeHeaderAgentSelectorStyles;
@@ -7261,24 +7277,64 @@ export function ChatRuntimeHeaderTurnDuration({
   if (!turnDurationParts.shouldRender) return null;
 
   return (
-    <View
-      accessible={turnDurationParts.container.accessible}
-      accessibilityRole={turnDurationParts.container.accessibilityRole}
-      accessibilityLabel={turnDurationParts.container.accessibilityLabel}
-      style={turnDurationParts.container.style}
+    <ChatRuntimeHeaderTurnDurationContainer
+      {...turnDurationParts.container.props}
     >
-      <Ionicons
-        name={turnDurationParts.icon.name}
-        size={turnDurationParts.icon.size}
-        color={turnDurationParts.icon.color}
+      <ChatRuntimeHeaderTurnDurationIcon
+        {...turnDurationParts.icon.props}
       />
-      <Text
-        style={turnDurationParts.label.style}
-        numberOfLines={turnDurationParts.label.numberOfLines}
-      >
-        {turnDurationParts.label.text}
-      </Text>
+      <ChatRuntimeHeaderTurnDurationLabel
+        {...turnDurationParts.label.props}
+      />
+    </ChatRuntimeHeaderTurnDurationContainer>
+  );
+}
+
+export function ChatRuntimeHeaderTurnDurationContainer({
+  accessible,
+  accessibilityRole,
+  accessibilityLabel,
+  style,
+  children,
+}: ChatRuntimeHeaderTurnDurationContainerProps) {
+  return (
+    <View
+      accessible={accessible}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatRuntimeHeaderTurnDurationIcon({
+  name,
+  size,
+  color,
+}: ChatRuntimeHeaderTurnDurationIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatRuntimeHeaderTurnDurationLabel({
+  style,
+  numberOfLines,
+  text,
+}: ChatRuntimeHeaderTurnDurationLabelProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
   );
 }
 
