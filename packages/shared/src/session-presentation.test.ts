@@ -11979,8 +11979,10 @@ describe("session presentation semantics", () => {
         },
       },
       actionSlotList: {
-        shouldRender: true,
-        entries: actionSetProps.entries,
+        props: {
+          shouldRender: true,
+          entries: actionSetProps.entries,
+        },
       },
     })
     expect(createChatRuntimeMessageContentRowMobilePropsParts({
@@ -12000,8 +12002,10 @@ describe("session presentation semantics", () => {
         },
       },
       actionSlotList: {
-        shouldRender: false,
-        entries: actionSetProps.entries,
+        props: {
+          shouldRender: false,
+          entries: actionSetProps.entries,
+        },
       },
     })
     expect(createChatRuntimeMessageStandaloneActionsMobilePropsParts({
@@ -12010,9 +12014,11 @@ describe("session presentation semantics", () => {
       rowStyle: "standalone-row-style",
     })).toEqual({
       actionSlotList: {
-        shouldRender: true,
-        entries: actionSetProps.entries,
-        rowStyle: "standalone-row-style",
+        props: {
+          shouldRender: true,
+          entries: actionSetProps.entries,
+          rowStyle: "standalone-row-style",
+        },
       },
     })
     expect(createChatRuntimeMessageStandaloneActionsMobilePropsParts({
@@ -12021,9 +12027,11 @@ describe("session presentation semantics", () => {
       rowStyle: "standalone-row-style",
     })).toEqual({
       actionSlotList: {
-        shouldRender: false,
-        entries: actionSetProps.entries,
-        rowStyle: "standalone-row-style",
+        props: {
+          shouldRender: false,
+          entries: actionSetProps.entries,
+          rowStyle: "standalone-row-style",
+        },
       },
     })
     const toolExecutionStackEvents: string[] = []

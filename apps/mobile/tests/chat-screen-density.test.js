@@ -5873,7 +5873,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(contentRowSource, /const contentRowParts = createChatRuntimeMessageContentRowMobilePropsParts\(\{\s+shouldRenderActionSlots,\s+entries,\s+rowStyle,\s+bodyStyle,\s+\}\);/);
   assert.match(contentRowSource, /<ChatMessageContentRowContainer\s+\{\.\.\.contentRowParts\.row\.props\}[\s\S]*?contentRowParts\.body\.shouldRender \? \(/);
-  assert.match(contentRowSource, /<ChatMessageContentBody\s+\{\.\.\.contentRowParts\.body\.props\}[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\}/);
+  assert.match(contentRowSource, /<ChatMessageContentBody\s+\{\.\.\.contentRowParts\.body\.props\}[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\.props\}/);
   assert.match(
     contentRowSource,
     /export function ChatMessageContentRowContainer\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageContentBody/
@@ -5883,10 +5883,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
     /export function ChatMessageContentBody\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageStandaloneActions/
   );
   assert.match(standaloneActionsSource, /const standaloneActionsParts = createChatRuntimeMessageStandaloneActionsMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
-  assert.match(standaloneActionsSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\}/);
+  assert.match(standaloneActionsSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\.props\}/);
   assert.match(sessionPresentationSource, /row: \{\s+props: \{\s+style: rowStyle,/);
   assert.match(sessionPresentationSource, /body: \{\s+shouldRender: Boolean\(bodyStyle\),\s+props: \{\s+style: bodyStyle,/);
-  assert.match(sessionPresentationSource, /actionSlotList: \{\s+shouldRender,/);
+  assert.match(sessionPresentationSource, /actionSlotList: \{\s+props: \{\s+shouldRender,/);
   assert.doesNotMatch(contentRowSource, /contentRowParts\.(row|body)\.style/);
   assert.doesNotMatch(contentRowSource, /export function ChatMessageContent(RowContainer|Body)\([\s\S]*?<View style=\{style\}>/);
   assert.doesNotMatch(actionSlotListSource, /export function ChatMessageActionSlotListRow\([\s\S]*?<View style=\{style\}>/);
@@ -6045,7 +6045,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /entries: getChatMessageActionSlotRenderEntries\(renderState\.layout\.visibleSlots, components\),/);
   assert.match(sessionPresentationSource, /shouldRenderActionSlots: renderState\.layout\.shouldRenderActionSlots,/);
   assert.match(sessionPresentationSource, /shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,/);
-  assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageActionSlotList\(\{\s+shouldRender = true,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.match(sessionPresentationSource, /getChatMessageActionAvailabilityRenderState,/);
@@ -6098,7 +6098,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.equal((screenSource.match(/<ChatMessageActionSlotList/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageStandaloneActions/g) ?? []).length, 0);
   assert.match(actionSlotListSource, /if \(!actionSlotListParts\.shouldRenderList\) return null;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\.props\}/);
   assert.equal((screenSource.match(/slots: messageActionSet\.visibleSlots/g) ?? []).length, 0);
   assert.equal((screenSource.match(/components: messageActionSet\.components/g) ?? []).length, 0);
   assert.equal((chatMessageChromeSource.match(/slots: actionSet\.visibleSlots/g) ?? []).length, 0);

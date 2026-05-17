@@ -11767,7 +11767,7 @@ export function ChatMessageContentRow({
         </ChatMessageContentBody>
       ) : children}
       <ChatMessageActionSlotList
-        {...contentRowParts.actionSlotList}
+        {...contentRowParts.actionSlotList.props}
       />
     </ChatMessageContentRowContainer>
   );
@@ -11808,7 +11808,7 @@ export function ChatMessageStandaloneActions({
 
   return (
     <ChatMessageActionSlotList
-      {...standaloneActionsParts.actionSlotList}
+      {...standaloneActionsParts.actionSlotList.props}
     />
   );
 }

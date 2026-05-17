@@ -2657,8 +2657,10 @@ export interface ChatRuntimeMessageContentRowMobilePropsParts<
     }
   }
   actionSlotList: {
-    shouldRender: boolean
-    entries: readonly TEntry[]
+    props: {
+      shouldRender: boolean
+      entries: readonly TEntry[]
+    }
   }
 }
 
@@ -2676,9 +2678,11 @@ export interface ChatRuntimeMessageStandaloneActionsMobilePropsParts<
   TRowStyle = unknown,
 > {
   actionSlotList: {
-    shouldRender: boolean
-    entries: readonly TEntry[]
-    rowStyle: TRowStyle | undefined
+    props: {
+      shouldRender: boolean
+      entries: readonly TEntry[]
+      rowStyle: TRowStyle | undefined
+    }
   }
 }
 
@@ -20408,8 +20412,10 @@ export function createChatRuntimeMessageContentRowMobilePropsParts<
       },
     },
     actionSlotList: {
-      shouldRender: shouldRenderActionSlots,
-      entries,
+      props: {
+        shouldRender: shouldRenderActionSlots,
+        entries,
+      },
     },
   }
 }
@@ -20430,9 +20436,11 @@ export function createChatRuntimeMessageStandaloneActionsMobilePropsParts<
 > {
   return {
     actionSlotList: {
-      shouldRender,
-      entries,
-      rowStyle,
+      props: {
+        shouldRender,
+        entries,
+        rowStyle,
+      },
     },
   }
 }
