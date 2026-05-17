@@ -2145,11 +2145,13 @@ export type QueuedMessageExpandButtonMobilePropsParts<
   | {
       shouldRender: true;
       pressable: {
-        style: TStyles['expandButton'];
-        onPress: TOnToggleExpanded;
-        activeOpacity: QueuedMessageMobileItemSurface['expandButtonPressedOpacity'];
-        accessibilityRole: QueuedMessageMobileItemSurface['expandButtonAccessibilityRole'];
-        accessibilityLabel: string;
+        props: {
+          style: TStyles['expandButton'];
+          onPress: TOnToggleExpanded;
+          activeOpacity: QueuedMessageMobileItemSurface['expandButtonPressedOpacity'];
+          accessibilityRole: QueuedMessageMobileItemSurface['expandButtonAccessibilityRole'];
+          accessibilityLabel: string;
+        };
       };
       icon: {
         props: {
@@ -2245,12 +2247,14 @@ export interface QueuedMessageActionButtonMobilePropsPart<
     QueuedMessageActionButtonMobilePropsPartsStylesLike,
 > {
   key: QueuedMessageActionButtonMobileActionKey;
-  style: TStyles['actionButton'];
-  onPress: () => void;
-  activeOpacity: QueuedMessageMobileActionSurface['buttonPressedOpacity'];
-  accessibilityRole: QueuedMessageMobileActionSurface['buttonAccessibilityRole'];
-  accessibilityLabel: string;
-  hitSlop: QueuedMessageMobileActionSurface['hitSlop'];
+  props: {
+    style: TStyles['actionButton'];
+    onPress: () => void;
+    activeOpacity: QueuedMessageMobileActionSurface['buttonPressedOpacity'];
+    accessibilityRole: QueuedMessageMobileActionSurface['buttonAccessibilityRole'];
+    accessibilityLabel: string;
+    hitSlop: QueuedMessageMobileActionSurface['hitSlop'];
+  };
   icon: {
     props: {
       name:
@@ -2780,11 +2784,13 @@ export function createQueuedMessageExpandButtonMobilePropsParts<
   return {
     shouldRender: true,
     pressable: {
-      style: styles.expandButton,
-      onPress: onToggleExpanded,
-      activeOpacity: surface.expandButtonPressedOpacity,
-      accessibilityRole: surface.expandButtonAccessibilityRole,
-      accessibilityLabel: presentation.expansionAccessibilityLabel,
+      props: {
+        style: styles.expandButton,
+        onPress: onToggleExpanded,
+        activeOpacity: surface.expandButtonPressedOpacity,
+        accessibilityRole: surface.expandButtonAccessibilityRole,
+        accessibilityLabel: presentation.expansionAccessibilityLabel,
+      },
     },
     icon: {
       props: {
@@ -2865,12 +2871,14 @@ export function createQueuedMessageActionButtonMobilePropsParts<
     },
   ): QueuedMessageActionButtonMobilePropsPart<TStyles> => ({
     key,
-    style: styles.actionButton,
-    onPress: params.onPress,
-    activeOpacity: surface.buttonPressedOpacity,
-    accessibilityRole: surface.buttonAccessibilityRole,
-    accessibilityLabel: params.accessibilityLabel,
-    hitSlop: surface.hitSlop,
+    props: {
+      style: styles.actionButton,
+      onPress: params.onPress,
+      activeOpacity: surface.buttonPressedOpacity,
+      accessibilityRole: surface.buttonAccessibilityRole,
+      accessibilityLabel: params.accessibilityLabel,
+      hitSlop: surface.hitSlop,
+    },
     icon: {
       props: {
         name: params.iconName,

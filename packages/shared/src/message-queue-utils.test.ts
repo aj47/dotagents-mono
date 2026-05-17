@@ -1328,10 +1328,12 @@ describe('message-queue-utils', () => {
     expect(expandButtonParts).toMatchObject({
       shouldRender: true,
       pressable: {
-        style: 'expandButton',
-        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonPressedOpacity,
-        accessibilityRole: 'button',
-        accessibilityLabel: 'Expand queued message',
+        props: {
+          style: 'expandButton',
+          activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonPressedOpacity,
+          accessibilityRole: 'button',
+          accessibilityLabel: 'Expand queued message',
+        },
       },
       icon: {
         props: {
@@ -1350,7 +1352,7 @@ describe('message-queue-utils', () => {
     if (!expandButtonParts.shouldRender) {
       throw new Error('Expected long queued message expand button');
     }
-    expandButtonParts.pressable.onPress();
+    expandButtonParts.pressable.props.onPress();
     expect(expandCalls).toEqual(['toggle']);
     expect(createQueuedMessageExpandButtonMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.item,
@@ -1420,11 +1422,13 @@ describe('message-queue-utils', () => {
     expect(actionParts.shouldRender).toBe(true);
     expect(actionParts.actions.map((action) => action.key)).toEqual(['retry', 'edit', 'remove']);
     expect(actionParts.actions[0]).toMatchObject({
-      style: 'actionButton',
-      activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonPressedOpacity,
-      accessibilityRole: 'button',
-      accessibilityLabel: 'Retry queued message',
-      hitSlop: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.hitSlop,
+      props: {
+        style: 'actionButton',
+        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Retry queued message',
+        hitSlop: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.hitSlop,
+      },
       icon: {
         props: {
           name: 'refresh',
@@ -1439,7 +1443,7 @@ describe('message-queue-utils', () => {
         },
       },
     });
-    actionParts.actions.forEach((action) => action.onPress());
+    actionParts.actions.forEach((action) => action.props.onPress());
     expect(actionPartCalls).toEqual(['retry', 'edit', 'remove']);
     expect(createQueuedMessageActionButtonMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.actions,
@@ -1710,8 +1714,10 @@ describe('message-queue-utils', () => {
     expect(bundledParts.expandButton).toMatchObject({
       shouldRender: true,
       pressable: {
-        style: 'expandButton',
-        accessibilityLabel: 'Expand queued message',
+        props: {
+          style: 'expandButton',
+          accessibilityLabel: 'Expand queued message',
+        },
       },
       icon: {
         props: {
@@ -1740,11 +1746,11 @@ describe('message-queue-utils', () => {
         },
       },
     });
-    bundledParts.actions.actions.forEach((action) => action.onPress());
+    bundledParts.actions.actions.forEach((action) => action.props.onPress());
     if (!bundledParts.expandButton.shouldRender) {
       throw new Error('Expected bundled queued message expand button');
     }
-    bundledParts.expandButton.pressable.onPress();
+    bundledParts.expandButton.pressable.props.onPress();
     bundledParts.edit.cancelButton.props.onPress();
     bundledParts.edit.saveButton.props.onPress();
     expect(bundledPartCalls).toEqual(['retry', 'edit', 'remove', 'expand', 'cancel', 'save']);

@@ -5208,11 +5208,14 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.messageText\.props\}>/);
   assert.match(messageQueuePanelSource, /\{contentParts\.metaText\.text\}/);
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.metaText\.props\}>/);
-  assert.match(messageQueuePanelSource, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
+  assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<TouchableOpacity[\s\S]*?\{\.\.\.expandButtonParts\.pressable\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{expandButtonParts\.pressable\.style\}/);
   assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.expandButtonParts\.icon\.props\}/);
-  assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
+  assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}[\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{expandButtonParts\.icon\.name\}/);
   assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \(\s+<TouchableOpacity\s+key=\{action\.key\}\s+style=\{action\.style\}/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
   assert.doesNotMatch(messageQueuePanelSource, /activeOpacity=\{editParts\.saveButton\.activeOpacity\}/);
   assert.doesNotMatch(messageQueuePanelSource, /accessibilityLabel=\{editParts\.input\.accessibilityLabel\}/);

@@ -183,11 +183,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             </Text>
             {expandButtonParts.shouldRender ? (
               <TouchableOpacity
-                style={expandButtonParts.pressable.style}
-                onPress={expandButtonParts.pressable.onPress}
-                activeOpacity={expandButtonParts.pressable.activeOpacity}
-                accessibilityRole={expandButtonParts.pressable.accessibilityRole}
-                accessibilityLabel={expandButtonParts.pressable.accessibilityLabel}
+                {...expandButtonParts.pressable.props}
               >
                 <Ionicons
                   {...expandButtonParts.icon.props}
@@ -203,12 +199,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
               {actionParts.actions.map((action) => (
                 <TouchableOpacity
                   key={action.key}
-                  style={action.style}
-                  onPress={action.onPress}
-                  activeOpacity={action.activeOpacity}
-                  accessibilityRole={action.accessibilityRole}
-                  accessibilityLabel={action.accessibilityLabel}
-                  hitSlop={action.hitSlop}
+                  {...action.props}
                 >
                   <Ionicons
                     {...action.icon.props}
