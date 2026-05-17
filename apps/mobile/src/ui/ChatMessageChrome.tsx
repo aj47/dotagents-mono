@@ -9139,6 +9139,7 @@ export function ChatMessageToolExecutionCompactList({
     groupStyles,
     rowStyles,
   });
+  const compactListContent = compactListParts.group.content;
 
   if (!compactListParts.shouldRenderList) return null;
 
@@ -9146,7 +9147,7 @@ export function ChatMessageToolExecutionCompactList({
     <ChatMessageToolExecutionCompactGroup
       {...compactListParts.group.props}
     >
-      {compactListParts.rows.map((row) => (
+      {compactListContent.rows.map((row) => (
         <ChatMessageToolExecutionCompactRow
           key={row.key}
           {...row.props}

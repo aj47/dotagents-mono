@@ -13727,23 +13727,25 @@ describe("session presentation semantics", () => {
           onPress: "expand-tools",
           styles: "compact-group-styles",
         },
+        content: {
+          rows: [
+            {
+              key: "read_file:0",
+              props: {
+                renderState: "read-file-row-state",
+                styles: "compact-row-styles",
+              },
+            },
+            {
+              key: "write_file:1",
+              props: {
+                renderState: "write-file-row-state",
+                styles: "compact-row-styles",
+              },
+            },
+          ],
+        },
       },
-      rows: [
-        {
-          key: "read_file:0",
-          props: {
-            renderState: "read-file-row-state",
-            styles: "compact-row-styles",
-          },
-        },
-        {
-          key: "write_file:1",
-          props: {
-            renderState: "write-file-row-state",
-            styles: "compact-row-styles",
-          },
-        },
-      ],
     })
     expect(createChatRuntimeToolExecutionCompactListMobilePropsParts({
       shouldRender: false,

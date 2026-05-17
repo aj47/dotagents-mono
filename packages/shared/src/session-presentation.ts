@@ -4254,14 +4254,16 @@ export interface ChatRuntimeToolExecutionCompactListMobilePropsParts<
       onPress: TOnPress | undefined
       styles: TCompactGroupStyles
     }
-  }
-  rows: Array<{
-    key: TRow["key"]
-    props: {
-      renderState: TRow["renderState"]
-      styles: TCompactRowStyles
+    content: {
+      rows: Array<{
+        key: TRow["key"]
+        props: {
+          renderState: TRow["renderState"]
+          styles: TCompactRowStyles
+        }
+      }>
     }
-  }>
+  }
 }
 
 export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
@@ -21980,14 +21982,16 @@ export function createChatRuntimeToolExecutionCompactListMobilePropsParts<
         onPress,
         styles: groupStyles,
       },
-    },
-    rows: rows.map((row) => ({
-      key: row.key,
-      props: {
-        renderState: row.renderState,
-        styles: rowStyles,
+      content: {
+        rows: rows.map((row) => ({
+          key: row.key,
+          props: {
+            renderState: row.renderState,
+            styles: rowStyles,
+          },
+        })),
       },
-    })),
+    },
   }
 }
 
