@@ -4578,21 +4578,29 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection[\s\S]*?<ChatMessageToolExecutionErrorBlock\s+renderState=\{errorRenderState\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionResultHeader\s+payloadRenderState=\{toolOutputHeaderState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeader/);
+  const toolExecutionResultHeaderSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultHeader\([\s\S]*?export function ChatMessageToolExecutionResultHeaderContent/)?.[0] ?? '';
+  const toolExecutionResultHeaderContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultHeaderContent[\s\S]*?export function ChatMessageToolExecutionResultHeaderMetaContent/)?.[0] ?? '';
+  const toolExecutionResultHeaderMetaContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionResultHeaderMetaContent[\s\S]*?export function ChatMessageToolExecutionResultHeaderView/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultHeaderMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts\(\{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const resultHeaderContent = resultHeaderParts\.header\.content;/);
-  assert.match(chatMessageChromeSource, /const resultHeaderMetaContent = resultHeaderContent\.meta\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const resultHeaderContent = resultHeaderParts\.header\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const resultHeaderMetaContent = resultHeaderContent\.meta\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultHeaderView\s+\{\.\.\.resultHeaderParts\.header\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultHeaderView\s+\{\.\.\.resultHeaderContent\.meta\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMeta\s+\{\.\.\.resultHeaderMetaContent\.payloadMeta\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadge\s+\{\.\.\.resultHeaderMetaContent\.resultBadge\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultCharacterCount\s+\{\.\.\.resultHeaderMetaContent\.characterCount\.props\}/);
+  assert.match(toolExecutionResultHeaderSource, /<ChatMessageToolExecutionResultHeaderContent\s+\{\.\.\.resultHeaderParts\.header\.content\}/);
+  assert.match(toolExecutionResultHeaderContentSource, /<ChatMessageToolExecutionResultHeaderView\s+\{\.\.\.meta\.props\}/);
+  assert.match(toolExecutionResultHeaderContentSource, /<ChatMessageToolExecutionResultHeaderMetaContent\s+\{\.\.\.meta\.content\}/);
+  assert.match(toolExecutionResultHeaderMetaContentSource, /<ChatMessageToolExecutionPayloadMeta\s+\{\.\.\.payloadMeta\.props\}/);
+  assert.match(toolExecutionResultHeaderMetaContentSource, /<ChatMessageToolExecutionResultBadge\s+\{\.\.\.resultBadge\.props\}/);
+  assert.match(toolExecutionResultHeaderMetaContentSource, /<ChatMessageToolExecutionResultCharacterCount\s+\{\.\.\.characterCount\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeaderView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultCharacterCount/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeaderView[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionResultCharacterCount/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultCharacterCount[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageToolExecutionPayloadBlock\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultCharacterCount[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionPayloadBlock\(\{/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.resultHeaderContent\.copyButton\.props\}/);
+  assert.match(toolExecutionResultHeaderContentSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.copyButton\.props\}/);
   assert.match(sessionPresentationSource, /header: \{\s+props: \{\s+style: styles\.header,\s+\},\s+content: \{\s+meta: \{\s+props: \{\s+style: styles\.meta,/);
   assert.match(sessionPresentationSource, /content: \{\s+payloadMeta: \{\s+props: \{\s+renderState: payloadRenderState,\s+styles: styles\.payloadMeta,/);
   assert.match(sessionPresentationSource, /resultBadge: \{\s+props: \{\s+badge: resultBadge,\s+styles: styles\.badge,/);

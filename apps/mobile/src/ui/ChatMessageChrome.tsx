@@ -2813,6 +2813,12 @@ type ChatMessageToolExecutionResultHeaderParts = ReturnType<typeof createChatRun
   ChatMessageToolExecutionResultHeaderProps['styles']
 >>;
 
+type ChatMessageToolExecutionResultHeaderContentProps =
+  ChatMessageToolExecutionResultHeaderParts['header']['content'];
+
+type ChatMessageToolExecutionResultHeaderMetaContentProps =
+  ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['content'];
+
 type ChatMessageToolExecutionResultHeaderViewProps =
   (
     | ChatMessageToolExecutionResultHeaderParts['header']['props']
@@ -11164,30 +11170,55 @@ export function ChatMessageToolExecutionResultHeader({
     onCopyPress,
     styles,
   });
-  const resultHeaderContent = resultHeaderParts.header.content;
-  const resultHeaderMetaContent = resultHeaderContent.meta.content;
 
   return (
     <ChatMessageToolExecutionResultHeaderView
       {...resultHeaderParts.header.props}
     >
+      <ChatMessageToolExecutionResultHeaderContent
+        {...resultHeaderParts.header.content}
+      />
+    </ChatMessageToolExecutionResultHeaderView>
+  );
+}
+
+export function ChatMessageToolExecutionResultHeaderContent({
+  meta,
+  copyButton,
+}: ChatMessageToolExecutionResultHeaderContentProps) {
+  return (
+    <>
       <ChatMessageToolExecutionResultHeaderView
-        {...resultHeaderContent.meta.props}
+        {...meta.props}
       >
-        <ChatMessageToolExecutionPayloadMeta
-          {...resultHeaderMetaContent.payloadMeta.props}
-        />
-        <ChatMessageToolExecutionResultBadge
-          {...resultHeaderMetaContent.resultBadge.props}
-        />
-        <ChatMessageToolExecutionResultCharacterCount
-          {...resultHeaderMetaContent.characterCount.props}
+        <ChatMessageToolExecutionResultHeaderMetaContent
+          {...meta.content}
         />
       </ChatMessageToolExecutionResultHeaderView>
       <ChatMessageToolExecutionCopyButton
-        {...resultHeaderContent.copyButton.props}
+        {...copyButton.props}
       />
-    </ChatMessageToolExecutionResultHeaderView>
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionResultHeaderMetaContent({
+  payloadMeta,
+  resultBadge,
+  characterCount,
+}: ChatMessageToolExecutionResultHeaderMetaContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionPayloadMeta
+        {...payloadMeta.props}
+      />
+      <ChatMessageToolExecutionResultBadge
+        {...resultBadge.props}
+      />
+      <ChatMessageToolExecutionResultCharacterCount
+        {...characterCount.props}
+      />
+    </>
   );
 }
 
