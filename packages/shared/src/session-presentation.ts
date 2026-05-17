@@ -7258,42 +7258,58 @@ export interface ChatRuntimeStepSummaryCardMobilePropsParts<
 > {
   shouldRenderCard: boolean
   card: {
-    accessible: true
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStyles["card"]
+    props: {
+      accessible: true
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: TStyles["card"]
+    }
   }
   header: {
-    style: TStyles["header"]
+    props: {
+      style: TStyles["header"]
+    }
   }
   title: {
-    style: TStyles["title"]
-    numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
     text: string
+    props: {
+      style: TStyles["title"]
+      numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+    }
   }
   badge: {
-    style: TStyles["badge"]
+    props: {
+      style: TStyles["badge"]
+    }
   }
   badgeLabel: {
-    style: TStyles["badgeText"]
-    numberOfLines: TRenderState["surface"]["badgeNumberOfLines"]
     text: string
+    props: {
+      style: TStyles["badgeText"]
+      numberOfLines: TRenderState["surface"]["badgeNumberOfLines"]
+    }
   }
   action: {
-    style: TStyles["action"]
-    numberOfLines: TRenderState["surface"]["actionNumberOfLines"]
     text: string
+    props: {
+      style: TStyles["action"]
+      numberOfLines: TRenderState["surface"]["actionNumberOfLines"]
+    }
   }
   meta: {
-    style: TStyles["meta"]
-    numberOfLines: TRenderState["surface"]["metaNumberOfLines"]
     text: string
+    props: {
+      style: TStyles["meta"]
+      numberOfLines: TRenderState["surface"]["metaNumberOfLines"]
+    }
   }
   preview: {
     shouldRender: boolean
-    style: TStyles["preview"]
-    numberOfLines: TRenderState["surface"]["previewNumberOfLines"]
     text: string
+    props: {
+      style: TStyles["preview"]
+      numberOfLines: TRenderState["surface"]["previewNumberOfLines"]
+    }
   }
 }
 
@@ -24416,42 +24432,58 @@ export function createChatRuntimeStepSummaryCardMobilePropsParts<
   return {
     shouldRenderCard: renderState.shouldRender,
     card: {
-      accessible: true,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style: styles.card,
+      props: {
+        accessible: true,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style: styles.card,
+      },
     },
     header: {
-      style: styles.header,
+      props: {
+        style: styles.header,
+      },
     },
     title: {
-      style: styles.title,
-      numberOfLines: renderState.surface.titleNumberOfLines,
       text: renderState.title,
+      props: {
+        style: styles.title,
+        numberOfLines: renderState.surface.titleNumberOfLines,
+      },
     },
     badge: {
-      style: styles.badge,
+      props: {
+        style: styles.badge,
+      },
     },
     badgeLabel: {
-      style: styles.badgeText,
-      numberOfLines: renderState.surface.badgeNumberOfLines,
       text: renderState.badgeLabel,
+      props: {
+        style: styles.badgeText,
+        numberOfLines: renderState.surface.badgeNumberOfLines,
+      },
     },
     action: {
-      style: styles.action,
-      numberOfLines: renderState.surface.actionNumberOfLines,
       text: renderState.actionSummary,
+      props: {
+        style: styles.action,
+        numberOfLines: renderState.surface.actionNumberOfLines,
+      },
     },
     meta: {
-      style: styles.meta,
-      numberOfLines: renderState.surface.metaNumberOfLines,
       text: renderState.meta,
+      props: {
+        style: styles.meta,
+        numberOfLines: renderState.surface.metaNumberOfLines,
+      },
     },
     preview: {
       shouldRender: Boolean(renderState.preview),
-      style: styles.preview,
-      numberOfLines: renderState.surface.previewNumberOfLines,
       text: renderState.preview,
+      props: {
+        style: styles.preview,
+        numberOfLines: renderState.surface.previewNumberOfLines,
+      },
     },
   }
 }

@@ -7141,42 +7141,58 @@ describe("session presentation semantics", () => {
     expect(stepSummaryCardParts).toEqual({
       shouldRenderCard: true,
       card: {
-        accessible: true,
-        accessibilityRole: "text",
-        accessibilityLabel: "Latest activity. Step 3 summary.",
-        style: "card-style",
+        props: {
+          accessible: true,
+          accessibilityRole: "text",
+          accessibilityLabel: "Latest activity. Step 3 summary.",
+          style: "card-style",
+        },
       },
       header: {
-        style: "header-style",
+        props: {
+          style: "header-style",
+        },
       },
       title: {
-        style: "title-style",
-        numberOfLines: 1,
         text: "Latest activity",
+        props: {
+          style: "title-style",
+          numberOfLines: 1,
+        },
       },
       badge: {
-        style: "badge-style",
+        props: {
+          style: "badge-style",
+        },
       },
       badgeLabel: {
-        style: "badge-text-style",
-        numberOfLines: 1,
         text: "Summary · Step 3",
+        props: {
+          style: "badge-text-style",
+          numberOfLines: 1,
+        },
       },
       action: {
-        style: "action-style",
-        numberOfLines: 2,
         text: "Compared mobile and desktop chat chrome",
+        props: {
+          style: "action-style",
+          numberOfLines: 2,
+        },
       },
       meta: {
-        style: "meta-style",
-        numberOfLines: 1,
         text: "Step 3 · High importance · 1 key finding",
+        props: {
+          style: "meta-style",
+          numberOfLines: 1,
+        },
       },
       preview: {
         shouldRender: true,
-        style: "preview-style",
-        numberOfLines: 2,
         text: "Mobile did not surface generated step summaries",
+        props: {
+          style: "preview-style",
+          numberOfLines: 2,
+        },
       },
     })
     expect(createChatRuntimeStepSummaryCardMobilePropsParts({

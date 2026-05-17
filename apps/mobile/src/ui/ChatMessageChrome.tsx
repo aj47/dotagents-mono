@@ -10432,45 +10432,25 @@ export function ChatMessageStepSummaryCard({
   if (!stepSummaryCardParts.shouldRenderCard) return null;
 
   return (
-    <View
-      accessible={stepSummaryCardParts.card.accessible}
-      accessibilityRole={stepSummaryCardParts.card.accessibilityRole}
-      accessibilityLabel={stepSummaryCardParts.card.accessibilityLabel}
-      style={stepSummaryCardParts.card.style}
-    >
-      <View style={stepSummaryCardParts.header.style}>
-        <Text
-          style={stepSummaryCardParts.title.style}
-          numberOfLines={stepSummaryCardParts.title.numberOfLines}
-        >
+    <View {...stepSummaryCardParts.card.props}>
+      <View {...stepSummaryCardParts.header.props}>
+        <Text {...stepSummaryCardParts.title.props}>
           {stepSummaryCardParts.title.text}
         </Text>
-        <View style={stepSummaryCardParts.badge.style}>
-          <Text
-            style={stepSummaryCardParts.badgeLabel.style}
-            numberOfLines={stepSummaryCardParts.badgeLabel.numberOfLines}
-          >
+        <View {...stepSummaryCardParts.badge.props}>
+          <Text {...stepSummaryCardParts.badgeLabel.props}>
             {stepSummaryCardParts.badgeLabel.text}
           </Text>
         </View>
       </View>
-      <Text
-        style={stepSummaryCardParts.action.style}
-        numberOfLines={stepSummaryCardParts.action.numberOfLines}
-      >
+      <Text {...stepSummaryCardParts.action.props}>
         {stepSummaryCardParts.action.text}
       </Text>
-      <Text
-        style={stepSummaryCardParts.meta.style}
-        numberOfLines={stepSummaryCardParts.meta.numberOfLines}
-      >
+      <Text {...stepSummaryCardParts.meta.props}>
         {stepSummaryCardParts.meta.text}
       </Text>
       {stepSummaryCardParts.preview.shouldRender ? (
-        <Text
-          style={stepSummaryCardParts.preview.style}
-          numberOfLines={stepSummaryCardParts.preview.numberOfLines}
-        >
+        <Text {...stepSummaryCardParts.preview.props}>
           {stepSummaryCardParts.preview.text}
         </Text>
       ) : null}
