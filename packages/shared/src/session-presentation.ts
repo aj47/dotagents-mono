@@ -3768,8 +3768,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
   }
   statusIndicator: {
     style: TStyles["statusIndicator"]
-    spinner: TRenderState["statusIndicator"]["spinner"] | null
-    icon: TRenderState["statusIndicator"]["icon"] | null
+    spinner: TRenderState["statusIndicator"]["spinner"]
+    icon: TRenderState["statusIndicator"]["icon"]
   }
   toggleIcon: {
     style: TStyles["toggleIcon"]
@@ -20561,13 +20561,6 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
   TRenderState,
   TStyles
 > {
-  const spinner = renderState.statusIndicator.spinner.shouldRender
-    ? renderState.statusIndicator.spinner
-    : null
-  const icon = !spinner && renderState.statusIndicator.icon.shouldRender
-    ? renderState.statusIndicator.icon
-    : null
-
   return {
     container: {
       style: styles.line,
@@ -20590,8 +20583,13 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
     },
     statusIndicator: {
       style: styles.statusIndicator,
-      spinner,
-      icon,
+      spinner: renderState.statusIndicator.spinner as TRenderState["statusIndicator"]["spinner"],
+      icon: {
+        ...renderState.statusIndicator.icon,
+        shouldRender:
+          !renderState.statusIndicator.spinner.shouldRender
+          && renderState.statusIndicator.icon.shouldRender,
+      } as TRenderState["statusIndicator"]["icon"],
     },
     toggleIcon: {
       style: styles.toggleIcon,

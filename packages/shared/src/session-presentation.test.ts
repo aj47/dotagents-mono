@@ -12599,7 +12599,12 @@ describe("session presentation semantics", () => {
           size: "small",
           color: "#888",
         },
-        icon: null,
+        icon: {
+          shouldRender: false,
+          name: "checkmark-circle",
+          size: 12,
+          color: "#0f0",
+        },
       },
       toggleIcon: {
         style: "compact-toggle",
@@ -12658,7 +12663,11 @@ describe("session presentation semantics", () => {
     })
     expect(compactRowIconParts.statusIndicator).toEqual({
       style: "compact-status",
-      spinner: null,
+      spinner: {
+        shouldRender: false,
+        size: "small",
+        color: "#888",
+      },
       icon: {
         shouldRender: true,
         name: "checkmark-circle",
