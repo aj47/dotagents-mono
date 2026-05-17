@@ -7017,8 +7017,8 @@ export interface ChatRuntimeTurnDurationBadgeMobilePropsParts<
   TTextStyle = unknown,
   TLiveTextStyle = unknown,
 > {
-  shouldRenderBadge: boolean
   container: {
+    shouldRender: boolean
     props: {
       accessible: true
       accessibilityRole: TRenderState["accessibilityRole"]
@@ -24829,8 +24829,8 @@ export function createChatRuntimeTurnDurationBadgeMobilePropsParts<
   TLiveTextStyle
 > {
   return {
-    shouldRenderBadge: renderState.shouldRender,
     container: {
+      shouldRender: renderState.shouldRender,
       props: {
         accessible: true,
         accessibilityRole: renderState.accessibilityRole,

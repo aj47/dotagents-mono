@@ -11692,7 +11692,7 @@ export function ChatMessageTurnDurationBadge({
     liveTextStyle,
   });
 
-  if (!turnDurationBadgeParts.shouldRenderBadge) return null;
+  if (!turnDurationBadgeParts.container.shouldRender) return null;
 
   const containerContent = turnDurationBadgeParts.container.content;
 

@@ -8850,8 +8850,8 @@ describe("session presentation semantics", () => {
       liveTextStyle: "text-live-style",
     })
     expect(turnDurationBadgeParts).toEqual({
-      shouldRenderBadge: true,
       container: {
+        shouldRender: true,
         props: {
           accessible: true,
           accessibilityRole: "text",
@@ -8898,7 +8898,7 @@ describe("session presentation semantics", () => {
       liveStyle: "badge-live-style",
       textStyle: "text-style",
       liveTextStyle: "text-live-style",
-    }).shouldRenderBadge).toBe(false)
+    }).container.shouldRender).toBe(false)
     const messageThreadStyleColors = {
       ...messageTurnDurationColors,
       info: "#0ea5e9",
