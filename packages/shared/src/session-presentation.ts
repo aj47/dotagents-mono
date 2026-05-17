@@ -7664,23 +7664,23 @@ export interface ChatRuntimeConversationViewportContentMobilePropsParts<
   TChildren = unknown,
   TDebugPanels = unknown,
 > {
-  loadingState: {
-    children: TLoadingState | undefined
-  }
-  homeState: {
-    children: THomeState | undefined
-  }
-  historyBanner: {
-    children: THistoryBanner | undefined
-  }
-  stepSummary: {
-    children: TStepSummary | undefined
-  }
   content: {
+    loadingState: {
+      children: TLoadingState | undefined
+    }
+    homeState: {
+      children: THomeState | undefined
+    }
+    historyBanner: {
+      children: THistoryBanner | undefined
+    }
+    stepSummary: {
+      children: TStepSummary | undefined
+    }
     children: TChildren
-  }
-  debugPanels: {
-    children: TDebugPanels | undefined
+    debugPanels: {
+      children: TDebugPanels | undefined
+    }
   }
 }
 
@@ -25242,23 +25242,23 @@ export function createChatRuntimeConversationViewportContentMobilePropsParts<
   TDebugPanels
 > {
   return {
-    loadingState: {
-      children: loadingState,
-    },
-    homeState: {
-      children: homeState,
-    },
-    historyBanner: {
-      children: historyBanner,
-    },
-    stepSummary: {
-      children: stepSummary,
-    },
     content: {
+      loadingState: {
+        children: loadingState,
+      },
+      homeState: {
+        children: homeState,
+      },
+      historyBanner: {
+        children: historyBanner,
+      },
+      stepSummary: {
+        children: stepSummary,
+      },
       children,
-    },
-    debugPanels: {
-      children: debugPanels,
+      debugPanels: {
+        children: debugPanels,
+      },
     },
   }
 }

@@ -9612,23 +9612,23 @@ describe("session presentation semantics", () => {
       children: "thread-list",
       debugPanels: "debug-panels",
     })).toEqual({
-      loadingState: {
-        children: "loading-state",
-      },
-      homeState: {
-        children: "home-state",
-      },
-      historyBanner: {
-        children: "history-banner",
-      },
-      stepSummary: {
-        children: "step-summary",
-      },
       content: {
+        loadingState: {
+          children: "loading-state",
+        },
+        homeState: {
+          children: "home-state",
+        },
+        historyBanner: {
+          children: "history-banner",
+        },
+        stepSummary: {
+          children: "step-summary",
+        },
         children: "thread-list",
-      },
-      debugPanels: {
-        children: "debug-panels",
+        debugPanels: {
+          children: "debug-panels",
+        },
       },
     })
     const viewportParts = createChatRuntimeConversationViewportMobilePropsParts({

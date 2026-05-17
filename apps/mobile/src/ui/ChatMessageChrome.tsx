@@ -10214,15 +10214,16 @@ export function ChatMessageConversationViewportContent({
     children,
     debugPanels,
   });
+  const viewportContent = viewportContentParts.content;
 
   return (
     <>
-      {viewportContentParts.loadingState.children}
-      {viewportContentParts.homeState.children}
-      {viewportContentParts.historyBanner.children}
-      {viewportContentParts.stepSummary.children}
-      {viewportContentParts.content.children}
-      {viewportContentParts.debugPanels.children}
+      {viewportContent.loadingState.children}
+      {viewportContent.homeState.children}
+      {viewportContent.historyBanner.children}
+      {viewportContent.stepSummary.children}
+      {viewportContent.children}
+      {viewportContent.debugPanels.children}
     </>
   );
 }
