@@ -10274,8 +10274,8 @@ describe("session presentation semantics", () => {
         transcript: "voice-overlay-transcript",
       },
     })).toEqual({
-      shouldRender: true,
       overlay: {
+        shouldRender: true,
         props: {
           style: "voice-overlay",
           pointerEvents: "none",
@@ -10313,7 +10313,9 @@ describe("session presentation semantics", () => {
         transcript: "voice-overlay-transcript",
       },
     })).toMatchObject({
-      shouldRender: false,
+      overlay: {
+        shouldRender: false,
+      },
       transcript: {
         shouldRender: false,
         props: {

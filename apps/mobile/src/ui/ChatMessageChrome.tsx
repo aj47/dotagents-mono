@@ -11222,12 +11222,13 @@ export function ChatComposerVoiceOverlay({
     transcriptNumberOfLines,
     styles,
   });
+  const voiceOverlayContainer = voiceOverlayParts.overlay;
 
-  if (!voiceOverlayParts.shouldRender) return null;
+  if (!voiceOverlayContainer.shouldRender) return null;
 
   return (
     <ChatComposerVoiceOverlayContainer
-      {...voiceOverlayParts.overlay.props}
+      {...voiceOverlayContainer.props}
     >
       <ChatComposerVoiceOverlayCard
         {...voiceOverlayParts.card.props}

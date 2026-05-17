@@ -3311,8 +3311,9 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   const voiceOverlaySource =
     chatMessageChromeSource.match(/export function ChatComposerVoiceOverlay[\s\S]*?export function ChatComposerHandsFreeControls/)?.[0] ?? '';
   assert.match(voiceOverlaySource, /const voiceOverlayParts = createChatComposerVoiceOverlayMobilePropsParts\(\{\s+isVisible,\s+label,\s+transcript,\s+transcriptNumberOfLines,\s+styles,\s+\}\);/);
-  assert.match(voiceOverlaySource, /if \(!voiceOverlayParts\.shouldRender\) return null;/);
-  assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayContainer\s+\{\.\.\.voiceOverlayParts\.overlay\.props\}/);
+  assert.match(voiceOverlaySource, /const voiceOverlayContainer = voiceOverlayParts\.overlay;/);
+  assert.match(voiceOverlaySource, /if \(!voiceOverlayContainer\.shouldRender\) return null;/);
+  assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayContainer\s+\{\.\.\.voiceOverlayContainer\.props\}/);
   assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayCard\s+\{\.\.\.voiceOverlayParts\.card\.props\}/);
   assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayLabel\s+\{\.\.\.voiceOverlayParts\.label\.props\}/);
   assert.match(voiceOverlaySource, /\{voiceOverlayParts\.transcript\.shouldRender \? \(/);
@@ -3333,7 +3334,7 @@ test('keeps the live voice overlay compact by grouping status and transcript int
     voiceOverlaySource,
     /export function ChatComposerVoiceOverlayTranscript\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerHandsFreeControls/
   );
-  assert.match(sessionPresentationSource, /overlay: \{\s+props: \{\s+style: styles\.overlay,\s+pointerEvents: "none",/);
+  assert.match(sessionPresentationSource, /overlay: \{\s+shouldRender: isVisible,\s+props: \{\s+style: styles\.overlay,\s+pointerEvents: "none",/);
   assert.match(sessionPresentationSource, /card: \{\s+props: \{\s+style: styles\.card,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+text: label,/);
   assert.match(sessionPresentationSource, /transcript: \{\s+shouldRender: Boolean\(transcript\),\s+props: \{\s+style: styles\.transcript,\s+numberOfLines: transcriptNumberOfLines,\s+text: transcript,/);
@@ -3341,6 +3342,7 @@ test('keeps the live voice overlay compact by grouping status and transcript int
     voiceOverlaySource,
     /voiceOverlayParts\.(overlay|card|label|transcript)\.(style|pointerEvents|numberOfLines|text)/
   );
+  assert.doesNotMatch(voiceOverlaySource, /voiceOverlayParts\.shouldRender/);
   assert.doesNotMatch(voiceOverlaySource, /if \(!isVisible\) return null;/);
   assert.doesNotMatch(voiceOverlaySource, /pointerEvents="none"/);
   assert.doesNotMatch(voiceOverlaySource, /<View style=\{styles\.card\}>/);

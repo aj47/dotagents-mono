@@ -4958,8 +4958,8 @@ export interface ChatComposerVoiceOverlayMobilePropsParts<
   TTranscriptNumberOfLines = unknown,
   TStyles extends ChatComposerVoiceOverlayMobileStylesLike = ChatComposerVoiceOverlayMobileStylesLike,
 > {
-  shouldRender: boolean
   overlay: {
+    shouldRender: boolean
     props: {
       style: TStyles["overlay"]
       pointerEvents: "none"
@@ -22553,8 +22553,8 @@ export function createChatComposerVoiceOverlayMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRender: isVisible,
     overlay: {
+      shouldRender: isVisible,
       props: {
         style: styles.overlay,
         pointerEvents: "none",
