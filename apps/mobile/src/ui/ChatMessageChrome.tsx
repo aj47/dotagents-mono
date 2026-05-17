@@ -2062,6 +2062,12 @@ type ChatMessageToolApprovalActionsProps =
     children: ReactNode;
   };
 
+type ChatMessageToolApprovalActionBarProps = {
+  actions: ChatMessageToolApprovalParts['actions'];
+  denyButton: ChatMessageToolApprovalParts['denyButton'];
+  approveButton: ChatMessageToolApprovalParts['approveButton'];
+};
+
 type ChatMessageToolApprovalActionButtonProps = {
   children: ReactNode;
 } & (
@@ -9075,24 +9081,11 @@ export function ChatMessageToolApproval({
         <ChatMessageToolApprovalFullArgumentsBlock
           fullArguments={toolApprovalParts.fullArguments}
         />
-        <ChatMessageToolApprovalActions
-          {...toolApprovalParts.actions.props}
-        >
-          <ChatMessageToolApprovalActionButton
-            {...toolApprovalParts.denyButton.props}
-          >
-            <ChatMessageToolApprovalDenyActionContent
-              content={toolApprovalParts.denyButton.content}
-            />
-          </ChatMessageToolApprovalActionButton>
-          <ChatMessageToolApprovalActionButton
-            {...toolApprovalParts.approveButton.props}
-          >
-            <ChatMessageToolApprovalApproveActionContent
-              content={toolApprovalParts.approveButton.content}
-            />
-          </ChatMessageToolApprovalActionButton>
-        </ChatMessageToolApprovalActions>
+        <ChatMessageToolApprovalActionBar
+          actions={toolApprovalParts.actions}
+          denyButton={toolApprovalParts.denyButton}
+          approveButton={toolApprovalParts.approveButton}
+        />
       </ChatMessageToolApprovalView>
     </ChatMessageToolApprovalView>
   );
@@ -9319,6 +9312,33 @@ export function ChatMessageToolApprovalActionButton({
     <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatMessageToolApprovalActionBar({
+  actions,
+  denyButton,
+  approveButton,
+}: ChatMessageToolApprovalActionBarProps) {
+  return (
+    <ChatMessageToolApprovalActions
+      {...actions.props}
+    >
+      <ChatMessageToolApprovalActionButton
+        {...denyButton.props}
+      >
+        <ChatMessageToolApprovalDenyActionContent
+          content={denyButton.content}
+        />
+      </ChatMessageToolApprovalActionButton>
+      <ChatMessageToolApprovalActionButton
+        {...approveButton.props}
+      >
+        <ChatMessageToolApprovalApproveActionContent
+          content={approveButton.content}
+        />
+      </ChatMessageToolApprovalActionButton>
+    </ChatMessageToolApprovalActions>
   );
 }
 

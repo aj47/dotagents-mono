@@ -714,6 +714,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalApproveActionContent[\s\S]*?export function ChatMessageToolApprovalView/)?.[0] ?? '';
   const fullArgumentsBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalFullArgumentsBlock[\s\S]*?export function ChatMessageToolApprovalFullArguments/)?.[0] ?? '';
+  const actionBarSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalActionBar[\s\S]*?export function ChatMessageToolApprovalArgumentsToggle/)?.[0] ?? '';
   assert.doesNotMatch(toolApprovalComponentSource, /const denyButtonContent = toolApprovalParts\.denyButton\.content;/);
   assert.doesNotMatch(toolApprovalComponentSource, /const approveButtonContent = toolApprovalParts\.approveButton\.content;/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?props: \{[\s\S]*?onPress: onToggleArguments,[\s\S]*?disabled: renderState\.argumentsToggle\.isDisabled,[\s\S]*?accessibilityRole: renderState\.argumentsToggle\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.argumentsToggle\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.argumentsToggle\.accessibilityState,[\s\S]*?"aria-expanded": renderState\.argumentsToggle\.ariaExpanded,[\s\S]*?style: \(\{ pressed \}\) => \[/);
@@ -769,17 +771,21 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments \? \(/);
   assert.match(sessionPresentationSource, /actions: \{[\s\S]*?props: \{[\s\S]*?style: styles\.actions,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalActions/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActions\s+\{\.\.\.toolApprovalParts\.actions\.props\}/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActionBar\s+actions=\{toolApprovalParts\.actions\}[\s\S]*?denyButton=\{toolApprovalParts\.denyButton\}[\s\S]*?approveButton=\{toolApprovalParts\.approveButton\}/);
+  assert.match(actionBarSource, /<ChatMessageToolApprovalActions\s+\{\.\.\.actions\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalActions\s+\{\.\.\.toolApprovalParts\.actions\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalActions[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?\{children\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalActions[\s\S]*?<View\s+style=\{style\}[\s\S]*?export function ChatMessageToolApprovalActionButton/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.actions\.style/);
   assert.match(sessionPresentationSource, /denyButton: \{[\s\S]*?props: \{[\s\S]*?style: \[[\s\S]*?styles\.button,[\s\S]*?styles\.denyButton,[\s\S]*?renderState\.denyButton\.isDisabled && styles\.buttonDisabled,[\s\S]*?onPress: onDeny,[\s\S]*?disabled: renderState\.denyButton\.isDisabled,[\s\S]*?accessibilityRole: renderState\.denyButton\.accessibilityRole,/);
   assert.match(sessionPresentationSource, /approveButton: \{[\s\S]*?props: \{[\s\S]*?style: \[[\s\S]*?styles\.button,[\s\S]*?styles\.approveButton,[\s\S]*?renderState\.approveButton\.isDisabled && styles\.buttonDisabled,[\s\S]*?onPress: onApprove,[\s\S]*?disabled: renderState\.approveButton\.isDisabled,[\s\S]*?accessibilityRole: renderState\.approveButton\.accessibilityRole,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalActionButton/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActionButton\s+\{\.\.\.toolApprovalParts\.denyButton\.props\}/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActionButton\s+\{\.\.\.toolApprovalParts\.approveButton\.props\}/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalDenyActionContent\s+content=\{toolApprovalParts\.denyButton\.content\}/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalApproveActionContent\s+content=\{toolApprovalParts\.approveButton\.content\}/);
+  assert.match(actionBarSource, /<ChatMessageToolApprovalActionButton\s+\{\.\.\.denyButton\.props\}/);
+  assert.match(actionBarSource, /<ChatMessageToolApprovalActionButton\s+\{\.\.\.approveButton\.props\}/);
+  assert.match(actionBarSource, /<ChatMessageToolApprovalDenyActionContent\s+content=\{denyButton\.content\}/);
+  assert.match(actionBarSource, /<ChatMessageToolApprovalApproveActionContent\s+content=\{approveButton\.content\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalActionButton\s+\{\.\.\.toolApprovalParts\.(denyButton|approveButton)\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApproval(?:Deny|Approve)ActionContent\s+content=\{toolApprovalParts\.(denyButton|approveButton)\.content\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalActionButton[\s\S]*?<TouchableOpacity\s+\{\.\.\.props\}[\s\S]*?\{children\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalActionButton[\s\S]*?(style=\{style\}|onPress=\{onPress\}|disabled=\{disabled\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityState=\{accessibilityState\})[\s\S]*?export function ChatMessageToolApprovalArgumentsToggle/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.(denyButton|approveButton)\.(style|onPress|disabled|accessibilityRole|accessibilityLabel|accessibilityState)/);
