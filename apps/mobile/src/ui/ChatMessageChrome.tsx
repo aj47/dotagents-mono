@@ -1994,6 +1994,13 @@ type ChatMessageToolApprovalViewProps = {
   | ChatMessageToolApprovalParts['toolRow']['props']
 );
 
+type ChatMessageToolApprovalHeaderProps = {
+  header: ChatMessageToolApprovalParts['header'];
+  icon: ChatMessageToolApprovalParts['headerIcon'];
+  title: ChatMessageToolApprovalParts['title'];
+  spinner: ChatMessageToolApprovalParts['headerSpinner'];
+};
+
 type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
   | ChatMessageToolApprovalParts['argumentsToggle']['content']['icon']['props']
@@ -9026,21 +9033,12 @@ export function ChatMessageToolApproval({
     <ChatMessageToolApprovalView
       {...toolApprovalParts.card.props}
     >
-      <ChatMessageToolApprovalView
-        {...toolApprovalParts.header.props}
-      >
-        <ChatMessageToolApprovalIcon
-          {...toolApprovalParts.headerIcon.props}
-        />
-        <ChatMessageToolApprovalTitle
-          {...toolApprovalParts.title.props}
-        />
-        {toolApprovalParts.headerSpinner.shouldRender ? (
-          <ChatMessageToolApprovalSpinner
-            {...toolApprovalParts.headerSpinner.props}
-          />
-        ) : null}
-      </ChatMessageToolApprovalView>
+      <ChatMessageToolApprovalHeader
+        header={toolApprovalParts.header}
+        icon={toolApprovalParts.headerIcon}
+        title={toolApprovalParts.title}
+        spinner={toolApprovalParts.headerSpinner}
+      />
       <ChatMessageToolApprovalView
         {...toolApprovalParts.content.props}
       >
@@ -9097,6 +9095,31 @@ export function ChatMessageToolApproval({
           </ChatMessageToolApprovalActionButton>
         </ChatMessageToolApprovalActions>
       </ChatMessageToolApprovalView>
+    </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalHeader({
+  header,
+  icon,
+  title,
+  spinner,
+}: ChatMessageToolApprovalHeaderProps) {
+  return (
+    <ChatMessageToolApprovalView
+      {...header.props}
+    >
+      <ChatMessageToolApprovalIcon
+        {...icon.props}
+      />
+      <ChatMessageToolApprovalTitle
+        {...title.props}
+      />
+      {spinner.shouldRender ? (
+        <ChatMessageToolApprovalSpinner
+          {...spinner.props}
+        />
+      ) : null}
     </ChatMessageToolApprovalView>
   );
 }
