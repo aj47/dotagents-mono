@@ -4327,23 +4327,27 @@ describe("session presentation semantics", () => {
           accessibilityLabel: navigationHeaderState.agentSelectorRenderState.accessibilityLabel,
           accessibilityHint: navigationHeaderState.agentSelectorRenderState.accessibilityHint,
         },
-      },
-      chip: {
-        props: {
-          style: headerAgentSelectorStyles.chip,
-        },
-      },
-      label: {
-        props: {
-          props: {
-            style: headerAgentSelectorStyles.label,
-            numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+        content: {
+          chip: {
+            props: {
+              style: headerAgentSelectorStyles.chip,
+            },
+            content: {
+              label: {
+                props: {
+                  props: {
+                    style: headerAgentSelectorStyles.label,
+                    numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+                  },
+                  text: navigationHeaderState.agentSelectorRenderState.label,
+                },
+              },
+              icon: {
+                props: navigationHeaderState.agentSelectorRenderState.icon,
+              },
+            },
           },
-          text: navigationHeaderState.agentSelectorRenderState.label,
         },
-      },
-      icon: {
-        props: navigationHeaderState.agentSelectorRenderState.icon,
       },
     })
     const headerIconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts({

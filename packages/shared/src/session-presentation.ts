@@ -9448,23 +9448,27 @@ export interface ChatRuntimeHeaderAgentSelectorMobilePropsParts<
       accessibilityLabel: string
       accessibilityHint: string | undefined
     }
-  }
-  chip: {
-    props: {
-      style: TStyles["chip"]
-    }
-  }
-  label: {
-    props: {
-      props: {
-        style: TStyles["label"]
-        numberOfLines: TLabelNumberOfLines
+    content: {
+      chip: {
+        props: {
+          style: TStyles["chip"]
+        }
+        content: {
+          label: {
+            props: {
+              props: {
+                style: TStyles["label"]
+                numberOfLines: TLabelNumberOfLines
+              }
+              text: string
+            }
+          }
+          icon: {
+            props: TRenderState["icon"]
+          }
+        }
       }
-      text: string
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
   }
 }
 
@@ -26972,23 +26976,27 @@ export function createChatRuntimeHeaderAgentSelectorMobilePropsParts<
         accessibilityLabel: renderState.accessibilityLabel,
         accessibilityHint: renderState.accessibilityHint ?? undefined,
       },
-    },
-    chip: {
-      props: {
-        style: styles.chip,
-      },
-    },
-    label: {
-      props: {
-        props: {
-          style: styles.label,
-          numberOfLines: labelNumberOfLines,
+      content: {
+        chip: {
+          props: {
+            style: styles.chip,
+          },
+          content: {
+            label: {
+              props: {
+                props: {
+                  style: styles.label,
+                  numberOfLines: labelNumberOfLines,
+                },
+                text: renderState.label,
+              },
+            },
+            icon: {
+              props: renderState.icon,
+            },
+          },
         },
-        text: renderState.label,
       },
-    },
-    icon: {
-      props: renderState.icon,
     },
   }
 }

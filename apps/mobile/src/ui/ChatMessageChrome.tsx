@@ -1258,15 +1258,15 @@ type ChatRuntimeHeaderAgentSelectorTouchableProps =
   };
 
 type ChatRuntimeHeaderAgentSelectorChipProps =
-  ChatRuntimeHeaderAgentSelectorParts['chip']['props'] & {
+  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['props'] & {
     children: ReactNode;
   };
 
 type ChatRuntimeHeaderAgentSelectorLabelProps =
-  ChatRuntimeHeaderAgentSelectorParts['label']['props'];
+  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content']['label']['props'];
 
 type ChatRuntimeHeaderAgentSelectorIconProps =
-  ChatRuntimeHeaderAgentSelectorParts['icon']['props'];
+  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content']['icon']['props'];
 
 type ChatRuntimeHeaderActionsRowProps = {
   children: ReactNode;
@@ -7556,18 +7556,21 @@ export function ChatRuntimeHeaderAgentSelector({
     styles,
   });
 
+  const touchableContent = agentSelectorParts.touchable.content;
+  const chipContent = touchableContent.chip.content;
+
   return (
     <ChatRuntimeHeaderAgentSelectorTouchable
       {...agentSelectorParts.touchable.props}
     >
       <ChatRuntimeHeaderAgentSelectorChip
-        {...agentSelectorParts.chip.props}
+        {...touchableContent.chip.props}
       >
         <ChatRuntimeHeaderAgentSelectorLabel
-          {...agentSelectorParts.label.props}
+          {...chipContent.label.props}
         />
         <ChatRuntimeHeaderAgentSelectorIcon
-          {...agentSelectorParts.icon.props}
+          {...chipContent.icon.props}
         />
       </ChatRuntimeHeaderAgentSelectorChip>
     </ChatRuntimeHeaderAgentSelectorTouchable>

@@ -230,10 +230,12 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   const agentSelectorSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderAgentSelector[\s\S]*?export function ChatRuntimeHeaderActionsRow/)?.[0] ?? '';
   assert.match(agentSelectorSource, /const agentSelectorParts = createChatRuntimeHeaderAgentSelectorMobilePropsParts\(\{\s+renderState,\s+onPress,\s+labelNumberOfLines,\s+styles,\s+\}\);/);
+  assert.match(agentSelectorSource, /const touchableContent = agentSelectorParts\.touchable\.content;/);
+  assert.match(agentSelectorSource, /const chipContent = touchableContent\.chip\.content;/);
   assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorTouchable\s+\{\.\.\.agentSelectorParts\.touchable\.props\}/);
-  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorChip\s+\{\.\.\.agentSelectorParts\.chip\.props\}/);
-  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorLabel\s+\{\.\.\.agentSelectorParts\.label\.props\}/);
-  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorIcon\s+\{\.\.\.agentSelectorParts\.icon\.props\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorChip\s+\{\.\.\.touchableContent\.chip\.props\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorLabel\s+\{\.\.\.chipContent\.label\.props\}/);
+  assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorIcon\s+\{\.\.\.chipContent\.icon\.props\}/);
   assert.match(
     agentSelectorSource,
     /export function ChatRuntimeHeaderAgentSelectorTouchable[\s\S]*?<TouchableOpacity\s+\{\.\.\.props\}[\s\S]*?export function ChatRuntimeHeaderAgentSelectorChip/
@@ -254,9 +256,8 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
     sessionPresentationSource,
     /touchable: \{\s+props: \{\s+style: styles\.button,\s+onPress,\s+activeOpacity: renderState\.pressedOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,/
   );
-  assert.match(sessionPresentationSource, /chip: \{\s+props: \{\s+style: styles\.chip,\s+\},\s+\},/);
-  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+props: \{\s+style: styles\.label,\s+numberOfLines: labelNumberOfLines,/);
-  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.match(sessionPresentationSource, /content: \{\s+chip: \{\s+props: \{\s+style: styles\.chip,\s+\},\s+content: \{\s+label: \{\s+props: \{\s+props: \{\s+style: styles\.label,\s+numberOfLines: labelNumberOfLines,/);
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},\s+\},\s+\},\s+\},\s+\},/);
   assert.doesNotMatch(agentSelectorSource, /export function ChatRuntimeHeaderAgentSelectorTouchable[\s\S]*?(style=\{style\}|onPress=\{onPress\}|activeOpacity=\{activeOpacity\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\})[\s\S]*?export function ChatRuntimeHeaderAgentSelectorChip/);
   assert.doesNotMatch(agentSelectorSource, /export function ChatRuntimeHeaderAgentSelectorChip[\s\S]*?style=\{style\}[\s\S]*?export function ChatRuntimeHeaderAgentSelectorLabel/);
   assert.doesNotMatch(agentSelectorSource, /export function ChatRuntimeHeaderAgentSelectorLabel[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatRuntimeHeaderAgentSelectorIcon/);
