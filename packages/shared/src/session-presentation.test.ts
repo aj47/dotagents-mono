@@ -5509,31 +5509,33 @@ describe("session presentation semantics", () => {
       renderState: surfaceChrome.promptEditor.renderState,
       styles: promptEditorModalStyles,
     })
-    expect(promptEditorModalPropsParts.modal).toEqual({
+    expect(promptEditorModalPropsParts.modal.props).toEqual({
       visible: true,
       transparent: true,
       animationType: "slide",
       onRequestClose: onPromptEditorClose,
     })
-    expect(promptEditorModalPropsParts.keyboardAvoidingView).toEqual({
+    expect(promptEditorModalPropsParts.keyboardAvoidingView.props).toEqual({
       style: "keyboardAvoidingView",
       behavior: "padding",
     })
     expect(promptEditorModalPropsParts.title).toEqual({
-      style: "title",
       text: "Edit Prompt",
+      props: {
+        style: "title",
+      },
     })
-    expect(promptEditorModalPropsParts.closeButton.disabled).toBe(false)
-    expect(promptEditorModalPropsParts.closeButton.accessibilityLabel).toBe("Close prompt editor")
-    expect(promptEditorModalPropsParts.closeIcon.name).toBe("close")
-    expect(promptEditorModalPropsParts.nameInput).toMatchObject({
+    expect(promptEditorModalPropsParts.closeButton.props.disabled).toBe(false)
+    expect(promptEditorModalPropsParts.closeButton.props.accessibilityLabel).toBe("Close prompt editor")
+    expect(promptEditorModalPropsParts.closeIcon.props.name).toBe("close")
+    expect(promptEditorModalPropsParts.nameInput.props).toMatchObject({
       style: "input",
       value: "Saved prompt",
       onChangeText: onPromptEditorNameChange,
       accessibilityLabel: "Name input",
       placeholder: "e.g., Code Review Request",
     })
-    expect(promptEditorModalPropsParts.contentInput).toMatchObject({
+    expect(promptEditorModalPropsParts.contentInput.props).toMatchObject({
       style: ["input", "inputMultiline"],
       value: "Prompt body",
       onChangeText: onPromptEditorContentChange,
@@ -5541,21 +5543,23 @@ describe("session presentation semantics", () => {
       multiline: true,
       textAlignVertical: "top",
     })
-    expect(promptEditorModalPropsParts.cancelButton).toMatchObject({
+    expect(promptEditorModalPropsParts.cancelButton.props).toMatchObject({
       style: "cancelButton",
       onPress: onPromptEditorClose,
       disabled: false,
       accessibilityLabel: "Cancel button",
     })
-    expect(promptEditorModalPropsParts.saveButton.style).toEqual([
+    expect(promptEditorModalPropsParts.saveButton.props.style).toEqual([
       "saveButton",
       false,
     ])
-    expect(promptEditorModalPropsParts.saveButton.disabled).toBe(false)
-    expect(promptEditorModalPropsParts.saveButton.onPress).toBe(onPromptEditorSave)
+    expect(promptEditorModalPropsParts.saveButton.props.disabled).toBe(false)
+    expect(promptEditorModalPropsParts.saveButton.props.onPress).toBe(onPromptEditorSave)
     expect(promptEditorModalPropsParts.saveLabel).toEqual({
-      style: "saveButtonText",
       text: "Save Changes",
+      props: {
+        style: "saveButtonText",
+      },
     })
     const savingPromptEditorModalPropsParts = createChatConversationHomePromptEditorModalMobilePropsParts({
       visible: true,
@@ -5570,9 +5574,9 @@ describe("session presentation semantics", () => {
       renderState: surfaceChrome.promptEditor.renderState,
       styles: promptEditorModalStyles,
     })
-    expect(savingPromptEditorModalPropsParts.closeButton.disabled).toBe(true)
-    expect(savingPromptEditorModalPropsParts.closeButton.accessibilityState).toEqual({ disabled: true })
-    expect(savingPromptEditorModalPropsParts.saveButton.style).toEqual([
+    expect(savingPromptEditorModalPropsParts.closeButton.props.disabled).toBe(true)
+    expect(savingPromptEditorModalPropsParts.closeButton.props.accessibilityState).toEqual({ disabled: true })
+    expect(savingPromptEditorModalPropsParts.saveButton.props.style).toEqual([
       "saveButton",
       "saveButtonDisabled",
     ])

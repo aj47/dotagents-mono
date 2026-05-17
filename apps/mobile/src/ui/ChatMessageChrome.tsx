@@ -7962,81 +7962,29 @@ export function ChatConversationHomePromptEditorModal({
   });
 
   return (
-    <Modal
-      visible={modalParts.modal.visible}
-      transparent={modalParts.modal.transparent}
-      animationType={modalParts.modal.animationType}
-      onRequestClose={modalParts.modal.onRequestClose}
-    >
-      <KeyboardAvoidingView
-        style={modalParts.keyboardAvoidingView.style}
-        behavior={modalParts.keyboardAvoidingView.behavior}
-      >
-        <View style={modalParts.overlay.style}>
-          <View style={modalParts.content.style}>
-            <View style={modalParts.header.style}>
-              <Text style={modalParts.title.style}>{modalParts.title.text}</Text>
-              <TouchableOpacity
-                style={modalParts.closeButton.style}
-                onPress={modalParts.closeButton.onPress}
-                disabled={modalParts.closeButton.disabled}
-                activeOpacity={modalParts.closeButton.activeOpacity}
-                accessibilityRole={modalParts.closeButton.accessibilityRole}
-                accessibilityLabel={modalParts.closeButton.accessibilityLabel}
-                accessibilityState={modalParts.closeButton.accessibilityState}
-              >
-                <Ionicons
-                  name={modalParts.closeIcon.name}
-                  size={modalParts.closeIcon.size}
-                  color={modalParts.closeIcon.color}
-                />
+    <Modal {...modalParts.modal.props}>
+      <KeyboardAvoidingView {...modalParts.keyboardAvoidingView.props}>
+        <View {...modalParts.overlay.props}>
+          <View {...modalParts.content.props}>
+            <View {...modalParts.header.props}>
+              <Text {...modalParts.title.props}>{modalParts.title.text}</Text>
+              <TouchableOpacity {...modalParts.closeButton.props}>
+                <Ionicons {...modalParts.closeIcon.props} />
               </TouchableOpacity>
             </View>
 
-            <Text style={modalParts.nameLabel.style}>{modalParts.nameLabel.text}</Text>
-            <TextInput
-              style={modalParts.nameInput.style}
-              value={modalParts.nameInput.value}
-              onChangeText={modalParts.nameInput.onChangeText}
-              accessibilityLabel={modalParts.nameInput.accessibilityLabel}
-              placeholder={modalParts.nameInput.placeholder}
-              placeholderTextColor={modalParts.nameInput.placeholderTextColor}
-            />
+            <Text {...modalParts.nameLabel.props}>{modalParts.nameLabel.text}</Text>
+            <TextInput {...modalParts.nameInput.props} />
 
-            <Text style={modalParts.contentLabel.style}>{modalParts.contentLabel.text}</Text>
-            <TextInput
-              style={modalParts.contentInput.style}
-              value={modalParts.contentInput.value}
-              onChangeText={modalParts.contentInput.onChangeText}
-              accessibilityLabel={modalParts.contentInput.accessibilityLabel}
-              placeholder={modalParts.contentInput.placeholder}
-              placeholderTextColor={modalParts.contentInput.placeholderTextColor}
-              multiline={modalParts.contentInput.multiline}
-              textAlignVertical={modalParts.contentInput.textAlignVertical}
-            />
+            <Text {...modalParts.contentLabel.props}>{modalParts.contentLabel.text}</Text>
+            <TextInput {...modalParts.contentInput.props} />
 
-            <View style={modalParts.actions.style}>
-              <TouchableOpacity
-                style={modalParts.cancelButton.style}
-                onPress={modalParts.cancelButton.onPress}
-                disabled={modalParts.cancelButton.disabled}
-                activeOpacity={modalParts.cancelButton.activeOpacity}
-                accessibilityRole={modalParts.cancelButton.accessibilityRole}
-                accessibilityLabel={modalParts.cancelButton.accessibilityLabel}
-                accessibilityState={modalParts.cancelButton.accessibilityState}
-              >
-                <Text style={modalParts.cancelLabel.style}>{modalParts.cancelLabel.text}</Text>
+            <View {...modalParts.actions.props}>
+              <TouchableOpacity {...modalParts.cancelButton.props}>
+                <Text {...modalParts.cancelLabel.props}>{modalParts.cancelLabel.text}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={modalParts.saveButton.style}
-                onPress={modalParts.saveButton.onPress}
-                disabled={modalParts.saveButton.disabled}
-                activeOpacity={modalParts.saveButton.activeOpacity}
-                accessibilityRole={modalParts.saveButton.accessibilityRole}
-                accessibilityLabel={modalParts.saveButton.accessibilityLabel}
-                accessibilityState={modalParts.saveButton.accessibilityState}
-              >
-                <Text style={modalParts.saveLabel.style}>{modalParts.saveLabel.text}</Text>
+              <TouchableOpacity {...modalParts.saveButton.props}>
+                <Text {...modalParts.saveLabel.props}>{modalParts.saveLabel.text}</Text>
               </TouchableOpacity>
             </View>
           </View>

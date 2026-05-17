@@ -8376,96 +8376,130 @@ export interface ChatConversationHomePromptEditorModalMobilePropsParts<
     ChatConversationHomePromptEditorModalMobileStylesLike,
 > {
   modal: {
-    visible: boolean
-    transparent: PromptLibraryEditorMobileRenderState["surface"]["modal"]["transparent"]
-    animationType: PromptLibraryEditorMobileRenderState["surface"]["modal"]["animationType"]
-    onRequestClose: () => void
+    props: {
+      visible: boolean
+      transparent: PromptLibraryEditorMobileRenderState["surface"]["modal"]["transparent"]
+      animationType: PromptLibraryEditorMobileRenderState["surface"]["modal"]["animationType"]
+      onRequestClose: () => void
+    }
   }
   keyboardAvoidingView: {
-    style: TStyles["keyboardAvoidingView"]
-    behavior: PromptLibraryEditorMobileRenderState["keyboardAvoidingBehavior"]
+    props: {
+      style: TStyles["keyboardAvoidingView"]
+      behavior: PromptLibraryEditorMobileRenderState["keyboardAvoidingBehavior"]
+    }
   }
   overlay: {
-    style: TStyles["overlay"]
+    props: {
+      style: TStyles["overlay"]
+    }
   }
   content: {
-    style: TStyles["content"]
+    props: {
+      style: TStyles["content"]
+    }
   }
   header: {
-    style: TStyles["header"]
+    props: {
+      style: TStyles["header"]
+    }
   }
   title: {
-    style: TStyles["title"]
     text: string
+    props: {
+      style: TStyles["title"]
+    }
   }
   closeButton: {
-    style: TStyles["closeButton"]
-    onPress: () => void
-    disabled: PromptLibraryEditorDismissActionState["isDisabled"]
-    activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["closeButton"]["pressedOpacity"]
-    accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["closeButton"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: PromptLibraryEditorDismissActionState["accessibilityState"]
+    props: {
+      style: TStyles["closeButton"]
+      onPress: () => void
+      disabled: PromptLibraryEditorDismissActionState["isDisabled"]
+      activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["closeButton"]["pressedOpacity"]
+      accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["closeButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: PromptLibraryEditorDismissActionState["accessibilityState"]
+    }
   }
   closeIcon: {
-    name: PromptLibraryEditorMobileRenderState["chrome"]["closeIcon"]["name"]
-    size: PromptLibraryEditorMobileRenderState["chrome"]["closeIcon"]["size"]
-    color: string
+    props: {
+      name: PromptLibraryEditorMobileRenderState["chrome"]["closeIcon"]["name"]
+      size: PromptLibraryEditorMobileRenderState["chrome"]["closeIcon"]["size"]
+      color: string
+    }
   }
   nameLabel: {
-    style: TStyles["label"]
     text: string
+    props: {
+      style: TStyles["label"]
+    }
   }
   nameInput: {
-    style: TStyles["input"]
-    value: string
-    onChangeText: (value: string) => void
-    accessibilityLabel: string
-    placeholder: string
-    placeholderTextColor: string
+    props: {
+      style: TStyles["input"]
+      value: string
+      onChangeText: (value: string) => void
+      accessibilityLabel: string
+      placeholder: string
+      placeholderTextColor: string
+    }
   }
   contentLabel: {
-    style: TStyles["label"]
     text: string
+    props: {
+      style: TStyles["label"]
+    }
   }
   contentInput: {
-    style: Array<TStyles["input"] | TStyles["inputMultiline"]>
-    value: string
-    onChangeText: (value: string) => void
-    accessibilityLabel: string
-    placeholder: string
-    placeholderTextColor: string
-    multiline: PromptLibraryEditorMobileRenderState["surface"]["multilineInput"]["multiline"]
-    textAlignVertical: PromptLibraryEditorMobileRenderState["surface"]["multilineInput"]["textAlignVertical"]
+    props: {
+      style: Array<TStyles["input"] | TStyles["inputMultiline"]>
+      value: string
+      onChangeText: (value: string) => void
+      accessibilityLabel: string
+      placeholder: string
+      placeholderTextColor: string
+      multiline: PromptLibraryEditorMobileRenderState["surface"]["multilineInput"]["multiline"]
+      textAlignVertical: PromptLibraryEditorMobileRenderState["surface"]["multilineInput"]["textAlignVertical"]
+    }
   }
   actions: {
-    style: TStyles["actions"]
+    props: {
+      style: TStyles["actions"]
+    }
   }
   cancelButton: {
-    style: TStyles["cancelButton"]
-    onPress: () => void
-    disabled: PromptLibraryEditorDismissActionState["isDisabled"]
-    activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["cancelButton"]["pressedOpacity"]
-    accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["cancelButton"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: PromptLibraryEditorDismissActionState["accessibilityState"]
+    props: {
+      style: TStyles["cancelButton"]
+      onPress: () => void
+      disabled: PromptLibraryEditorDismissActionState["isDisabled"]
+      activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["cancelButton"]["pressedOpacity"]
+      accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["cancelButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: PromptLibraryEditorDismissActionState["accessibilityState"]
+    }
   }
   cancelLabel: {
-    style: TStyles["cancelButtonText"]
     text: string
+    props: {
+      style: TStyles["cancelButtonText"]
+    }
   }
   saveButton: {
-    style: Array<TStyles["saveButton"] | TStyles["saveButtonDisabled"] | false>
-    onPress: () => void
-    disabled: PromptLibraryEditorSaveActionState["isDisabled"]
-    activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["saveButton"]["pressedOpacity"]
-    accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["saveButton"]["accessibilityRole"]
-    accessibilityLabel: PromptLibraryEditorSaveActionState["accessibilityLabel"]
-    accessibilityState: PromptLibraryEditorSaveActionState["accessibilityState"]
+    props: {
+      style: Array<TStyles["saveButton"] | TStyles["saveButtonDisabled"] | false>
+      onPress: () => void
+      disabled: PromptLibraryEditorSaveActionState["isDisabled"]
+      activeOpacity: PromptLibraryEditorMobileRenderState["surface"]["saveButton"]["pressedOpacity"]
+      accessibilityRole: PromptLibraryEditorMobileRenderState["surface"]["saveButton"]["accessibilityRole"]
+      accessibilityLabel: PromptLibraryEditorSaveActionState["accessibilityLabel"]
+      accessibilityState: PromptLibraryEditorSaveActionState["accessibilityState"]
+    }
   }
   saveLabel: {
-    style: TStyles["saveButtonText"]
     text: PromptLibraryEditorSaveActionState["label"]
+    props: {
+      style: TStyles["saveButtonText"]
+    }
   }
 }
 
@@ -13990,99 +14024,133 @@ export function createChatConversationHomePromptEditorModalMobilePropsParts<
 
   return {
     modal: {
-      visible,
-      transparent: surface.modal.transparent,
-      animationType: surface.modal.animationType,
-      onRequestClose: onClose,
+      props: {
+        visible,
+        transparent: surface.modal.transparent,
+        animationType: surface.modal.animationType,
+        onRequestClose: onClose,
+      },
     },
     keyboardAvoidingView: {
-      style: styles.keyboardAvoidingView,
-      behavior: keyboardAvoidingBehavior,
+      props: {
+        style: styles.keyboardAvoidingView,
+        behavior: keyboardAvoidingBehavior,
+      },
     },
     overlay: {
-      style: styles.overlay,
+      props: {
+        style: styles.overlay,
+      },
     },
     content: {
-      style: styles.content,
+      props: {
+        style: styles.content,
+      },
     },
     header: {
-      style: styles.header,
+      props: {
+        style: styles.header,
+      },
     },
     title: {
-      style: styles.title,
       text: getChatConversationHomePromptEditorTitle(isEditing),
+      props: {
+        style: styles.title,
+      },
     },
     closeButton: {
-      style: styles.closeButton,
-      onPress: onClose,
-      disabled: editorDismissActionState.isDisabled,
-      activeOpacity: surface.closeButton.pressedOpacity,
-      accessibilityRole: surface.closeButton.accessibilityRole,
-      accessibilityLabel: copy.closeAccessibilityLabel,
-      accessibilityState: editorDismissActionState.accessibilityState,
+      props: {
+        style: styles.closeButton,
+        onPress: onClose,
+        disabled: editorDismissActionState.isDisabled,
+        activeOpacity: surface.closeButton.pressedOpacity,
+        accessibilityRole: surface.closeButton.accessibilityRole,
+        accessibilityLabel: copy.closeAccessibilityLabel,
+        accessibilityState: editorDismissActionState.accessibilityState,
+      },
     },
     closeIcon: {
-      name: chrome.closeIcon.name,
-      size: chrome.closeIcon.size,
-      color: chrome.closeIconColors.color,
+      props: {
+        name: chrome.closeIcon.name,
+        size: chrome.closeIcon.size,
+        color: chrome.closeIconColors.color,
+      },
     },
     nameLabel: {
-      style: styles.label,
       text: copy.nameLabel,
+      props: {
+        style: styles.label,
+      },
     },
     nameInput: {
-      style: styles.input,
-      value: nameValue,
-      onChangeText: onNameChange,
-      accessibilityLabel: copy.nameAccessibilityLabel,
-      placeholder: copy.namePlaceholder,
-      placeholderTextColor: colors.input.placeholderColor,
+      props: {
+        style: styles.input,
+        value: nameValue,
+        onChangeText: onNameChange,
+        accessibilityLabel: copy.nameAccessibilityLabel,
+        placeholder: copy.namePlaceholder,
+        placeholderTextColor: colors.input.placeholderColor,
+      },
     },
     contentLabel: {
-      style: styles.label,
       text: copy.contentLabel,
+      props: {
+        style: styles.label,
+      },
     },
     contentInput: {
-      style: [styles.input, styles.inputMultiline],
-      value: contentValue,
-      onChangeText: onContentChange,
-      accessibilityLabel: copy.contentAccessibilityLabel,
-      placeholder: copy.contentPlaceholder,
-      placeholderTextColor: colors.input.placeholderColor,
-      multiline: surface.multilineInput.multiline,
-      textAlignVertical: surface.multilineInput.textAlignVertical,
+      props: {
+        style: [styles.input, styles.inputMultiline],
+        value: contentValue,
+        onChangeText: onContentChange,
+        accessibilityLabel: copy.contentAccessibilityLabel,
+        placeholder: copy.contentPlaceholder,
+        placeholderTextColor: colors.input.placeholderColor,
+        multiline: surface.multilineInput.multiline,
+        textAlignVertical: surface.multilineInput.textAlignVertical,
+      },
     },
     actions: {
-      style: styles.actions,
+      props: {
+        style: styles.actions,
+      },
     },
     cancelButton: {
-      style: styles.cancelButton,
-      onPress: onClose,
-      disabled: editorDismissActionState.isDisabled,
-      activeOpacity: surface.cancelButton.pressedOpacity,
-      accessibilityRole: surface.cancelButton.accessibilityRole,
-      accessibilityLabel: copy.cancelAccessibilityLabel,
-      accessibilityState: editorDismissActionState.accessibilityState,
+      props: {
+        style: styles.cancelButton,
+        onPress: onClose,
+        disabled: editorDismissActionState.isDisabled,
+        activeOpacity: surface.cancelButton.pressedOpacity,
+        accessibilityRole: surface.cancelButton.accessibilityRole,
+        accessibilityLabel: copy.cancelAccessibilityLabel,
+        accessibilityState: editorDismissActionState.accessibilityState,
+      },
     },
     cancelLabel: {
-      style: styles.cancelButtonText,
       text: copy.cancelLabel,
+      props: {
+        style: styles.cancelButtonText,
+      },
     },
     saveButton: {
-      style: [
-        styles.saveButton,
-        editorSaveActionState.isDisabled && styles.saveButtonDisabled,
-      ],
-      onPress: onSave,
-      disabled: editorSaveActionState.isDisabled,
-      activeOpacity: surface.saveButton.pressedOpacity,
-      accessibilityRole: surface.saveButton.accessibilityRole,
-      accessibilityLabel: editorSaveActionState.accessibilityLabel,
-      accessibilityState: editorSaveActionState.accessibilityState,
+      props: {
+        style: [
+          styles.saveButton,
+          editorSaveActionState.isDisabled && styles.saveButtonDisabled,
+        ],
+        onPress: onSave,
+        disabled: editorSaveActionState.isDisabled,
+        activeOpacity: surface.saveButton.pressedOpacity,
+        accessibilityRole: surface.saveButton.accessibilityRole,
+        accessibilityLabel: editorSaveActionState.accessibilityLabel,
+        accessibilityState: editorSaveActionState.accessibilityState,
+      },
     },
     saveLabel: {
-      style: styles.saveButtonText,
       text: editorSaveActionState.label,
+      props: {
+        style: styles.saveButtonText,
+      },
     },
   }
 }
