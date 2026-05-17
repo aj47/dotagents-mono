@@ -3107,6 +3107,36 @@ type ChatComposerInputDockProps = {
   styles: ChatComposerInputDockStyles;
 };
 
+type ChatComposerInputDockParts = ReturnType<typeof createChatComposerInputDockMobilePropsParts<
+  ChatComposerInputDockProps['speechPreview'],
+  ChatComposerInputDockProps['pendingImagesRail'],
+  ChatComposerInputDockProps['handsFreeControls'],
+  ChatComposerInputDockProps['imageAttachmentControl'],
+  ChatComposerInputDockProps['textToSpeechControl'],
+  ChatComposerInputDockProps['editBeforeSendControl'],
+  ChatComposerInputDockProps['textEntry'],
+  ChatComposerInputDockProps['queueAction'],
+  ChatComposerInputDockProps['submitAction'],
+  ChatComposerInputDockProps['micButton'],
+  ChatComposerInputDockProps['micWrapperRef'],
+  ChatComposerInputDockProps['styles']
+>>;
+
+type ChatComposerInputDockAreaProps =
+  ChatComposerInputDockParts['area']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerInputDockRowProps =
+  ChatComposerInputDockParts['row']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerInputDockMicWrapperProps =
+  Omit<ChatComposerInputDockParts['micWrapper']['props'], 'ref'> & {
+    children: ReactNode;
+  };
+
 type ChatMessageSurfaceProps = {
   children: ReactNode;
   style: StyleProp<ViewStyle>;
@@ -10445,27 +10475,66 @@ export function ChatComposerInputDock({
   });
 
   return (
-    <View style={inputDockParts.area.style}>
+    <ChatComposerInputDockArea
+      {...inputDockParts.area.props}
+    >
       {inputDockParts.speechPreview}
       {inputDockParts.pendingImagesRail}
       {inputDockParts.handsFreeControls}
-      <View style={inputDockParts.row.style}>
+      <ChatComposerInputDockRow
+        {...inputDockParts.row.props}
+      >
         {inputDockParts.row.imageAttachmentControl}
         {inputDockParts.row.textToSpeechControl}
         {inputDockParts.row.editBeforeSendControl}
         {inputDockParts.row.textEntry}
         {inputDockParts.row.queueAction}
         {inputDockParts.row.submitAction}
-      </View>
-      <View
-        ref={inputDockParts.micWrapper.ref}
-        style={inputDockParts.micWrapper.style}
+      </ChatComposerInputDockRow>
+      <ChatComposerInputDockMicWrapper
+        {...inputDockParts.micWrapper.props}
       >
         {inputDockParts.micWrapper.micButton}
-      </View>
+      </ChatComposerInputDockMicWrapper>
+    </ChatComposerInputDockArea>
+  );
+}
+
+export function ChatComposerInputDockArea({
+  style,
+  children,
+}: ChatComposerInputDockAreaProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
   );
 }
+
+export function ChatComposerInputDockRow({
+  style,
+  children,
+}: ChatComposerInputDockRowProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export const ChatComposerInputDockMicWrapper = forwardRef<View, ChatComposerInputDockMicWrapperProps>(function ChatComposerInputDockMicWrapper({
+  style,
+  children,
+}, ref) {
+  return (
+    <View
+      ref={ref}
+      style={style}
+    >
+      {children}
+    </View>
+  );
+});
 
 export function ChatComposerSpeechPreview({
   label,

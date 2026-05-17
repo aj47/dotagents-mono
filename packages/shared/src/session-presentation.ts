@@ -4996,13 +4996,17 @@ export interface ChatComposerInputDockMobilePropsParts<
   TStyles extends ChatComposerInputDockMobileStylesLike = ChatComposerInputDockMobileStylesLike,
 > {
   area: {
-    style: TStyles["area"]
+    props: {
+      style: TStyles["area"]
+    }
   }
   speechPreview: TSpeechPreview
   pendingImagesRail: TPendingImagesRail
   handsFreeControls: THandsFreeControls
   row: {
-    style: TStyles["row"]
+    props: {
+      style: TStyles["row"]
+    }
     imageAttachmentControl: TImageAttachmentControl
     textToSpeechControl: TTextToSpeechControl
     editBeforeSendControl: TEditBeforeSendControl
@@ -5011,8 +5015,10 @@ export interface ChatComposerInputDockMobilePropsParts<
     submitAction: TSubmitAction
   }
   micWrapper: {
-    ref: TMicWrapperRef | undefined
-    style: TStyles["micWrapper"]
+    props: {
+      ref: TMicWrapperRef | undefined
+      style: TStyles["micWrapper"]
+    }
     micButton: TMicButton
   }
 }
@@ -21831,13 +21837,17 @@ export function createChatComposerInputDockMobilePropsParts<
 > {
   return {
     area: {
-      style: styles.area,
+      props: {
+        style: styles.area,
+      },
     },
     speechPreview,
     pendingImagesRail,
     handsFreeControls,
     row: {
-      style: styles.row,
+      props: {
+        style: styles.row,
+      },
       imageAttachmentControl,
       textToSpeechControl,
       editBeforeSendControl,
@@ -21846,8 +21856,10 @@ export function createChatComposerInputDockMobilePropsParts<
       submitAction,
     },
     micWrapper: {
-      ref: micWrapperRef,
-      style: styles.micWrapper,
+      props: {
+        ref: micWrapperRef,
+        style: styles.micWrapper,
+      },
       micButton,
     },
   }

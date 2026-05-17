@@ -2459,20 +2459,38 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';
   assert.match(inputDockSource, /const inputDockParts = createChatComposerInputDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\);/);
-  assert.match(inputDockSource, /<View style=\{inputDockParts\.area\.style\}>/);
+  assert.match(inputDockSource, /<ChatComposerInputDockArea\s+\{\.\.\.inputDockParts\.area\.props\}/);
   assert.match(inputDockSource, /\{inputDockParts\.speechPreview\}/);
   assert.match(inputDockSource, /\{inputDockParts\.pendingImagesRail\}/);
   assert.match(inputDockSource, /\{inputDockParts\.handsFreeControls\}/);
-  assert.match(inputDockSource, /<View style=\{inputDockParts\.row\.style\}>/);
+  assert.match(inputDockSource, /<ChatComposerInputDockRow\s+\{\.\.\.inputDockParts\.row\.props\}/);
   assert.match(inputDockSource, /\{inputDockParts\.row\.imageAttachmentControl\}/);
   assert.match(inputDockSource, /\{inputDockParts\.row\.textToSpeechControl\}/);
   assert.match(inputDockSource, /\{inputDockParts\.row\.editBeforeSendControl\}/);
   assert.match(inputDockSource, /\{inputDockParts\.row\.textEntry\}/);
   assert.match(inputDockSource, /\{inputDockParts\.row\.queueAction\}/);
   assert.match(inputDockSource, /\{inputDockParts\.row\.submitAction\}/);
-  assert.match(inputDockSource, /ref=\{inputDockParts\.micWrapper\.ref\}/);
-  assert.match(inputDockSource, /style=\{inputDockParts\.micWrapper\.style\}/);
+  assert.match(inputDockSource, /<ChatComposerInputDockMicWrapper\s+\{\.\.\.inputDockParts\.micWrapper\.props\}/);
   assert.match(inputDockSource, /\{inputDockParts\.micWrapper\.micButton\}/);
+  assert.match(
+    inputDockSource,
+    /export function ChatComposerInputDockArea\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerInputDockRow/
+  );
+  assert.match(
+    inputDockSource,
+    /export function ChatComposerInputDockRow\([\s\S]*?<View style=\{style\}>[\s\S]*?export const ChatComposerInputDockMicWrapper/
+  );
+  assert.match(
+    inputDockSource,
+    /export const ChatComposerInputDockMicWrapper[\s\S]*?ref=\{ref\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatComposerSpeechPreview/
+  );
+  assert.match(sessionPresentationSource, /area: \{\s+props: \{\s+style: styles\.area,/);
+  assert.match(sessionPresentationSource, /row: \{\s+props: \{\s+style: styles\.row,/);
+  assert.match(sessionPresentationSource, /micWrapper: \{\s+props: \{\s+ref: micWrapperRef,\s+style: styles\.micWrapper,/);
+  assert.doesNotMatch(
+    inputDockSource,
+    /inputDockParts\.(area|row|micWrapper)\.(style|ref)/
+  );
   assert.doesNotMatch(inputDockSource, /style=\{styles\.area\}/);
   assert.doesNotMatch(inputDockSource, /style=\{styles\.row\}/);
   assert.doesNotMatch(inputDockSource, /ref=\{micWrapperRef\}/);

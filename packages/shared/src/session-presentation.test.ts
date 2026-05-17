@@ -9651,13 +9651,17 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       area: {
-        style: "input-area",
+        props: {
+          style: "input-area",
+        },
       },
       speechPreview: "speech-preview",
       pendingImagesRail: "pending-images",
       handsFreeControls: "hands-free",
       row: {
-        style: "input-row",
+        props: {
+          style: "input-row",
+        },
         imageAttachmentControl: "image-control",
         textToSpeechControl: "tts-control",
         editBeforeSendControl: "edit-control",
@@ -9666,8 +9670,10 @@ describe("session presentation semantics", () => {
         submitAction: "submit-action",
       },
       micWrapper: {
-        ref: "mic-wrapper",
-        style: "mic-wrapper-style",
+        props: {
+          ref: "mic-wrapper",
+          style: "mic-wrapper-style",
+        },
         micButton: "mic-button",
       },
     })
