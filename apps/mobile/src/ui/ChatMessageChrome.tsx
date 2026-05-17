@@ -7537,7 +7537,7 @@ export function ChatMessageDelegationCard({
           </Text>
         ))}
       </View>
-      {delegationCardParts.conversationPreview ? (
+      {delegationCardParts.conversationPreview.shouldRender ? (
         <View style={delegationCardParts.conversationPreview.style}>
           {delegationCardParts.conversationPreview.rows.map((row) => (
             <View
@@ -7585,7 +7585,7 @@ export function ChatMessageDelegationCard({
           ) : null}
         </View>
       ) : null}
-      {delegationCardParts.toolPreview ? (
+      {delegationCardParts.toolPreview.shouldRender ? (
         <View style={delegationCardParts.toolPreview.style}>
           <Text
             style={delegationCardParts.toolPreview.label.style}

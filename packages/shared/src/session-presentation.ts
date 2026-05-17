@@ -2229,6 +2229,7 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     }>
   }
   conversationPreview: {
+    shouldRender: boolean
     style: TStyles["conversationPreview"]
     rows: Array<{
       key: string
@@ -2275,8 +2276,9 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
         text: string
       }
     } | null
-  } | null
+  }
   toolPreview: {
+    shouldRender: boolean
     style: TStyles["toolPreview"]
     label: {
       style: TStyles["toolPreviewLabel"]
@@ -2326,7 +2328,7 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
         text: string
       }
     } | null
-  } | null
+  }
 }
 
 export interface ChatRuntimeConversationActionSetMobileStyleSlots<
@@ -22590,6 +22592,8 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       text: messageCountLabel,
     })
   }
+  const shouldRenderConversationPreview = conversationPreview.rows.length > 0
+  const shouldRenderToolPreview = toolPreview.shouldRender
 
   return {
     card: {
@@ -22639,9 +22643,10 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
         numberOfLines: surface.metaNumberOfLines,
       })),
     },
-    conversationPreview: conversationPreview.rows.length > 0 ? {
+    conversationPreview: {
+      shouldRender: shouldRenderConversationPreview,
       style: styles.conversationPreview,
-      rows: conversationPreview.rows.map((row, rowIndex) => ({
+      rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
         key: `${row.timestamp}-${row.role}-${rowIndex}`,
         line: {
           style: styles.conversationPreviewLine,
@@ -22666,8 +22671,8 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
           text: row.timestampLabel,
         } : null,
-      })),
-      moreAction: conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
+      })) : [],
+      moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
         button: {
           onPress: conversationPreview.onShowAll,
           accessibilityRole: conversationPreview.moreAction.accessibilityRole,
@@ -22683,15 +22688,16 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           text: conversationPreview.moreAction.label,
         },
       } : null,
-    } : null,
-    toolPreview: toolPreview.shouldRender ? {
+    },
+    toolPreview: {
+      shouldRender: shouldRenderToolPreview,
       style: styles.toolPreview,
       label: {
         style: styles.toolPreviewLabel,
         numberOfLines: surface.toolPreviewLabelNumberOfLines,
         text: toolPreview.label,
       },
-      rows: toolPreview.rows.map(({ key, preview, renderState }) => ({
+      rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => ({
         key,
         line: {
           style: styles.toolPreviewLine,
@@ -22720,8 +22726,8 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           ellipsizeMode: renderState.name.ellipsizeMode,
           text: preview,
         },
-      })),
-      moreAction: toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
+      })) : [],
+      moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
         button: {
           onPress: toolPreview.onShowAll,
           accessibilityRole: toolPreview.moreAction.accessibilityRole,
@@ -22737,7 +22743,7 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           text: toolPreview.moreAction.label,
         },
       } : null,
-    } : null,
+    },
   }
 }
 

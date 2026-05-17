@@ -1041,7 +1041,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /conversationPreview\.rows\.length > 0/);
   assert.match(sessionPresentationSource, /styles\.conversationPreview/);
   assert.match(sessionPresentationSource, /conversationPreview\.rows\.map\(\(row, rowIndex\) =>/);
-  assert.match(delegationCardComponentSource, /delegationCardParts\.conversationPreview \? \(/);
+  assert.match(delegationCardComponentSource, /delegationCardParts\.conversationPreview\.shouldRender \? \(/);
+  assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.conversationPreview \? \(/);
   assert.match(delegationCardComponentSource, /delegationCardParts\.conversationPreview\.rows\.map\(\(row\) =>/);
   assert.doesNotMatch(delegationCardComponentSource, /conversationPreview\.rows\.length > 0/);
   assert.doesNotMatch(delegationCardComponentSource, /conversationPreview\.rows\.map\(\(row, rowIndex\) =>/);
@@ -1086,6 +1087,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /onShowAllConversationPreview: \(runId\) => \{\s+setExpandedDelegationConversationPreviews\(\(current\) =>\s*setChatDisplayExpansionState\(current, runId, true\)/);
   assert.doesNotMatch(chatMessageChromeSource, /onShowAll: onShowAllConversationPreview\s+\? \(\) => onShowAllConversationPreview\(delegation\.runId\)\s+: undefined,/);
   assert.match(sessionPresentationSource, /onShowAll: \(\) => onShowAllConversationPreview\(presentationState\.runId\),/);
+  assert.match(sessionPresentationSource, /shouldRenderConversationPreview && conversationPreview\.hiddenCount > 0 && conversationPreview\.onShowAll \? \{/);
   assert.match(delegationCardComponentSource, /accessibilityRole=\{delegationCardParts\.conversationPreview\.moreAction\.button\.accessibilityRole\}/);
   assert.match(delegationCardComponentSource, /accessibilityLabel=\{delegationCardParts\.conversationPreview\.moreAction\.button\.accessibilityLabel\}/);
   assert.match(sessionPresentationSource, /styles\.conversationPreviewMoreButton/);
@@ -1114,6 +1116,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /getAgentDelegationToolPreviewState,/);
   assert.doesNotMatch(screenSource, /displayToolCallCount - delegationVisibleToolRows\.length/);
   assert.match(sessionPresentationSource, /numberOfLines: surface\.toolPreviewLabelNumberOfLines/);
+  assert.match(delegationCardComponentSource, /delegationCardParts\.toolPreview\.shouldRender \? \(/);
+  assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.toolPreview \? \(/);
   assert.match(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.toolPreview\.label\.numberOfLines\}/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{surface\.toolPreviewLabelNumberOfLines\}/);
   assert.doesNotMatch(screenSource, /const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel\(displayToolCallCount\);/);
@@ -1154,7 +1158,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /\{toolPresentation\.compactLabel\}/);
   assert.match(delegationCardComponentSource, /numberOfLines=\{row\.name\.numberOfLines\}/);
   assert.match(delegationCardComponentSource, /ellipsizeMode=\{row\.name\.ellipsizeMode\}/);
-  assert.match(sessionPresentationSource, /toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \{/);
+  assert.match(sessionPresentationSource, /shouldRenderToolPreview && toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \{/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{renderState\.name\.numberOfLines\}/);
   assert.doesNotMatch(delegationCardComponentSource, /toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \(/);
   assert.match(screenSource, /setExpandedDelegationToolPreviews,/);

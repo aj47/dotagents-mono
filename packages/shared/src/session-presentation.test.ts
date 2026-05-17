@@ -10847,7 +10847,8 @@ describe("session presentation semantics", () => {
     if (!delegationConversationPreviewRow) {
       throw new Error("Expected a delegation conversation preview row")
     }
-    expect(delegationCardParts.conversationPreview?.rows[0]).toMatchObject({
+    expect(delegationCardParts.conversationPreview.shouldRender).toBe(true)
+    expect(delegationCardParts.conversationPreview.rows[0]).toMatchObject({
       key: `${delegationConversationPreviewRow.timestamp}-${delegationConversationPreviewRow.role}-0`,
       line: {
         style: "delegation-conversation-preview-line-style",
@@ -10868,17 +10869,18 @@ describe("session presentation semantics", () => {
         text: delegationConversationPreviewRow.content,
       },
     })
-    expect(delegationCardParts.conversationPreview?.moreAction?.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.conversationPreview.moreAction?.button.style({ pressed: true })).toEqual([
       "delegation-conversation-preview-more-button-style",
       "delegation-conversation-preview-more-button-pressed-style",
     ])
-    delegationCardParts.conversationPreview?.moreAction?.button.onPress?.()
-    expect(delegationCardParts.toolPreview?.label.text).toBe("Tool activity · 1 tool call")
+    delegationCardParts.conversationPreview.moreAction?.button.onPress?.()
+    expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
+    expect(delegationCardParts.toolPreview.label.text).toBe("Tool activity · 1 tool call")
     const delegationToolPreviewRow = delegationCardProps.toolPreview.rows[0]
     if (!delegationToolPreviewRow) {
       throw new Error("Expected a delegation tool preview row")
     }
-    expect(delegationCardParts.toolPreview?.rows[0]).toMatchObject({
+    expect(delegationCardParts.toolPreview.rows[0]).toMatchObject({
       key: delegationToolPreviewRow.key,
       line: {
         style: "delegation-tool-preview-line-style",
@@ -10907,11 +10909,11 @@ describe("session presentation semantics", () => {
         text: delegationToolPreviewRow.preview,
       },
     })
-    expect(delegationCardParts.toolPreview?.moreAction?.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.toolPreview.moreAction?.button.style({ pressed: true })).toEqual([
       "delegation-tool-preview-more-button-style",
       "delegation-tool-preview-more-button-pressed-style",
     ])
-    delegationCardParts.toolPreview?.moreAction?.button.onPress?.()
+    delegationCardParts.toolPreview.moreAction?.button.onPress?.()
     expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")
