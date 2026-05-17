@@ -11014,11 +11014,18 @@ describe("session presentation semantics", () => {
       numberOfLines: delegationCardProps.surface.subtitleNumberOfLines,
       text: delegationCardProps.presentation.subtitle,
     })
-    expect(delegationCardParts.meta.items.map((item) => item.text)).toEqual([
+    expect(delegationCardParts.meta.items.map((item) => item.props.text)).toEqual([
       delegationCardProps.presentation.sourceLabel,
       delegationCardProps.presentation.trackingLabel,
       delegationCardProps.messageCountLabel,
     ].filter(Boolean))
+    expect(delegationCardParts.meta.items[0]).toMatchObject({
+      key: "source",
+      props: {
+        style: "delegation-meta-text-style",
+        numberOfLines: delegationCardProps.surface.metaNumberOfLines,
+      },
+    })
     const delegationConversationPreviewRow = delegationCardProps.conversationPreview.rows[0]
     if (!delegationConversationPreviewRow) {
       throw new Error("Expected a delegation conversation preview row")

@@ -2245,9 +2245,11 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     style: TStyles["metaRow"]
     items: Array<{
       key: string
-      text: string
-      style: TStyles["metaText"]
-      numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["metaNumberOfLines"]
+      props: {
+        text: string
+        style: TStyles["metaText"]
+        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["metaNumberOfLines"]
+      }
     }>
   }
   conversationPreview: {
@@ -22928,9 +22930,12 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
     meta: {
       style: styles.metaRow,
       items: metaItems.map((item) => ({
-        ...item,
-        style: styles.metaText,
-        numberOfLines: surface.metaNumberOfLines,
+        key: item.key,
+        props: {
+          text: item.text,
+          style: styles.metaText,
+          numberOfLines: surface.metaNumberOfLines,
+        },
       })),
     },
     conversationPreview: {

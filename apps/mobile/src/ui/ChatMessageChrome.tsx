@@ -1632,6 +1632,9 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
   ChatMessageDelegationCardStyles
 >>;
 
+type ChatMessageDelegationMetaItemProps =
+  ChatMessageDelegationCardParts['meta']['items'][number]['props'];
+
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationCardParts['conversationPreview']['rows'][number]['props'];
 
@@ -7583,6 +7586,21 @@ export function ChatMessageDelegationMorePreviewAction({
   );
 }
 
+export function ChatMessageDelegationMetaItem({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageDelegationMetaItemProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7644,13 +7662,10 @@ export function ChatMessageDelegationCard({
       ) : null}
       <View style={delegationCardParts.meta.style}>
         {delegationCardParts.meta.items.map((metaItem) => (
-          <Text
+          <ChatMessageDelegationMetaItem
             key={metaItem.key}
-            style={metaItem.style}
-            numberOfLines={metaItem.numberOfLines}
-          >
-            {metaItem.text}
-          </Text>
+            {...metaItem.props}
+          />
         ))}
       </View>
       {delegationCardParts.conversationPreview.shouldRender ? (

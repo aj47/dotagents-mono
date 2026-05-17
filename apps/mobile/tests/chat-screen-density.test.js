@@ -1014,8 +1014,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
     0,
   );
   assert.match(delegationCardComponentSource, /delegationCardParts\.meta\.items\.map\(\(metaItem\) =>/);
-  assert.match(delegationCardComponentSource, /numberOfLines=\{metaItem\.numberOfLines\}/);
-  assert.match(sessionPresentationSource, /metaItems\.map\(\(item\) => \(\{[\s\S]*?numberOfLines: surface\.metaNumberOfLines,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMetaItem/);
+  assert.match(delegationCardComponentSource, /<ChatMessageDelegationMetaItem\s+key=\{metaItem\.key\}\s+\{\.\.\.metaItem\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMetaItem[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{metaItem\.numberOfLines\}/);
+  assert.match(sessionPresentationSource, /metaItems\.map\(\(item\) => \(\{[\s\S]*?key: item\.key,[\s\S]*?props: \{[\s\S]*?numberOfLines: surface\.metaNumberOfLines,/);
   assert.doesNotMatch(screenSource, /const delegationMessageCountLabel = delegationMessageCount > 0\s+\? formatChatRuntimeDelegationMessageCount\(delegationMessageCount\)\s+: null;/);
   assert.doesNotMatch(chatMessageChromeSource, /messageCountLabel: messageCount > 0\s+\? formatChatRuntimeDelegationMessageCount\(messageCount\)\s+: null,/);
   assert.match(sessionPresentationSource, /messageCountLabel: messageCount > 0\s+\? formatChatRuntimeDelegationMessageCount\(messageCount\)\s+: null,/);
