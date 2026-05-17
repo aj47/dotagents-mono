@@ -91,6 +91,7 @@ import {
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
+  createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
@@ -3240,39 +3241,47 @@ export function ChatMessageActionIconButton({
   pressedStyle,
   disabledStyle,
 }: ChatMessageActionIconButtonProps) {
-  const mergedAccessibilityState = disabled
-    ? { ...accessibilityState, disabled: true }
-    : accessibilityState;
+  const actionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts({
+    icon,
+    onPress,
+    disabled,
+    isActive,
+    accessibilityRole,
+    accessibilityLabel,
+    accessibilityHint,
+    accessibilityState,
+    ariaExpanded,
+    hitSlop,
+    style,
+    activeStyle,
+    pressedStyle,
+    disabledStyle,
+  });
 
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={mergedAccessibilityState}
-      aria-expanded={ariaExpanded}
-      hitSlop={hitSlop}
-      style={({ pressed }) => [
-        style,
-        isActive && activeStyle,
-        pressed && !disabled && pressedStyle,
-        disabled && disabledStyle,
-      ]}
+      onPress={actionIconButtonParts.pressable.onPress}
+      disabled={actionIconButtonParts.pressable.disabled}
+      accessibilityRole={actionIconButtonParts.pressable.accessibilityRole}
+      accessibilityLabel={actionIconButtonParts.pressable.accessibilityLabel}
+      accessibilityHint={actionIconButtonParts.pressable.accessibilityHint}
+      accessibilityState={actionIconButtonParts.pressable.accessibilityState}
+      aria-expanded={actionIconButtonParts.pressable.ariaExpanded}
+      hitSlop={actionIconButtonParts.pressable.hitSlop}
+      style={actionIconButtonParts.pressable.style}
     >
-      {icon.isPending ? (
+      {actionIconButtonParts.activityIndicator ? (
         <ActivityIndicator
-          size={icon.size}
-          color={icon.color}
+          size={actionIconButtonParts.activityIndicator.size}
+          color={actionIconButtonParts.activityIndicator.color}
         />
-      ) : (
+      ) : actionIconButtonParts.icon ? (
         <Ionicons
-          name={icon.name}
-          size={icon.size}
-          color={icon.color}
+          name={actionIconButtonParts.icon.name}
+          size={actionIconButtonParts.icon.size}
+          color={actionIconButtonParts.icon.color}
         />
-      )}
+      ) : null}
     </Pressable>
   );
 }

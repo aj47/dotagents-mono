@@ -4743,9 +4743,18 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadge/);
   assert.match(chatMessageChromeSource, /<Pressable/);
-  assert.match(chatMessageChromeSource, /<ActivityIndicator[\s\S]*?size=\{icon\.size\}[\s\S]*?color=\{icon\.color\}/);
-  assert.match(chatMessageChromeSource, /<Ionicons[\s\S]*?name=\{icon\.name\}[\s\S]*?size=\{icon\.size\}[\s\S]*?color=\{icon\.color\}/);
-  assert.match(chatMessageChromeSource, /aria-expanded=\{ariaExpanded\}/);
+  const actionIconButtonSource =
+    chatMessageChromeSource.match(/export function ChatMessageActionIconButton[\s\S]*?function renderChatMessageActionButton/)?.[0] ?? '';
+  assert.match(chatMessageChromeSource, /createChatRuntimeMessageActionIconButtonMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionIconButtonMobilePropsParts/);
+  assert.match(actionIconButtonSource, /const actionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts\(\{\s+icon,\s+onPress,\s+disabled,\s+isActive,\s+accessibilityRole,\s+accessibilityLabel,\s+accessibilityHint,\s+accessibilityState,\s+ariaExpanded,\s+hitSlop,\s+style,\s+activeStyle,\s+pressedStyle,\s+disabledStyle,\s+\}\);/);
+  assert.match(sessionPresentationSource, /const mergedAccessibilityState = disabled[\s\S]*?\? \{ \.\.\.accessibilityState, disabled: true as const \}[\s\S]*?: accessibilityState/);
+  assert.doesNotMatch(actionIconButtonSource, /const mergedAccessibilityState/);
+  assert.match(actionIconButtonSource, /<ActivityIndicator[\s\S]*?size=\{actionIconButtonParts\.activityIndicator\.size\}[\s\S]*?color=\{actionIconButtonParts\.activityIndicator\.color\}/);
+  assert.match(actionIconButtonSource, /<Ionicons[\s\S]*?name=\{actionIconButtonParts\.icon\.name\}[\s\S]*?size=\{actionIconButtonParts\.icon\.size\}[\s\S]*?color=\{actionIconButtonParts\.icon\.color\}/);
+  assert.match(actionIconButtonSource, /aria-expanded=\{actionIconButtonParts\.pressable\.ariaExpanded\}/);
+  assert.match(actionIconButtonSource, /style=\{actionIconButtonParts\.pressable\.style\}/);
+  assert.doesNotMatch(actionIconButtonSource, /style=\{\(\{ pressed \}\) => \[/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /name=\{renderState\.icon\.name\}/);
@@ -6512,7 +6521,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.doesNotMatch(screenSource, /branchingMessageIndex !== null && styles\.messageBranchButtonDisabled/);
   assert.doesNotMatch(screenSource, /isPending: branchingMessageIndex === messageBranchIndex/);
   assert.doesNotMatch(screenSource, /renderState: messageBranchRenderState,/);
-  assert.match(chatMessageChromeSource, /icon\.isPending \? \(/);
+  assert.match(sessionPresentationSource, /activityIndicator: icon\.isPending \? icon : null/);
+  assert.match(chatMessageChromeSource, /actionIconButtonParts\.activityIndicator \? \(/);
   assert.doesNotMatch(screenSource, /theme\.colors\[(messageSpeechMobileIcon|messageExpansionMobileIcon|messageCopyMobileIcon|messageTurnDurationMobileIcon|messageBranchMobileIcon)\.colorToken\]/);
   assert.match(sessionPresentationSource, /expansion: \{\s+onPress: \(\) => onToggleMessageExpansion\(messageIndex\),\s+\.\.\.styles\.expansion,\s+\},/);
   assert.doesNotMatch(screenSource, /standaloneActions: \{\s+shouldRender: messageActionSet\.shouldRenderStandaloneActions/);

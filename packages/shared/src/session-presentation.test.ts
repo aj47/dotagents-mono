@@ -87,6 +87,7 @@ import {
   createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
+  createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
@@ -9273,6 +9274,85 @@ describe("session presentation semantics", () => {
         { slot: "copy", item: "copy" },
       ],
     })
+    const actionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts({
+      icon: {
+        name: "copy",
+        size: 16,
+        color: "#ffffff",
+      },
+      onPress: "press-action",
+      isActive: true,
+      accessibilityRole: "button",
+      accessibilityLabel: "Copy message",
+      accessibilityHint: null,
+      accessibilityState: { selected: true },
+      ariaExpanded: false,
+      hitSlop: 8,
+      style: "button-style",
+      activeStyle: "button-active-style",
+      pressedStyle: "button-pressed-style",
+      disabledStyle: "button-disabled-style",
+    })
+    expect(actionIconButtonParts.pressable).toMatchObject({
+      onPress: "press-action",
+      disabled: false,
+      accessibilityRole: "button",
+      accessibilityLabel: "Copy message",
+      accessibilityHint: undefined,
+      accessibilityState: { selected: true },
+      ariaExpanded: false,
+      hitSlop: 8,
+    })
+    expect(actionIconButtonParts.pressable.style({ pressed: false })).toEqual([
+      "button-style",
+      "button-active-style",
+      false,
+      false,
+    ])
+    expect(actionIconButtonParts.pressable.style({ pressed: true })).toEqual([
+      "button-style",
+      "button-active-style",
+      "button-pressed-style",
+      false,
+    ])
+    expect(actionIconButtonParts.activityIndicator).toBeNull()
+    expect(actionIconButtonParts.icon).toEqual({
+      name: "copy",
+      size: 16,
+      color: "#ffffff",
+    })
+    const disabledActionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts({
+      icon: {
+        name: "sync",
+        size: 12,
+        color: "#999999",
+        isPending: true,
+      },
+      disabled: true,
+      accessibilityRole: "button",
+      accessibilityLabel: "Processing",
+      accessibilityState: { busy: true },
+      style: "button-style",
+      pressedStyle: "button-pressed-style",
+      disabledStyle: "button-disabled-style",
+    })
+    expect(disabledActionIconButtonParts.pressable.accessibilityState).toEqual({
+      busy: true,
+      disabled: true,
+    })
+    expect(disabledActionIconButtonParts.pressable.style({ pressed: true })).toEqual([
+      "button-style",
+      false,
+      false,
+      "button-disabled-style",
+    ])
+    expect(disabledActionIconButtonParts.activityIndicator).toEqual({
+      name: "sync",
+      size: 12,
+      color: "#999999",
+      isPending: true,
+    })
+    expect(disabledActionIconButtonParts.icon).toBeNull()
     const toolExecutionStackEvents: string[] = []
     const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
       colors: threadBodyColors,

@@ -1970,6 +1970,88 @@ export interface ChatRuntimeConversationActionSetMobileStyleSlots<
   expansion: TExpansionStyle
 }
 
+export interface ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
+  TIcon extends {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  } = {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  },
+  TOnPress = unknown,
+  TAccessibilityRole = unknown,
+  TAccessibilityState extends object | undefined = object | undefined,
+  TAriaExpanded = unknown,
+  THitSlop = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+  TPressedStyle = unknown,
+  TDisabledStyle = unknown,
+> {
+  icon: TIcon
+  onPress?: TOnPress
+  disabled?: boolean
+  isActive?: boolean
+  accessibilityRole: TAccessibilityRole
+  accessibilityLabel: string
+  accessibilityHint?: string | null
+  accessibilityState?: TAccessibilityState
+  ariaExpanded?: TAriaExpanded
+  hitSlop?: THitSlop
+  style: TStyle
+  activeStyle?: TActiveStyle
+  pressedStyle?: TPressedStyle
+  disabledStyle?: TDisabledStyle
+}
+
+export interface ChatRuntimeMessageActionIconButtonMobilePropsParts<
+  TIcon extends {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  } = {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  },
+  TOnPress = unknown,
+  TAccessibilityRole = unknown,
+  TAccessibilityState extends object | undefined = object | undefined,
+  TAriaExpanded = unknown,
+  THitSlop = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+  TPressedStyle = unknown,
+  TDisabledStyle = unknown,
+> {
+  pressable: {
+    onPress: TOnPress | undefined
+    disabled: boolean
+    accessibilityRole: TAccessibilityRole
+    accessibilityLabel: string
+    accessibilityHint: string | undefined
+    accessibilityState: TAccessibilityState | { disabled: true } | undefined
+    ariaExpanded: TAriaExpanded | undefined
+    hitSlop: THitSlop | undefined
+    style: (state: { pressed: boolean }) => Array<
+      | TStyle
+      | TActiveStyle
+      | TPressedStyle
+      | TDisabledStyle
+      | false
+      | undefined
+    >
+  }
+  activityIndicator: TIcon | null
+  icon: TIcon | null
+}
+
 export interface ChatRuntimeConversationActionSetMobileStateInput<
   TTurnDurationStyle extends object = Record<string, never>,
   TSpeechStyle extends object = Record<string, never>,
@@ -16690,6 +16772,86 @@ export function createChatRuntimeConversationActionSetMobileProps<TActionContent
     entries: getChatMessageActionSlotRenderEntries(renderState.layout.visibleSlots, components),
     shouldRenderActionSlots: renderState.layout.shouldRenderActionSlots,
     shouldRenderStandaloneActions: renderState.layout.shouldRenderStandaloneRow,
+  }
+}
+
+export function createChatRuntimeMessageActionIconButtonMobilePropsParts<
+  TIcon extends {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  },
+  TOnPress,
+  TAccessibilityRole,
+  TAccessibilityState extends object | undefined,
+  TAriaExpanded,
+  THitSlop,
+  TStyle,
+  TActiveStyle,
+  TPressedStyle,
+  TDisabledStyle,
+>({
+  icon,
+  onPress,
+  disabled = false,
+  isActive = false,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  ariaExpanded,
+  hitSlop,
+  style,
+  activeStyle,
+  pressedStyle,
+  disabledStyle,
+}: ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
+  TIcon,
+  TOnPress,
+  TAccessibilityRole,
+  TAccessibilityState,
+  TAriaExpanded,
+  THitSlop,
+  TStyle,
+  TActiveStyle,
+  TPressedStyle,
+  TDisabledStyle
+>): ChatRuntimeMessageActionIconButtonMobilePropsParts<
+  TIcon,
+  TOnPress,
+  TAccessibilityRole,
+  TAccessibilityState,
+  TAriaExpanded,
+  THitSlop,
+  TStyle,
+  TActiveStyle,
+  TPressedStyle,
+  TDisabledStyle
+> {
+  const mergedAccessibilityState = disabled
+    ? { ...accessibilityState, disabled: true as const }
+    : accessibilityState
+
+  return {
+    pressable: {
+      onPress,
+      disabled,
+      accessibilityRole,
+      accessibilityLabel,
+      accessibilityHint: accessibilityHint ?? undefined,
+      accessibilityState: mergedAccessibilityState,
+      ariaExpanded,
+      hitSlop,
+      style: ({ pressed }: { pressed: boolean }) => [
+        style,
+        isActive && activeStyle,
+        pressed && !disabled && pressedStyle,
+        disabled && disabledStyle,
+      ],
+    },
+    activityIndicator: icon.isPending ? icon : null,
+    icon: icon.isPending ? null : icon,
   }
 }
 
