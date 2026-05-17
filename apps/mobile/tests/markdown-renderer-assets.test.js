@@ -25,12 +25,17 @@ test('markdown renderer loads conversation image assets through authenticated re
   assert.match(rendererSource, /getConversationImageAssetResponse\(assetRef\.conversationId, assetRef\.fileName\)/);
   assert.match(rendererSource, /throw new Error\(formatMarkdownImageRequestFailedMessage\(response\.status\)\)/);
   assert.match(rendererSource, /buildConversationImageAssetHttpUrl\(assetBaseUrl, sourceUrl\)/);
+  assert.match(rendererSource, /createMarkdownImageMobilePropsParts/);
+  assert.match(markdownRenderPartsSource, /export function createMarkdownImageMobilePropsParts/);
   assert.match(rendererSource, /setError\(getMarkdownImageUnavailableLabel\(\)\)/);
   assert.match(rendererSource, /throw new Error\(getMarkdownImageInvalidAssetUrlMessage\(\)\)/);
   assert.match(rendererSource, /getMarkdownImageLoadErrorFallback\(\)/);
   assert.match(rendererSource, /const imageLabel = getMarkdownImageFallbackLabel\(alt\);/);
-  assert.match(rendererSource, /return <Text>\{imageLabel\}<\/Text>;/);
-  assert.match(rendererSource, /accessibilityLabel=\{imageLabel\}/);
+  assert.match(rendererSource, /const imageParts = createMarkdownImageMobilePropsParts\(\{[\s\S]*?imageLabel,[\s\S]*?imageSource,[\s\S]*?error,[\s\S]*?alt,[\s\S]*?style,/);
+  assert.match(rendererSource, /if \(imageParts\.fallback\.shouldRender\) \{\s+return <Text>\{imageParts\.fallback\.text\}<\/Text>;/);
+  assert.match(rendererSource, /return <Image \{\.\.\.imageParts\.image\.props\} \/>;/);
+  assert.match(markdownRenderPartsSource, /resizeMode: "contain"/);
+  assert.match(markdownRenderPartsSource, /accessibilityLabel: imageLabel/);
   assert.match(rendererSource, /await client\.buildRequestHeaders\(\)/);
   assert.match(rendererSource, /rules=\{markdownRules\}/);
   assert.match(rendererSource, /<ThinkSection[\s\S]*?markdownRules=\{markdownRules\}/);
@@ -42,6 +47,8 @@ test('markdown renderer loads conversation image assets through authenticated re
   assert.doesNotMatch(rendererSource, /'Unable to load image\.'/);
   assert.doesNotMatch(rendererSource, /alt \|\| 'Image'/);
   assert.doesNotMatch(rendererSource, /accessibilityLabel=\{alt\}/);
+  assert.doesNotMatch(rendererSource, /accessibilityLabel=\{imageLabel\}/);
+  assert.doesNotMatch(rendererSource, /return <Text>\{imageLabel\}<\/Text>;/);
 });
 
 test('markdown renderer uses shared think-section copy and surface tokens', () => {

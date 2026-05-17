@@ -557,6 +557,30 @@ export interface MarkdownCodeBlockCopyMobilePropsParts<
   }
 }
 
+export interface MarkdownImageMobilePropsPartsInput<TImageSource = unknown, TImageStyle = unknown> {
+  imageLabel: string
+  imageSource?: TImageSource | null
+  error?: string | null
+  alt?: string | null
+  style?: TImageStyle
+}
+
+export interface MarkdownImageMobilePropsParts<TImageSource = unknown, TImageStyle = unknown> {
+  fallback: {
+    shouldRender: boolean
+    text: string
+  }
+  image: {
+    shouldRender: boolean
+    props: {
+      source: TImageSource
+      style: TImageStyle | undefined
+      resizeMode: "contain"
+      accessibilityLabel: string
+    }
+  }
+}
+
 export interface MarkdownThinkSectionMobileSurfaceColors {
   collapsedContainer: {
     borderColor: string
@@ -1343,6 +1367,33 @@ export function createMarkdownCodeBlockCopyMobilePropsParts<
       },
       icon: {
         props: renderState.icon,
+      },
+    },
+  }
+}
+
+export function createMarkdownImageMobilePropsParts<TImageSource = unknown, TImageStyle = unknown>({
+  imageLabel,
+  imageSource,
+  error,
+  alt,
+  style,
+}: MarkdownImageMobilePropsPartsInput<TImageSource, TImageStyle>):
+  MarkdownImageMobilePropsParts<TImageSource, TImageStyle> {
+  const shouldRenderFallback = Boolean(error) || !imageSource
+
+  return {
+    fallback: {
+      shouldRender: shouldRenderFallback,
+      text: error && !alt ? error : imageLabel,
+    },
+    image: {
+      shouldRender: !shouldRenderFallback,
+      props: {
+        source: imageSource as TImageSource,
+        style,
+        resizeMode: "contain",
+        accessibilityLabel: imageLabel,
       },
     },
   }

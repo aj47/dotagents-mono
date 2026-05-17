@@ -7,6 +7,7 @@ import {
   MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION,
   createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
+  createMarkdownImageMobilePropsParts,
   createMarkdownThinkSectionMobilePropsParts,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
@@ -311,6 +312,42 @@ describe("markdown render parts", () => {
     expect(getMarkdownImageInvalidAssetUrlMessage()).toBe("Invalid image asset URL.")
     expect(getMarkdownImageLoadErrorFallback()).toBe("Unable to load image.")
     expect(formatMarkdownImageRequestFailedMessage(404)).toBe("Image request failed (404)")
+    expect(createMarkdownImageMobilePropsParts({
+      imageLabel: "Chart",
+      imageSource: { uri: "https://example.com/chart.png" },
+      style: "image-style",
+    })).toEqual({
+      fallback: {
+        shouldRender: false,
+        text: "Chart",
+      },
+      image: {
+        shouldRender: true,
+        props: {
+          source: { uri: "https://example.com/chart.png" },
+          style: "image-style",
+          resizeMode: "contain",
+          accessibilityLabel: "Chart",
+        },
+      },
+    })
+    expect(createMarkdownImageMobilePropsParts({
+      imageLabel: "Chart",
+      imageSource: null,
+      error: "Unable to load custom image",
+    }).fallback).toEqual({
+      shouldRender: true,
+      text: "Unable to load custom image",
+    })
+    expect(createMarkdownImageMobilePropsParts({
+      imageLabel: "Chart",
+      imageSource: null,
+      error: "Unable to load custom image",
+      alt: "Chart",
+    }).fallback).toEqual({
+      shouldRender: true,
+      text: "Chart",
+    })
   })
 
   it("centralizes think-section copy and desktop/mobile surface tokens", () => {

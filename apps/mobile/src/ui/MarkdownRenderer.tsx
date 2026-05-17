@@ -7,6 +7,7 @@ import {
   buildConversationImageAssetHttpUrl,
   createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
+  createMarkdownImageMobilePropsParts,
   createMarkdownThinkSectionMobilePropsParts,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
@@ -184,15 +185,19 @@ const MarkdownImage: React.FC<{
     };
   }, [assetBaseUrl, assetRef, authToken, sourceUrl]);
 
-  if (error) {
-    return <Text>{alt ? imageLabel : error}</Text>;
+  const imageParts = createMarkdownImageMobilePropsParts({
+    imageLabel,
+    imageSource,
+    error,
+    alt,
+    style,
+  });
+
+  if (imageParts.fallback.shouldRender) {
+    return <Text>{imageParts.fallback.text}</Text>;
   }
 
-  if (!imageSource) {
-    return <Text>{imageLabel}</Text>;
-  }
-
-  return <Image source={imageSource} style={style} resizeMode="contain" accessibilityLabel={imageLabel} />;
+  return <Image {...imageParts.image.props} />;
 };
 
 function getMarkdownCodeContent(node: any): string {
