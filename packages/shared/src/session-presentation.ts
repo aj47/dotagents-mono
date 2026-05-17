@@ -6498,8 +6498,8 @@ export interface ChatRuntimeInlineActivityMobilePropsParts<
   TStyle = unknown,
   TSpinnerStyle = unknown,
 > {
-  shouldRenderInlineActivity: boolean
   container: {
+    shouldRender: boolean
     props: {
       accessible: true
       accessibilityRole: TRenderState["accessibilityRole"]
@@ -23997,8 +23997,8 @@ export function createChatRuntimeInlineActivityMobilePropsParts<
   TSpinnerStyle
 > {
   return {
-    shouldRenderInlineActivity: renderState.shouldRender,
     container: {
+      shouldRender: renderState.shouldRender,
       props: {
         accessible: true,
         accessibilityRole: renderState.accessibilityRole,

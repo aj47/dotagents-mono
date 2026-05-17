@@ -11645,7 +11645,7 @@ export function ChatMessageInlineActivity({
     spinnerStyle,
   });
 
-  if (!inlineActivityParts.shouldRenderInlineActivity) return null;
+  if (!inlineActivityParts.container.shouldRender) return null;
 
   const containerContent = inlineActivityParts.container.content;
 

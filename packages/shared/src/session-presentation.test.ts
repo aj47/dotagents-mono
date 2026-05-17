@@ -5753,8 +5753,8 @@ describe("session presentation semantics", () => {
       spinnerStyle: "inline-spinner-style",
     })
     expect(inlineActivityParts).toEqual({
-      shouldRenderInlineActivity: true,
       container: {
+        shouldRender: true,
         props: {
           accessible: true,
           accessibilityRole: "progressbar",
@@ -5784,7 +5784,7 @@ describe("session presentation semantics", () => {
       spinnerSource: "spinner-source",
       style: "inline-style",
       spinnerStyle: "inline-spinner-style",
-    }).shouldRenderInlineActivity).toBe(false)
+    }).container.shouldRender).toBe(false)
     expect(getChatRuntimeInlineActivityMobileRenderState({
       isResponding: false,
       message: { role: "assistant", content: "" },
