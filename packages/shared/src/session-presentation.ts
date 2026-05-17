@@ -3551,13 +3551,15 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
         style: TStyles["scroll"] | TStyles["scrollExpanded"]
         nestedScrollEnabled: true
       }
-    }
-    code: {
-      props: {
-        props: {
-          style: TStyles["code"]
+      content: {
+        code: {
+          props: {
+            props: {
+              style: TStyles["code"]
+            }
+            text: string
+          }
         }
-        text: string
       }
     }
   }
@@ -21498,13 +21500,15 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
           style: isExpanded ? styles.scrollExpanded : styles.scroll,
           nestedScrollEnabled: true,
         },
-      },
-      code: {
-        props: {
-          props: {
-            style: styles.code,
+        content: {
+          code: {
+            props: {
+              props: {
+                style: styles.code,
+              },
+              text: content,
+            },
           },
-          text: content,
         },
       },
     },

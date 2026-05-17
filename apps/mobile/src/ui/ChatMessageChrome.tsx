@@ -2412,7 +2412,7 @@ type ChatMessageToolExecutionPayloadScrollProps =
   };
 
 type ChatMessageToolExecutionPayloadCodeProps =
-  ChatMessageToolExecutionPayloadBlockParts['content']['code']['props'];
+  ChatMessageToolExecutionPayloadBlockParts['content']['scroll']['content']['code']['props'];
 
 type ChatMessageToolExecutionPayloadSectionStyles = {
   section: StyleProp<ViewStyle>;
@@ -9796,6 +9796,7 @@ export function ChatMessageToolExecutionPayloadBlock({
     styles,
   });
   const payloadBlockContent = payloadBlockParts.content;
+  const payloadBlockScrollContent = payloadBlockContent.scroll.content;
 
   return (
     <>
@@ -9808,7 +9809,7 @@ export function ChatMessageToolExecutionPayloadBlock({
         {...payloadBlockContent.scroll.props}
       >
         <ChatMessageToolExecutionPayloadCode
-          {...payloadBlockContent.code.props}
+          {...payloadBlockScrollContent.code.props}
         />
       </ChatMessageToolExecutionPayloadScroll>
     </>

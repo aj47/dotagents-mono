@@ -14192,13 +14192,15 @@ describe("session presentation semantics", () => {
             style: "payload-scroll-expanded",
             nestedScrollEnabled: true,
           },
-        },
-        code: {
-          props: {
-            props: {
-              style: "payload-code",
+          content: {
+            code: {
+              props: {
+                props: {
+                  style: "payload-code",
+                },
+                text: "payload-content",
+              },
             },
-            text: "payload-content",
           },
         },
       },
@@ -14231,13 +14233,15 @@ describe("session presentation semantics", () => {
             style: "payload-scroll",
             nestedScrollEnabled: true,
           },
-        },
-        code: {
-          props: {
-            props: {
-              style: "payload-code",
+          content: {
+            code: {
+              props: {
+                props: {
+                  style: "payload-code",
+                },
+                text: "payload-content",
+              },
             },
-            text: "payload-content",
           },
         },
       },
