@@ -12009,14 +12009,14 @@ describe("session presentation semantics", () => {
       "button-pressed-style",
       false,
     ])
-    expect(actionIconButtonParts.activityIndicator).toEqual({
+    expect(actionIconButtonParts.pressable.content.activityIndicator).toEqual({
       shouldRender: false,
       props: {
         size: 16,
         color: "#ffffff",
       },
     })
-    expect(actionIconButtonParts.icon).toEqual({
+    expect(actionIconButtonParts.pressable.content.icon).toEqual({
       shouldRender: true,
       props: {
         name: "copy",
@@ -12049,14 +12049,14 @@ describe("session presentation semantics", () => {
       false,
       "button-disabled-style",
     ])
-    expect(disabledActionIconButtonParts.activityIndicator).toEqual({
+    expect(disabledActionIconButtonParts.pressable.content.activityIndicator).toEqual({
       shouldRender: true,
       props: {
         size: 12,
         color: "#999999",
       },
     })
-    expect(disabledActionIconButtonParts.icon).toEqual({
+    expect(disabledActionIconButtonParts.pressable.content.icon).toEqual({
       shouldRender: false,
       props: {
         name: "sync",

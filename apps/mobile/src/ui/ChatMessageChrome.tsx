@@ -1107,10 +1107,10 @@ type ChatMessageActionIconButtonPressableProps =
   };
 
 type ChatMessageActionIconButtonActivityIndicatorProps =
-  ChatMessageActionIconButtonParts['activityIndicator']['props'];
+  ChatMessageActionIconButtonParts['pressable']['content']['activityIndicator']['props'];
 
 type ChatMessageActionIconButtonIconProps =
-  ChatMessageActionIconButtonParts['icon']['props'];
+  ChatMessageActionIconButtonParts['pressable']['content']['icon']['props'];
 
 type ChatMessageActionButtonRenderState = {
   accessibilityRole: AccessibilityRole;
@@ -4164,17 +4164,19 @@ export function ChatMessageActionIconButton({
     disabledStyle,
   });
 
+  const pressableContent = actionIconButtonParts.pressable.content;
+
   return (
     <ChatMessageActionIconButtonPressable
       {...actionIconButtonParts.pressable.props}
     >
-      {actionIconButtonParts.activityIndicator.shouldRender ? (
+      {pressableContent.activityIndicator.shouldRender ? (
         <ChatMessageActionIconButtonActivityIndicator
-          {...actionIconButtonParts.activityIndicator.props}
+          {...pressableContent.activityIndicator.props}
         />
-      ) : actionIconButtonParts.icon.shouldRender ? (
+      ) : pressableContent.icon.shouldRender ? (
         <ChatMessageActionIconButtonIcon
-          {...actionIconButtonParts.icon.props}
+          {...pressableContent.icon.props}
         />
       ) : null}
     </ChatMessageActionIconButtonPressable>

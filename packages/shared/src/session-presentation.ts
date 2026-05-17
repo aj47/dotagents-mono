@@ -2824,20 +2824,22 @@ export interface ChatRuntimeMessageActionIconButtonMobilePropsParts<
         | undefined
       >
     }
-  }
-  activityIndicator: {
-    shouldRender: boolean
-    props: {
-      size: TIcon["size"]
-      color: TIcon["color"]
-    }
-  }
-  icon: {
-    shouldRender: boolean
-    props: {
-      name: TIcon["name"]
-      size: TIcon["size"]
-      color: TIcon["color"]
+    content: {
+      activityIndicator: {
+        shouldRender: boolean
+        props: {
+          size: TIcon["size"]
+          color: TIcon["color"]
+        }
+      }
+      icon: {
+        shouldRender: boolean
+        props: {
+          name: TIcon["name"]
+          size: TIcon["size"]
+          color: TIcon["color"]
+        }
+      }
     }
   }
 }
@@ -20763,20 +20765,22 @@ export function createChatRuntimeMessageActionIconButtonMobilePropsParts<
           disabled && disabledStyle,
         ],
       },
-    },
-    activityIndicator: {
-      shouldRender: Boolean(icon.isPending),
-      props: {
-        size: icon.size,
-        color: icon.color,
-      },
-    },
-    icon: {
-      shouldRender: !icon.isPending,
-      props: {
-        name: icon.name,
-        size: icon.size,
-        color: icon.color,
+      content: {
+        activityIndicator: {
+          shouldRender: Boolean(icon.isPending),
+          props: {
+            size: icon.size,
+            color: icon.color,
+          },
+        },
+        icon: {
+          shouldRender: !icon.isPending,
+          props: {
+            name: icon.name,
+            size: icon.size,
+            color: icon.color,
+          },
+        },
       },
     },
   }
