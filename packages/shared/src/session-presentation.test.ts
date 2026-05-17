@@ -5124,12 +5124,14 @@ describe("session presentation semantics", () => {
           accessibilityState: { busy: true },
           style: "loading-style",
         },
-      },
-      spinner: {
-        props: {
-          source: "spinner-source",
-          style: "spinner-style",
-          resizeMode: "contain",
+        content: {
+          spinner: {
+            props: {
+              source: "spinner-source",
+              style: "spinner-style",
+              resizeMode: "contain",
+            },
+          },
         },
       },
     })
@@ -5758,12 +5760,14 @@ describe("session presentation semantics", () => {
           accessibilityState: { busy: true },
           style: "inline-style",
         },
-      },
-      spinner: {
-        props: {
-          source: "spinner-source",
-          style: "inline-spinner-style",
-          resizeMode: "contain",
+        content: {
+          spinner: {
+            props: {
+              source: "spinner-source",
+              style: "inline-spinner-style",
+              resizeMode: "contain",
+            },
+          },
         },
       },
     })

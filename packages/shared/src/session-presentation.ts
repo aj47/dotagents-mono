@@ -6296,12 +6296,14 @@ export interface ChatRuntimeLoadingStateMobilePropsParts<
       accessibilityState: TRenderState["accessibilityState"]
       style: TStyle
     }
-  }
-  spinner: {
-    props: {
-      source: TSpinnerSource
-      style: TSpinnerStyle
-      resizeMode: TRenderState["spinnerResizeMode"]
+    content: {
+      spinner: {
+        props: {
+          source: TSpinnerSource
+          style: TSpinnerStyle
+          resizeMode: TRenderState["spinnerResizeMode"]
+        }
+      }
     }
   }
 }
@@ -6419,12 +6421,14 @@ export interface ChatRuntimeInlineActivityMobilePropsParts<
       accessibilityState: TRenderState["accessibilityState"]
       style: TStyle
     }
-  }
-  spinner: {
-    props: {
-      source: TSpinnerSource
-      style: TSpinnerStyle
-      resizeMode: TRenderState["spinnerResizeMode"]
+    content: {
+      spinner: {
+        props: {
+          source: TSpinnerSource
+          style: TSpinnerStyle
+          resizeMode: TRenderState["spinnerResizeMode"]
+        }
+      }
     }
   }
 }
@@ -23691,12 +23695,14 @@ export function createChatRuntimeLoadingStateMobilePropsParts<
         accessibilityState: renderState.accessibilityState,
         style,
       },
-    },
-    spinner: {
-      props: {
-        source: spinnerSource,
-        style: spinnerStyle,
-        resizeMode: renderState.spinnerResizeMode,
+      content: {
+        spinner: {
+          props: {
+            source: spinnerSource,
+            style: spinnerStyle,
+            resizeMode: renderState.spinnerResizeMode,
+          },
+        },
       },
     },
   }
@@ -23798,12 +23804,14 @@ export function createChatRuntimeInlineActivityMobilePropsParts<
         accessibilityState: renderState.accessibilityState,
         style,
       },
-    },
-    spinner: {
-      props: {
-        source: spinnerSource,
-        style: spinnerStyle,
-        resizeMode: renderState.spinnerResizeMode,
+      content: {
+        spinner: {
+          props: {
+            source: spinnerSource,
+            style: spinnerStyle,
+            resizeMode: renderState.spinnerResizeMode,
+          },
+        },
       },
     },
   }

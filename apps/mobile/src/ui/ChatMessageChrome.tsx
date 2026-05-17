@@ -2660,7 +2660,7 @@ type ChatMessageLoadingStateContainerProps =
   };
 
 type ChatMessageLoadingStateSpinnerProps =
-  ChatMessageLoadingStateParts['spinner']['props'];
+  ChatMessageLoadingStateParts['container']['content']['spinner']['props'];
 
 type ChatMessageDebugPanelRow = ChatRuntimeDebugPanelsMobileRenderState['requestRows'][number];
 type ChatMessageDebugPanelRowProps = ChatMessageDebugPanelRow & {
@@ -3543,7 +3543,7 @@ type ChatMessageInlineActivityContainerProps =
   };
 
 type ChatMessageInlineActivitySpinnerProps =
-  ChatMessageInlineActivityParts['spinner']['props'];
+  ChatMessageInlineActivityParts['container']['content']['spinner']['props'];
 
 type ChatMessageContentRowProps = {
   children: ReactNode;
@@ -10431,12 +10431,14 @@ export function ChatMessageLoadingState({
 
   if (!loadingStateParts.shouldRenderLoadingState) return null;
 
+  const containerContent = loadingStateParts.container.content;
+
   return (
     <ChatMessageLoadingStateContainer
       {...loadingStateParts.container.props}
     >
       <ChatMessageLoadingStateSpinner
-        {...loadingStateParts.spinner.props}
+        {...containerContent.spinner.props}
       />
     </ChatMessageLoadingStateContainer>
   );
@@ -11556,12 +11558,14 @@ export function ChatMessageInlineActivity({
 
   if (!inlineActivityParts.shouldRenderInlineActivity) return null;
 
+  const containerContent = inlineActivityParts.container.content;
+
   return (
     <ChatMessageInlineActivityContainer
       {...inlineActivityParts.container.props}
     >
       <ChatMessageInlineActivitySpinner
-        {...inlineActivityParts.spinner.props}
+        {...containerContent.spinner.props}
       />
     </ChatMessageInlineActivityContainer>
   );
