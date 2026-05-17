@@ -3041,35 +3041,47 @@ export interface ChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
   TStyles extends ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase =
     ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase,
 > {
-  containerStyle: TStyles["container"]
-  cardStyle: Array<
-    | TStyles["card"]
-    | TStyles["pending"]
-    | TStyles["success"]
-    | TStyles["error"]
-    | false
-  >
+  container: {
+    props: {
+      style: TStyles["container"]
+    }
+  }
+  card: {
+    props: {
+      style: Array<
+        | TStyles["card"]
+        | TStyles["pending"]
+        | TStyles["success"]
+        | TStyles["error"]
+        | false
+      >
+    }
+  }
   topCollapseControl: {
-    renderState: TTopCollapseRenderState
-    onPress: TOnCollapsePress | undefined
-    styles: ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
-      TStyles["collapseButton"],
-      TStyles["collapsePressed"],
-      TStyles["collapseTopPlacement"],
-      TStyles["collapseBottomPlacement"],
-      TStyles["collapseText"]
-    >["top"]
+    props: {
+      renderState: TTopCollapseRenderState
+      onPress: TOnCollapsePress | undefined
+      styles: ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
+        TStyles["collapseButton"],
+        TStyles["collapsePressed"],
+        TStyles["collapseTopPlacement"],
+        TStyles["collapseBottomPlacement"],
+        TStyles["collapseText"]
+      >["top"]
+    }
   }
   bottomCollapseControl: {
-    renderState: TBottomCollapseRenderState
-    onPress: TOnCollapsePress | undefined
-    styles: ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
-      TStyles["collapseButton"],
-      TStyles["collapsePressed"],
-      TStyles["collapseTopPlacement"],
-      TStyles["collapseBottomPlacement"],
-      TStyles["collapseText"]
-    >["bottom"]
+    props: {
+      renderState: TBottomCollapseRenderState
+      onPress: TOnCollapsePress | undefined
+      styles: ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
+        TStyles["collapseButton"],
+        TStyles["collapsePressed"],
+        TStyles["collapseTopPlacement"],
+        TStyles["collapseBottomPlacement"],
+        TStyles["collapseText"]
+      >["bottom"]
+    }
   }
   emptyState: ChatRuntimeMobilePropsPart<NonNullable<TEmptyState>>
 }
@@ -20524,22 +20536,34 @@ export function createChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
     createChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots(styles)
 
   return {
-    containerStyle: styles.container,
-    cardStyle: [
-      styles.card,
-      isPending && styles.pending,
-      allSuccess && styles.success,
-      hasErrors && styles.error,
-    ],
+    container: {
+      props: {
+        style: styles.container,
+      },
+    },
+    card: {
+      props: {
+        style: [
+          styles.card,
+          isPending && styles.pending,
+          allSuccess && styles.success,
+          hasErrors && styles.error,
+        ],
+      },
+    },
     topCollapseControl: {
-      renderState: topCollapseRenderState,
-      onPress: onCollapsePress,
-      styles: collapseControlStyleSlots.top,
+      props: {
+        renderState: topCollapseRenderState,
+        onPress: onCollapsePress,
+        styles: collapseControlStyleSlots.top,
+      },
     },
     bottomCollapseControl: {
-      renderState: bottomCollapseRenderState,
-      onPress: onCollapsePress,
-      styles: collapseControlStyleSlots.bottom,
+      props: {
+        renderState: bottomCollapseRenderState,
+        onPress: onCollapsePress,
+        styles: collapseControlStyleSlots.bottom,
+      },
     },
     emptyState: emptyState != null ? {
       shouldRender: true,

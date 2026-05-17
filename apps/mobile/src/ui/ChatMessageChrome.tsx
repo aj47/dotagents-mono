@@ -2090,6 +2090,24 @@ type ChatMessageToolExecutionExpandedGroupProps = {
   children: ReactNode;
 };
 
+type ChatMessageToolExecutionExpandedGroupParts = ReturnType<typeof createChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
+  ChatMessageToolExecutionExpandedGroupProps['topCollapseRenderState'],
+  ChatMessageToolExecutionExpandedGroupProps['bottomCollapseRenderState'],
+  ChatMessageToolExecutionExpandedGroupProps['onCollapsePress'],
+  NonNullable<ChatMessageToolExecutionExpandedGroupProps['emptyState']>,
+  ChatMessageToolExecutionExpandedGroupProps['styles']
+>>;
+
+type ChatMessageToolExecutionExpandedGroupContainerProps =
+  ChatMessageToolExecutionExpandedGroupParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionExpandedGroupCardProps =
+  ChatMessageToolExecutionExpandedGroupParts['card']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionPanelProps = {
   shouldRender: boolean;
   isExpanded: boolean;
@@ -9491,17 +9509,43 @@ export function ChatMessageToolExecutionExpandedGroup({
   });
 
   return (
-    <View style={expandedGroupParts.containerStyle}>
+    <ChatMessageToolExecutionExpandedGroupContainer
+      {...expandedGroupParts.container.props}
+    >
       <ChatMessageToolExecutionCollapseControl
-        {...expandedGroupParts.topCollapseControl}
+        {...expandedGroupParts.topCollapseControl.props}
       />
-      <View style={expandedGroupParts.cardStyle}>
+      <ChatMessageToolExecutionExpandedGroupCard
+        {...expandedGroupParts.card.props}
+      >
         {children}
         {expandedGroupParts.emptyState.shouldRender ? expandedGroupParts.emptyState.props : null}
-      </View>
+      </ChatMessageToolExecutionExpandedGroupCard>
       <ChatMessageToolExecutionCollapseControl
-        {...expandedGroupParts.bottomCollapseControl}
+        {...expandedGroupParts.bottomCollapseControl.props}
       />
+    </ChatMessageToolExecutionExpandedGroupContainer>
+  );
+}
+
+export function ChatMessageToolExecutionExpandedGroupContainer({
+  style,
+  children,
+}: ChatMessageToolExecutionExpandedGroupContainerProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageToolExecutionExpandedGroupCard({
+  style,
+  children,
+}: ChatMessageToolExecutionExpandedGroupCardProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
   );
 }

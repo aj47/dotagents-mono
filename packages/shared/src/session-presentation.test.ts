@@ -12886,31 +12886,43 @@ describe("session presentation semantics", () => {
       },
     })
     expect(expandedGroupParts).toEqual({
-      containerStyle: "expanded-container",
-      cardStyle: [
-        "expanded-card",
-        "expanded-pending",
-        false,
-        "expanded-error",
-      ],
+      container: {
+        props: {
+          style: "expanded-container",
+        },
+      },
+      card: {
+        props: {
+          style: [
+            "expanded-card",
+            "expanded-pending",
+            false,
+            "expanded-error",
+          ],
+        },
+      },
       topCollapseControl: {
-        renderState: "top-collapse",
-        onPress: "collapse-expanded",
-        styles: {
-          button: "collapse-button",
-          pressed: "collapse-pressed",
-          placement: "collapse-top",
-          text: "collapse-text",
+        props: {
+          renderState: "top-collapse",
+          onPress: "collapse-expanded",
+          styles: {
+            button: "collapse-button",
+            pressed: "collapse-pressed",
+            placement: "collapse-top",
+            text: "collapse-text",
+          },
         },
       },
       bottomCollapseControl: {
-        renderState: "bottom-collapse",
-        onPress: "collapse-expanded",
-        styles: {
-          button: "collapse-button",
-          pressed: "collapse-pressed",
-          placement: "collapse-bottom",
-          text: "collapse-text",
+        props: {
+          renderState: "bottom-collapse",
+          onPress: "collapse-expanded",
+          styles: {
+            button: "collapse-button",
+            pressed: "collapse-pressed",
+            placement: "collapse-bottom",
+            text: "collapse-text",
+          },
         },
       },
       emptyState: {
