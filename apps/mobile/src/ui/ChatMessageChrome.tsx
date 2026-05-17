@@ -10337,10 +10337,10 @@ export function ChatMessageToolExecutionResultSection({
       {...resultSectionParts.item.props}
     >
       <ChatMessageToolExecutionResultHeader
-        {...resultSectionParts.header}
+        {...resultSectionParts.header.props}
       />
       <ChatMessageToolExecutionPayloadBlock
-        {...resultSectionParts.payloadBlock}
+        {...resultSectionParts.payloadBlock.props}
       />
       {resultSectionParts.errorBlock.shouldRender ? (
         <ChatMessageToolExecutionErrorBlock
