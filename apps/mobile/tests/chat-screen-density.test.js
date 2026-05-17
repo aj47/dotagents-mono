@@ -3681,15 +3681,29 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
   assert.match(chatMessageChromeSource, /resizeMode=\{renderState\.spinnerResizeMode\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageHistoryBanner/);
-  assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /\{renderState\.summaryLabel\}/);
-  assert.match(chatMessageChromeSource, /onPress=\{onLoadEarlier\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.loadButton\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.loadButton\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.loadButton\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.loadButton\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.loadButton\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.loadButton\.label\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeMessageHistoryBannerMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.shouldRenderBanner\) return null;/);
+  assert.match(chatMessageChromeSource, /style=\{historyBannerParts\.container\.style\}/);
+  assert.match(chatMessageChromeSource, /\{historyBannerParts\.summary\.text\}/);
+  assert.match(chatMessageChromeSource, /onPress=\{historyBannerParts\.loadButton\.onPress\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{historyBannerParts\.loadButton\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{historyBannerParts\.loadButton\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /historyBannerParts\.loadButton\.style,\s+pressed && historyBannerParts\.loadButton\.pressedStyle,/);
+  assert.match(chatMessageChromeSource, /name=\{historyBannerParts\.icon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{historyBannerParts\.icon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{historyBannerParts\.icon\.color\}/);
+  assert.match(chatMessageChromeSource, /\{historyBannerParts\.loadButtonLabel\.text\}/);
+  assert.match(sessionPresentationSource, /shouldRenderBanner: renderState\.shouldRender/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageHistoryBanner[\s\S]*?accessibilityRole=\{renderState\.loadButton\.accessibilityRole\}[\s\S]*?export function ChatMessageStepSummaryCard/
+  );
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageHistoryBanner[\s\S]*?name=\{renderState\.loadButton\.icon\.name\}[\s\S]*?export function ChatMessageStepSummaryCard/
+  );
   assert.doesNotMatch(chatMessageChromeSource, /accessibilityLabel=\{renderState\.loadEarlierLabel\}/);
   assert.doesNotMatch(chatMessageChromeSource, /renderState\.loadIcon/);
   assert.doesNotMatch(screenSource, /<View style=\{styles\.loadOlderContainer\}>/);

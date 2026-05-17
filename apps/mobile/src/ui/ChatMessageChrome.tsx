@@ -78,6 +78,7 @@ import {
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
+  createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
@@ -8908,29 +8909,35 @@ export function ChatMessageHistoryBanner({
   onLoadEarlier,
   styles,
 }: ChatMessageHistoryBannerProps) {
-  if (!renderState.shouldRender) return null;
+  const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts({
+    renderState,
+    onLoadEarlier,
+    styles,
+  });
+
+  if (!historyBannerParts.shouldRenderBanner) return null;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.summary}>
-        {renderState.summaryLabel}
+    <View style={historyBannerParts.container.style}>
+      <Text style={historyBannerParts.summary.style}>
+        {historyBannerParts.summary.text}
       </Text>
       <Pressable
-        onPress={onLoadEarlier}
-        accessibilityRole={renderState.loadButton.accessibilityRole}
-        accessibilityLabel={renderState.loadButton.accessibilityLabel}
+        onPress={historyBannerParts.loadButton.onPress}
+        accessibilityRole={historyBannerParts.loadButton.accessibilityRole}
+        accessibilityLabel={historyBannerParts.loadButton.accessibilityLabel}
         style={({ pressed }) => [
-          styles.loadButton,
-          pressed && styles.loadButtonPressed,
+          historyBannerParts.loadButton.style,
+          pressed && historyBannerParts.loadButton.pressedStyle,
         ]}
       >
         <Ionicons
-          name={renderState.loadButton.icon.name}
-          size={renderState.loadButton.icon.size}
-          color={renderState.loadButton.icon.color}
+          name={historyBannerParts.icon.name}
+          size={historyBannerParts.icon.size}
+          color={historyBannerParts.icon.color}
         />
-        <Text style={styles.loadButtonText}>
-          {renderState.loadButton.label}
+        <Text style={historyBannerParts.loadButtonLabel.style}>
+          {historyBannerParts.loadButtonLabel.text}
         </Text>
       </Pressable>
     </View>

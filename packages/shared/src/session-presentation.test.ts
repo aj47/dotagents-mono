@@ -371,6 +371,7 @@ import {
   getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier,
   getChatRuntimeMessageHistoryWindowMobileState,
   getChatRuntimeMessageHistoryBannerState,
+  createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
@@ -5088,6 +5089,79 @@ describe("session presentation semantics", () => {
         fontWeight: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryBanner.loadButton.fontWeight,
       },
     })
+    const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts({
+      renderState: {
+        shouldRender: true,
+        summaryLabel: "Showing latest 40 of 100 messages",
+        loadButton: {
+          accessibilityRole: "button",
+          accessibilityLabel: "Load 30 earlier messages",
+          label: "Load earlier",
+          icon: {
+            name: "chevron-up",
+            size: 13,
+            color: "#0f172a",
+          },
+        },
+      },
+      onLoadEarlier: "load-earlier",
+      styles: {
+        container: "container-style",
+        summary: "summary-style",
+        loadButton: "load-button-style",
+        loadButtonPressed: "load-button-pressed-style",
+        loadButtonText: "load-button-text-style",
+      },
+    })
+    expect(historyBannerParts).toEqual({
+      shouldRenderBanner: true,
+      container: {
+        style: "container-style",
+      },
+      summary: {
+        style: "summary-style",
+        text: "Showing latest 40 of 100 messages",
+      },
+      loadButton: {
+        onPress: "load-earlier",
+        accessibilityRole: "button",
+        accessibilityLabel: "Load 30 earlier messages",
+        style: "load-button-style",
+        pressedStyle: "load-button-pressed-style",
+      },
+      icon: {
+        name: "chevron-up",
+        size: 13,
+        color: "#0f172a",
+      },
+      loadButtonLabel: {
+        style: "load-button-text-style",
+        text: "Load earlier",
+      },
+    })
+    expect(createChatRuntimeMessageHistoryBannerMobilePropsParts({
+      renderState: {
+        shouldRender: false,
+        summaryLabel: "Showing latest 40 of 100 messages",
+        loadButton: {
+          accessibilityRole: "button",
+          accessibilityLabel: "Load 30 earlier messages",
+          label: "Load earlier",
+          icon: {
+            name: "chevron-up",
+            size: 13,
+            color: "#0f172a",
+          },
+        },
+      },
+      styles: {
+        container: "container-style",
+        summary: "summary-style",
+        loadButton: "load-button-style",
+        loadButtonPressed: "load-button-pressed-style",
+        loadButtonText: "load-button-text-style",
+      },
+    }).shouldRenderBanner).toBe(false)
     expect(getChatRuntimeMessageHistoryBannerState({
       visibleCount: 40,
       totalCount: 100,

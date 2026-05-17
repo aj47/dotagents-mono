@@ -3638,6 +3638,103 @@ export interface ChatRuntimeLoadingStateMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    summaryLabel: string
+    loadButton: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      label: string
+      icon: unknown
+    }
+  } = {
+    shouldRender: boolean
+    summaryLabel: string
+    loadButton: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      label: string
+      icon: unknown
+    }
+  },
+  TOnLoadEarlier = unknown,
+  TStyles extends {
+    container: unknown
+    summary: unknown
+    loadButton: unknown
+    loadButtonPressed: unknown
+    loadButtonText: unknown
+  } = {
+    container: unknown
+    summary: unknown
+    loadButton: unknown
+    loadButtonPressed: unknown
+    loadButtonText: unknown
+  },
+> {
+  renderState: TRenderState
+  onLoadEarlier?: TOnLoadEarlier
+  styles: TStyles
+}
+
+export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    summaryLabel: string
+    loadButton: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      label: string
+      icon: unknown
+    }
+  } = {
+    shouldRender: boolean
+    summaryLabel: string
+    loadButton: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      label: string
+      icon: unknown
+    }
+  },
+  TOnLoadEarlier = unknown,
+  TStyles extends {
+    container: unknown
+    summary: unknown
+    loadButton: unknown
+    loadButtonPressed: unknown
+    loadButtonText: unknown
+  } = {
+    container: unknown
+    summary: unknown
+    loadButton: unknown
+    loadButtonPressed: unknown
+    loadButtonText: unknown
+  },
+> {
+  shouldRenderBanner: boolean
+  container: {
+    style: TStyles["container"]
+  }
+  summary: {
+    style: TStyles["summary"]
+    text: string
+  }
+  loadButton: {
+    onPress: TOnLoadEarlier | undefined
+    accessibilityRole: TRenderState["loadButton"]["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStyles["loadButton"]
+    pressedStyle: TStyles["loadButtonPressed"]
+  }
+  icon: TRenderState["loadButton"]["icon"]
+  loadButtonLabel: {
+    style: TStyles["loadButtonText"]
+    text: string
+  }
+}
+
 export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
   TLoadingState extends object = Record<string, never>,
   THomeQuickStarts extends object = Record<string, never>,
@@ -16846,6 +16943,62 @@ export function createChatRuntimeLoadingStateMobilePropsParts<
       source: spinnerSource,
       style: spinnerStyle,
       resizeMode: renderState.spinnerResizeMode,
+    },
+  }
+}
+
+export function createChatRuntimeMessageHistoryBannerMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    summaryLabel: string
+    loadButton: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      label: string
+      icon: unknown
+    }
+  },
+  TOnLoadEarlier,
+  TStyles extends {
+    container: unknown
+    summary: unknown
+    loadButton: unknown
+    loadButtonPressed: unknown
+    loadButtonText: unknown
+  },
+>({
+  renderState,
+  onLoadEarlier,
+  styles,
+}: ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
+  TRenderState,
+  TOnLoadEarlier,
+  TStyles
+>): ChatRuntimeMessageHistoryBannerMobilePropsParts<
+  TRenderState,
+  TOnLoadEarlier,
+  TStyles
+> {
+  return {
+    shouldRenderBanner: renderState.shouldRender,
+    container: {
+      style: styles.container,
+    },
+    summary: {
+      style: styles.summary,
+      text: renderState.summaryLabel,
+    },
+    loadButton: {
+      onPress: onLoadEarlier,
+      accessibilityRole: renderState.loadButton.accessibilityRole,
+      accessibilityLabel: renderState.loadButton.accessibilityLabel,
+      style: styles.loadButton,
+      pressedStyle: styles.loadButtonPressed,
+    },
+    icon: renderState.loadButton.icon,
+    loadButtonLabel: {
+      style: styles.loadButtonText,
+      text: renderState.loadButton.label,
     },
   }
 }
