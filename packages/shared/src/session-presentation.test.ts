@@ -11061,8 +11061,13 @@ describe("session presentation semantics", () => {
       "button-pressed-style",
       false,
     ])
-    expect(actionIconButtonParts.activityIndicator).toBeNull()
+    expect(actionIconButtonParts.activityIndicator).toEqual({
+      shouldRender: false,
+      size: 16,
+      color: "#ffffff",
+    })
     expect(actionIconButtonParts.icon).toEqual({
+      shouldRender: true,
       name: "copy",
       size: 16,
       color: "#ffffff",
@@ -11093,12 +11098,16 @@ describe("session presentation semantics", () => {
       "button-disabled-style",
     ])
     expect(disabledActionIconButtonParts.activityIndicator).toEqual({
+      shouldRender: true,
+      size: 12,
+      color: "#999999",
+    })
+    expect(disabledActionIconButtonParts.icon).toEqual({
+      shouldRender: false,
       name: "sync",
       size: 12,
       color: "#999999",
-      isPending: true,
     })
-    expect(disabledActionIconButtonParts.icon).toBeNull()
     expect(createChatRuntimeMessageActionSlotListMobilePropsParts({
       entries: actionSetProps.entries,
       rowStyle: "action-row-style",

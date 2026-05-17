@@ -3288,12 +3288,12 @@ export function ChatMessageActionIconButton({
       hitSlop={actionIconButtonParts.pressable.hitSlop}
       style={actionIconButtonParts.pressable.style}
     >
-      {actionIconButtonParts.activityIndicator ? (
+      {actionIconButtonParts.activityIndicator.shouldRender ? (
         <ActivityIndicator
           size={actionIconButtonParts.activityIndicator.size}
           color={actionIconButtonParts.activityIndicator.color}
         />
-      ) : actionIconButtonParts.icon ? (
+      ) : actionIconButtonParts.icon.shouldRender ? (
         <Ionicons
           name={actionIconButtonParts.icon.name}
           size={actionIconButtonParts.icon.size}
