@@ -9289,17 +9289,18 @@ export function ChatMessageToolExecutionPanel({
     compact,
     expanded,
   });
+  const panelContent = panelParts.content;
 
   if (!panelParts.shouldRenderPanel) return null;
 
   const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts({
     compactList: (
       <ChatMessageToolExecutionCompactList
-        {...panelParts.compact.props}
+        {...panelContent.compactList.props}
       />
     ),
-    expandedGroup: panelParts.expandedGroup.shouldRender ? (
-      <ChatMessageToolExecutionExpandedGroup {...panelParts.expandedGroup.props}>
+    expandedGroup: panelContent.expandedGroup.shouldRender ? (
+      <ChatMessageToolExecutionExpandedGroup {...panelContent.expandedGroup.props}>
         {children}
       </ChatMessageToolExecutionExpandedGroup>
     ) : null,

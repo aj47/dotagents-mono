@@ -14608,15 +14608,17 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       shouldRenderPanel: true,
-      compact: {
-        props: {
-          renderState: "compact-render-state",
-          shouldRender: true,
+      content: {
+        compactList: {
+          props: {
+            renderState: "compact-render-state",
+            shouldRender: true,
+          },
         },
-      },
-      expandedGroup: {
-        shouldRender: false,
-        props: null,
+        expandedGroup: {
+          shouldRender: false,
+          props: null,
+        },
       },
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
@@ -14630,16 +14632,18 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       shouldRenderPanel: true,
-      compact: {
-        props: {
-          renderState: "compact-render-state",
-          shouldRender: false,
+      content: {
+        compactList: {
+          props: {
+            renderState: "compact-render-state",
+            shouldRender: false,
+          },
         },
-      },
-      expandedGroup: {
-        shouldRender: true,
-        props: {
-          renderState: "expanded-render-state",
+        expandedGroup: {
+          shouldRender: true,
+          props: {
+            renderState: "expanded-render-state",
+          },
         },
       },
     })
@@ -14654,15 +14658,17 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       shouldRenderPanel: false,
-      compact: {
-        props: {
-          renderState: "compact-render-state",
-          shouldRender: false,
+      content: {
+        compactList: {
+          props: {
+            renderState: "compact-render-state",
+            shouldRender: false,
+          },
         },
-      },
-      expandedGroup: {
-        shouldRender: false,
-        props: null,
+        expandedGroup: {
+          shouldRender: false,
+          props: null,
+        },
       },
     })
     expect(createChatRuntimeToolExecutionPanelShellMobilePropsParts({
