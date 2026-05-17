@@ -2048,8 +2048,10 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       props: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
     }
     label: {
-      style: TStyles["denyButtonText"]
-      text: string
+      props: {
+        style: TStyles["denyButtonText"]
+        text: string
+      }
     }
   }
   approveButton: {
@@ -22878,8 +22880,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         props: renderState.denyButton.icon,
       },
       label: {
-        style: styles.denyButtonText,
-        text: renderState.denyButton.label,
+        props: {
+          style: styles.denyButtonText,
+          text: renderState.denyButton.label,
+        },
       },
     },
     approveButton: {

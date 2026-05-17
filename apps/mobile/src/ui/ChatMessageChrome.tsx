@@ -1592,6 +1592,9 @@ type ChatMessageToolApprovalIconProps =
 type ChatMessageToolApprovalArgumentsToggleLabelProps =
   ChatMessageToolApprovalParts['argumentsToggle']['label']['props'];
 
+type ChatMessageToolApprovalActionLabelProps =
+  ChatMessageToolApprovalParts['denyButton']['label']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7510,9 +7513,9 @@ export function ChatMessageToolApproval({
             <ChatMessageToolApprovalIcon
               {...toolApprovalParts.denyButton.icon.props}
             />
-            <Text style={toolApprovalParts.denyButton.label.style}>
-              {toolApprovalParts.denyButton.label.text}
-            </Text>
+            <ChatMessageToolApprovalActionLabel
+              {...toolApprovalParts.denyButton.label.props}
+            />
           </TouchableOpacity>
           <TouchableOpacity
             style={toolApprovalParts.approveButton.style}
@@ -7562,6 +7565,17 @@ export function ChatMessageToolApprovalArgumentsToggleLabel({
   style,
   text,
 }: ChatMessageToolApprovalArgumentsToggleLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolApprovalActionLabel({
+  style,
+  text,
+}: ChatMessageToolApprovalActionLabelProps) {
   return (
     <Text style={style}>
       {text}

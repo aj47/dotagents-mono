@@ -8245,8 +8245,10 @@ describe("session presentation semantics", () => {
         props: toolApprovalProps.renderState.denyButton.icon,
       },
       label: {
-        style: "tool-approval-deny-button-text-style",
-        text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
+        props: {
+          style: "tool-approval-deny-button-text-style",
+          text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
+        },
       },
     })
     expect(toolApprovalParts.approveButton).toMatchObject({

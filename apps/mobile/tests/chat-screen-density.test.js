@@ -666,7 +666,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(sessionPresentationSource, /denyButton: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.denyButton\.icon,/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.denyButton\.icon\.props\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.denyButton\.icon\.(name|size|color)/);
-  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.denyButton\.label\.text\}/);
+  assert.match(sessionPresentationSource, /denyButton: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?style: styles\.denyButtonText,[\s\S]*?text: renderState\.denyButton\.label,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalActionLabel/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActionLabel\s+\{\.\.\.toolApprovalParts\.denyButton\.label\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalActionLabel[\s\S]*?style=\{style\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.denyButton\.label\.text/);
   assert.match(toolApprovalComponentSource, /accessibilityRole=\{toolApprovalParts\.approveButton\.accessibilityRole\}/);
   assert.match(toolApprovalComponentSource, /accessibilityLabel=\{toolApprovalParts\.approveButton\.accessibilityLabel\}/);
   assert.match(toolApprovalComponentSource, /accessibilityState=\{toolApprovalParts\.approveButton\.accessibilityState\}/);
