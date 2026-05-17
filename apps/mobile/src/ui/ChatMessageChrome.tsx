@@ -37,6 +37,7 @@ import {
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerHandsFreeControlsMobilePropsParts,
   createChatComposerIconButtonMobilePropsParts,
+  createChatComposerInputDockMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
@@ -9429,24 +9430,39 @@ export function ChatComposerInputDock({
   micWrapperRef,
   styles,
 }: ChatComposerInputDockProps) {
+  const inputDockParts = createChatComposerInputDockMobilePropsParts({
+    speechPreview,
+    pendingImagesRail,
+    handsFreeControls,
+    imageAttachmentControl,
+    textToSpeechControl,
+    editBeforeSendControl,
+    textEntry,
+    queueAction,
+    submitAction,
+    micButton,
+    micWrapperRef,
+    styles,
+  });
+
   return (
-    <View style={styles.area}>
-      {speechPreview}
-      {pendingImagesRail}
-      {handsFreeControls}
-      <View style={styles.row}>
-        {imageAttachmentControl}
-        {textToSpeechControl}
-        {editBeforeSendControl}
-        {textEntry}
-        {queueAction}
-        {submitAction}
+    <View style={inputDockParts.area.style}>
+      {inputDockParts.speechPreview}
+      {inputDockParts.pendingImagesRail}
+      {inputDockParts.handsFreeControls}
+      <View style={inputDockParts.row.style}>
+        {inputDockParts.row.imageAttachmentControl}
+        {inputDockParts.row.textToSpeechControl}
+        {inputDockParts.row.editBeforeSendControl}
+        {inputDockParts.row.textEntry}
+        {inputDockParts.row.queueAction}
+        {inputDockParts.row.submitAction}
       </View>
       <View
-        ref={micWrapperRef}
-        style={styles.micWrapper}
+        ref={inputDockParts.micWrapper.ref}
+        style={inputDockParts.micWrapper.style}
       >
-        {micButton}
+        {inputDockParts.micWrapper.micButton}
       </View>
     </View>
   );

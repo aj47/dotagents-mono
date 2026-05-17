@@ -65,6 +65,7 @@ import {
   getChatMessageActionMobileButtonStatesBySlot,
   createChatComposerHandsFreeControlsMobilePropsParts,
   createChatComposerIconButtonMobilePropsParts,
+  createChatComposerInputDockMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
@@ -8453,6 +8454,45 @@ describe("session presentation semantics", () => {
       inputDock: {
         micWrapperRef: "mic-wrapper",
         styles: "input-dock-styles",
+      },
+    })
+    expect(createChatComposerInputDockMobilePropsParts({
+      speechPreview: "speech-preview",
+      pendingImagesRail: "pending-images",
+      handsFreeControls: "hands-free",
+      imageAttachmentControl: "image-control",
+      textToSpeechControl: "tts-control",
+      editBeforeSendControl: "edit-control",
+      textEntry: "text-entry",
+      queueAction: "queue-action",
+      submitAction: "submit-action",
+      micButton: "mic-button",
+      micWrapperRef: "mic-wrapper",
+      styles: {
+        area: "input-area",
+        row: "input-row",
+        micWrapper: "mic-wrapper-style",
+      },
+    })).toEqual({
+      area: {
+        style: "input-area",
+      },
+      speechPreview: "speech-preview",
+      pendingImagesRail: "pending-images",
+      handsFreeControls: "hands-free",
+      row: {
+        style: "input-row",
+        imageAttachmentControl: "image-control",
+        textToSpeechControl: "tts-control",
+        editBeforeSendControl: "edit-control",
+        textEntry: "text-entry",
+        queueAction: "queue-action",
+        submitAction: "submit-action",
+      },
+      micWrapper: {
+        ref: "mic-wrapper",
+        style: "mic-wrapper-style",
+        micButton: "mic-button",
       },
     })
     expect(createChatComposerSpeechPreviewMobilePropsParts({

@@ -4328,6 +4328,76 @@ export interface ChatComposerPendingImagesRailMobilePropsParts<
   }>
 }
 
+export interface ChatComposerInputDockMobileStylesLike {
+  area: unknown
+  row: unknown
+  micWrapper: unknown
+}
+
+export interface ChatComposerInputDockMobilePropsPartsInput<
+  TSpeechPreview = unknown,
+  TPendingImagesRail = unknown,
+  THandsFreeControls = unknown,
+  TImageAttachmentControl = unknown,
+  TTextToSpeechControl = unknown,
+  TEditBeforeSendControl = unknown,
+  TTextEntry = unknown,
+  TQueueAction = unknown,
+  TSubmitAction = unknown,
+  TMicButton = unknown,
+  TMicWrapperRef = unknown,
+  TStyles extends ChatComposerInputDockMobileStylesLike = ChatComposerInputDockMobileStylesLike,
+> {
+  speechPreview: TSpeechPreview
+  pendingImagesRail: TPendingImagesRail
+  handsFreeControls: THandsFreeControls
+  imageAttachmentControl: TImageAttachmentControl
+  textToSpeechControl: TTextToSpeechControl
+  editBeforeSendControl: TEditBeforeSendControl
+  textEntry: TTextEntry
+  queueAction: TQueueAction
+  submitAction: TSubmitAction
+  micButton: TMicButton
+  micWrapperRef?: TMicWrapperRef
+  styles: TStyles
+}
+
+export interface ChatComposerInputDockMobilePropsParts<
+  TSpeechPreview = unknown,
+  TPendingImagesRail = unknown,
+  THandsFreeControls = unknown,
+  TImageAttachmentControl = unknown,
+  TTextToSpeechControl = unknown,
+  TEditBeforeSendControl = unknown,
+  TTextEntry = unknown,
+  TQueueAction = unknown,
+  TSubmitAction = unknown,
+  TMicButton = unknown,
+  TMicWrapperRef = unknown,
+  TStyles extends ChatComposerInputDockMobileStylesLike = ChatComposerInputDockMobileStylesLike,
+> {
+  area: {
+    style: TStyles["area"]
+  }
+  speechPreview: TSpeechPreview
+  pendingImagesRail: TPendingImagesRail
+  handsFreeControls: THandsFreeControls
+  row: {
+    style: TStyles["row"]
+    imageAttachmentControl: TImageAttachmentControl
+    textToSpeechControl: TTextToSpeechControl
+    editBeforeSendControl: TEditBeforeSendControl
+    textEntry: TTextEntry
+    queueAction: TQueueAction
+    submitAction: TSubmitAction
+  }
+  micWrapper: {
+    ref: TMicWrapperRef | undefined
+    style: TStyles["micWrapper"]
+    micButton: TMicButton
+  }
+}
+
 export interface ChatComposerRuntimeDockMobilePropsPartsInput<
   TSpeechPreview extends object = Record<string, never>,
   TPendingImagesRail extends object = Record<string, never>,
@@ -19584,6 +19654,83 @@ export function createChatComposerPendingImagesRailMobilePropsParts<
       },
       removeIcon: renderState.removeIcon,
     })),
+  }
+}
+
+export function createChatComposerInputDockMobilePropsParts<
+  TSpeechPreview,
+  TPendingImagesRail,
+  THandsFreeControls,
+  TImageAttachmentControl,
+  TTextToSpeechControl,
+  TEditBeforeSendControl,
+  TTextEntry,
+  TQueueAction,
+  TSubmitAction,
+  TMicButton,
+  TMicWrapperRef,
+  TStyles extends ChatComposerInputDockMobileStylesLike,
+>({
+  speechPreview,
+  pendingImagesRail,
+  handsFreeControls,
+  imageAttachmentControl,
+  textToSpeechControl,
+  editBeforeSendControl,
+  textEntry,
+  queueAction,
+  submitAction,
+  micButton,
+  micWrapperRef,
+  styles,
+}: ChatComposerInputDockMobilePropsPartsInput<
+  TSpeechPreview,
+  TPendingImagesRail,
+  THandsFreeControls,
+  TImageAttachmentControl,
+  TTextToSpeechControl,
+  TEditBeforeSendControl,
+  TTextEntry,
+  TQueueAction,
+  TSubmitAction,
+  TMicButton,
+  TMicWrapperRef,
+  TStyles
+>): ChatComposerInputDockMobilePropsParts<
+  TSpeechPreview,
+  TPendingImagesRail,
+  THandsFreeControls,
+  TImageAttachmentControl,
+  TTextToSpeechControl,
+  TEditBeforeSendControl,
+  TTextEntry,
+  TQueueAction,
+  TSubmitAction,
+  TMicButton,
+  TMicWrapperRef,
+  TStyles
+> {
+  return {
+    area: {
+      style: styles.area,
+    },
+    speechPreview,
+    pendingImagesRail,
+    handsFreeControls,
+    row: {
+      style: styles.row,
+      imageAttachmentControl,
+      textToSpeechControl,
+      editBeforeSendControl,
+      textEntry,
+      queueAction,
+      submitAction,
+    },
+    micWrapper: {
+      ref: micWrapperRef,
+      style: styles.micWrapper,
+      micButton,
+    },
   }
 }
 
