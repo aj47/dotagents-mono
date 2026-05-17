@@ -3722,14 +3722,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCompactGroupMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const compactGroupParts = createChatRuntimeToolExecutionCompactGroupMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /onPress=\{compactGroupParts\.container\.onPress\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{compactGroupParts\.container\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{compactGroupParts\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{compactGroupParts\.container\.accessibilityHint\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{compactGroupParts\.container\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /aria-expanded=\{compactGroupParts\.container\.ariaExpanded\}/);
-  assert.match(chatMessageChromeSource, /style=\{compactGroupParts\.container\.style\}/);
-  assert.match(sessionPresentationSource, /style: \(\{ pressed \}\) => \[\s+styles\.container,\s+pressed && styles\.pressed,/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactGroupPressable\s+\{\.\.\.compactGroupParts\.container\.props\}/);
+  assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+onPress,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-expanded": renderState\.ariaExpanded,\s+style: \(\{ pressed \}\) => \[\s+styles\.container,\s+pressed && styles\.pressed,/);
+  assert.doesNotMatch(chatMessageChromeSource, /compactGroupParts\.container\.(onPress|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaExpanded|style)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroup[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageToolExecutionCompactRow/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroup[\s\S]*?pressed && styles\.pressed[\s\S]*?export function ChatMessageToolExecutionCompactRow/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{toolExecutionExpandControl\.accessibilityRole\}/);

@@ -1981,6 +1981,17 @@ type ChatMessageToolExecutionCompactGroupProps = {
   children: ReactNode;
 };
 
+type ChatMessageToolExecutionCompactGroupParts = ReturnType<typeof createChatRuntimeToolExecutionCompactGroupMobilePropsParts<
+  ChatMessageToolExecutionCompactGroupProps['renderState'],
+  ChatMessageToolExecutionCompactGroupProps['onPress'],
+  ChatMessageToolExecutionCompactGroupProps['styles']
+>>;
+
+type ChatMessageToolExecutionCompactGroupPressableProps =
+  ChatMessageToolExecutionCompactGroupParts['container']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionCompactListProps = {
   shouldRender: boolean;
   renderState: ToolExecutionDetailMobileExpandControlRenderState;
@@ -9148,14 +9159,33 @@ export function ChatMessageToolExecutionCompactGroup({
   });
 
   return (
+    <ChatMessageToolExecutionCompactGroupPressable
+      {...compactGroupParts.container.props}
+    >
+      {children}
+    </ChatMessageToolExecutionCompactGroupPressable>
+  );
+}
+
+export function ChatMessageToolExecutionCompactGroupPressable({
+  onPress,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  'aria-expanded': ariaExpanded,
+  style,
+  children,
+}: ChatMessageToolExecutionCompactGroupPressableProps) {
+  return (
     <Pressable
-      onPress={compactGroupParts.container.onPress}
-      accessibilityRole={compactGroupParts.container.accessibilityRole}
-      accessibilityLabel={compactGroupParts.container.accessibilityLabel}
-      accessibilityHint={compactGroupParts.container.accessibilityHint}
-      accessibilityState={compactGroupParts.container.accessibilityState}
-      aria-expanded={compactGroupParts.container.ariaExpanded}
-      style={compactGroupParts.container.style}
+      onPress={onPress}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
+      aria-expanded={ariaExpanded}
+      style={style}
     >
       {children}
     </Pressable>

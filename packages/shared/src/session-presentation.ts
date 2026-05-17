@@ -3812,13 +3812,15 @@ export interface ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
   },
 > {
   container: {
-    onPress: TOnPress | undefined
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string
-    accessibilityState: TRenderState["accessibilityState"]
-    ariaExpanded: TRenderState["ariaExpanded"]
-    style: (state: { pressed: boolean }) => Array<TStyles["container"] | TStyles["pressed"] | false>
+    props: {
+      onPress: TOnPress | undefined
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string
+      accessibilityState: TRenderState["accessibilityState"]
+      "aria-expanded": TRenderState["ariaExpanded"]
+      style: (state: { pressed: boolean }) => Array<TStyles["container"] | TStyles["pressed"] | false>
+    }
   }
 }
 
@@ -21063,16 +21065,18 @@ export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts<
 > {
   return {
     container: {
-      onPress,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint,
-      accessibilityState: renderState.accessibilityState,
-      ariaExpanded: renderState.ariaExpanded,
-      style: ({ pressed }) => [
-        styles.container,
-        pressed && styles.pressed,
-      ],
+      props: {
+        onPress,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint,
+        accessibilityState: renderState.accessibilityState,
+        "aria-expanded": renderState.ariaExpanded,
+        style: ({ pressed }) => [
+          styles.container,
+          pressed && styles.pressed,
+        ],
+      },
     },
   }
 }

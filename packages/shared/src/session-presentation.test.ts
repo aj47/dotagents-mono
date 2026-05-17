@@ -13012,21 +13012,23 @@ describe("session presentation semantics", () => {
     })
     expect(compactGroupParts).toMatchObject({
       container: {
-        onPress: "expand-tools",
-        accessibilityRole: "button",
-        accessibilityLabel: "Expand tool details",
-        accessibilityHint: "Shows tool details",
-        accessibilityState: {
-          expanded: false,
+        props: {
+          onPress: "expand-tools",
+          accessibilityRole: "button",
+          accessibilityLabel: "Expand tool details",
+          accessibilityHint: "Shows tool details",
+          accessibilityState: {
+            expanded: false,
+          },
+          "aria-expanded": false,
         },
-        ariaExpanded: false,
       },
     })
-    expect(compactGroupParts.container.style({ pressed: false })).toEqual([
+    expect(compactGroupParts.container.props.style({ pressed: false })).toEqual([
       "compact-group",
       false,
     ])
-    expect(compactGroupParts.container.style({ pressed: true })).toEqual([
+    expect(compactGroupParts.container.props.style({ pressed: true })).toEqual([
       "compact-group",
       "compact-group-pressed",
     ])
