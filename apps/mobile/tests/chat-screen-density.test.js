@@ -4981,11 +4981,13 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationRuntimeThreadMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const runtimeThreadParts = createChatRuntimeConversationRuntimeThreadMobilePropsParts\(\{\s+groupRenderState,\s+onToggleGroup,\s+body,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(runtimeThreadParts\.shouldSkipThread\) return null;/);
-  assert.match(chatMessageChromeSource, /if \(runtimeThreadParts\.collapsedBoundary\) \{[\s\S]*?<ChatMessageToolActivityGroupBoundary\s+\{\.\.\.runtimeThreadParts\.collapsedBoundary\}/);
-  assert.match(chatMessageChromeSource, /if \(!runtimeThreadParts\.bodySurface\) return null;/);
+  assert.match(chatMessageChromeSource, /if \(runtimeThreadParts\.collapsedBoundary\.shouldRender\) \{[\s\S]*?<ChatMessageToolActivityGroupBoundary\s+\{\.\.\.runtimeThreadParts\.collapsedBoundary\.props\}/);
+  assert.match(chatMessageChromeSource, /if \(!runtimeThreadParts\.bodySurface\.shouldRender\) return null;/);
+  assert.doesNotMatch(chatMessageChromeSource, /if \(runtimeThreadParts\.collapsedBoundary\) \{/);
+  assert.doesNotMatch(chatMessageChromeSource, /if \(!runtimeThreadParts\.bodySurface\) return null;/);
   assert.match(chatMessageChromeSource, /const resolvedBody = createChatRuntimeConversationThreadBodyMobilePropsFromActionInput\(\{\s+\.\.\.runtimeThreadParts\.bodySurface\.body,\s+createActionSet: createChatMessageActionSet,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupThreadSurface\s+\{\.\.\.runtimeThreadParts\.bodySurface\.surface\}[\s\S]*?<ChatMessageThreadBody\s+\{\.\.\.resolvedBody\}\s+styles=\{runtimeThreadParts\.bodySurface\.bodyStyles\}/);
-  assert.match(sessionPresentationSource, /shouldSkipThread,\s+collapsedBoundary,\s+bodySurface: shouldRenderBodySurface \? \{/);
+  assert.match(sessionPresentationSource, /shouldSkipThread,\s+collapsedBoundary,\s+bodySurface: shouldRenderBodySurface \? \{\s+shouldRender: true,/);
   assert.match(sessionPresentationSource, /surfaceToneStyle: styles\.surface\.getToneStyle\(body\.conversation\.surfaceToneStyleSlot\) as TToneStyle,/);
   assert.doesNotMatch(chatMessageChromeSource, /if \(groupRenderState\?\.shouldSkipCollapsedItem\) return null;/);
   assert.doesNotMatch(chatMessageChromeSource, /if \(groupRenderState\?\.shouldRenderCollapsedHeader\) \{/);

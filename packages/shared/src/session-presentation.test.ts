@@ -9077,10 +9077,17 @@ describe("session presentation semantics", () => {
       },
     })
     expect(runtimeThreadParts.shouldSkipThread).toBe(false)
-    expect(runtimeThreadParts.collapsedBoundary).toBeNull()
-    expect(runtimeThreadParts.bodySurface?.body).toBe(runtimeThreadBody)
-    expect(runtimeThreadParts.bodySurface?.bodyStyles).toBe("thread-body-styles")
-    expect(runtimeThreadParts.bodySurface?.surface).toEqual({
+    expect(runtimeThreadParts.collapsedBoundary).toEqual({
+      shouldRender: false,
+      props: null,
+    })
+    expect(runtimeThreadParts.bodySurface.shouldRender).toBe(true)
+    if (!runtimeThreadParts.bodySurface.shouldRender) {
+      throw new Error("Expected runtime thread body surface")
+    }
+    expect(runtimeThreadParts.bodySurface.body).toBe(runtimeThreadBody)
+    expect(runtimeThreadParts.bodySurface.bodyStyles).toBe("thread-body-styles")
+    expect(runtimeThreadParts.bodySurface.surface).toEqual({
       surfaceToneStyle: "tone:assistant",
       groupRenderState: {
         groupKey: "group-1",
@@ -9105,16 +9112,21 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldSkipThread: false,
       collapsedBoundary: {
-        renderState: {
-          groupKey: "group-1",
-          shouldSkipCollapsedItem: false,
-          shouldRenderCollapsedHeader: true,
+        shouldRender: true,
+        props: {
+          renderState: {
+            groupKey: "group-1",
+            shouldSkipCollapsedItem: false,
+            shouldRenderCollapsedHeader: true,
+          },
+          kind: "collapsed",
+          onPress: "toggle-group",
+          styles: "activity-boundary",
         },
-        kind: "collapsed",
-        onPress: "toggle-group",
-        styles: "activity-boundary",
       },
-      bodySurface: null,
+      bodySurface: {
+        shouldRender: false,
+      },
     })
     expect(createChatRuntimeConversationRuntimeThreadMobilePropsParts({
       groupRenderState: {
@@ -9129,8 +9141,13 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       shouldSkipThread: true,
-      collapsedBoundary: null,
-      bodySurface: null,
+      collapsedBoundary: {
+        shouldRender: false,
+        props: null,
+      },
+      bodySurface: {
+        shouldRender: false,
+      },
     })
     const runtimeThreadListParts = createChatRuntimeConversationRuntimeThreadListMobilePropsParts({
       threadStates: [

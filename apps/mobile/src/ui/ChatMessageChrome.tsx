@@ -7159,15 +7159,15 @@ export function ChatMessageRuntimeThread({
 
   if (runtimeThreadParts.shouldSkipThread) return null;
 
-  if (runtimeThreadParts.collapsedBoundary) {
+  if (runtimeThreadParts.collapsedBoundary.shouldRender) {
     return (
       <ChatMessageToolActivityGroupBoundary
-        {...runtimeThreadParts.collapsedBoundary}
+        {...runtimeThreadParts.collapsedBoundary.props}
       />
     );
   }
 
-  if (!runtimeThreadParts.bodySurface) return null;
+  if (!runtimeThreadParts.bodySurface.shouldRender) return null;
 
   const resolvedBody = createChatRuntimeConversationThreadBodyMobilePropsFromActionInput({
     ...runtimeThreadParts.bodySurface.body,

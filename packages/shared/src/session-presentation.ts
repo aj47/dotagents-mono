@@ -5610,13 +5610,20 @@ export interface ChatRuntimeConversationRuntimeThreadMobilePropsParts<
   TToneStyle = ReturnType<TSurfaceStyles["getToneStyle"]>,
 > {
   shouldSkipThread: boolean
-  collapsedBoundary: ({
-    renderState: TGroupRenderState
-    kind: "collapsed"
-    onPress: TOnToggleGroup | undefined
-    styles: TSurfaceStyles["boundary"]
-  }) | null
-  bodySurface: ({
+  collapsedBoundary: {
+    shouldRender: true
+    props: {
+      renderState: TGroupRenderState
+      kind: "collapsed"
+      onPress: TOnToggleGroup | undefined
+      styles: TSurfaceStyles["boundary"]
+    }
+  } | {
+    shouldRender: false
+    props: null
+  }
+  bodySurface: {
+    shouldRender: true
     body: TBody
     surface: {
       surfaceToneStyle: TToneStyle
@@ -5625,7 +5632,9 @@ export interface ChatRuntimeConversationRuntimeThreadMobilePropsParts<
       styles: TSurfaceStyles
     }
     bodyStyles: TBodyStyles
-  }) | null
+  } | {
+    shouldRender: false
+  }
 }
 
 export interface ChatRuntimeConversationRuntimeThreadListMobilePropsPartsInput<
@@ -22194,17 +22203,24 @@ export function createChatRuntimeConversationRuntimeThreadMobilePropsParts<
 > {
   const shouldSkipThread = Boolean(groupRenderState?.shouldSkipCollapsedItem)
   const collapsedBoundary = !shouldSkipThread && groupRenderState?.shouldRenderCollapsedHeader ? {
-    renderState: groupRenderState,
-    kind: "collapsed" as const,
-    onPress: onToggleGroup,
-    styles: styles.surface.boundary,
-  } : null
-  const shouldRenderBodySurface = !shouldSkipThread && !collapsedBoundary && !!body
+    shouldRender: true as const,
+    props: {
+      renderState: groupRenderState,
+      kind: "collapsed" as const,
+      onPress: onToggleGroup,
+      styles: styles.surface.boundary,
+    },
+  } : {
+    shouldRender: false as const,
+    props: null,
+  }
+  const shouldRenderBodySurface = !shouldSkipThread && !collapsedBoundary.shouldRender && !!body
 
   return {
     shouldSkipThread,
     collapsedBoundary,
     bodySurface: shouldRenderBodySurface ? {
+      shouldRender: true,
       body,
       surface: {
         surfaceToneStyle: styles.surface.getToneStyle(body.conversation.surfaceToneStyleSlot) as TToneStyle,
@@ -22213,7 +22229,9 @@ export function createChatRuntimeConversationRuntimeThreadMobilePropsParts<
         styles: styles.surface,
       },
       bodyStyles: styles.body,
-    } : null,
+    } : {
+      shouldRender: false,
+    },
   }
 }
 
