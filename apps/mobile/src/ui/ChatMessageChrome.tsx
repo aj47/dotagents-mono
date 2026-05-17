@@ -2250,6 +2250,22 @@ type ChatMessageToolExecutionErrorBlockProps = {
   styles: ChatMessageToolExecutionErrorBlockStyles;
 };
 
+type ChatMessageToolExecutionErrorBlockParts = ReturnType<typeof createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
+  ChatMessageToolExecutionErrorBlockProps['renderState'],
+  ChatMessageToolExecutionErrorBlockProps['copyButtonRenderState'],
+  ChatMessageToolExecutionErrorBlockProps['onCopyPress'],
+  ChatMessageToolExecutionErrorBlockProps['styles']
+>>;
+
+type ChatMessageToolExecutionErrorBlockViewProps =
+  (ChatMessageToolExecutionErrorBlockParts['section']['props'] | ChatMessageToolExecutionErrorBlockParts['headerRow']['props']) & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionErrorBlockTextProps =
+  | ChatMessageToolExecutionErrorBlockParts['label']['props']
+  | ChatMessageToolExecutionErrorBlockParts['error']['props'];
+
 type ChatMessageToolExecutionResultSectionStyles = {
   item: StyleProp<ViewStyle>;
   header: ChatMessageToolExecutionResultHeaderStyles;
@@ -9641,19 +9657,45 @@ export function ChatMessageToolExecutionErrorBlock({
   });
 
   return (
-    <View style={errorBlockParts.sectionStyle}>
-      <View style={errorBlockParts.headerRowStyle}>
-        <Text style={errorBlockParts.label.style}>
-          {errorBlockParts.label.text}
-        </Text>
+    <ChatMessageToolExecutionErrorBlockView
+      {...errorBlockParts.section.props}
+    >
+      <ChatMessageToolExecutionErrorBlockView
+        {...errorBlockParts.headerRow.props}
+      >
+        <ChatMessageToolExecutionErrorBlockText
+          {...errorBlockParts.label.props}
+        />
         <ChatMessageToolExecutionCopyButton
           {...errorBlockParts.copyButton}
         />
-      </View>
-      <Text style={errorBlockParts.error.style}>
-        {errorBlockParts.error.text}
-      </Text>
+      </ChatMessageToolExecutionErrorBlockView>
+      <ChatMessageToolExecutionErrorBlockText
+        {...errorBlockParts.error.props}
+      />
+    </ChatMessageToolExecutionErrorBlockView>
+  );
+}
+
+export function ChatMessageToolExecutionErrorBlockView({
+  style,
+  children,
+}: ChatMessageToolExecutionErrorBlockViewProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionErrorBlockText({
+  style,
+  text,
+}: ChatMessageToolExecutionErrorBlockTextProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

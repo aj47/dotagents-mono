@@ -4201,11 +4201,21 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
     copyButton: unknown
   },
 > {
-  sectionStyle: TStyles["section"]
-  headerRowStyle: TStyles["headerRow"]
+  section: {
+    props: {
+      style: TStyles["section"]
+    }
+  }
+  headerRow: {
+    props: {
+      style: TStyles["headerRow"]
+    }
+  }
   label: {
-    text: TRenderState["label"]
-    style: TStyles["label"]
+    props: {
+      style: TStyles["label"]
+      text: TRenderState["label"]
+    }
   }
   copyButton: {
     renderState: TCopyButtonRenderState
@@ -4213,8 +4223,10 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
     styles: TStyles["copyButton"]
   }
   error: {
-    text: string
-    style: TStyles["text"]
+    props: {
+      style: TStyles["text"]
+      text: string
+    }
   }
 }
 
@@ -21264,11 +21276,21 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   TStyles
 > {
   return {
-    sectionStyle: styles.section,
-    headerRowStyle: styles.headerRow,
+    section: {
+      props: {
+        style: styles.section,
+      },
+    },
+    headerRow: {
+      props: {
+        style: styles.headerRow,
+      },
+    },
     label: {
-      text: renderState.label,
-      style: styles.label,
+      props: {
+        style: styles.label,
+        text: renderState.label,
+      },
     },
     copyButton: {
       renderState: copyButtonRenderState,
@@ -21276,8 +21298,10 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
       styles: styles.copyButton,
     },
     error: {
-      text: error,
-      style: styles.text,
+      props: {
+        style: styles.text,
+        text: error,
+      },
     },
   }
 }

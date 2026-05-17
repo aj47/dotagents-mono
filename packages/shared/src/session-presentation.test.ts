@@ -13816,11 +13816,21 @@ describe("session presentation semantics", () => {
       },
     })
     expect(errorBlockParts).toEqual({
-      sectionStyle: "error-section",
-      headerRowStyle: "error-header-row",
+      section: {
+        props: {
+          style: "error-section",
+        },
+      },
+      headerRow: {
+        props: {
+          style: "error-header-row",
+        },
+      },
       label: {
-        text: "Error",
-        style: "error-label-style",
+        props: {
+          style: "error-label-style",
+          text: "Error",
+        },
       },
       copyButton: {
         renderState: "copy-error-state",
@@ -13828,8 +13838,10 @@ describe("session presentation semantics", () => {
         styles: "error-copy-button",
       },
       error: {
-        text: "failed",
-        style: "error-text-style",
+        props: {
+          style: "error-text-style",
+          text: "failed",
+        },
       },
     })
     const resultSectionParts = createChatRuntimeToolExecutionResultSectionMobilePropsParts({
