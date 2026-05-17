@@ -2017,8 +2017,10 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       props: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
     }
     label: {
-      style: TStyles["argumentsToggleText"]
-      text: string
+      props: {
+        style: TStyles["argumentsToggleText"]
+        text: string
+      }
     }
   }
   fullArguments: {
@@ -22839,8 +22841,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         props: renderState.argumentsToggle.icon,
       },
       label: {
-        style: styles.argumentsToggleText,
-        text: renderState.argumentsToggle.label,
+        props: {
+          style: styles.argumentsToggleText,
+          text: renderState.argumentsToggle.label,
+        },
       },
     },
     fullArguments: {

@@ -8211,8 +8211,10 @@ describe("session presentation semantics", () => {
         props: toolApprovalProps.renderState.argumentsToggle.icon,
       },
       label: {
-        style: "tool-approval-arguments-toggle-text-style",
-        text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
+        props: {
+          style: "tool-approval-arguments-toggle-text-style",
+          text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
+        },
       },
     })
     expect(toolApprovalParts.fullArguments).toEqual({

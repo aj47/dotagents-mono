@@ -634,7 +634,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.argumentsToggle\.icon,/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.icon\.props\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsToggle\.icon\.(name|size|color)/);
-  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.argumentsToggle\.label\.text\}/);
+  assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsToggleText,[\s\S]*?text: renderState\.argumentsToggle\.label,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsToggleLabel/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggleLabel\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.label\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggleLabel[\s\S]*?style=\{style\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsToggle\.label\.text/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /<ScrollView[\s\S]*?style=\{toolApprovalParts\.fullArguments\.scroll\.style\}[\s\S]*?nestedScrollEnabled=\{toolApprovalParts\.fullArguments\.scroll\.nestedScrollEnabled\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments \? \(/);

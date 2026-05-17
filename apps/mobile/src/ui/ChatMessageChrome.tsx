@@ -1588,6 +1588,9 @@ type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
   | ChatMessageToolApprovalParts['argumentsToggle']['icon']['props'];
 
+type ChatMessageToolApprovalArgumentsToggleLabelProps =
+  ChatMessageToolApprovalParts['argumentsToggle']['label']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7480,9 +7483,9 @@ export function ChatMessageToolApproval({
           <ChatMessageToolApprovalIcon
             {...toolApprovalParts.argumentsToggle.icon.props}
           />
-          <Text style={toolApprovalParts.argumentsToggle.label.style}>
-            {toolApprovalParts.argumentsToggle.label.text}
-          </Text>
+          <ChatMessageToolApprovalArgumentsToggleLabel
+            {...toolApprovalParts.argumentsToggle.label.props}
+          />
         </Pressable>
         {toolApprovalParts.fullArguments.shouldRender ? (
           <ScrollView
@@ -7553,6 +7556,17 @@ export function ChatMessageToolApprovalIcon({
       size={size}
       color={color}
     />
+  );
+}
+
+export function ChatMessageToolApprovalArgumentsToggleLabel({
+  style,
+  text,
+}: ChatMessageToolApprovalArgumentsToggleLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
