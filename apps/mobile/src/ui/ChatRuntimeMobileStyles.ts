@@ -10,7 +10,6 @@ import {
   createChatComposerImageAttachmentMobileStyleSlots,
   createChatComposerRuntimeDockStyleSlots,
   createChatComposerMobileStyleSlots,
-  createChatSessionStatusMobileChromeStyleSlots,
   createChatMessageConversationDockStyleSlotsFromStyleSource,
   createChatMessageConversationThreadStyleSlotsFromStyleSource,
   createChatMessageConversationViewportStyleSlotsFromStyleSource,
@@ -21,13 +20,10 @@ import {
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeChromeSlots,
-  createChatRuntimeAgentSelectorMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeHeaderChromeSlots,
-  createChatRuntimeHeaderActionsRowMobileStyleSlot,
-  createChatRuntimeHeaderIconContainerMobileStyleSlots,
-  createChatRuntimeHeaderPinButtonMobileStyleSlots,
+  createChatRuntimeHeaderMobileStyleSlots,
   createChatRuntimeHeaderStyleSlotsFromStyleSource,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionMobileStyleSlots,
@@ -42,7 +38,6 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
-  createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants,
   createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
   createChatRuntimeThemeSpinnerSource,
   createChatRuntimeViewportActivityMobileStyleSlots,
@@ -83,34 +78,20 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const mobilePlatform = chatRuntimeChromeEnvironment.platform;
   const chatChromeStyleState = getChatRuntimeMobileChromeStyleRenderState(chatRuntimeChromeEnvironment);
   const headerChromeStyleState = chatChromeStyleState.header;
-  const headerStyleState = headerChromeStyleState.header;
-  const headerSurface = headerStyleState.surface;
+  const headerMobileStyleSlots = createChatRuntimeHeaderMobileStyleSlots({
+    header: headerChromeStyleState.header,
+    sessionStatus: headerChromeStyleState.sessionStatus,
+    turnDuration: headerChromeStyleState.turnDuration,
+    headerPinButton: chatChromeStyleState.headerPinButton,
+    radius,
+    platform: mobilePlatform,
+  });
   const threadChromeStyleState = chatChromeStyleState.thread;
   const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
   const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots({
     renderState: compactToolExecutionStyleState,
     radius,
     platform: mobilePlatform,
-  });
-  const headerAgentSelectorColors = headerStyleState.agentSelector;
-  const headerAgentSelectorStyleSlots = createChatRuntimeAgentSelectorMobileStyleSlots({
-    surface: headerSurface,
-    colors: headerAgentSelectorColors,
-  });
-  const headerActionsRowStyleSlot = createChatRuntimeHeaderActionsRowMobileStyleSlot({
-    surface: headerSurface.actionsRow,
-  });
-  const headerPinButtonStyleSlots = createChatRuntimeHeaderPinButtonMobileStyleSlots({
-    surface: headerSurface,
-    touchTarget: chatChromeStyleState.headerPinButton,
-    colors: headerStyleState.pinButton,
-    radius,
-  });
-  const headerIconContainerStyleSlots = createChatRuntimeHeaderIconContainerMobileStyleSlots({
-    surface: headerSurface,
-    colors: {
-      killSwitchButton: headerStyleState.killSwitchButton,
-    },
   });
   const conversationChromeStyleState = chatChromeStyleState.conversation;
   const viewportStyleState = conversationChromeStyleState.viewport;
@@ -203,11 +184,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   const headerActionButton = chatChromeStyleState.headerActionButton;
   const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
-  const sessionStatusStyleState = headerChromeStyleState.sessionStatus;
-  const sessionStatusSurface = sessionStatusStyleState.surface;
-  const sessionStatusStyleSlots = createChatSessionStatusMobileChromeStyleSlots({
-    surface: sessionStatusSurface,
-  });
   const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;
   const toolExecutionDetailStyleSlots = createChatRuntimeToolExecutionDetailMobileStyleSlots({
     renderState: toolExecutionDetailStyleState,
@@ -236,10 +212,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     spacing,
     radius,
     borderWidths: theme,
-  });
-  const headerTurnDurationStyleSlots = createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants({
-    renderState: headerChromeStyleState.turnDuration,
-    platform: mobilePlatform,
   });
   const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
   const mobileMessageActionStyleSlots = createChatRuntimeMessageActionMobileStyleSlots({
@@ -305,51 +277,51 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...messageQueuePanelWrapperStyleSlots.wrapper,
     },
     headerAgentSelectorButton: {
-      ...headerAgentSelectorStyleSlots.button,
+      ...headerMobileStyleSlots.agentSelector.button,
     },
     headerAgentSelectorChip: {
-      ...headerAgentSelectorStyleSlots.chip,
+      ...headerMobileStyleSlots.agentSelector.chip,
     },
     headerAgentSelectorText: {
-      ...headerAgentSelectorStyleSlots.text,
+      ...headerMobileStyleSlots.agentSelector.text,
     },
     headerActionsRow: {
-      ...headerActionsRowStyleSlot,
+      ...headerMobileStyleSlots.actionsRow,
     },
     headerConversationChip: {
-      ...sessionStatusStyleSlots.chip,
+      ...headerMobileStyleSlots.sessionStatus.chip,
     },
     headerConversationChipText: {
-      ...sessionStatusStyleSlots.text,
+      ...headerMobileStyleSlots.sessionStatus.text,
     },
     headerConversationSpinner: {
-      ...sessionStatusStyleSlots.spinner,
+      ...headerMobileStyleSlots.sessionStatus.spinner,
     },
     headerDurationChip: {
-      ...headerTurnDurationStyleSlots.standard.chip,
+      ...headerMobileStyleSlots.turnDuration.standard.chip,
     },
     headerDurationChipLive: {
-      ...headerTurnDurationStyleSlots.live.chip,
+      ...headerMobileStyleSlots.turnDuration.live.chip,
     },
     headerDurationChipText: {
-      ...headerTurnDurationStyleSlots.standard.text,
+      ...headerMobileStyleSlots.turnDuration.standard.text,
     },
     headerDurationChipTextLive: {
-      ...headerTurnDurationStyleSlots.live.text,
+      ...headerMobileStyleSlots.turnDuration.live.text,
     },
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
-      ...headerPinButtonStyleSlots.inactive,
+      ...headerMobileStyleSlots.pinButton.inactive,
     },
     headerPinButtonActive: {
-      ...headerPinButtonStyleSlots.active,
+      ...headerMobileStyleSlots.pinButton.active,
     },
     headerKillSwitchIconContainer: {
-      ...headerIconContainerStyleSlots.killSwitch,
+      ...headerMobileStyleSlots.iconContainer.killSwitch,
     },
     headerHandsFreeIconContainer: {
-      ...headerIconContainerStyleSlots.handsFree,
+      ...headerMobileStyleSlots.iconContainer.handsFree,
     },
     loadOlderContainer: {
       ...messageHistoryBannerStyleSlots.container,

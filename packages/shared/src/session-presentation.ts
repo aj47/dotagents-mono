@@ -8009,6 +8009,24 @@ export interface ChatRuntimeHeaderIconContainerMobileStyleSlots {
   >
 }
 
+export interface ChatRuntimeHeaderMobileStyleSlotsInput {
+  header: ChatRuntimeHeaderChromeMobileStyleRenderState["header"]
+  sessionStatus: ChatRuntimeHeaderChromeMobileStyleRenderState["sessionStatus"]
+  turnDuration: ChatRuntimeHeaderChromeMobileStyleRenderState["turnDuration"]
+  headerPinButton: ChatRuntimeMobileChromeStyleRenderState["headerPinButton"]
+  radius: ChatRuntimeHeaderPinButtonMobileStyleSlotsInput["radius"]
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeHeaderMobileStyleSlots {
+  agentSelector: ChatRuntimeAgentSelectorMobileStyleSlots
+  actionsRow: ChatRuntimeHeaderActionsRowMobileStyleSlot
+  pinButton: ChatRuntimeHeaderPinButtonMobileStyleSlots
+  iconContainer: ChatRuntimeHeaderIconContainerMobileStyleSlots
+  sessionStatus: ChatSessionStatusMobileChromeStyleSlots
+  turnDuration: ChatRuntimeTurnDurationHeaderMobileStyleSlotVariants
+}
+
 export interface ChatRuntimeHeaderChromeMobileStyleRenderStateInput {
   colors:
     & ChatRuntimeHeaderMobileStyleColorPalette
@@ -28555,6 +28573,46 @@ export function createChatSessionStatusMobileChromeStyleSlots({
       width: surface.runningIndicator.size,
       height: surface.runningIndicator.size,
     },
+  }
+}
+
+export function createChatRuntimeHeaderMobileStyleSlots({
+  header,
+  sessionStatus,
+  turnDuration,
+  headerPinButton,
+  radius,
+  platform,
+}: ChatRuntimeHeaderMobileStyleSlotsInput): ChatRuntimeHeaderMobileStyleSlots {
+  const headerSurface = header.surface
+
+  return {
+    agentSelector: createChatRuntimeAgentSelectorMobileStyleSlots({
+      surface: headerSurface,
+      colors: header.agentSelector,
+    }),
+    actionsRow: createChatRuntimeHeaderActionsRowMobileStyleSlot({
+      surface: headerSurface.actionsRow,
+    }),
+    pinButton: createChatRuntimeHeaderPinButtonMobileStyleSlots({
+      surface: headerSurface,
+      touchTarget: headerPinButton,
+      colors: header.pinButton,
+      radius,
+    }),
+    iconContainer: createChatRuntimeHeaderIconContainerMobileStyleSlots({
+      surface: headerSurface,
+      colors: {
+        killSwitchButton: header.killSwitchButton,
+      },
+    }),
+    sessionStatus: createChatSessionStatusMobileChromeStyleSlots({
+      surface: sessionStatus.surface,
+    }),
+    turnDuration: createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants({
+      renderState: turnDuration,
+      platform,
+    }),
   }
 }
 
