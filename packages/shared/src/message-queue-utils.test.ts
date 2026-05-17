@@ -9,6 +9,7 @@ import {
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileStyleSheetSlots,
+  createMessageQueuePanelMobilePropsParts,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
@@ -937,6 +938,76 @@ describe('message-queue-utils', () => {
       'update:list-failed-message:updated text',
       'retry:list-failed-message',
     ]);
+    const panelPartCalls: string[] = [];
+    const panelParts = createMessageQueuePanelMobilePropsParts({
+      renderState: getMessageQueuePanelMobileRenderState({
+        messages: [listPendingMessage, listFailedMessage],
+        colors: mobileMessageQueuePalette,
+        canProcessNext: true,
+      }),
+      styles: {
+        compactAction: 'compactAction',
+        processButton: 'processButton',
+        clearButton: 'clearButton',
+        queueControlText: 'queueControlText',
+        queueControlTextDisabled: 'queueControlTextDisabled',
+        processButtonText: 'processButtonText',
+        clearButtonText: 'clearButtonText',
+        container: 'container',
+        compactContainer: 'compactContainer',
+        compactText: 'compactText',
+        header: 'header',
+        headerCollapsed: 'headerCollapsed',
+        headerLeft: 'headerLeft',
+        headerActions: 'headerActions',
+        headerTitle: 'headerTitle',
+        pausedNotice: 'pausedNotice',
+        pausedNoticeText: 'pausedNoticeText',
+        list: 'list',
+        separator: 'separator',
+      },
+      onPause: () => panelPartCalls.push('pause'),
+      onResume: () => panelPartCalls.push('resume'),
+      onProcessNext: () => panelPartCalls.push('sendNext'),
+      onClear: () => panelPartCalls.push('clear'),
+      onToggleListCollapsed: () => panelPartCalls.push('toggle'),
+      onRemove: (messageId) => panelPartCalls.push(`remove:${messageId}`),
+      onUpdate: (messageId, text) => panelPartCalls.push(`update:${messageId}:${text}`),
+      onRetry: (messageId) => panelPartCalls.push(`retry:${messageId}`),
+    });
+    expect(panelParts.compactActions.actions.map((action) => action.key)).toEqual(['pause', 'sendNext', 'clear']);
+    expect(panelParts.headerActions.actions.map((action) => action.key)).toEqual([
+      'pause',
+      'sendNext',
+      'clear',
+      'toggleList',
+    ]);
+    expect(panelParts.chrome).toMatchObject({
+      container: {
+        style: 'container',
+      },
+      compactLabel: {
+        style: 'compactText',
+        text: '2 queued messages',
+      },
+      list: {
+        style: 'list',
+        showsVerticalScrollIndicator: true,
+      },
+    });
+    expect(panelParts.list.items[1]).toMatchObject({
+      key: 'list-failed-message',
+      separator: {
+        style: 'separator',
+      },
+      messageProps: {
+        message: listFailedMessage,
+      },
+    });
+    panelParts.compactActions.actions[0].onPress();
+    panelParts.headerActions.actions[3].onPress();
+    panelParts.list.items[1].messageProps.onRetry();
+    expect(panelPartCalls).toEqual(['pause', 'toggle', 'retry:list-failed-message']);
     expect(createQueuedMessageItemMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.item,
       colors: mobileQueueSurfaceRenderState.colors.item,

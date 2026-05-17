@@ -1229,6 +1229,42 @@ export interface MessageQueuePanelListMobilePropsParts<
   items: Array<MessageQueuePanelListMobilePropsPart<T, TStyles>>;
 }
 
+export interface MessageQueuePanelMobilePropsPartsStylesLike
+  extends MessageQueuePanelCompactActionMobilePropsPartsStylesLike,
+    MessageQueuePanelHeaderActionMobilePropsPartsStylesLike,
+    MessageQueuePanelChromeMobilePropsPartsStylesLike,
+    MessageQueuePanelListMobilePropsPartsStylesLike {}
+
+export interface MessageQueuePanelMobilePropsPartsInput<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelMobilePropsPartsStylesLike =
+    MessageQueuePanelMobilePropsPartsStylesLike,
+  TOnPress = unknown,
+> {
+  renderState: Pick<MessageQueuePanelMobileRenderState<T>, 'surface' | 'colors' | 'icons' | 'copy' | 'panel'>;
+  styles: TStyles;
+  onPause?: TOnPress;
+  onResume?: TOnPress;
+  onProcessNext?: TOnPress;
+  onClear: TOnPress;
+  onToggleListCollapsed: TOnPress;
+  onRemove: (messageId: string) => void;
+  onUpdate: (messageId: string, text: string) => void;
+  onRetry: (messageId: string) => void;
+}
+
+export interface MessageQueuePanelMobilePropsParts<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelMobilePropsPartsStylesLike =
+    MessageQueuePanelMobilePropsPartsStylesLike,
+  TOnPress = unknown,
+> {
+  compactActions: MessageQueuePanelCompactActionMobilePropsParts<TStyles, TOnPress>;
+  headerActions: MessageQueuePanelHeaderActionMobilePropsParts<TStyles, TOnPress>;
+  chrome: MessageQueuePanelChromeMobilePropsParts<TStyles>;
+  list: MessageQueuePanelListMobilePropsParts<T, TStyles>;
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -1741,6 +1777,68 @@ export function createMessageQueuePanelListMobilePropsParts<
         onRetry: () => onRetry(item.message.id),
       },
     })),
+  };
+}
+
+export function createMessageQueuePanelMobilePropsParts<
+  T extends Pick<QueuedMessage, 'id' | 'status'>,
+  TStyles extends MessageQueuePanelMobilePropsPartsStylesLike,
+  TOnPress,
+>({
+  renderState,
+  styles,
+  onPause,
+  onResume,
+  onProcessNext,
+  onClear,
+  onToggleListCollapsed,
+  onRemove,
+  onUpdate,
+  onRetry,
+}: MessageQueuePanelMobilePropsPartsInput<T, TStyles, TOnPress>):
+  MessageQueuePanelMobilePropsParts<T, TStyles, TOnPress> {
+  const panelSurface = renderState.surface.panel;
+  const panelColors = renderState.colors.panel;
+
+  return {
+    compactActions: createMessageQueuePanelCompactActionMobilePropsParts({
+      surface: panelSurface,
+      colors: panelColors,
+      icons: renderState.icons,
+      copy: renderState.copy,
+      panel: renderState.panel,
+      styles,
+      onPause,
+      onResume,
+      onProcessNext,
+      onClear,
+    }),
+    headerActions: createMessageQueuePanelHeaderActionMobilePropsParts({
+      surface: panelSurface,
+      colors: panelColors,
+      copy: renderState.copy,
+      panel: renderState.panel,
+      styles,
+      onPause,
+      onResume,
+      onProcessNext,
+      onClear,
+      onToggleListCollapsed,
+    }),
+    chrome: createMessageQueuePanelChromeMobilePropsParts({
+      surface: panelSurface,
+      colors: panelColors,
+      copy: renderState.copy,
+      panel: renderState.panel,
+      styles,
+    }),
+    list: createMessageQueuePanelListMobilePropsParts({
+      items: renderState.panel.items,
+      styles,
+      onRemove,
+      onUpdate,
+      onRetry,
+    }),
   };
 }
 

@@ -17,10 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSheetSlots,
-  createMessageQueuePanelCompactActionMobilePropsParts,
-  createMessageQueuePanelHeaderActionMobilePropsParts,
-  createMessageQueuePanelChromeMobilePropsParts,
-  createMessageQueuePanelListMobilePropsParts,
+  createMessageQueuePanelMobilePropsParts,
   createQueuedMessageItemMobilePropsParts,
   createQueuedMessageItemMobileStyleSheetSlots,
   getMessageQueuePanelMobileRenderState,
@@ -276,12 +273,6 @@ export function MessageQueuePanel({
     isListCollapsed,
     canProcessNext,
   });
-  const queuePanelState = queuePanelRenderState.panel;
-  const panelSurface = queuePanelRenderState.surface.panel;
-  const queuePanelColors = queuePanelRenderState.colors;
-  const panelColors = queuePanelColors.panel;
-  const queuePanelIcons = queuePanelRenderState.icons;
-  const queuePanelCopy = queuePanelRenderState.copy;
   const panelStyleSheetSlots = createMessageQueuePanelMobileStyleSheetSlots({
     renderState: queuePanelRenderState,
   });
@@ -291,40 +282,19 @@ export function MessageQueuePanel({
   }
 
   const styles = StyleSheet.create({ ...panelStyleSheetSlots });
-  const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts({
-    surface: panelSurface,
-    colors: panelColors,
-    icons: queuePanelIcons,
-    copy: queuePanelCopy,
-    panel: queuePanelState,
-    styles,
-    onPause,
-    onResume,
-    onProcessNext,
-    onClear,
-  });
-  const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts({
-    surface: panelSurface,
-    colors: panelColors,
-    copy: queuePanelCopy,
-    panel: queuePanelState,
+  const {
+    compactActions: compactActionParts,
+    headerActions: headerActionParts,
+    chrome: panelChromeParts,
+    list: panelListParts,
+  } = createMessageQueuePanelMobilePropsParts({
+    renderState: queuePanelRenderState,
     styles,
     onPause,
     onResume,
     onProcessNext,
     onClear,
     onToggleListCollapsed,
-  });
-  const panelChromeParts = createMessageQueuePanelChromeMobilePropsParts({
-    surface: panelSurface,
-    colors: panelColors,
-    copy: queuePanelCopy,
-    panel: queuePanelState,
-    styles,
-  });
-  const panelListParts = createMessageQueuePanelListMobilePropsParts({
-    items: queuePanelState.items,
-    styles,
     onRemove,
     onUpdate,
     onRetry,

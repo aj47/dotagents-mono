@@ -427,6 +427,7 @@ export {
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileStyleSheetSlots,
+  createMessageQueuePanelMobilePropsParts,
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
