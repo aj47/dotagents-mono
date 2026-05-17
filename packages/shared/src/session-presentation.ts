@@ -4343,14 +4343,16 @@ export interface ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
   },
   TStyle = unknown,
 > {
-  label: {
-    props: {
+  content: {
+    label: {
       props: {
-        accessibilityRole: TRenderState["accessibilityRole"]
-        accessibilityLabel: string
-        style: TStyle
+        props: {
+          accessibilityRole: TRenderState["accessibilityRole"]
+          accessibilityLabel: string
+          style: TStyle
+        }
+        text: string
       }
-      text: string
     }
   }
 }
@@ -22007,14 +22009,16 @@ export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts<
   TStyle
 > {
   return {
-    label: {
-      props: {
+    content: {
+      label: {
         props: {
-          accessibilityRole: renderState.accessibilityRole,
-          accessibilityLabel: renderState.accessibilityLabel,
-          style,
+          props: {
+            accessibilityRole: renderState.accessibilityRole,
+            accessibilityLabel: renderState.accessibilityLabel,
+            style,
+          },
+          text: renderState.label,
         },
-        text: renderState.label,
       },
     },
   }

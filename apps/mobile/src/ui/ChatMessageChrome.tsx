@@ -2319,7 +2319,7 @@ type ChatMessageToolExecutionEmptyStateParts = ReturnType<typeof createChatRunti
 >>;
 
 type ChatMessageToolExecutionEmptyStateLabelProps =
-  ChatMessageToolExecutionEmptyStateParts['label']['props'];
+  ChatMessageToolExecutionEmptyStateParts['content']['label']['props'];
 
 type ChatMessageToolExecutionPayloadMetaStyles = {
   row?: StyleProp<ViewStyle>;
@@ -9625,7 +9625,7 @@ export function ChatMessageToolExecutionEmptyState({
 
   return (
     <ChatMessageToolExecutionEmptyStateLabel
-      {...emptyStateParts.label.props}
+      {...emptyStateParts.content.label.props}
     />
   );
 }

@@ -4481,11 +4481,12 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionEmptyStateMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const emptyStateParts = createChatRuntimeToolExecutionEmptyStateMobilePropsParts\(\{\s+renderState,\s+style,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyStateLabel\s+\{\.\.\.emptyStateParts\.label\.props\}/);
-  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+props: \{\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style,/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyStateLabel\s+\{\.\.\.emptyStateParts\.content\.label\.props\}/);
+  assert.match(sessionPresentationSource, /content: \{\s+label: \{\s+props: \{\s+props: \{\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyStateLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageToolExecutionPayloadMeta\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyStateLabel[\s\S]*?(accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionPayloadMeta\(\{/);
-  assert.doesNotMatch(chatMessageChromeSource, /emptyStateParts\.label\.(accessibilityRole|accessibilityLabel|style|text)/);
+  assert.doesNotMatch(chatMessageChromeSource, /emptyStateParts\.label\./);
+  assert.doesNotMatch(chatMessageChromeSource, /emptyStateParts\.content\.label\.(accessibilityRole|accessibilityLabel|style|text)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageToolExecutionPayloadMeta/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState[\s\S]*?\{renderState\.label\}[\s\S]*?export function ChatMessageToolExecutionPayloadMeta/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{toolExecutionDetailEmptyState\.accessibilityRole\}/);

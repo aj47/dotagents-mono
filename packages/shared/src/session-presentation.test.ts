@@ -14368,14 +14368,16 @@ describe("session presentation semantics", () => {
       style: "empty-state-text",
     })
     expect(emptyStateParts).toEqual({
-      label: {
-        props: {
+      content: {
+        label: {
           props: {
-            accessibilityRole: "text",
-            accessibilityLabel: "No tool calls",
-            style: "empty-state-text",
+            props: {
+              accessibilityRole: "text",
+              accessibilityLabel: "No tool calls",
+              style: "empty-state-text",
+            },
+            text: "No tool calls",
           },
-          text: "No tool calls",
         },
       },
     })
