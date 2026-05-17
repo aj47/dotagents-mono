@@ -10515,38 +10515,20 @@ export function ChatMessageLoadingState({
 }
 
 export function ChatMessageLoadingStateContainer({
-  accessible,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityState,
-  style,
   children,
+  ...props
 }: ChatMessageLoadingStateContainerProps) {
   return (
-    <View
-      accessible={accessible}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
-      style={style}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageLoadingStateSpinner({
-  source,
-  style,
-  resizeMode,
-}: ChatMessageLoadingStateSpinnerProps) {
-  return (
-    <Image
-      source={source}
-      style={style}
-      resizeMode={resizeMode}
-    />
-  );
+export function ChatMessageLoadingStateSpinner(
+  props: ChatMessageLoadingStateSpinnerProps
+) {
+  return <Image {...props} />;
 }
 
 export function ChatMessageDebugPanel({
