@@ -8268,82 +8268,56 @@ export function ChatMessageRetryStatus({
 }
 
 export function ChatMessageRetryStatusCard({
-  accessible,
-  accessibilityRole,
-  accessibilityLabel,
-  style,
   children,
+  ...props
 }: ChatMessageRetryStatusCardProps) {
   return (
-    <View
-      accessible={accessible}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={style}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatMessageRetryStatusView({
-  style,
   children,
+  ...props
 }: ChatMessageRetryStatusViewProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageRetryStatusIcon({
-  name,
-  size,
-  color,
-}: ChatMessageRetryStatusIconProps) {
-  return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
-  );
+export function ChatMessageRetryStatusIcon(
+  props: ChatMessageRetryStatusIconProps
+) {
+  return <Ionicons {...props} />;
 }
 
-export function ChatMessageRetryStatusSpinner({
-  size,
-  color,
-}: ChatMessageRetryStatusSpinnerProps) {
-  return (
-    <ActivityIndicator
-      size={size}
-      color={color}
-    />
-  );
+export function ChatMessageRetryStatusSpinner(
+  props: ChatMessageRetryStatusSpinnerProps
+) {
+  return <ActivityIndicator {...props} />;
 }
 
 export function ChatMessageRetryStatusTitle({
-  style,
-  numberOfLines,
   text,
+  ...props
 }: ChatMessageRetryStatusTitleProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
 }
 
 export function ChatMessageRetryStatusText({
-  style,
   text,
+  ...props
 }: ChatMessageRetryStatusTextProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );

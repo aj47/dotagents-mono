@@ -924,6 +924,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /return renderState\s+\? \{\s+renderState,\s+\}\s+: null/);
   assert.match(sessionPresentationSource, /retryStatus: \{[\s\S]*?card: styles\.retryStatusCard,[\s\S]*?description: styles\.retryStatusDescription,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
+  const retryStatusSource =
+    chatMessageChromeSource.match(/export function ChatMessageRetryStatus[\s\S]*?export function ChatMessageToolApproval/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeRetryStatusMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
@@ -946,12 +948,16 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.attempt\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.countdown\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.description\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatusCard[\s\S]*?<View[\s\S]*?accessible=\{accessible\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?style=\{style\}[\s\S]*?\{children\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatusView[\s\S]*?<View style=\{style\}>[\s\S]*?\{children\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatusIcon[\s\S]*?<Ionicons[\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatusSpinner[\s\S]*?<ActivityIndicator[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatusTitle[\s\S]*?<Text[\s\S]*?style=\{style\}[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatusText[\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}/);
+  assert.match(retryStatusSource, /export function ChatMessageRetryStatusCard\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageRetryStatusCardProps\) \{\s+return \(\s+<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
+  assert.match(retryStatusSource, /export function ChatMessageRetryStatusView\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageRetryStatusViewProps\) \{\s+return \(\s+<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
+  assert.match(retryStatusSource, /export function ChatMessageRetryStatusIcon\(\s+props: ChatMessageRetryStatusIconProps\s+\) \{\s+return <Ionicons \{\.\.\.props\} \/>;\s+\}/);
+  assert.match(retryStatusSource, /export function ChatMessageRetryStatusSpinner\(\s+props: ChatMessageRetryStatusSpinnerProps\s+\) \{\s+return <ActivityIndicator \{\.\.\.props\} \/>;\s+\}/);
+  assert.match(retryStatusSource, /export function ChatMessageRetryStatusTitle\(\{\s+text,\s+\.\.\.props\s+\}: ChatMessageRetryStatusTitleProps\) \{\s+return \(\s+<Text \{\.\.\.props\}>[\s\S]*?\{text\}/);
+  assert.match(retryStatusSource, /export function ChatMessageRetryStatusText\(\{\s+text,\s+\.\.\.props\s+\}: ChatMessageRetryStatusTextProps\) \{\s+return \(\s+<Text \{\.\.\.props\}>[\s\S]*?\{text\}/);
+  assert.doesNotMatch(
+    retryStatusSource,
+    /accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\}|name=\{name\}|size=\{size\}|color=\{color\}|numberOfLines=\{numberOfLines\}/
+  );
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(card|header|icon|title|spinner|meta|attempt|countdown|description)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/);
   assert.match(sessionPresentationSource, /shouldRenderRetryStatus: renderState\.shouldRender/);
   assert.doesNotMatch(
