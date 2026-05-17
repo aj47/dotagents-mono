@@ -9558,20 +9558,22 @@ describe("session presentation semantics", () => {
       styles: "runtime-thread-styles",
     })
     expect(runtimeThreadListParts).toEqual({
-      threads: [
-        {
-          key: "thread-visible",
-          props: {
-            groupRenderState: {
-              groupKey: "group-1",
-              shouldRenderCollapsedHeader: false,
+      content: {
+        threads: [
+          {
+            key: "thread-visible",
+            props: {
+              groupRenderState: {
+                groupKey: "group-1",
+                shouldRenderCollapsedHeader: false,
+              },
+              onToggleGroup: "toggle-group",
+              body: runtimeThreadBody,
+              styles: "runtime-thread-styles",
             },
-            onToggleGroup: "toggle-group",
-            body: runtimeThreadBody,
-            styles: "runtime-thread-styles",
           },
-        },
-      ],
+        ],
+      },
     })
     expect(createChatRuntimeConversationScrollViewportMobilePropsParts({
       children: "thread-list",

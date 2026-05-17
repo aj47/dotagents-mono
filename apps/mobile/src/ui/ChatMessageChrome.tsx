@@ -8142,10 +8142,11 @@ export function ChatMessageConversationRuntimeThreadList({
     threadStates,
     styles,
   });
+  const threadListContent = threadListParts.content;
 
   return (
     <>
-      {threadListParts.threads.map((thread) => (
+      {threadListContent.threads.map((thread) => (
         <ChatMessageRuntimeThread
           key={thread.key}
           {...thread.props}

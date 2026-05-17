@@ -6312,15 +6312,17 @@ export interface ChatRuntimeConversationRuntimeThreadListMobilePropsParts<
   } = ChatRuntimeConversationRenderableRuntimeThreadState<unknown>,
   TStyles = unknown,
 > {
-  threads: Array<{
-    key: TThreadState["threadKey"]
-    props: {
-      groupRenderState: TThreadState["groupRenderState"]
-      onToggleGroup: TThreadState["onToggleGroup"]
-      body: TThreadState["body"]
-      styles: TStyles
-    }
-  }>
+  content: {
+    threads: Array<{
+      key: TThreadState["threadKey"]
+      props: {
+        groupRenderState: TThreadState["groupRenderState"]
+        onToggleGroup: TThreadState["onToggleGroup"]
+        body: TThreadState["body"]
+        styles: TStyles
+      }
+    }>
+  }
 }
 
 export interface ChatRuntimeLoadingStateMobilePropsPartsInput<
@@ -23790,17 +23792,19 @@ export function createChatRuntimeConversationRuntimeThreadListMobilePropsParts<
   TStyles
 > {
   return {
-    threads: threadStates
-      .filter((threadState) => threadState.shouldRenderThread)
-      .map((threadState) => ({
-        key: threadState.threadKey,
-        props: {
-          groupRenderState: threadState.groupRenderState,
-          onToggleGroup: threadState.onToggleGroup,
-          body: threadState.body,
-          styles,
-        },
-      })),
+    content: {
+      threads: threadStates
+        .filter((threadState) => threadState.shouldRenderThread)
+        .map((threadState) => ({
+          key: threadState.threadKey,
+          props: {
+            groupRenderState: threadState.groupRenderState,
+            onToggleGroup: threadState.onToggleGroup,
+            body: threadState.body,
+            styles,
+          },
+        })),
+    },
   }
 }
 
