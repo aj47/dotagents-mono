@@ -2480,6 +2480,9 @@ type ChatMessageToolExecutionCollapseControlPressableProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionCollapseControlContentProps =
+  ChatMessageToolExecutionCollapseControlParts['container']['content'];
+
 type ChatMessageToolExecutionCollapseControlIconProps =
   ChatMessageToolExecutionCollapseControlParts['container']['content']['icon']['props'];
 
@@ -10409,17 +10412,13 @@ export function ChatMessageToolExecutionCollapseControl({
     onPress,
     styles,
   });
-  const collapseControlContent = collapseControlParts.container.content;
 
   return (
     <ChatMessageToolExecutionCollapseControlPressable
       {...collapseControlParts.container.props}
     >
-      <ChatMessageToolExecutionCollapseControlIcon
-        {...collapseControlContent.icon.props}
-      />
-      <ChatMessageToolExecutionCollapseControlLabel
-        {...collapseControlContent.label.props}
+      <ChatMessageToolExecutionCollapseControlContent
+        {...collapseControlParts.container.content}
       />
     </ChatMessageToolExecutionCollapseControlPressable>
   );
@@ -10433,6 +10432,22 @@ export function ChatMessageToolExecutionCollapseControlPressable({
     <Pressable {...props}>
       {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageToolExecutionCollapseControlContent({
+  icon,
+  label,
+}: ChatMessageToolExecutionCollapseControlContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionCollapseControlIcon
+        {...icon.props}
+      />
+      <ChatMessageToolExecutionCollapseControlLabel
+        {...label.props}
+      />
+    </>
   );
 }
 

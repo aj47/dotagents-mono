@@ -4247,13 +4247,18 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /styles\.card,[\s\S]*?isPending && styles\.pending,[\s\S]*?allSuccess && styles\.success,[\s\S]*?hasErrors && styles\.error/);
   assert.match(chatMessageChromeSource, /expandedGroupContent\.emptyState\.shouldRender \? expandedGroupContent\.emptyState\.props : null/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControl/);
+  const toolExecutionCollapseControlSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCollapseControl\([\s\S]*?export function ChatMessageToolExecutionCollapseControlPressable/)?.[0] ?? '';
+  const toolExecutionCollapseControlContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCollapseControlContent[\s\S]*?export function ChatMessageToolExecutionCollapseControlIcon/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCollapseControlMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const collapseControlParts = createChatRuntimeToolExecutionCollapseControlMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const collapseControlContent = collapseControlParts\.container\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const collapseControlContent = collapseControlParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControlPressable\s+\{\.\.\.collapseControlParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControlIcon\s+\{\.\.\.collapseControlContent\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControlLabel\s+\{\.\.\.collapseControlContent\.label\.props\}/);
+  assert.match(toolExecutionCollapseControlSource, /<ChatMessageToolExecutionCollapseControlContent\s+\{\.\.\.collapseControlParts\.container\.content\}/);
+  assert.match(toolExecutionCollapseControlContentSource, /<ChatMessageToolExecutionCollapseControlIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(toolExecutionCollapseControlContentSource, /<ChatMessageToolExecutionCollapseControlLabel\s+\{\.\.\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCollapseControlIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlPressable[\s\S]*?(onPress=\{onPress\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionCollapseControlIcon/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlIcon\(props: ChatMessageToolExecutionCollapseControlIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
