@@ -1173,19 +1173,29 @@ export interface MessageQueuePanelChromeMobilePropsParts<
     style: TStyles['headerTitle'];
     text: string;
   };
-  pausedNotice: {
-    container: {
-      style: TStyles['pausedNotice'];
-    };
-    message: {
-      style: TStyles['pausedNoticeText'];
-      text: string;
-    };
-  } | null;
-  list: {
-    style: TStyles['list'];
-    showsVerticalScrollIndicator: MessageQueuePanelMobilePanelSurface['listShowsVerticalScrollIndicator'];
-  } | null;
+  pausedNotice:
+    | {
+        shouldRender: true;
+        container: {
+          style: TStyles['pausedNotice'];
+        };
+        message: {
+          style: TStyles['pausedNoticeText'];
+          text: string;
+        };
+      }
+    | {
+        shouldRender: false;
+      };
+  list:
+    | {
+        shouldRender: true;
+        style: TStyles['list'];
+        showsVerticalScrollIndicator: MessageQueuePanelMobilePanelSurface['listShowsVerticalScrollIndicator'];
+      }
+    | {
+        shouldRender: false;
+      };
 }
 
 export interface MessageQueuePanelListMobilePropsPartsStylesLike {
@@ -1210,9 +1220,14 @@ export interface MessageQueuePanelListMobilePropsPart<
     MessageQueuePanelListMobilePropsPartsStylesLike,
 > {
   key: string;
-  separator: {
-    style: TStyles['separator'];
-  } | null;
+  separator:
+    | {
+        shouldRender: true;
+        style: TStyles['separator'];
+      }
+    | {
+        shouldRender: false;
+      };
   messageProps: {
     message: T;
     onRemove: () => void;
@@ -1734,6 +1749,7 @@ export function createMessageQueuePanelChromeMobilePropsParts<
     },
     pausedNotice: panel.shouldRenderPausedNotice
       ? {
+          shouldRender: true,
           container: {
             style: styles.pausedNotice,
           },
@@ -1742,13 +1758,18 @@ export function createMessageQueuePanelChromeMobilePropsParts<
             text: copy.pausedNotice,
           },
         }
-      : null,
+      : {
+          shouldRender: false,
+        },
     list: panel.shouldRenderList
       ? {
+          shouldRender: true,
           style: styles.list,
           showsVerticalScrollIndicator: surface.listShowsVerticalScrollIndicator,
         }
-      : null,
+      : {
+          shouldRender: false,
+        },
   };
 }
 
@@ -1767,9 +1788,12 @@ export function createMessageQueuePanelListMobilePropsParts<
       key: item.key,
       separator: item.shouldRenderSeparator
         ? {
+            shouldRender: true,
             style: styles.separator,
           }
-        : null,
+        : {
+            shouldRender: false,
+          },
       messageProps: {
         message: item.message,
         onRemove: () => onRemove(item.message.id),
@@ -1977,10 +2001,15 @@ export interface QueuedMessageContentMobilePropsParts<
     numberOfLines: QueuedMessageMobileItemSurface['message']['collapsedNumberOfLines'] | undefined;
     text: string;
   };
-  errorText: {
-    style: TStyles['errorText'];
-    text: string;
-  } | null;
+  errorText:
+    | {
+        shouldRender: true;
+        style: TStyles['errorText'];
+        text: string;
+      }
+    | {
+        shouldRender: false;
+      };
   metaRow: {
     style: TStyles['metaRow'];
   };
@@ -2026,30 +2055,35 @@ export interface QueuedMessageExpandButtonMobilePropsPartsInput<
   onToggleExpanded: TOnToggleExpanded;
 }
 
-export interface QueuedMessageExpandButtonMobilePropsParts<
+export type QueuedMessageExpandButtonMobilePropsParts<
   TStyles extends QueuedMessageExpandButtonMobilePropsPartsStylesLike =
     QueuedMessageExpandButtonMobilePropsPartsStylesLike,
   TOnToggleExpanded = unknown,
-> {
-  pressable: {
-    style: TStyles['expandButton'];
-    onPress: TOnToggleExpanded;
-    activeOpacity: QueuedMessageMobileItemSurface['expandButtonPressedOpacity'];
-    accessibilityRole: QueuedMessageMobileItemSurface['expandButtonAccessibilityRole'];
-    accessibilityLabel: string;
-  };
-  icon: {
-    name:
-      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
-      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
-    size: QueuedMessageMobileItemSurface['expandIconSize'];
-    color: string;
-  };
-  label: {
-    style: TStyles['expandText'];
-    text: string;
-  };
-}
+> =
+  | {
+      shouldRender: true;
+      pressable: {
+        style: TStyles['expandButton'];
+        onPress: TOnToggleExpanded;
+        activeOpacity: QueuedMessageMobileItemSurface['expandButtonPressedOpacity'];
+        accessibilityRole: QueuedMessageMobileItemSurface['expandButtonAccessibilityRole'];
+        accessibilityLabel: string;
+      };
+      icon: {
+        name:
+          | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.expandMessageName
+          | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.collapseMessageName;
+        size: QueuedMessageMobileItemSurface['expandIconSize'];
+        color: string;
+      };
+      label: {
+        style: TStyles['expandText'];
+        text: string;
+      };
+    }
+  | {
+      shouldRender: false;
+    };
 
 export interface QueuedMessageActionButtonMobileStyleSlotsInput {
   surface: QueuedMessageMobileActionSurface;
@@ -2181,14 +2215,31 @@ export interface QueuedMessageItemChromeMobilePropsParts<
   row: {
     style: TStyles['row'];
   };
-  failedStatusIcon: Extract<QueuedMessageStatusIndicatorMobilePropsPart, { type: 'failed' }>['icon'] | null;
-  processingStatusIndicator: Extract<
-    QueuedMessageStatusIndicatorMobilePropsPart,
-    { type: 'processing' }
-  >['activityIndicator'] | null;
-  actions: {
-    style: TStyles['actions'];
-  } | null;
+  failedStatusIcon:
+    | (Extract<QueuedMessageStatusIndicatorMobilePropsPart, { type: 'failed' }>['icon'] & {
+        shouldRender: true;
+      })
+    | {
+        shouldRender: false;
+      };
+  processingStatusIndicator:
+    | (Extract<
+        QueuedMessageStatusIndicatorMobilePropsPart,
+        { type: 'processing' }
+      >['activityIndicator'] & {
+        shouldRender: true;
+      })
+    | {
+        shouldRender: false;
+      };
+  actions:
+    | {
+        shouldRender: true;
+        style: TStyles['actions'];
+      }
+    | {
+        shouldRender: false;
+      };
 }
 
 export interface QueuedMessageEditMobileStyleSlotsInput {
@@ -2369,7 +2420,7 @@ export interface QueuedMessageItemMobilePropsParts<
 > {
   edit: QueuedMessageEditMobilePropsParts<TStyles, () => void, () => void>;
   actions: QueuedMessageActionButtonMobilePropsParts<TStyles>;
-  expandButton: QueuedMessageExpandButtonMobilePropsParts<TStyles, () => void> | null;
+  expandButton: QueuedMessageExpandButtonMobilePropsParts<TStyles, () => void>;
   statusIndicator: QueuedMessageStatusIndicatorMobilePropsPart | null;
   content: QueuedMessageContentMobilePropsParts<TStyles>;
   chrome: QueuedMessageItemChromeMobilePropsParts<TStyles>;
@@ -2579,10 +2630,13 @@ export function createQueuedMessageContentMobilePropsParts<
     },
     errorText: presentation.errorText
       ? {
+          shouldRender: true,
           style: styles.errorText,
           text: presentation.errorText,
         }
-      : null,
+      : {
+          shouldRender: false,
+        },
     metaRow: {
       style: styles.metaRow,
     },
@@ -2604,12 +2658,15 @@ export function createQueuedMessageExpandButtonMobilePropsParts<
   isExpanded,
   styles,
   onToggleExpanded,
-}: QueuedMessageExpandButtonMobilePropsPartsInput<TStyles, TOnToggleExpanded>): QueuedMessageExpandButtonMobilePropsParts<TStyles, TOnToggleExpanded> | null {
+}: QueuedMessageExpandButtonMobilePropsPartsInput<TStyles, TOnToggleExpanded>): QueuedMessageExpandButtonMobilePropsParts<TStyles, TOnToggleExpanded> {
   if (!presentation.isLongMessage) {
-    return null;
+    return {
+      shouldRender: false,
+    };
   }
 
   return {
+    shouldRender: true,
     pressable: {
       style: styles.expandButton,
       onPress: onToggleExpanded,
@@ -2775,16 +2832,29 @@ export function createQueuedMessageItemChromeMobilePropsParts<
       style: styles.row,
     },
     failedStatusIcon: statusIndicatorPart?.type === 'failed'
-      ? statusIndicatorPart.icon
-      : null,
+      ? {
+          shouldRender: true,
+          ...statusIndicatorPart.icon,
+        }
+      : {
+          shouldRender: false,
+        },
     processingStatusIndicator: statusIndicatorPart?.type === 'processing'
-      ? statusIndicatorPart.activityIndicator
-      : null,
+      ? {
+          shouldRender: true,
+          ...statusIndicatorPart.activityIndicator,
+        }
+      : {
+          shouldRender: false,
+        },
     actions: actionParts.shouldRender
       ? {
+          shouldRender: true,
           style: styles.actions,
         }
-      : null,
+      : {
+          shouldRender: false,
+        },
   };
 }
 

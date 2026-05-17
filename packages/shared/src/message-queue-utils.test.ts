@@ -860,6 +860,7 @@ describe('message-queue-utils', () => {
         text: 'Paused Messages (1)',
       },
       pausedNotice: {
+        shouldRender: true,
         container: {
           style: 'pausedNotice',
         },
@@ -869,6 +870,7 @@ describe('message-queue-utils', () => {
         },
       },
       list: {
+        shouldRender: true,
         style: 'list',
         showsVerticalScrollIndicator: true,
       },
@@ -897,8 +899,12 @@ describe('message-queue-utils', () => {
       headerContainer: {
         style: ['header', 'headerCollapsed'],
       },
-      pausedNotice: null,
-      list: null,
+      pausedNotice: {
+        shouldRender: false,
+      },
+      list: {
+        shouldRender: false,
+      },
     });
     const listPendingMessage = makeMessage('list-pending-message');
     const listFailedMessage = makeMessage('list-failed-message', { status: 'failed' });
@@ -915,7 +921,9 @@ describe('message-queue-utils', () => {
     expect(listParts.items).toMatchObject([
       {
         key: 'list-pending-message',
-        separator: null,
+        separator: {
+          shouldRender: false,
+        },
         messageProps: {
           message: listPendingMessage,
         },
@@ -923,6 +931,7 @@ describe('message-queue-utils', () => {
       {
         key: 'list-failed-message',
         separator: {
+          shouldRender: true,
           style: 'separator',
         },
         messageProps: {
@@ -991,6 +1000,7 @@ describe('message-queue-utils', () => {
         text: '2 queued messages',
       },
       list: {
+        shouldRender: true,
         style: 'list',
         showsVerticalScrollIndicator: true,
       },
@@ -998,6 +1008,7 @@ describe('message-queue-utils', () => {
     expect(panelParts.list.items[1]).toMatchObject({
       key: 'list-failed-message',
       separator: {
+        shouldRender: true,
         style: 'separator',
       },
       messageProps: {
@@ -1127,12 +1138,16 @@ describe('message-queue-utils', () => {
         style: 'row',
       },
       failedStatusIcon: {
+        shouldRender: true,
         name: 'alert-circle',
         size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
         color: '#dc2626',
       },
-      processingStatusIndicator: null,
+      processingStatusIndicator: {
+        shouldRender: false,
+      },
       actions: {
+        shouldRender: true,
         style: 'actions',
       },
     });
@@ -1153,12 +1168,17 @@ describe('message-queue-utils', () => {
         actions: 'actions',
       },
     })).toMatchObject({
-      failedStatusIcon: null,
+      failedStatusIcon: {
+        shouldRender: false,
+      },
       processingStatusIndicator: {
+        shouldRender: true,
         size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
         color: '#2563eb',
       },
-      actions: null,
+      actions: {
+        shouldRender: false,
+      },
     });
     expect(createQueuedMessageContentMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.item,
@@ -1188,6 +1208,7 @@ describe('message-queue-utils', () => {
         text: 'failed',
       },
       errorText: {
+        shouldRender: true,
         style: 'errorText',
         text: 'Error: timeout',
       },
@@ -1215,7 +1236,9 @@ describe('message-queue-utils', () => {
       messageText: {
         numberOfLines: undefined,
       },
-      errorText: null,
+      errorText: {
+        shouldRender: false,
+      },
     });
     const expandCalls: string[] = [];
     const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts({
@@ -1233,6 +1256,7 @@ describe('message-queue-utils', () => {
       onToggleExpanded: () => expandCalls.push('toggle'),
     });
     expect(expandButtonParts).toMatchObject({
+      shouldRender: true,
       pressable: {
         style: 'expandButton',
         activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.expandButtonPressedOpacity,
@@ -1249,7 +1273,10 @@ describe('message-queue-utils', () => {
         text: 'More',
       },
     });
-    expandButtonParts?.pressable.onPress();
+    if (!expandButtonParts.shouldRender) {
+      throw new Error('Expected long queued message expand button');
+    }
+    expandButtonParts.pressable.onPress();
     expect(expandCalls).toEqual(['toggle']);
     expect(createQueuedMessageExpandButtonMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.item,
@@ -1262,7 +1289,9 @@ describe('message-queue-utils', () => {
         expandText: 'expandText',
       },
       onToggleExpanded: () => expandCalls.push('short'),
-    })).toBeNull();
+    })).toEqual({
+      shouldRender: false,
+    });
     expect(createQueuedMessageActionButtonMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.actions,
       colors: mobileQueueSurfaceRenderState.colors.actions,
@@ -1558,13 +1587,17 @@ describe('message-queue-utils', () => {
         style: 'row',
       },
       actions: {
+        shouldRender: true,
         style: 'actions',
       },
       failedStatusIcon: {
+        shouldRender: true,
         name: 'alert-circle',
         color: '#dc2626',
       },
-      processingStatusIndicator: null,
+      processingStatusIndicator: {
+        shouldRender: false,
+      },
     });
     expect(bundledParts.content).toMatchObject({
       container: {
@@ -1575,11 +1608,13 @@ describe('message-queue-utils', () => {
         numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
       },
       errorText: {
+        shouldRender: true,
         style: 'errorText',
         text: 'Error: offline',
       },
     });
     expect(bundledParts.expandButton).toMatchObject({
+      shouldRender: true,
       pressable: {
         style: 'expandButton',
         accessibilityLabel: 'Expand queued message',
@@ -1604,7 +1639,10 @@ describe('message-queue-utils', () => {
       },
     });
     bundledParts.actions.actions.forEach((action) => action.onPress());
-    bundledParts.expandButton?.pressable.onPress();
+    if (!bundledParts.expandButton.shouldRender) {
+      throw new Error('Expected bundled queued message expand button');
+    }
+    bundledParts.expandButton.pressable.onPress();
     bundledParts.edit.cancelButton.onPress();
     bundledParts.edit.saveButton.onPress();
     expect(bundledPartCalls).toEqual(['retry', 'edit', 'remove', 'expand', 'cancel', 'save']);

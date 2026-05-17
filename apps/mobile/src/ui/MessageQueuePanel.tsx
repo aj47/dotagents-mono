@@ -171,19 +171,19 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   return (
     <View style={itemChromeParts.container.style}>
       <View style={itemChromeParts.row.style}>
-        {itemChromeParts.failedStatusIcon && (
+        {itemChromeParts.failedStatusIcon.shouldRender ? (
           <Ionicons
             name={itemChromeParts.failedStatusIcon.name}
             size={itemChromeParts.failedStatusIcon.size}
             color={itemChromeParts.failedStatusIcon.color}
           />
-        )}
-        {itemChromeParts.processingStatusIndicator && (
+        ) : null}
+        {itemChromeParts.processingStatusIndicator.shouldRender ? (
           <ActivityIndicator
             size={itemChromeParts.processingStatusIndicator.size}
             color={itemChromeParts.processingStatusIndicator.color}
           />
-        )}
+        ) : null}
         <View style={contentParts.container.style}>
           <Text
             style={contentParts.messageText.style}
@@ -191,16 +191,16 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
           >
             {contentParts.messageText.text}
           </Text>
-          {contentParts.errorText && (
+          {contentParts.errorText.shouldRender ? (
             <Text style={contentParts.errorText.style}>
               {contentParts.errorText.text}
             </Text>
-          )}
+          ) : null}
           <View style={contentParts.metaRow.style}>
             <Text style={contentParts.metaText.style}>
               {contentParts.metaText.text}
             </Text>
-            {expandButtonParts && (
+            {expandButtonParts.shouldRender ? (
               <TouchableOpacity
                 style={expandButtonParts.pressable.style}
                 onPress={expandButtonParts.pressable.onPress}
@@ -217,9 +217,9 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
                   {expandButtonParts.label.text}
                 </Text>
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
-          {itemChromeParts.actions && (
+          {itemChromeParts.actions.shouldRender ? (
             <View style={itemChromeParts.actions.style}>
               {actionParts.actions.map((action) => (
                 <TouchableOpacity
@@ -240,7 +240,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
                 </TouchableOpacity>
               ))}
             </View>
-          )}
+          ) : null}
         </View>
       </View>
     </View>
@@ -371,21 +371,21 @@ export function MessageQueuePanel({
           ))}
         </View>
       </View>
-      {panelChromeParts.pausedNotice && (
+      {panelChromeParts.pausedNotice.shouldRender ? (
         <View style={panelChromeParts.pausedNotice.container.style}>
           <Text style={panelChromeParts.pausedNotice.message.style}>
             {panelChromeParts.pausedNotice.message.text}
           </Text>
         </View>
-      )}
-      {panelChromeParts.list && (
+      ) : null}
+      {panelChromeParts.list.shouldRender ? (
         <ScrollView
           style={panelChromeParts.list.style}
           showsVerticalScrollIndicator={panelChromeParts.list.showsVerticalScrollIndicator}
         >
           {panelListParts.items.map((item) => (
             <React.Fragment key={item.key}>
-              {item.separator && <View style={item.separator.style} />}
+              {item.separator.shouldRender ? <View style={item.separator.style} /> : null}
               <QueuedMessageItem
                 {...item.messageProps}
                 colors={colors}
@@ -393,7 +393,7 @@ export function MessageQueuePanel({
             </React.Fragment>
           ))}
         </ScrollView>
-      )}
+      ) : null}
     </View>
   );
 }
