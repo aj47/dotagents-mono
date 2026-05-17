@@ -3787,9 +3787,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationRuntimeThreadListMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationRuntimeThreadListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const threadListParts = createChatRuntimeConversationRuntimeThreadListMobilePropsParts\(\{\s+threadStates,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const threadListContent = threadListParts\.content;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationRuntimeThreadListContentProps =\s+ChatMessageConversationRuntimeThreadListParts\['content'\];/);
+  assert.match(chatMessageChromeSource, /<ChatMessageConversationRuntimeThreadListContent\s+\{\.\.\.threadListParts\.content\}\s+\/>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationRuntimeThreadListContent/);
   assert.match(sessionPresentationSource, /content: \{\s+threads: threadStates\s+\.filter\(\(threadState\) => threadState\.shouldRenderThread\)/);
-  assert.match(chatMessageChromeSource, /threadListContent\.threads\.map\(\(thread\) => \(/);
+  assert.match(chatMessageChromeSource, /threads\.map\(\(thread\) => \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /const threadListContent = threadListParts\.content;/);
   assert.doesNotMatch(chatMessageChromeSource, /threadListParts\.threads\./);
   assert.match(chatMessageChromeSource, /<ChatMessageRuntimeThread\s+key=\{thread\.key\}\s+\{\.\.\.thread\.props\}/);
   assert.match(sessionPresentationSource, /\.filter\(\(threadState\) => threadState\.shouldRenderThread\)/);

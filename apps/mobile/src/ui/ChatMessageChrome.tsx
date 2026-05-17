@@ -4992,6 +4992,14 @@ type ChatMessageConversationRuntimeThreadListProps = {
   styles: ChatMessageRuntimeThreadStyleSlots;
 };
 
+type ChatMessageConversationRuntimeThreadListParts = ReturnType<typeof createChatRuntimeConversationRuntimeThreadListMobilePropsParts<
+  ChatMessageConversationRenderableRuntimeThreadState,
+  ChatMessageRuntimeThreadStyleSlots
+>>;
+
+type ChatMessageConversationRuntimeThreadListContentProps =
+  ChatMessageConversationRuntimeThreadListParts['content'];
+
 export function ChatMessageActionIconButton({
   icon,
   onPress,
@@ -9249,11 +9257,20 @@ export function ChatMessageConversationRuntimeThreadList({
     threadStates,
     styles,
   });
-  const threadListContent = threadListParts.content;
 
   return (
+    <ChatMessageConversationRuntimeThreadListContent
+      {...threadListParts.content}
+    />
+  );
+}
+
+export function ChatMessageConversationRuntimeThreadListContent({
+  threads,
+}: ChatMessageConversationRuntimeThreadListContentProps) {
+  return (
     <>
-      {threadListContent.threads.map((thread) => (
+      {threads.map((thread) => (
         <ChatMessageRuntimeThread
           key={thread.key}
           {...thread.props}
