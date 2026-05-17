@@ -1603,9 +1603,13 @@ type ChatConversationHomePromptEditorModalActionButtonPart = {
   props: ComponentProps<typeof TouchableOpacity>;
 };
 
-type ChatConversationHomePromptEditorModalActionLabelPart = {
+type ChatConversationHomePromptEditorModalTextPart = {
   text: string;
   props: ComponentProps<typeof Text>;
+};
+
+type ChatConversationHomePromptEditorModalInputPart = {
+  props: ComponentProps<typeof TextInput>;
 };
 
 type ChatConversationHomePromptEditorModalIconButtonProps = {
@@ -1613,9 +1617,14 @@ type ChatConversationHomePromptEditorModalIconButtonProps = {
   icon: ChatConversationHomePromptEditorModalIconPart;
 };
 
+type ChatConversationHomePromptEditorModalFieldProps = {
+  label: ChatConversationHomePromptEditorModalTextPart;
+  input: ChatConversationHomePromptEditorModalInputPart;
+};
+
 type ChatConversationHomePromptEditorModalActionButtonProps = {
   button: ChatConversationHomePromptEditorModalActionButtonPart;
-  label: ChatConversationHomePromptEditorModalActionLabelPart;
+  label: ChatConversationHomePromptEditorModalTextPart;
 };
 
 type ChatMessageRuntimeOverlaysProps = {
@@ -8016,11 +8025,15 @@ export function ChatConversationHomePromptEditorModal({
               />
             </View>
 
-            <Text {...modalParts.nameLabel.props}>{modalParts.nameLabel.text}</Text>
-            <TextInput {...modalParts.nameInput.props} />
+            <ChatConversationHomePromptEditorModalField
+              label={modalParts.nameLabel}
+              input={modalParts.nameInput}
+            />
 
-            <Text {...modalParts.contentLabel.props}>{modalParts.contentLabel.text}</Text>
-            <TextInput {...modalParts.contentInput.props} />
+            <ChatConversationHomePromptEditorModalField
+              label={modalParts.contentLabel}
+              input={modalParts.contentInput}
+            />
 
             <View {...modalParts.actions.props}>
               <ChatConversationHomePromptEditorModalActionButton
@@ -8047,6 +8060,18 @@ export function ChatConversationHomePromptEditorModalIconButton({
     <TouchableOpacity {...button.props}>
       <Ionicons {...icon.props} />
     </TouchableOpacity>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalField({
+  label,
+  input,
+}: ChatConversationHomePromptEditorModalFieldProps) {
+  return (
+    <>
+      <Text {...label.props}>{label.text}</Text>
+      <TextInput {...input.props} />
+    </>
   );
 }
 
