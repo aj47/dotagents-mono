@@ -2216,6 +2216,12 @@ type ChatMessageDelegationConversationMorePreviewActionProps =
 type ChatMessageDelegationToolMorePreviewActionProps =
   Extract<ChatMessageDelegationToolPreviewProps['container']['content']['moreAction'], { shouldRender: true }>['props'];
 
+type ChatMessageDelegationMorePreviewActionBlockProps = {
+  moreAction:
+    | ChatMessageDelegationConversationPreviewProps['container']['content']['moreAction']
+    | ChatMessageDelegationToolPreviewProps['container']['content']['moreAction'];
+};
+
 type ChatMessageDelegationMorePreviewActionProps =
   | ChatMessageDelegationConversationMorePreviewActionProps
   | ChatMessageDelegationToolMorePreviewActionProps;
@@ -9528,11 +9534,9 @@ export function ChatMessageDelegationConversationPreview({
           {...row.props}
         />
       ))}
-      {previewContent.moreAction.shouldRender ? (
-        <ChatMessageDelegationMorePreviewAction
-          {...previewContent.moreAction.props}
-        />
-      ) : null}
+      <ChatMessageDelegationMorePreviewActionBlock
+        moreAction={previewContent.moreAction}
+      />
     </View>
   );
 }
@@ -9575,6 +9579,20 @@ export function ChatMessageDelegationToolPreviewStatusIcon({
         />
       ) : null}
     </View>
+  );
+}
+
+export function ChatMessageDelegationMorePreviewActionBlock({
+  moreAction,
+}: ChatMessageDelegationMorePreviewActionBlockProps) {
+  if (!moreAction.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageDelegationMorePreviewAction
+      {...moreAction.props}
+    />
   );
 }
 
@@ -9736,11 +9754,9 @@ export function ChatMessageDelegationToolPreview({
           {...row.props}
         />
       ))}
-      {previewContent.moreAction.shouldRender ? (
-        <ChatMessageDelegationMorePreviewAction
-          {...previewContent.moreAction.props}
-        />
-      ) : null}
+      <ChatMessageDelegationMorePreviewActionBlock
+        moreAction={previewContent.moreAction}
+      />
     </View>
   );
 }

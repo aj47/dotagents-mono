@@ -1391,11 +1391,19 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /shouldRenderConversationPreview && conversationPreview\.hiddenCount > 0 && conversationPreview\.onShowAll \? \{/);
   assert.match(sessionPresentationSource, /shouldRenderConversationPreview && conversationPreview\.hiddenCount > 0 && conversationPreview\.onShowAll \? \{\s+shouldRender: true,/);
   assert.match(sessionPresentationSource, /shouldRenderConversationPreview && conversationPreview\.hiddenCount > 0 && conversationPreview\.onShowAll \? \{[\s\S]*?shouldRender: true,[\s\S]*?props: \{[\s\S]*?button: \{[\s\S]*?props: \{/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationConversationPreview\([\s\S]*?previewContent\.moreAction\.shouldRender \? \([\s\S]*?<ChatMessageDelegationMorePreviewAction[\s\S]*?\{\.\.\.previewContent\.moreAction\.props\}/);
+  const delegationConversationPreviewSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreview\([\s\S]*?export function ChatMessageDelegationToolPreviewRow/)?.[0] ?? '';
+  const delegationMorePreviewActionBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationMorePreviewActionBlock[\s\S]*?export function ChatMessageDelegationMorePreviewAction/)?.[0] ?? '';
+  assert.match(delegationConversationPreviewSource, /<ChatMessageDelegationMorePreviewActionBlock\s+moreAction=\{previewContent\.moreAction\}/);
+  assert.doesNotMatch(delegationConversationPreviewSource, /previewContent\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction \? \(/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewActionBlock/);
+  assert.match(delegationMorePreviewActionBlockSource, /if \(!moreAction\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.match(delegationMorePreviewActionBlockSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.moreAction\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction/);
-  assert.match(chatMessageChromeSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.previewContent\.moreAction\.props\}/);
+  assert.doesNotMatch(delegationConversationPreviewSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.previewContent\.moreAction\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction[\s\S]*?<Pressable\s+\{\.\.\.button\.props\}[\s\S]*?export function ChatMessageDelegationCard/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.button\.accessibilityRole/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.button\.accessibilityLabel/);
@@ -1512,10 +1520,13 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(chatMessageChromeSource, /onShowAll: onShowAllToolPreview\s+\? \(\) => onShowAllToolPreview\(delegation\.runId\)\s+: undefined,/);
   assert.match(sessionPresentationSource, /onShowAll: \(\) => onShowAllToolPreview\(presentationState\.runId\),/);
   assert.match(sessionPresentationSource, /shouldRenderToolPreview && toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \{[\s\S]*?shouldRender: true,[\s\S]*?props: \{[\s\S]*?button: \{[\s\S]*?props: \{/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreview\([\s\S]*?previewContent\.moreAction\.shouldRender \? \([\s\S]*?<ChatMessageDelegationMorePreviewAction[\s\S]*?\{\.\.\.previewContent\.moreAction\.props\}/);
+  const delegationToolPreviewSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreview\([\s\S]*?export function ChatMessageDelegationCard/)?.[0] ?? '';
+  assert.match(delegationToolPreviewSource, /<ChatMessageDelegationMorePreviewActionBlock\s+moreAction=\{previewContent\.moreAction\}/);
+  assert.doesNotMatch(delegationToolPreviewSource, /previewContent\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.moreAction\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.moreAction \? \(/);
-  assert.match(chatMessageChromeSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.previewContent\.moreAction\.props\}/);
+  assert.doesNotMatch(delegationToolPreviewSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.previewContent\.moreAction\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.moreAction\.button\.accessibilityRole/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.moreAction\.button\.accessibilityLabel/);
   assert.match(sessionPresentationSource, /styles\.toolPreviewMoreButton/);
