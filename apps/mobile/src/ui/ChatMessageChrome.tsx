@@ -1877,22 +1877,22 @@ type ChatMessageDelegationConversationPreviewProps =
   ChatMessageDelegationCardParts['card']['content']['conversationPreview']['props'];
 
 type ChatMessageDelegationConversationPreviewRowProps =
-  ChatMessageDelegationConversationPreviewProps['rows'][number]['props'];
+  ChatMessageDelegationConversationPreviewProps['container']['content']['rows'][number]['props'];
 
 type ChatMessageDelegationToolPreviewProps =
   ChatMessageDelegationCardParts['card']['content']['toolPreview']['props'];
 
 type ChatMessageDelegationToolPreviewRowProps =
-  ChatMessageDelegationToolPreviewProps['rows'][number]['props'];
+  ChatMessageDelegationToolPreviewProps['container']['content']['rows'][number]['props'];
 
 type ChatMessageDelegationToolPreviewLabelProps =
-  ChatMessageDelegationToolPreviewProps['label']['props'];
+  ChatMessageDelegationToolPreviewProps['container']['content']['label']['props'];
 
 type ChatMessageDelegationConversationMorePreviewActionProps =
-  Extract<ChatMessageDelegationConversationPreviewProps['moreAction'], { shouldRender: true }>['props'];
+  Extract<ChatMessageDelegationConversationPreviewProps['container']['content']['moreAction'], { shouldRender: true }>['props'];
 
 type ChatMessageDelegationToolMorePreviewActionProps =
-  Extract<ChatMessageDelegationToolPreviewProps['moreAction'], { shouldRender: true }>['props'];
+  Extract<ChatMessageDelegationToolPreviewProps['container']['content']['moreAction'], { shouldRender: true }>['props'];
 
 type ChatMessageDelegationMorePreviewActionProps =
   | ChatMessageDelegationConversationMorePreviewActionProps
@@ -8608,20 +8608,20 @@ export function ChatMessageDelegationConversationPreviewRow({
 
 export function ChatMessageDelegationConversationPreview({
   container,
-  rows,
-  moreAction,
 }: ChatMessageDelegationConversationPreviewProps) {
+  const previewContent = container.content;
+
   return (
     <View {...container.props}>
-      {rows.map((row) => (
+      {previewContent.rows.map((row) => (
         <ChatMessageDelegationConversationPreviewRow
           key={row.key}
           {...row.props}
         />
       ))}
-      {moreAction.shouldRender ? (
+      {previewContent.moreAction.shouldRender ? (
         <ChatMessageDelegationMorePreviewAction
-          {...moreAction.props}
+          {...previewContent.moreAction.props}
         />
       ) : null}
     </View>
@@ -8763,24 +8763,23 @@ export function ChatMessageDelegationToolPreviewLabel({
 
 export function ChatMessageDelegationToolPreview({
   container,
-  label,
-  rows,
-  moreAction,
 }: ChatMessageDelegationToolPreviewProps) {
+  const previewContent = container.content;
+
   return (
     <View {...container.props}>
       <ChatMessageDelegationToolPreviewLabel
-        {...label.props}
+        {...previewContent.label.props}
       />
-      {rows.map((row) => (
+      {previewContent.rows.map((row) => (
         <ChatMessageDelegationToolPreviewRow
           key={row.key}
           {...row.props}
         />
       ))}
-      {moreAction.shouldRender ? (
+      {previewContent.moreAction.shouldRender ? (
         <ChatMessageDelegationMorePreviewAction
-          {...moreAction.props}
+          {...previewContent.moreAction.props}
         />
       ) : null}
     </View>

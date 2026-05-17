@@ -2383,78 +2383,80 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
             props: {
               style: TStyles["conversationPreview"]
             }
-          }
-          rows: Array<{
-            key: string
-            props: {
-              line: {
+            content: {
+              rows: Array<{
+                key: string
                 props: {
-                  style: TStyles["conversationPreviewLine"]
-                }
-              }
-              role: {
-                props: {
-                  style: Array<
-                    | TStyles["conversationPreviewRole"]
-                    | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
-                      keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
-                    ]
-                  >
-                  numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
-                  ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
-                }
-                text: string
-              }
-              content: {
-                props: {
-                  style: TStyles["conversationPreviewContent"]
-                  numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
-                  ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
-                }
-                text: string
-              }
-              timestamp:
-                | {
-                  shouldRender: true
-                  props: {
-                    style: TStyles["conversationPreviewTimestamp"]
-                    numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
-                  }
-                  text: string
-                }
-                | {
-                  shouldRender: false
-                }
-            }
-          }>
-          moreAction:
-            | {
-                shouldRender: true
-                props: {
-                  button: {
+                  line: {
                     props: {
-                      onPress: TConversationPreviewOnShowAll
-                      accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
-                      accessibilityLabel: string
-                      style: (state: { pressed: boolean }) => Array<
-                        | TStyles["conversationPreviewMoreButton"]
-                        | TStyles["conversationPreviewMoreButtonPressed"]
-                        | false
-                      >
+                      style: TStyles["conversationPreviewLine"]
                     }
                   }
-                  label: {
+                  role: {
                     props: {
-                      style: TStyles["conversationPreviewMore"]
-                      numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+                      style: Array<
+                        | TStyles["conversationPreviewRole"]
+                        | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
+                          keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+                        ]
+                      >
+                      numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
+                      ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
                     }
                     text: string
                   }
+                  content: {
+                    props: {
+                      style: TStyles["conversationPreviewContent"]
+                      numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
+                      ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
+                    }
+                    text: string
+                  }
+                  timestamp:
+                    | {
+                      shouldRender: true
+                      props: {
+                        style: TStyles["conversationPreviewTimestamp"]
+                        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+                      }
+                      text: string
+                    }
+                    | {
+                      shouldRender: false
+                    }
                 }
-              }
-            | {
-                shouldRender: false
-              }
+              }>
+              moreAction:
+                | {
+                    shouldRender: true
+                    props: {
+                      button: {
+                        props: {
+                          onPress: TConversationPreviewOnShowAll
+                          accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+                          accessibilityLabel: string
+                          style: (state: { pressed: boolean }) => Array<
+                            | TStyles["conversationPreviewMoreButton"]
+                            | TStyles["conversationPreviewMoreButtonPressed"]
+                            | false
+                          >
+                        }
+                      }
+                      label: {
+                        props: {
+                          style: TStyles["conversationPreviewMore"]
+                          numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+                        }
+                        text: string
+                      }
+                    }
+                  }
+                | {
+                    shouldRender: false
+                  }
+            }
+          }
         }
       }
       toolPreview: {
@@ -2464,90 +2466,92 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
             props: {
               style: TStyles["toolPreview"]
             }
-          }
-          label: {
-            props: {
-              props: {
-                style: TStyles["toolPreviewLabel"]
-                numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["toolPreviewLabelNumberOfLines"]
-              }
-              text: string
-            }
-          }
-          rows: Array<{
-            key: string
-            props: {
-              line: {
+            content: {
+              label: {
                 props: {
-                  style: TStyles["toolPreviewLine"]
-                  accessibilityLabel: string
+                  props: {
+                    style: TStyles["toolPreviewLabel"]
+                    numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["toolPreviewLabelNumberOfLines"]
+                  }
+                  text: string
                 }
               }
-              statusIcon: {
+              rows: Array<{
+                key: string
                 props: {
-                  style: TStyles["toolPreviewStatusIcon"]
-                  accessibilityElementsHidden: true
-                  importantForAccessibility: "no-hide-descendants"
-                }
-                spinner: {
-                  shouldRender: boolean
-                  props: Omit<
-                    ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"],
-                    "shouldRender"
-                  >
-                }
-                icon: {
-                  shouldRender: boolean
-                  props: Omit<
-                    ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"],
-                    "shouldRender"
-                  >
-                }
-              }
-              name: {
-                props: {
-                  style: Array<
-                    | TStyles["toolPreviewName"]
-                    | TStyles["toolPreviewNamePending"]
-                    | TStyles["toolPreviewNameSuccess"]
-                    | TStyles["toolPreviewNameError"]
-                    | false
-                  >
-                  numberOfLines: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["numberOfLines"]
-                  ellipsizeMode: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["ellipsizeMode"]
-                }
-                text: string
-              }
-            }
-          }>
-          moreAction:
-            | {
-                shouldRender: true
-                props: {
-                  button: {
+                  line: {
                     props: {
-                      onPress: TToolPreviewOnShowAll
-                      accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+                      style: TStyles["toolPreviewLine"]
                       accessibilityLabel: string
-                      style: (state: { pressed: boolean }) => Array<
-                        | TStyles["toolPreviewMoreButton"]
-                        | TStyles["toolPreviewMoreButtonPressed"]
-                        | false
+                    }
+                  }
+                  statusIcon: {
+                    props: {
+                      style: TStyles["toolPreviewStatusIcon"]
+                      accessibilityElementsHidden: true
+                      importantForAccessibility: "no-hide-descendants"
+                    }
+                    spinner: {
+                      shouldRender: boolean
+                      props: Omit<
+                        ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"],
+                        "shouldRender"
+                      >
+                    }
+                    icon: {
+                      shouldRender: boolean
+                      props: Omit<
+                        ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"],
+                        "shouldRender"
                       >
                     }
                   }
-                  label: {
+                  name: {
                     props: {
-                      style: TStyles["toolPreviewMore"]
-                      numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+                      style: Array<
+                        | TStyles["toolPreviewName"]
+                        | TStyles["toolPreviewNamePending"]
+                        | TStyles["toolPreviewNameSuccess"]
+                        | TStyles["toolPreviewNameError"]
+                        | false
+                      >
+                      numberOfLines: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["numberOfLines"]
+                      ellipsizeMode: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["name"]["ellipsizeMode"]
                     }
                     text: string
                   }
                 }
-              }
-            | {
-                shouldRender: false
-              }
+              }>
+              moreAction:
+                | {
+                    shouldRender: true
+                    props: {
+                      button: {
+                        props: {
+                          onPress: TToolPreviewOnShowAll
+                          accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+                          accessibilityLabel: string
+                          style: (state: { pressed: boolean }) => Array<
+                            | TStyles["toolPreviewMoreButton"]
+                            | TStyles["toolPreviewMoreButtonPressed"]
+                            | false
+                          >
+                        }
+                      }
+                      label: {
+                        props: {
+                          style: TStyles["toolPreviewMore"]
+                          numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+                        }
+                        text: string
+                      }
+                    }
+                  }
+                | {
+                    shouldRender: false
+                  }
+            }
+          }
         }
       }
     }
@@ -24403,70 +24407,72 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
               props: {
                 style: styles.conversationPreview,
               },
-            },
-            rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
-              key: `${row.timestamp}-${row.role}-${rowIndex}`,
-              props: {
-                line: {
+              content: {
+                rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
+                  key: `${row.timestamp}-${row.role}-${rowIndex}`,
                   props: {
-                    style: styles.conversationPreviewLine,
+                    line: {
+                      props: {
+                        style: styles.conversationPreviewLine,
+                      },
+                    },
+                    role: {
+                      props: {
+                        style: [
+                          styles.conversationPreviewRole,
+                          conversationPreview.roleStyles[row.role],
+                        ],
+                        numberOfLines: surface.conversationPreviewRoleNumberOfLines,
+                        ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
+                      },
+                      text: row.roleLabel,
+                    },
+                    content: {
+                      props: {
+                        style: styles.conversationPreviewContent,
+                        numberOfLines: surface.conversationPreviewContentNumberOfLines,
+                        ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
+                      },
+                      text: row.content,
+                    },
+                    timestamp: row.timestampLabel ? {
+                      shouldRender: true,
+                      props: {
+                        style: styles.conversationPreviewTimestamp,
+                        numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
+                      },
+                      text: row.timestampLabel,
+                    } : {
+                      shouldRender: false,
+                    },
                   },
-                },
-                role: {
-                  props: {
-                    style: [
-                      styles.conversationPreviewRole,
-                      conversationPreview.roleStyles[row.role],
-                    ],
-                    numberOfLines: surface.conversationPreviewRoleNumberOfLines,
-                    ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
-                  },
-                  text: row.roleLabel,
-                },
-                content: {
-                  props: {
-                    style: styles.conversationPreviewContent,
-                    numberOfLines: surface.conversationPreviewContentNumberOfLines,
-                    ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
-                  },
-                  text: row.content,
-                },
-                timestamp: row.timestampLabel ? {
+                })) : [],
+                moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
                   shouldRender: true,
                   props: {
-                    style: styles.conversationPreviewTimestamp,
-                    numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
+                    button: {
+                      props: {
+                        onPress: conversationPreview.onShowAll,
+                        accessibilityRole: conversationPreview.moreAction.accessibilityRole,
+                        accessibilityLabel: conversationPreview.moreAction.accessibilityLabel,
+                        style: ({ pressed }: { pressed: boolean }) => [
+                          styles.conversationPreviewMoreButton,
+                          pressed && styles.conversationPreviewMoreButtonPressed,
+                        ],
+                      },
+                    },
+                    label: {
+                      props: {
+                        style: styles.conversationPreviewMore,
+                        numberOfLines: conversationPreview.moreAction.numberOfLines,
+                      },
+                      text: conversationPreview.moreAction.label,
+                    },
                   },
-                  text: row.timestampLabel,
                 } : {
                   shouldRender: false,
                 },
               },
-            })) : [],
-            moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
-              shouldRender: true,
-              props: {
-                button: {
-                  props: {
-                    onPress: conversationPreview.onShowAll,
-                    accessibilityRole: conversationPreview.moreAction.accessibilityRole,
-                    accessibilityLabel: conversationPreview.moreAction.accessibilityLabel,
-                    style: ({ pressed }: { pressed: boolean }) => [
-                      styles.conversationPreviewMoreButton,
-                      pressed && styles.conversationPreviewMoreButtonPressed,
-                    ],
-                  },
-                },
-                label: {
-                  props: {
-                    style: styles.conversationPreviewMore,
-                    numberOfLines: conversationPreview.moreAction.numberOfLines,
-                  },
-                  text: conversationPreview.moreAction.label,
-                },
-              },
-            } : {
-              shouldRender: false,
             },
           },
         },
@@ -24477,90 +24483,92 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
               props: {
                 style: styles.toolPreview,
               },
-            },
-            label: {
-              props: {
-                props: {
-                  style: styles.toolPreviewLabel,
-                  numberOfLines: surface.toolPreviewLabelNumberOfLines,
-                },
-                text: toolPreview.label,
-              },
-            },
-            rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => {
-              const { shouldRender: spinnerShouldRender, ...spinnerProps } = renderState.statusIndicator.spinner
-              const { shouldRender: iconShouldRender, ...iconProps } = renderState.statusIndicator.icon
-
-              return {
-                key,
-                props: {
-                  line: {
-                    props: {
-                      style: styles.toolPreviewLine,
-                      accessibilityLabel: renderState.accessibilityLabel,
-                    },
-                  },
-                  statusIcon: {
-                    props: {
-                      style: styles.toolPreviewStatusIcon,
-                      accessibilityElementsHidden: true,
-                      importantForAccessibility: "no-hide-descendants" as const,
-                    },
-                    spinner: {
-                      shouldRender: spinnerShouldRender,
-                      props: spinnerProps as Omit<
-                        typeof renderState.statusIndicator.spinner,
-                        "shouldRender"
-                      >,
-                    },
-                    icon: {
-                      shouldRender: !spinnerShouldRender && iconShouldRender,
-                      props: iconProps as Omit<
-                        typeof renderState.statusIndicator.icon,
-                        "shouldRender"
-                      >,
-                    },
-                  },
-                  name: {
-                    props: {
-                      style: [
-                        styles.toolPreviewName,
-                        renderState.isPending && styles.toolPreviewNamePending,
-                        renderState.isSuccess && styles.toolPreviewNameSuccess,
-                        renderState.isError && styles.toolPreviewNameError,
-                      ],
-                      numberOfLines: renderState.name.numberOfLines,
-                      ellipsizeMode: renderState.name.ellipsizeMode,
-                    },
-                    text: preview,
-                  },
-                },
-              }
-            }) : [],
-            moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
-              shouldRender: true,
-              props: {
-                button: {
-                  props: {
-                    onPress: toolPreview.onShowAll,
-                    accessibilityRole: toolPreview.moreAction.accessibilityRole,
-                    accessibilityLabel: toolPreview.moreAction.accessibilityLabel,
-                    style: ({ pressed }: { pressed: boolean }) => [
-                      styles.toolPreviewMoreButton,
-                      pressed && styles.toolPreviewMoreButtonPressed,
-                    ],
-                  },
-                },
+              content: {
                 label: {
                   props: {
-                    style: styles.toolPreviewMore,
-                    numberOfLines: toolPreview.moreAction.numberOfLines,
+                    props: {
+                      style: styles.toolPreviewLabel,
+                      numberOfLines: surface.toolPreviewLabelNumberOfLines,
+                    },
+                    text: toolPreview.label,
                   },
-                  text: toolPreview.moreAction.label,
+                },
+                rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => {
+                  const { shouldRender: spinnerShouldRender, ...spinnerProps } = renderState.statusIndicator.spinner
+                  const { shouldRender: iconShouldRender, ...iconProps } = renderState.statusIndicator.icon
+
+                  return {
+                    key,
+                    props: {
+                      line: {
+                        props: {
+                          style: styles.toolPreviewLine,
+                          accessibilityLabel: renderState.accessibilityLabel,
+                        },
+                      },
+                      statusIcon: {
+                        props: {
+                          style: styles.toolPreviewStatusIcon,
+                          accessibilityElementsHidden: true,
+                          importantForAccessibility: "no-hide-descendants" as const,
+                        },
+                        spinner: {
+                          shouldRender: spinnerShouldRender,
+                          props: spinnerProps as Omit<
+                            typeof renderState.statusIndicator.spinner,
+                            "shouldRender"
+                          >,
+                        },
+                        icon: {
+                          shouldRender: !spinnerShouldRender && iconShouldRender,
+                          props: iconProps as Omit<
+                            typeof renderState.statusIndicator.icon,
+                            "shouldRender"
+                          >,
+                        },
+                      },
+                      name: {
+                        props: {
+                          style: [
+                            styles.toolPreviewName,
+                            renderState.isPending && styles.toolPreviewNamePending,
+                            renderState.isSuccess && styles.toolPreviewNameSuccess,
+                            renderState.isError && styles.toolPreviewNameError,
+                          ],
+                          numberOfLines: renderState.name.numberOfLines,
+                          ellipsizeMode: renderState.name.ellipsizeMode,
+                        },
+                        text: preview,
+                      },
+                    },
+                  }
+                }) : [],
+                moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
+                  shouldRender: true,
+                  props: {
+                    button: {
+                      props: {
+                        onPress: toolPreview.onShowAll,
+                        accessibilityRole: toolPreview.moreAction.accessibilityRole,
+                        accessibilityLabel: toolPreview.moreAction.accessibilityLabel,
+                        style: ({ pressed }: { pressed: boolean }) => [
+                          styles.toolPreviewMoreButton,
+                          pressed && styles.toolPreviewMoreButtonPressed,
+                        ],
+                      },
+                    },
+                    label: {
+                      props: {
+                        style: styles.toolPreviewMore,
+                        numberOfLines: toolPreview.moreAction.numberOfLines,
+                      },
+                      text: toolPreview.moreAction.label,
+                    },
+                  },
+                } : {
+                  shouldRender: false,
                 },
               },
-            } : {
-              shouldRender: false,
             },
           },
         },
