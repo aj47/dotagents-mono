@@ -1622,6 +1622,16 @@ type ChatMessageActionSlotListProps = {
   rowStyle?: StyleProp<ViewStyle>;
 };
 
+type ChatMessageActionSlotListParts = ReturnType<typeof createChatRuntimeMessageActionSlotListMobilePropsParts<
+  ChatMessageActionEntry,
+  ChatMessageActionSlotListProps['rowStyle']
+>>;
+
+type ChatMessageActionSlotListRowProps =
+  ChatMessageActionSlotListParts['row']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & {
   shouldRender: boolean;
 };
@@ -11643,8 +11653,25 @@ export function ChatMessageActionSlotList({
   ));
 
   if (actionSlotListParts.row.shouldRender) {
-    return <View style={actionSlotListParts.row.props.style}>{content}</View>;
+    return (
+      <ChatMessageActionSlotListRow
+        {...actionSlotListParts.row.props}
+      >
+        {content}
+      </ChatMessageActionSlotListRow>
+    );
   }
 
   return <>{content}</>;
+}
+
+export function ChatMessageActionSlotListRow({
+  style,
+  children,
+}: ChatMessageActionSlotListRowProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
 }

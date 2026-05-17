@@ -5659,7 +5659,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(actionSlotListSource, /<Fragment key=\{key\}>/);
   assert.match(chatMessageChromeSource, /\{item\}/);
   assert.match(actionSlotListSource, /if \(actionSlotListParts\.row\.shouldRender\) \{/);
-  assert.match(actionSlotListSource, /return <View style=\{actionSlotListParts\.row\.props\.style\}>\{content\}<\/View>;/);
+  assert.match(actionSlotListSource, /<ChatMessageActionSlotListRow\s+\{\.\.\.actionSlotListParts\.row\.props\}[\s\S]*?>[\s\S]*?\{content\}[\s\S]*?<\/ChatMessageActionSlotListRow>/);
+  assert.match(
+    actionSlotListSource,
+    /export function ChatMessageActionSlotListRow\([\s\S]*?<View style=\{style\}>/
+  );
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageContentRowMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageContentRowMobilePropsParts/);
@@ -5684,6 +5688,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(contentRowSource, /contentRowParts\.body \? \(/);
   assert.doesNotMatch(contentRowSource, /<View style=\{rowStyle\}>/);
   assert.doesNotMatch(contentRowSource, /<View style=\{bodyStyle\}>/);
+  assert.doesNotMatch(actionSlotListSource, /<View style=\{actionSlotListParts\.row\.props\.style\}>/);
+  assert.doesNotMatch(actionSlotListSource, /actionSlotListParts\.row\.props\.style/);
   assert.doesNotMatch(standaloneActionsSource, /if \(!shouldRender\) return null;/);
   assert.doesNotMatch(standaloneActionsSource, /if \(!standaloneActionsParts\.actionSlotList\) return null;/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{collapsedPreviewParts\.pressable\.accessibilityRole\}/);
