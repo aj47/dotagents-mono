@@ -1699,9 +1699,6 @@ type ChatMessageToolActivityGroupCountBadgeProps =
 type ChatMessageToolActivityGroupPreviewLineProps =
   ChatMessageToolActivityGroupToggleParts['preview']['props'];
 
-type ChatMessageToolActivityGroupIconProps =
-  ChatMessageToolActivityGroupToggleParts['leadingIcon']['props'];
-
 type ChatMessageToolActivityGroupFooterStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -1713,6 +1710,19 @@ type ChatMessageToolActivityGroupFooterProps = {
   onPress?: (event: GestureResponderEvent) => void;
   styles: ChatMessageToolActivityGroupFooterStyles;
 };
+
+type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRuntimeToolActivityGroupFooterMobilePropsParts<
+  ToolActivityGroupMobileRenderState,
+  ChatMessageToolActivityGroupFooterProps['onPress'],
+  ChatMessageToolActivityGroupFooterStyles
+>>;
+
+type ChatMessageToolActivityGroupIconProps =
+  | ChatMessageToolActivityGroupToggleParts['leadingIcon']['props']
+  | ChatMessageToolActivityGroupFooterParts['icon']['props'];
+
+type ChatMessageToolActivityGroupFooterLabelProps =
+  ChatMessageToolActivityGroupFooterParts['label']['props'];
 
 type ChatMessageToolActivityGroupBoundaryKind = ChatRuntimeToolActivityGroupBoundaryMobileKind;
 
@@ -7922,15 +7932,24 @@ export function ChatMessageToolActivityGroupFooter({
       accessibilityLabel={footerParts.button.accessibilityLabel}
       style={footerParts.button.style}
     >
-      <Ionicons
-        name={footerParts.icon.name}
-        size={footerParts.icon.size}
-        color={footerParts.icon.color}
+      <ChatMessageToolActivityGroupIcon
+        {...footerParts.icon.props}
       />
-      <Text style={footerParts.label.style}>
-        {footerParts.label.text}
-      </Text>
+      <ChatMessageToolActivityGroupFooterLabel
+        {...footerParts.label.props}
+      />
     </Pressable>
+  );
+}
+
+export function ChatMessageToolActivityGroupFooterLabel({
+  style,
+  text,
+}: ChatMessageToolActivityGroupFooterLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

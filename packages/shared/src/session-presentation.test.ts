@@ -9007,10 +9007,14 @@ describe("session presentation semantics", () => {
       "footer-button",
       "footer-pressed",
     ])
-    expect(activityGroupFooterParts.icon).toBe("footer-icon-state")
+    expect(activityGroupFooterParts.icon).toEqual({
+      props: "footer-icon-state",
+    })
     expect(activityGroupFooterParts.label).toEqual({
-      style: "footer-text",
-      text: "Hide tool activities",
+      props: {
+        style: "footer-text",
+        text: "Hide tool activities",
+      },
     })
     expect(createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
       renderState: "activity-group-state",

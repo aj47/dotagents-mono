@@ -5483,10 +5483,14 @@ export interface ChatRuntimeToolActivityGroupFooterMobilePropsParts<
     accessibilityLabel: string
     style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
   }
-  icon: TRenderState["footerToggleIcon"]
+  icon: {
+    props: TRenderState["footerToggleIcon"]
+  }
   label: {
-    style: TStyles["text"]
-    text: string
+    props: {
+      style: TStyles["text"]
+      text: string
+    }
   }
 }
 
@@ -22191,10 +22195,14 @@ export function createChatRuntimeToolActivityGroupFooterMobilePropsParts<
         pressed && styles.pressed,
       ],
     },
-    icon: renderState.footerToggleIcon,
+    icon: {
+      props: renderState.footerToggleIcon,
+    },
     label: {
-      style: styles.text,
-      text: renderState.footerButton.label,
+      props: {
+        style: styles.text,
+        text: renderState.footerButton.label,
+      },
     },
   }
 }
