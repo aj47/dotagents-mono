@@ -10,6 +10,7 @@ import {
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
+  createMessageQueuePanelHeaderActionMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
@@ -661,6 +662,106 @@ describe('message-queue-utils', () => {
         accessibilityState: { disabled: true },
         icon: {
           color: '#737373',
+        },
+      },
+    ]);
+    const headerActionCalls: string[] = [];
+    const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('header-panel-message')], {
+        canProcessNext: true,
+      }),
+      styles: {
+        processButton: 'processButton',
+        clearButton: 'clearButton',
+        queueControlText: 'queueControlText',
+        queueControlTextDisabled: 'queueControlTextDisabled',
+        processButtonText: 'processButtonText',
+        clearButtonText: 'clearButtonText',
+      },
+      onPause: () => headerActionCalls.push('pause'),
+      onResume: () => headerActionCalls.push('resume'),
+      onProcessNext: () => headerActionCalls.push('sendNext'),
+      onClear: () => headerActionCalls.push('clear'),
+      onToggleListCollapsed: () => headerActionCalls.push('toggle'),
+    });
+    expect(headerActionParts.actions.map((action) => action.key)).toEqual([
+      'pause',
+      'sendNext',
+      'clear',
+      'toggleList',
+    ]);
+    expect(headerActionParts.actions[0]).toMatchObject({
+      type: 'text',
+      style: 'processButton',
+      activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity,
+      accessibilityRole: 'button',
+      accessibilityLabel: 'Pause queue',
+      disabled: false,
+      accessibilityState: { disabled: false },
+      label: {
+        style: ['queueControlText', false],
+        text: 'Pause',
+      },
+    });
+    expect(headerActionParts.actions[1]).toMatchObject({
+      type: 'text',
+      label: {
+        style: 'processButtonText',
+        text: 'Send Next',
+      },
+    });
+    expect(headerActionParts.actions[3]).toMatchObject({
+      type: 'icon',
+      style: 'clearButton',
+      accessibilityLabel: 'Collapse queue',
+      accessibilityState: { expanded: true },
+      icon: {
+        name: 'chevron-up',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerToggleIconSize,
+        color: '#737373',
+      },
+    });
+    headerActionParts.actions.forEach((action) => action.onPress());
+    expect(headerActionCalls).toEqual(['pause', 'sendNext', 'clear', 'toggle']);
+    expect(createMessageQueuePanelHeaderActionMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('collapsed-paused-panel-message')], {
+        isPaused: true,
+        isListCollapsed: true,
+      }),
+      styles: {
+        processButton: 'processButton',
+        clearButton: 'clearButton',
+        queueControlText: 'queueControlText',
+        queueControlTextDisabled: 'queueControlTextDisabled',
+        processButtonText: 'processButtonText',
+        clearButtonText: 'clearButtonText',
+      },
+      onPause: () => headerActionCalls.push('pause'),
+      onResume: () => headerActionCalls.push('resume'),
+      onClear: () => headerActionCalls.push('clear'),
+      onToggleListCollapsed: () => headerActionCalls.push('toggle'),
+    }).actions).toMatchObject([
+      {
+        key: 'resume',
+        type: 'text',
+        label: {
+          style: 'queueControlText',
+          text: 'Resume',
+        },
+      },
+      {
+        key: 'toggleList',
+        type: 'icon',
+        accessibilityLabel: 'Expand queue',
+        accessibilityState: { expanded: false },
+        icon: {
+          name: 'chevron-down',
         },
       },
     ]);

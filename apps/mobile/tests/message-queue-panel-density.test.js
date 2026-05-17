@@ -63,10 +63,10 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
 test('mobile queue panel exposes an explicit send-next action for queued drafts', () => {
   assert.match(source, /onProcessNext\?: \(\) => void;/);
   assert.match(source, /canProcessNext\?: boolean;/);
-  assert.match(source, /accessibilityLabel=\{queuePanelCopy\.actions\.sendNextAccessibilityLabel\}/);
-  assert.match(source, /activeOpacity=\{panelSurface\.actionPressedOpacity\}/);
-  assert.match(source, /accessibilityRole=\{panelSurface\.actionAccessibilityRole\}/);
-  assert.match(source, /<Text style=\{styles\.processButtonText\}>\{queuePanelCopy\.actions\.sendNextLabel\}<\/Text>/);
+  assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
+  assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
+  assert.match(source, /headerActionParts\.actions\.map\(\(action\) =>/);
+  assert.match(source, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
 });
 
 test('mobile queue panel mirrors desktop paused queue chrome with shared copy', () => {
@@ -84,19 +84,17 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /name=\{queuePanelState\.statusIconName\}/);
   assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
   assert.match(source, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?icons: queuePanelIcons,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,/);
+  assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
+  assert.match(source, /const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,[\s\S]*?onToggleListCollapsed,/);
   assert.match(source, /const contentParts = createQueuedMessageContentMobilePropsParts\(\{[\s\S]*?message,[\s\S]*?presentation: messagePresentation,[\s\S]*?isExpanded,[\s\S]*?styles,/);
   assert.match(source, /\{contentParts\.metaText\.text\}/);
-  assert.match(source, /queuePanelCopy\.actions\.pauseLabel/);
-  assert.match(source, /queuePanelCopy\.actions\.resumeLabel/);
   assert.match(source, /const queuePanelIcons = queuePanelRenderState\.icons;/);
   assert.match(source, /name=\{statusIndicatorPart\.icon\.name\}/);
   assert.match(source, /name=\{expandButtonParts\.icon\.name\}/);
   assert.match(source, /compactActionParts\.actions\.map\(\(action\) =>/);
   assert.match(source, /name=\{action\.icon\.name\}/);
-  assert.match(source, /name=\{queuePanelState\.toggleIconName\}/);
-  assert.match(source, /onPress=\{onToggleListCollapsed\}/);
-  assert.match(source, /accessibilityLabel=\{queuePanelState\.listToggleLabel\}/);
-  assert.match(source, /accessibilityState=\{queuePanelState\.listToggleAccessibilityState\}/);
+  assert.match(source, /headerActionParts\.actions\.map\(\(action\) =>/);
+  assert.match(source, /action\.type === 'text'/);
   assert.match(source, /queuePanelCopy\.pausedNotice/);
   assert.match(source, /pausedNoticeText:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.pausedNoticeText/);
   assert.doesNotMatch(source, /getMessageQueuePanelState\(messages/);
@@ -123,15 +121,12 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /getMessageQueuePanelMobileRenderState/);
   assert.match(source, /getQueuedMessageItemMobileRenderState/);
   assert.match(source, /panel: queuePanelState,/);
-  assert.match(source, /queuePanelState\.clearActionState\.isDisabled/);
-  assert.match(source, /queuePanelState\.pauseActionState\.isDisabled/);
-  assert.match(source, /queuePanelState\.clearActionState\.accessibilityState/);
-  assert.match(source, /queuePanelState\.pauseActionState\.accessibilityState/);
+  assert.match(source, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{[\s\S]*?panel: queuePanelState,/);
+  assert.match(source, /const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts\(\{[\s\S]*?panel: queuePanelState,/);
   assert.doesNotMatch(source, /disabled=\{!queuePanelState\.(canClear|canPause)\}/);
   assert.doesNotMatch(source, /queuePanelState\.(clearActionAccessibilityState|pauseActionAccessibilityState)/);
   assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
-  assert.match(source, /queuePanelState\.shouldShowProcessNext/);
-  assert.match(source, /queuePanelState\.shouldRenderClear/);
+  assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
   assert.match(source, /queuePanelState\.shouldRenderPausedNotice/);
   assert.match(source, /queuePanelState\.shouldRenderList/);
   assert.match(source, /queuePanelState\.items\.map/);
@@ -199,7 +194,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /headerTitle:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.headerTitle/);
   assert.match(source, /queueControlTextDisabled:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.queueControlTextDisabled/);
   assert.match(source, /processButtonText:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.processButtonText/);
-  assert.match(source, /color=\{panelColors\.toggleIconColor\}/);
+  assert.match(source, /name=\{action\.icon\.name\}[\s\S]*?size=\{action\.icon\.size\}[\s\S]*?color=\{action\.icon\.color\}/);
   assert.match(source, /list:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.list/);
   assert.match(source, /separator:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.separator/);
   assert.match(source, /compactContainer:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactContainer/);

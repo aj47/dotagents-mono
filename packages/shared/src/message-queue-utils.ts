@@ -992,6 +992,107 @@ export interface MessageQueuePanelCompactActionMobilePropsParts<
   actions: MessageQueuePanelCompactActionMobilePropsPart<TStyles['compactAction'], TOnPress>[];
 }
 
+export interface MessageQueuePanelHeaderActionMobilePropsPartsStylesLike {
+  processButton: unknown;
+  clearButton: unknown;
+  queueControlText: unknown;
+  queueControlTextDisabled: unknown;
+  processButtonText: unknown;
+  clearButtonText: unknown;
+}
+
+export type MessageQueuePanelHeaderActionMobilePropsPartKey =
+  | 'resume'
+  | 'pause'
+  | 'sendNext'
+  | 'clear'
+  | 'toggleList';
+
+export interface MessageQueuePanelHeaderActionMobilePropsPartsInput<
+  TStyles extends MessageQueuePanelHeaderActionMobilePropsPartsStylesLike =
+    MessageQueuePanelHeaderActionMobilePropsPartsStylesLike,
+  TOnPress = unknown,
+> {
+  surface: MessageQueuePanelMobilePanelSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['panel'];
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+  panel: Pick<
+    MessageQueuePanelState<Pick<QueuedMessage, 'id' | 'status'>>,
+    | 'isPaused'
+    | 'pauseActionState'
+    | 'clearActionState'
+    | 'shouldShowProcessNext'
+    | 'shouldRenderClear'
+    | 'listToggleLabel'
+    | 'listToggleAccessibilityState'
+    | 'toggleIconName'
+  >;
+  styles: TStyles;
+  onPause?: TOnPress;
+  onResume?: TOnPress;
+  onProcessNext?: TOnPress;
+  onClear: TOnPress;
+  onToggleListCollapsed: TOnPress;
+}
+
+export type MessageQueuePanelHeaderActionMobileLabelStyle<
+  TStyles extends MessageQueuePanelHeaderActionMobilePropsPartsStylesLike,
+> =
+  | TStyles['queueControlText']
+  | TStyles['processButtonText']
+  | TStyles['clearButtonText']
+  | Array<TStyles['queueControlText'] | TStyles['queueControlTextDisabled'] | false>;
+
+interface MessageQueuePanelHeaderActionMobilePropsPartBase<TStyle, TOnPress> {
+  key: MessageQueuePanelHeaderActionMobilePropsPartKey;
+  style: TStyle;
+  onPress: TOnPress;
+  disabled?: boolean;
+  activeOpacity: MessageQueuePanelMobilePanelSurface['actionPressedOpacity'];
+  accessibilityRole: MessageQueuePanelMobilePanelSurface['actionAccessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityState?: MessageQueuePanelActionAccessibilityState | MessageQueuePanelListToggleAccessibilityState;
+}
+
+export interface MessageQueuePanelHeaderTextActionMobilePropsPart<
+  TStyle,
+  TLabelStyle,
+  TOnPress,
+>
+  extends MessageQueuePanelHeaderActionMobilePropsPartBase<TStyle, TOnPress> {
+  type: 'text';
+  label: {
+    style: TLabelStyle;
+    text: string;
+  };
+}
+
+export interface MessageQueuePanelHeaderIconActionMobilePropsPart<TStyle, TOnPress>
+  extends MessageQueuePanelHeaderActionMobilePropsPartBase<TStyle, TOnPress> {
+  type: 'icon';
+  icon: {
+    name: MessageQueuePanelToggleIconName;
+    size: MessageQueuePanelMobilePanelSurface['headerToggleIconSize'];
+    color: string;
+  };
+}
+
+export type MessageQueuePanelHeaderActionMobilePropsPart<TStyles extends MessageQueuePanelHeaderActionMobilePropsPartsStylesLike, TOnPress> =
+  | MessageQueuePanelHeaderTextActionMobilePropsPart<
+      TStyles['processButton'] | TStyles['clearButton'],
+      MessageQueuePanelHeaderActionMobileLabelStyle<TStyles>,
+      TOnPress
+    >
+  | MessageQueuePanelHeaderIconActionMobilePropsPart<TStyles['clearButton'], TOnPress>;
+
+export interface MessageQueuePanelHeaderActionMobilePropsParts<
+  TStyles extends MessageQueuePanelHeaderActionMobilePropsPartsStylesLike =
+    MessageQueuePanelHeaderActionMobilePropsPartsStylesLike,
+  TOnPress = unknown,
+> {
+  actions: Array<MessageQueuePanelHeaderActionMobilePropsPart<TStyles, TOnPress>>;
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -1291,6 +1392,113 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
       color: panel.clearActionState.isDisabled
         ? colors.disabledActionColor
         : statusColors.color,
+    },
+  });
+
+  return { actions };
+}
+
+export function createMessageQueuePanelHeaderActionMobilePropsParts<
+  TStyles extends MessageQueuePanelHeaderActionMobilePropsPartsStylesLike,
+  TOnPress,
+>({
+  surface,
+  colors,
+  copy,
+  panel,
+  styles,
+  onPause,
+  onResume,
+  onProcessNext,
+  onClear,
+  onToggleListCollapsed,
+}: MessageQueuePanelHeaderActionMobilePropsPartsInput<TStyles, TOnPress>):
+  MessageQueuePanelHeaderActionMobilePropsParts<TStyles, TOnPress> {
+  const actions: Array<MessageQueuePanelHeaderActionMobilePropsPart<TStyles, TOnPress>> = [];
+  const baseAction = {
+    activeOpacity: surface.actionPressedOpacity,
+    accessibilityRole: surface.actionAccessibilityRole,
+  };
+
+  if (panel.isPaused && onResume) {
+    actions.push({
+      ...baseAction,
+      key: 'resume',
+      type: 'text',
+      style: styles.processButton,
+      onPress: onResume,
+      accessibilityLabel: copy.actions.resumeTitle,
+      label: {
+        style: styles.queueControlText,
+        text: copy.actions.resumeLabel,
+      },
+    });
+  }
+
+  if (!panel.isPaused && onPause) {
+    actions.push({
+      ...baseAction,
+      key: 'pause',
+      type: 'text',
+      style: styles.processButton,
+      onPress: onPause,
+      disabled: panel.pauseActionState.isDisabled,
+      accessibilityLabel: copy.actions.pauseTitle,
+      accessibilityState: panel.pauseActionState.accessibilityState,
+      label: {
+        style: [
+          styles.queueControlText,
+          panel.pauseActionState.isDisabled && styles.queueControlTextDisabled,
+        ],
+        text: copy.actions.pauseLabel,
+      },
+    });
+  }
+
+  if (panel.shouldShowProcessNext && onProcessNext) {
+    actions.push({
+      ...baseAction,
+      key: 'sendNext',
+      type: 'text',
+      style: styles.processButton,
+      onPress: onProcessNext,
+      accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
+      label: {
+        style: styles.processButtonText,
+        text: copy.actions.sendNextLabel,
+      },
+    });
+  }
+
+  if (panel.shouldRenderClear) {
+    actions.push({
+      ...baseAction,
+      key: 'clear',
+      type: 'text',
+      style: styles.clearButton,
+      onPress: onClear,
+      disabled: panel.clearActionState.isDisabled,
+      accessibilityLabel: copy.actions.clearQueueTitle,
+      accessibilityState: panel.clearActionState.accessibilityState,
+      label: {
+        style: styles.clearButtonText,
+        text: copy.actions.clearAllLabel,
+      },
+    });
+  }
+
+  actions.push({
+    ...baseAction,
+    key: 'toggleList',
+    type: 'icon',
+    style: styles.clearButton,
+    onPress: onToggleListCollapsed,
+    accessibilityLabel: panel.listToggleLabel,
+    accessibilityState: panel.listToggleAccessibilityState,
+    icon: {
+      name: panel.toggleIconName,
+      size: surface.headerToggleIconSize,
+      color: colors.toggleIconColor,
     },
   });
 

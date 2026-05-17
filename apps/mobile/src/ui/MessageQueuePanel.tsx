@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
+  createMessageQueuePanelHeaderActionMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
@@ -482,6 +483,18 @@ export function MessageQueuePanel({
     onProcessNext,
     onClear,
   });
+  const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts({
+    surface: panelSurface,
+    colors: panelColors,
+    copy: queuePanelCopy,
+    panel: queuePanelState,
+    styles,
+    onPause,
+    onResume,
+    onProcessNext,
+    onClear,
+    onToggleListCollapsed,
+  });
 
   if (compact) {
     return (
@@ -522,75 +535,28 @@ export function MessageQueuePanel({
           </Text>
         </View>
         <View style={styles.headerActions}>
-          {isPaused && onResume ? (
+          {headerActionParts.actions.map((action) => (
             <TouchableOpacity
-              style={styles.processButton}
-              onPress={onResume}
-              activeOpacity={panelSurface.actionPressedOpacity}
-              accessibilityRole={panelSurface.actionAccessibilityRole}
-              accessibilityLabel={queuePanelCopy.actions.resumeTitle}
+              key={action.key}
+              style={action.style}
+              onPress={action.onPress}
+              disabled={action.disabled}
+              activeOpacity={action.activeOpacity}
+              accessibilityRole={action.accessibilityRole}
+              accessibilityLabel={action.accessibilityLabel}
+              accessibilityState={action.accessibilityState}
             >
-              <Text style={styles.queueControlText}>{queuePanelCopy.actions.resumeLabel}</Text>
+              {action.type === 'text' ? (
+                <Text style={action.label.style}>{action.label.text}</Text>
+              ) : (
+                <Ionicons
+                  name={action.icon.name}
+                  size={action.icon.size}
+                  color={action.icon.color}
+                />
+              )}
             </TouchableOpacity>
-          ) : null}
-          {!isPaused && onPause ? (
-            <TouchableOpacity
-              style={styles.processButton}
-              onPress={onPause}
-              disabled={queuePanelState.pauseActionState.isDisabled}
-              activeOpacity={panelSurface.actionPressedOpacity}
-              accessibilityRole={panelSurface.actionAccessibilityRole}
-              accessibilityLabel={queuePanelCopy.actions.pauseTitle}
-              accessibilityState={queuePanelState.pauseActionState.accessibilityState}
-            >
-              <Text
-                style={[
-                  styles.queueControlText,
-                  queuePanelState.pauseActionState.isDisabled && styles.queueControlTextDisabled,
-                ]}
-              >
-                {queuePanelCopy.actions.pauseLabel}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-          {queuePanelState.shouldShowProcessNext && onProcessNext ? (
-            <TouchableOpacity
-              style={styles.processButton}
-              onPress={onProcessNext}
-              activeOpacity={panelSurface.actionPressedOpacity}
-              accessibilityRole={panelSurface.actionAccessibilityRole}
-              accessibilityLabel={queuePanelCopy.actions.sendNextAccessibilityLabel}
-            >
-              <Text style={styles.processButtonText}>{queuePanelCopy.actions.sendNextLabel}</Text>
-            </TouchableOpacity>
-          ) : null}
-          {queuePanelState.shouldRenderClear && (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={onClear}
-              disabled={queuePanelState.clearActionState.isDisabled}
-              activeOpacity={panelSurface.actionPressedOpacity}
-              accessibilityRole={panelSurface.actionAccessibilityRole}
-              accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
-              accessibilityState={queuePanelState.clearActionState.accessibilityState}
-            >
-              <Text style={styles.clearButtonText}>{queuePanelCopy.actions.clearAllLabel}</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={onToggleListCollapsed}
-            activeOpacity={panelSurface.actionPressedOpacity}
-            accessibilityRole={panelSurface.actionAccessibilityRole}
-            accessibilityLabel={queuePanelState.listToggleLabel}
-            accessibilityState={queuePanelState.listToggleAccessibilityState}
-          >
-            <Ionicons
-              name={queuePanelState.toggleIconName}
-              size={panelSurface.headerToggleIconSize}
-              color={panelColors.toggleIconColor}
-            />
-          </TouchableOpacity>
+          ))}
         </View>
       </View>
       {queuePanelState.shouldRenderPausedNotice && (

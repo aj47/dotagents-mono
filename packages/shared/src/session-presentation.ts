@@ -404,6 +404,7 @@ export {
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
+  createMessageQueuePanelHeaderActionMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
