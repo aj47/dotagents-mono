@@ -2616,11 +2616,28 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     chatMessageChromeSource.match(/export function ChatComposerSpeechPreview[\s\S]*?export function ChatComposerPendingImagesRail/)?.[0] ?? '';
   assert.match(speechPreviewSource, /const speechPreviewParts = createChatComposerSpeechPreviewMobilePropsParts\(\{\s+label,\s+text,\s+styles,\s+\}\);/);
   assert.match(speechPreviewSource, /if \(!speechPreviewParts\.shouldRender\) return null;/);
-  assert.match(speechPreviewSource, /<View style=\{speechPreviewParts\.container\.style\}>/);
-  assert.match(speechPreviewSource, /<Text style=\{speechPreviewParts\.label\.style\}>/);
-  assert.match(speechPreviewSource, /\{speechPreviewParts\.label\.text\}/);
-  assert.match(speechPreviewSource, /<Text style=\{speechPreviewParts\.text\.style\}>/);
-  assert.match(speechPreviewSource, /\{speechPreviewParts\.text\.text\}/);
+  assert.match(speechPreviewSource, /<ChatComposerSpeechPreviewContainer\s+\{\.\.\.speechPreviewParts\.container\.props\}/);
+  assert.match(speechPreviewSource, /<ChatComposerSpeechPreviewLabel\s+\{\.\.\.speechPreviewParts\.label\.props\}/);
+  assert.match(speechPreviewSource, /<ChatComposerSpeechPreviewText\s+\{\.\.\.speechPreviewParts\.text\.props\}/);
+  assert.match(
+    speechPreviewSource,
+    /export function ChatComposerSpeechPreviewContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerSpeechPreviewLabel/
+  );
+  assert.match(
+    speechPreviewSource,
+    /export function ChatComposerSpeechPreviewLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerSpeechPreviewText/
+  );
+  assert.match(
+    speechPreviewSource,
+    /export function ChatComposerSpeechPreviewText\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerPendingImagesRail/
+  );
+  assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.box,/);
+  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+text: label,/);
+  assert.match(sessionPresentationSource, /text: \{\s+props: \{\s+style: styles\.text,\s+text,/);
+  assert.doesNotMatch(
+    speechPreviewSource,
+    /speechPreviewParts\.(container|label|text)\.(style|text)/
+  );
   assert.doesNotMatch(speechPreviewSource, /if \(!text\) return null;/);
   assert.doesNotMatch(speechPreviewSource, /<View style=\{styles\.box\}>/);
   assert.doesNotMatch(speechPreviewSource, /<Text style=\{styles\.label\}>/);

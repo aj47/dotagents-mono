@@ -2764,6 +2764,22 @@ type ChatComposerSpeechPreviewProps = {
   styles: ChatComposerSpeechPreviewStyles;
 };
 
+type ChatComposerSpeechPreviewParts = ReturnType<typeof createChatComposerSpeechPreviewMobilePropsParts<
+  ChatComposerSpeechPreviewProps['text'],
+  ChatComposerSpeechPreviewProps['styles']
+>>;
+
+type ChatComposerSpeechPreviewContainerProps =
+  ChatComposerSpeechPreviewParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerSpeechPreviewLabelProps =
+  ChatComposerSpeechPreviewParts['label']['props'];
+
+type ChatComposerSpeechPreviewTextProps =
+  ChatComposerSpeechPreviewParts['text']['props'];
+
 type ChatComposerPendingImageItem = {
   id: string;
   previewUri: string;
@@ -10414,14 +10430,49 @@ export function ChatComposerSpeechPreview({
   if (!speechPreviewParts.shouldRender) return null;
 
   return (
-    <View style={speechPreviewParts.container.style}>
-      <Text style={speechPreviewParts.label.style}>
-        {speechPreviewParts.label.text}
-      </Text>
-      <Text style={speechPreviewParts.text.style}>
-        {speechPreviewParts.text.text}
-      </Text>
+    <ChatComposerSpeechPreviewContainer
+      {...speechPreviewParts.container.props}
+    >
+      <ChatComposerSpeechPreviewLabel
+        {...speechPreviewParts.label.props}
+      />
+      <ChatComposerSpeechPreviewText
+        {...speechPreviewParts.text.props}
+      />
+    </ChatComposerSpeechPreviewContainer>
+  );
+}
+
+export function ChatComposerSpeechPreviewContainer({
+  style,
+  children,
+}: ChatComposerSpeechPreviewContainerProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
+  );
+}
+
+export function ChatComposerSpeechPreviewLabel({
+  style,
+  text,
+}: ChatComposerSpeechPreviewLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatComposerSpeechPreviewText({
+  style,
+  text,
+}: ChatComposerSpeechPreviewTextProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

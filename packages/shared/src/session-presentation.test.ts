@@ -9682,15 +9682,21 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRender: true,
       container: {
-        style: "speech-preview-box",
+        props: {
+          style: "speech-preview-box",
+        },
       },
       label: {
-        style: "speech-preview-label",
-        text: "Speech preview",
+        props: {
+          style: "speech-preview-label",
+          text: "Speech preview",
+        },
       },
       text: {
-        style: "speech-preview-text",
-        text: "voice draft",
+        props: {
+          style: "speech-preview-text",
+          text: "voice draft",
+        },
       },
     })
     expect(createChatComposerSpeechPreviewMobilePropsParts({

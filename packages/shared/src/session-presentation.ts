@@ -4411,15 +4411,21 @@ export interface ChatComposerSpeechPreviewMobilePropsParts<
 > {
   shouldRender: boolean
   container: {
-    style: TStyles["box"]
+    props: {
+      style: TStyles["box"]
+    }
   }
   label: {
-    style: TStyles["label"]
-    text: string
+    props: {
+      style: TStyles["label"]
+      text: string
+    }
   }
   text: {
-    style: TStyles["text"]
-    text: TText
+    props: {
+      style: TStyles["text"]
+      text: TText
+    }
   }
 }
 
@@ -21292,15 +21298,21 @@ export function createChatComposerSpeechPreviewMobilePropsParts<
   return {
     shouldRender: Boolean(text),
     container: {
-      style: styles.box,
+      props: {
+        style: styles.box,
+      },
     },
     label: {
-      style: styles.label,
-      text: label,
+      props: {
+        style: styles.label,
+        text: label,
+      },
     },
     text: {
-      style: styles.text,
-      text,
+      props: {
+        style: styles.text,
+        text,
+      },
     },
   }
 }
