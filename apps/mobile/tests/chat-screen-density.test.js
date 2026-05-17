@@ -1499,7 +1499,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /<ChatMessageDelegationToolPreviewRow\s+key=\{row\.key\}\s+\{\.\.\.row\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.toolPreview\.rows\.map\(\(row\) =>/);
   const delegationToolPreviewRowSource =
-    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewRow[\s\S]*?export function ChatMessageDelegationToolPreviewStatusIcon/)?.[0] ?? '';
+    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewRow[\s\S]*?export function ChatMessageDelegationToolPreviewName/)?.[0] ?? '';
+  const delegationToolPreviewNameSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewName[\s\S]*?export function ChatMessageDelegationToolPreviewStatusIcon/)?.[0] ?? '';
   const delegationToolPreviewStatusIconSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewStatusIcon[\s\S]*?export function ChatMessageDelegationMorePreviewAction/)?.[0] ?? '';
   assert.match(delegationToolPreviewRowSource, /<View\s+\{\.\.\.line\.props\}/);
@@ -1529,7 +1531,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /toolStateColor,\s*mobileToolExecutionCompactStatusSpinner\.opacity/);
   assert.doesNotMatch(screenSource, /toolStateColor,\s*toolStatusIcon\.opacity/);
   assert.doesNotMatch(screenSource, /\{toolPresentation\.compactLabel\}/);
-  assert.match(delegationToolPreviewRowSource, /<Text\s+\{\.\.\.name\.props\}[\s\S]*?\{name\.text\}/);
+  assert.match(delegationToolPreviewRowSource, /<ChatMessageDelegationToolPreviewName\s+\{\.\.\.name\}/);
+  assert.match(delegationToolPreviewNameSource, /<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(delegationToolPreviewRowSource, /<Text\s+\{\.\.\.name\.props\}/);
   assert.doesNotMatch(delegationToolPreviewRowSource, /name\.(style|numberOfLines|ellipsizeMode)/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{row\.name\.numberOfLines\}/);
   assert.match(sessionPresentationSource, /shouldRenderToolPreview && toolPreview\.hiddenCount > 0 && toolPreview\.onShowAll \? \{/);

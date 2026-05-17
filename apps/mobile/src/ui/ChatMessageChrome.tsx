@@ -2222,6 +2222,9 @@ type ChatMessageDelegationToolPreviewStatusIconProps = {
   statusIcon: ChatMessageDelegationToolPreviewRowProps['statusIcon'];
 };
 
+type ChatMessageDelegationToolPreviewNameProps =
+  ChatMessageDelegationToolPreviewRowProps['name'];
+
 type ChatMessageDelegationToolPreviewLabelProps =
   ChatMessageDelegationToolPreviewProps['container']['content']['label']['props'];
 
@@ -9593,12 +9596,23 @@ export function ChatMessageDelegationToolPreviewRow({
       <ChatMessageDelegationToolPreviewStatusIcon
         statusIcon={statusIcon}
       />
-      <Text
-        {...name.props}
-      >
-        {name.text}
-      </Text>
+      <ChatMessageDelegationToolPreviewName
+        {...name}
+      />
     </View>
+  );
+}
+
+export function ChatMessageDelegationToolPreviewName({
+  props,
+  text,
+}: ChatMessageDelegationToolPreviewNameProps) {
+  return (
+    <Text
+      {...props}
+    >
+      {text}
+    </Text>
   );
 }
 
