@@ -8246,16 +8246,18 @@ describe("session presentation semantics", () => {
       },
     })
     expect(toolApprovalParts.denyButton).toMatchObject({
-      style: [
-        "tool-approval-button-style",
-        "tool-approval-deny-button-style",
-        "tool-approval-button-disabled-style",
-      ],
-      disabled: true,
-      accessibilityRole: "button",
-      accessibilityLabel: "Deny tool call write_file",
-      accessibilityState: {
+      props: {
+        style: [
+          "tool-approval-button-style",
+          "tool-approval-deny-button-style",
+          "tool-approval-button-disabled-style",
+        ],
         disabled: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Deny tool call write_file",
+        accessibilityState: {
+          disabled: true,
+        },
       },
       icon: {
         props: toolApprovalProps.renderState.denyButton.icon,
@@ -8267,17 +8269,20 @@ describe("session presentation semantics", () => {
         },
       },
     })
+    expect(toolApprovalParts.denyButton.props.onPress).toBe(toolApprovalProps.onDeny)
     expect(toolApprovalParts.approveButton).toMatchObject({
-      style: [
-        "tool-approval-button-style",
-        "tool-approval-approve-button-style",
-        "tool-approval-button-disabled-style",
-      ],
-      disabled: true,
-      accessibilityRole: "button",
-      accessibilityLabel: "Approve tool call write_file",
-      accessibilityState: {
+      props: {
+        style: [
+          "tool-approval-button-style",
+          "tool-approval-approve-button-style",
+          "tool-approval-button-disabled-style",
+        ],
         disabled: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Approve tool call write_file",
+        accessibilityState: {
+          disabled: true,
+        },
       },
       icon: {
         shouldRender: false,
@@ -8294,6 +8299,7 @@ describe("session presentation semantics", () => {
         },
       },
     })
+    expect(toolApprovalParts.approveButton.props.onPress).toBe(toolApprovalProps.onApprove)
     expect(createChatRuntimeConversationToolApprovalMobileProps({
       cardState: null,
     })).toBeNull()

@@ -1626,6 +1626,13 @@ type ChatMessageToolApprovalActionsProps =
     children: ReactNode;
   };
 
+type ChatMessageToolApprovalActionButtonProps = {
+  children: ReactNode;
+} & (
+  | ChatMessageToolApprovalParts['denyButton']['props']
+  | ChatMessageToolApprovalParts['approveButton']['props']
+);
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7524,13 +7531,8 @@ export function ChatMessageToolApproval({
         <ChatMessageToolApprovalActions
           {...toolApprovalParts.actions.props}
         >
-          <TouchableOpacity
-            style={toolApprovalParts.denyButton.style}
-            onPress={toolApprovalParts.denyButton.onPress}
-            disabled={toolApprovalParts.denyButton.disabled}
-            accessibilityRole={toolApprovalParts.denyButton.accessibilityRole}
-            accessibilityLabel={toolApprovalParts.denyButton.accessibilityLabel}
-            accessibilityState={toolApprovalParts.denyButton.accessibilityState}
+          <ChatMessageToolApprovalActionButton
+            {...toolApprovalParts.denyButton.props}
           >
             <ChatMessageToolApprovalIcon
               {...toolApprovalParts.denyButton.icon.props}
@@ -7538,14 +7540,9 @@ export function ChatMessageToolApproval({
             <ChatMessageToolApprovalActionLabel
               {...toolApprovalParts.denyButton.label.props}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={toolApprovalParts.approveButton.style}
-            onPress={toolApprovalParts.approveButton.onPress}
-            disabled={toolApprovalParts.approveButton.disabled}
-            accessibilityRole={toolApprovalParts.approveButton.accessibilityRole}
-            accessibilityLabel={toolApprovalParts.approveButton.accessibilityLabel}
-            accessibilityState={toolApprovalParts.approveButton.accessibilityState}
+          </ChatMessageToolApprovalActionButton>
+          <ChatMessageToolApprovalActionButton
+            {...toolApprovalParts.approveButton.props}
           >
             {toolApprovalParts.approveButton.spinner.shouldRender ? (
               <ChatMessageToolApprovalSpinner
@@ -7559,7 +7556,7 @@ export function ChatMessageToolApproval({
             <ChatMessageToolApprovalActionLabel
               {...toolApprovalParts.approveButton.label.props}
             />
-          </TouchableOpacity>
+          </ChatMessageToolApprovalActionButton>
         </ChatMessageToolApprovalActions>
       </View>
     </View>
@@ -7682,6 +7679,29 @@ export function ChatMessageToolApprovalActions({
     <View style={style}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageToolApprovalActionButton({
+  style,
+  onPress,
+  disabled,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityState,
+  children,
+}: ChatMessageToolApprovalActionButtonProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+    >
+      {children}
+    </TouchableOpacity>
   );
 }
 

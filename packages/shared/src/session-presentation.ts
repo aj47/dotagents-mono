@@ -2053,12 +2053,14 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
   }
   denyButton: {
-    style: Array<TStyles["button"] | TStyles["denyButton"] | TStyles["buttonDisabled"] | false>
-    onPress: TOnDeny
-    disabled: boolean
-    accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityState"]
+    props: {
+      style: Array<TStyles["button"] | TStyles["denyButton"] | TStyles["buttonDisabled"] | false>
+      onPress: TOnDeny
+      disabled: boolean
+      accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityState"]
+    }
     icon: {
       props: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
     }
@@ -2070,12 +2072,14 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
   }
   approveButton: {
-    style: Array<TStyles["button"] | TStyles["approveButton"] | TStyles["buttonDisabled"] | false>
-    onPress: TOnApprove
-    disabled: boolean
-    accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityState"]
+    props: {
+      style: Array<TStyles["button"] | TStyles["approveButton"] | TStyles["buttonDisabled"] | false>
+      onPress: TOnApprove
+      disabled: boolean
+      accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityState"]
+    }
     icon: {
       shouldRender: boolean
       props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"]
@@ -22899,16 +22903,18 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
     },
     denyButton: {
-      style: [
-        styles.button,
-        styles.denyButton,
-        renderState.denyButton.isDisabled && styles.buttonDisabled,
-      ],
-      onPress: onDeny,
-      disabled: renderState.denyButton.isDisabled,
-      accessibilityRole: renderState.denyButton.accessibilityRole,
-      accessibilityLabel: renderState.denyButton.accessibilityLabel,
-      accessibilityState: renderState.denyButton.accessibilityState,
+      props: {
+        style: [
+          styles.button,
+          styles.denyButton,
+          renderState.denyButton.isDisabled && styles.buttonDisabled,
+        ],
+        onPress: onDeny,
+        disabled: renderState.denyButton.isDisabled,
+        accessibilityRole: renderState.denyButton.accessibilityRole,
+        accessibilityLabel: renderState.denyButton.accessibilityLabel,
+        accessibilityState: renderState.denyButton.accessibilityState,
+      },
       icon: {
         props: renderState.denyButton.icon,
       },
@@ -22920,16 +22926,18 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
     },
     approveButton: {
-      style: [
-        styles.button,
-        styles.approveButton,
-        renderState.approveButton.isDisabled && styles.buttonDisabled,
-      ],
-      onPress: onApprove,
-      disabled: renderState.approveButton.isDisabled,
-      accessibilityRole: renderState.approveButton.accessibilityRole,
-      accessibilityLabel: renderState.approveButton.accessibilityLabel,
-      accessibilityState: renderState.approveButton.accessibilityState,
+      props: {
+        style: [
+          styles.button,
+          styles.approveButton,
+          renderState.approveButton.isDisabled && styles.buttonDisabled,
+        ],
+        onPress: onApprove,
+        disabled: renderState.approveButton.isDisabled,
+        accessibilityRole: renderState.approveButton.accessibilityRole,
+        accessibilityLabel: renderState.approveButton.accessibilityLabel,
+        accessibilityState: renderState.approveButton.accessibilityState,
+      },
       icon: {
         shouldRender: !renderState.approveButton.isDisabled,
         props: renderState.approveButton.icon,
