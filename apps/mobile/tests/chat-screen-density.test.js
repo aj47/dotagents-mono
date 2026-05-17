@@ -4408,7 +4408,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?formatQueuedMessageMetaLabel,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
@@ -4468,6 +4468,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /const itemStyleSlots = createQueuedMessageItemMobileStyleSlots\(\{\s+surface: itemSurface,\s+colors: itemColors,\s+presentation: messagePresentation,\s+statusColor,\s+statusMetaColor,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageStatusIndicatorMobilePropsPart,/);
   assert.match(messageQueuePanelSource, /const statusIndicatorPart = createQueuedMessageStatusIndicatorMobilePropsPart\(\{\s+surface: itemSurface,\s+colors: itemColors,\s+icons: queuePanelIcons,\s+presentation: messagePresentation,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createQueuedMessageContentMobilePropsParts,/);
+  assert.match(messageQueuePanelSource, /const contentParts = createQueuedMessageContentMobilePropsParts\(\{\s+surface: itemSurface,\s+message,\s+presentation: messagePresentation,\s+isExpanded,\s+styles,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageExpandButtonMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts\(\{\s+surface: itemSurface,\s+colors: itemColors,\s+icons: queuePanelIcons,\s+presentation: messagePresentation,\s+isExpanded,\s+styles,\s+onToggleExpanded: \(\) => setIsExpanded\(!isExpanded\),\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageActionButtonMobilePropsParts,/);
@@ -4493,6 +4495,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /saveButtonText:\s*\{[\s\S]*?\.\.\.editStyleSlots\.saveButtonText/);
   assert.match(messageQueuePanelSource, /statusIndicatorPart\?\.type === 'failed'[\s\S]*?name=\{statusIndicatorPart\.icon\.name\}[\s\S]*?size=\{statusIndicatorPart\.icon\.size\}[\s\S]*?color=\{statusIndicatorPart\.icon\.color\}/);
   assert.match(messageQueuePanelSource, /statusIndicatorPart\?\.type === 'processing'[\s\S]*?<ActivityIndicator[\s\S]*?size=\{statusIndicatorPart\.activityIndicator\.size\}[\s\S]*?color=\{statusIndicatorPart\.activityIndicator\.color\}/);
+  assert.match(messageQueuePanelSource, /numberOfLines=\{contentParts\.messageText\.numberOfLines\}/);
+  assert.match(messageQueuePanelSource, /\{contentParts\.metaText\.text\}/);
   assert.match(messageQueuePanelSource, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
   assert.match(messageQueuePanelSource, /name=\{expandButtonParts\.icon\.name\}[\s\S]*?size=\{expandButtonParts\.icon\.size\}[\s\S]*?color=\{expandButtonParts\.icon\.color\}/);
   assert.match(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
@@ -4511,6 +4515,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /color:\s*statusColor/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.failedName\}\s+size=\{itemSurface\.stateIconSize\}\s+color=\{itemColors\.failedColor\}/);
   assert.doesNotMatch(messageQueuePanelSource, /<ActivityIndicator size="small" color=\{itemColors\.processingColor\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /formatQueuedMessageMetaLabel\(message\.createdAt, statusLabel\)/);
+  assert.doesNotMatch(messageQueuePanelSource, /numberOfLines=\{isExpanded \? undefined : itemSurface\.message\.collapsedNumberOfLines\}/);
   assert.doesNotMatch(messageQueuePanelSource, /activeOpacity=\{itemSurface\.expandButtonPressedOpacity\}/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{isExpanded \? queuePanelIcons\.collapseMessageName : queuePanelIcons\.expandMessageName\}/);
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) =>/);

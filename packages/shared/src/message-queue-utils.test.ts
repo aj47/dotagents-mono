@@ -10,6 +10,7 @@ import {
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createQueuedMessageStatusIndicatorMobilePropsPart,
+  createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
@@ -671,6 +672,63 @@ describe('message-queue-utils', () => {
         isProcessing: false,
       },
     })).toBeNull();
+    expect(createQueuedMessageContentMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      message: makeMessage('failed', {
+        status: 'failed',
+        errorMessage: 'timeout',
+      }),
+      presentation: getQueuedMessageItemPresentation(makeMessage('failed', {
+        status: 'failed',
+        errorMessage: 'timeout',
+      }), false),
+      isExpanded: false,
+      styles: {
+        content: 'content',
+        messageText: 'messageText',
+        errorText: 'errorText',
+        metaRow: 'metaRow',
+        metaText: 'metaText',
+      },
+    })).toEqual({
+      container: {
+        style: 'content',
+      },
+      messageText: {
+        style: 'messageText',
+        numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
+        text: 'failed',
+      },
+      errorText: {
+        style: 'errorText',
+        text: 'Error: timeout',
+      },
+      metaRow: {
+        style: 'metaRow',
+      },
+      metaText: {
+        style: 'metaText',
+        text: formatQueuedMessageMetaLabel(1000, 'Failed'),
+      },
+    });
+    expect(createQueuedMessageContentMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      message: makeMessage('expanded'),
+      presentation: getQueuedMessageItemPresentation(makeMessage('expanded'), true),
+      isExpanded: true,
+      styles: {
+        content: 'content',
+        messageText: 'messageText',
+        errorText: 'errorText',
+        metaRow: 'metaRow',
+        metaText: 'metaText',
+      },
+    })).toMatchObject({
+      messageText: {
+        numberOfLines: undefined,
+      },
+      errorText: null,
+    });
     const expandCalls: string[] = [];
     const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.item,

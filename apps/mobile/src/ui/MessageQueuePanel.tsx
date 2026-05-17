@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageStatusIndicatorMobilePropsPart,
+  createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
@@ -25,7 +26,6 @@ import {
   createQueuedMessageEditMobilePropsParts,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
-  formatQueuedMessageMetaLabel,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
@@ -73,8 +73,6 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const messagePresentation = queuedMessageRenderState.presentation;
   const {
     isProcessing,
-    statusLabel,
-    errorText,
   } = messagePresentation;
   const itemSurface = queuedMessageRenderState.surface.item;
   const actionSurface = queuedMessageRenderState.surface.actions;
@@ -239,6 +237,13 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     icons: queuePanelIcons,
     presentation: messagePresentation,
   });
+  const contentParts = createQueuedMessageContentMobilePropsParts({
+    surface: itemSurface,
+    message,
+    presentation: messagePresentation,
+    isExpanded,
+    styles,
+  });
 
   if (isEditing) {
     return (
@@ -299,19 +304,21 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             color={statusIndicatorPart.activityIndicator.color}
           />
         )}
-        <View style={styles.content}>
+        <View style={contentParts.container.style}>
           <Text
-            style={styles.messageText}
-            numberOfLines={isExpanded ? undefined : itemSurface.message.collapsedNumberOfLines}
+            style={contentParts.messageText.style}
+            numberOfLines={contentParts.messageText.numberOfLines}
           >
-            {message.text}
+            {contentParts.messageText.text}
           </Text>
-          {errorText && (
-            <Text style={styles.errorText}>{errorText}</Text>
+          {contentParts.errorText && (
+            <Text style={contentParts.errorText.style}>
+              {contentParts.errorText.text}
+            </Text>
           )}
-          <View style={styles.metaRow}>
-            <Text style={styles.metaText}>
-              {formatQueuedMessageMetaLabel(message.createdAt, statusLabel)}
+          <View style={contentParts.metaRow.style}>
+            <Text style={contentParts.metaText.style}>
+              {contentParts.metaText.text}
             </Text>
             {expandButtonParts && (
               <TouchableOpacity

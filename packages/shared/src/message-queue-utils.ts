@@ -1258,6 +1258,50 @@ export interface QueuedMessageStatusIndicatorMobilePropsPartInput {
   presentation: Pick<QueuedMessageItemPresentation, 'isFailed' | 'isProcessing'>;
 }
 
+export interface QueuedMessageContentMobilePropsPartsStylesLike {
+  content: unknown;
+  messageText: unknown;
+  errorText: unknown;
+  metaRow: unknown;
+  metaText: unknown;
+}
+
+export interface QueuedMessageContentMobilePropsPartsInput<
+  TStyles extends QueuedMessageContentMobilePropsPartsStylesLike =
+    QueuedMessageContentMobilePropsPartsStylesLike,
+> {
+  surface: QueuedMessageMobileItemSurface;
+  message: Pick<QueuedMessage, 'text' | 'createdAt'>;
+  presentation: Pick<QueuedMessageItemPresentation, 'statusLabel' | 'errorText'>;
+  isExpanded: boolean;
+  styles: TStyles;
+}
+
+export interface QueuedMessageContentMobilePropsParts<
+  TStyles extends QueuedMessageContentMobilePropsPartsStylesLike =
+    QueuedMessageContentMobilePropsPartsStylesLike,
+> {
+  container: {
+    style: TStyles['content'];
+  };
+  messageText: {
+    style: TStyles['messageText'];
+    numberOfLines: QueuedMessageMobileItemSurface['message']['collapsedNumberOfLines'] | undefined;
+    text: string;
+  };
+  errorText: {
+    style: TStyles['errorText'];
+    text: string;
+  } | null;
+  metaRow: {
+    style: TStyles['metaRow'];
+  };
+  metaText: {
+    style: TStyles['metaText'];
+    text: string;
+  };
+}
+
 export type QueuedMessageStatusIndicatorMobilePropsPart =
   | {
       type: 'failed';
@@ -1717,6 +1761,40 @@ export function createQueuedMessageStatusIndicatorMobilePropsPart({
   }
 
   return null;
+}
+
+export function createQueuedMessageContentMobilePropsParts<
+  TStyles extends QueuedMessageContentMobilePropsPartsStylesLike,
+>({
+  surface,
+  message,
+  presentation,
+  isExpanded,
+  styles,
+}: QueuedMessageContentMobilePropsPartsInput<TStyles>): QueuedMessageContentMobilePropsParts<TStyles> {
+  return {
+    container: {
+      style: styles.content,
+    },
+    messageText: {
+      style: styles.messageText,
+      numberOfLines: isExpanded ? undefined : surface.message.collapsedNumberOfLines,
+      text: message.text,
+    },
+    errorText: presentation.errorText
+      ? {
+          style: styles.errorText,
+          text: presentation.errorText,
+        }
+      : null,
+    metaRow: {
+      style: styles.metaRow,
+    },
+    metaText: {
+      style: styles.metaText,
+      text: formatQueuedMessageMetaLabel(message.createdAt, presentation.statusLabel),
+    },
+  };
 }
 
 export function createQueuedMessageExpandButtonMobilePropsParts<
