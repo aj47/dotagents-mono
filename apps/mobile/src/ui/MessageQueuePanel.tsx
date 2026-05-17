@@ -21,6 +21,7 @@ import {
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
+  createQueuedMessageItemChromeMobilePropsParts,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
@@ -247,10 +248,15 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     isExpanded,
     styles,
   });
+  const itemChromeParts = createQueuedMessageItemChromeMobilePropsParts({
+    statusIndicatorPart,
+    actionParts,
+    styles,
+  });
 
   if (isEditing) {
     return (
-      <View style={styles.container}>
+      <View style={itemChromeParts.container.style}>
         <View style={editParts.container.style}>
           <TextInput
             style={editParts.input.style}
@@ -292,19 +298,19 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        {statusIndicatorPart?.type === 'failed' && (
+    <View style={itemChromeParts.container.style}>
+      <View style={itemChromeParts.row.style}>
+        {itemChromeParts.failedStatusIcon && (
           <Ionicons
-            name={statusIndicatorPart.icon.name}
-            size={statusIndicatorPart.icon.size}
-            color={statusIndicatorPart.icon.color}
+            name={itemChromeParts.failedStatusIcon.name}
+            size={itemChromeParts.failedStatusIcon.size}
+            color={itemChromeParts.failedStatusIcon.color}
           />
         )}
-        {statusIndicatorPart?.type === 'processing' && (
+        {itemChromeParts.processingStatusIndicator && (
           <ActivityIndicator
-            size={statusIndicatorPart.activityIndicator.size}
-            color={statusIndicatorPart.activityIndicator.color}
+            size={itemChromeParts.processingStatusIndicator.size}
+            color={itemChromeParts.processingStatusIndicator.color}
           />
         )}
         <View style={contentParts.container.style}>
@@ -342,8 +348,8 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
               </TouchableOpacity>
             )}
           </View>
-          {actionParts.shouldRender && (
-            <View style={styles.actions}>
+          {itemChromeParts.actions && (
+            <View style={itemChromeParts.actions.style}>
               {actionParts.actions.map((action) => (
                 <TouchableOpacity
                   key={action.key}

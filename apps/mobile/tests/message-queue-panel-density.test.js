@@ -49,8 +49,12 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /const actionSurface = queuedMessageRenderState\.surface\.actions;/);
   assert.match(source, /const actionRowStyleSlot = createQueuedMessageActionRowMobileStyleSlot\(\{\s+surface: actionSurface,\s+\}\);/);
   assert.match(source, /const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots\(\{\s+surface: actionSurface,\s+colors: actionColors,\s+\}\);/);
+  assert.match(source, /createQueuedMessageItemChromeMobilePropsParts/);
+  assert.match(source, /const itemChromeParts = createQueuedMessageItemChromeMobilePropsParts\(\{[\s\S]*?statusIndicatorPart,[\s\S]*?actionParts,[\s\S]*?styles,[\s\S]*?\}\);/);
   assert.match(source, /actions:\s*\{[\s\S]*?\.\.\.actionRowStyleSlot/);
   assert.match(source, /actionButton:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.button/);
+  assert.match(source, /style=\{itemChromeParts\.actions\.style\}/);
+  assert.doesNotMatch(source, /actionParts\.shouldRender &&/);
   assert.match(source, /hitSlop=\{action\.hitSlop\}/);
   assert.match(source, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
   assert.match(source, /accessibilityRole=\{expandButtonParts\.pressable\.accessibilityRole\}/);
@@ -91,7 +95,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /const contentParts = createQueuedMessageContentMobilePropsParts\(\{[\s\S]*?message,[\s\S]*?presentation: messagePresentation,[\s\S]*?isExpanded,[\s\S]*?styles,/);
   assert.match(source, /\{contentParts\.metaText\.text\}/);
   assert.match(source, /const queuePanelIcons = queuePanelRenderState\.icons;/);
-  assert.match(source, /name=\{statusIndicatorPart\.icon\.name\}/);
+  assert.match(source, /name=\{itemChromeParts\.failedStatusIcon\.name\}/);
+  assert.match(source, /size=\{itemChromeParts\.processingStatusIndicator\.size\}/);
   assert.match(source, /name=\{expandButtonParts\.icon\.name\}/);
   assert.match(source, /compactActionParts\.actions\.map\(\(action\) =>/);
   assert.match(source, /name=\{action\.icon\.name\}/);
@@ -130,8 +135,11 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
   assert.match(source, /createMessageQueuePanelHeaderActionMobilePropsParts/);
   assert.match(source, /createMessageQueuePanelChromeMobilePropsParts/);
+  assert.match(source, /createQueuedMessageItemChromeMobilePropsParts/);
   assert.doesNotMatch(source, /queuePanelState\.shouldRenderPausedNotice &&/);
   assert.doesNotMatch(source, /queuePanelState\.shouldRenderList &&/);
+  assert.doesNotMatch(source, /statusIndicatorPart\?\.type ===/);
+  assert.doesNotMatch(source, /actionParts\.shouldRender &&/);
   assert.match(source, /queuePanelState\.items\.map/);
   assert.match(source, /item\.shouldRenderSeparator/);
   assert.match(source, /const messagePresentation = queuedMessageRenderState\.presentation;/);
@@ -171,7 +179,9 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /const statusColor = queuedMessageRenderState\.statusColor;/);
   assert.match(source, /const itemStyleSlots = createQueuedMessageItemMobileStyleSlots\(\{[\s\S]*?surface: itemSurface,[\s\S]*?colors: itemColors,[\s\S]*?presentation: messagePresentation,[\s\S]*?statusColor,[\s\S]*?statusMetaColor,/);
   assert.match(source, /container:\s*\{[\s\S]*?\.\.\.itemStyleSlots\.container/);
+  assert.match(source, /style=\{itemChromeParts\.container\.style\}/);
   assert.match(source, /row:\s*\{[\s\S]*?\.\.\.itemStyleSlots\.row/);
+  assert.match(source, /style=\{itemChromeParts\.row\.style\}/);
   assert.match(source, /content:\s*\{[\s\S]*?\.\.\.itemStyleSlots\.content/);
   assert.match(source, /messageText:\s*\{[\s\S]*?\.\.\.itemStyleSlots\.messageText/);
   assert.match(source, /numberOfLines=\{contentParts\.messageText\.numberOfLines\}/);

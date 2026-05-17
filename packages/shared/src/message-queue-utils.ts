@@ -1946,6 +1946,41 @@ export interface QueuedMessageActionButtonMobilePropsParts<
   actions: Array<QueuedMessageActionButtonMobilePropsPart<TStyles>>;
 }
 
+export interface QueuedMessageItemChromeMobilePropsPartsStylesLike {
+  container: unknown;
+  row: unknown;
+  actions: unknown;
+}
+
+export interface QueuedMessageItemChromeMobilePropsPartsInput<
+  TStyles extends QueuedMessageItemChromeMobilePropsPartsStylesLike =
+    QueuedMessageItemChromeMobilePropsPartsStylesLike,
+> {
+  statusIndicatorPart: QueuedMessageStatusIndicatorMobilePropsPart | null;
+  actionParts: Pick<QueuedMessageActionButtonMobilePropsParts, 'shouldRender'>;
+  styles: TStyles;
+}
+
+export interface QueuedMessageItemChromeMobilePropsParts<
+  TStyles extends QueuedMessageItemChromeMobilePropsPartsStylesLike =
+    QueuedMessageItemChromeMobilePropsPartsStylesLike,
+> {
+  container: {
+    style: TStyles['container'];
+  };
+  row: {
+    style: TStyles['row'];
+  };
+  failedStatusIcon: Extract<QueuedMessageStatusIndicatorMobilePropsPart, { type: 'failed' }>['icon'] | null;
+  processingStatusIndicator: Extract<
+    QueuedMessageStatusIndicatorMobilePropsPart,
+    { type: 'processing' }
+  >['activityIndicator'] | null;
+  actions: {
+    style: TStyles['actions'];
+  } | null;
+}
+
 export interface QueuedMessageEditMobileStyleSlotsInput {
   surface: QueuedMessageMobileEditSurface;
   colors: MessageQueuePanelMobileSurfaceRenderState['colors']['edit'];
@@ -2439,6 +2474,34 @@ export function createQueuedMessageActionRowMobileStyleSlot({
     alignItems: surface.alignItems,
     gap: surface.gap,
     marginTop: surface.marginTop,
+  };
+}
+
+export function createQueuedMessageItemChromeMobilePropsParts<
+  TStyles extends QueuedMessageItemChromeMobilePropsPartsStylesLike,
+>({
+  statusIndicatorPart,
+  actionParts,
+  styles,
+}: QueuedMessageItemChromeMobilePropsPartsInput<TStyles>): QueuedMessageItemChromeMobilePropsParts<TStyles> {
+  return {
+    container: {
+      style: styles.container,
+    },
+    row: {
+      style: styles.row,
+    },
+    failedStatusIcon: statusIndicatorPart?.type === 'failed'
+      ? statusIndicatorPart.icon
+      : null,
+    processingStatusIndicator: statusIndicatorPart?.type === 'processing'
+      ? statusIndicatorPart.activityIndicator
+      : null,
+    actions: actionParts.shouldRender
+      ? {
+          style: styles.actions,
+        }
+      : null,
   };
 }
 

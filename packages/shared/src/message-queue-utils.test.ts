@@ -13,6 +13,7 @@ import {
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
+  createQueuedMessageItemChromeMobilePropsParts,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
@@ -941,6 +942,64 @@ describe('message-queue-utils', () => {
         isProcessing: false,
       },
     })).toBeNull();
+    expect(createQueuedMessageItemChromeMobilePropsParts({
+      statusIndicatorPart: {
+        type: 'failed',
+        icon: {
+          name: 'alert-circle',
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
+          color: '#dc2626',
+        },
+      },
+      actionParts: {
+        shouldRender: true,
+      },
+      styles: {
+        container: 'container',
+        row: 'row',
+        actions: 'actions',
+      },
+    })).toEqual({
+      container: {
+        style: 'container',
+      },
+      row: {
+        style: 'row',
+      },
+      failedStatusIcon: {
+        name: 'alert-circle',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
+        color: '#dc2626',
+      },
+      processingStatusIndicator: null,
+      actions: {
+        style: 'actions',
+      },
+    });
+    expect(createQueuedMessageItemChromeMobilePropsParts({
+      statusIndicatorPart: {
+        type: 'processing',
+        activityIndicator: {
+          size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
+          color: '#2563eb',
+        },
+      },
+      actionParts: {
+        shouldRender: false,
+      },
+      styles: {
+        container: 'container',
+        row: 'row',
+        actions: 'actions',
+      },
+    })).toMatchObject({
+      failedStatusIcon: null,
+      processingStatusIndicator: {
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
+        color: '#2563eb',
+      },
+      actions: null,
+    });
     expect(createQueuedMessageContentMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.item,
       message: makeMessage('failed', {

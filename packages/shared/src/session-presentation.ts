@@ -407,6 +407,7 @@ export {
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
+  createQueuedMessageItemChromeMobilePropsParts,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
