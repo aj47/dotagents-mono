@@ -3517,15 +3517,21 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
   },
 > {
   container: {
-    onPress: TOnPress | undefined
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
+    props: {
+      onPress: TOnPress | undefined
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   label: {
-    text: string
-    style: TStyles["text"]
+    props: {
+      style: TStyles["text"]
+      text: string
+    }
   }
 }
 
@@ -20833,18 +20839,24 @@ export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
 > {
   return {
     container: {
-      onPress,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style: ({ pressed }) => [
-        styles.button,
-        pressed && styles.pressed,
-      ],
+      props: {
+        onPress,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style: ({ pressed }) => [
+          styles.button,
+          pressed && styles.pressed,
+        ],
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     label: {
-      text: renderState.label,
-      style: styles.text,
+      props: {
+        style: styles.text,
+        text: renderState.label,
+      },
     },
   }
 }

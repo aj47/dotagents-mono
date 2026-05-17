@@ -13449,25 +13449,31 @@ describe("session presentation semantics", () => {
     })
     expect(copyButtonParts).toMatchObject({
       container: {
-        onPress: "copy-payload",
-        accessibilityRole: "button",
-        accessibilityLabel: "Copy input payload",
+        props: {
+          onPress: "copy-payload",
+          accessibilityRole: "button",
+          accessibilityLabel: "Copy input payload",
+        },
       },
       icon: {
-        name: "copy-outline",
-        size: 12,
-        color: "#555",
+        props: {
+          name: "copy-outline",
+          size: 12,
+          color: "#555",
+        },
       },
       label: {
-        text: "Copy",
-        style: "copy-button-text",
+        props: {
+          style: "copy-button-text",
+          text: "Copy",
+        },
       },
     })
-    expect(copyButtonParts.container.style({ pressed: false })).toEqual([
+    expect(copyButtonParts.container.props.style({ pressed: false })).toEqual([
       "copy-button",
       false,
     ])
-    expect(copyButtonParts.container.style({ pressed: true })).toEqual([
+    expect(copyButtonParts.container.props.style({ pressed: true })).toEqual([
       "copy-button",
       "copy-button-pressed",
     ])

@@ -2072,6 +2072,23 @@ type ChatMessageToolExecutionCopyButtonProps = {
   styles: ChatMessageToolExecutionCopyButtonStyles;
 };
 
+type ChatMessageToolExecutionCopyButtonParts = ReturnType<typeof createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
+  ChatMessageToolExecutionCopyButtonProps['renderState'],
+  ChatMessageToolExecutionCopyButtonProps['onPress'],
+  ChatMessageToolExecutionCopyButtonProps['styles']
+>>;
+
+type ChatMessageToolExecutionCopyButtonPressableProps =
+  ChatMessageToolExecutionCopyButtonParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionCopyButtonIconProps =
+  ChatMessageToolExecutionCopyButtonParts['icon']['props'];
+
+type ChatMessageToolExecutionCopyButtonLabelProps =
+  ChatMessageToolExecutionCopyButtonParts['label']['props'];
+
 type ChatMessageToolExecutionDetailHeaderStyles = {
   header: StyleProp<ViewStyle>;
   headerPressed: StyleProp<ViewStyle>;
@@ -9343,21 +9360,60 @@ export function ChatMessageToolExecutionCopyButton({
   });
 
   return (
-    <Pressable
-      onPress={copyButtonParts.container.onPress}
-      accessibilityRole={copyButtonParts.container.accessibilityRole}
-      accessibilityLabel={copyButtonParts.container.accessibilityLabel}
-      style={copyButtonParts.container.style}
+    <ChatMessageToolExecutionCopyButtonPressable
+      {...copyButtonParts.container.props}
     >
-      <Ionicons
-        name={copyButtonParts.icon.name}
-        size={copyButtonParts.icon.size}
-        color={copyButtonParts.icon.color}
+      <ChatMessageToolExecutionCopyButtonIcon
+        {...copyButtonParts.icon.props}
       />
-      <Text style={copyButtonParts.label.style}>
-        {copyButtonParts.label.text}
-      </Text>
+      <ChatMessageToolExecutionCopyButtonLabel
+        {...copyButtonParts.label.props}
+      />
+    </ChatMessageToolExecutionCopyButtonPressable>
+  );
+}
+
+export function ChatMessageToolExecutionCopyButtonPressable({
+  onPress,
+  accessibilityRole,
+  accessibilityLabel,
+  style,
+  children,
+}: ChatMessageToolExecutionCopyButtonPressableProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
+    >
+      {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageToolExecutionCopyButtonIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolExecutionCopyButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionCopyButtonLabel({
+  style,
+  text,
+}: ChatMessageToolExecutionCopyButtonLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
