@@ -8562,11 +8562,11 @@ export function ChatMessageToolApproval({
 }
 
 export function ChatMessageToolApprovalView({
-  style,
   children,
+  ...props
 }: ChatMessageToolApprovalViewProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -8666,74 +8666,44 @@ export function ChatMessageToolApprovalFullArguments({
 }
 
 export function ChatMessageToolApprovalFullArgumentsScroll({
-  style,
-  nestedScrollEnabled,
   children,
+  ...props
 }: ChatMessageToolApprovalFullArgumentsScrollProps) {
   return (
-    <ScrollView
-      style={style}
-      nestedScrollEnabled={nestedScrollEnabled}
-    >
+    <ScrollView {...props}>
       {children}
     </ScrollView>
   );
 }
 
 export function ChatMessageToolApprovalActions({
-  style,
   children,
+  ...props
 }: ChatMessageToolApprovalActionsProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatMessageToolApprovalActionButton({
-  style,
-  onPress,
-  disabled,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityState,
   children,
+  ...props
 }: ChatMessageToolApprovalActionButtonProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
 export function ChatMessageToolApprovalArgumentsToggle({
-  style,
-  onPress,
-  disabled,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityState,
-  "aria-expanded": ariaExpanded,
   children,
+  ...props
 }: ChatMessageToolApprovalArgumentsToggleProps) {
   return (
-    <Pressable
-      style={style}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
-      aria-expanded={ariaExpanded}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
