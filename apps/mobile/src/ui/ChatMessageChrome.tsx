@@ -3175,6 +3175,28 @@ type ChatMessageConversationFrameProps = {
   rootStyle: StyleProp<ViewStyle>;
 };
 
+type ChatMessageConversationFrameParts = ReturnType<typeof createChatRuntimeConversationFrameMobilePropsParts<
+  ChatMessageConversationFrameProps['children'],
+  ChatMessageConversationFrameProps['dock'],
+  ChatMessageConversationFrameProps['overlays'],
+  ChatMessageConversationFrameProps['keyboardAvoidingStyle'],
+  ChatMessageConversationFrameProps['keyboardAvoidingBehavior'],
+  ChatMessageConversationFrameProps['keyboardVerticalOffset'],
+  ChatMessageConversationFrameProps['rootStyle']
+>>;
+
+type ChatMessageConversationFrameContentProps =
+  ChatMessageConversationFrameParts['keyboardAvoidingView']['content'];
+
+type ChatMessageConversationFrameRootProps =
+  ChatMessageConversationFrameContentProps['root']['props']
+  & {
+    children: ReactNode;
+  };
+
+type ChatMessageConversationFrameRootContentProps =
+  ChatMessageConversationFrameContentProps['root']['content'];
+
 type ChatMessageConversationOverlaysProps = {
   agentSelector?: ReactNode;
   promptEditor?: ReactNode;
@@ -11912,18 +11934,52 @@ export function ChatMessageConversationFrame({
     keyboardVerticalOffset,
     rootStyle,
   });
-  const frameContent = frameParts.keyboardAvoidingView.content;
 
   return (
     <KeyboardAvoidingView
       {...frameParts.keyboardAvoidingView.props}
     >
-      <View {...frameContent.root.props}>
-        {frameContent.root.content.children}
-        {frameContent.root.content.dock.children}
-      </View>
-      {frameContent.overlays.children}
+      <ChatMessageConversationFrameContent
+        {...frameParts.keyboardAvoidingView.content}
+      />
     </KeyboardAvoidingView>
+  );
+}
+
+export function ChatMessageConversationFrameContent({
+  root,
+  overlays,
+}: ChatMessageConversationFrameContentProps) {
+  return (
+    <>
+      <ChatMessageConversationFrameRoot {...root.props}>
+        <ChatMessageConversationFrameRootContent {...root.content} />
+      </ChatMessageConversationFrameRoot>
+      {overlays.children}
+    </>
+  );
+}
+
+export function ChatMessageConversationFrameRoot({
+  children,
+  ...props
+}: ChatMessageConversationFrameRootProps) {
+  return (
+    <View {...props}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageConversationFrameRootContent({
+  children,
+  dock,
+}: ChatMessageConversationFrameRootContentProps) {
+  return (
+    <>
+      {children}
+      {dock.children}
+    </>
   );
 }
 

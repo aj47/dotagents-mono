@@ -2202,9 +2202,14 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(conversationFrameSource, /<KeyboardAvoidingView\s+\{\.\.\.frameParts\.keyboardAvoidingView\.props\}/);
   assert.match(sessionPresentationSource, /keyboardAvoidingView: \{\s+props: \{\s+style: keyboardAvoidingStyle,/);
   assert.match(sessionPresentationSource, /content: \{\s+root: \{\s+props: \{\s+style: rootStyle,/);
-  assert.match(conversationFrameSource, /const frameContent = frameParts\.keyboardAvoidingView\.content;/);
-  assert.match(conversationFrameSource, /<View\s+\{\.\.\.frameContent\.root\.props\}>[\s\S]*?\{frameContent\.root\.content\.children\}[\s\S]*?\{frameContent\.root\.content\.dock\.children\}/);
-  assert.match(conversationFrameSource, /\{frameContent\.overlays\.children\}[\s\S]*?<\/KeyboardAvoidingView>/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameContentProps =\s+ChatMessageConversationFrameParts\['keyboardAvoidingView'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameRootContentProps =\s+ChatMessageConversationFrameContentProps\['root'\]\['content'\];/);
+  assert.match(conversationFrameSource, /<ChatMessageConversationFrameContent\s+\{\.\.\.frameParts\.keyboardAvoidingView\.content\}\s+\/>/);
+  assert.match(conversationFrameSource, /export function ChatMessageConversationFrameContent/);
+  assert.match(conversationFrameSource, /<ChatMessageConversationFrameRoot \{\.\.\.root\.props\}>[\s\S]*?<ChatMessageConversationFrameRootContent \{\.\.\.root\.content\} \/>/);
+  assert.match(conversationFrameSource, /\{overlays\.children\}[\s\S]*?export function ChatMessageConversationFrameRoot/);
+  assert.match(conversationFrameSource, /export function ChatMessageConversationFrameRootContent[\s\S]*?\{children\}[\s\S]*?\{dock\.children\}/);
+  assert.doesNotMatch(conversationFrameSource, /const frameContent = frameParts\.keyboardAvoidingView\.content;/);
   assert.doesNotMatch(conversationFrameSource, /frameParts\.root\.content\.children/);
   assert.doesNotMatch(conversationFrameSource, /frameParts\.overlays\.children/);
   assert.doesNotMatch(conversationFrameSource, /frameParts\.(keyboardAvoidingView|root)\.(style|behavior|keyboardVerticalOffset)/);
@@ -6336,6 +6341,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatMessageDebugPanelStack/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationDock/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrame/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrameContent/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrameRoot/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrameRootContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlays/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeOverlays/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewport/);
