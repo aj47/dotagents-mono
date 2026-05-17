@@ -6733,7 +6733,7 @@ export function ChatRuntimeHeaderIconButton({
       aria-checked={iconButtonParts.touchable.ariaChecked as boolean | 'mixed' | undefined}
       style={iconButtonParts.touchable.style}
     >
-      {iconButtonParts.iconContainer ? (
+      {iconButtonParts.iconContainer.shouldRender ? (
         <View style={iconButtonParts.iconContainer.style}>
           {icon}
         </View>

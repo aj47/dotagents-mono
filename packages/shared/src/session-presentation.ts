@@ -8610,8 +8610,9 @@ export interface ChatRuntimeHeaderIconButtonMobilePropsParts<
     style: Array<TStyle | TActiveStyle | false | undefined>
   }
   iconContainer: {
-    style: TIconContainerStyle
-  } | null
+    shouldRender: boolean
+    style: TIconContainerStyle | undefined
+  }
   icon: TRenderState["icon"]
 }
 
@@ -25197,9 +25198,10 @@ export function createChatRuntimeHeaderIconButtonMobilePropsParts<
       ariaChecked: renderState.ariaChecked,
       style: [style, isActive && activeStyle],
     },
-    iconContainer: iconContainerStyle ? {
+    iconContainer: {
+      shouldRender: Boolean(iconContainerStyle),
       style: iconContainerStyle,
-    } : null,
+    },
     icon: renderState.icon,
   }
 }

@@ -4348,6 +4348,7 @@ describe("session presentation semantics", () => {
         style: ["action-button-style", "hands-free-active-style"],
       },
       iconContainer: {
+        shouldRender: true,
         style: "hands-free-icon-container",
       },
       icon: navigationHeaderState.handsFreeButtonRenderState.icon,

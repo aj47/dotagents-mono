@@ -1456,7 +1456,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /const createChatRuntimeMobileHeaderIconContainerStyle =/);
   assert.doesNotMatch(screenSource, /createChatRuntimeHeaderIconContainerMobileStyleSlot\(\{/);
-  assert.match(chatMessageChromeSource, /iconButtonParts\.iconContainer \? \(/);
+  assert.match(chatMessageChromeSource, /iconButtonParts\.iconContainer\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /iconButtonParts\.iconContainer \? \(/);
   assert.doesNotMatch(screenSource, /name=\{mobileHeaderKillSwitchRenderState\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /name=\{headerHandsFreeMobileRenderState\.icon\.name\}/);
   assert.match(screenSource, /headerKillSwitchIconContainer:\s*\{[\s\S]*?\.\.\.headerMobileStyleSlots\.iconContainer\.killSwitch/);
