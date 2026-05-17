@@ -95,7 +95,7 @@ test('mobile response history renders list chrome from shared prop parts', () =>
   assert.match(source, /\{responseHistoryParts\.collapsedPreview\.timestamp\.text\}/);
   assert.match(source, /\{responseHistoryParts\.collapsedPreview\.preview\.text\}/);
   assert.match(source, /\{responseHistoryParts\.list && \(/);
-  assert.match(source, /<ScrollView style=\{responseHistoryParts\.list\.style\}>/);
+  assert.match(source, /<ScrollView\s+style=\{responseHistoryParts\.list\.style\}\s+showsVerticalScrollIndicator=\{responseHistoryParts\.list\.showsVerticalScrollIndicator\}\s+>/);
   assert.match(source, /\{responseHistoryParts\.list\.items\.map\(\(item\) => \{/);
   assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
   assert.match(source, /\{item\.separator && <View style=\{item\.separator\.style\} \/>/);

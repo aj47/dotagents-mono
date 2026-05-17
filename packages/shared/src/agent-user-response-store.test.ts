@@ -75,6 +75,7 @@ describe('agent-user-response-store', () => {
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.badge.justifyContent).toBe('center');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.badge.textColorToken).toBe('primaryForeground');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.list.maxHeight).toBe(300);
+    expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.list.showsVerticalScrollIndicator).toBe(true);
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.list.separatorColorToken).toBe('border');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.headerFlexDirection).toBe('row');
     expect(AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.headerAlignItems).toBe('center');
@@ -202,6 +203,8 @@ describe('agent-user-response-store', () => {
     });
     expect(responseHistoryParts.collapsedPreview).toBeNull();
     expect(responseHistoryParts.list).not.toBeNull();
+    expect(responseHistoryParts.list?.style).toBe(responseHistoryStyleSlots.list);
+    expect(responseHistoryParts.list?.showsVerticalScrollIndicator).toBe(true);
     const responseHistoryItem = responseHistoryParts.list?.items[0];
     expect(responseHistoryItem).toMatchObject({
       key: '1000-0',

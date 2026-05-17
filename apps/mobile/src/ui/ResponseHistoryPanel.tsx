@@ -205,7 +205,10 @@ export function ResponseHistoryPanel({
         </View>
       )}
       {responseHistoryParts.list && (
-        <ScrollView style={responseHistoryParts.list.style}>
+        <ScrollView
+          style={responseHistoryParts.list.style}
+          showsVerticalScrollIndicator={responseHistoryParts.list.showsVerticalScrollIndicator}
+        >
           {responseHistoryParts.list.items.map((item) => {
             return (
               <React.Fragment key={item.key}>

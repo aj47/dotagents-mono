@@ -138,6 +138,7 @@ export const AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION = {
     },
     list: {
       maxHeight: 300,
+      showsVerticalScrollIndicator: true,
       separatorHeight: 1,
       separatorColorToken: 'border',
     },
@@ -502,6 +503,7 @@ export interface AgentResponseHistoryMobilePropsParts<
   } | null;
   list: {
     style: TStyles['list'];
+    showsVerticalScrollIndicator: AgentResponseHistoryMobileSurface['list']['showsVerticalScrollIndicator'];
     items: Array<AgentResponseHistoryMobilePropsPartsItem<T, TStyles>>;
   } | null;
 }
@@ -788,6 +790,7 @@ export function createAgentResponseHistoryMobilePropsParts<
     list: renderState.shouldRenderList
       ? {
           style: styles.list,
+          showsVerticalScrollIndicator: surface.list.showsVerticalScrollIndicator,
           items: renderState.items.map((item) => {
             const speechActionState = item.speechActionState;
 
