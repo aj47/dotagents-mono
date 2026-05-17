@@ -2506,13 +2506,21 @@ export interface ChatRuntimeConversationContentMobilePropsPartsInput<
   collapsed: TCollapsed
 }
 
+export type ChatRuntimeMobilePropsPart<TProps> = {
+  shouldRender: true
+  props: TProps
+} | {
+  shouldRender: false
+  props: null
+}
+
 export interface ChatRuntimeConversationContentMobilePropsParts<
   TEntry = unknown,
   TExpanded extends { bodyStyle: unknown } = { bodyStyle: unknown },
   TCollapsed = unknown,
   TRowStyle = unknown,
 > {
-  expandedContent: {
+  expandedContent: ChatRuntimeMobilePropsPart<{
     row: {
       rowStyle: TRowStyle
       bodyStyle: TExpanded["bodyStyle"]
@@ -2520,15 +2528,15 @@ export interface ChatRuntimeConversationContentMobilePropsParts<
       entries: readonly TEntry[]
     }
     content: Omit<TExpanded, "bodyStyle">
-  } | null
-  collapsedContent: {
+  }>
+  collapsedContent: ChatRuntimeMobilePropsPart<{
     row: {
       rowStyle: TRowStyle
       shouldRenderActionSlots: boolean
       entries: readonly TEntry[]
     }
     preview: TCollapsed
-  } | null
+  }>
 }
 
 export interface ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
@@ -5096,13 +5104,8 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsPartsInp
   }
 }
 
-export type ChatRuntimeConversationThreadBodyMobilePropsPart<TProps> = {
-  shouldRender: true
-  props: TProps
-} | {
-  shouldRender: false
-  props: null
-}
+export type ChatRuntimeConversationThreadBodyMobilePropsPart<TProps> =
+  ChatRuntimeMobilePropsPart<TProps>
 
 export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   TRetryStatus extends object = Record<string, never>,
@@ -19743,22 +19746,34 @@ export function createChatRuntimeConversationContentMobilePropsParts<
 
   return {
     expandedContent: contentDisplayMode === "expanded" ? {
-      row: {
-        rowStyle,
-        bodyStyle,
-        shouldRenderActionSlots,
-        entries,
+      shouldRender: true,
+      props: {
+        row: {
+          rowStyle,
+          bodyStyle,
+          shouldRenderActionSlots,
+          entries,
+        },
+        content: expandedContent,
       },
-      content: expandedContent,
-    } : null,
+    } : {
+      shouldRender: false,
+      props: null,
+    },
     collapsedContent: contentDisplayMode === "collapsed" ? {
-      row: {
-        rowStyle,
-        shouldRenderActionSlots,
-        entries,
+      shouldRender: true,
+      props: {
+        row: {
+          rowStyle,
+          shouldRenderActionSlots,
+          entries,
+        },
+        preview: collapsed,
       },
-      preview: collapsed,
-    } : null,
+    } : {
+      shouldRender: false,
+      props: null,
+    },
   }
 }
 

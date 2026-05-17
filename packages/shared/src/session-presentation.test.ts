@@ -6080,22 +6080,28 @@ describe("session presentation semantics", () => {
     })
     expect(conversationExpandedContentParts).toEqual({
       expandedContent: {
-        row: {
-          rowStyle: "content-row-style",
-          bodyStyle: "expanded-body-style",
-          shouldRenderActionSlots: true,
-          entries: conversationActionEntries,
-        },
-        content: {
-          streamingRenderState: expandedContentParts.header,
-          markdownContent: "Markdown content",
-          assetBaseUrl: "asset-base",
-          assetAuthToken: "asset-token",
-          spinnerSource: "spinner-source",
-          streamingStyles: expandedContentStyles,
+        shouldRender: true,
+        props: {
+          row: {
+            rowStyle: "content-row-style",
+            bodyStyle: "expanded-body-style",
+            shouldRenderActionSlots: true,
+            entries: conversationActionEntries,
+          },
+          content: {
+            streamingRenderState: expandedContentParts.header,
+            markdownContent: "Markdown content",
+            assetBaseUrl: "asset-base",
+            assetAuthToken: "asset-token",
+            spinnerSource: "spinner-source",
+            streamingStyles: expandedContentStyles,
+          },
         },
       },
-      collapsedContent: null,
+      collapsedContent: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeConversationContentMobilePropsParts({
       contentDisplayMode: "collapsed",
@@ -6107,14 +6113,20 @@ describe("session presentation semantics", () => {
       },
       collapsed: collapsedPreviewParts,
     })).toEqual({
-      expandedContent: null,
+      expandedContent: {
+        shouldRender: false,
+        props: null,
+      },
       collapsedContent: {
-        row: {
-          rowStyle: "content-row-style",
-          shouldRenderActionSlots: false,
-          entries: conversationActionEntries,
+        shouldRender: true,
+        props: {
+          row: {
+            rowStyle: "content-row-style",
+            shouldRenderActionSlots: false,
+            entries: conversationActionEntries,
+          },
+          preview: collapsedPreviewParts,
         },
-        preview: collapsedPreviewParts,
       },
     })
     expect(createChatRuntimeConversationContentMobilePropsParts({
@@ -6127,8 +6139,14 @@ describe("session presentation semantics", () => {
       },
       collapsed: collapsedPreviewParts,
     })).toEqual({
-      expandedContent: null,
-      collapsedContent: null,
+      expandedContent: {
+        shouldRender: false,
+        props: null,
+      },
+      collapsedContent: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(getChatRuntimeStreamingContentMobileRenderState({
       colors: {

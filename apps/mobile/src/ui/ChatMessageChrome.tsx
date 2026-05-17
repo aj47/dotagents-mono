@@ -9860,25 +9860,25 @@ export function ChatMessageConversationContent({
     collapsed,
   });
 
-  if (conversationContentParts.expandedContent) {
+  if (conversationContentParts.expandedContent.shouldRender) {
     return (
       <ChatMessageContentRow
-        {...conversationContentParts.expandedContent.row}
+        {...conversationContentParts.expandedContent.props.row}
       >
         <ChatMessageExpandedContent
-          {...conversationContentParts.expandedContent.content}
+          {...conversationContentParts.expandedContent.props.content}
         />
       </ChatMessageContentRow>
     );
   }
 
-  if (conversationContentParts.collapsedContent) {
+  if (conversationContentParts.collapsedContent.shouldRender) {
     return (
       <ChatMessageContentRow
-        {...conversationContentParts.collapsedContent.row}
+        {...conversationContentParts.collapsedContent.props.row}
       >
         <ChatMessageCollapsedPreview
-          {...conversationContentParts.collapsedContent.preview}
+          {...conversationContentParts.collapsedContent.props.preview}
         />
       </ChatMessageContentRow>
     );
