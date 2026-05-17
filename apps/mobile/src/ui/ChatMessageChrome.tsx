@@ -11526,12 +11526,13 @@ export function ChatComposerMicButton({
     webPressedStyle,
     styles,
   });
+  const micButtonPressable = micButtonParts.pressable;
 
-  const pressableContent = micButtonParts.pressable.content;
+  const pressableContent = micButtonPressable.content;
 
   return (
     <ChatComposerMicButtonPressable
-      {...micButtonParts.pressable.props}
+      {...micButtonPressable.props}
     >
       <ChatComposerMicButtonIcon
         {...pressableContent.icon.props}
@@ -11597,20 +11598,23 @@ export function ChatComposerTextEntry({
     webAccessibility,
     styles,
   });
+  const textEntryInput = textEntryParts.input;
+  const textEntryInputDescription = textEntryParts.inputDescription;
+  const textEntryVoiceStatusLiveRegion = textEntryParts.voiceStatusLiveRegion;
 
   return (
     <>
       <ChatComposerTextEntryInput
-        {...textEntryParts.input.props}
+        {...textEntryInput.props}
       />
-      {textEntryParts.inputDescription.shouldRender ? (
+      {textEntryInputDescription.shouldRender ? (
         <ChatComposerTextEntryInputDescription
-          {...textEntryParts.inputDescription.props}
+          {...textEntryInputDescription.props}
         />
       ) : null}
-      {textEntryParts.voiceStatusLiveRegion.shouldRender ? (
+      {textEntryVoiceStatusLiveRegion.shouldRender ? (
         <ChatComposerTextEntryVoiceStatusLiveRegion
-          {...textEntryParts.voiceStatusLiveRegion.props}
+          {...textEntryVoiceStatusLiveRegion.props}
         />
       ) : null}
     </>

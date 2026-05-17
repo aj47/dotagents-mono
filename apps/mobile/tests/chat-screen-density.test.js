@@ -2924,8 +2924,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /createChatComposerMicButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerMicButtonMobilePropsParts/);
   assert.match(composerMicButtonSource, /const micButtonParts = createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\);/);
-  assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressable\s+\{\.\.\.micButtonParts\.pressable\.props\}/);
-  assert.match(composerMicButtonSource, /const pressableContent = micButtonParts\.pressable\.content;/);
+  assert.match(composerMicButtonSource, /const micButtonPressable = micButtonParts\.pressable;/);
+  assert.match(composerMicButtonSource, /const pressableContent = micButtonPressable\.content;/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressable\s+\{\.\.\.micButtonPressable\.props\}/);
   assert.match(composerMicButtonSource, /<ChatComposerMicButtonIcon\s+\{\.\.\.pressableContent\.icon\.props\}/);
   assert.match(composerMicButtonSource, /<ChatComposerMicButtonLabel\s+\{\.\.\.pressableContent\.label\.props\}/);
   assert.match(
@@ -2953,6 +2954,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     composerMicButtonSource,
     /micButtonParts\.label\.(style|selectable|text)/
   );
+  assert.doesNotMatch(composerMicButtonSource, /micButtonParts\.pressable\.(props|content)/);
   assert.doesNotMatch(composerMicButtonSource, /aria-busy=\{renderState\.ariaBusy\}/);
   assert.doesNotMatch(composerMicButtonSource, /name=\{renderState\.icon\.name\}/);
   assert.doesNotMatch(composerMicButtonSource, /selectable=\{renderState\.labelSelectable\}/);
@@ -3003,11 +3005,14 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const textEntrySource =
     chatMessageChromeSource.match(/export function ChatComposerTextEntry[\s\S]*?export function ChatMessageInlineActivity/)?.[0] ?? '';
   assert.match(textEntrySource, /const textEntryParts = createChatComposerTextEntryMobilePropsParts\(\{\s+inputRef,\s+value,\s+onChangeText,\s+onKeyPress,\s+accessibilityLabel,\s+accessibilityHint,\s+placeholder,\s+placeholderTextColor,\s+voiceStatusLiveRegionAnnouncement,\s+webAccessibility,\s+styles,\s+\}\);/);
-  assert.match(textEntrySource, /<ChatComposerTextEntryInput\s+\{\.\.\.textEntryParts\.input\.props\}/);
-  assert.match(textEntrySource, /\{textEntryParts\.inputDescription\.shouldRender \? \(/);
-  assert.match(textEntrySource, /<ChatComposerTextEntryInputDescription\s+\{\.\.\.textEntryParts\.inputDescription\.props\}/);
-  assert.match(textEntrySource, /\{textEntryParts\.voiceStatusLiveRegion\.shouldRender \? \(/);
-  assert.match(textEntrySource, /<ChatComposerTextEntryVoiceStatusLiveRegion\s+\{\.\.\.textEntryParts\.voiceStatusLiveRegion\.props\}/);
+  assert.match(textEntrySource, /const textEntryInput = textEntryParts\.input;/);
+  assert.match(textEntrySource, /const textEntryInputDescription = textEntryParts\.inputDescription;/);
+  assert.match(textEntrySource, /const textEntryVoiceStatusLiveRegion = textEntryParts\.voiceStatusLiveRegion;/);
+  assert.match(textEntrySource, /<ChatComposerTextEntryInput\s+\{\.\.\.textEntryInput\.props\}/);
+  assert.match(textEntrySource, /\{textEntryInputDescription\.shouldRender \? \(/);
+  assert.match(textEntrySource, /<ChatComposerTextEntryInputDescription\s+\{\.\.\.textEntryInputDescription\.props\}/);
+  assert.match(textEntrySource, /\{textEntryVoiceStatusLiveRegion\.shouldRender \? \(/);
+  assert.match(textEntrySource, /<ChatComposerTextEntryVoiceStatusLiveRegion\s+\{\.\.\.textEntryVoiceStatusLiveRegion\.props\}/);
   assert.match(
     textEntrySource,
     /export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>\(function ChatComposerTextEntryInput\(props, ref\)[\s\S]*?ref=\{ref\}[\s\S]*?\{\.\.\.props\}[\s\S]*?export function ChatComposerTextEntryInputDescription/
@@ -3034,6 +3039,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     textEntrySource,
     /textEntryParts\.(inputDescription|voiceStatusLiveRegion)\.(nativeID|style|accessibilityLiveRegion|ariaLive|text)/
   );
+  assert.doesNotMatch(textEntrySource, /textEntryParts\.(input|inputDescription|voiceStatusLiveRegion)\.(props|shouldRender)/);
   assert.doesNotMatch(textEntrySource, /\{textEntryParts\.inputDescription && \(/);
   assert.doesNotMatch(textEntrySource, /\{textEntryParts\.voiceStatusLiveRegion && \(/);
   assert.doesNotMatch(textEntrySource, /aria-describedby=\{webAccessibility\.isWebPlatform \? webAccessibility\.inputDescriptionNativeId : undefined\}/);
