@@ -13887,12 +13887,16 @@ describe("session presentation semantics", () => {
         },
       },
       payloadMeta: {
-        renderState: "result-payload-state",
-        styles: "result-payload-meta",
+        props: {
+          renderState: "result-payload-state",
+          styles: "result-payload-meta",
+        },
       },
       resultBadge: {
-        badge: "success-badge",
-        styles: "result-badge-styles",
+        props: {
+          badge: "success-badge",
+          styles: "result-badge-styles",
+        },
       },
       characterCount: {
         props: {
@@ -13901,9 +13905,11 @@ describe("session presentation semantics", () => {
         },
       },
       copyButton: {
-        renderState: "copy-result-state",
-        onPress: "copy-result",
-        styles: "result-copy-button",
+        props: {
+          renderState: "copy-result-state",
+          onPress: "copy-result",
+          styles: "result-copy-button",
+        },
       },
     })
     const errorBlockParts = createChatRuntimeToolExecutionErrorBlockMobilePropsParts({

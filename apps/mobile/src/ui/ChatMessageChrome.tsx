@@ -10082,17 +10082,17 @@ export function ChatMessageToolExecutionResultHeader({
         {...resultHeaderParts.meta.props}
       >
         <ChatMessageToolExecutionPayloadMeta
-          {...resultHeaderParts.payloadMeta}
+          {...resultHeaderParts.payloadMeta.props}
         />
         <ChatMessageToolExecutionResultBadge
-          {...resultHeaderParts.resultBadge}
+          {...resultHeaderParts.resultBadge.props}
         />
         <ChatMessageToolExecutionResultCharacterCount
           {...resultHeaderParts.characterCount.props}
         />
       </ChatMessageToolExecutionResultHeaderView>
       <ChatMessageToolExecutionCopyButton
-        {...resultHeaderParts.copyButton}
+        {...resultHeaderParts.copyButton.props}
       />
     </ChatMessageToolExecutionResultHeaderView>
   );

@@ -4233,12 +4233,16 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     }
   }
   payloadMeta: {
-    renderState: TPayloadRenderState
-    styles: TStyles["payloadMeta"]
+    props: {
+      renderState: TPayloadRenderState
+      styles: TStyles["payloadMeta"]
+    }
   }
   resultBadge: {
-    badge: TResultBadge
-    styles: TStyles["badge"]
+    props: {
+      badge: TResultBadge
+      styles: TStyles["badge"]
+    }
   }
   characterCount: {
     props: {
@@ -4247,9 +4251,11 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     }
   }
   copyButton: {
-    renderState: TCopyButtonRenderState
-    onPress: TOnCopyPress | undefined
-    styles: TStyles["copyButton"]
+    props: {
+      renderState: TCopyButtonRenderState
+      onPress: TOnCopyPress | undefined
+      styles: TStyles["copyButton"]
+    }
   }
 }
 
@@ -21415,12 +21421,16 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
       },
     },
     payloadMeta: {
-      renderState: payloadRenderState,
-      styles: styles.payloadMeta,
+      props: {
+        renderState: payloadRenderState,
+        styles: styles.payloadMeta,
+      },
     },
     resultBadge: {
-      badge: resultBadge,
-      styles: styles.badge,
+      props: {
+        badge: resultBadge,
+        styles: styles.badge,
+      },
     },
     characterCount: {
       props: {
@@ -21429,9 +21439,11 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
       },
     },
     copyButton: {
-      renderState: copyButtonRenderState,
-      onPress: onCopyPress,
-      styles: styles.copyButton,
+      props: {
+        renderState: copyButtonRenderState,
+        onPress: onCopyPress,
+        styles: styles.copyButton,
+      },
     },
   }
 }
