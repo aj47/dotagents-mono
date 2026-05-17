@@ -5955,6 +5955,10 @@ test('uses tool activities wording consistently for grouped tool activity labels
     chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupOptionalCountBadge[\s\S]*?export function ChatMessageToolActivityGroupIcon/)?.[0] ?? '';
   const toolActivityGroupFooterComponentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupFooter[\s\S]*?export function ChatMessageToolActivityGroupBoundary/)?.[0] ?? '';
+  const toolActivityGroupFooterShellSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupFooter[\s\S]*?export function ChatMessageToolActivityGroupFooterContent/)?.[0] ?? '';
+  const toolActivityGroupFooterContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupFooterContent[\s\S]*?export function ChatMessageToolActivityGroupFooterLabel/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupToggleMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupFooterMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
@@ -6025,11 +6029,12 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupExpandedToggleIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupExpandedToggleIcon\.opacity/);
   assert.match(toolActivityGroupFooterComponentSource, /<Pressable\s+\{\.\.\.footerParts\.button\.props\}/);
-  assert.match(toolActivityGroupFooterComponentSource, /const footerButtonContent = footerParts\.button\.content;/);
+  assert.match(toolActivityGroupFooterShellSource, /<ChatMessageToolActivityGroupFooterContent\s+\{\.\.\.footerParts\.button\.content\}/);
+  assert.doesNotMatch(toolActivityGroupFooterComponentSource, /const footerButtonContent = footerParts\.button\.content;/);
   assert.match(sessionPresentationSource, /button: \{[\s\S]*?props: \{[\s\S]*?onPress,[\s\S]*?accessibilityRole: renderState\.footerButton\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.footerButton\.accessibilityLabel,[\s\S]*?style: \(\{ pressed \}/);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /footerParts\.button\.(onPress|accessibilityRole|accessibilityLabel|style)/);
   assert.match(sessionPresentationSource, /content: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.footerToggleIcon,/);
-  assert.match(toolActivityGroupFooterComponentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.footerButtonContent\.icon\.props\}/);
+  assert.match(toolActivityGroupFooterContentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.icon\.props\}/);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /footerParts\.icon\./);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /footerButtonContent\.icon\.(name|size|color)/);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /renderState\.footerToggleIcon/);
@@ -6037,7 +6042,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupFooterToggleIcon\.opacity/);
   assert.match(sessionPresentationSource, /content: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.text,[\s\S]*?text: renderState\.footerButton\.label,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupFooterLabel/);
-  assert.match(toolActivityGroupFooterComponentSource, /<ChatMessageToolActivityGroupFooterLabel\s+\{\.\.\.footerButtonContent\.label\.props\}/);
+  assert.match(toolActivityGroupFooterContentSource, /<ChatMessageToolActivityGroupFooterLabel\s+\{\.\.\.label\.props\}/);
   assert.match(toolActivityGroupFooterComponentSource, /export function ChatMessageToolActivityGroupFooterLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /export function ChatMessageToolActivityGroupFooterLabel[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolActivityGroupBoundary/);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /footerParts\.label\./);
