@@ -14250,23 +14250,25 @@ describe("session presentation semantics", () => {
             "result-badge-success",
           ],
         },
-      },
-      icon: {
-        props: {
-          name: "checkmark-circle",
-          size: 12,
-          color: "#0f0",
-        },
-      },
-      label: {
-        props: {
-          props: {
-            style: [
-              "result-badge-text",
-              "result-badge-text-success",
-            ],
+        content: {
+          icon: {
+            props: {
+              name: "checkmark-circle",
+              size: 12,
+              color: "#0f0",
+            },
           },
-          text: "Succeeded",
+          label: {
+            props: {
+              props: {
+                style: [
+                  "result-badge-text",
+                  "result-badge-text-success",
+                ],
+              },
+              text: "Succeeded",
+            },
+          },
         },
       },
     })
@@ -14298,14 +14300,16 @@ describe("session presentation semantics", () => {
             "result-badge-error",
           ],
         },
-      },
-      label: {
-        props: {
-          props: {
-            style: [
-              "result-badge-text",
-              "result-badge-text-error",
-            ],
+        content: {
+          label: {
+            props: {
+              props: {
+                style: [
+                  "result-badge-text",
+                  "result-badge-text-error",
+                ],
+              },
+            },
           },
         },
       },
@@ -14333,19 +14337,21 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Waiting for tool result",
           style: "pending-row",
         },
-      },
-      spinner: {
-        props: {
-          size: "small",
-          color: "#888",
-        },
-      },
-      label: {
-        props: {
-          props: {
-            style: "pending-text",
+        content: {
+          spinner: {
+            props: {
+              size: "small",
+              color: "#888",
+            },
           },
-          text: "Waiting...",
+          label: {
+            props: {
+              props: {
+                style: "pending-text",
+              },
+              text: "Waiting...",
+            },
+          },
         },
       },
     })

@@ -3622,16 +3622,18 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
       accessibilityLabel: string
       style: Array<TStyles["badge"] | TStyles["badgeSuccess"] | TStyles["badgeError"]>
     }
-  }
-  icon: {
-    props: TBadge["icon"]
-  }
-  label: {
-    props: {
-      props: {
-        style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+    content: {
+      icon: {
+        props: TBadge["icon"]
       }
-      text: string
+      label: {
+        props: {
+          props: {
+            style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+          }
+          text: string
+        }
+      }
     }
   }
 }
@@ -4295,16 +4297,18 @@ export interface ChatRuntimeToolExecutionPendingResultMobilePropsParts<
       accessibilityLabel: string
       style: TStyles["row"]
     }
-  }
-  spinner: {
-    props: TRenderState["spinner"]
-  }
-  label: {
-    props: {
-      props: {
-        style: TStyles["text"]
+    content: {
+      spinner: {
+        props: TRenderState["spinner"]
       }
-      text: string
+      label: {
+        props: {
+          props: {
+            style: TStyles["text"]
+          }
+          text: string
+        }
+      }
     }
   }
 }
@@ -21496,19 +21500,21 @@ export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
           badge.isSuccess ? styles.badgeSuccess : styles.badgeError,
         ],
       },
-    },
-    icon: {
-      props: badge.icon,
-    },
-    label: {
-      props: {
-        props: {
-          style: [
-            styles.text,
-            badge.isSuccess ? styles.textSuccess : styles.textError,
-          ],
+      content: {
+        icon: {
+          props: badge.icon,
         },
-        text: badge.label,
+        label: {
+          props: {
+            props: {
+              style: [
+                styles.text,
+                badge.isSuccess ? styles.textSuccess : styles.textError,
+              ],
+            },
+            text: badge.label,
+          },
+        },
       },
     },
   }
@@ -21962,16 +21968,18 @@ export function createChatRuntimeToolExecutionPendingResultMobilePropsParts<
         accessibilityLabel: renderState.accessibilityLabel,
         style: styles.row,
       },
-    },
-    spinner: {
-      props: renderState.spinner,
-    },
-    label: {
-      props: {
-        props: {
-          style: styles.text,
+      content: {
+        spinner: {
+          props: renderState.spinner,
         },
-        text: renderState.label,
+        label: {
+          props: {
+            props: {
+              style: styles.text,
+            },
+            text: renderState.label,
+          },
+        },
       },
     },
   }

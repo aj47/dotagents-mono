@@ -2277,10 +2277,10 @@ type ChatMessageToolExecutionResultBadgeContainerProps =
   };
 
 type ChatMessageToolExecutionResultBadgeIconProps =
-  ChatMessageToolExecutionResultBadgeParts['icon']['props'];
+  ChatMessageToolExecutionResultBadgeParts['container']['content']['icon']['props'];
 
 type ChatMessageToolExecutionResultBadgeLabelProps =
-  ChatMessageToolExecutionResultBadgeParts['label']['props'];
+  ChatMessageToolExecutionResultBadgeParts['container']['content']['label']['props'];
 
 type ChatMessageToolExecutionPendingResultStyles = {
   row: StyleProp<ViewStyle>;
@@ -2303,10 +2303,10 @@ type ChatMessageToolExecutionPendingResultContainerProps =
   };
 
 type ChatMessageToolExecutionPendingResultSpinnerProps =
-  ChatMessageToolExecutionPendingResultParts['spinner']['props'];
+  ChatMessageToolExecutionPendingResultParts['container']['content']['spinner']['props'];
 
 type ChatMessageToolExecutionPendingResultLabelProps =
-  ChatMessageToolExecutionPendingResultParts['label']['props'];
+  ChatMessageToolExecutionPendingResultParts['container']['content']['label']['props'];
 
 type ChatMessageToolExecutionEmptyStateProps = {
   renderState: ToolExecutionDetailMobileEmptyStateRenderState;
@@ -9518,16 +9518,17 @@ export function ChatMessageToolExecutionResultBadge({
     badge,
     styles,
   });
+  const resultBadgeContent = resultBadgeParts.container.content;
 
   return (
     <ChatMessageToolExecutionResultBadgeContainer
       {...resultBadgeParts.container.props}
     >
       <ChatMessageToolExecutionResultBadgeIcon
-        {...resultBadgeParts.icon.props}
+        {...resultBadgeContent.icon.props}
       />
       <ChatMessageToolExecutionResultBadgeLabel
-        {...resultBadgeParts.label.props}
+        {...resultBadgeContent.label.props}
       />
     </ChatMessageToolExecutionResultBadgeContainer>
   );
@@ -9569,16 +9570,17 @@ export function ChatMessageToolExecutionPendingResult({
     renderState,
     styles,
   });
+  const pendingResultContent = pendingResultParts.container.content;
 
   return (
     <ChatMessageToolExecutionPendingResultContainer
       {...pendingResultParts.container.props}
     >
       <ChatMessageToolExecutionPendingResultSpinner
-        {...pendingResultParts.spinner.props}
+        {...pendingResultContent.spinner.props}
       />
       <ChatMessageToolExecutionPendingResultLabel
-        {...pendingResultParts.label.props}
+        {...pendingResultContent.label.props}
       />
     </ChatMessageToolExecutionPendingResultContainer>
   );
