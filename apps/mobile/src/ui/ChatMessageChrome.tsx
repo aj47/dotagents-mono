@@ -9406,14 +9406,14 @@ export function ChatComposerVoiceOverlay({
         <Text style={voiceOverlayParts.label.style}>
           {voiceOverlayParts.label.text}
         </Text>
-        {voiceOverlayParts.transcript && (
+        {voiceOverlayParts.transcript.shouldRender ? (
           <Text
             style={voiceOverlayParts.transcript.style}
             numberOfLines={voiceOverlayParts.transcript.numberOfLines}
           >
             {voiceOverlayParts.transcript.text}
           </Text>
-        )}
+        ) : null}
       </View>
     </View>
   );

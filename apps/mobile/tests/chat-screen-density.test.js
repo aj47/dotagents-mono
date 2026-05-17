@@ -2792,14 +2792,16 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(voiceOverlaySource, /<View style=\{voiceOverlayParts\.card\.style\}>/);
   assert.match(voiceOverlaySource, /<Text style=\{voiceOverlayParts\.label\.style\}>/);
   assert.match(voiceOverlaySource, /\{voiceOverlayParts\.label\.text\}/);
-  assert.match(voiceOverlaySource, /\{voiceOverlayParts\.transcript && \(/);
+  assert.match(voiceOverlaySource, /\{voiceOverlayParts\.transcript\.shouldRender \? \(/);
   assert.match(voiceOverlaySource, /style=\{voiceOverlayParts\.transcript\.style\}/);
   assert.match(voiceOverlaySource, /numberOfLines=\{voiceOverlayParts\.transcript\.numberOfLines\}/);
   assert.match(voiceOverlaySource, /\{voiceOverlayParts\.transcript\.text\}/);
   assert.doesNotMatch(voiceOverlaySource, /if \(!isVisible\) return null;/);
   assert.doesNotMatch(voiceOverlaySource, /pointerEvents="none"/);
   assert.doesNotMatch(voiceOverlaySource, /<View style=\{styles\.card\}>/);
+  assert.doesNotMatch(voiceOverlaySource, /\{voiceOverlayParts\.transcript && \(/);
   assert.doesNotMatch(voiceOverlaySource, /\{!!transcript && \(/);
+  assert.match(sessionPresentationSource, /shouldRender: Boolean\(transcript\)/);
   assert.match(sessionPresentationSource, /voiceOverlay:\s*\{\s+bottom: layout\.voiceOverlay\.bottom,\s+\}/);
   assert.doesNotMatch(screenSource, /voiceOverlay:\s*\{\s*bottom:\s*mobileSafeAreaLayout\.voiceOverlay\.bottom,\s*\}/);
   assert.doesNotMatch(screenSource, /voiceOverlayLabel,/);

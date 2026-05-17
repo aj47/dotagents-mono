@@ -4372,10 +4372,11 @@ export interface ChatComposerVoiceOverlayMobilePropsParts<
     text: string
   }
   transcript: {
+    shouldRender: boolean
     style: TStyles["transcript"]
     numberOfLines: TTranscriptNumberOfLines
     text: TTranscript
-  } | null
+  }
 }
 
 export type ChatComposerTextEntryMobileLiveRegionPoliteness = "none" | "polite" | "assertive"
@@ -20998,11 +20999,12 @@ export function createChatComposerVoiceOverlayMobilePropsParts<
       style: styles.label,
       text: label,
     },
-    transcript: transcript ? {
+    transcript: {
+      shouldRender: Boolean(transcript),
       style: styles.transcript,
       numberOfLines: transcriptNumberOfLines,
       text: transcript,
-    } : null,
+    },
   }
 }
 

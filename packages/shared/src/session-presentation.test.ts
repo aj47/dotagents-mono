@@ -9522,6 +9522,7 @@ describe("session presentation semantics", () => {
         text: "Listening",
       },
       transcript: {
+        shouldRender: true,
         style: "voice-overlay-transcript",
         numberOfLines: 2,
         text: "voice transcript",
@@ -9540,7 +9541,12 @@ describe("session presentation semantics", () => {
       },
     })).toMatchObject({
       shouldRender: false,
-      transcript: null,
+      transcript: {
+        shouldRender: false,
+        style: "voice-overlay-transcript",
+        numberOfLines: 2,
+        text: "",
+      },
     })
     expect(createChatComposerTextEntryMobilePropsParts({
       inputRef: "input-ref",
