@@ -2855,25 +2855,34 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(handsFreeControlsSource, /const handsFreeStatusRow = handsFreeControlsParts\.statusRow;/);
   assert.match(handsFreeControlsSource, /const handsFreeControlsRow = handsFreeControlsParts\.controlsRow;/);
   assert.match(handsFreeControlsSource, /if \(!handsFreeStatusRow\.shouldRender && !handsFreeControlsRow\.shouldRender\) return null;/);
-  assert.match(handsFreeControlsSource, /const controlsRowContent = handsFreeControlsRow\.content;/);
+  assert.doesNotMatch(handsFreeControlsSource, /const controlsRowContent = handsFreeControlsRow\.content;/);
   assert.match(handsFreeControlsSource, /\{handsFreeStatusRow\.shouldRender \? \(/);
   assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeStatusRow\s+\{\.\.\.handsFreeStatusRow\.props\}/);
-  assert.match(handsFreeControlsSource, /\{handsFreeStatusRow\.content\.status\.children\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeStatusRowContent\s+\{\.\.\.handsFreeStatusRow\.content\}/);
   assert.match(handsFreeControlsSource, /\{handsFreeControlsRow\.shouldRender \? \(/);
   assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlsRow\s+\{\.\.\.handsFreeControlsRow\.props\}/);
-  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.controlsRowContent\.primaryControl\.touchable\.props\}/);
-  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.controlsRowContent\.primaryControl\.content\.label\.props\}/);
-  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.controlsRowContent\.secondaryControl\.touchable\.props\}/);
-  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.controlsRowContent\.secondaryControl\.content\.label\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlsRowContent\s+\{\.\.\.handsFreeControlsRow\.content\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.primaryControl\.touchable\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.primaryControl\.content\.label\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.secondaryControl\.touchable\.props\}/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.secondaryControl\.content\.label\.props\}/);
   assert.doesNotMatch(handsFreeControlsSource, /handsFreeControlsParts\.statusRow\.status/);
   assert.doesNotMatch(handsFreeControlsSource, /handsFreeControlsParts\.(primaryControl|secondaryControl)/);
   assert.match(
     handsFreeControlsSource,
-    /export function ChatComposerHandsFreeStatusRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeControlsRow/
+    /export function ChatComposerHandsFreeStatusRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeStatusRowContent/
   );
   assert.match(
     handsFreeControlsSource,
-    /export function ChatComposerHandsFreeControlsRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeControlButton/
+    /export function ChatComposerHandsFreeStatusRowContent\([\s\S]*?\{status\.children\}[\s\S]*?export function ChatComposerHandsFreeControlsRow/
+  );
+  assert.match(
+    handsFreeControlsSource,
+    /export function ChatComposerHandsFreeControlsRow\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerHandsFreeControlsRowContent/
+  );
+  assert.match(
+    handsFreeControlsSource,
+    /export function ChatComposerHandsFreeControlsRowContent\([\s\S]*?<ChatComposerHandsFreeControlButton\s+\{\.\.\.primaryControl\.touchable\.props\}[\s\S]*?export function ChatComposerHandsFreeControlButton/
   );
   assert.match(
     handsFreeControlsSource,

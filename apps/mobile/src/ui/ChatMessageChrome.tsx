@@ -4054,10 +4054,16 @@ type ChatComposerHandsFreeStatusRowProps =
     children: ReactNode;
   };
 
+type ChatComposerHandsFreeStatusRowContentProps =
+  ChatComposerHandsFreeControlsParts['statusRow']['content'];
+
 type ChatComposerHandsFreeControlsRowProps =
   ChatComposerHandsFreeControlsParts['controlsRow']['props'] & {
     children: ReactNode;
   };
+
+type ChatComposerHandsFreeControlsRowContentProps =
+  ChatComposerHandsFreeControlsParts['controlsRow']['content'];
 
 type ChatComposerHandsFreeControlButtonProps =
   ChatComposerHandsFreeControlsParts['controlsRow']['content']['primaryControl']['touchable']['props'] & {
@@ -13706,35 +13712,20 @@ export function ChatComposerHandsFreeControls({
 
   if (!handsFreeStatusRow.shouldRender && !handsFreeControlsRow.shouldRender) return null;
 
-  const controlsRowContent = handsFreeControlsRow.content;
-
   return (
     <>
       {handsFreeStatusRow.shouldRender ? (
         <ChatComposerHandsFreeStatusRow
           {...handsFreeStatusRow.props}
         >
-          {handsFreeStatusRow.content.status.children}
+          <ChatComposerHandsFreeStatusRowContent {...handsFreeStatusRow.content} />
         </ChatComposerHandsFreeStatusRow>
       ) : null}
       {handsFreeControlsRow.shouldRender ? (
         <ChatComposerHandsFreeControlsRow
           {...handsFreeControlsRow.props}
         >
-          <ChatComposerHandsFreeControlButton
-            {...controlsRowContent.primaryControl.touchable.props}
-          >
-            <ChatComposerHandsFreeControlLabel
-              {...controlsRowContent.primaryControl.content.label.props}
-            />
-          </ChatComposerHandsFreeControlButton>
-          <ChatComposerHandsFreeControlButton
-            {...controlsRowContent.secondaryControl.touchable.props}
-          >
-            <ChatComposerHandsFreeControlLabel
-              {...controlsRowContent.secondaryControl.content.label.props}
-            />
-          </ChatComposerHandsFreeControlButton>
+          <ChatComposerHandsFreeControlsRowContent {...handsFreeControlsRow.content} />
         </ChatComposerHandsFreeControlsRow>
       ) : null}
     </>
@@ -13752,6 +13743,16 @@ export function ChatComposerHandsFreeStatusRow({
   );
 }
 
+export function ChatComposerHandsFreeStatusRowContent({
+  status,
+}: ChatComposerHandsFreeStatusRowContentProps) {
+  return (
+    <>
+      {status.children}
+    </>
+  );
+}
+
 export function ChatComposerHandsFreeControlsRow({
   children,
   ...props
@@ -13760,6 +13761,30 @@ export function ChatComposerHandsFreeControlsRow({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatComposerHandsFreeControlsRowContent({
+  primaryControl,
+  secondaryControl,
+}: ChatComposerHandsFreeControlsRowContentProps) {
+  return (
+    <>
+      <ChatComposerHandsFreeControlButton
+        {...primaryControl.touchable.props}
+      >
+        <ChatComposerHandsFreeControlLabel
+          {...primaryControl.content.label.props}
+        />
+      </ChatComposerHandsFreeControlButton>
+      <ChatComposerHandsFreeControlButton
+        {...secondaryControl.touchable.props}
+      >
+        <ChatComposerHandsFreeControlLabel
+          {...secondaryControl.content.label.props}
+        />
+      </ChatComposerHandsFreeControlButton>
+    </>
   );
 }
 
