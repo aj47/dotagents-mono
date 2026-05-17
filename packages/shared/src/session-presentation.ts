@@ -2065,8 +2065,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       shouldRender: boolean
       props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"]
     }
-    spinner: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"] & {
+    spinner: {
       shouldRender: boolean
+      props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"]
     }
     label: {
       props: {
@@ -22905,8 +22906,8 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         props: renderState.approveButton.icon,
       },
       spinner: {
-        ...renderState.approveButton.spinner,
         shouldRender: renderState.approveButton.isDisabled,
+        props: renderState.approveButton.spinner,
       },
       label: {
         props: {

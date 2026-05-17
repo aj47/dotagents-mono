@@ -8268,8 +8268,8 @@ describe("session presentation semantics", () => {
         props: toolApprovalProps.renderState.approveButton.icon,
       },
       spinner: {
-        ...toolApprovalProps.renderState.approveButton.spinner,
         shouldRender: true,
+        props: toolApprovalProps.renderState.approveButton.spinner,
       },
       label: {
         props: {

@@ -1597,6 +1597,9 @@ type ChatMessageToolApprovalActionLabelProps =
   | ChatMessageToolApprovalParts['denyButton']['label']['props']
   | ChatMessageToolApprovalParts['approveButton']['label']['props'];
 
+type ChatMessageToolApprovalSpinnerProps =
+  ChatMessageToolApprovalParts['approveButton']['spinner']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7528,9 +7531,8 @@ export function ChatMessageToolApproval({
             accessibilityState={toolApprovalParts.approveButton.accessibilityState}
           >
             {toolApprovalParts.approveButton.spinner.shouldRender ? (
-              <ActivityIndicator
-                size={toolApprovalParts.approveButton.spinner.size}
-                color={toolApprovalParts.approveButton.spinner.color}
+              <ChatMessageToolApprovalSpinner
+                {...toolApprovalParts.approveButton.spinner.props}
               />
             ) : toolApprovalParts.approveButton.icon.shouldRender ? (
               <ChatMessageToolApprovalIcon
@@ -7555,6 +7557,18 @@ export function ChatMessageToolApprovalIcon({
   return (
     <Ionicons
       name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolApprovalSpinner({
+  size,
+  color,
+}: ChatMessageToolApprovalSpinnerProps) {
+  return (
+    <ActivityIndicator
       size={size}
       color={color}
     />
