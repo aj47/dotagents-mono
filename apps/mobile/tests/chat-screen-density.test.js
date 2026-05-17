@@ -712,6 +712,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalDenyActionContent[\s\S]*?export function ChatMessageToolApprovalApproveActionContent/)?.[0] ?? '';
   const approveActionContentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalApproveActionContent[\s\S]*?export function ChatMessageToolApprovalView/)?.[0] ?? '';
+  const fullArgumentsBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalFullArgumentsBlock[\s\S]*?export function ChatMessageToolApprovalFullArguments/)?.[0] ?? '';
   assert.doesNotMatch(toolApprovalComponentSource, /const denyButtonContent = toolApprovalParts\.denyButton\.content;/);
   assert.doesNotMatch(toolApprovalComponentSource, /const approveButtonContent = toolApprovalParts\.approveButton\.content;/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?props: \{[\s\S]*?onPress: onToggleArguments,[\s\S]*?disabled: renderState\.argumentsToggle\.isDisabled,[\s\S]*?accessibilityRole: renderState\.argumentsToggle\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.argumentsToggle\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.argumentsToggle\.accessibilityState,[\s\S]*?"aria-expanded": renderState\.argumentsToggle\.ariaExpanded,[\s\S]*?style: \(\{ pressed \}\) => \[/);
@@ -746,16 +748,21 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggleLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggleLabel[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolApprovalActionLabel/);
   assert.doesNotMatch(argumentsToggleContentSource, /content\.label\.text/);
-  assert.match(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalFullArgumentsBlock/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalFullArgumentsBlock\s+fullArguments=\{toolApprovalParts\.fullArguments\}/);
+  assert.match(fullArgumentsBlockSource, /if \(!fullArguments\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
   assert.match(sessionPresentationSource, /fullArguments: \{[\s\S]*?scroll: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsScroll,[\s\S]*?nestedScrollEnabled: true,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalFullArgumentsScroll/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalFullArgumentsScroll\s+\{\.\.\.toolApprovalParts\.fullArguments\.scroll\.props\}/);
+  assert.match(fullArgumentsBlockSource, /<ChatMessageToolApprovalFullArgumentsScroll\s+\{\.\.\.fullArguments\.scroll\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalFullArgumentsScroll\s+\{\.\.\.toolApprovalParts\.fullArguments\.scroll\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalFullArgumentsScroll[\s\S]*?<ScrollView\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolApprovalActions/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalFullArgumentsScroll[\s\S]*?(style=\{style\}|nestedScrollEnabled=\{nestedScrollEnabled\})[\s\S]*?export function ChatMessageToolApprovalActions/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.scroll\.(style|nestedScrollEnabled)/);
   assert.match(sessionPresentationSource, /fullArguments: \{[\s\S]*?text: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsFull,[\s\S]*?text: argumentsContent,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalFullArguments/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalFullArguments\s+\{\.\.\.toolApprovalParts\.fullArguments\.text\.props\}/);
+  assert.match(fullArgumentsBlockSource, /<ChatMessageToolApprovalFullArguments\s+\{\.\.\.fullArguments\.text\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /<ChatMessageToolApprovalFullArguments\s+\{\.\.\.toolApprovalParts\.fullArguments\.text\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalFullArguments[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalFullArguments[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolApprovalFullArgumentsScroll/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.text\.(style|text)/);

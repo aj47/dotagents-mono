@@ -2048,6 +2048,10 @@ type ChatMessageToolApprovalArgumentsPreviewProps =
 type ChatMessageToolApprovalFullArgumentsProps =
   ChatMessageToolApprovalParts['fullArguments']['text']['props'];
 
+type ChatMessageToolApprovalFullArgumentsBlockProps = {
+  fullArguments: ChatMessageToolApprovalParts['fullArguments'];
+};
+
 type ChatMessageToolApprovalFullArgumentsScrollProps =
   ChatMessageToolApprovalParts['fullArguments']['scroll']['props'] & {
     children: ReactNode;
@@ -9068,15 +9072,9 @@ export function ChatMessageToolApproval({
             content={toolApprovalParts.argumentsToggle.content}
           />
         </ChatMessageToolApprovalArgumentsToggle>
-        {toolApprovalParts.fullArguments.shouldRender ? (
-          <ChatMessageToolApprovalFullArgumentsScroll
-            {...toolApprovalParts.fullArguments.scroll.props}
-          >
-            <ChatMessageToolApprovalFullArguments
-              {...toolApprovalParts.fullArguments.text.props}
-            />
-          </ChatMessageToolApprovalFullArgumentsScroll>
-        ) : null}
+        <ChatMessageToolApprovalFullArgumentsBlock
+          fullArguments={toolApprovalParts.fullArguments}
+        />
         <ChatMessageToolApprovalActions
           {...toolApprovalParts.actions.props}
         >
@@ -9259,6 +9257,24 @@ export function ChatMessageToolApprovalArgumentsPreview({
     <Text {...props}>
       {text}
     </Text>
+  );
+}
+
+export function ChatMessageToolApprovalFullArgumentsBlock({
+  fullArguments,
+}: ChatMessageToolApprovalFullArgumentsBlockProps) {
+  if (!fullArguments.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolApprovalFullArgumentsScroll
+      {...fullArguments.scroll.props}
+    >
+      <ChatMessageToolApprovalFullArguments
+        {...fullArguments.text.props}
+      />
+    </ChatMessageToolApprovalFullArgumentsScroll>
   );
 }
 
