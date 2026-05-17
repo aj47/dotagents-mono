@@ -2591,6 +2591,25 @@ type ChatMessageToolExecutionStackProps = {
 
 type ChatMessageToolExecutionStackPropsInput = ChatRuntimeConversationToolExecutionStackMobileState;
 
+type ChatMessageToolExecutionStackPanelParts = ReturnType<typeof createChatRuntimeToolExecutionStackPanelMobilePropsParts<
+  ChatMessageToolExecutionStackProps['compact'],
+  ChatMessageToolExecutionStackProps['expanded'],
+  ChatMessageToolExecutionStackProps['detailRows'],
+  ChatMessageToolExecutionStackProps['styles']['compactGroup'],
+  ChatMessageToolExecutionStackProps['styles']['compactRow'],
+  ChatMessageToolExecutionStackProps['styles']['expandedGroup'],
+  ChatMessageToolExecutionStackProps['styles']['emptyStateText'],
+  ChatMessageToolExecutionStackProps['styles']['callDetail']
+>>;
+
+type ChatMessageToolExecutionStackContentProps =
+  Pick<ChatMessageToolExecutionStackProps, 'shouldRender' | 'isExpanded'>
+  & ChatMessageToolExecutionStackPanelParts;
+
+type ChatMessageToolExecutionStackEmptyStateBlockProps = {
+  emptyState: ChatMessageToolExecutionStackPanelParts['expandedGroup']['content']['emptyState'];
+};
+
 type ChatMessageToolExecutionCopyButtonStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -10757,27 +10776,54 @@ export function ChatMessageToolExecutionStack({
     detailRows,
     styles,
   });
-  const stackPanelExpandedGroup = stackPanelParts.expandedGroup;
-  const stackPanelExpandedGroupContent = stackPanelExpandedGroup.content;
 
+  return (
+    <ChatMessageToolExecutionStackContent
+      shouldRender={shouldRender}
+      isExpanded={isExpanded}
+      {...stackPanelParts}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionStackContent({
+  shouldRender,
+  isExpanded,
+  compactList,
+  expandedGroup,
+}: ChatMessageToolExecutionStackContentProps) {
   return (
     <ChatMessageToolExecutionPanel
       shouldRender={shouldRender}
       isExpanded={isExpanded}
-      compact={stackPanelParts.compactList.props}
+      compact={compactList.props}
       expanded={{
-        ...stackPanelExpandedGroup.props,
-        emptyState: stackPanelExpandedGroupContent.emptyState.shouldRender ? (
-          <ChatMessageToolExecutionEmptyState
-            {...stackPanelExpandedGroupContent.emptyState.props}
+        ...expandedGroup.props,
+        emptyState: expandedGroup.content.emptyState.shouldRender ? (
+          <ChatMessageToolExecutionStackEmptyStateBlock
+            emptyState={expandedGroup.content.emptyState}
           />
         ) : null,
       }}
     >
       <ChatMessageToolExecutionCallList
-        {...stackPanelExpandedGroupContent.callList.props}
+        {...expandedGroup.content.callList.props}
       />
     </ChatMessageToolExecutionPanel>
+  );
+}
+
+export function ChatMessageToolExecutionStackEmptyStateBlock({
+  emptyState,
+}: ChatMessageToolExecutionStackEmptyStateBlockProps) {
+  if (!emptyState.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolExecutionEmptyState
+      {...emptyState.props}
+    />
   );
 }
 

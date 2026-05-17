@@ -4247,14 +4247,23 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /rowStyles: styles\.compactRow/);
   assert.doesNotMatch(chatMessageChromeSource, /styles: styles\.expandedGroup/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.callDetail\}/);
+  const toolExecutionStackSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionStack\([\s\S]*?export function ChatMessageToolExecutionStackContent/)?.[0] ?? '';
+  const toolExecutionStackContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionStackContent[\s\S]*?export function ChatMessageToolExecutionStackEmptyStateBlock/)?.[0] ?? '';
+  const toolExecutionStackEmptyStateBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionStackEmptyStateBlock[\s\S]*?export function ChatMessageToolExecutionCopyButton/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /const stackPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts\(\{\s+compact,\s+expanded,\s+detailRows,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const stackPanelExpandedGroup = stackPanelParts\.expandedGroup;/);
-  assert.match(chatMessageChromeSource, /const stackPanelExpandedGroupContent = stackPanelExpandedGroup\.content;/);
-  assert.match(chatMessageChromeSource, /compact=\{stackPanelParts\.compactList\.props\}/);
-  assert.match(chatMessageChromeSource, /\.\.\.stackPanelExpandedGroup\.props/);
-  assert.match(chatMessageChromeSource, /stackPanelExpandedGroupContent\.emptyState\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionEmptyState\s+\{\.\.\.stackPanelExpandedGroupContent\.emptyState\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const stackPanelExpandedGroup = stackPanelParts\.expandedGroup;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const stackPanelExpandedGroupContent = stackPanelExpandedGroup\.content;/);
+  assert.match(toolExecutionStackSource, /<ChatMessageToolExecutionStackContent\s+shouldRender=\{shouldRender\}\s+isExpanded=\{isExpanded\}\s+\{\.\.\.stackPanelParts\}/);
+  assert.match(toolExecutionStackContentSource, /compact=\{compactList\.props\}/);
+  assert.match(toolExecutionStackContentSource, /\.\.\.expandedGroup\.props/);
+  assert.match(toolExecutionStackContentSource, /expandedGroup\.content\.emptyState\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionStackEmptyStateBlock\s+emptyState=\{expandedGroup\.content\.emptyState\}/);
+  assert.match(toolExecutionStackEmptyStateBlockSource, /if \(!emptyState\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.match(toolExecutionStackEmptyStateBlockSource, /<ChatMessageToolExecutionEmptyState\s+\{\.\.\.emptyState\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /stackPanelParts\.emptyState \? \(/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+\{\.\.\.stackPanelExpandedGroupContent\.callList\.props\}/);
+  assert.match(toolExecutionStackContentSource, /<ChatMessageToolExecutionCallList\s+\{\.\.\.expandedGroup\.content\.callList\.props\}/);
   assert.match(sessionPresentationSource, /compactList: \{\s+props: \{\s+\.\.\.compact,\s+groupStyles: styles\.compactGroup,\s+rowStyles: styles\.compactRow,/);
   assert.match(sessionPresentationSource, /expandedGroup: \{\s+props: \{\s+\.\.\.expandedGroup,\s+styles: styles\.expandedGroup,/);
   assert.match(sessionPresentationSource, /emptyState: emptyState\?\.shouldRender \? \{\s+shouldRender: true,\s+props: \{\s+renderState: emptyState\.renderState,\s+style: styles\.emptyStateText,/);
