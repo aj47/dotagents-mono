@@ -2365,6 +2365,15 @@ type ChatMessageToolExecutionCompactRowContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionCompactRowContentProps =
+  ChatMessageToolExecutionCompactRowParts['container']['content'];
+
+type ChatMessageToolExecutionCompactRowIconSlotProps = {
+  slot:
+    | ChatMessageToolExecutionCompactRowParts['container']['content']['leadingIcon']
+    | ChatMessageToolExecutionCompactRowParts['container']['content']['toggleIcon'];
+};
+
 type ChatMessageToolExecutionCompactRowIconCellProps =
   (
     | ChatMessageToolExecutionCompactRowParts['container']['content']['leadingIcon']['container']['props']
@@ -2385,6 +2394,16 @@ type ChatMessageToolExecutionCompactRowStatusIndicatorProps =
   ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator']['container']['props'] & {
     children: ReactNode;
   };
+
+type ChatMessageToolExecutionCompactRowStatusIndicatorBlockProps = {
+  statusIndicator: ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator'];
+};
+
+type ChatMessageToolExecutionCompactRowStatusIndicatorContentProps =
+  Pick<
+    ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator'],
+    'spinner' | 'icon'
+  >;
 
 type ChatMessageToolExecutionCompactRowSpinnerProps =
   ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator']['spinner']['props'];
@@ -10180,44 +10199,92 @@ export function ChatMessageToolExecutionCompactRow({
     renderState,
     styles,
   });
-  const compactRowContent = compactRowParts.container.content;
 
   return (
     <ChatMessageToolExecutionCompactRowContainer
       {...compactRowParts.container.props}
     >
-      <ChatMessageToolExecutionCompactRowIconCell
-        {...compactRowContent.leadingIcon.container.props}
-      >
-        <ChatMessageToolExecutionCompactRowIcon
-          {...compactRowContent.leadingIcon.icon.props}
-        />
-      </ChatMessageToolExecutionCompactRowIconCell>
-      <ChatMessageToolExecutionCompactRowName
-        {...compactRowContent.name.props}
+      <ChatMessageToolExecutionCompactRowContent
+        {...compactRowParts.container.content}
       />
-      <ChatMessageToolExecutionCompactRowStatusIndicator
-        {...compactRowContent.statusIndicator.container.props}
-      >
-        {compactRowContent.statusIndicator.spinner.shouldRender ? (
-          <ChatMessageToolExecutionCompactRowSpinner
-            {...compactRowContent.statusIndicator.spinner.props}
-          />
-        ) : compactRowContent.statusIndicator.icon.shouldRender ? (
-          <ChatMessageToolExecutionCompactRowIcon
-            {...compactRowContent.statusIndicator.icon.props}
-          />
-        ) : null}
-      </ChatMessageToolExecutionCompactRowStatusIndicator>
-      <ChatMessageToolExecutionCompactRowIconCell
-        {...compactRowContent.toggleIcon.container.props}
-      >
-        <ChatMessageToolExecutionCompactRowIcon
-          {...compactRowContent.toggleIcon.icon.props}
-        />
-      </ChatMessageToolExecutionCompactRowIconCell>
     </ChatMessageToolExecutionCompactRowContainer>
   );
+}
+
+export function ChatMessageToolExecutionCompactRowContent({
+  leadingIcon,
+  name,
+  statusIndicator,
+  toggleIcon,
+}: ChatMessageToolExecutionCompactRowContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionCompactRowIconSlot
+        slot={leadingIcon}
+      />
+      <ChatMessageToolExecutionCompactRowName
+        {...name.props}
+      />
+      <ChatMessageToolExecutionCompactRowStatusIndicatorBlock
+        statusIndicator={statusIndicator}
+      />
+      <ChatMessageToolExecutionCompactRowIconSlot
+        slot={toggleIcon}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowIconSlot({
+  slot,
+}: ChatMessageToolExecutionCompactRowIconSlotProps) {
+  return (
+    <ChatMessageToolExecutionCompactRowIconCell
+      {...slot.container.props}
+    >
+      <ChatMessageToolExecutionCompactRowIcon
+        {...slot.icon.props}
+      />
+    </ChatMessageToolExecutionCompactRowIconCell>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowStatusIndicatorBlock({
+  statusIndicator,
+}: ChatMessageToolExecutionCompactRowStatusIndicatorBlockProps) {
+  return (
+    <ChatMessageToolExecutionCompactRowStatusIndicator
+      {...statusIndicator.container.props}
+    >
+      <ChatMessageToolExecutionCompactRowStatusIndicatorContent
+        spinner={statusIndicator.spinner}
+        icon={statusIndicator.icon}
+      />
+    </ChatMessageToolExecutionCompactRowStatusIndicator>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowStatusIndicatorContent({
+  spinner,
+  icon,
+}: ChatMessageToolExecutionCompactRowStatusIndicatorContentProps) {
+  if (spinner.shouldRender) {
+    return (
+      <ChatMessageToolExecutionCompactRowSpinner
+        {...spinner.props}
+      />
+    );
+  }
+
+  if (icon.shouldRender) {
+    return (
+      <ChatMessageToolExecutionCompactRowIcon
+        {...icon.props}
+      />
+    );
+  }
+
+  return null;
 }
 
 export function ChatMessageToolExecutionCompactRowContainer({

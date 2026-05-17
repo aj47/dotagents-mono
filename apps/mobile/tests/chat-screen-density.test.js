@@ -4082,12 +4082,23 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactList[\s\S]*?styles=\{row\.styles\}[\s\S]*?export function ChatMessageToolExecutionCollapseControl/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionCompactRow\s+key=\{tcIdx\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRow/);
+  const toolExecutionCompactRowSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCompactRow\([\s\S]*?export function ChatMessageToolExecutionCompactRowContent/)?.[0] ?? '';
+  const toolExecutionCompactRowContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCompactRowContent[\s\S]*?export function ChatMessageToolExecutionCompactRowIconSlot/)?.[0] ?? '';
+  const toolExecutionCompactRowIconSlotSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCompactRowIconSlot[\s\S]*?export function ChatMessageToolExecutionCompactRowStatusIndicatorBlock/)?.[0] ?? '';
+  const toolExecutionCompactRowStatusIndicatorBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCompactRowStatusIndicatorBlock[\s\S]*?export function ChatMessageToolExecutionCompactRowStatusIndicatorContent/)?.[0] ?? '';
+  const toolExecutionCompactRowStatusIndicatorContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCompactRowStatusIndicatorContent[\s\S]*?export function ChatMessageToolExecutionCompactRowContainer/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCompactRowMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactRowMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const compactRowParts = createChatRuntimeToolExecutionCompactRowMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.line,\s+accessibilityLabel: renderState\.accessibilityLabel,/);
-  assert.match(chatMessageChromeSource, /const compactRowContent = compactRowParts\.container\.content;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowContainer\s+\{\.\.\.compactRowParts\.container\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const compactRowContent = compactRowParts\.container\.content;/);
+  assert.match(toolExecutionCompactRowSource, /<ChatMessageToolExecutionCompactRowContainer\s+\{\.\.\.compactRowParts\.container\.props\}/);
+  assert.match(toolExecutionCompactRowSource, /<ChatMessageToolExecutionCompactRowContent\s+\{\.\.\.compactRowParts\.container\.content\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRowIconCell/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowContainer[\s\S]*?(style=\{style\}|accessibilityLabel=\{accessibilityLabel\})[\s\S]*?export function ChatMessageToolExecutionCompactRowIconCell/);
   assert.doesNotMatch(screenSource, /const tcPresentation = toolExecutionStatusCopy\[tcState\];/);
@@ -4096,32 +4107,35 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const compactStatusIcon = tcState === 'pending'[\s\S]*?getToolExecutionCompactMobileStatusIconState\(tcState\);/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{formatToolExecutionCompactAccessibilityLabel\(tcPresentation\.label, toolPreview\)\}/);
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{`\$\{tcPresentation\.label\}: \$\{toolPreview\}`\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIconCell\s+\{\.\.\.compactRowContent\.leadingIcon\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.compactRowContent\.leadingIcon\.icon\.props\}/);
+  assert.match(toolExecutionCompactRowContentSource, /<ChatMessageToolExecutionCompactRowIconSlot\s+slot=\{leadingIcon\}/);
+  assert.match(toolExecutionCompactRowIconSlotSource, /<ChatMessageToolExecutionCompactRowIconCell\s+\{\.\.\.slot\.container\.props\}/);
+  assert.match(toolExecutionCompactRowIconSlotSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.slot\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIconCell[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRowIcon/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIconCell[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionCompactRowIcon/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIcon\(props: ChatMessageToolExecutionCompactRowIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionCompactRowName/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowName\s+\{\.\.\.compactRowContent\.name\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowStatusIndicator\s+\{\.\.\.compactRowContent\.statusIndicator\.container\.props\}/);
+  assert.match(toolExecutionCompactRowContentSource, /<ChatMessageToolExecutionCompactRowName\s+\{\.\.\.name\.props\}/);
+  assert.match(toolExecutionCompactRowContentSource, /<ChatMessageToolExecutionCompactRowStatusIndicatorBlock\s+statusIndicator=\{statusIndicator\}/);
+  assert.match(toolExecutionCompactRowStatusIndicatorBlockSource, /<ChatMessageToolExecutionCompactRowStatusIndicator\s+\{\.\.\.statusIndicator\.container\.props\}/);
+  assert.match(toolExecutionCompactRowStatusIndicatorBlockSource, /<ChatMessageToolExecutionCompactRowStatusIndicatorContent\s+spinner=\{statusIndicator\.spinner\}\s+icon=\{statusIndicator\.icon\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowStatusIndicator[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRowSpinner/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowStatusIndicator[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionCompactRowSpinner/);
-  assert.match(chatMessageChromeSource, /compactRowContent\.statusIndicator\.spinner\.shouldRender \? \(/);
+  assert.match(toolExecutionCompactRowStatusIndicatorContentSource, /if \(spinner\.shouldRender\) \{/);
   assert.match(sessionPresentationSource, /spinner: \{\s+shouldRender: spinnerShouldRender,\s+props: spinnerProps/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowSpinner\s+\{\.\.\.compactRowContent\.statusIndicator\.spinner\.props\}/);
+  assert.match(toolExecutionCompactRowStatusIndicatorContentSource, /<ChatMessageToolExecutionCompactRowSpinner\s+\{\.\.\.spinner\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowSpinner\(props: ChatMessageToolExecutionCompactRowSpinnerProps\)[\s\S]*?<ActivityIndicator\s+\{\.\.\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowSpinner[\s\S]*?(size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionCompactList/);
-  assert.match(chatMessageChromeSource, /compactRowContent\.statusIndicator\.icon\.shouldRender \? \(/);
+  assert.match(toolExecutionCompactRowStatusIndicatorContentSource, /if \(icon\.shouldRender\) \{/);
   assert.match(sessionPresentationSource, /icon: \{\s+shouldRender: !spinnerShouldRender && iconShouldRender,\s+props: iconProps/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.compactRowContent\.statusIndicator\.icon\.props\}/);
+  assert.match(toolExecutionCompactRowStatusIndicatorContentSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.icon\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowParts\.statusIndicator\.spinner \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowParts\.statusIndicator\.icon \? \(/);
   assert.doesNotMatch(screenSource, /const compactStatusColor = getToolExecutionStatusMobileColor\(tcState, theme\.colors\);/);
   assert.doesNotMatch(screenSource, /compactStatusColor,\s*mobileToolExecutionCompactToolIcon\.opacity/);
   assert.doesNotMatch(screenSource, /compactStatusColor,\s*mobileToolExecutionCompactStatusSpinner\.opacity/);
   assert.doesNotMatch(screenSource, /compactStatusColor,\s*compactStatusIcon\.opacity/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIconCell\s+\{\.\.\.compactRowContent\.toggleIcon\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.compactRowContent\.toggleIcon\.icon\.props\}/);
+  assert.match(toolExecutionCompactRowContentSource, /<ChatMessageToolExecutionCompactRowIconSlot\s+slot=\{toggleIcon\}/);
+  assert.match(toolExecutionCompactRowIconSlotSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.slot\.icon\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowParts\.(name|leadingIcon|toggleIcon|statusIndicator)\./);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowParts\.container\.(style|accessibilityLabel|text|numberOfLines|ellipsizeMode)/);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowContent\.(leadingIcon|toggleIcon)\.style/);
@@ -5698,7 +5712,7 @@ test('colors compact tool call labels by result status', () => {
   assert.match(sessionPresentationSource, /nameError: styles\.toolCallCompactNameError/);
   assert.match(sessionPresentationSource, /renderState\.isSuccess && styles\.nameSuccess/);
   assert.match(sessionPresentationSource, /renderState\.isError && styles\.nameError/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowName\s+\{\.\.\.compactRowContent\.name\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowName\s+\{\.\.\.name\.props\}/);
   assert.match(sessionPresentationSource, /nameSuccess:\s*\{[\s\S]*?color: statusColors\.success/);
   assert.match(sessionPresentationSource, /nameError:\s*\{[\s\S]*?color: statusColors\.error/);
   assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{\s+\.\.\.compactToolExecutionStyleSlots\.nameSuccess,/);
