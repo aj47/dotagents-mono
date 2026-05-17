@@ -1559,6 +1559,36 @@ type ChatConversationHomeQuickStartsProps<
   styles: ChatConversationHomeQuickStartsStyles;
 };
 
+type ChatConversationHomeQuickStartSourcePillPart =
+  | {
+      shouldRender: false;
+    }
+  | {
+      shouldRender: true;
+      props: ComponentProps<typeof View>;
+      icon: {
+        props: ComponentProps<typeof Ionicons>;
+      };
+      label: {
+        text: string;
+        props: ComponentProps<typeof Text>;
+      };
+    };
+
+type ChatConversationHomeQuickStartAddIconPart =
+  | {
+      shouldRender: false;
+    }
+  | {
+      shouldRender: true;
+      props: ComponentProps<typeof Ionicons>;
+    };
+
+type ChatConversationHomeQuickStartLeadingAccessoryProps = {
+  sourcePill: ChatConversationHomeQuickStartSourcePillPart;
+  addIcon: ChatConversationHomeQuickStartAddIconPart;
+};
+
 type ChatConversationHomeQuickStartActionButtonPressablePart = {
   props: ComponentProps<typeof Pressable>;
 };
@@ -7961,16 +7991,10 @@ export function ChatConversationHomeQuickStarts<
                 key={item.key}
                 {...item.pressable.props}
               >
-                {item.sourcePill.shouldRender ? (
-                  <View {...item.sourcePill.props}>
-                    <Ionicons {...item.sourcePill.icon.props} />
-                    <Text {...item.sourcePill.label.props}>
-                      {item.sourcePill.label.text}
-                    </Text>
-                  </View>
-                ) : item.addIcon.shouldRender ? (
-                  <Ionicons {...item.addIcon.props} />
-                ) : null}
+                <ChatConversationHomeQuickStartLeadingAccessory
+                  sourcePill={item.sourcePill}
+                  addIcon={item.addIcon}
+                />
                 <Text {...item.title.props}>
                   {item.title.text}
                 </Text>
@@ -8004,6 +8028,30 @@ export function ChatConversationHomeQuickStarts<
       ) : null}
     </View>
   );
+}
+
+export function ChatConversationHomeQuickStartLeadingAccessory({
+  sourcePill,
+  addIcon,
+}: ChatConversationHomeQuickStartLeadingAccessoryProps) {
+  if (sourcePill.shouldRender) {
+    return (
+      <View {...sourcePill.props}>
+        <Ionicons {...sourcePill.icon.props} />
+        <Text {...sourcePill.label.props}>
+          {sourcePill.label.text}
+        </Text>
+      </View>
+    );
+  }
+
+  if (addIcon.shouldRender) {
+    return (
+      <Ionicons {...addIcon.props} />
+    );
+  }
+
+  return null;
 }
 
 export function ChatConversationHomeQuickStartActionButton({
