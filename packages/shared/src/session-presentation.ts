@@ -3949,6 +3949,93 @@ export interface ChatRuntimeConversationExpandedContentMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput<
+  TRenderState extends {
+    accessibilityRole: unknown
+    hitSlop: unknown
+    numberOfLines: unknown
+    text: string
+  } = {
+    accessibilityRole: unknown
+    hitSlop: unknown
+    numberOfLines: unknown
+    text: string
+  },
+  TActionState extends {
+    disabled: boolean
+    accessibilityLabel: string
+    accessibilityHint?: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  } = {
+    disabled: boolean
+    accessibilityLabel: string
+    accessibilityHint?: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  },
+  TOnPress = unknown,
+  TStyle = unknown,
+  TPressedStyle = unknown,
+  TTextStyle = unknown,
+> {
+  renderState: TRenderState
+  actionState: TActionState
+  onPress?: TOnPress
+  style: TStyle
+  pressedStyle?: TPressedStyle
+  textStyle: TTextStyle
+}
+
+export interface ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    hitSlop: unknown
+    numberOfLines: unknown
+    text: string
+  } = {
+    accessibilityRole: unknown
+    hitSlop: unknown
+    numberOfLines: unknown
+    text: string
+  },
+  TActionState extends {
+    disabled: boolean
+    accessibilityLabel: string
+    accessibilityHint?: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  } = {
+    disabled: boolean
+    accessibilityLabel: string
+    accessibilityHint?: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  },
+  TOnPress = unknown,
+  TStyle = unknown,
+  TPressedStyle = unknown,
+  TTextStyle = unknown,
+> {
+  pressable: {
+    onPress?: TOnPress
+    disabled: boolean
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint?: string
+    accessibilityState: TActionState["accessibilityState"]
+    ariaExpanded: TActionState["ariaExpanded"]
+    hitSlop: TRenderState["hitSlop"]
+    style: TStyle
+    pressedStyle?: TPressedStyle
+  }
+  text: {
+    style: TTextStyle
+    numberOfLines: TRenderState["numberOfLines"]
+    text: string
+  }
+}
+
 export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -17607,6 +17694,67 @@ export function createChatRuntimeConversationExpandedContentMobilePropsParts<
     },
     caret: {
       style: streamingStyles.caret,
+    },
+  }
+}
+
+export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts<
+  TRenderState extends {
+    accessibilityRole: unknown
+    hitSlop: unknown
+    numberOfLines: unknown
+    text: string
+  },
+  TActionState extends {
+    disabled: boolean
+    accessibilityLabel: string
+    accessibilityHint?: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  },
+  TOnPress,
+  TStyle,
+  TPressedStyle,
+  TTextStyle,
+>({
+  renderState,
+  actionState,
+  onPress,
+  style,
+  pressedStyle,
+  textStyle,
+}: ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput<
+  TRenderState,
+  TActionState,
+  TOnPress,
+  TStyle,
+  TPressedStyle,
+  TTextStyle
+>): ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
+  TRenderState,
+  TActionState,
+  TOnPress,
+  TStyle,
+  TPressedStyle,
+  TTextStyle
+> {
+  return {
+    pressable: {
+      onPress,
+      disabled: actionState.disabled,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: actionState.accessibilityLabel,
+      accessibilityHint: actionState.accessibilityHint,
+      accessibilityState: actionState.accessibilityState,
+      ariaExpanded: actionState.ariaExpanded,
+      hitSlop: renderState.hitSlop,
+      style,
+      pressedStyle,
+    },
+    text: {
+      style: textStyle,
+      numberOfLines: renderState.numberOfLines,
+      text: renderState.text,
     },
   }
 }

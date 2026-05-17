@@ -81,6 +81,7 @@ import {
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
+  createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -9887,26 +9888,37 @@ export function ChatMessageCollapsedPreview({
   pressedStyle,
   textStyle,
 }: ChatMessageCollapsedPreviewProps) {
+  const collapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
+    renderState,
+    actionState,
+    onPress,
+    style,
+    pressedStyle,
+    textStyle,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
-      disabled={actionState.disabled}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={actionState.accessibilityLabel}
-      accessibilityHint={actionState.accessibilityHint}
-      accessibilityState={actionState.accessibilityState}
-      aria-expanded={actionState.ariaExpanded}
-      hitSlop={renderState.hitSlop}
+      onPress={collapsedPreviewParts.pressable.onPress}
+      disabled={collapsedPreviewParts.pressable.disabled}
+      accessibilityRole={collapsedPreviewParts.pressable.accessibilityRole}
+      accessibilityLabel={collapsedPreviewParts.pressable.accessibilityLabel}
+      accessibilityHint={collapsedPreviewParts.pressable.accessibilityHint}
+      accessibilityState={collapsedPreviewParts.pressable.accessibilityState}
+      aria-expanded={collapsedPreviewParts.pressable.ariaExpanded}
+      hitSlop={collapsedPreviewParts.pressable.hitSlop}
       style={({ pressed }) => [
-        style,
-        pressed && !actionState.disabled && pressedStyle,
+        collapsedPreviewParts.pressable.style,
+        pressed
+          && !collapsedPreviewParts.pressable.disabled
+          && collapsedPreviewParts.pressable.pressedStyle,
       ]}
     >
       <Text
-        style={textStyle}
-        numberOfLines={renderState.numberOfLines}
+        style={collapsedPreviewParts.text.style}
+        numberOfLines={collapsedPreviewParts.text.numberOfLines}
       >
-        {renderState.text}
+        {collapsedPreviewParts.text.text}
       </Text>
     </Pressable>
   );

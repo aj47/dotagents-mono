@@ -126,6 +126,7 @@ import {
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
+  createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -5137,6 +5138,47 @@ describe("session presentation semantics", () => {
       spinnerSource: "spinner-source",
       streamingStyles: expandedContentStyles,
     }).shouldRenderStreamingContent).toBe(false)
+    expect(createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
+      renderState: {
+        accessibilityRole: "button",
+        hitSlop: 8,
+        numberOfLines: 2,
+        text: "Preview text",
+      },
+      actionState: {
+        disabled: false,
+        accessibilityLabel: "Expand message",
+        accessibilityHint: "Shows full message",
+        accessibilityState: {
+          expanded: false,
+        },
+        ariaExpanded: false,
+      },
+      onPress: "on-press",
+      style: "preview-style",
+      pressedStyle: "preview-pressed-style",
+      textStyle: "preview-text-style",
+    })).toEqual({
+      pressable: {
+        onPress: "on-press",
+        disabled: false,
+        accessibilityRole: "button",
+        accessibilityLabel: "Expand message",
+        accessibilityHint: "Shows full message",
+        accessibilityState: {
+          expanded: false,
+        },
+        ariaExpanded: false,
+        hitSlop: 8,
+        style: "preview-style",
+        pressedStyle: "preview-pressed-style",
+      },
+      text: {
+        style: "preview-text-style",
+        numberOfLines: 2,
+        text: "Preview text",
+      },
+    })
     expect(getChatRuntimeStreamingContentMobileRenderState({
       colors: {
         info: "#2563eb",
