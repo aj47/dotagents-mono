@@ -7851,8 +7851,12 @@ export interface ChatRuntimeConversationOverlaysMobilePropsParts<
   TAgentSelector = unknown,
   TPromptEditor = unknown,
 > {
-  agentSelector: TAgentSelector | undefined
-  promptEditor: TPromptEditor | undefined
+  agentSelector: {
+    children: TAgentSelector | undefined
+  }
+  promptEditor: {
+    children: TPromptEditor | undefined
+  }
 }
 
 export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput<
@@ -25247,8 +25251,12 @@ export function createChatRuntimeConversationOverlaysMobilePropsParts<
   TPromptEditor
 > {
   return {
-    agentSelector,
-    promptEditor,
+    agentSelector: {
+      children: agentSelector,
+    },
+    promptEditor: {
+      children: promptEditor,
+    },
   }
 }
 

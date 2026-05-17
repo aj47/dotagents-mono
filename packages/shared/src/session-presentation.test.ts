@@ -9395,8 +9395,12 @@ describe("session presentation semantics", () => {
       agentSelector: "agent-selector",
       promptEditor: "prompt-editor",
     })).toEqual({
-      agentSelector: "agent-selector",
-      promptEditor: "prompt-editor",
+      agentSelector: {
+        children: "agent-selector",
+      },
+      promptEditor: {
+        children: "prompt-editor",
+      },
     })
     const runtimeThreadSurfaceStyles = {
       surfaceStyle: "thread-surface",

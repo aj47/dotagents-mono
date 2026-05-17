@@ -10084,8 +10084,8 @@ export function ChatMessageConversationOverlays({
 
   return (
     <>
-      {overlayParts.agentSelector}
-      {overlayParts.promptEditor}
+      {overlayParts.agentSelector.children}
+      {overlayParts.promptEditor.children}
     </>
   );
 }
