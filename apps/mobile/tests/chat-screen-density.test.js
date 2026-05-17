@@ -3762,6 +3762,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const compactGroupParts = createChatRuntimeToolExecutionCompactGroupMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactGroupPressable\s+\{\.\.\.compactGroupParts\.container\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroupPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRow\(\{/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroupPressable[\s\S]*?(onPress=\{onPress\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|accessibilityState=\{accessibilityState\}|aria-expanded=\{ariaExpanded\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionCompactRow\(\{/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+onPress,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-expanded": renderState\.ariaExpanded,\s+style: \(\{ pressed \}\) => \[\s+styles\.container,\s+pressed && styles\.pressed,/);
   assert.doesNotMatch(chatMessageChromeSource, /compactGroupParts\.container\.(onPress|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaExpanded|style)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroup[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageToolExecutionCompactRow/);
@@ -3782,6 +3784,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const compactRowParts = createChatRuntimeToolExecutionCompactRowMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.line,\s+accessibilityLabel: renderState\.accessibilityLabel,/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowContainer\s+\{\.\.\.compactRowParts\.container\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRowIconCell/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowContainer[\s\S]*?(style=\{style\}|accessibilityLabel=\{accessibilityLabel\})[\s\S]*?export function ChatMessageToolExecutionCompactRowIconCell/);
   assert.doesNotMatch(screenSource, /const tcPresentation = toolExecutionStatusCopy\[tcState\];/);
   assert.doesNotMatch(screenSource, /const compactStatusColors = getToolExecutionCompactMobileStatusColors\(tcState, theme\.colors\);/);
   assert.doesNotMatch(screenSource, /const toolStatusIcon = toolState === 'pending'[\s\S]*?getToolExecutionCompactMobileStatusIconState\(toolState\);/);
@@ -3790,11 +3794,19 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{`\$\{tcPresentation\.label\}: \$\{toolPreview\}`\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIconCell\s+\{\.\.\.compactRowParts\.leadingIcon\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.compactRowParts\.leadingIcon\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIconCell[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRowIcon/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIconCell[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionCompactRowIcon/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIcon\(props: ChatMessageToolExecutionCompactRowIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionCompactRowName/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowName\s+\{\.\.\.compactRowParts\.name\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowStatusIndicator\s+\{\.\.\.compactRowParts\.statusIndicator\.container\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowStatusIndicator[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRowSpinner/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowStatusIndicator[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionCompactRowSpinner/);
   assert.match(chatMessageChromeSource, /compactRowParts\.statusIndicator\.spinner\.shouldRender \? \(/);
   assert.match(sessionPresentationSource, /spinner: \{\s+shouldRender: spinnerShouldRender,\s+props: spinnerProps/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowSpinner\s+\{\.\.\.compactRowParts\.statusIndicator\.spinner\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowSpinner\(props: ChatMessageToolExecutionCompactRowSpinnerProps\)[\s\S]*?<ActivityIndicator\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRowSpinner[\s\S]*?(size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionCompactList/);
   assert.match(chatMessageChromeSource, /compactRowParts\.statusIndicator\.icon\.shouldRender \? \(/);
   assert.match(sessionPresentationSource, /icon: \{\s+shouldRender: !spinnerShouldRender && iconShouldRender,\s+props: iconProps/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.compactRowParts\.statusIndicator\.icon\.props\}/);
@@ -3907,6 +3919,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControlPressable\s+\{\.\.\.collapseControlParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControlIcon\s+\{\.\.\.collapseControlParts\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCollapseControlLabel\s+\{\.\.\.collapseControlParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCollapseControlIcon/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlPressable[\s\S]*?(onPress=\{onPress\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionCollapseControlIcon/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlIcon\(props: ChatMessageToolExecutionCollapseControlIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControlIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionCollapseControlLabel/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+onPress,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint,\s+style: \(\{ pressed \}\) => \[\s+styles\.button,\s+pressed && styles\.pressed,\s+styles\.placement,/);
   assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.text,\s+text: renderState\.label,/);

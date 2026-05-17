@@ -9125,25 +9125,11 @@ export function ChatMessageToolExecutionCompactGroup({
 }
 
 export function ChatMessageToolExecutionCompactGroupPressable({
-  onPress,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
-  'aria-expanded': ariaExpanded,
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionCompactGroupPressableProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={accessibilityState}
-      aria-expanded={ariaExpanded}
-      style={style}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
@@ -9197,42 +9183,30 @@ export function ChatMessageToolExecutionCompactRow({
 }
 
 export function ChatMessageToolExecutionCompactRowContainer({
-  style,
-  accessibilityLabel,
   children,
+  ...props
 }: ChatMessageToolExecutionCompactRowContainerProps) {
   return (
-    <View
-      style={style}
-      accessibilityLabel={accessibilityLabel}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
 export function ChatMessageToolExecutionCompactRowIconCell({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionCompactRowIconCellProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageToolExecutionCompactRowIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolExecutionCompactRowIconProps) {
+export function ChatMessageToolExecutionCompactRowIcon(props: ChatMessageToolExecutionCompactRowIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -9254,25 +9228,19 @@ export function ChatMessageToolExecutionCompactRowName({
 }
 
 export function ChatMessageToolExecutionCompactRowStatusIndicator({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionCompactRowStatusIndicatorProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageToolExecutionCompactRowSpinner({
-  size,
-  color,
-}: ChatMessageToolExecutionCompactRowSpinnerProps) {
+export function ChatMessageToolExecutionCompactRowSpinner(props: ChatMessageToolExecutionCompactRowSpinnerProps) {
   return (
-    <ActivityIndicator
-      size={size}
-      color={color}
-    />
+    <ActivityIndicator {...props} />
   );
 }
 
@@ -9335,37 +9303,19 @@ export function ChatMessageToolExecutionCollapseControl({
 }
 
 export function ChatMessageToolExecutionCollapseControlPressable({
-  onPress,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionCollapseControlPressableProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      style={style}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
 }
 
-export function ChatMessageToolExecutionCollapseControlIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolExecutionCollapseControlIconProps) {
+export function ChatMessageToolExecutionCollapseControlIcon(props: ChatMessageToolExecutionCollapseControlIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
