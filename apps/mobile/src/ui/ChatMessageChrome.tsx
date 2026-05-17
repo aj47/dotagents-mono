@@ -1628,6 +1628,21 @@ type ChatConversationHomeQuickStartActionButtonProps = {
   label: ChatConversationHomeQuickStartActionButtonLabelPart;
 };
 
+type ChatConversationHomeQuickStartActionsPart =
+  | {
+      shouldRender: false;
+    }
+  | {
+      shouldRender: true;
+      props: ComponentProps<typeof View>;
+      edit: ChatConversationHomeQuickStartActionButtonProps;
+      delete: ChatConversationHomeQuickStartActionButtonProps;
+    };
+
+type ChatConversationHomeQuickStartActionsProps = {
+  actions: ChatConversationHomeQuickStartActionsPart;
+};
+
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
   overlay: StyleProp<ViewStyle>;
@@ -8004,8 +8019,6 @@ export function ChatConversationHomeQuickStarts<
       {quickStartsParts.grid.shouldRender ? (
         <View {...quickStartsParts.grid.props}>
           {quickStartsGridContent.items.map((item) => {
-            const actions = item.actions;
-
             return (
               <Pressable
                 key={item.key}
@@ -8019,20 +8032,9 @@ export function ChatConversationHomeQuickStarts<
                   title={item.title}
                   description={item.description}
                 />
-                {actions.shouldRender ? (
-                  <View {...actions.props}>
-                    <ChatConversationHomeQuickStartActionButton
-                      pressable={actions.edit.pressable}
-                      icon={actions.edit.icon}
-                      label={actions.edit.label}
-                    />
-                    <ChatConversationHomeQuickStartActionButton
-                      pressable={actions.delete.pressable}
-                      icon={actions.delete.icon}
-                      label={actions.delete.label}
-                    />
-                  </View>
-                ) : null}
+                <ChatConversationHomeQuickStartActions
+                  actions={item.actions}
+                />
               </Pressable>
             );
           })}
@@ -8042,6 +8044,27 @@ export function ChatConversationHomeQuickStarts<
           {quickStartsParts.emptyState.text}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+export function ChatConversationHomeQuickStartActions({
+  actions,
+}: ChatConversationHomeQuickStartActionsProps) {
+  if (!actions.shouldRender) return null;
+
+  return (
+    <View {...actions.props}>
+      <ChatConversationHomeQuickStartActionButton
+        pressable={actions.edit.pressable}
+        icon={actions.edit.icon}
+        label={actions.edit.label}
+      />
+      <ChatConversationHomeQuickStartActionButton
+        pressable={actions.delete.pressable}
+        icon={actions.delete.icon}
+        label={actions.delete.label}
+      />
     </View>
   );
 }

@@ -7488,7 +7488,11 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.item\.description\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{item\.description\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(edit|delete)Label/);
-  assert.match(chatMessageChromeSource, /\{actions\.shouldRender \? \(/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartActions/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartActions\s+actions=\{item\.actions\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartActions[\s\S]*?if \(!actions\.shouldRender\) return null;[\s\S]*?<View \{\.\.\.actions\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /const actions = item\.actions;/);
+  assert.doesNotMatch(chatMessageChromeSource, /\{actions\.shouldRender \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /\{actions \? \(/);
   assert.match(chatMessageChromeSource, /<View \{\.\.\.actions\.props\}>/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartActionButton/);
