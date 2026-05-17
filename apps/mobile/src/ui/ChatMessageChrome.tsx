@@ -1647,6 +1647,9 @@ type ChatMessageDelegationConversationPreviewRowProps =
 type ChatMessageDelegationToolPreviewRowProps =
   ChatMessageDelegationCardParts['toolPreview']['rows'][number]['props'];
 
+type ChatMessageDelegationToolPreviewLabelProps =
+  ChatMessageDelegationCardParts['toolPreview']['label']['props'];
+
 type ChatMessageDelegationConversationMorePreviewActionProps =
   Extract<ChatMessageDelegationCardParts['conversationPreview']['moreAction'], { shouldRender: true }>['props'];
 
@@ -7654,6 +7657,21 @@ export function ChatMessageDelegationSubtitle({
   );
 }
 
+export function ChatMessageDelegationToolPreviewLabel({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageDelegationToolPreviewLabelProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7717,12 +7735,9 @@ export function ChatMessageDelegationCard({
       ) : null}
       {delegationCardParts.toolPreview.shouldRender ? (
         <View style={delegationCardParts.toolPreview.style}>
-          <Text
-            style={delegationCardParts.toolPreview.label.style}
-            numberOfLines={delegationCardParts.toolPreview.label.numberOfLines}
-          >
-            {delegationCardParts.toolPreview.label.text}
-          </Text>
+          <ChatMessageDelegationToolPreviewLabel
+            {...delegationCardParts.toolPreview.label.props}
+          />
           {delegationCardParts.toolPreview.rows.map((row) => (
             <ChatMessageDelegationToolPreviewRow
               key={row.key}

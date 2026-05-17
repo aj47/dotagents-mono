@@ -11082,7 +11082,11 @@ describe("session presentation semantics", () => {
     ])
     delegationCardParts.conversationPreview.moreAction.props.button.onPress()
     expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
-    expect(delegationCardParts.toolPreview.label.text).toBe("Tool activity · 1 tool call")
+    expect(delegationCardParts.toolPreview.label.props).toMatchObject({
+      style: "delegation-tool-preview-label-style",
+      numberOfLines: delegationCardProps.surface.toolPreviewLabelNumberOfLines,
+      text: "Tool activity · 1 tool call",
+    })
     const delegationToolPreviewRow = delegationCardProps.toolPreview.rows[0]
     if (!delegationToolPreviewRow) {
       throw new Error("Expected a delegation tool preview row")

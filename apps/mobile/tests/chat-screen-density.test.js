@@ -1140,10 +1140,13 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /getAgentDelegationConversationPreviewState,/);
   assert.doesNotMatch(screenSource, /getAgentDelegationToolPreviewState,/);
   assert.doesNotMatch(screenSource, /displayToolCallCount - delegationVisibleToolRows\.length/);
-  assert.match(sessionPresentationSource, /numberOfLines: surface\.toolPreviewLabelNumberOfLines/);
+  assert.match(sessionPresentationSource, /label: \{[\s\S]*?props: \{[\s\S]*?numberOfLines: surface\.toolPreviewLabelNumberOfLines,/);
   assert.match(delegationCardComponentSource, /delegationCardParts\.toolPreview\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.toolPreview \? \(/);
-  assert.match(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.toolPreview\.label\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel/);
+  assert.match(delegationCardComponentSource, /<ChatMessageDelegationToolPreviewLabel\s+\{\.\.\.delegationCardParts\.toolPreview\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.toolPreview\.label\.numberOfLines\}/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{surface\.toolPreviewLabelNumberOfLines\}/);
   assert.doesNotMatch(screenSource, /const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel\(displayToolCallCount\);/);
   assert.doesNotMatch(chatMessageChromeSource, /label: formatChatRuntimeDelegationToolCallActivityLabel\(displayToolCallCount\),/);

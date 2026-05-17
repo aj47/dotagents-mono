@@ -2325,9 +2325,11 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     shouldRender: boolean
     style: TStyles["toolPreview"]
     label: {
-      style: TStyles["toolPreviewLabel"]
-      numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["toolPreviewLabelNumberOfLines"]
-      text: string
+      props: {
+        style: TStyles["toolPreviewLabel"]
+        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["toolPreviewLabelNumberOfLines"]
+        text: string
+      }
     }
     rows: Array<{
       key: string
@@ -23010,9 +23012,11 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       shouldRender: shouldRenderToolPreview,
       style: styles.toolPreview,
       label: {
-        style: styles.toolPreviewLabel,
-        numberOfLines: surface.toolPreviewLabelNumberOfLines,
-        text: toolPreview.label,
+        props: {
+          style: styles.toolPreviewLabel,
+          numberOfLines: surface.toolPreviewLabelNumberOfLines,
+          text: toolPreview.label,
+        },
       },
       rows: shouldRenderToolPreview ? toolPreview.rows.map(({ key, preview, renderState }) => ({
         key,
