@@ -3911,6 +3911,50 @@ type ChatMessageExpandedContentProps = {
   streamingStyles: ChatMessageExpandedContentStyles;
 };
 
+type ChatMessageExpandedContentTextPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type ChatMessageExpandedContentBadgePart = {
+  props: ComponentProps<typeof View>;
+  content: {
+    label: ChatMessageExpandedContentTextPart;
+  };
+};
+
+type ChatMessageExpandedContentHeaderPart = {
+  props: ComponentProps<typeof View>;
+  content: {
+    icon: {
+      props: ComponentProps<typeof Ionicons>;
+    };
+    title: ChatMessageExpandedContentTextPart;
+    spinner: {
+      props: ComponentProps<typeof Image>;
+    };
+    badge: ChatMessageExpandedContentBadgePart;
+  };
+};
+
+type ChatMessageExpandedContentHeaderProps = {
+  header: ChatMessageExpandedContentHeaderPart;
+};
+
+type ChatMessageExpandedContentBodyPart = {
+  props: ComponentProps<typeof View>;
+  content: {
+    text: ChatMessageExpandedContentTextPart;
+    caret: {
+      props: ComponentProps<typeof View>;
+    };
+  };
+};
+
+type ChatMessageExpandedContentBodyProps = {
+  body: ChatMessageExpandedContentBodyPart;
+};
+
 type ChatMessageCollapsedPreviewProps = {
   renderState: ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'];
   actionState: ChatMessageCollapsedPreviewMobileActionState;
@@ -12373,33 +12417,54 @@ export function ChatMessageExpandedContent({
     );
   }
 
-  const expandedHeaderPart = expandedStreamingContent.content.header;
-  const expandedHeaderContent = expandedHeaderPart.content;
-  const expandedBadgeContent = expandedHeaderContent.badge.content;
-  const expandedBodyPart = expandedStreamingContent.content.body;
-  const expandedBodyContent = expandedBodyPart.content;
+  const expandedStreamingContentParts = expandedStreamingContent.content;
 
   return (
     <>
-      <View {...expandedHeaderPart.props}>
-        <Ionicons {...expandedHeaderContent.icon.props} />
-        <Text {...expandedHeaderContent.title.props}>
-          {expandedHeaderContent.title.text}
-        </Text>
-        <Image {...expandedHeaderContent.spinner.props} />
-        <View {...expandedHeaderContent.badge.props}>
-          <Text {...expandedBadgeContent.label.props}>
-            {expandedBadgeContent.label.text}
-          </Text>
-        </View>
-      </View>
-      <View {...expandedBodyPart.props}>
-        <Text {...expandedBodyContent.text.props}>
-          {expandedBodyContent.text.text}
-        </Text>
-        <View {...expandedBodyContent.caret.props} />
-      </View>
+      <ChatMessageExpandedContentHeader
+        header={expandedStreamingContentParts.header}
+      />
+      <ChatMessageExpandedContentBody
+        body={expandedStreamingContentParts.body}
+      />
     </>
+  );
+}
+
+export function ChatMessageExpandedContentHeader({
+  header,
+}: ChatMessageExpandedContentHeaderProps) {
+  const expandedHeaderContent = header.content;
+  const expandedBadgeContent = expandedHeaderContent.badge.content;
+
+  return (
+    <View {...header.props}>
+      <Ionicons {...expandedHeaderContent.icon.props} />
+      <Text {...expandedHeaderContent.title.props}>
+        {expandedHeaderContent.title.text}
+      </Text>
+      <Image {...expandedHeaderContent.spinner.props} />
+      <View {...expandedHeaderContent.badge.props}>
+        <Text {...expandedBadgeContent.label.props}>
+          {expandedBadgeContent.label.text}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export function ChatMessageExpandedContentBody({
+  body,
+}: ChatMessageExpandedContentBodyProps) {
+  const expandedBodyContent = body.content;
+
+  return (
+    <View {...body.props}>
+      <Text {...expandedBodyContent.text.props}>
+        {expandedBodyContent.text.text}
+      </Text>
+      <View {...expandedBodyContent.caret.props} />
+    </View>
   );
 }
 
