@@ -11414,7 +11414,10 @@ describe("session presentation semantics", () => {
         { key: "copy", item: "copy" },
       ],
       row: {
-        style: "action-row-style",
+        shouldRender: true,
+        props: {
+          style: "action-row-style",
+        },
       },
     })
     expect(createChatRuntimeMessageActionSlotListMobilePropsParts({
@@ -11427,7 +11430,10 @@ describe("session presentation semantics", () => {
         { key: "branch", item: "branch" },
         { key: "copy", item: "copy" },
       ],
-      row: null,
+      row: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeMessageSurfaceMobilePropsParts({
       style: "message-surface-style",

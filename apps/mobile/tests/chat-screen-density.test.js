@@ -5267,7 +5267,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(actionSlotListSource, /actionSlotListParts\.items\.map\(\(\{ key, item \}\) => \(/);
   assert.match(actionSlotListSource, /<Fragment key=\{key\}>/);
   assert.match(chatMessageChromeSource, /\{item\}/);
-  assert.match(actionSlotListSource, /return <View style=\{actionSlotListParts\.row\.style\}>\{content\}<\/View>;/);
+  assert.match(actionSlotListSource, /if \(actionSlotListParts\.row\.shouldRender\) \{/);
+  assert.match(actionSlotListSource, /return <View style=\{actionSlotListParts\.row\.props\.style\}>\{content\}<\/View>;/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageContentRowMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageContentRowMobilePropsParts/);

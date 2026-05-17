@@ -2741,9 +2741,9 @@ export interface ChatRuntimeMessageActionSlotListMobilePropsParts<
     key: TEntry["slot"]
     item: TEntry["item"]
   }>
-  row: {
+  row: ChatRuntimeMobilePropsPart<{
     style: TRowStyle
-  } | null
+  }>
 }
 
 export interface ChatRuntimeConversationActionSetMobileStateInput<
@@ -19944,8 +19944,14 @@ export function createChatRuntimeMessageActionSlotListMobilePropsParts<
       item,
     })),
     row: rowStyle ? {
-      style: rowStyle,
-    } : null,
+      shouldRender: true,
+      props: {
+        style: rowStyle,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
+    },
   }
 }
 

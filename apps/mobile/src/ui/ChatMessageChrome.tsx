@@ -9952,8 +9952,8 @@ export function ChatMessageActionSlotList({
     </Fragment>
   ));
 
-  if (actionSlotListParts.row) {
-    return <View style={actionSlotListParts.row.style}>{content}</View>;
+  if (actionSlotListParts.row.shouldRender) {
+    return <View style={actionSlotListParts.row.props.style}>{content}</View>;
   }
 
   return <>{content}</>;
