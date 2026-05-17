@@ -832,16 +832,26 @@ export interface ChatRuntimeHomeQuickStartsMobileItemPropsParts<
     numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutTitle"]["numberOfLines"]
     text: string
   }
-  description: {
-    style: TStyles["description"]
-    numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutDescription"]["numberOfLines"]
-    text: string
-  } | null
-  actions: {
-    style: TStyles["actions"]
-    edit: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
-    delete: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
-  } | null
+  description:
+    | {
+      shouldRender: true
+      style: TStyles["description"]
+      numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutDescription"]["numberOfLines"]
+      text: string
+    }
+    | {
+      shouldRender: false
+    }
+  actions:
+    | {
+      shouldRender: true
+      style: TStyles["actions"]
+      edit: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
+      delete: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
+    }
+    | {
+      shouldRender: false
+    }
   item: PromptLibraryShortcutItem<TPrompt, TTask>
 }
 
@@ -29133,13 +29143,17 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
           },
           description: item.description
             ? {
+                shouldRender: true,
                 style: styles.description,
                 numberOfLines: shortcutSurface.shortcutDescription.numberOfLines,
                 text: item.description,
               }
-            : null,
+            : {
+                shouldRender: false,
+              },
           actions: prompt && promptActions
             ? {
+                shouldRender: true,
                 style: styles.actions,
                 edit: {
                   pressable: {
@@ -29184,7 +29198,9 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
                   prompt,
                 },
               }
-            : null,
+            : {
+                shouldRender: false,
+              },
           item,
         }
       }),

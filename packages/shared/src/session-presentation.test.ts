@@ -5265,20 +5265,29 @@ describe("session presentation semantics", () => {
     expect(promptItemParts.addIcon.shouldRender).toBe(false)
     expect(promptItemParts.title.text).toBe("Summarize")
     expect(promptItemParts.title.numberOfLines).toBe(2)
-    expect(promptItemParts.actions?.edit.label.text).toBe("Edit")
-    expect(promptItemParts.actions?.delete.label.style).toEqual([
+    expect(promptItemParts.description.shouldRender).toBe(true)
+    if (!promptItemParts.description.shouldRender) {
+      throw new Error("expected prompt quick start to render a description")
+    }
+    expect(promptItemParts.description.numberOfLines).toBe(2)
+    expect(promptItemParts.actions.shouldRender).toBe(true)
+    if (!promptItemParts.actions.shouldRender) {
+      throw new Error("expected prompt quick start to render prompt actions")
+    }
+    expect(promptItemParts.actions.edit.label.text).toBe("Edit")
+    expect(promptItemParts.actions.delete.label.style).toEqual([
       "actionText",
       "actionDangerText",
     ])
     let stoppedPropagationCount = 0
-    promptItemParts.actions?.edit.pressable.onPress({
+    promptItemParts.actions.edit.pressable.onPress({
       stopPropagation: () => {
         stoppedPropagationCount += 1
       },
     })
     expect(stoppedPropagationCount).toBe(1)
     expect(editedPromptId).toBe("prompt-1")
-    promptItemParts.actions?.delete.pressable.onPress({
+    promptItemParts.actions.delete.pressable.onPress({
       stopPropagation: () => {
         stoppedPropagationCount += 1
       },

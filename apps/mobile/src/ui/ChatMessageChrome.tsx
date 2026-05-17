@@ -6885,7 +6885,7 @@ export function ChatConversationHomeQuickStarts<
                 >
                   {item.title.text}
                 </Text>
-                {item.description ? (
+                {item.description.shouldRender ? (
                   <Text
                     style={item.description.style}
                     numberOfLines={item.description.numberOfLines}
@@ -6893,7 +6893,7 @@ export function ChatConversationHomeQuickStarts<
                     {item.description.text}
                   </Text>
                 ) : null}
-                {actions ? (
+                {actions.shouldRender ? (
                   <View style={actions.style}>
                     <Pressable
                       style={({ pressed }) => actions.edit.pressable.getStyle(pressed)}

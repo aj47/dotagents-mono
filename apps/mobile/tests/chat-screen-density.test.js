@@ -6591,9 +6591,12 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /createButtonAccessibilityLabel/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{item\.title\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{item\.sourcePill\.label\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /item\.description\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /item\.description \? \(/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{item\.description\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(edit|delete)Label/);
-  assert.match(chatMessageChromeSource, /\{actions \? \(/);
+  assert.match(chatMessageChromeSource, /\{actions\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /\{actions \? \(/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{actions\.edit\.pressable\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{actions\.edit\.pressable\.accessibilityLabel\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{actions\.delete\.pressable\.accessibilityRole\}/);
