@@ -3612,6 +3612,18 @@ type ChatMessageConversationDockProps = {
   composer?: ReactNode;
 };
 
+type ChatMessageConversationDockParts = ReturnType<typeof createChatRuntimeConversationDockShellMobilePropsParts<
+  ChatMessageConversationDockProps['responseHistoryPanel'],
+  ChatMessageConversationDockProps['scrollToBottomButton'],
+  ChatMessageConversationDockProps['voiceOverlay'],
+  ChatMessageConversationDockProps['queuePanel'],
+  ChatMessageConversationDockProps['connectionBanner'],
+  ChatMessageConversationDockProps['composer']
+>>;
+
+type ChatMessageConversationDockContentProps =
+  ChatMessageConversationDockParts['content'];
+
 type ChatMessageConnectionBannerStyles = {
   banner: StyleProp<ViewStyle>;
   reconnecting: StyleProp<ViewStyle>;
@@ -12652,16 +12664,30 @@ export function ChatMessageConversationDock({
     connectionBanner,
     composer,
   });
-  const dockShellContent = dockShellParts.content;
 
   return (
+    <ChatMessageConversationDockContent
+      {...dockShellParts.content}
+    />
+  );
+}
+
+export function ChatMessageConversationDockContent({
+  responseHistoryPanel,
+  scrollToBottomButton,
+  voiceOverlay,
+  queuePanel,
+  connectionBanner,
+  composer,
+}: ChatMessageConversationDockContentProps) {
+  return (
     <>
-      {dockShellContent.responseHistoryPanel.children}
-      {dockShellContent.scrollToBottomButton.children}
-      {dockShellContent.voiceOverlay.children}
-      {dockShellContent.queuePanel.children}
-      {dockShellContent.connectionBanner.children}
-      {dockShellContent.composer.children}
+      {responseHistoryPanel.children}
+      {scrollToBottomButton.children}
+      {voiceOverlay.children}
+      {queuePanel.children}
+      {connectionBanner.children}
+      {composer.children}
     </>
   );
 }

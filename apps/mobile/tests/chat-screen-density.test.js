@@ -2362,8 +2362,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     chatMessageChromeSource.match(/export function ChatMessageConversationDock[\s\S]*?export function ChatMessageRuntimeDock/)?.[0] ?? '';
   assert.match(conversationDockSource, /const dockShellParts = createChatRuntimeConversationDockShellMobilePropsParts\(\{\s+responseHistoryPanel,\s+scrollToBottomButton,\s+voiceOverlay,\s+queuePanel,\s+connectionBanner,\s+composer,\s+\}\);/);
   assert.match(sessionPresentationSource, /content: \{\s+responseHistoryPanel: \{\s+children: responseHistoryPanel,/);
-  assert.match(conversationDockSource, /const dockShellContent = dockShellParts\.content;/);
-  assert.match(conversationDockSource, /\{dockShellContent\.responseHistoryPanel\.children\}[\s\S]*?\{dockShellContent\.scrollToBottomButton\.children\}[\s\S]*?\{dockShellContent\.voiceOverlay\.children\}[\s\S]*?\{dockShellContent\.queuePanel\.children\}[\s\S]*?\{dockShellContent\.connectionBanner\.children\}[\s\S]*?\{dockShellContent\.composer\.children\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationDockContentProps =\s+ChatMessageConversationDockParts\['content'\];/);
+  assert.match(conversationDockSource, /<ChatMessageConversationDockContent\s+\{\.\.\.dockShellParts\.content\}\s+\/>/);
+  assert.match(conversationDockSource, /export function ChatMessageConversationDockContent/);
+  assert.match(conversationDockSource, /\{responseHistoryPanel\.children\}[\s\S]*?\{scrollToBottomButton\.children\}[\s\S]*?\{voiceOverlay\.children\}[\s\S]*?\{queuePanel\.children\}[\s\S]*?\{connectionBanner\.children\}[\s\S]*?\{composer\.children\}/);
+  assert.doesNotMatch(conversationDockSource, /const dockShellContent = dockShellParts\.content;/);
   assert.doesNotMatch(conversationDockSource, /dockShellParts\.responseHistoryPanel\.children/);
   assert.doesNotMatch(conversationDockSource, /\{responseHistoryPanel\}[\s\S]*?\{scrollToBottomButton\}[\s\S]*?\{voiceOverlay\}[\s\S]*?\{queuePanel\}[\s\S]*?\{connectionBanner\}[\s\S]*?\{composer\}/);
   assert.match(sessionPresentationSource, /chatScrollContent:\s*\{\s+paddingBottom: layout\.chatScrollContent\.paddingBottom,\s+\}/);
