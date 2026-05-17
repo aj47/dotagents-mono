@@ -111,6 +111,7 @@ import {
   createChatRuntimeMessageThreadItemMobilePropsParts,
   createChatRuntimeMessageThreadSurfaceMobilePropsParts,
   createChatRuntimeConversationBodyMobileProps,
+  createChatRuntimeConversationDockShellMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
@@ -9157,14 +9158,23 @@ export function ChatMessageConversationDock({
   connectionBanner,
   composer,
 }: ChatMessageConversationDockProps) {
+  const dockShellParts = createChatRuntimeConversationDockShellMobilePropsParts({
+    responseHistoryPanel,
+    scrollToBottomButton,
+    voiceOverlay,
+    queuePanel,
+    connectionBanner,
+    composer,
+  });
+
   return (
     <>
-      {responseHistoryPanel}
-      {scrollToBottomButton}
-      {voiceOverlay}
-      {queuePanel}
-      {connectionBanner}
-      {composer}
+      {dockShellParts.responseHistoryPanel}
+      {dockShellParts.scrollToBottomButton}
+      {dockShellParts.voiceOverlay}
+      {dockShellParts.queuePanel}
+      {dockShellParts.connectionBanner}
+      {dockShellParts.composer}
     </>
   );
 }

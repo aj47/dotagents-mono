@@ -119,6 +119,7 @@ import {
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeConversationScrollViewportMobilePropsParts,
+  createChatRuntimeConversationDockShellMobilePropsParts,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupFooterMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
@@ -8399,6 +8400,21 @@ describe("session presentation semantics", () => {
         value: "composer-value",
         styles: "composer-styles",
       },
+    })
+    expect(createChatRuntimeConversationDockShellMobilePropsParts({
+      responseHistoryPanel: "response-history",
+      scrollToBottomButton: "scroll-button",
+      voiceOverlay: "voice-overlay",
+      queuePanel: "queue-panel",
+      connectionBanner: "connection-banner",
+      composer: "composer",
+    })).toEqual({
+      responseHistoryPanel: "response-history",
+      scrollToBottomButton: "scroll-button",
+      voiceOverlay: "voice-overlay",
+      queuePanel: "queue-panel",
+      connectionBanner: "connection-banner",
+      composer: "composer",
     })
     const composerDockParts = createChatComposerRuntimeDockMobilePropsParts({
       speechPreview: {

@@ -6390,6 +6390,38 @@ export interface ChatRuntimeConversationDockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationDockShellMobilePropsPartsInput<
+  TResponseHistoryPanel = unknown,
+  TScrollToBottomButton = unknown,
+  TVoiceOverlay = unknown,
+  TQueuePanel = unknown,
+  TConnectionBanner = unknown,
+  TComposer = unknown,
+> {
+  responseHistoryPanel?: TResponseHistoryPanel
+  scrollToBottomButton?: TScrollToBottomButton
+  voiceOverlay?: TVoiceOverlay
+  queuePanel?: TQueuePanel
+  connectionBanner?: TConnectionBanner
+  composer?: TComposer
+}
+
+export interface ChatRuntimeConversationDockShellMobilePropsParts<
+  TResponseHistoryPanel = unknown,
+  TScrollToBottomButton = unknown,
+  TVoiceOverlay = unknown,
+  TQueuePanel = unknown,
+  TConnectionBanner = unknown,
+  TComposer = unknown,
+> {
+  responseHistoryPanel: TResponseHistoryPanel | undefined
+  scrollToBottomButton: TScrollToBottomButton | undefined
+  voiceOverlay: TVoiceOverlay | undefined
+  queuePanel: TQueuePanel | undefined
+  connectionBanner: TConnectionBanner | undefined
+  composer: TComposer | undefined
+}
+
 export interface ChatRuntimeScrollToBottomButtonMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -21669,6 +21701,45 @@ export function createChatRuntimeConversationDockMobilePropsParts<
       ...composer,
       styles: styles.composer,
     },
+  }
+}
+
+export function createChatRuntimeConversationDockShellMobilePropsParts<
+  TResponseHistoryPanel,
+  TScrollToBottomButton,
+  TVoiceOverlay,
+  TQueuePanel,
+  TConnectionBanner,
+  TComposer,
+>({
+  responseHistoryPanel,
+  scrollToBottomButton,
+  voiceOverlay,
+  queuePanel,
+  connectionBanner,
+  composer,
+}: ChatRuntimeConversationDockShellMobilePropsPartsInput<
+  TResponseHistoryPanel,
+  TScrollToBottomButton,
+  TVoiceOverlay,
+  TQueuePanel,
+  TConnectionBanner,
+  TComposer
+>): ChatRuntimeConversationDockShellMobilePropsParts<
+  TResponseHistoryPanel,
+  TScrollToBottomButton,
+  TVoiceOverlay,
+  TQueuePanel,
+  TConnectionBanner,
+  TComposer
+> {
+  return {
+    responseHistoryPanel,
+    scrollToBottomButton,
+    voiceOverlay,
+    queuePanel,
+    connectionBanner,
+    composer,
   }
 }
 
