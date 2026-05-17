@@ -6737,39 +6737,45 @@ describe("session presentation semantics", () => {
             accessibilityLabel: "Reconnecting... (attempt 2). Network offline",
             style: ["banner-style", "reconnecting-style"],
           },
-        },
-        content: {
-          props: {
-            style: "content-style",
-          },
-        },
-        spinner: {
-          props: {
-            size: "small",
-            color: "#d97706",
-            style: "icon-style",
-          },
-        },
-        textContainer: {
-          props: {
-            style: "text-container-style",
-          },
-        },
-        title: {
-          props: {
-            text: "Reconnecting... (attempt 2)",
-            props: {
-              style: "title-style",
-            },
-          },
-        },
-        subtitle: {
-          shouldRender: true,
-          props: {
-            text: "Network offline",
-            props: {
-              style: "subtitle-style",
-              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+          content: {
+            body: {
+              props: {
+                style: "content-style",
+              },
+              content: {
+                spinner: {
+                  props: {
+                    size: "small",
+                    color: "#d97706",
+                    style: "icon-style",
+                  },
+                },
+                textContainer: {
+                  props: {
+                    style: "text-container-style",
+                  },
+                  content: {
+                    title: {
+                      props: {
+                        text: "Reconnecting... (attempt 2)",
+                        props: {
+                          style: "title-style",
+                        },
+                      },
+                    },
+                    subtitle: {
+                      shouldRender: true,
+                      props: {
+                        text: "Network offline",
+                        props: {
+                          style: "subtitle-style",
+                          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -6783,56 +6789,64 @@ describe("session presentation semantics", () => {
             accessibilityLabel: "Message failed to send. Tap retry to try again",
             style: ["banner-style", "failed-style"],
           },
-        },
-        content: {
-          props: {
-            style: "content-style",
-          },
-        },
-        icon: {
-          props: {
-            name: "warning-outline",
-            size: 16,
-            color: "#dc2626",
-            style: "icon-style",
-          },
-        },
-        textContainer: {
-          props: {
-            style: "text-container-style",
-          },
-        },
-        title: {
-          props: {
-            text: "Message failed to send",
-            props: {
-              style: "title-style",
-            },
-          },
-        },
-        subtitle: {
-          props: {
-            text: "Tap retry to try again",
-            props: {
-              style: "subtitle-style",
-              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
-            },
-          },
-        },
-        retryButton: {
-          props: {
-            style: "retry-button-style",
-            onPress: "retry-handler",
-            accessibilityRole: "button",
-            accessibilityLabel: "Retry",
-            activeOpacity: 0.7,
-          },
-        },
-        retryLabel: {
-          props: {
-            text: "Retry",
-            props: {
-              style: "retry-button-text-style",
+          content: {
+            body: {
+              props: {
+                style: "content-style",
+              },
+              content: {
+                icon: {
+                  props: {
+                    name: "warning-outline",
+                    size: 16,
+                    color: "#dc2626",
+                    style: "icon-style",
+                  },
+                },
+                textContainer: {
+                  props: {
+                    style: "text-container-style",
+                  },
+                  content: {
+                    title: {
+                      props: {
+                        text: "Message failed to send",
+                        props: {
+                          style: "title-style",
+                        },
+                      },
+                    },
+                    subtitle: {
+                      props: {
+                        text: "Tap retry to try again",
+                        props: {
+                          style: "subtitle-style",
+                          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+                        },
+                      },
+                    },
+                  },
+                },
+                retryButton: {
+                  props: {
+                    style: "retry-button-style",
+                    onPress: "retry-handler",
+                    accessibilityRole: "button",
+                    accessibilityLabel: "Retry",
+                    activeOpacity: 0.7,
+                  },
+                  content: {
+                    label: {
+                      props: {
+                        text: "Retry",
+                        props: {
+                          style: "retry-button-text-style",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -6852,39 +6866,45 @@ describe("session presentation semantics", () => {
             accessibilityLabel: "",
             style: ["banner-style", "reconnecting-style"],
           },
-        },
-        content: {
-          props: {
-            style: "content-style",
-          },
-        },
-        spinner: {
-          props: {
-            size: "small",
-            color: "#d97706",
-            style: "icon-style",
-          },
-        },
-        textContainer: {
-          props: {
-            style: "text-container-style",
-          },
-        },
-        title: {
-          props: {
-            text: "",
-            props: {
-              style: "title-style",
-            },
-          },
-        },
-        subtitle: {
-          shouldRender: false,
-          props: {
-            text: "",
-            props: {
-              style: "subtitle-style",
-              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+          content: {
+            body: {
+              props: {
+                style: "content-style",
+              },
+              content: {
+                spinner: {
+                  props: {
+                    size: "small",
+                    color: "#d97706",
+                    style: "icon-style",
+                  },
+                },
+                textContainer: {
+                  props: {
+                    style: "text-container-style",
+                  },
+                  content: {
+                    title: {
+                      props: {
+                        text: "",
+                        props: {
+                          style: "title-style",
+                        },
+                      },
+                    },
+                    subtitle: {
+                      shouldRender: false,
+                      props: {
+                        text: "",
+                        props: {
+                          style: "subtitle-style",
+                          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -6898,56 +6918,64 @@ describe("session presentation semantics", () => {
             accessibilityLabel: "Message failed to send. Tap retry to try again",
             style: ["banner-style", "failed-style"],
           },
-        },
-        content: {
-          props: {
-            style: "content-style",
-          },
-        },
-        icon: {
-          props: {
-            name: "warning-outline",
-            size: 16,
-            color: "#dc2626",
-            style: "icon-style",
-          },
-        },
-        textContainer: {
-          props: {
-            style: "text-container-style",
-          },
-        },
-        title: {
-          props: {
-            text: "Message failed to send",
-            props: {
-              style: "title-style",
-            },
-          },
-        },
-        subtitle: {
-          props: {
-            text: "Tap retry to try again",
-            props: {
-              style: "subtitle-style",
-              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
-            },
-          },
-        },
-        retryButton: {
-          props: {
-            style: "retry-button-style",
-            onPress: "retry-handler",
-            accessibilityRole: "button",
-            accessibilityLabel: "Retry",
-            activeOpacity: 0.7,
-          },
-        },
-        retryLabel: {
-          props: {
-            text: "Retry",
-            props: {
-              style: "retry-button-text-style",
+          content: {
+            body: {
+              props: {
+                style: "content-style",
+              },
+              content: {
+                icon: {
+                  props: {
+                    name: "warning-outline",
+                    size: 16,
+                    color: "#dc2626",
+                    style: "icon-style",
+                  },
+                },
+                textContainer: {
+                  props: {
+                    style: "text-container-style",
+                  },
+                  content: {
+                    title: {
+                      props: {
+                        text: "Message failed to send",
+                        props: {
+                          style: "title-style",
+                        },
+                      },
+                    },
+                    subtitle: {
+                      props: {
+                        text: "Tap retry to try again",
+                        props: {
+                          style: "subtitle-style",
+                          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+                        },
+                      },
+                    },
+                  },
+                },
+                retryButton: {
+                  props: {
+                    style: "retry-button-style",
+                    onPress: "retry-handler",
+                    accessibilityRole: "button",
+                    accessibilityLabel: "Retry",
+                    activeOpacity: 0.7,
+                  },
+                  content: {
+                    label: {
+                      props: {
+                        text: "Retry",
+                        props: {
+                          style: "retry-button-text-style",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },

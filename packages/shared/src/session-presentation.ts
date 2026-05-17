@@ -6689,37 +6689,43 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
         accessibilityLabel: string
         style: [TStyles["banner"], TStyles["reconnecting"]]
       }
-    }
-    content: {
-      props: {
-        style: TStyles["content"]
-      }
-    }
-    spinner: {
-      props: TRenderState["reconnecting"]["spinner"] & {
-        style: TStyles["icon"]
-      }
-    }
-    textContainer: {
-      props: {
-        style: TStyles["textContainer"]
-      }
-    }
-    title: {
-      props: {
-        text: string
-        props: {
-          style: TStyles["title"]
-        }
-      }
-    }
-    subtitle: {
-      shouldRender: boolean
-      props: {
-        text: string
-        props: {
-          style: TStyles["subtitle"]
-          numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
+      content: {
+        body: {
+          props: {
+            style: TStyles["content"]
+          }
+          content: {
+            spinner: {
+              props: TRenderState["reconnecting"]["spinner"] & {
+                style: TStyles["icon"]
+              }
+            }
+            textContainer: {
+              props: {
+                style: TStyles["textContainer"]
+              }
+              content: {
+                title: {
+                  props: {
+                    text: string
+                    props: {
+                      style: TStyles["title"]
+                    }
+                  }
+                }
+                subtitle: {
+                  shouldRender: boolean
+                  props: {
+                    text: string
+                    props: {
+                      style: TStyles["subtitle"]
+                      numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -6733,53 +6739,61 @@ export interface ChatRuntimeConnectionBannerMobilePropsParts<
         accessibilityLabel: string
         style: [TStyles["banner"], TStyles["failed"]]
       }
-    }
-    content: {
-      props: {
-        style: TStyles["content"]
-      }
-    }
-    icon: {
-      props: TRenderState["failed"]["icon"] & {
-        style: TStyles["icon"]
-      }
-    }
-    textContainer: {
-      props: {
-        style: TStyles["textContainer"]
-      }
-    }
-    title: {
-      props: {
-        text: string
-        props: {
-          style: TStyles["title"]
-        }
-      }
-    }
-    subtitle: {
-      props: {
-        text: string
-        props: {
-          style: TStyles["subtitle"]
-          numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
-        }
-      }
-    }
-    retryButton: {
-      props: {
-        style: TStyles["retryButton"]
-        onPress?: TOnRetry
-        accessibilityRole: TRenderState["failed"]["retryButton"]["accessibilityRole"]
-        accessibilityLabel: string
-        activeOpacity: number
-      }
-    }
-    retryLabel: {
-      props: {
-        text: string
-        props: {
-          style: TStyles["retryButtonText"]
+      content: {
+        body: {
+          props: {
+            style: TStyles["content"]
+          }
+          content: {
+            icon: {
+              props: TRenderState["failed"]["icon"] & {
+                style: TStyles["icon"]
+              }
+            }
+            textContainer: {
+              props: {
+                style: TStyles["textContainer"]
+              }
+              content: {
+                title: {
+                  props: {
+                    text: string
+                    props: {
+                      style: TStyles["title"]
+                    }
+                  }
+                }
+                subtitle: {
+                  props: {
+                    text: string
+                    props: {
+                      style: TStyles["subtitle"]
+                      numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
+                    }
+                  }
+                }
+              }
+            }
+            retryButton: {
+              props: {
+                style: TStyles["retryButton"]
+                onPress?: TOnRetry
+                accessibilityRole: TRenderState["failed"]["retryButton"]["accessibilityRole"]
+                accessibilityLabel: string
+                activeOpacity: number
+              }
+              content: {
+                label: {
+                  props: {
+                    text: string
+                    props: {
+                      style: TStyles["retryButtonText"]
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -24055,38 +24069,44 @@ export function createChatRuntimeConnectionBannerMobilePropsParts<
           accessibilityLabel: renderState.reconnecting.accessibilityLabel,
           style: [styles.banner, styles.reconnecting],
         },
-      },
-      content: {
-        props: {
-          style: styles.content,
-        },
-      },
-      spinner: {
-        props: {
-          ...renderState.reconnecting.spinner,
-          style: styles.icon,
-        },
-      },
-      textContainer: {
-        props: {
-          style: styles.textContainer,
-        },
-      },
-      title: {
-        props: {
-          text: renderState.reconnecting.title,
-          props: {
-            style: styles.title,
-          },
-        },
-      },
-      subtitle: {
-        shouldRender: Boolean(renderState.reconnecting.subtitle),
-        props: {
-          text: renderState.reconnecting.subtitle ?? "",
-          props: {
-            style: styles.subtitle,
-            numberOfLines: renderState.surface.subtitleNumberOfLines,
+        content: {
+          body: {
+            props: {
+              style: styles.content,
+            },
+            content: {
+              spinner: {
+                props: {
+                  ...renderState.reconnecting.spinner,
+                  style: styles.icon,
+                },
+              },
+              textContainer: {
+                props: {
+                  style: styles.textContainer,
+                },
+                content: {
+                  title: {
+                    props: {
+                      text: renderState.reconnecting.title,
+                      props: {
+                        style: styles.title,
+                      },
+                    },
+                  },
+                  subtitle: {
+                    shouldRender: Boolean(renderState.reconnecting.subtitle),
+                    props: {
+                      text: renderState.reconnecting.subtitle ?? "",
+                      props: {
+                        style: styles.subtitle,
+                        numberOfLines: renderState.surface.subtitleNumberOfLines,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -24100,54 +24120,62 @@ export function createChatRuntimeConnectionBannerMobilePropsParts<
           accessibilityLabel: renderState.failed.accessibilityLabel,
           style: [styles.banner, styles.failed],
         },
-      },
-      content: {
-        props: {
-          style: styles.content,
-        },
-      },
-      icon: {
-        props: {
-          ...renderState.failed.icon,
-          style: styles.icon,
-        },
-      },
-      textContainer: {
-        props: {
-          style: styles.textContainer,
-        },
-      },
-      title: {
-        props: {
-          text: renderState.failed.title,
-          props: {
-            style: styles.title,
-          },
-        },
-      },
-      subtitle: {
-        props: {
-          text: renderState.failed.subtitle,
-          props: {
-            style: styles.subtitle,
-            numberOfLines: renderState.surface.subtitleNumberOfLines,
-          },
-        },
-      },
-      retryButton: {
-        props: {
-          style: styles.retryButton,
-          onPress: onRetry,
-          accessibilityRole: renderState.failed.retryButton.accessibilityRole,
-          accessibilityLabel: renderState.failed.retryButton.accessibilityLabel,
-          activeOpacity: renderState.failed.retryButton.pressedOpacity,
-        },
-      },
-      retryLabel: {
-        props: {
-          text: renderState.failed.retryButton.label,
-          props: {
-            style: styles.retryButtonText,
+        content: {
+          body: {
+            props: {
+              style: styles.content,
+            },
+            content: {
+              icon: {
+                props: {
+                  ...renderState.failed.icon,
+                  style: styles.icon,
+                },
+              },
+              textContainer: {
+                props: {
+                  style: styles.textContainer,
+                },
+                content: {
+                  title: {
+                    props: {
+                      text: renderState.failed.title,
+                      props: {
+                        style: styles.title,
+                      },
+                    },
+                  },
+                  subtitle: {
+                    props: {
+                      text: renderState.failed.subtitle,
+                      props: {
+                        style: styles.subtitle,
+                        numberOfLines: renderState.surface.subtitleNumberOfLines,
+                      },
+                    },
+                  },
+                },
+              },
+              retryButton: {
+                props: {
+                  style: styles.retryButton,
+                  onPress: onRetry,
+                  accessibilityRole: renderState.failed.retryButton.accessibilityRole,
+                  accessibilityLabel: renderState.failed.retryButton.accessibilityLabel,
+                  activeOpacity: renderState.failed.retryButton.pressedOpacity,
+                },
+                content: {
+                  label: {
+                    props: {
+                      text: renderState.failed.retryButton.label,
+                      props: {
+                        style: styles.retryButtonText,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
