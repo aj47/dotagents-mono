@@ -2963,10 +2963,12 @@ export interface ChatRuntimeMessageActionSlotListMobilePropsParts<
   TRowStyle = unknown,
 > {
   shouldRenderList: boolean
-  items: Array<{
-    key: TEntry["slot"]
-    item: TEntry["item"]
-  }>
+  content: {
+    items: Array<{
+      key: TEntry["slot"]
+      item: TEntry["item"]
+    }>
+  }
   row: ChatRuntimeMobilePropsPart<{
     style: TRowStyle
   }>
@@ -20945,10 +20947,12 @@ export function createChatRuntimeMessageActionSlotListMobilePropsParts<
   ChatRuntimeMessageActionSlotListMobilePropsParts<TEntry, TRowStyle> {
   return {
     shouldRenderList: shouldRender,
-    items: entries.map(({ slot, item }) => ({
-      key: slot,
-      item,
-    })),
+    content: {
+      items: entries.map(({ slot, item }) => ({
+        key: slot,
+        item,
+      })),
+    },
     row: rowStyle ? {
       shouldRender: true,
       props: {

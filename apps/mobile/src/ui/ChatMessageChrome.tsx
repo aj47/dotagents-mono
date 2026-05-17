@@ -11897,10 +11897,11 @@ export function ChatMessageActionSlotList({
     entries,
     rowStyle,
   });
+  const actionSlotListContent = actionSlotListParts.content;
 
   if (!actionSlotListParts.shouldRenderList) return null;
 
-  const content = actionSlotListParts.items.map(({ key, item }) => (
+  const content = actionSlotListContent.items.map(({ key, item }) => (
     <Fragment key={key}>
       {item}
     </Fragment>

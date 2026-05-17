@@ -5953,8 +5953,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageActionSlotListMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionSlotListMobilePropsParts/);
   assert.match(actionSlotListSource, /const actionSlotListParts = createChatRuntimeMessageActionSlotListMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
-  assert.match(sessionPresentationSource, /items: entries\.map\(\(\{ slot, item \}\) => \(\{\s+key: slot,\s+item,/);
-  assert.match(actionSlotListSource, /actionSlotListParts\.items\.map\(\(\{ key, item \}\) => \(/);
+  assert.match(actionSlotListSource, /const actionSlotListContent = actionSlotListParts\.content;/);
+  assert.match(sessionPresentationSource, /content: \{\s+items: entries\.map\(\(\{ slot, item \}\) => \(\{\s+key: slot,\s+item,/);
+  assert.match(actionSlotListSource, /actionSlotListContent\.items\.map\(\(\{ key, item \}\) => \(/);
+  assert.doesNotMatch(actionSlotListSource, /actionSlotListParts\.items\./);
   assert.match(actionSlotListSource, /<Fragment key=\{key\}>/);
   assert.match(chatMessageChromeSource, /\{item\}/);
   assert.match(actionSlotListSource, /if \(actionSlotListParts\.row\.shouldRender\) \{/);
@@ -6245,7 +6247,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageContentRow\s+rowStyle=\{rowStyle\}\s+shouldRenderActionSlots=\{shouldRenderActionSlots\}\s+entries=\{entries\}/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionSlotRenderEntries,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
-  assert.match(actionSlotListSource, /const content = actionSlotListParts\.items\.map\(\(\{ key, item \}\) => \(/);
+  assert.match(actionSlotListSource, /const content = actionSlotListContent\.items\.map\(\(\{ key, item \}\) => \(/);
   assert.equal((screenSource.match(/visibleMessageActionSlots\.map\(\(actionSlot\) => \(/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<Fragment key=\{actionSlot\}>/g) ?? []).length, 0);
   assert.equal((screenSource.match(/\{messageActionSet\.components\[actionSlot\]\}/g) ?? []).length, 0);

@@ -12094,11 +12094,13 @@ describe("session presentation semantics", () => {
       rowStyle: "action-row-style",
     })).toEqual({
       shouldRenderList: true,
-      items: [
-        { key: "speech", item: "speech" },
-        { key: "branch", item: "branch" },
-        { key: "copy", item: "copy" },
-      ],
+      content: {
+        items: [
+          { key: "speech", item: "speech" },
+          { key: "branch", item: "branch" },
+          { key: "copy", item: "copy" },
+        ],
+      },
       row: {
         shouldRender: true,
         props: {
@@ -12111,11 +12113,13 @@ describe("session presentation semantics", () => {
       entries: actionSetProps.entries,
     })).toEqual({
       shouldRenderList: false,
-      items: [
-        { key: "speech", item: "speech" },
-        { key: "branch", item: "branch" },
-        { key: "copy", item: "copy" },
-      ],
+      content: {
+        items: [
+          { key: "speech", item: "speech" },
+          { key: "branch", item: "branch" },
+          { key: "copy", item: "copy" },
+        ],
+      },
       row: {
         shouldRender: false,
         props: null,
