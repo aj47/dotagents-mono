@@ -10751,6 +10751,32 @@ export interface ChatComposerRuntimeChromeMobileStyleRenderState {
   handsFree: ReturnType<typeof getHandsFreeComposerMobileSurfaceRenderState>
 }
 
+export interface ChatComposerRuntimeChromeMobileStyleSlotsInput {
+  renderState: ChatComposerRuntimeChromeMobileStyleRenderState
+  spacing:
+    & ChatComposerMobileStyleSlotsInput["spacing"]
+    & ChatComposerImageAttachmentMobileStyleSlotsInput["spacing"]
+    & ChatConversationHomePromptLibraryMobileStyleSlotsInput["spacing"]
+    & ChatConversationHomePromptEditorMobileStyleSlotsInput["spacing"]
+    & ChatComposerHandsFreeMobileStyleSlotsInput["spacing"]
+  radius:
+    & ChatComposerMobileStyleSlotsInput["radius"]
+    & ChatComposerImageAttachmentMobileStyleSlotsInput["radius"]
+    & ChatConversationHomePromptLibraryMobileStyleSlotsInput["radius"]
+    & ChatConversationHomePromptEditorMobileStyleSlotsInput["radius"]
+    & ChatComposerHandsFreeMobileStyleSlotsInput["radius"]
+  borderWidths: ChatComposerMobileStyleSlotsInput["borderWidths"]
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatComposerRuntimeChromeMobileStyleSlots {
+  composer: ReturnType<typeof createChatComposerMobileStyleSlots>
+  imageAttachment: ReturnType<typeof createChatComposerImageAttachmentMobileStyleSlots>
+  promptLibrary: ReturnType<typeof createChatConversationHomePromptLibraryMobileStyleSlots>
+  promptEditorModal: ReturnType<typeof createChatConversationHomePromptEditorMobileStyleSlots>
+  handsFree: ReturnType<typeof createChatComposerHandsFreeMobileStyleSlots>
+}
+
 export type ChatComposerRuntimeDockMobileColorPalette =
   & ChatComposerMobileSurfaceRenderStateColorPalette
   & HandsFreeComposerMobileSurfaceColorPalette
@@ -15699,6 +15725,45 @@ export function createChatComposerHandsFreeMobileStyleSlots({
         platform ?? "",
       ),
     },
+  }
+}
+
+export function createChatComposerRuntimeChromeMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  borderWidths,
+  platform,
+}: ChatComposerRuntimeChromeMobileStyleSlotsInput): ChatComposerRuntimeChromeMobileStyleSlots {
+  return {
+    composer: createChatComposerMobileStyleSlots({
+      renderState: renderState.composer,
+      spacing,
+      radius,
+      borderWidths,
+    }),
+    imageAttachment: createChatComposerImageAttachmentMobileStyleSlots({
+      renderState: renderState.imageAttachment,
+      spacing,
+      radius,
+    }),
+    promptLibrary: createChatConversationHomePromptLibraryMobileStyleSlots({
+      renderState: renderState.promptLibrary,
+      spacing,
+      radius,
+    }),
+    promptEditorModal: createChatConversationHomePromptEditorMobileStyleSlots({
+      renderState: renderState.promptLibrary,
+      inputPaddingVertical: renderState.promptEditorInputPaddingVertical,
+      spacing,
+      radius,
+    }),
+    handsFree: createChatComposerHandsFreeMobileStyleSlots({
+      renderState: renderState.handsFree,
+      spacing,
+      radius,
+      platform,
+    }),
   }
 }
 

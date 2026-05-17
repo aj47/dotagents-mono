@@ -6,10 +6,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  createChatComposerHandsFreeMobileStyleSlots,
-  createChatComposerImageAttachmentMobileStyleSlots,
+  createChatComposerRuntimeChromeMobileStyleSlots,
   createChatComposerRuntimeDockStyleSlots,
-  createChatComposerMobileStyleSlots,
   createChatMessageConversationDockStyleSlotsFromStyleSource,
   createChatMessageConversationThreadStyleSlotsFromStyleSource,
   createChatMessageConversationViewportStyleSlotsFromStyleSource,
@@ -28,8 +26,6 @@ import {
   createChatRuntimeSafeAreaMergedStyleSlots,
   createChatRuntimeThreadMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
-  createChatConversationHomePromptEditorMobileStyleSlots,
-  createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createChatComposerStyleSlotsFromStyleSource,
   createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource,
@@ -89,43 +85,23 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     toolPreviewStatusIconWidth: compactToolExecutionStyleSlots.statusIndicator.width,
   });
   const composerChromeStyleState = chatChromeStyleState.composer;
-  const composerStyleState = composerChromeStyleState.composer;
-  const composerStyleSlots = createChatComposerMobileStyleSlots({
-    renderState: composerStyleState,
+  const composerChromeStyleSlots = createChatComposerRuntimeChromeMobileStyleSlots({
+    renderState: composerChromeStyleState,
     spacing,
     radius,
     borderWidths: theme,
+    platform: mobilePlatform,
   });
-  const imageAttachmentStyleState = composerChromeStyleState.imageAttachment;
-  const imageAttachmentStyleSlots = createChatComposerImageAttachmentMobileStyleSlots({
-    renderState: imageAttachmentStyleState,
-    spacing,
-    radius,
-  });
-  const promptLibraryStyleState = composerChromeStyleState.promptLibrary;
-  const promptLibraryStyleSlots = createChatConversationHomePromptLibraryMobileStyleSlots({
-    renderState: promptLibraryStyleState,
-    spacing,
-    radius,
-  });
-  const promptEditorModalStyleSlots = createChatConversationHomePromptEditorMobileStyleSlots({
-    renderState: promptLibraryStyleState,
-    inputPaddingVertical: composerChromeStyleState.promptEditorInputPaddingVertical,
-    spacing,
-    radius,
-  });
+  const composerStyleSlots = composerChromeStyleSlots.composer;
+  const imageAttachmentStyleSlots = composerChromeStyleSlots.imageAttachment;
+  const promptLibraryStyleSlots = composerChromeStyleSlots.promptLibrary;
+  const promptEditorModalStyleSlots = composerChromeStyleSlots.promptEditorModal;
   const messageQueuePanelWrapperState = chatChromeStyleState.messageQueuePanelWrapper;
   const messageQueuePanelWrapperStyleSlots = createMessageQueuePanelMobileWrapperStyleSlots({
     wrapper: messageQueuePanelWrapperState.wrapper,
     spacing,
   });
-  const handsFreeStyleState = composerChromeStyleState.handsFree;
-  const handsFreeStyleSlots = createChatComposerHandsFreeMobileStyleSlots({
-    renderState: handsFreeStyleState,
-    spacing,
-    radius,
-    platform: mobilePlatform,
-  });
+  const handsFreeStyleSlots = composerChromeStyleSlots.handsFree;
   const headerActionButton = chatChromeStyleState.headerActionButton;
   const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
   const toolExecutionDetailStyleSlots = threadMobileStyleSlots.toolExecutionDetail;

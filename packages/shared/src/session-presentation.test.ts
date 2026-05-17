@@ -269,6 +269,7 @@ import {
   getChatComposerRuntimeChromeMobileStyleRenderState,
   getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeControlMobileRenderState,
+  createChatComposerRuntimeChromeMobileStyleSlots,
   createChatComposerHandsFreeMobileStyleSlots,
   getChatComposerRuntimeDraftMessageState,
   createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
@@ -2183,6 +2184,57 @@ describe("session presentation semantics", () => {
       platform: "ios",
     })
     expect(composerChromeStyle.composer.input.paddingVertical).toBe(10)
+    const composerChromeMobileSpacing = {
+      xs: 4,
+      sm: 8,
+      md: 12,
+      lg: 16,
+    }
+    const composerChromeMobileRadius = {
+      sm: 4,
+      md: 8,
+      lg: 12,
+      xl: 16,
+    }
+    const composerChromeBorderWidths = {
+      hairline: 0.5,
+    }
+    expect(createChatComposerRuntimeChromeMobileStyleSlots({
+      renderState: composerChromeStyle,
+      spacing: composerChromeMobileSpacing,
+      radius: composerChromeMobileRadius,
+      borderWidths: composerChromeBorderWidths,
+      platform: "ios",
+    })).toEqual({
+      composer: createChatComposerMobileStyleSlots({
+        renderState: composerChromeStyle.composer,
+        spacing: composerChromeMobileSpacing,
+        radius: composerChromeMobileRadius,
+        borderWidths: composerChromeBorderWidths,
+      }),
+      imageAttachment: createChatComposerImageAttachmentMobileStyleSlots({
+        renderState: composerChromeStyle.imageAttachment,
+        spacing: composerChromeMobileSpacing,
+        radius: composerChromeMobileRadius,
+      }),
+      promptLibrary: createChatConversationHomePromptLibraryMobileStyleSlots({
+        renderState: composerChromeStyle.promptLibrary,
+        spacing: composerChromeMobileSpacing,
+        radius: composerChromeMobileRadius,
+      }),
+      promptEditorModal: createChatConversationHomePromptEditorMobileStyleSlots({
+        renderState: composerChromeStyle.promptLibrary,
+        inputPaddingVertical: composerChromeStyle.promptEditorInputPaddingVertical,
+        spacing: composerChromeMobileSpacing,
+        radius: composerChromeMobileRadius,
+      }),
+      handsFree: createChatComposerHandsFreeMobileStyleSlots({
+        renderState: composerChromeStyle.handsFree,
+        spacing: composerChromeMobileSpacing,
+        radius: composerChromeMobileRadius,
+        platform: "ios",
+      }),
+    })
     expect(createChatComposerMobileStyleSlots({
       renderState: composerChromeStyle.composer,
       spacing: {
