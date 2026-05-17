@@ -228,11 +228,14 @@ import {
 export {
   buildSelectorProfiles,
   createAgentSelectorProfileItemMobilePropsParts,
+  createAgentSelectorSheetMobilePropsParts,
   createAgentSelectorMobileStyleSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
   type AgentSelectorProfileItemMobilePropsParts,
   type AgentSelectorProfileItemMobilePropsPartsInput,
+  type AgentSelectorSheetMobilePropsParts,
+  type AgentSelectorSheetMobilePropsPartsInput,
   type SelectableAgentProfile,
 } from "./agent-selector-options"
 export {

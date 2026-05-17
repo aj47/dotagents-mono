@@ -362,6 +362,163 @@ export interface AgentSelectorProfileItemMobilePropsParts<
   }
 }
 
+export interface AgentSelectorSheetMobilePropsStylesLike {
+  backdrop: unknown
+  backdropSpacer: unknown
+  sheet: unknown
+  handle: unknown
+  header: unknown
+  title: unknown
+  headerCloseButton: unknown
+  list: unknown
+  loadingContainer: unknown
+  loadingText: unknown
+  errorContainer: unknown
+  errorText: unknown
+  retryButton: unknown
+  retryButtonText: unknown
+  emptyText: unknown
+}
+
+export interface AgentSelectorSheetMobilePropsPartsInput<
+  TStyles extends AgentSelectorSheetMobilePropsStylesLike =
+    AgentSelectorSheetMobilePropsStylesLike,
+  TOnClose = unknown,
+  TOnRetry = unknown,
+> {
+  visible: boolean
+  renderState: AgentSelectorMobileRenderState
+  styles: TStyles
+  sheetBottomPadding: number
+  safeAreaBottom: number
+  isLoading: boolean
+  error?: string | null
+  hasProfiles: boolean
+  onClose: TOnClose
+  onRetry: TOnRetry
+}
+
+export interface AgentSelectorSheetMobilePropsParts<
+  TStyles extends AgentSelectorSheetMobilePropsStylesLike =
+    AgentSelectorSheetMobilePropsStylesLike,
+  TOnClose = unknown,
+  TOnRetry = unknown,
+> {
+  modal: {
+    props: {
+      visible: boolean
+      animationType: "slide"
+      transparent: true
+      onRequestClose: TOnClose
+    }
+  }
+  backdrop: {
+    props: {
+      style: TStyles["backdrop"]
+      onPress: TOnClose
+    }
+  }
+  backdropSpacer: {
+    props: {
+      style: TStyles["backdropSpacer"]
+    }
+  }
+  sheet: {
+    props: {
+      style: Array<TStyles["sheet"] | { paddingBottom: number }>
+    }
+  }
+  handle: {
+    props: {
+      style: TStyles["handle"]
+    }
+  }
+  header: {
+    props: {
+      style: TStyles["header"]
+    }
+  }
+  title: {
+    text: string
+    props: {
+      style: TStyles["title"]
+      numberOfLines: AgentSelectorMobileSurface["title"]["numberOfLines"]
+    }
+  }
+  closeButton: {
+    props: {
+      style: TStyles["headerCloseButton"]
+      onPress: TOnClose
+      activeOpacity: AgentSelectorMobileRenderState["closeButton"]["activeOpacity"]
+      accessibilityRole: AgentSelectorMobileRenderState["closeButton"]["accessibilityRole"]
+      accessibilityLabel: AgentSelectorMobileRenderState["closeButton"]["accessibilityLabel"]
+    }
+    icon: {
+      props: AgentSelectorMobileRenderState["closeButton"]["icon"]
+    }
+  }
+  loading: {
+    shouldRender: boolean
+    container: {
+      props: {
+        style: TStyles["loadingContainer"]
+      }
+    }
+    indicator: {
+      props: {
+        size: "small"
+        color: AgentSelectorMobileSurfaceColors["activityIndicator"]["color"]
+      }
+    }
+    label: {
+      text: typeof AGENT_SELECTOR_PRESENTATION.sheet.loadingLabel
+      props: {
+        style: TStyles["loadingText"]
+      }
+    }
+  }
+  error: {
+    shouldRender: boolean
+    container: {
+      props: {
+        style: TStyles["errorContainer"]
+      }
+    }
+    message: {
+      text: string
+      props: {
+        style: TStyles["errorText"]
+      }
+    }
+    retryButton: {
+      props: {
+        style: TStyles["retryButton"]
+        onPress: TOnRetry
+      }
+    }
+    retryLabel: {
+      text: typeof AGENT_SELECTOR_PRESENTATION.sheet.retryLabel
+      props: {
+        style: TStyles["retryButtonText"]
+      }
+    }
+  }
+  empty: {
+    shouldRender: boolean
+    text: string
+    props: {
+      style: TStyles["emptyText"]
+    }
+  }
+  list: {
+    shouldRender: boolean
+    props: {
+      style: TStyles["list"]
+      showsVerticalScrollIndicator: false
+    }
+  }
+}
+
 export interface AgentSelectorMobileRenderState {
   copy: typeof AGENT_SELECTOR_PRESENTATION.sheet
   surface: typeof AGENT_SELECTOR_PRESENTATION.mobile
@@ -979,6 +1136,148 @@ export function createAgentSelectorProfileItemMobilePropsParts<
             color: renderState.colors.checkIcon.color,
           },
         },
+      },
+    },
+  }
+}
+
+export function createAgentSelectorSheetMobilePropsParts<
+  TStyles extends AgentSelectorSheetMobilePropsStylesLike =
+    AgentSelectorSheetMobilePropsStylesLike,
+  TOnClose = unknown,
+  TOnRetry = unknown,
+>({
+  visible,
+  renderState,
+  styles,
+  sheetBottomPadding,
+  safeAreaBottom,
+  isLoading,
+  error,
+  hasProfiles,
+  onClose,
+  onRetry,
+}: AgentSelectorSheetMobilePropsPartsInput<TStyles, TOnClose, TOnRetry>):
+  AgentSelectorSheetMobilePropsParts<TStyles, TOnClose, TOnRetry> {
+  const shouldRenderError = !isLoading && Boolean(error)
+  const shouldRenderEmpty = !isLoading && !shouldRenderError && !hasProfiles
+  const shouldRenderList = !isLoading && !shouldRenderError && hasProfiles
+
+  return {
+    modal: {
+      props: {
+        visible,
+        animationType: "slide",
+        transparent: true,
+        onRequestClose: onClose,
+      },
+    },
+    backdrop: {
+      props: {
+        style: styles.backdrop,
+        onPress: onClose,
+      },
+    },
+    backdropSpacer: {
+      props: {
+        style: styles.backdropSpacer,
+      },
+    },
+    sheet: {
+      props: {
+        style: [
+          styles.sheet,
+          { paddingBottom: safeAreaBottom + sheetBottomPadding },
+        ],
+      },
+    },
+    handle: {
+      props: {
+        style: styles.handle,
+      },
+    },
+    header: {
+      props: {
+        style: styles.header,
+      },
+    },
+    title: {
+      text: renderState.title,
+      props: {
+        style: styles.title,
+        numberOfLines: renderState.surface.title.numberOfLines,
+      },
+    },
+    closeButton: {
+      props: {
+        style: styles.headerCloseButton,
+        onPress: onClose,
+        activeOpacity: renderState.closeButton.activeOpacity,
+        accessibilityRole: renderState.closeButton.accessibilityRole,
+        accessibilityLabel: renderState.closeButton.accessibilityLabel,
+      },
+      icon: {
+        props: renderState.closeButton.icon,
+      },
+    },
+    loading: {
+      shouldRender: isLoading,
+      container: {
+        props: {
+          style: styles.loadingContainer,
+        },
+      },
+      indicator: {
+        props: {
+          size: "small",
+          color: renderState.colors.activityIndicator.color,
+        },
+      },
+      label: {
+        text: renderState.copy.loadingLabel,
+        props: {
+          style: styles.loadingText,
+        },
+      },
+    },
+    error: {
+      shouldRender: shouldRenderError,
+      container: {
+        props: {
+          style: styles.errorContainer,
+        },
+      },
+      message: {
+        text: error ?? "",
+        props: {
+          style: styles.errorText,
+        },
+      },
+      retryButton: {
+        props: {
+          style: styles.retryButton,
+          onPress: onRetry,
+        },
+      },
+      retryLabel: {
+        text: renderState.copy.retryLabel,
+        props: {
+          style: styles.retryButtonText,
+        },
+      },
+    },
+    empty: {
+      shouldRender: shouldRenderEmpty,
+      text: renderState.emptyLabel,
+      props: {
+        style: styles.emptyText,
+      },
+    },
+    list: {
+      shouldRender: shouldRenderList,
+      props: {
+        style: styles.list,
+        showsVerticalScrollIndicator: false,
       },
     },
   }

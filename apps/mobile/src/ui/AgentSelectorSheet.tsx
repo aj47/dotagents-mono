@@ -25,6 +25,7 @@ import { useProfile } from '../store/profile';
 import {
   buildSelectorProfiles,
   createAgentSelectorProfileItemMobilePropsParts,
+  createAgentSelectorSheetMobilePropsParts,
   createAgentSelectorMobileStyleSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
@@ -55,9 +56,6 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     [selectorMode, theme.colors],
   );
   const agentSelectorCopy = agentSelectorRenderState.copy;
-  const agentSelectorSurface = agentSelectorRenderState.surface;
-  const agentSelectorColors = agentSelectorRenderState.colors;
-  const agentSelectorCloseButton = agentSelectorRenderState.closeButton;
   const agentSelectorStyleSlots = React.useMemo(
     () => createAgentSelectorMobileStyleSlots({
       renderState: agentSelectorRenderState,
@@ -177,6 +175,19 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   }, [visible, fetchProfiles]);
 
+  const agentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts({
+    visible,
+    renderState: agentSelectorRenderState,
+    styles,
+    sheetBottomPadding: agentSelectorStyleSlots.sheet.paddingBottom,
+    safeAreaBottom: insets.bottom,
+    isLoading,
+    error,
+    hasProfiles: profiles.length > 0,
+    onClose,
+    onRetry: fetchProfiles,
+  });
+
   const handleSelectProfile = async (profile: SelectableProfile) => {
     if (!hasApiConfig) {
       setProfiles([]);
@@ -263,60 +274,54 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
+      {...agentSelectorSheetParts.modal.props}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <View style={styles.backdropSpacer} />
+      <Pressable {...agentSelectorSheetParts.backdrop.props}>
+        <View {...agentSelectorSheetParts.backdropSpacer.props} />
       </Pressable>
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + agentSelectorStyleSlots.sheet.paddingBottom }]}>
-        <View style={styles.handle} />
-        <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={agentSelectorSurface.title.numberOfLines}>
-            {agentSelectorRenderState.title}
+      <View {...agentSelectorSheetParts.sheet.props}>
+        <View {...agentSelectorSheetParts.handle.props} />
+        <View {...agentSelectorSheetParts.header.props}>
+          <Text {...agentSelectorSheetParts.title.props}>
+            {agentSelectorSheetParts.title.text}
           </Text>
-          <TouchableOpacity
-            style={styles.headerCloseButton}
-            onPress={onClose}
-            activeOpacity={agentSelectorCloseButton.activeOpacity}
-            accessibilityRole={agentSelectorCloseButton.accessibilityRole}
-            accessibilityLabel={agentSelectorCloseButton.accessibilityLabel}
-          >
+          <TouchableOpacity {...agentSelectorSheetParts.closeButton.props}>
             <Ionicons
-              name={agentSelectorCloseButton.icon.name}
-              size={agentSelectorCloseButton.icon.size}
-              color={agentSelectorCloseButton.icon.color}
+              {...agentSelectorSheetParts.closeButton.icon.props}
             />
           </TouchableOpacity>
         </View>
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={agentSelectorColors.activityIndicator.color} />
-            <Text style={styles.loadingText}>{agentSelectorCopy.loadingLabel}</Text>
+        {agentSelectorSheetParts.loading.shouldRender ? (
+          <View {...agentSelectorSheetParts.loading.container.props}>
+            <ActivityIndicator {...agentSelectorSheetParts.loading.indicator.props} />
+            <Text {...agentSelectorSheetParts.loading.label.props}>
+              {agentSelectorSheetParts.loading.label.text}
+            </Text>
           </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchProfiles}>
-              <Text style={styles.retryButtonText}>{agentSelectorCopy.retryLabel}</Text>
+        ) : agentSelectorSheetParts.error.shouldRender ? (
+          <View {...agentSelectorSheetParts.error.container.props}>
+            <Text {...agentSelectorSheetParts.error.message.props}>
+              {agentSelectorSheetParts.error.message.text}
+            </Text>
+            <TouchableOpacity {...agentSelectorSheetParts.error.retryButton.props}>
+              <Text {...agentSelectorSheetParts.error.retryLabel.props}>
+                {agentSelectorSheetParts.error.retryLabel.text}
+              </Text>
             </TouchableOpacity>
           </View>
-        ) : profiles.length === 0 ? (
-          <Text style={styles.emptyText}>
-            {agentSelectorRenderState.emptyLabel}
+        ) : agentSelectorSheetParts.empty.shouldRender ? (
+          <Text {...agentSelectorSheetParts.empty.props}>
+            {agentSelectorSheetParts.empty.text}
           </Text>
-        ) : (
+        ) : agentSelectorSheetParts.list.shouldRender ? (
           <FlatList
             data={profiles}
             renderItem={renderProfile}
             keyExtractor={(item) => item.id}
-            style={styles.list}
-            showsVerticalScrollIndicator={false}
+            {...agentSelectorSheetParts.list.props}
           />
-        )}
+        ) : null}
       </View>
     </Modal>
   );

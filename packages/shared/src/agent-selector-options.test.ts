@@ -4,6 +4,7 @@ import {
   AGENT_SELECTOR_PRESENTATION,
   buildSelectorProfiles,
   createAgentSelectorProfileItemMobilePropsParts,
+  createAgentSelectorSheetMobilePropsParts,
   createAgentSelectorMobileStyleSlots,
   formatAgentSelectorEditLabel,
   formatAgentSelectorSelectAccessibilityLabel,
@@ -281,7 +282,7 @@ describe("agent selector option helpers", () => {
         },
       },
     })
-    expect(createAgentSelectorMobileStyleSlots({
+    const agentSelectorStyleSlots = createAgentSelectorMobileStyleSlots({
       renderState: agentSelectorRenderState,
       spacing: {
         xs: 4,
@@ -295,7 +296,8 @@ describe("agent selector option helpers", () => {
         lg: 12,
         xl: 16,
       },
-    })).toEqual({
+    })
+    expect(agentSelectorStyleSlots).toEqual({
       backdrop: {
         flex: 1,
         backgroundColor: "rgba(0, 0, 0, 0.4)",
@@ -419,6 +421,156 @@ describe("agent selector option helpers", () => {
         textAlign: "center",
         color: "#737373",
         paddingVertical: 16,
+      },
+    })
+    const agentSelectorSheetStyles = {
+      backdrop: "backdrop",
+      backdropSpacer: "backdrop-spacer",
+      sheet: "sheet",
+      handle: "handle",
+      header: "header",
+      title: "title",
+      headerCloseButton: "header-close-button",
+      list: "list",
+      loadingContainer: "loading-container",
+      loadingText: "loading-text",
+      errorContainer: "error-container",
+      errorText: "error-text",
+      retryButton: "retry-button",
+      retryButtonText: "retry-button-text",
+      emptyText: "empty-text",
+    }
+    expect(createAgentSelectorSheetMobilePropsParts({
+      visible: true,
+      renderState: agentSelectorRenderState,
+      styles: agentSelectorSheetStyles,
+      sheetBottomPadding: agentSelectorStyleSlots.sheet.paddingBottom,
+      safeAreaBottom: 10,
+      isLoading: false,
+      error: null,
+      hasProfiles: true,
+      onClose: "close-sheet",
+      onRetry: "retry-load",
+    })).toEqual({
+      modal: {
+        props: {
+          visible: true,
+          animationType: "slide",
+          transparent: true,
+          onRequestClose: "close-sheet",
+        },
+      },
+      backdrop: {
+        props: {
+          style: "backdrop",
+          onPress: "close-sheet",
+        },
+      },
+      backdropSpacer: {
+        props: {
+          style: "backdrop-spacer",
+        },
+      },
+      sheet: {
+        props: {
+          style: [
+            "sheet",
+            { paddingBottom: 22 },
+          ],
+        },
+      },
+      handle: {
+        props: {
+          style: "handle",
+        },
+      },
+      header: {
+        props: {
+          style: "header",
+        },
+      },
+      title: {
+        text: "Select Agent",
+        props: {
+          style: "title",
+          numberOfLines: AGENT_SELECTOR_PRESENTATION.mobile.title.numberOfLines,
+        },
+      },
+      closeButton: {
+        props: {
+          style: "header-close-button",
+          onPress: "close-sheet",
+          activeOpacity: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.pressedOpacity,
+          accessibilityRole: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseButton.accessibilityRole,
+          accessibilityLabel: AGENT_SELECTOR_PRESENTATION.sheet.closeAccessibilityLabel,
+        },
+        icon: {
+          props: {
+            name: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.name,
+            size: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.size,
+            color: "#737373",
+          },
+        },
+      },
+      loading: {
+        shouldRender: false,
+        container: {
+          props: {
+            style: "loading-container",
+          },
+        },
+        indicator: {
+          props: {
+            size: "small",
+            color: "#2563eb",
+          },
+        },
+        label: {
+          text: AGENT_SELECTOR_PRESENTATION.sheet.loadingLabel,
+          props: {
+            style: "loading-text",
+          },
+        },
+      },
+      error: {
+        shouldRender: false,
+        container: {
+          props: {
+            style: "error-container",
+          },
+        },
+        message: {
+          text: "",
+          props: {
+            style: "error-text",
+          },
+        },
+        retryButton: {
+          props: {
+            style: "retry-button",
+            onPress: "retry-load",
+          },
+        },
+        retryLabel: {
+          text: AGENT_SELECTOR_PRESENTATION.sheet.retryLabel,
+          props: {
+            style: "retry-button-text",
+          },
+        },
+      },
+      empty: {
+        shouldRender: false,
+        text: "No agents available",
+        props: {
+          style: "empty-text",
+        },
+      },
+      list: {
+        shouldRender: true,
+        props: {
+          style: "list",
+          showsVerticalScrollIndicator: false,
+        },
       },
     })
     expect(getAgentSelectorMobileRenderState({
