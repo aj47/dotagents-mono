@@ -2896,6 +2896,12 @@ type ChatMessageToolExecutionPayloadSectionParts = ReturnType<typeof createChatR
   ChatMessageToolExecutionPayloadSectionProps['styles']
 >>;
 
+type ChatMessageToolExecutionPayloadSectionContentProps =
+  ChatMessageToolExecutionPayloadSectionParts['section']['content'];
+
+type ChatMessageToolExecutionPayloadSectionHeaderContentProps =
+  ChatMessageToolExecutionPayloadSectionParts['section']['content']['headerRow']['content'];
+
 type ChatMessageToolExecutionPayloadSectionViewProps =
   (
     | ChatMessageToolExecutionPayloadSectionParts['section']['props']
@@ -11353,27 +11359,51 @@ export function ChatMessageToolExecutionPayloadSection({
     onCopyPress,
     styles,
   });
-  const payloadSectionContent = payloadSectionParts.section.content;
-  const payloadSectionHeaderContent = payloadSectionContent.headerRow.content;
 
   return (
     <ChatMessageToolExecutionPayloadSectionView
       {...payloadSectionParts.section.props}
     >
+      <ChatMessageToolExecutionPayloadSectionContent
+        {...payloadSectionParts.section.content}
+      />
+    </ChatMessageToolExecutionPayloadSectionView>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadSectionContent({
+  headerRow,
+  payloadBlock,
+}: ChatMessageToolExecutionPayloadSectionContentProps) {
+  return (
+    <>
       <ChatMessageToolExecutionPayloadSectionView
-        {...payloadSectionContent.headerRow.props}
+        {...headerRow.props}
       >
-        <ChatMessageToolExecutionPayloadMeta
-          {...payloadSectionHeaderContent.payloadMeta.props}
-        />
-        <ChatMessageToolExecutionCopyButton
-          {...payloadSectionHeaderContent.copyButton.props}
+        <ChatMessageToolExecutionPayloadSectionHeaderContent
+          {...headerRow.content}
         />
       </ChatMessageToolExecutionPayloadSectionView>
       <ChatMessageToolExecutionPayloadBlock
-        {...payloadSectionContent.payloadBlock.props}
+        {...payloadBlock.props}
       />
-    </ChatMessageToolExecutionPayloadSectionView>
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadSectionHeaderContent({
+  payloadMeta,
+  copyButton,
+}: ChatMessageToolExecutionPayloadSectionHeaderContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionPayloadMeta
+        {...payloadMeta.props}
+      />
+      <ChatMessageToolExecutionCopyButton
+        {...copyButton.props}
+      />
+    </>
   );
 }
 

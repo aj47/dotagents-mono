@@ -4654,16 +4654,24 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /payloadSection: \{\s+section: styles\.toolParamsSection,\s+headerRow: styles\.toolDetailHeaderRow,\s+payloadMeta: \{\s+row: styles\.toolPayloadMetaRow,\s+label: styles\.toolSectionLabel,\s+payloadType: styles\.toolPayloadType,\s+\},\s+copyButton: \{/);
   assert.match(sessionPresentationSource, /payloadBlock: \{\s+preview: styles\.toolPayloadPreview,\s+scroll: styles\.toolParamsScroll,\s+scrollExpanded: styles\.toolParamsScrollExpanded,\s+code: styles\.toolParamsCode,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSection/);
+  const toolExecutionPayloadSectionSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadSection\([\s\S]*?export function ChatMessageToolExecutionPayloadSectionContent/)?.[0] ?? '';
+  const toolExecutionPayloadSectionContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadSectionContent[\s\S]*?export function ChatMessageToolExecutionPayloadSectionHeaderContent/)?.[0] ?? '';
+  const toolExecutionPayloadSectionHeaderContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadSectionHeaderContent[\s\S]*?export function ChatMessageToolExecutionPayloadSectionView/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const payloadSectionParts = createChatRuntimeToolExecutionPayloadSectionMobilePropsParts\(\{\s+payloadRenderState,\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const payloadSectionContent = payloadSectionParts\.section\.content;/);
-  assert.match(chatMessageChromeSource, /const payloadSectionHeaderContent = payloadSectionContent\.headerRow\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const payloadSectionContent = payloadSectionParts\.section\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const payloadSectionHeaderContent = payloadSectionContent\.headerRow\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadSectionView\s+\{\.\.\.payloadSectionParts\.section\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadSectionView\s+\{\.\.\.payloadSectionContent\.headerRow\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMeta\s+\{\.\.\.payloadSectionHeaderContent\.payloadMeta\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.payloadSectionHeaderContent\.copyButton\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.payloadSectionContent\.payloadBlock\.props\}/);
+  assert.match(toolExecutionPayloadSectionSource, /<ChatMessageToolExecutionPayloadSectionContent\s+\{\.\.\.payloadSectionParts\.section\.content\}/);
+  assert.match(toolExecutionPayloadSectionContentSource, /<ChatMessageToolExecutionPayloadSectionView\s+\{\.\.\.headerRow\.props\}/);
+  assert.match(toolExecutionPayloadSectionContentSource, /<ChatMessageToolExecutionPayloadSectionHeaderContent\s+\{\.\.\.headerRow\.content\}/);
+  assert.match(toolExecutionPayloadSectionHeaderContentSource, /<ChatMessageToolExecutionPayloadMeta\s+\{\.\.\.payloadMeta\.props\}/);
+  assert.match(toolExecutionPayloadSectionHeaderContentSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.copyButton\.props\}/);
+  assert.match(toolExecutionPayloadSectionContentSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.payloadBlock\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSectionView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSectionView[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
   assert.match(sessionPresentationSource, /section: \{\s+props: \{\s+style: styles\.section,/);
