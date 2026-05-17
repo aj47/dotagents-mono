@@ -7834,6 +7834,317 @@ export type ChatRuntimeNavigationHeaderOptionsMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<
+  TRenderState extends {
+    pressedOpacity: unknown
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint?: string | null
+    label: string
+    icon: unknown
+  } = {
+    pressedOpacity: unknown
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint?: string | null
+    label: string
+    icon: unknown
+  },
+  TOnPress = unknown,
+  TLabelNumberOfLines = unknown,
+  TStyles extends {
+    button: unknown
+    chip: unknown
+    label: unknown
+  } = {
+    button: unknown
+    chip: unknown
+    label: unknown
+  },
+> {
+  renderState: TRenderState
+  onPress?: TOnPress
+  labelNumberOfLines: TLabelNumberOfLines
+  styles: TStyles
+}
+
+export interface ChatRuntimeHeaderAgentSelectorMobilePropsParts<
+  TRenderState extends {
+    pressedOpacity: unknown
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint?: string | null
+    label: string
+    icon: unknown
+  } = {
+    pressedOpacity: unknown
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityHint?: string | null
+    label: string
+    icon: unknown
+  },
+  TOnPress = unknown,
+  TLabelNumberOfLines = unknown,
+  TStyles extends {
+    button: unknown
+    chip: unknown
+    label: unknown
+  } = {
+    button: unknown
+    chip: unknown
+    label: unknown
+  },
+> {
+  touchable: {
+    style: TStyles["button"]
+    onPress: TOnPress | undefined
+    activeOpacity: TRenderState["pressedOpacity"]
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string | undefined
+  }
+  chip: {
+    style: TStyles["chip"]
+  }
+  label: {
+    style: TStyles["label"]
+    numberOfLines: TLabelNumberOfLines
+    text: string
+  }
+  icon: TRenderState["icon"]
+}
+
+export interface ChatRuntimeHeaderIconButtonMobileRenderStateLike {
+  pressedOpacity: unknown
+  accessibilityRole: unknown
+  accessibilityLabel: string
+  accessibilityHint?: string | null
+  accessibilityState?: unknown
+  ariaChecked?: unknown
+  icon: unknown
+}
+
+export interface ChatRuntimeHeaderIconButtonMobilePropsPartsInput<
+  TRenderState extends ChatRuntimeHeaderIconButtonMobileRenderStateLike =
+    ChatRuntimeHeaderIconButtonMobileRenderStateLike,
+  TOnPress = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+  TIconContainerStyle = unknown,
+> {
+  shouldRender?: boolean
+  renderState: TRenderState
+  onPress?: TOnPress
+  style: TStyle
+  activeStyle?: TActiveStyle
+  iconContainerStyle?: TIconContainerStyle
+  isActive?: boolean
+}
+
+export interface ChatRuntimeHeaderIconButtonMobilePropsParts<
+  TRenderState extends ChatRuntimeHeaderIconButtonMobileRenderStateLike =
+    ChatRuntimeHeaderIconButtonMobileRenderStateLike,
+  TOnPress = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+  TIconContainerStyle = unknown,
+> {
+  shouldRender: boolean
+  touchable: {
+    onPress: TOnPress | undefined
+    activeOpacity: TRenderState["pressedOpacity"]
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string | undefined
+    accessibilityState: TRenderState["accessibilityState"]
+    ariaChecked: TRenderState["ariaChecked"]
+    style: Array<TStyle | TActiveStyle | false | undefined>
+  }
+  iconContainer: {
+    style: TIconContainerStyle
+  } | null
+  icon: TRenderState["icon"]
+}
+
+export interface ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    runningIndicator: {
+      shouldRender: boolean
+      resizeMode: unknown
+    }
+    styles: {
+      chip: unknown
+      text: unknown
+    }
+    label: string
+  } = {
+    shouldRender: boolean
+    runningIndicator: {
+      shouldRender: boolean
+      resizeMode: unknown
+    }
+    styles: {
+      chip: unknown
+      text: unknown
+    }
+    label: string
+  },
+  TSpinnerSource = unknown,
+  TStyles extends {
+    chip: unknown
+    text: unknown
+    spinner: unknown
+  } = {
+    chip: unknown
+    text: unknown
+    spinner: unknown
+  },
+> {
+  renderState: TRenderState
+  spinnerSource: TSpinnerSource
+  styles: TStyles
+}
+
+export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    runningIndicator: {
+      shouldRender: boolean
+      resizeMode: unknown
+    }
+    styles: {
+      chip: unknown
+      text: unknown
+    }
+    label: string
+  } = {
+    shouldRender: boolean
+    runningIndicator: {
+      shouldRender: boolean
+      resizeMode: unknown
+    }
+    styles: {
+      chip: unknown
+      text: unknown
+    }
+    label: string
+  },
+  TSpinnerSource = unknown,
+  TStyles extends {
+    chip: unknown
+    text: unknown
+    spinner: unknown
+  } = {
+    chip: unknown
+    text: unknown
+    spinner: unknown
+  },
+> {
+  shouldRender: boolean
+  container: {
+    style: [TStyles["chip"], TRenderState["styles"]["chip"]]
+  }
+  runningIndicator: {
+    shouldRender: boolean
+    source: TSpinnerSource
+    style: TStyles["spinner"]
+    resizeMode: TRenderState["runningIndicator"]["resizeMode"]
+  }
+  label: {
+    style: [TStyles["text"], TRenderState["styles"]["text"]]
+    text: string
+  }
+}
+
+export interface ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isLive: boolean
+    icon: unknown
+    badge: {
+      numberOfLines: unknown
+    }
+    label: string
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isLive: boolean
+    icon: unknown
+    badge: {
+      numberOfLines: unknown
+    }
+    label: string
+  },
+  TStyles extends {
+    chip: unknown
+    liveChip?: unknown
+    text: unknown
+    liveText?: unknown
+  } = {
+    chip: unknown
+    liveChip?: unknown
+    text: unknown
+    liveText?: unknown
+  },
+> {
+  renderState: TRenderState
+  styles: TStyles
+}
+
+export interface ChatRuntimeHeaderTurnDurationMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isLive: boolean
+    icon: unknown
+    badge: {
+      numberOfLines: unknown
+    }
+    label: string
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    isLive: boolean
+    icon: unknown
+    badge: {
+      numberOfLines: unknown
+    }
+    label: string
+  },
+  TStyles extends {
+    chip: unknown
+    liveChip?: unknown
+    text: unknown
+    liveText?: unknown
+  } = {
+    chip: unknown
+    liveChip?: unknown
+    text: unknown
+    liveText?: unknown
+  },
+> {
+  shouldRender: boolean
+  container: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: Array<TStyles["chip"] | TStyles["liveChip"] | false | undefined>
+  }
+  icon: TRenderState["icon"]
+  label: {
+    style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
+    numberOfLines: TRenderState["badge"]["numberOfLines"]
+    text: string
+  }
+}
+
 export interface ChatRuntimeKillSwitchMobileAlertState {
   confirmation: {
     title: string
@@ -23504,6 +23815,171 @@ export function createChatRuntimeNavigationHeaderOptionsMobilePropsParts<
       ...handsFreeButton,
       style: styles.iconButtons.actionStyle,
       iconContainerStyle: styles.iconButtons.handsFreeIconContainerStyle,
+    },
+  }
+}
+
+export function createChatRuntimeHeaderAgentSelectorMobilePropsParts<
+  TRenderState extends ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput["renderState"],
+  TOnPress,
+  TLabelNumberOfLines,
+  TStyles extends ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput["styles"],
+>({
+  renderState,
+  onPress,
+  labelNumberOfLines,
+  styles,
+}: ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TLabelNumberOfLines,
+  TStyles
+>): ChatRuntimeHeaderAgentSelectorMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TLabelNumberOfLines,
+  TStyles
+> {
+  return {
+    touchable: {
+      style: styles.button,
+      onPress,
+      activeOpacity: renderState.pressedOpacity,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint ?? undefined,
+    },
+    chip: {
+      style: styles.chip,
+    },
+    label: {
+      style: styles.label,
+      numberOfLines: labelNumberOfLines,
+      text: renderState.label,
+    },
+    icon: renderState.icon,
+  }
+}
+
+export function createChatRuntimeHeaderIconButtonMobilePropsParts<
+  TRenderState extends ChatRuntimeHeaderIconButtonMobileRenderStateLike,
+  TOnPress,
+  TStyle,
+  TActiveStyle,
+  TIconContainerStyle,
+>({
+  shouldRender = true,
+  renderState,
+  onPress,
+  style,
+  activeStyle,
+  iconContainerStyle,
+  isActive,
+}: ChatRuntimeHeaderIconButtonMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TStyle,
+  TActiveStyle,
+  TIconContainerStyle
+>): ChatRuntimeHeaderIconButtonMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TStyle,
+  TActiveStyle,
+  TIconContainerStyle
+> {
+  return {
+    shouldRender,
+    touchable: {
+      onPress,
+      activeOpacity: renderState.pressedOpacity,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint ?? undefined,
+      accessibilityState: renderState.accessibilityState,
+      ariaChecked: renderState.ariaChecked,
+      style: [style, isActive && activeStyle],
+    },
+    iconContainer: iconContainerStyle ? {
+      style: iconContainerStyle,
+    } : null,
+    icon: renderState.icon,
+  }
+}
+
+export function createChatRuntimeHeaderConversationStatusMobilePropsParts<
+  TRenderState extends ChatRuntimeHeaderConversationStatusMobilePropsPartsInput["renderState"],
+  TSpinnerSource,
+  TStyles extends ChatRuntimeHeaderConversationStatusMobilePropsPartsInput["styles"],
+>({
+  renderState,
+  spinnerSource,
+  styles,
+}: ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
+  TRenderState,
+  TSpinnerSource,
+  TStyles
+>): ChatRuntimeHeaderConversationStatusMobilePropsParts<
+  TRenderState,
+  TSpinnerSource,
+  TStyles
+> {
+  return {
+    shouldRender: renderState.shouldRender,
+    container: {
+      style: [
+        styles.chip,
+        renderState.styles.chip,
+      ],
+    },
+    runningIndicator: {
+      shouldRender: renderState.runningIndicator.shouldRender,
+      source: spinnerSource,
+      style: styles.spinner,
+      resizeMode: renderState.runningIndicator.resizeMode,
+    },
+    label: {
+      style: [
+        styles.text,
+        renderState.styles.text,
+      ],
+      text: renderState.label,
+    },
+  }
+}
+
+export function createChatRuntimeHeaderTurnDurationMobilePropsParts<
+  TRenderState extends ChatRuntimeHeaderTurnDurationMobilePropsPartsInput["renderState"],
+  TStyles extends ChatRuntimeHeaderTurnDurationMobilePropsPartsInput["styles"],
+>({
+  renderState,
+  styles,
+}: ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<
+  TRenderState,
+  TStyles
+>): ChatRuntimeHeaderTurnDurationMobilePropsParts<
+  TRenderState,
+  TStyles
+> {
+  return {
+    shouldRender: renderState.shouldRender,
+    container: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      style: [
+        styles.chip,
+        renderState.isLive && styles.liveChip,
+      ],
+    },
+    icon: renderState.icon,
+    label: {
+      style: [
+        styles.text,
+        renderState.isLive && styles.liveText,
+      ],
+      numberOfLines: renderState.badge.numberOfLines,
+      text: renderState.label,
     },
   }
 }

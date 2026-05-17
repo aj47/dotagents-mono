@@ -414,6 +414,10 @@ import {
   getChatRuntimeMobileActivityAccessibilityState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeNavigationHeaderMobileRenderState,
+  createChatRuntimeHeaderAgentSelectorMobilePropsParts,
+  createChatRuntimeHeaderConversationStatusMobilePropsParts,
+  createChatRuntimeHeaderIconButtonMobilePropsParts,
+  createChatRuntimeHeaderTurnDurationMobilePropsParts,
   createChatRuntimeNavigationHeaderOptionsParts,
   createChatRuntimeNavigationHeaderOptionsMobilePropsParts,
   getChatRuntimePinAccessibilityHint,
@@ -3997,6 +4001,119 @@ describe("session presentation semantics", () => {
       ...navigationHeaderOptionParts.handsFreeButton,
       style: "action-button-style",
       iconContainerStyle: "hands-free-icon-container",
+    })
+    const headerAgentSelectorStyles = {
+      button: "agent-selector-button",
+      chip: "agent-selector-chip",
+      label: "agent-selector-label",
+    }
+    expect(createChatRuntimeHeaderAgentSelectorMobilePropsParts({
+      ...navigationHeaderOptionParts.agentSelector,
+      styles: headerAgentSelectorStyles,
+    })).toEqual({
+      touchable: {
+        style: headerAgentSelectorStyles.button,
+        onPress: "open-agent-selector",
+        activeOpacity: navigationHeaderState.agentSelectorRenderState.pressedOpacity,
+        accessibilityRole: navigationHeaderState.agentSelectorRenderState.accessibilityRole,
+        accessibilityLabel: navigationHeaderState.agentSelectorRenderState.accessibilityLabel,
+        accessibilityHint: navigationHeaderState.agentSelectorRenderState.accessibilityHint,
+      },
+      chip: {
+        style: headerAgentSelectorStyles.chip,
+      },
+      label: {
+        style: headerAgentSelectorStyles.label,
+        numberOfLines: navigationHeaderState.agentSelectorLabelNumberOfLines,
+        text: navigationHeaderState.agentSelectorRenderState.label,
+      },
+      icon: navigationHeaderState.agentSelectorRenderState.icon,
+    })
+    const headerIconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts({
+      ...navigationHeaderMobileParts.handsFreeButton,
+      activeStyle: "hands-free-active-style",
+      isActive: true,
+    })
+    expect(headerIconButtonParts).toEqual({
+      shouldRender: true,
+      touchable: {
+        onPress: "toggle-hands-free",
+        activeOpacity: navigationHeaderState.handsFreeButtonRenderState.pressedOpacity,
+        accessibilityRole: navigationHeaderState.handsFreeButtonRenderState.accessibilityRole,
+        accessibilityLabel: navigationHeaderState.handsFreeButtonRenderState.accessibilityLabel,
+        accessibilityHint: navigationHeaderState.handsFreeButtonRenderState.accessibilityHint,
+        accessibilityState: navigationHeaderState.handsFreeButtonRenderState.accessibilityState,
+        ariaChecked: navigationHeaderState.handsFreeButtonRenderState.ariaChecked,
+        style: ["action-button-style", "hands-free-active-style"],
+      },
+      iconContainer: {
+        style: "hands-free-icon-container",
+      },
+      icon: navigationHeaderState.handsFreeButtonRenderState.icon,
+    })
+    expect(createChatRuntimeHeaderIconButtonMobilePropsParts({
+      ...navigationHeaderMobileParts.killSwitchButton,
+      shouldRender: false,
+    }).shouldRender).toBe(false)
+    const headerConversationStatusStyles = {
+      chip: "conversation-status-chip",
+      text: "conversation-status-text",
+      spinner: "conversation-status-spinner",
+    }
+    expect(createChatRuntimeHeaderConversationStatusMobilePropsParts({
+      ...navigationHeaderOptionParts.conversationStatus,
+      styles: headerConversationStatusStyles,
+    })).toEqual({
+      shouldRender: navigationHeaderState.conversationStatusRenderState.shouldRender,
+      container: {
+        style: [
+          headerConversationStatusStyles.chip,
+          navigationHeaderState.conversationStatusRenderState.styles.chip,
+        ],
+      },
+      runningIndicator: {
+        shouldRender: navigationHeaderState.conversationStatusRenderState.runningIndicator.shouldRender,
+        source: "spinner-source",
+        style: headerConversationStatusStyles.spinner,
+        resizeMode: navigationHeaderState.conversationStatusRenderState.runningIndicator.resizeMode,
+      },
+      label: {
+        style: [
+          headerConversationStatusStyles.text,
+          navigationHeaderState.conversationStatusRenderState.styles.text,
+        ],
+        text: navigationHeaderState.conversationStatusRenderState.label,
+      },
+    })
+    const headerTurnDurationStyles = {
+      chip: "turn-duration-chip",
+      liveChip: "turn-duration-live-chip",
+      text: "turn-duration-text",
+      liveText: "turn-duration-live-text",
+    }
+    expect(createChatRuntimeHeaderTurnDurationMobilePropsParts({
+      ...navigationHeaderOptionParts.turnDuration,
+      styles: headerTurnDurationStyles,
+    })).toEqual({
+      shouldRender: navigationHeaderState.turnDurationRenderState.shouldRender,
+      container: {
+        accessible: true,
+        accessibilityRole: navigationHeaderState.turnDurationRenderState.accessibilityRole,
+        accessibilityLabel: navigationHeaderState.turnDurationRenderState.accessibilityLabel,
+        style: [
+          headerTurnDurationStyles.chip,
+          headerTurnDurationStyles.liveChip,
+        ],
+      },
+      icon: navigationHeaderState.turnDurationRenderState.icon,
+      label: {
+        style: [
+          headerTurnDurationStyles.text,
+          headerTurnDurationStyles.liveText,
+        ],
+        numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
+        text: navigationHeaderState.turnDurationRenderState.label,
+      },
     })
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.maxWidth).toBe(72)
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.durationChip.numberOfLines).toBe(1)

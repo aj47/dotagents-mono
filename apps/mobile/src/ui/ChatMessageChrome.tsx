@@ -162,6 +162,10 @@ import {
   getChatRuntimeNavigationHeaderMobileRenderState,
   createChatRuntimeNavigationHeaderOptionsParts,
   createChatRuntimeNavigationHeaderOptionsMobilePropsParts,
+  createChatRuntimeHeaderAgentSelectorMobilePropsParts,
+  createChatRuntimeHeaderConversationStatusMobilePropsParts,
+  createChatRuntimeHeaderIconButtonMobilePropsParts,
+  createChatRuntimeHeaderTurnDurationMobilePropsParts,
   hasChatMessageRuntimeLiveAgentTurn,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
@@ -6870,26 +6874,33 @@ export function ChatRuntimeHeaderAgentSelector({
   labelNumberOfLines,
   styles,
 }: ChatRuntimeHeaderAgentSelectorProps) {
+  const agentSelectorParts = createChatRuntimeHeaderAgentSelectorMobilePropsParts({
+    renderState,
+    onPress,
+    labelNumberOfLines,
+    styles,
+  });
+
   return (
     <TouchableOpacity
-      style={styles.button}
-      onPress={onPress}
-      activeOpacity={renderState.pressedOpacity}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint}
+      style={agentSelectorParts.touchable.style}
+      onPress={agentSelectorParts.touchable.onPress}
+      activeOpacity={agentSelectorParts.touchable.activeOpacity}
+      accessibilityRole={agentSelectorParts.touchable.accessibilityRole}
+      accessibilityLabel={agentSelectorParts.touchable.accessibilityLabel}
+      accessibilityHint={agentSelectorParts.touchable.accessibilityHint}
     >
-      <View style={styles.chip}>
+      <View style={agentSelectorParts.chip.style}>
         <Text
-          style={styles.label}
-          numberOfLines={labelNumberOfLines}
+          style={agentSelectorParts.label.style}
+          numberOfLines={agentSelectorParts.label.numberOfLines}
         >
-          {renderState.label}
+          {agentSelectorParts.label.text}
         </Text>
         <Ionicons
-          name={renderState.icon.name}
-          size={renderState.icon.size}
-          color={renderState.icon.color}
+          name={agentSelectorParts.icon.name}
+          size={agentSelectorParts.icon.size}
+          color={agentSelectorParts.icon.color}
         />
       </View>
     </TouchableOpacity>
@@ -6916,29 +6927,39 @@ export function ChatRuntimeHeaderIconButton({
   iconContainerStyle,
   isActive,
 }: ChatRuntimeHeaderIconButtonProps) {
-  if (!shouldRender) return null;
+  const iconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts({
+    shouldRender,
+    renderState,
+    onPress,
+    style,
+    activeStyle,
+    iconContainerStyle,
+    isActive,
+  });
+
+  if (!iconButtonParts.shouldRender) return null;
 
   const icon = (
     <Ionicons
-      name={renderState.icon.name}
-      size={renderState.icon.size}
-      color={renderState.icon.color}
+      name={iconButtonParts.icon.name}
+      size={iconButtonParts.icon.size}
+      color={iconButtonParts.icon.color}
     />
   );
 
   return (
     <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={renderState.pressedOpacity}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint}
-      accessibilityState={'accessibilityState' in renderState ? renderState.accessibilityState : undefined}
-      aria-checked={'ariaChecked' in renderState ? renderState.ariaChecked : undefined}
-      style={[style, isActive && activeStyle]}
+      onPress={iconButtonParts.touchable.onPress}
+      activeOpacity={iconButtonParts.touchable.activeOpacity}
+      accessibilityRole={iconButtonParts.touchable.accessibilityRole}
+      accessibilityLabel={iconButtonParts.touchable.accessibilityLabel}
+      accessibilityHint={iconButtonParts.touchable.accessibilityHint}
+      accessibilityState={iconButtonParts.touchable.accessibilityState as AccessibilityState | undefined}
+      aria-checked={iconButtonParts.touchable.ariaChecked as boolean | 'mixed' | undefined}
+      style={iconButtonParts.touchable.style}
     >
-      {iconContainerStyle ? (
-        <View style={iconContainerStyle}>
+      {iconButtonParts.iconContainer ? (
+        <View style={iconButtonParts.iconContainer.style}>
           {icon}
         </View>
       ) : (
@@ -6953,29 +6974,25 @@ export function ChatRuntimeHeaderConversationStatus({
   spinnerSource,
   styles,
 }: ChatRuntimeHeaderConversationStatusProps) {
-  if (!renderState.shouldRender) return null;
+  const conversationStatusParts = createChatRuntimeHeaderConversationStatusMobilePropsParts({
+    renderState,
+    spinnerSource,
+    styles,
+  });
+
+  if (!conversationStatusParts.shouldRender) return null;
 
   return (
-    <View
-      style={[
-        styles.chip,
-        renderState.styles.chip,
-      ]}
-    >
-      {renderState.runningIndicator.shouldRender && (
+    <View style={conversationStatusParts.container.style}>
+      {conversationStatusParts.runningIndicator.shouldRender && (
         <Image
-          source={spinnerSource}
-          style={styles.spinner}
-          resizeMode={renderState.runningIndicator.resizeMode}
+          source={conversationStatusParts.runningIndicator.source}
+          style={conversationStatusParts.runningIndicator.style}
+          resizeMode={conversationStatusParts.runningIndicator.resizeMode}
         />
       )}
-      <Text
-        style={[
-          styles.text,
-          renderState.styles.text,
-        ]}
-      >
-        {renderState.label}
+      <Text style={conversationStatusParts.label.style}>
+        {conversationStatusParts.label.text}
       </Text>
     </View>
   );
@@ -6985,31 +7002,30 @@ export function ChatRuntimeHeaderTurnDuration({
   renderState,
   styles,
 }: ChatRuntimeHeaderTurnDurationProps) {
-  if (!renderState.shouldRender) return null;
+  const turnDurationParts = createChatRuntimeHeaderTurnDurationMobilePropsParts({
+    renderState,
+    styles,
+  });
+
+  if (!turnDurationParts.shouldRender) return null;
 
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      style={[
-        styles.chip,
-        renderState.isLive && styles.liveChip,
-      ]}
+      accessible={turnDurationParts.container.accessible}
+      accessibilityRole={turnDurationParts.container.accessibilityRole}
+      accessibilityLabel={turnDurationParts.container.accessibilityLabel}
+      style={turnDurationParts.container.style}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={turnDurationParts.icon.name}
+        size={turnDurationParts.icon.size}
+        color={turnDurationParts.icon.color}
       />
       <Text
-        style={[
-          styles.text,
-          renderState.isLive && styles.liveText,
-        ]}
-        numberOfLines={renderState.badge.numberOfLines}
+        style={turnDurationParts.label.style}
+        numberOfLines={turnDurationParts.label.numberOfLines}
       >
-        {renderState.label}
+        {turnDurationParts.label.text}
       </Text>
     </View>
   );
