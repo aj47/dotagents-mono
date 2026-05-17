@@ -1632,6 +1632,9 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
   ChatMessageDelegationCardStyles
 >>;
 
+type ChatMessageDelegationHeaderProps =
+  ChatMessageDelegationCardParts['header']['props'];
+
 type ChatMessageDelegationMetaItemProps =
   ChatMessageDelegationCardParts['meta']['items'][number]['props'];
 
@@ -7586,6 +7589,38 @@ export function ChatMessageDelegationMorePreviewAction({
   );
 }
 
+export function ChatMessageDelegationHeader({
+  container,
+  title,
+  statusBadge,
+  statusText,
+  liveText,
+}: ChatMessageDelegationHeaderProps) {
+  return (
+    <View style={container.style}>
+      <Text
+        style={title.style}
+        numberOfLines={title.numberOfLines}
+      >
+        {title.text}
+      </Text>
+      <View style={statusBadge.style}>
+        <Text
+          style={statusText.style}
+          numberOfLines={statusText.numberOfLines}
+        >
+          {statusText.text}
+        </Text>
+      </View>
+      {liveText.shouldRender ? (
+        <Text style={liveText.style}>
+          {liveText.text}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export function ChatMessageDelegationMetaItem({
   style,
   numberOfLines,
@@ -7631,27 +7666,9 @@ export function ChatMessageDelegationCard({
       accessibilityLabel={delegationCardParts.card.accessibilityLabel}
       style={delegationCardParts.card.style}
     >
-      <View style={delegationCardParts.header.style}>
-        <Text
-          style={delegationCardParts.title.style}
-          numberOfLines={delegationCardParts.title.numberOfLines}
-        >
-          {delegationCardParts.title.text}
-        </Text>
-        <View style={delegationCardParts.statusBadge.style}>
-          <Text
-            style={delegationCardParts.statusText.style}
-            numberOfLines={delegationCardParts.statusText.numberOfLines}
-          >
-            {delegationCardParts.statusText.text}
-          </Text>
-        </View>
-        {delegationCardParts.liveText.shouldRender ? (
-          <Text style={delegationCardParts.liveText.style}>
-            {delegationCardParts.liveText.text}
-          </Text>
-        ) : null}
-      </View>
+      <ChatMessageDelegationHeader
+        {...delegationCardParts.header.props}
+      />
       {delegationCardParts.subtitle.shouldRender ? (
         <Text
           style={delegationCardParts.subtitle.style}

@@ -10986,16 +10986,19 @@ describe("session presentation semantics", () => {
       accessibilityLabel: delegationCardProps.accessibilityLabel,
       style: "delegation-card-style",
     })
-    expect(delegationCardParts.title).toEqual({
+    expect(delegationCardParts.header.props.container).toEqual({
+      style: "delegation-header-style",
+    })
+    expect(delegationCardParts.header.props.title).toEqual({
       style: "delegation-title-style",
       numberOfLines: delegationCardProps.surface.titleNumberOfLines,
       text: "Worker",
     })
-    expect(delegationCardParts.statusBadge.style).toEqual([
+    expect(delegationCardParts.header.props.statusBadge.style).toEqual([
       "delegation-status-badge-style",
       delegationCardProps.statusStyles.chip,
     ])
-    expect(delegationCardParts.statusText).toEqual({
+    expect(delegationCardParts.header.props.statusText).toEqual({
       style: [
         "delegation-status-text-style",
         delegationCardProps.statusStyles.text,
@@ -11003,7 +11006,7 @@ describe("session presentation semantics", () => {
       numberOfLines: delegationCardProps.surface.statusNumberOfLines,
       text: delegationCardProps.presentation.statusLabel,
     })
-    expect(delegationCardParts.liveText).toEqual({
+    expect(delegationCardParts.header.props.liveText).toEqual({
       shouldRender: true,
       style: "delegation-live-text-style",
       text: delegationCardProps.surface.liveLabel,

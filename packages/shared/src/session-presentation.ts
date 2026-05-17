@@ -2215,25 +2215,29 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     style: TStyles["card"]
   }
   header: {
-    style: TStyles["header"]
-  }
-  title: {
-    style: TStyles["title"]
-    numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["titleNumberOfLines"]
-    text: string
-  }
-  statusBadge: {
-    style: Array<TStyles["statusBadge"] | ChatSessionStatusMobileStyleState["chip"]>
-  }
-  statusText: {
-    style: Array<TStyles["statusText"] | ChatSessionStatusMobileStyleState["text"]>
-    numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["statusNumberOfLines"]
-    text: string
-  }
-  liveText: {
-    shouldRender: boolean
-    style: TStyles["liveText"]
-    text: string
+    props: {
+      container: {
+        style: TStyles["header"]
+      }
+      title: {
+        style: TStyles["title"]
+        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["titleNumberOfLines"]
+        text: string
+      }
+      statusBadge: {
+        style: Array<TStyles["statusBadge"] | ChatSessionStatusMobileStyleState["chip"]>
+      }
+      statusText: {
+        style: Array<TStyles["statusText"] | ChatSessionStatusMobileStyleState["text"]>
+        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["statusNumberOfLines"]
+        text: string
+      }
+      liveText: {
+        shouldRender: boolean
+        style: TStyles["liveText"]
+        text: string
+      }
+    }
   }
   subtitle: {
     shouldRender: boolean
@@ -22895,31 +22899,35 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       style: styles.card,
     },
     header: {
-      style: styles.header,
-    },
-    title: {
-      style: styles.title,
-      numberOfLines: surface.titleNumberOfLines,
-      text: agentName,
-    },
-    statusBadge: {
-      style: [
-        styles.statusBadge,
-        statusStyles.chip,
-      ],
-    },
-    statusText: {
-      style: [
-        styles.statusText,
-        statusStyles.text,
-      ],
-      numberOfLines: surface.statusNumberOfLines,
-      text: presentation.statusLabel,
-    },
-    liveText: {
-      shouldRender: presentation.isActive,
-      style: styles.liveText,
-      text: surface.liveLabel,
+      props: {
+        container: {
+          style: styles.header,
+        },
+        title: {
+          style: styles.title,
+          numberOfLines: surface.titleNumberOfLines,
+          text: agentName,
+        },
+        statusBadge: {
+          style: [
+            styles.statusBadge,
+            statusStyles.chip,
+          ],
+        },
+        statusText: {
+          style: [
+            styles.statusText,
+            statusStyles.text,
+          ],
+          numberOfLines: surface.statusNumberOfLines,
+          text: presentation.statusLabel,
+        },
+        liveText: {
+          shouldRender: presentation.isActive,
+          style: styles.liveText,
+          text: surface.liveLabel,
+        },
+      },
     },
     subtitle: {
       shouldRender: Boolean(presentation.subtitle),
